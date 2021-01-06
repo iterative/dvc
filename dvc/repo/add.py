@@ -6,6 +6,7 @@ import colorama
 
 from ..exceptions import (
     CacheLinkError,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -30,6 +31,9 @@ def add(
     recursive=False,
     no_commit=False,
     fname=None,
+    straight_to_remote=False,
+    out=None,
+    remote=None,
     **kwargs,
 ):
     from dvc.utils.collections import ensure_list
@@ -38,6 +42,24 @@ def add(
         raise RecursiveAddingWhileUsingFilename()
 
     targets = ensure_list(targets)
+
+    if straight_to_remote:
+        if len(targets) != 1:
+            raise InvalidArgumentError(
+                "straight_to_remote requires only 1 target"
+            )
+
+        return repo.imp_url(
+            url=targets[0],
+            out=out,
+            remote=remote,
+            desc=kwargs.get("desc"),
+            fname=kwargs.get("fname"),
+            comand="add",
+            track_remote_url=False,
+            straight_to_remote=True,
+        )
+
     link_failures = []
     stages_list = []
     num_targets = len(targets)

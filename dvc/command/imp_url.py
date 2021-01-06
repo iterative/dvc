@@ -10,12 +10,26 @@ logger = logging.getLogger(__name__)
 
 class CmdImportUrl(CmdBase):
     def run(self):
+        if self.args.no_exec and self.args.straight_to_remote:
+            logger.error(
+                "--no-exec can't be combined with --straight-to-remote"
+            )
+            return 1
+
+        if self.args.remote and not self.args.straight_to_remote:
+            logger.error(
+                "--remote can't be used alone without --straight-to-remote"
+            )
+            return 1
+
         try:
             self.repo.imp_url(
                 self.args.url,
                 out=self.args.out,
                 fname=self.args.file,
                 no_exec=self.args.no_exec,
+                remote=self.args.remote,
+                straight_to_remote=self.args.straight_to_remote,
                 desc=self.args.desc,
             )
         except DvcException:
@@ -67,6 +81,18 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Only create DVC-file without actually downloading it.",
+    )
+    import_parser.add_argument(
+        "--straight-to-remote",
+        action="store_true",
+        default=False,
+        help="Download it directly to the remote",
+    )
+    import_parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to download to",
+        metavar="<name>",
     )
     import_parser.add_argument(
         "--desc",

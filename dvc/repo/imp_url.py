@@ -18,8 +18,12 @@ def imp_url(
     erepo=None,
     frozen=True,
     no_exec=False,
+    remote=None,
+    track_remote_url=True,
+    straight_to_remote=False,
     desc=None,
     jobs=None,
+    command="import-url",
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
@@ -35,15 +39,20 @@ def imp_url(
     ):
         url = relpath(url, wdir)
 
+    deps = [url]
+    if not track_remote_url:
+        deps.clear()
+
     stage = create_stage(
         Stage,
         self,
         fname or path,
         wdir=wdir,
-        deps=[url],
+        deps=deps,
         outs=[out],
         erepo=erepo,
     )
+
     restore_meta(stage)
     if stage.can_be_skipped:
         return None
@@ -54,13 +63,18 @@ def imp_url(
     dvcfile = Dvcfile(self, stage.path)
     dvcfile.remove()
 
-    try:
-        self.check_modified_graph([stage])
-    except OutputDuplicationError as exc:
-        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
+    if not straight_to_remote:
+        try:
+            self.check_modified_graph([stage])
+        except OutputDuplicationError as exc:
+            raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     if no_exec:
         stage.ignore_outs()
+    elif straight_to_remote:
+        stage.outs[0].hash_info = self.cloud.transfer(
+            url, remote=remote, command=command
+        )
     else:
         stage.run(jobs=jobs)
 

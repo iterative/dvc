@@ -94,22 +94,6 @@ class CmdDataFetch(CmdDataBase):
         return 0
 
 
-class CmdDataExportToRemote(CmdDataBase):
-    def run(self):
-        try:
-            processed_files_count = self.repo.export_to_remote(
-                source=self.args.source,
-                destination=self.args.destination,
-                remote=self.args.remote,
-                jobs=self.args.jobs,
-            )
-            self.log_summary({"exported": processed_files_count})
-        except DvcException:
-            logger.exception("failed to export data to the remote")
-            return 1
-        return 0
-
-
 def shared_parent_parser():
     from dvc.cli import get_parent_parser
 
@@ -141,39 +125,7 @@ def shared_parent_parser():
 
 
 def add_parser(subparsers, _parent_parser):
-    from dvc.cli import get_parent_parser
     from dvc.command.status import CmdDataStatus
-
-    # Export to Remote
-    EXPORT_HELP = "Exports given data to the remote."
-
-    export_parser = subparsers.add_parser(
-        "export-to-remote",
-        parents=[get_parent_parser()],
-        description=append_doc_link(EXPORT_HELP, "export-to-remote"),
-        help=EXPORT_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    export_parser.add_argument(
-        "source", help="Source location to the file that is being exported"
-    )
-    export_parser.add_argument("destination", help="The name of the file")
-    export_parser.add_argument(
-        "-r", "--remote", help="Remote storage to export to", metavar="<name>",
-    )
-    export_parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        help=(
-            "Number of jobs to run simultaneously. "
-            "The default value is 4 * cpu_count(). "
-            "For SSH remotes, the default is 4. "
-        ),
-        metavar="<number>",
-    )
-
-    export_parser.set_defaults(func=CmdDataExportToRemote)
 
     # Pull
     PULL_HELP = "Download tracked files or directories from remote storage."

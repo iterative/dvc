@@ -92,9 +92,9 @@ class DataCloud:
             show_checksums=show_checksums,
         )
 
-    def transfer(self, source, jobs=None, remote=None):
+    def transfer(self, source, jobs=None, remote=None, command=None):
         from_tree = get_cloud_tree(self.repo, url=source)
-        remote = self.get_remote(remote, "export-to-remote")
+        remote = self.get_remote(remote, command)
         return remote.transfer(from_tree, jobs=jobs)
 
     def status(

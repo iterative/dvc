@@ -18,6 +18,26 @@ class CmdAdd(CmdBase):
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
 
+            if len(self.args.targets) > 1 and self.args.straight_to_remote:
+                logger.error(
+                    "--straight-to-remote can't used with multiple targets"
+                )
+                return 1
+
+            if not self.args.straight_to_remote:
+                if self.args.remote:
+                    command = "--remote"
+                elif self.args.out:
+                    command = "--out"
+                else:
+                    command = None
+
+                if command is not None:
+                    logger.error(
+                        "--remote can't be used without --straight-to-remote"
+                    )
+                    return 1
+
             self.repo.add(
                 self.args.targets,
                 recursive=self.args.recursive,
@@ -26,6 +46,9 @@ class CmdAdd(CmdBase):
                 external=self.args.external,
                 glob=self.args.glob,
                 desc=self.args.desc,
+                out=self.args.out,
+                remote=self.args.remote,
+                straight_to_remote=self.args.straight_to_remote,
             )
 
         except DvcException:
@@ -73,6 +96,25 @@ def add_parser(subparsers, parent_parser):
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        help="Destination path to put files to.",
+        nargs="?",
+        metavar="<filename>",
+    )
+    parser.add_argument(
+        "--straight-to-remote",
+        action="store_true",
+        default=False,
+        help="Download it directly to the remote",
+    )
+    parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to download to",
+        metavar="<name>",
     )
     parser.add_argument(
         "--desc",
