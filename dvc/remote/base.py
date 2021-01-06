@@ -475,9 +475,10 @@ class Remote:
     def transfer(self, from_tree, jobs=None, no_progress_bar=False):
         jobs = jobs or min((from_tree.jobs, self.tree.jobs))
         from_info = from_tree.path_info
-        try:
+
+        if from_tree.isdir(from_info):
             from_infos = list(from_tree.walk_files(from_info))
-        except NotImplementedError:
+        else:
             from_infos = [from_info]
 
         with Tqdm(
