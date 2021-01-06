@@ -1,9 +1,10 @@
-from ..dvcfile import Dvcfile
 from . import locked
 
 
 @locked
 def update(self, targets=None, rev=None, recursive=False):
+    from ..dvcfile import Dvcfile
+
     if not targets:
         targets = [None]
 

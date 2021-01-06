@@ -4,11 +4,8 @@ from functools import partial
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
-from dvc.stage.run import CheckpointKilledError
-from dvc.utils import relpath
 
 from . import locked
-from .graph import get_pipeline, get_pipelines
 
 if typing.TYPE_CHECKING:
     from . import Repo
@@ -60,6 +57,8 @@ def _dump_stage(stage):
 
 
 def _track_stage(stage):
+    from dvc.utils import relpath
+
     stage.repo.scm.track_file(stage.dvcfile.relpath)
     for dep in stage.deps:
         if not dep.use_scm_ignore and dep.is_in_repo:
@@ -86,6 +85,8 @@ def reproduce(
     all_pipelines=False,
     **kwargs,
 ):
+    from .graph import get_pipeline, get_pipelines
+
     glob = kwargs.pop("glob", False)
     accept_group = not glob
 
@@ -184,6 +185,8 @@ def _reproduce_stages(
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
             )
+
+        from dvc.stage.run import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)

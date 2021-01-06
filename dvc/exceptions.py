@@ -1,8 +1,6 @@
 """Exceptions raised by the dvc."""
 from typing import List
 
-from funcy import first
-
 
 class DvcException(Exception):
     """Base class for all dvc exceptions."""
@@ -26,6 +24,8 @@ class OutputDuplicationError(DvcException):
     """
 
     def __init__(self, output, stages):
+        from funcy import first
+
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
         if len(stages) == 1:
