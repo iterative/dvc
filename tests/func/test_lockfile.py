@@ -1,4 +1,5 @@
 import logging
+import os
 from collections import OrderedDict
 from operator import itemgetter
 
@@ -169,7 +170,10 @@ def test_params_dump(tmp_dir, dvc, run_head):
 @pytest.fixture
 def v1_repo_lock(tmp_dir, dvc):
     """Generates a repo having v1 format lockfile"""
-    hi = HashInfo(name="md5", size=4, value="c157a79031e1c40f85931829bc5fc552")
+    size = 5 if os.name == "nt" else 4
+    hi = HashInfo(
+        name="md5", size=size, value="c157a79031e1c40f85931829bc5fc552"
+    )
     v1_lockdata = {
         "foo": {"cmd": "echo foo"},
         "bar": {
