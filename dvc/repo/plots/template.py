@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.utils.fs import makedirs
 
 
 class TemplateNotFoundError(DvcException):
@@ -572,6 +571,8 @@ class PlotTemplates:
         self.dvc_dir = dvc_dir
 
     def init(self):
+        from dvc.utils.fs import makedirs
+
         makedirs(self.templates_dir, exist_ok=True)
         for t in self.TEMPLATES:
             self._dump(t())
