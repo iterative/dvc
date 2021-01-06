@@ -259,7 +259,9 @@ class CloudCache:
             from_tree.download(from_info, temp_tree.path_info)
 
             hash_info = temp_tree.get_file_hash(temp_tree.path_info)
-            self.tree.upload(temp_tree.path_info, self.hash_to_path(hash_info))
+            self.tree.upload(
+                temp_tree.path_info, self.hash_to_path(hash_info.value)
+            )
 
             return hash_info
 
