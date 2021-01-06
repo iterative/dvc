@@ -10,12 +10,10 @@ from typing import Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
-from dvc.dvcfile import is_lock_file
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.run import CheckpointKilledError
 from dvc.utils import relpath
-from dvc.utils.fs import makedirs
 
 from .base import (
     EXEC_APPLY,
@@ -241,6 +239,8 @@ class Experiments:
         return stash_rev
 
     def _prune_lockfiles(self):
+        from dvc.dvcfile import is_lock_file
+
         # NOTE: dirty DVC lock files must be restored to index state to
         # avoid checking out incorrect persist or checkpoint outs
         tree = self.scm.get_tree("HEAD")
@@ -524,6 +524,8 @@ class Experiments:
         return result
 
     def _init_executors(self, to_run):
+        from dvc.utils.fs import makedirs
+
         from .executor.local import TempDirExecutor
 
         executors = {}
