@@ -9,7 +9,10 @@ def test_stage_dump_no_outs_deps(tmp_dir, dvc):
     stage = PipelineStage(name="s1", repo=dvc, path="path", cmd="command")
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
-    assert lockfile.load() == {"s1": {"cmd": "command"}}
+    assert lockfile.load() == {
+        "stages": {"s1": {"cmd": "command"}},
+        "meta": {"version": "2.0"},
+    }
 
 
 def test_stage_dump_when_already_exists(tmp_dir, dvc):
@@ -19,8 +22,8 @@ def test_stage_dump_when_already_exists(tmp_dir, dvc):
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
     assert lockfile.load() == {
-        **data,
-        "s2": {"cmd": "command2"},
+        "stages": {**data, "s2": {"cmd": "command2"}},
+        "meta": {"version": "2.0"},
     }
 
 
@@ -37,8 +40,8 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile.dump(stage)
     assert lockfile.load() == {
-        **data,
-        "s2": {"cmd": "command2"},
+        "stages": {**data, "s2": {"cmd": "command2"}},
+        "meta": {"version": "2.0"},
     }
 
 
@@ -49,7 +52,8 @@ def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command3")
     lockfile.dump(stage)
     assert lockfile.load() == {
-        "s2": {"cmd": "command3"},
+        "stages": {"s2": {"cmd": "command3"}},
+        "meta": {"version": "2.0"},
     }
 
 

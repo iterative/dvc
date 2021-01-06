@@ -502,7 +502,7 @@ def test_repro_multiple_params(tmp_dir, dvc):
     assert len(stage.outs) == 1
 
     lockfile = stage.dvcfile._lockfile
-    assert lockfile.load()["read_params"]["params"] == {
+    assert lockfile.load()["stages"]["read_params"]["params"] == {
         "params2.yaml": {
             "lists": [42, 42.0, "42"],
             "floats": 42.0,

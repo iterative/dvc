@@ -201,10 +201,12 @@ def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
     lock_file = dvc_file._lockfile
     assert dvc_file.exists()
     assert lock_file.exists()
-    assert {"copy-bar-foobar", "copy-foo-bar"} == set(lock_file.load().keys())
+    assert {"copy-bar-foobar", "copy-foo-bar"} == set(
+        lock_file.load()["stages"].keys()
+    )
     lock_file.remove_stage(stage)
 
-    assert ["copy-bar-foobar"] == list(lock_file.load().keys())
+    assert ["copy-bar-foobar"] == list(lock_file.load()["stages"].keys())
 
     # sanity check
     stage2.reload()
@@ -374,7 +376,9 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
     ],
 )
 def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
-    dump_yaml("dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]})
+    dump_yaml(
+        "dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]},
+    )
 
     stage = dvc.stage.load_one(name=name)
     dvcfile = stage.dvcfile
