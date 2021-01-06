@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 from funcy import cached_property, first, project
 
@@ -9,13 +9,13 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
-from dvc.output import BaseOutput
-from dvc.repo import Repo
 from dvc.repo.collect import collect
 from dvc.repo.plots.data import PlotParsingError
-from dvc.schema import PLOT_PROPS
-from dvc.tree.repo import RepoTree
 from dvc.utils import relpath
+
+if TYPE_CHECKING:
+    from dvc.output import BaseOutput
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,8 @@ class Plots:
             }}}
         Data parsing is postponed, since it's affected by props.
         """
+        from dvc.tree.repo import RepoTree
+
         targets = [targets] if isinstance(targets, str) else targets or []
         data = {}
         for rev in self.repo.brancher(revs=revs):
@@ -201,12 +203,12 @@ class Plots:
         return PlotTemplates(self.repo.dvc_dir)
 
 
-def _is_plot(out: BaseOutput) -> bool:
+def _is_plot(out: "BaseOutput") -> bool:
     return bool(out.plot) or bool(out.live)
 
 
 def _collect_plots(
-    repo: Repo,
+    repo: "Repo",
     targets: List[str] = None,
     rev: str = None,
     recursive: bool = False,
@@ -223,7 +225,9 @@ def _collect_plots(
     return result
 
 
-def _plot_props(out: BaseOutput) -> Dict:
+def _plot_props(out: "BaseOutput") -> Dict:
+    from dvc.schema import PLOT_PROPS
+
     if not (out.plot or out.live):
         raise NotAPlotError(out)
     if isinstance(out.plot, list):
