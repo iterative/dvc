@@ -3,9 +3,6 @@ import logging
 import os
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
-from dvc.config import Config, ConfigError
-from dvc.repo import Repo
-from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +28,8 @@ def _name_type(value):
 
 class CmdConfig(CmdBaseNoRepo):
     def __init__(self, args):
+        from dvc.config import Config
+
         super().__init__(args)
 
         self.config = Config(validate=False)
@@ -66,7 +65,7 @@ class CmdConfig(CmdBaseNoRepo):
             )
             return 1
 
-        levels = [self.args.level] if self.args.level else Config.LEVELS
+        levels = [self.args.level] if self.args.level else self.config.LEVELS
         for level in levels:
             conf = self.config.read(level)
             prefix = self._config_file_prefix(
@@ -77,7 +76,11 @@ class CmdConfig(CmdBaseNoRepo):
         return 0
 
     def _get(self, remote, section, opt):
-        levels = [self.args.level] if self.args.level else Config.LEVELS[::-1]
+        from dvc.config import ConfigError
+
+        levels = (
+            [self.args.level] if self.args.level else self.config.LEVELS[::-1]
+        )
 
         for level in levels:
             conf = self.config.read(level)
@@ -119,6 +122,8 @@ class CmdConfig(CmdBaseNoRepo):
         return 0
 
     def _check(self, conf, remote, section, opt=None):
+        from dvc.config import ConfigError
+
         name = "remote" if remote else "section"
         if section not in conf:
             raise ConfigError(f"{name} '{section}' doesn't exist")
@@ -130,11 +135,15 @@ class CmdConfig(CmdBaseNoRepo):
 
     @staticmethod
     def _format_config(config, prefix=""):
+        from dvc.utils.flatten import flatten
+
         for key, value in flatten(config).items():
             yield f"{prefix}{key}={value}"
 
     @staticmethod
     def _config_file_prefix(show_origin, config, level):
+        from dvc.repo import Repo
+
         if not show_origin:
             return ""
 
