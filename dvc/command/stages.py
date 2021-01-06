@@ -1,27 +1,16 @@
 import logging
-import os
 from typing import TYPE_CHECKING, Iterable, List, Tuple, Union
-
-from funcy.seqs import cat
-from rich.align import Align
-from rich.console import Console, render_group
-from rich.markdown import Markdown
-from rich.padding import Padding
-from rich.rule import Rule
-from rich.style import Style
-from rich.table import Table
-from rich.text import Text
 
 from dvc.command import completion
 from dvc.command.base import CmdBase
-from dvc.dvcfile import PIPELINE_FILE
-from dvc.exceptions import DvcException
-from dvc.repo.graph import build_graph
-from dvc.repo.trie import build_outs_trie
-from dvc.stage import PipelineStage, Stage
 
 if TYPE_CHECKING:
     import networkx as nx
+    from rich.markdown import Markdown
+    from rich.text import Text
+
+    from dvc.stage import Stage
+
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +81,9 @@ def generate_description(stage: "Stage", with_size=True) -> str:
     return ", ".join(filter(None, [outs_desc, other_outs_desc]))
 
 
-def prepare_info(info: List[Tuple[str, int]]) -> Text:
+def prepare_info(info: List[Tuple[str, int]]) -> "Text":
+    from rich.text import Text
+
     ret = Text()
     for index, (key, value) in enumerate(info):
         if index:
@@ -102,14 +93,16 @@ def prepare_info(info: List[Tuple[str, int]]) -> Text:
     return ret
 
 
-def prepare_graph_text(stage: "Stage", graph: "nx.DiGraph" = None) -> Text:
+def prepare_graph_text(stage: "Stage", graph: "nx.DiGraph" = None) -> "Text":
     def gen_name(up):
         # only displaying the name if they are both in the same file
         # though this might be confusing with the stages in the current
         # directory as they don't display the path as well.
         # went to this logic for simplicity and aesthetics.
-        use_name = up.path == stage.path and isinstance(up, PipelineStage)
+        use_name = up.path == stage.path
         return prepare_stage_name(up, use_name=use_name)
+
+    from rich.text import Text
 
     text = Text()
     fork = Text(FORK, style="bold blue")
@@ -124,7 +117,14 @@ def prepare_graph_text(stage: "Stage", graph: "nx.DiGraph" = None) -> Text:
     return text
 
 
-def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> Text:
+def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> "Text":
+    import os
+
+    from rich.style import Style
+    from rich.text import Text
+
+    from dvc.stage import PipelineStage
+
     title = Text(overflow="fold")
     address = stage.addressing
 
@@ -149,7 +149,10 @@ def prepare_stage_name(stage: "Stage", link=False, use_name=False) -> Text:
     return title
 
 
-def prepare_description(stage: Stage) -> Union[Markdown, Text]:
+def prepare_description(stage: "Stage") -> Union["Markdown", "Text"]:
+    from rich.markdown import Markdown
+    from rich.text import Text
+
     style = "blue"
     if stage.desc:
         # not sure if this was ever intended, but markdown looks nice
@@ -161,16 +164,19 @@ def prepare_description(stage: Stage) -> Union[Markdown, Text]:
     return text
 
 
-def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
+def list_layout(stages: Iterable["Stage"], graph: "nx.DiGraph" = None) -> None:
     """ Displays stages in list layout using rich """
 
     LAYOUT_WIDTH = 80
     LEFT_PAD = (0, 0, 0, 4)
     SHORT_LEFT_PAD = (0, 0, 0, 2)
 
-    @render_group()
     def render_stage(stage: "Stage", idx: int):
         """Yields renderables for a single stage."""
+        from rich.padding import Padding
+        from rich.rule import Rule
+        from rich.table import Table
+
         if idx:
             # separator
             yield Padding(Rule(style=DVC_LIGHT_ORANGE), SHORT_LEFT_PAD)
@@ -207,11 +213,16 @@ def list_layout(stages: Iterable[Stage], graph: "nx.DiGraph" = None) -> None:
 
     def column(renderable):
         """Constrain width and align column to the left."""
+        from rich.align import Align
+
         return Align.left(renderable, width=LAYOUT_WIDTH, pad=False)
+
+    from rich.console import Console, render_group
 
     console = Console()
     for idx, stage in enumerate(stages):
-        console.print(column(render_stage(stage, idx)))
+        renderable = render_group()(render_stage)
+        console.print(column(renderable(stage, idx)))
 
 
 def short_output(stage: "Stage") -> Tuple[str, str]:
@@ -247,6 +258,9 @@ class CmdStages(CmdBase):
                 print(f"{name}:'{desc}'")
             return
 
+        from rich.console import Console
+        from rich.table import Table
+
         table = Table() if table else Table.grid((0, 1))
         table.add_column("Stages")
         table.add_column("Description")
@@ -256,6 +270,8 @@ class CmdStages(CmdBase):
         console.print(table)
 
     def run(self):
+        from funcy import cat
+
         def log_error(relpath: str, exc: Exception):
             if self.args.fail:
                 raise exc
@@ -295,11 +311,16 @@ class CmdStages(CmdBase):
             )
             return 0
 
+        from dvc.exceptions import DvcException
+
         # if graph checks fail, skip showing downstream nodes
         try:
             if self.args.all:
                 graph = self.repo.graph
             else:
+                from dvc.repo.graph import build_graph
+                from dvc.repo.trie import build_outs_trie
+
                 # use partial graph by default, so as not to make it too slow
                 trie = build_outs_trie(stages)
                 graph = build_graph(stages, trie)
@@ -337,10 +358,7 @@ def add_parser(subparsers, parent_parser):
         help=("List all of the stages present in the repo"),
     )
     stages_parser.add_argument(
-        "targets",
-        nargs="*",
-        default=[PIPELINE_FILE],
-        help="Stages to list from",
+        "targets", nargs="*", default=["dvc.yaml"], help="Stages to list from",
     ).complete = completion.STAGE
     stages_parser.add_argument(
         "-s",
