@@ -1,14 +1,18 @@
 import contextlib
 import os
-from typing import List
+from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import MetricDoesNotExistError, MetricsError
-from dvc.output import BaseOutput
-from dvc.path_info import PathInfo
-from dvc.repo import Repo
+
+if TYPE_CHECKING:
+    from dvc.output import BaseOutput
+    from dvc.path_info import PathInfo
+    from dvc.repo import Repo
 
 
-def summary_path_info(out: BaseOutput) -> PathInfo:
+def summary_path_info(out: "BaseOutput") -> Optional["PathInfo"]:
+    from dvc.output import BaseOutput
+
     assert out.live
     has_summary = True
     if isinstance(out.live, dict):
@@ -19,7 +23,7 @@ def summary_path_info(out: BaseOutput) -> PathInfo:
 
 
 class Live:
-    def __init__(self, repo: Repo):
+    def __init__(self, repo: "Repo"):
         self.repo = repo
 
     def show(self, target: str, revs: List[str] = None):

@@ -5,15 +5,12 @@ import typing
 from contextlib import suppress
 from typing import Iterable, List, NamedTuple, Optional, Set, Tuple
 
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
 from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
-from dvc.repo.graph import collect_inside_path, collect_pipeline
-from dvc.stage.exceptions import StageFileDoesNotExistError, StageNotFound
 from dvc.utils import parse_target, relpath
 
 logger = logging.getLogger(__name__)
@@ -25,6 +22,8 @@ if typing.TYPE_CHECKING:
     from dvc.stage import Stage
     from dvc.stage.loader import StageLoader
     from dvc.types import OptStr
+
+PIPELINE_FILE = "dvc.yaml"
 
 
 class StageInfo(NamedTuple):
@@ -38,6 +37,8 @@ StageSet = Set["Stage"]
 
 
 def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
+    from dvc.repo.graph import collect_pipeline
+
     res: StageSet = set()
     for stage in stages:
         res.update(collect_pipeline(stage, graph=graph))
@@ -47,6 +48,7 @@ def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
 def _maybe_collect_from_dvc_yaml(
     loader: "StageLoad", target, with_deps: bool, **load_kwargs,
 ) -> StageIter:
+    from dvc.stage.exceptions import StageNotFound
 
     stages: StageList = []
     if loader.tree.exists(PIPELINE_FILE):
@@ -62,6 +64,8 @@ def _collect_specific_target(
     recursive: bool,
     accept_group: bool,
 ) -> Tuple[StageIter, "OptStr", "OptStr"]:
+    from dvc.dvcfile import is_valid_filename
+
     # Optimization: do not collect the graph for a specific target
     file, name = parse_target(target)
 
@@ -163,6 +167,7 @@ class StageLoad:
             glob: if true, `name` is considered as a glob, which is
                 used to filter list of stages from the given `path`.
         """
+        from dvc.dvcfile import Dvcfile
         from dvc.stage.loader import SingleStageLoader, StageLoader
 
         path = self._get_filepath(path, name)
@@ -185,6 +190,8 @@ class StageLoad:
             path: if not provided, default `dvc.yaml` is assumed.
             name: required for `dvc.yaml` files, ignored for `.dvc` files.
         """
+        from dvc.dvcfile import Dvcfile
+
         path = self._get_filepath(path, name)
         dvcfile = Dvcfile(self.repo, path)
 
@@ -251,6 +258,8 @@ class StageLoad:
             return list(graph) if graph else self.repo.stages
 
         if recursive and self.repo.tree.isdir(target):
+            from dvc.repo.graph import collect_inside_path
+
             path = os.path.abspath(target)
             return collect_inside_path(path, graph or self.graph)
 
@@ -301,6 +310,12 @@ class StageLoad:
                 except OutputNotFoundError:
                     pass
 
+            from dvc.dvcfile import is_valid_filename
+            from dvc.stage.exceptions import (
+                StageFileDoesNotExistError,
+                StageNotFound,
+            )
+
             try:
                 stages = self.collect(
                     target,
@@ -331,6 +346,8 @@ class StageLoad:
                 Otherwise, the file will be skipped, and dvc will partially
                 load the stages.
         """
+        from dvc.dvcfile import is_valid_filename
+
         stages = []
         outs = set()
         for root, dirs, files in self.tree.walk(self.repo.root_dir):

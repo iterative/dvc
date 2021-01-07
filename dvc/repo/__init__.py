@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING
 
 from funcy import cached_property, cat
 
-from dvc.config import Config
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.scm.base import SCMError
 from dvc.utils.fs import path_isin
 
 from .graph import build_graph, build_outs_graph, get_pipelines
@@ -94,6 +92,7 @@ class Repo:
         assert bool(scm) == bool(rev)
 
         from dvc.scm import SCM
+        from dvc.scm.base import SCMError
         from dvc.scm.git import Git
         from dvc.utils.fs import makedirs
 
@@ -131,6 +130,7 @@ class Repo:
         config=None,
     ):
         from dvc.cache import Cache
+        from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.lock import LockNoop, make_lock
         from dvc.repo.live import Live

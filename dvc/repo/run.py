@@ -3,14 +3,6 @@ from contextlib import suppress
 
 from funcy import concat, first, lfilter, without
 
-from dvc.exceptions import InvalidArgumentError
-from dvc.stage.exceptions import (
-    DuplicateStageName,
-    InvalidStageName,
-    StageFileAlreadyExistsError,
-)
-
-from ..exceptions import OutputDuplicationError
 from . import locked
 from .scm_context import scm_context
 
@@ -61,6 +53,10 @@ def _get_file_path(kwargs):
 
 def _check_stage_exists(dvcfile, stage):
     from dvc.stage import PipelineStage
+    from dvc.stage.exceptions import (
+        DuplicateStageName,
+        StageFileAlreadyExistsError,
+    )
 
     if not dvcfile.exists():
         return
@@ -80,7 +76,9 @@ def _check_stage_exists(dvcfile, stage):
 @scm_context
 def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
     from dvc.dvcfile import PIPELINE_FILE, Dvcfile
+    from dvc.exceptions import InvalidArgumentError, OutputDuplicationError
     from dvc.stage import PipelineStage, Stage, create_stage, restore_meta
+    from dvc.stage.exceptions import InvalidStageName
 
     if not kwargs.get("cmd"):
         raise InvalidArgumentError("command is not specified")
