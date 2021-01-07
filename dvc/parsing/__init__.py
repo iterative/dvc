@@ -37,6 +37,7 @@ PARAMS_KWD = "params"
 FOREACH_KWD = "foreach"
 DO_KWD = "do"
 
+DEFAULT_PARAMS_FILE = "params.yaml"
 DEFAULT_SENTINEL = object()
 
 JOIN = "@"
@@ -128,12 +129,9 @@ class DataResolver:
         check_interpolations(vars_, VARS_KWD, self.relpath)
         self.context: Context = Context()
 
-        from dvc.dependency.param import ParamsDependency
-
-        default_file = ParamsDependency.DEFAULT_PARAMS_FILE
         try:
             args = tree, vars_, wdir  # load from `vars` section
-            self.context.load_from_vars(*args, default=default_file)
+            self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
