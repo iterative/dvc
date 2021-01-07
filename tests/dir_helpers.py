@@ -238,6 +238,9 @@ class TmpDir(pathlib.Path):
             }
         return super().read_text(*args, **kwargs)
 
+    def hash_to_path_info(self, hash_):
+        return self / hash_[0:2] / hash_[2:]
+
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):

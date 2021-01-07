@@ -71,3 +71,34 @@ def test_import_url_no_exec(mocker):
         straight_to_remote=False,
         desc="description",
     )
+
+
+def test_import_url_straight_to_remote(mocker):
+    cli_args = parse_args(
+        [
+            "import-url",
+            "s3://bucket/foo",
+            "bar",
+            "--straight-to-remote",
+            "--remote",
+            "remote",
+            "--desc",
+            "description",
+        ]
+    )
+    assert cli_args.func == CmdImportUrl
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(cmd.repo, "imp_url", autospec=True)
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        "s3://bucket/foo",
+        out="bar",
+        fname=None,
+        no_exec=False,
+        remote="remote",
+        straight_to_remote=True,
+        desc="description",
+    )

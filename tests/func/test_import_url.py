@@ -1,3 +1,4 @@
+import json
 import os
 import textwrap
 from uuid import uuid4
@@ -245,3 +246,98 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
         frozen: true
     """
     )
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("webhdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        pytest.lazy_fixture("http"),
+    ],
+    indirect=True,
+)
+def test_import_url_straight_to_remote_single_file(
+    tmp_dir, dvc, workspace, local_remote
+):
+    workspace.gen("foo", "foo")
+
+    url = "remote://workspace/foo"
+    stage = dvc.imp_url(url, straight_to_remote=True)
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+
+    assert len(stage.deps) == 1
+    assert stage.deps[0].def_path == url
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("webhdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_import_url_straight_to_remote_directory(
+    tmp_dir, dvc, workspace, local_remote
+):
+    workspace.gen(
+        {
+            "data": {
+                "foo": "foo",
+                "bar": "bar",
+                "sub_dir": {"baz": "sub_dir/baz"},
+            }
+        }
+    )
+
+    url = "remote://workspace/data"
+    stage = dvc.imp_url(url, straight_to_remote=True)
+
+    assert not (tmp_dir / "data").exists()
+    assert (tmp_dir / "data.dvc").exists()
+
+    assert len(stage.deps) == 1
+    assert stage.deps[0].def_path == url
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    with open(local_remote.hash_to_path_info(hash_info.value)) as stream:
+        file_parts = json.load(stream)
+
+    assert len(file_parts) == 3
+    assert {file_part["relpath"] for file_part in file_parts} == {
+        "foo",
+        "bar",
+        "sub_dir/baz",
+    }
+
+    for file_part in file_parts:
+        assert (
+            local_remote.hash_to_path_info(file_part["md5"]).read_text()
+            == file_part["relpath"]
+        )

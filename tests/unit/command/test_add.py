@@ -36,3 +36,36 @@ def test_add(mocker, dvc):
         straight_to_remote=False,
         desc="stage description",
     )
+
+
+def test_add_straight_to_remote(mocker, dvc):
+    cli_args = parse_args(
+        [
+            "add",
+            "s3://bucket/foo",
+            "--straight-to-remote",
+            "--out",
+            "bar",
+            "--remote",
+            "remote",
+        ]
+    )
+    assert cli_args.func == CmdAdd
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(cmd.repo, "add", autospec=True)
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        ["s3://bucket/foo"],
+        recursive=False,
+        no_commit=False,
+        glob=False,
+        fname=None,
+        external=False,
+        out="bar",
+        remote="remote",
+        straight_to_remote=True,
+        desc=None,
+    )

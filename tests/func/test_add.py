@@ -991,3 +991,19 @@ def test_add_long_fname(tmp_dir, dvc):
 
     dvc.add("data")
     assert (tmp_dir / "data").read_text() == {name: "foo"}
+
+
+def test_add_straight_to_remote(tmp_dir, dvc, local_cloud, local_remote):
+    local_cloud.gen("foo", "foo")
+
+    url = "remote://upstream/foo"
+    stage = dvc.add(url, straight_to_remote=True)
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"

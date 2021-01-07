@@ -55,7 +55,7 @@ def add(
             remote=remote,
             desc=kwargs.get("desc"),
             fname=kwargs.get("fname"),
-            comand="add",
+            command="add",
             track_remote_url=False,
             straight_to_remote=True,
         )
