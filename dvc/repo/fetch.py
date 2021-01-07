@@ -2,7 +2,6 @@ import logging
 
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError
-from dvc.scm.base import CloneError
 
 from . import locked
 
@@ -81,6 +80,7 @@ def fetch(
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
+    from dvc.scm.base import CloneError
 
     failed, downloaded = 0, 0
     cache = self.cache.local

@@ -9,8 +9,6 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
-from dvc.repo.collect import collect
-from dvc.repo.plots.data import PlotParsingError
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
@@ -95,6 +93,8 @@ class Plots:
     @staticmethod
     def render(data, revs=None, props=None, templates=None):
         """Renders plots"""
+        from dvc.repo.plots.data import PlotParsingError
+
         props = props or {}
 
         # Merge data by plot file and apply overriding props
@@ -213,6 +213,8 @@ def _collect_plots(
     rev: str = None,
     recursive: bool = False,
 ) -> Dict[str, Dict]:
+    from dvc.repo.collect import collect
+
     plots, path_infos = collect(
         repo,
         output_filter=_is_plot,

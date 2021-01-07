@@ -1,8 +1,6 @@
 import logging
 import os
 
-import shortuuid
-
 from dvc.exceptions import DvcException
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
@@ -19,6 +17,8 @@ class GetDVCFileError(DvcException):
 
 
 def get(url, path, out=None, rev=None):
+    import shortuuid
+
     from dvc.dvcfile import is_valid_filename
     from dvc.external_repo import external_repo
 
