@@ -17,7 +17,13 @@ def test_import_url(mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        "src", out="out", fname="file", no_exec=False, desc="description"
+        "src",
+        out="out",
+        fname="file",
+        no_exec=False,
+        remote=None,
+        straight_to_remote=False,
+        desc="description",
     )
 
 
@@ -57,5 +63,11 @@ def test_import_url_no_exec(mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        "src", out="out", fname="file", no_exec=True, desc="description"
+        "src",
+        out="out",
+        fname="file",
+        no_exec=True,
+        remote=None,
+        straight_to_remote=False,
+        desc="description",
     )

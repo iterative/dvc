@@ -31,5 +31,8 @@ def test_add(mocker, dvc):
         glob=True,
         fname="file",
         external=True,
+        out=None,
+        remote=None,
+        straight_to_remote=False,
         desc="stage description",
     )
