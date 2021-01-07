@@ -3,25 +3,28 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.command.checkout import log_changes
-from dvc.exceptions import CheckoutError, DvcException
-from dvc.utils.humanize import get_summary
 
 logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
     def log_summary(self, stats):
+        from dvc.utils.humanize import get_summary
+
         default_msg = "Everything is up to date."
         logger.info(get_summary(stats.items()) or default_msg)
 
 
 class CmdDataPull(CmdDataBase):
     def log_summary(self, stats):
+        from dvc.command.checkout import log_changes
+
         log_changes(stats)
         super().log_summary(stats)
 
     def run(self):
+        from dvc.exceptions import CheckoutError, DvcException
+
         try:
             stats = self.repo.pull(
                 targets=self.args.targets,
@@ -46,6 +49,8 @@ class CmdDataPull(CmdDataBase):
 
 class CmdDataPush(CmdDataBase):
     def run(self):
+        from dvc.exceptions import DvcException
+
         try:
             processed_files_count = self.repo.push(
                 targets=self.args.targets,
@@ -68,6 +73,8 @@ class CmdDataPush(CmdDataBase):
 
 class CmdDataFetch(CmdDataBase):
     def run(self):
+        from dvc.exceptions import DvcException
+
         try:
             processed_files_count = self.repo.fetch(
                 targets=self.args.targets,
