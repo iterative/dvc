@@ -102,3 +102,36 @@ def test_import_url_straight_to_remote(mocker):
         straight_to_remote=True,
         desc="description",
     )
+
+
+def test_import_url_straight_to_remote_invalid_combination(mocker, caplog):
+    cli_args = parse_args(
+        [
+            "import-url",
+            "s3://bucket/foo",
+            "bar",
+            "--straight-to-remote",
+            "--remote",
+            "remote",
+            "--no-exec",
+        ]
+    )
+    assert cli_args.func == CmdImportUrl
+
+    cmd = cli_args.func(cli_args)
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        assert cmd.run() == 1
+        expected_msg = "--no-exec can't be combined with --straight-to-remote"
+        assert expected_msg in caplog.text
+
+    cli_args = parse_args(
+        ["import-url", "s3://bucket/foo", "bar", "--remote", "remote"]
+    )
+
+    cmd = cli_args.func(cli_args)
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        assert cmd.run() == 1
+        expected_msg = (
+            "--remote can't be used alone without --straight-to-remote"
+        )
+        assert expected_msg in caplog.text

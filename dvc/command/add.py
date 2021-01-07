@@ -34,7 +34,8 @@ class CmdAdd(CmdBase):
 
                 if command is not None:
                     logger.error(
-                        "--remote can't be used without --straight-to-remote"
+                        f"--{command} can't be used without"
+                        " --straight-to-remote"
                     )
                     return 1
 

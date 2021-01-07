@@ -315,9 +315,9 @@ class CloudCache:
         from_info = from_tree.path_info
 
         if from_tree.isdir(from_info):
-            from_infos = list(from_tree.walk_files(from_info))
+            from_infos = tuple(from_tree.walk_files(from_info))
         else:
-            from_infos = [from_info]
+            from_infos = (from_info,)
 
         with Tqdm(
             total=len(from_infos),

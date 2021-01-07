@@ -6,7 +6,6 @@ import colorama
 
 from ..exceptions import (
     CacheLinkError,
-    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -45,8 +44,8 @@ def add(
 
     if straight_to_remote:
         if len(targets) != 1:
-            raise InvalidArgumentError(
-                "straight_to_remote requires only 1 target"
+            raise ValueError(
+                "Can't use straigh_to_remote option with multiple targets"
             )
 
         return repo.imp_url(

@@ -1,3 +1,5 @@
+import logging
+
 from dvc.cli import parse_args
 from dvc.command.add import CmdAdd
 
@@ -38,7 +40,7 @@ def test_add(mocker, dvc):
     )
 
 
-def test_add_straight_to_remote(mocker, dvc):
+def test_add_straight_to_remote(mocker):
     cli_args = parse_args(
         [
             "add",
@@ -69,3 +71,27 @@ def test_add_straight_to_remote(mocker, dvc):
         straight_to_remote=True,
         desc=None,
     )
+
+
+def test_add_straight_to_remote_invalid_combinations(mocker, caplog):
+    cli_args = parse_args(
+        ["add", "s3://bucket/foo", "s3://bucket/bar", "--straight-to-remote"]
+    )
+    assert cli_args.func == CmdAdd
+
+    cmd = cli_args.func(cli_args)
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        assert cmd.run() == 1
+        expected_msg = "--straight-to-remote can't used with multiple targets"
+        assert expected_msg in caplog.text
+
+    for option in "--remote", "--out":
+        cli_args = parse_args(["add", "foo", option, "bar"])
+
+        cmd = cli_args.func(cli_args)
+        with caplog.at_level(logging.ERROR, logger="dvc"):
+            assert cmd.run() == 1
+            expected_msg = (
+                f"--{option} can't be used without --straight-to-remote"
+            )
+            assert expected_msg in caplog.text
