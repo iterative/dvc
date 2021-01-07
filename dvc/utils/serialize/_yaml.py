@@ -3,9 +3,6 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from funcy import reraise
-from ruamel.yaml import YAML
-from ruamel.yaml.constructor import DuplicateKeyError
-from ruamel.yaml.error import YAMLError as _YAMLError
 
 from ._common import ParseError, _dump_data, _load_data, _modify_data
 
@@ -24,6 +21,10 @@ def load_yaml(path, tree=None):
 
 
 def parse_yaml(text, path, typ="safe"):
+    from ruamel.yaml import YAML
+    from ruamel.yaml import YAMLError as _YAMLError
+    from ruamel.yaml.constructor import DuplicateKeyError
+
     yaml = YAML(typ=typ)
     try:
         with reraise(_YAMLError, YAMLFileCorruptedError(path)):
@@ -48,6 +49,8 @@ def parse_yaml_for_update(text, path):
 
 
 def _get_yaml():
+    from ruamel.yaml import YAML
+
     yaml = YAML()
     yaml.default_flow_style = False
 
@@ -67,6 +70,8 @@ def dump_yaml(path, data, tree=None):
 
 
 def loads_yaml(s, typ="safe"):
+    from ruamel.yaml import YAML
+
     return YAML(typ=typ).load(s)
 
 

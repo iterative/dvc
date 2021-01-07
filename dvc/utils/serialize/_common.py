@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Callable, ContextManager, Dict, Union
 from typing_extensions import Protocol
 
 from dvc.exceptions import DvcException
-from dvc.utils import relpath
 
 if TYPE_CHECKING:
     from dvc.tree.base import BaseTree
@@ -40,6 +39,8 @@ class ParseError(DvcException):
     """Errors while parsing files"""
 
     def __init__(self, path: "AnyPath", message: str):
+        from dvc.utils import relpath
+
         path = relpath(path)
         super().__init__(f"unable to read: '{path}', {message}")
 
