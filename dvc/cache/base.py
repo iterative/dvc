@@ -266,7 +266,7 @@ class CloudCache:
             return hash_info
 
     def _transfer_file_as_chunked(self, from_tree, from_info):
-        temporary_location = self.tree.path_info / uuid()
+        tmp_info = self.tree.path_info / uuid()
         with from_tree.open(
             from_info, mode="rb", chunk_size=from_tree.CHUNK_SIZE
         ) as stream:
@@ -274,10 +274,10 @@ class CloudCache:
             # Since we don't know the hash beforehand, we'll
             # upload it to a temporary location and then move
             # it.
-            self.tree.upload_multipart(wrapped_file, temporary_location)
+            self.tree.upload_fobj(wrapped_file, tmp_info)
 
         self.tree.move(
-            temporary_location, self.hash_to_path(wrapped_file.hash_info.value)
+            tmp_info, self.hash_to_path(wrapped_file.hash_info.value)
         )
         return wrapped_file.hash_info
 

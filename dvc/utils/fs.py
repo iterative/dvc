@@ -6,6 +6,7 @@ import stat
 import sys
 
 from dvc.exceptions import DvcException, FileOwnershipError
+from dvc.progress import Tqdm
 from dvc.system import System
 from dvc.utils import dict_md5
 
@@ -174,8 +175,6 @@ def makedirs(path, exist_ok=False, mode=None):
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
-    from dvc.progress import Tqdm
-
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
 
@@ -205,6 +204,16 @@ def copy_fobj_to_file(fsrc, dest):
     """Copy contents of open file object to destination path."""
     with open(dest, "wb+") as fdest:
         shutil.copyfileobj(fsrc, fdest)
+
+
+def copy_fobj_to_fobj(fsrc, fdest, chunk_size=-1, no_progress_bar=False):
+    with Tqdm(disable=no_progress_bar, bytes=True) as pbar:
+        while True:
+            data = fsrc.read(chunk_size)
+            if not data:
+                break
+            fdest.write(data)
+            pbar.update(len(data))
 
 
 def walk_files(directory):

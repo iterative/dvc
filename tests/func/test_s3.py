@@ -131,7 +131,7 @@ def test_multipart_upload(dvc):
     tree = S3Tree(dvc, {"url": str(to_info)})
 
     stream = io.BytesIO(b"data")
-    tree._upload_multipart(stream, to_info, 1)
+    tree.upload_fobj(stream, to_info, 1)
 
     assert tree.exists(to_info)
     with tree.open(to_info) as stream:

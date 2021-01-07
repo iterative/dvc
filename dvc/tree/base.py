@@ -385,18 +385,8 @@ class BaseTree:
             file_mode=file_mode,
         )
 
-    def upload_multipart(
-        self, stream, to_info, chunk_size=CHUNK_SIZE, no_progress_bar=False
-    ):
-        if hasattr(self, "_upload_multipart"):
-            self._upload_multipart(  # pylint: disable=no-member
-                stream,
-                to_info,
-                chunk_size=chunk_size,
-                no_progress_bar=no_progress_bar,
-            )
-        else:
-            raise RemoteActionNotImplemented("upload_multipart", self.scheme)
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False):
+        raise RemoteActionNotImplemented("upload_fobj", self.scheme)
 
     def download(
         self,
