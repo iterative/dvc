@@ -82,12 +82,10 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         [config.files["repo"], dvcignore, proj.plots.templates.templates_dir]
     )
 
+    logger.info("\nInitialized DVC repository.\n")
+
     if scm.ignore_file:
         scm.add([os.path.join(dvc_dir, scm.ignore_file)])
-
-    logger.info(
-        "\nInitialized DVC repository. "
-        "You can now commit the changes to git.\n"
-    )
+        logger.info("\nYou can now commit the changes to git.\n")
 
     return proj
