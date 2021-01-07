@@ -24,7 +24,7 @@ from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
-from dvc.utils.stream import HashedIterStream
+from dvc.utils.stream import HashedStreamReader
 
 from ..tree.base import RemoteActionNotImplemented
 
@@ -270,7 +270,7 @@ class CloudCache:
         with from_tree.open(
             from_info, mode="rb", chunk_size=from_tree.CHUNK_SIZE
         ) as stream:
-            wrapped_file = HashedIterStream(stream)
+            wrapped_file = HashedStreamReader(stream)
             # Since we don't know the hash beforehand, we'll
             # upload it to a temporary location and then move
             # it.

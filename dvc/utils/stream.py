@@ -61,19 +61,17 @@ class IterStream(io.RawIOBase):
         return self.leftover[:n]
 
 
-class HashedIterStream:
+class HashedStreamReader:
 
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, fobj):
         self.md5 = hashlib.md5()
-        self.reader = fobj.read1 if hasattr(fobj, "read1") else fobj.read
         self.is_text_file = None
-        self.total = 0
+        self.reader = fobj.read1 if hasattr(fobj, "read1") else fobj.read
 
     def read(self, n=-1):
         chunk = self.reader(n)
-        self.total += len(chunk)
         if self.is_text_file is None:
             self.is_text_file = istextblock(chunk)
 

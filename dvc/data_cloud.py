@@ -93,6 +93,8 @@ class DataCloud:
         )
 
     def transfer(self, source, jobs=None, remote=None, command=None):
+        from dvc.tree import get_cloud_tree
+
         from_tree = get_cloud_tree(self.repo, url=source)
         remote = self.get_remote(remote, command)
         return remote.transfer(from_tree, jobs=jobs)
