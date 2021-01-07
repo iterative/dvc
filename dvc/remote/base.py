@@ -473,29 +473,9 @@ class Remote:
         return ret
 
     def transfer(self, from_tree, jobs=None, no_progress_bar=False):
-        jobs = jobs or min((from_tree.jobs, self.tree.jobs))
-        from_info = from_tree.path_info
-
-        if from_tree.isdir(from_info):
-            from_infos = list(from_tree.walk_files(from_info))
-        else:
-            from_infos = [from_info]
-
-        with Tqdm(
-            total=len(from_infos),
-            desc="Transfering files to the remote",
-            unit="Files",
-            disable=no_progress_bar,
-        ) as pbar:
-            transfer_file = pbar.wrap_fn(self.cache.transfer_file)
-            if from_tree.isdir(from_info):
-                hash_info = self.cache.transfer_directory(
-                    from_tree, from_infos, transfer_file, jobs=jobs
-                )
-            else:
-                _, hash_info = transfer_file(from_tree, from_info)
-
-        return hash_info
+        return self.cache.transfer(
+            from_tree, jobs=jobs, no_progress_bar=no_progress_bar
+        )
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):
