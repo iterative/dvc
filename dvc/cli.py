@@ -326,7 +326,7 @@ def get_main_parser():
             parents=[parent_parser],
             formatter_class=argparse.RawTextHelpFormatter,
             add_help=False,
-            exit_on_error=False,
+            exit_on_error=False,  # pylint: disable=unexpected-keyword-arg
         )
     else:
         parser = DvcParser(
