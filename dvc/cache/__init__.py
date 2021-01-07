@@ -56,7 +56,7 @@ class Cache:
         elif "dir" not in config:
             settings = None
         else:
-            from ..config import LOCAL_COMMON
+            from ..config_schema import LOCAL_COMMON
 
             settings = {"url": config["dir"]}
             for opt in LOCAL_COMMON.keys():

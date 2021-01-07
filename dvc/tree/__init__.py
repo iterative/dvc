@@ -80,7 +80,8 @@ def _resolve_remote_refs(config, remote_conf):
 
 
 def get_cloud_tree(repo, **kwargs):
-    from dvc.config import SCHEMA, ConfigError, Invalid
+    from dvc.config import ConfigError
+    from dvc.config_schema import SCHEMA, Invalid
 
     remote_conf = get_tree_config(repo.config, **kwargs)
     try:
