@@ -4,6 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
+from dvc.stage.exceptions import StageNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,9 @@ class CmdRemove(CmdBase):
         for target in self.args.targets:
             try:
                 self.repo.remove(target, outs=self.args.outs)
+            except StageNotFound:
+                logger.error(f"{target} is not under DVC control")
+                return 1
             except DvcException:
                 logger.exception(f"failed to remove '{target}'")
                 return 1
