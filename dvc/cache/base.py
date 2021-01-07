@@ -287,19 +287,19 @@ class CloudCache:
         except RemoteActionNotImplemented:
             hash_info = self._transfer_file_as_whole(from_tree, from_info)
 
-        rel_target_filename = from_info.relative_to(from_tree.path_info)
-        return rel_target_filename.parts, hash_info
+        return hash_info
 
     def transfer_directory(self, from_tree, from_infos, func, jobs):
         dir_info = DirInfo()
         with ThreadPoolExecutor(max_workers=jobs) as executor:
-            futures = [
-                executor.submit(func, from_tree, from_info)
+            futures = {
+                executor.submit(
+                    func, from_tree, from_info
+                ): from_info.relative_to(from_tree.path_info)
                 for from_info in from_infos
-            ]
+            }
             for future in as_completed(futures):
-                key, file_hash_info = future.result()
-                dir_info.trie[key] = file_hash_info
+                dir_info.trie[futures[future].parts] = future.result()
 
         (
             hash_info,
@@ -331,7 +331,7 @@ class CloudCache:
                     from_tree, from_infos, transfer_file, jobs=jobs
                 )
             else:
-                _, hash_info = transfer_file(from_tree, from_info)
+                hash_info = transfer_file(from_tree, from_info)
 
         return hash_info
 
