@@ -502,7 +502,7 @@ def test_repro_multiple_params(tmp_dir, dvc):
     assert len(stage.outs) == 1
 
     lockfile = stage.dvcfile._lockfile
-    assert lockfile.load()["read_params"]["params"] == {
+    assert lockfile.load()["stages"]["read_params"]["params"] == {
         "params2.yaml": {
             "lists": [42, 42.0, "42"],
             "floats": 42.0,
@@ -529,7 +529,14 @@ def test_repro_multiple_params(tmp_dir, dvc):
     assert dvc.reproduce(stage.addressing) == [stage]
 
 
-def test_repro_list_of_commands_in_order(tmp_dir, dvc):
+@pytest.mark.parametrize("multiline", [True, False])
+def test_repro_list_of_commands_in_order(tmp_dir, dvc, multiline):
+    cmd = ["echo foo>foo", "echo bar>bar"]
+    if multiline:
+        cmd = "\n".join(cmd)
+
+    dump_yaml("dvc.yaml", {"stages": {"multi": {"cmd": cmd}}})
+
     (tmp_dir / "dvc.yaml").write_text(
         dedent(
             """\
@@ -546,19 +553,16 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc):
     assert (tmp_dir / "bar").read_text() == "bar\n"
 
 
-def test_repro_list_of_commands_raise_and_stops_after_failure(tmp_dir, dvc):
-    (tmp_dir / "dvc.yaml").write_text(
-        dedent(
-            """\
-            stages:
-              multi:
-                cmd:
-                - echo foo>foo
-                - failed_command
-                - echo baz>bar
-        """
-        )
-    )
+@pytest.mark.parametrize("multiline", [True, False])
+def test_repro_list_of_commands_raise_and_stops_after_failure(
+    tmp_dir, dvc, multiline
+):
+    cmd = ["echo foo>foo", "failed_command", "echo baz>bar"]
+    if multiline:
+        cmd = "\n".join(cmd)
+
+    dump_yaml("dvc.yaml", {"stages": {"multi": {"cmd": cmd}}})
+
     with pytest.raises(ReproductionError):
         dvc.reproduce(targets=["multi"])
     assert (tmp_dir / "foo").read_text() == "foo\n"

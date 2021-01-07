@@ -1,5 +1,8 @@
+import csv
 import os
 from contextlib import contextmanager
+
+from funcy import first
 
 from dvc.scm import Git
 
@@ -21,3 +24,16 @@ def cd(newdir):
 
 def to_posixpath(path):
     return path.replace("\\", "/")
+
+
+def dump_sv(stream, metrics, delimiter=",", header=True):
+    if header:
+        writer = csv.DictWriter(
+            stream, fieldnames=list(first(metrics).keys()), delimiter=delimiter
+        )
+        writer.writeheader()
+        writer.writerows(metrics)
+    else:
+        writer = csv.writer(stream)
+        for d in metrics:
+            writer.writerow(list(d.values()))

@@ -8,6 +8,7 @@ from funcy import cached_property, get_in, lcat, once, project
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
 from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
+from dvc.parsing.versions import LOCKFILE_VERSION
 from dvc.path_info import PathInfo
 
 from . import PipelineStage, Stage, loads_from
@@ -24,7 +25,13 @@ class StageLoader(Mapping):
         self.data = data or {}
         self.stages_data = self.data.get("stages", {})
         self.repo = self.dvcfile.repo
-        self._lockfile_data = lockfile_data or {}
+
+        lockfile_data = lockfile_data or {}
+        version = LOCKFILE_VERSION.from_dict(lockfile_data)
+        if version == LOCKFILE_VERSION.V1:
+            self._lockfile_data = lockfile_data
+        else:
+            self._lockfile_data = lockfile_data.get("stages", {})
 
     @cached_property
     def resolver(self):
@@ -82,7 +89,12 @@ class StageLoader(Mapping):
 
         outs = project(
             stage_data,
-            [stage.PARAM_OUTS, stage.PARAM_METRICS, stage.PARAM_PLOTS],
+            [
+                stage.PARAM_OUTS,
+                stage.PARAM_METRICS,
+                stage.PARAM_PLOTS,
+                stage.PARAM_LIVE,
+            ],
         )
         stage.outs = lcat(
             output.load_from_pipeline(stage, data, typ=key)

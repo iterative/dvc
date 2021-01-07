@@ -3,20 +3,14 @@ import typing
 from collections.abc import Mapping
 from functools import singledispatch
 
-from funcy import rpartial
-from pyparsing import (
-    CharsNotIn,
-    ParseException,
-    ParserElement,
-    Suppress,
-    ZeroOrMore,
-)
+from funcy import memoize, rpartial
 
 from dvc.exceptions import DvcException
-from dvc.utils import colorize
 
 if typing.TYPE_CHECKING:
     from typing import List, Match
+
+    from pyparsing import ParseException
 
     from .context import Context
 
@@ -36,14 +30,20 @@ KEYCRE = re.compile(
     re.VERBOSE,
 )
 
-ParserElement.enablePackrat()
 
+@memoize
+def get_parser():
+    from pyparsing import CharsNotIn, ParserElement, Suppress, ZeroOrMore
 
-word = CharsNotIn(f"{PERIOD}{LBRACK}{RBRACK}")
-idx = Suppress(LBRACK) + word + Suppress(RBRACK)
-attr = Suppress(PERIOD) + word
-parser = word + ZeroOrMore(attr ^ idx)
-parser.setParseAction(PERIOD.join)
+    ParserElement.enablePackrat()
+
+    word = CharsNotIn(f"{PERIOD}{LBRACK}{RBRACK}")
+    idx = Suppress(LBRACK) + word + Suppress(RBRACK)
+    attr = Suppress(PERIOD) + word
+    parser = word + ZeroOrMore(attr ^ idx)
+    parser.setParseAction(PERIOD.join)
+
+    return parser
 
 
 class ParseError(DvcException):
@@ -80,7 +80,11 @@ def _(obj: bool):
     return "true" if obj else "false"
 
 
-def _format_exc_msg(exc: ParseException):
+def _format_exc_msg(exc: "ParseException"):
+    from pyparsing import ParseException
+
+    from dvc.utils import colorize
+
     exc.loc += 2  # 2 because we append `${` at the start of expr below
 
     expr = exc.pstr
@@ -126,8 +130,10 @@ def check_expression(s: str):
 
 
 def parse_expr(s: str):
+    from pyparsing import ParseException
+
     try:
-        result = parser.parseString(s, parseAll=True)
+        result = get_parser().parseString(s, parseAll=True)
     except ParseException as exc:
         format_and_raise_parse_error(exc)
 

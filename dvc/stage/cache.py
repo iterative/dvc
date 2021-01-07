@@ -4,17 +4,10 @@ import tempfile
 from contextlib import contextmanager
 
 from funcy import cached_property, first
-from voluptuous import Invalid
 
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
-from dvc.remote.base import _log_exceptions
-from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
 from dvc.utils import dict_sha256, relpath
-from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml, load_yaml
-
-from .loader import StageLoader
-from .serialize import to_single_stage_lockfile
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +46,8 @@ def _can_hash(stage):
 
 
 def _get_stage_hash(stage):
+    from .serialize import to_single_stage_lockfile
+
     assert _can_hash(stage)
     return _get_cache_hash(to_single_stage_lockfile(stage), key=True)
 
@@ -76,6 +71,11 @@ class StageCache:
         return os.path.join(self._get_cache_dir(key), value)
 
     def _load_cache(self, key, value):
+        from voluptuous import Invalid
+
+        from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
+        from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
+
         path = self._get_cache_path(key, value)
 
         try:
@@ -105,6 +105,7 @@ class StageCache:
 
     def _create_stage(self, cache, wdir=None):
         from . import PipelineStage, create_stage
+        from .loader import StageLoader
 
         stage = create_stage(
             PipelineStage,
@@ -144,6 +145,8 @@ class StageCache:
                     yield out
 
     def save(self, stage):
+        from .serialize import to_single_stage_lockfile
+
         if not _can_hash(stage):
             return
 
@@ -160,6 +163,9 @@ class StageCache:
         if existing_cache:
             return
 
+        from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
+        from dvc.utils.serialize import dump_yaml
+
         # sanity check
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
@@ -172,6 +178,8 @@ class StageCache:
         self.tree.move(PathInfo(tmp), path)
 
     def restore(self, stage, run_cache=True, pull=False):
+        from .serialize import to_single_stage_lockfile
+
         if not _can_hash(stage):
             raise RunCacheNotFoundError(stage)
 
@@ -224,6 +232,8 @@ class StageCache:
         return ret
 
     def push(self, remote):
+        from dvc.remote.base import _log_exceptions
+
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.tree.upload, "upload"),
@@ -232,6 +242,8 @@ class StageCache:
         )
 
     def pull(self, remote):
+        from dvc.remote.base import _log_exceptions
+
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.tree.download, "download"),

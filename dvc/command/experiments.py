@@ -13,8 +13,6 @@ from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
-from dvc.repo.experiments import Experiments
-from dvc.scm.git import Git
 from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
@@ -109,6 +107,8 @@ def _collect_rows(
     sort_by=None,
     sort_order=None,
 ):
+    from dvc.scm.git import Git
+
     if sort_by:
         if sort_by in metric_names:
             sort_type = "metrics"
@@ -601,6 +601,7 @@ class CmdExperimentsPull(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to run and compare experiments."
+    LAST_CHECKPOINT = ":last"
 
     experiments_parser = subparsers.add_parser(
         "experiments",
@@ -831,7 +832,7 @@ def add_parser(subparsers, parent_parser):
         "-r",
         "--rev",
         type=str,
-        default=Experiments.LAST_CHECKPOINT,
+        default=LAST_CHECKPOINT,
         dest="checkpoint_resume",
         help=(
             "Continue the specified checkpoint experiment. "
@@ -1093,7 +1094,7 @@ def _add_run_common(parser):
         "--run-all",
         action="store_true",
         default=False,
-        help="Execute all experiments in the run queue.",
+        help="Execute all experiments in the run queue. Implies --temp.",
     )
     parser.add_argument(
         "-j",
@@ -1108,7 +1109,6 @@ def _add_run_common(parser):
         dest="tmp_dir",
         help=(
             "Run this experiment in a separate temporary directory instead of "
-            "your workspace. Only applies when running a single experiment "
-            "without --queue."
+            "your workspace."
         ),
     )

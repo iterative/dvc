@@ -60,9 +60,12 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     }
 
 
-def test_deleted(tmp_dir, scm, dvc):
+@pytest.mark.parametrize("delete_data", [True, False])
+def test_deleted(tmp_dir, scm, dvc, delete_data):
     tmp_dir.dvc_gen("file", "text", commit="add file")
     (tmp_dir / "file.dvc").unlink()
+    if delete_data:
+        (tmp_dir / "file").unlink()
 
     assert dvc.diff() == {
         "added": [],

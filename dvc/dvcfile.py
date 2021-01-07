@@ -6,6 +6,7 @@ import os
 from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
+from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
@@ -13,7 +14,6 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
-from dvc.stage.loader import SingleStageLoader, StageLoader
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
@@ -113,14 +113,13 @@ class FileMixin:
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
-        self.validate(d, self.relpath)
-        return d, stage_text
+        return self.validate(d, self.relpath), stage_text
 
     @classmethod
     def validate(cls, d, fname=None):
         assert isinstance(cls.SCHEMA, collections.abc.Callable)
         try:
-            cls.SCHEMA(d)  # pylint: disable=not-callable
+            return cls.SCHEMA(d)  # pylint: disable=not-callable
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
@@ -137,16 +136,17 @@ class FileMixin:
 
 class SingleStageFile(FileMixin):
     from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
+    from dvc.stage.loader import SingleStageLoader as LOADER
 
     @property
     def stage(self):
         data, raw = self._load()
-        return SingleStageLoader.load_stage(self, data, raw)
+        return self.LOADER.load_stage(self, data, raw)
 
     @property
     def stages(self):
         data, raw = self._load()
-        return SingleStageLoader(self, data, raw)
+        return self.LOADER(self, data, raw)
 
     def dump(self, stage, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
@@ -177,6 +177,7 @@ class PipelineFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
+    from dvc.stage.loader import StageLoader as LOADER
 
     @property
     def _lockfile(self):
@@ -239,7 +240,7 @@ class PipelineFile(FileMixin):
     def stages(self):
         data, _ = self._load()
         lockfile_data = self._lockfile.load()
-        return StageLoader(self, data, lockfile_data)
+        return self.LOADER(self, data, lockfile_data)
 
     def remove(self, force=False):
         if not force:
@@ -273,8 +274,40 @@ class PipelineFile(FileMixin):
         raise NotImplementedError
 
 
+def get_lockfile_schema(d):
+    from dvc.schema import (
+        COMPILED_LOCKFILE_V1_SCHEMA,
+        COMPILED_LOCKFILE_V2_SCHEMA,
+    )
+
+    schema = {
+        LOCKFILE_VERSION.V1: COMPILED_LOCKFILE_V1_SCHEMA,
+        LOCKFILE_VERSION.V2: COMPILED_LOCKFILE_V2_SCHEMA,
+    }
+
+    version = LOCKFILE_VERSION.from_dict(d)
+    return schema[version]
+
+
+def migrate_lock_v1_to_v2(d, version_info):
+    stages = {k: v for k, v in d.items()}
+
+    for key in stages:
+        d.pop(key)
+
+    # forcing order, meta should always be at the top
+    d.update(version_info)
+    d["stages"] = stages
+
+
 class Lockfile(FileMixin):
-    from dvc.schema import COMPILED_LOCKFILE_SCHEMA as SCHEMA
+    @classmethod
+    def validate(cls, d, fname=None):
+        schema = get_lockfile_schema(d)
+        try:
+            return schema(d)
+        except MultipleInvalid as exc:
+            raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
     def load(self):
         if not self.exists():
@@ -282,26 +315,42 @@ class Lockfile(FileMixin):
 
         data = load_yaml(self.path, tree=self.repo.tree)
         try:
-            self.validate(data, fname=self.relpath)
-        except StageFileFormatError:
+            data = self.validate(data, fname=self.relpath)
+        except StageFileFormatError as exc:
             raise LockfileCorruptedError(
                 f"Lockfile '{self.relpath}' is corrupted."
-            )
+            ) from exc
         return data
+
+    @property
+    def latest_version_info(self):
+        version = LOCKFILE_VERSION.V2.value  # pylint:disable=no-member
+        return {SCHEMA_KWD: version}
 
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
 
         with modify_yaml(self.path, tree=self.repo.tree) as data:
-            if not data:
-                logger.info("Generating lock file '%s'", self.relpath)
+            version = LOCKFILE_VERSION.from_dict(data)
+            if version == LOCKFILE_VERSION.V1:
+                logger.info(
+                    "Migrating lock file '%s' from v1 to v2", self.relpath
+                )
+                migrate_lock_v1_to_v2(data, self.latest_version_info)
+            else:
+                if not data:
+                    data.update(self.latest_version_info)
+                    # order is important, meta should always be at the top
+                    logger.info("Generating lock file '%s'", self.relpath)
 
-            modified = data.get(stage.name, {}) != stage_data.get(
+            data["stages"] = data.get("stages", {})
+            modified = data["stages"].get(stage.name, {}) != stage_data.get(
                 stage.name, {}
             )
             if modified:
                 logger.info("Updating lock file '%s'", self.relpath)
-            data.update(stage_data)
+
+            data["stages"].update(stage_data)
 
         if modified:
             self.repo.scm.track_file(self.relpath)
@@ -314,13 +363,15 @@ class Lockfile(FileMixin):
             d = parse_yaml_for_update(f.read(), self.path)
         self.validate(d, self.path)
 
-        if stage.name not in d:
+        version = LOCKFILE_VERSION.from_dict(d)
+        data = d if version == LOCKFILE_VERSION.V1 else d.get("stages", {})
+        if stage.name not in data:
             return
 
         logger.debug("Removing '%s' from '%s'", stage.name, self.path)
-        del d[stage.name]
+        del data[stage.name]
 
-        if d:
+        if data:
             dump_yaml(self.path, d)
         else:
             self.remove()

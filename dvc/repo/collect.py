@@ -1,23 +1,24 @@
 import logging
 import os
-from typing import Callable, Iterable, Set, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Set, Tuple
 
-from dvc.output.base import BaseOutput
 from dvc.path_info import PathInfo
-from dvc.repo import Repo
-from dvc.tree.repo import RepoTree
 from dvc.types import DvcPath
+
+if TYPE_CHECKING:
+    from dvc.output.base import BaseOutput
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
 
-FilterFn = Callable[[BaseOutput], bool]
-Outputs = Set[BaseOutput]
+FilterFn = Callable[["BaseOutput"], bool]
+Outputs = Set["BaseOutput"]
 DvcPaths = Set[DvcPath]
 
 
 def _collect_outs(
-    repo: Repo, output_filter: FilterFn = None, deps: bool = False,
+    repo: "Repo", output_filter: FilterFn = None, deps: bool = False,
 ) -> Outputs:
     outs = {
         out
@@ -28,11 +29,13 @@ def _collect_outs(
 
 
 def _collect_paths(
-    repo: Repo,
+    repo: "Repo",
     targets: Iterable[str],
     recursive: bool = False,
     rev: str = None,
 ):
+    from dvc.tree.repo import RepoTree
+
     path_infos = {PathInfo(os.path.abspath(target)) for target in targets}
     tree = RepoTree(repo)
 
@@ -42,7 +45,7 @@ def _collect_paths(
         if recursive and tree.isdir(path_info):
             target_infos.update(set(tree.walk_files(path_info)))
 
-        if not tree.isfile(path_info):
+        if not tree.exists(path_info):
             if not recursive:
                 logger.warning(
                     "'%s' was not found at: '%s'.", path_info, rev,
@@ -67,7 +70,7 @@ def _filter_duplicates(
 
 
 def collect(
-    repo: Repo,
+    repo: "Repo",
     deps: bool = False,
     targets: Iterable[str] = None,
     output_filter: FilterFn = None,

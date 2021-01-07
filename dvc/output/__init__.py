@@ -81,6 +81,7 @@ def _get(
     plot=False,
     persist=False,
     checkpoint=False,
+    live=False,
     desc=None,
     isexec=False,
 ):
@@ -98,6 +99,7 @@ def _get(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
+            live=live,
             desc=desc,
             isexec=isexec,
         )
@@ -114,6 +116,7 @@ def _get(
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
+                live=live,
                 desc=desc,
                 isexec=isexec,
             )
@@ -127,6 +130,7 @@ def _get(
         plot=plot,
         persist=persist,
         checkpoint=checkpoint,
+        live=live,
         desc=desc,
         isexec=isexec,
     )
@@ -143,6 +147,7 @@ def loadd_from(stage, d_list):
         checkpoint = d.pop(BaseOutput.PARAM_CHECKPOINT, False)
         desc = d.pop(BaseOutput.PARAM_DESC, False)
         isexec = d.pop(BaseOutput.PARAM_ISEXEC, False)
+        live = d.pop(BaseOutput.PARAM_LIVE, False)
         ret.append(
             _get(
                 stage,
@@ -155,6 +160,7 @@ def loadd_from(stage, d_list):
                 checkpoint=checkpoint,
                 desc=desc,
                 isexec=isexec,
+                live=live,
             )
         )
     return ret
@@ -169,6 +175,7 @@ def loads_from(
     persist=False,
     checkpoint=False,
     isexec=False,
+    live=False,
 ):
     return [
         _get(
@@ -181,6 +188,7 @@ def loads_from(
             persist=persist,
             checkpoint=checkpoint,
             isexec=isexec,
+            live=live,
         )
         for s in s_list
     ]
@@ -209,21 +217,35 @@ def _merge_data(s_list):
 
 
 @collecting
-def load_from_pipeline(stage, s_list, typ="outs"):
-    if typ not in (stage.PARAM_OUTS, stage.PARAM_METRICS, stage.PARAM_PLOTS):
+def load_from_pipeline(stage, data, typ="outs"):
+    if typ not in (
+        stage.PARAM_OUTS,
+        stage.PARAM_METRICS,
+        stage.PARAM_PLOTS,
+        stage.PARAM_LIVE,
+    ):
         raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
 
     metric = typ == stage.PARAM_METRICS
     plot = typ == stage.PARAM_PLOTS
+    live = typ == stage.PARAM_LIVE
 
-    d = _merge_data(s_list)
+    if live:
+        # `live` is single object
+        data = [data]
+
+    d = _merge_data(data)
 
     for path, flags in d.items():
-        plt_d = {}
+        plt_d, live_d = {}, {}
         if plot:
             from dvc.schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
+        if live:
+            from dvc.schema import LIVE_PROPS
+
+            live_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
         extra = project(
             flags,
             [
@@ -232,4 +254,13 @@ def load_from_pipeline(stage, s_list, typ="outs"):
                 BaseOutput.PARAM_CHECKPOINT,
             ],
         )
-        yield _get(stage, path, {}, plot=plt_d or plot, metric=metric, **extra)
+
+        yield _get(
+            stage,
+            path,
+            {},
+            plot=plt_d or plot,
+            metric=metric,
+            live=live_d or live,
+            **extra,
+        )

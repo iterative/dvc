@@ -21,8 +21,6 @@ from dvc.parsing.interpolate import (
 )
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
-from dvc.utils.humanize import join
-from dvc.utils.serialize import LOADERS
 
 logger = logging.getLogger(__name__)
 SeqOrMap = Union[Sequence, Mapping]
@@ -34,6 +32,8 @@ class ContextError(DvcException):
 
 class ReservedKeyError(ContextError):
     def __init__(self, keys, path=None):
+        from dvc.utils.humanize import join
+
         self.keys = keys
         self.path = path
 
@@ -347,6 +347,8 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(cls, tree, path: PathInfo, select_keys=None) -> "Context":
+        from dvc.utils.serialize import LOADERS
+
         file = relpath(path)
         if not tree.exists(path):
             raise ParamsLoadError(f"'{file}' does not exist")

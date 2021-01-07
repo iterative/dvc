@@ -4,19 +4,16 @@ import re
 import signal
 from collections import defaultdict, namedtuple
 from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
-from contextlib import contextmanager
 from functools import wraps
 from multiprocessing import Manager
 from typing import Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
-from dvc.dvcfile import is_lock_file
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.run import CheckpointKilledError
 from dvc.utils import relpath
-from dvc.utils.fs import makedirs
 
 from .base import (
     EXEC_APPLY,
@@ -111,10 +108,6 @@ class Experiments:
     @cached_property
     def dvc_dir(self):
         return relpath(self.repo.dvc_dir, self.repo.scm.root_dir)
-
-    @contextmanager
-    def chdir(self):
-        yield
 
     @cached_property
     def args_file(self):
@@ -246,6 +239,8 @@ class Experiments:
         return stash_rev
 
     def _prune_lockfiles(self):
+        from dvc.dvcfile import is_lock_file
+
         # NOTE: dirty DVC lock files must be restored to index state to
         # avoid checking out incorrect persist or checkpoint outs
         tree = self.scm.get_tree("HEAD")
@@ -529,6 +524,8 @@ class Experiments:
         return result
 
     def _init_executors(self, to_run):
+        from dvc.utils.fs import makedirs
+
         from .executor.local import TempDirExecutor
 
         executors = {}
@@ -607,22 +604,18 @@ class Experiments:
 
             for future, (rev, executor) in futures.items():
                 rev, executor = futures[future]
-                exc = future.exception()
 
                 try:
+                    exc = future.exception()
                     if exc is None:
                         exec_result = future.result()
                         result[rev].update(
                             self._collect_executor(executor, exec_result)
                         )
-                    else:
-                        # Checkpoint errors have already been logged
-                        if not isinstance(exc, CheckpointKilledError):
-                            logger.exception(
-                                "Failed to reproduce experiment '%s'",
-                                rev[:7],
-                                exc_info=exc,
-                            )
+                    elif not isinstance(exc, CheckpointKilledError):
+                        logger.error(
+                            "Failed to reproduce experiment '%s'", rev[:7],
+                        )
                 except CancelledError:
                     logger.error(
                         "Cancelled before attempting to reproduce experiment "

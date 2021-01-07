@@ -7,7 +7,6 @@ import colorama
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +126,8 @@ class CmdDiff(CmdBase):
         return "\n\n".join(groups)
 
     def run(self):
+        from dvc.exceptions import DvcException
+
         try:
             diff = self.repo.diff(
                 self.args.a_rev, self.args.b_rev, self.args.targets
@@ -174,9 +175,10 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Limit command scope to these tracked files or directories. "
+            "Specific DVC-tracked files to compare. "
             "Accepts one or more file paths."
         ),
+        metavar="<paths>",
     ).complete = completion.FILE
     diff_parser.add_argument(
         "a_rev",

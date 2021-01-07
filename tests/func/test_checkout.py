@@ -880,3 +880,97 @@ def test_checkout_executable(tmp_dir, dvc):
         assert not isexec
     else:
         assert isexec
+
+
+def test_checkout_partial(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}}
+    )
+
+    data_dir = tmp_dir / "data"
+    shutil.rmtree(data_dir)
+
+    dvc.checkout(str(data_dir / "foo"))
+    assert data_dir.read_text() == {"foo": "foo"}
+
+    dvc.checkout(str(data_dir / "sub_dir" / "baz"))
+    assert data_dir.read_text() == {"foo": "foo", "sub_dir": {"baz": "baz"}}
+
+    dvc.checkout(str(data_dir / "bar"))
+    assert data_dir.read_text() == {
+        "foo": "foo",
+        "bar": "bar",
+        "sub_dir": {"baz": "baz"},
+    }
+
+
+def test_checkout_partial_unchanged(tmp_dir, dvc):
+    original_dir_shape = {
+        "foo": "foo",
+        "bar": "bar",
+        "sub_dir": {"baz": "baz"},
+        "empty_sub_dir": {},
+    }
+    tmp_dir.dvc_gen({"data": original_dir_shape})
+
+    data_dir = tmp_dir / "data"
+    sub_dir = data_dir / "sub_dir"
+    foo = data_dir / "foo"
+    bar = data_dir / "bar"
+    sub_dir_file = sub_dir / "baz"
+
+    # Nothing changed, nothing added/deleted/modified
+    stats = dvc.checkout(str(bar))
+    assert not any(stats.values())
+
+    # Irrelevant file changed, still nothing added/deleted/modified
+    foo.unlink()
+    stats = dvc.checkout(str(bar))
+    assert not any(stats.values())
+
+    # Relevant change, one modified
+    bar.unlink()
+    stats = dvc.checkout(str(bar))
+    assert len(stats["modified"]) == 1
+
+    # No changes inside data/sub
+    stats = dvc.checkout(str(sub_dir))
+    assert not any(stats.values())
+
+    # Relevant change, one modified
+    sub_dir_file.unlink()
+    stats = dvc.checkout(str(sub_dir))
+    assert len(stats["modified"]) == 1
+
+    stats = dvc.checkout(str(data_dir / "empty_sub_dir"))
+    assert not any(stats.values())
+
+    dvc.checkout(str(data_dir))
+
+    # Everything is in place, no action taken
+    stats = dvc.checkout(str(data_dir))
+    assert not any(stats.values())
+
+
+def test_checkout_partial_subdir(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"data": {"foo": "foo", "sub_dir": {"bar": "bar", "baz": "baz"}}}
+    )
+
+    data_dir = tmp_dir / "data"
+    sub_dir = data_dir / "sub_dir"
+    sub_dir_bar = sub_dir / "baz"
+
+    shutil.rmtree(sub_dir)
+    dvc.checkout(str(sub_dir))
+    assert data_dir.read_text() == {
+        "foo": "foo",
+        "sub_dir": {"bar": "bar", "baz": "baz"},
+    }
+
+    sub_dir_bar.unlink()
+    dvc.checkout(str(sub_dir_bar))
+    assert data_dir.read_text() == {
+        "foo": "foo",
+        "sub_dir": {"bar": "bar", "baz": "baz"},
+    }

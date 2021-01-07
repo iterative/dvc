@@ -3,8 +3,6 @@ import os
 
 from dvc.exceptions import PathMissingError
 from dvc.repo import locked
-from dvc.tree.local import LocalTree
-from dvc.tree.repo import RepoTree
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +20,10 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
+    from dvc.tree.repo import RepoTree
+
+    repo_tree = RepoTree(self, stream=True)
+
     b_rev = b_rev if b_rev else "workspace"
     results = {}
     missing_targets = {}
@@ -35,10 +37,10 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
         if targets is not None:
             # convert targets to path_infos, and capture any missing targets
             targets_path_infos, missing_targets[rev] = _targets_to_path_infos(
-                self, targets
+                repo_tree, targets
             )
 
-        results[rev] = _paths_checksums(self, targets_path_infos)
+        results[rev] = _paths_checksums(self, repo_tree, targets_path_infos)
 
     if targets is not None:
         # check for overlapping missing targets between a_rev and b_rev
@@ -57,7 +59,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if b_rev == "workspace":
         # missing status is only applicable when diffing local workspace
         # against a commit
-        missing = sorted(_filter_missing(self, deleted_or_missing))
+        missing = sorted(_filter_missing(repo_tree, deleted_or_missing))
     else:
         missing = []
     deleted = sorted(deleted_or_missing - set(missing))
@@ -79,7 +81,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     return ret if any(ret.values()) else {}
 
 
-def _paths_checksums(repo, targets):
+def _paths_checksums(repo, repo_tree, targets):
     """
     A dictionary of checksums addressed by relpaths collected from
     the current tree outputs.
@@ -91,11 +93,12 @@ def _paths_checksums(repo, targets):
         file:      "data"
     """
 
-    return dict(_output_paths(repo, targets))
+    return dict(_output_paths(repo, repo_tree, targets))
 
 
-def _output_paths(repo, targets):
-    repo_tree = RepoTree(repo, stream=True)
+def _output_paths(repo, repo_tree, targets):
+    from dvc.tree.local import LocalTree
+
     on_working_tree = isinstance(repo.tree, LocalTree)
 
     def _exists(output):
@@ -145,21 +148,21 @@ def _dir_output_paths(repo_tree, output, targets=None):
         logger.warning("dir cache entry for '%s' is missing", output)
 
 
-def _filter_missing(repo, paths):
-    repo_tree = RepoTree(repo, stream=True)
+def _filter_missing(repo_tree, paths):
     for path in paths:
-        metadata = repo_tree.metadata(path)
-        if metadata.is_dvc:
-            out = metadata.outs[0]
-            if out.status().get(str(out)) == "not in cache":
-                yield path
+        try:
+            metadata = repo_tree.metadata(path)
+            if metadata.is_dvc:
+                out = metadata.outs[0]
+                if out.status().get(str(out)) == "not in cache":
+                    yield path
+        except FileNotFoundError:
+            pass
 
 
-def _targets_to_path_infos(repo, targets):
+def _targets_to_path_infos(repo_tree, targets):
     path_infos = []
     missing = []
-
-    repo_tree = RepoTree(repo, stream=True)
 
     for target in targets:
         if repo_tree.exists(target):

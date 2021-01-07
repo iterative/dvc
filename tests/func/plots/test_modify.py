@@ -1,3 +1,6 @@
+import json
+import os
+
 import pytest
 
 from dvc.dvcfile import PIPELINE_LOCK
@@ -67,3 +70,37 @@ def test_unset_nonexistent(tmp_dir, dvc, run_copy_metrics, custom_template):
         dvc.plots.modify(
             "metric.json", unset=["nonexistent"],
         )
+
+
+def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+
+    metric = [
+        {"first_val": 100, "val": 2},
+        {"first_val": 200, "val": 3},
+    ]
+
+    fname = "file.json"
+    _write_json(tmp_dir, metric, fname)
+
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {fname} {p1} && "
+            f"python copy.py {fname} {p2}"
+        ),
+        deps=[fname],
+        single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
+    )
+    dvc.plots.modify("subdir", {"title": "TITLE"})
+
+    result = dvc.plots.show()
+    p1_content = json.loads(result[p1])
+    p2_content = json.loads(result[p2])
+
+    assert p1_content["title"] == p2_content["title"] == "TITLE"
+    assert p1_content == p2_content

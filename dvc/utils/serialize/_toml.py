@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 
-import toml
 from funcy import reraise
 
 from ._common import ParseError, _dump_data, _load_data, _modify_data
@@ -16,8 +15,10 @@ def load_toml(path, tree=None):
 
 
 def parse_toml(text, path, decoder=None):
-    with reraise(toml.TomlDecodeError, TOMLFileCorruptedError(path)):
-        return toml.loads(text, decoder=decoder)
+    from toml import TomlDecodeError, loads
+
+    with reraise(TomlDecodeError, TOMLFileCorruptedError(path)):
+        return loads(text, decoder=decoder)
 
 
 def parse_toml_for_update(text, path):
@@ -27,11 +28,15 @@ def parse_toml_for_update(text, path):
     keys may be re-ordered between load/dump, but this function will at
     least preserve comments.
     """
-    decoder = toml.TomlPreserveCommentDecoder()
+    from toml import TomlPreserveCommentDecoder
+
+    decoder = TomlPreserveCommentDecoder()
     return parse_toml(text, path, decoder=decoder)
 
 
 def _dump(data, stream):
+    import toml
+
     return toml.dump(data, stream, encoder=toml.TomlPreserveCommentEncoder())
 
 

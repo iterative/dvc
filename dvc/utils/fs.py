@@ -5,9 +5,6 @@ import shutil
 import stat
 import sys
 
-import nanotime
-from shortuuid import uuid
-
 from dvc.exceptions import DvcException, FileOwnershipError
 from dvc.system import System
 from dvc.utils import dict_md5
@@ -31,6 +28,7 @@ def get_inode(path):
 
 
 def get_mtime_and_size(path, tree):
+    import nanotime
 
     if tree.isdir(path):
         size = 0
@@ -91,6 +89,7 @@ def move(src, dst, mode=None):
     case src and dst are on different filesystems and actual physical copying
     of data is happening.
     """
+    from shortuuid import uuid
 
     dst = os.path.abspath(dst)
     tmp = f"{dst}.{uuid()}"

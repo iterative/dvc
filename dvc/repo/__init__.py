@@ -5,22 +5,18 @@ from functools import wraps
 from typing import TYPE_CHECKING
 
 from funcy import cached_property, cat
-from git import InvalidGitRepositoryError
 
-from dvc.config import Config
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.scm import Base
-from dvc.scm.base import SCMError
-from dvc.tree.repo import RepoTree
 from dvc.utils.fs import path_isin
 
 from .graph import build_graph, build_outs_graph, get_pipelines
 from .trie import build_outs_trie
 
 if TYPE_CHECKING:
+    from dvc.scm import Base
     from dvc.tree.base import BaseTree
 
 
@@ -89,13 +85,14 @@ class Repo:
     def _get_repo_dirs(
         self,
         root_dir: str = None,
-        scm: Base = None,
+        scm: "Base" = None,
         rev: str = None,
         uninitialized: bool = False,
     ):
         assert bool(scm) == bool(rev)
 
         from dvc.scm import SCM
+        from dvc.scm.base import SCMError
         from dvc.scm.git import Git
         from dvc.utils.fs import makedirs
 
@@ -113,8 +110,10 @@ class Repo:
 
             try:
                 scm = SCM(root_dir or os.curdir)
-            except (SCMError, InvalidGitRepositoryError):
+            except SCMError:
                 scm = SCM(os.curdir, no_scm=True)
+
+            from dvc.scm import Base
 
             assert isinstance(scm, Base)
             root_dir = scm.root_dir
@@ -131,8 +130,10 @@ class Repo:
         config=None,
     ):
         from dvc.cache import Cache
+        from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.lock import LockNoop, make_lock
+        from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -184,6 +185,7 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
         self.stage_collection_error_handler = None
+        self.live = Live(self)
         self._lock_depth = 0
 
     @cached_property
@@ -414,11 +416,14 @@ class Repo:
 
     @cached_property
     def repo_tree(self):
+        from dvc.tree.repo import RepoTree
+
         return RepoTree(self, subrepos=self.subrepos, fetch=True)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
+        from dvc.tree.repo import RepoTree
 
         tree = RepoTree(self, stream=True, subrepos=True)
         path = PathInfo(self.root_dir) / path

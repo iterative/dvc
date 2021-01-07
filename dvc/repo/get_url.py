@@ -1,11 +1,11 @@
 import os
 
-import dvc.dependency as dependency
-import dvc.output as output
-from dvc.utils import resolve_output
-
 
 def get_url(url, out=None):
+    import dvc.dependency as dependency
+    import dvc.output as output
+    from dvc.utils import resolve_output
+
     out = resolve_output(url, out)
 
     if os.path.exists(url):

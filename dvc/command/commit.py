@@ -3,13 +3,14 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
 
 class CmdCommit(CmdBase):
     def run(self):
+        from dvc.exceptions import DvcException
+
         if not self.args.targets:
             self.args.targets = [None]
 

@@ -174,7 +174,7 @@ class LocalTree(BaseTree):
         move(from_info, to_info, mode=mode)
 
     def copy(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        tmp_info = to_info.parent / tmp_fname("")
         try:
             System.copy(from_info, tmp_info)
             os.chmod(tmp_info, self.file_mode)
@@ -185,7 +185,7 @@ class LocalTree(BaseTree):
 
     def copy_fobj(self, fobj, to_info):
         self.makedirs(to_info.parent)
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        tmp_info = to_info.parent / tmp_fname("")
         try:
             copy_fobj_to_file(fobj, tmp_info)
             os.chmod(tmp_info, self.file_mode)
@@ -229,7 +229,7 @@ class LocalTree(BaseTree):
         return System.is_hardlink(path_info)
 
     def reflink(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        tmp_info = to_info.parent / tmp_fname("")
         System.reflink(from_info, tmp_info)
         # NOTE: reflink has its own separate inode, so you can set permissions
         # that are different from the source.

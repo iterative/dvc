@@ -253,7 +253,7 @@ def test_config_remote(tmp_dir, dvc, caplog):
     assert "myregion" in caplog.text
 
 
-def test_config_show_origin(tmp_dir, dvc, caplog):
+def test_config_show_origin_single(tmp_dir, dvc, caplog):
     (tmp_dir / ".dvc" / "config").write_text(
         "['remote \"myremote\"']\n"
         "  url = s3://bucket/path\n"
@@ -270,11 +270,46 @@ def test_config_show_origin(tmp_dir, dvc, caplog):
     )
 
     caplog.clear()
+    assert (
+        main(["config", "--show-origin", "--local", "remote.myremote.url"])
+        == 251
+    )
+
+    caplog.clear()
     assert main(["config", "--list", "--repo", "--show-origin"]) == 0
     assert (
         "{}\t{}\n".format(
             os.path.join(".dvc", "config"),
             "remote.myremote.url=s3://bucket/path",
+        )
+        in caplog.text
+    )
+
+
+def test_config_show_origin_merged(tmp_dir, dvc, caplog):
+    (tmp_dir / ".dvc" / "config").write_text(
+        "['remote \"myremote\"']\n"
+        "  url = s3://bucket/path\n"
+        "  region = myregion\n"
+    )
+
+    (tmp_dir / ".dvc" / "config.local").write_text(
+        "['remote \"myremote\"']\n  timeout = 100\n"
+    )
+
+    caplog.clear()
+    assert main(["config", "--list", "--show-origin"]) == 0
+    assert (
+        "{}\t{}\n".format(
+            os.path.join(".dvc", "config"),
+            "remote.myremote.url=s3://bucket/path",
+        )
+        in caplog.text
+    )
+    assert (
+        "{}\t{}\n".format(
+            os.path.join(".dvc", "config.local"),
+            "remote.myremote.timeout=100",
         )
         in caplog.text
     )

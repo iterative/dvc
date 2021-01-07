@@ -1,14 +1,11 @@
 import logging
-import os
 import typing
 from functools import partial
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
-from dvc.stage.run import CheckpointKilledError
 
 from . import locked
-from .graph import get_pipeline, get_pipelines
 
 if typing.TYPE_CHECKING:
     from . import Repo
@@ -60,13 +57,21 @@ def _dump_stage(stage):
 
 
 def _track_stage(stage):
-    stage.repo.scm.track_file(stage.dvcfile.path)
+    from dvc.utils import relpath
+
+    stage.repo.scm.track_file(stage.dvcfile.relpath)
     for dep in stage.deps:
         if not dep.use_scm_ignore and dep.is_in_repo:
-            stage.repo.scm.track_file(os.fspath(dep.path_info))
+            stage.repo.scm.track_file(relpath(dep.path_info))
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
-            stage.repo.scm.track_file(os.fspath(out.path_info))
+            stage.repo.scm.track_file(relpath(out.path_info))
+            if out.live:
+                from dvc.repo.live import summary_path_info
+
+                summary = summary_path_info(out)
+                if summary:
+                    stage.repo.scm.track_file(relpath(summary))
     stage.repo.scm.track_changed_files()
 
 
@@ -80,6 +85,8 @@ def reproduce(
     all_pipelines=False,
     **kwargs,
 ):
+    from .graph import get_pipeline, get_pipelines
+
     glob = kwargs.pop("glob", False)
     accept_group = not glob
 
@@ -178,6 +185,8 @@ def _reproduce_stages(
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
             )
+
+        from dvc.stage.run import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)

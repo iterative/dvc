@@ -3,7 +3,6 @@
 import logging
 import os
 import re
-import sqlite3
 from abc import ABC, abstractmethod
 from urllib.parse import urlencode, urlunparse
 
@@ -259,12 +258,14 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             self.database = _connect_sqlite(self.state_file, {"nolock": 1})
             self.cursor = self.database.cursor()
 
+            from sqlite3 import DatabaseError
+
             # Try loading once to check that the file is indeed a database
             # and reformat it if it is not.
             try:
                 self._prepare_db(empty=empty)
                 return
-            except sqlite3.DatabaseError:
+            except DatabaseError:
                 self.cursor.close()
                 self.database.close()
                 self.database = None
@@ -520,6 +521,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 def _connect_sqlite(filename, options):
     # Connect by URI was added in Python 3.4 and sqlite 3.7.7,
     # we ignore options, which should be fine unless repo is on old NFS/CIFS
+    import sqlite3
+
     if sqlite3.sqlite_version_info < (3, 7, 7):
         return sqlite3.connect(filename)
 
