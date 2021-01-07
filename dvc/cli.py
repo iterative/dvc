@@ -275,6 +275,7 @@ def get_parent_parser():
 
 
 def add_parser_exit_on_error(self, name, **kwargs):
+    # pylint: disable=protected-access
     """Workaround for dynamically setting exit_on_error for subparsers on
     Python 3.9. See more info at:
         https://github.com/python/cpython/blob/master/Lib/argparse.py
@@ -284,32 +285,23 @@ def add_parser_exit_on_error(self, name, **kwargs):
 
     # set prog from the existing prefix
     if kwargs.get("prog") is None:
-        kwargs["prog"] = "%s %s" % (
-            self._prog_prefix,  # pylint: disable=protected-access
-            name,
-        )  # pylint: disable=protected-access
+        kwargs["prog"] = "%s %s" % (self._prog_prefix, name,)
 
     aliases = kwargs.pop("aliases", ())
 
     # create a pseudo-action to hold the choice help
     if "help" in kwargs:
         help = kwargs.pop("help")  # pylint: disable=redefined-builtin
-        choice_action = self._ChoicesPseudoAction(
-            name, aliases, help
-        )  # pylint: disable=protected-access
-        self._choices_actions.append(
-            choice_action
-        )  # pylint: disable=protected-access
+        choice_action = self._ChoicesPseudoAction(name, aliases, help)
+        self._choices_actions.append(choice_action)
 
     # create the parser and add it to the map
     parser = self._parser_class(**kwargs)
-    self._name_parser_map[name] = parser  # pylint: disable=protected-access
+    self._name_parser_map[name] = parser
 
     # make parser available under aliases also
     for alias in aliases:
-        self._name_parser_map[
-            alias
-        ] = parser  # pylint: disable=protected-access
+        self._name_parser_map[alias] = parser
 
     return parser
 
@@ -320,13 +312,14 @@ def get_main_parser():
     # Main parser
     desc = "Data Version Control"
     if sys.version_info >= (3, 9, 0):
+        # pylint: disable=unexpected-keyword-arg
         parser = DvcParser(
             prog="dvc",
             description=desc,
             parents=[parent_parser],
             formatter_class=argparse.RawTextHelpFormatter,
             add_help=False,
-            exit_on_error=False,  # pylint: disable=unexpected-keyword-arg
+            exit_on_error=False,
         )
     else:
         parser = DvcParser(
