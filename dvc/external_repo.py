@@ -3,12 +3,11 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import Dict, Iterable
+from typing import Dict
 
-from funcy import cached_property, reraise, retry, wrap_with
+from funcy import cached_property, retry, wrap_with
 
 from dvc.exceptions import (
-    DvcException,
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
@@ -16,15 +15,10 @@ from dvc.exceptions import (
     OutputNotFoundError,
     PathMissingError,
 )
-from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
-
-
-class IsADVCRepoError(DvcException):
-    """Raised when it is not expected to be a dvc repo."""
 
 
 @contextmanager
@@ -161,83 +155,6 @@ class ExternalRepo(Repo):
         if isinstance(self.tree, LocalTree):
             return self.scm.get_rev()
         return self.tree.rev
-
-    def _fetch_to_cache(self, path_info, repo, callback, **kwargs):
-        hash_info = self.repo_tree.get_hash(
-            path_info,
-            download_callback=callback,
-            follow_subrepos=False,
-            **kwargs,
-        )
-        repo.cache.local.save(
-            path_info,
-            self.repo_tree,
-            hash_info,
-            save_link=False,
-            download_callback=callback,
-        )
-        return hash_info
-
-    def fetch_external(self, paths: Iterable, **kwargs):
-        """Fetch specified external repo paths into cache.
-
-        Returns 3-tuple in the form
-            (downloaded, failed, list(cache_infos))
-        where cache_infos can be used as checkout targets for the
-        fetched paths.
-        """
-        download_results = []
-        failed = 0
-        root = PathInfo(self.root_dir)
-
-        paths = [root / path for path in paths]
-
-        def download_update(result):
-            download_results.append(result)
-
-        hash_infos = []
-        for path in paths:
-            with reraise(FileNotFoundError, PathMissingError(path, self.url)):
-                metadata = self.repo_tree.metadata(path)
-
-            self._check_repo(path, metadata.repo)
-            repo = metadata.repo
-            hash_info = self._fetch_to_cache(
-                path, repo, download_update, **kwargs
-            )
-            hash_infos.append(hash_info)
-
-        return sum(download_results), failed, hash_infos
-
-    def _check_repo(self, path_info, repo):
-        if not repo:
-            return
-
-        repo_path = PathInfo(repo.root_dir)
-        if path_info == repo_path and isinstance(repo, Repo):
-            message = "Cannot fetch a complete DVC repository"
-            if repo.root_dir != self.root_dir:
-                rel = relpath(repo.root_dir, self.root_dir)
-                message += f" '{rel}'"
-            raise IsADVCRepoError(message)
-
-    def get_external(self, path, dest):
-        """Convenience wrapper for fetch_external and checkout."""
-        path_info = PathInfo(self.root_dir) / path
-        with reraise(FileNotFoundError, PathMissingError(path, self.url)):
-            metadata = self.repo_tree.metadata(path_info)
-
-        self._check_repo(path_info, metadata.repo)
-        if metadata.output_exists:
-            repo = metadata.repo
-            cache = repo.cache.local
-            # fetch DVC and git files to tmpdir cache, then checkout
-            save_info = self._fetch_to_cache(path_info, repo, None)
-            cache.checkout(PathInfo(dest), save_info)
-        else:
-            # git-only folder, just copy files directly to dest
-            tree = self._get_tree_for(metadata.repo)  # ignore subrepos
-            tree.copytree(path_info, dest)
 
     def _get_tree_for(self, repo, **kwargs):
         """

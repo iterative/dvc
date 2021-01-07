@@ -1,6 +1,8 @@
+import errno
 import itertools
 import json
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
@@ -347,7 +349,15 @@ class CloudCache:
                 self.tree.scheme,
             )
 
+        if not hash_info:
+            hash_info = tree.get_hash(path_info, **kwargs)
+            if not hash_info:
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), path_info
+                )
+
         self._save(path_info, tree, hash_info, save_link, **kwargs)
+        return hash_info
 
     def _save(self, path_info, tree, hash_info, save_link=True, **kwargs):
         to_info = self.tree.hash_to_path_info(hash_info.value)

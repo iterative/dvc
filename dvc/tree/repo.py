@@ -259,6 +259,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
     def _walk(self, repo_walk, dvc_walk=None, dvcfiles=False):
         from dvc.dvcfile import is_valid_filename
+        from dvc.ignore import DvcIgnore
 
         assert repo_walk
         try:
@@ -277,12 +278,16 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         shared = list(dvc_set & repo_set)
         dirs = shared + dvc_only + repo_only
 
+        def _func(fname):
+            if dvcfiles:
+                return True
+
+            return not (
+                is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
+            )
+
         # merge file lists
-        files = {
-            fname
-            for fname in dvc_fnames + repo_fnames
-            if dvcfiles or not is_valid_filename(fname)
-        }
+        files = set(filter(_func, dvc_fnames + repo_fnames))
 
         yield repo_root, dirs, list(files)
 
@@ -403,29 +408,19 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 pass
         return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self)[0])
 
-    def copytree(self, top, dest):
-        from dvc.utils.fs import copy_fobj_to_file, makedirs
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
+    ):
+        import shutil
 
-        top = PathInfo(top)
-        dest = PathInfo(dest)
+        from dvc.progress import Tqdm
 
-        if not self.exists(top):
-            raise FileNotFoundError
-
-        if self.isfile(top):
-            makedirs(dest.parent, exist_ok=True)
-            with self.open(top, mode="rb") as fobj:
-                copy_fobj_to_file(fobj, dest)
-            return
-
-        for root, _, files in self.walk(top):
-            root = PathInfo(root)
-            dest_dir = dest / root.relative_to(top)
-            makedirs(dest_dir, exist_ok=True)
-            for fname in files:
-                src = root / fname
-                with self.open(src, mode="rb") as fobj:
-                    copy_fobj_to_file(fobj, dest_dir / fname)
+        with open(to_file, "wb+") as to_fobj:
+            with Tqdm.wrapattr(
+                to_fobj, "write", desc=name, disable=no_progress_bar,
+            ) as wrapped:
+                with self.open(from_info, "rb", **kwargs) as from_fobj:
+                    shutil.copyfileobj(from_fobj, wrapped)
 
     @property
     def hash_jobs(self):  # pylint: disable=invalid-overridden-method
