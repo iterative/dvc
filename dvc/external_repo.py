@@ -163,17 +163,15 @@ class ExternalRepo(Repo):
         return self.tree.rev
 
     def _fetch_to_cache(self, path_info, repo, callback, **kwargs):
-        # don't support subrepo traversal as it might fail due to difference
-        # in remotes
-        tree = self._get_tree_for(repo)
-        cache = repo.cache.local
-
-        hash_info = tree.get_hash(
-            path_info, download_callback=callback, **kwargs
-        )
-        cache.save(
+        hash_info = self.repo_tree.get_hash(
             path_info,
-            tree,
+            download_callback=callback,
+            follow_subrepos=False,
+            **kwargs,
+        )
+        repo.cache.local.save(
+            path_info,
+            self.repo_tree,
             hash_info,
             save_link=False,
             download_callback=callback,
