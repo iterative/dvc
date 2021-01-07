@@ -2,9 +2,6 @@
 
 import logging
 
-from dvc.config import NoRemoteError
-from dvc.remote import get_remote
-
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +20,8 @@ class DataCloud:
         self.repo = repo
 
     def get_remote(self, name=None, command="<command>"):
+        from dvc.config import NoRemoteError
+
         if not name:
             name = self.repo.config["core"].get("remote")
 
@@ -45,6 +44,8 @@ class DataCloud:
         raise NoRemoteError(error_msg)
 
     def _init_remote(self, name):
+        from dvc.remote import get_remote
+
         return get_remote(self.repo, name=name)
 
     def push(

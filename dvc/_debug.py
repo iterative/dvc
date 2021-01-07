@@ -1,5 +1,8 @@
-import argparse
 from contextlib import ExitStack, contextmanager
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from argparse import Namespace
 
 
 @contextmanager
@@ -56,7 +59,7 @@ def debug():
 
 
 @contextmanager
-def debugtools(args: "argparse.Namespace" = None, **kwargs):
+def debugtools(args: "Namespace" = None, **kwargs):
     kw = vars(args) if args else {}
     kw.update(kwargs)
 
@@ -71,25 +74,18 @@ def debugtools(args: "argparse.Namespace" = None, **kwargs):
 
 
 def add_debugging_flags(parser):
+    from argparse import SUPPRESS
+
     parser.add_argument(
-        "--cprofile",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
+        "--cprofile", action="store_true", default=False, help=SUPPRESS,
     )
-    parser.add_argument("--cprofile-dump", help=argparse.SUPPRESS)
+    parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
-        "--pdb", action="store_true", default=False, help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--instrument",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
+        "--pdb", action="store_true", default=False, help=SUPPRESS,
     )
     parser.add_argument(
-        "--instrument-open",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
+        "--instrument", action="store_true", default=False, help=SUPPRESS,
+    )
+    parser.add_argument(
+        "--instrument-open", action="store_true", default=False, help=SUPPRESS,
     )

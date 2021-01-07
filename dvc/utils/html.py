@@ -1,7 +1,5 @@
 from typing import Dict, List, Optional
 
-import tabulate
-
 PAGE_HTML = """<!DOCTYPE html>
 <html>
 <head>
@@ -27,6 +25,8 @@ class HTML:
         self.elements = []
 
     def with_metrics(self, metrics: Dict[str, Dict]) -> "HTML":
+        import tabulate
+
         header: List[str] = []
         rows: List[List[str]] = []
 
