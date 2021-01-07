@@ -3,7 +3,6 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +54,8 @@ class CmdCheckIgnore(CmdBase):
         return ret
 
     def _check_args(self):
+        from dvc.exceptions import DvcException
+
         if not self.args.stdin and not self.args.targets:
             raise DvcException("`targets` or `--stdin` needed")
 

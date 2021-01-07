@@ -7,7 +7,6 @@ import colorama
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import CheckoutError
-from dvc.utils.humanize import get_summary
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +38,8 @@ def log_changes(stats):
 
 class CmdCheckout(CmdBase):
     def run(self):
+        from dvc.utils.humanize import get_summary
+
         stats, exc = None, None
         try:
             stats = self.repo.checkout(

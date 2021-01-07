@@ -3,13 +3,14 @@ import logging
 
 import dvc.prompt as prompt
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
 
 class CmdDestroy(CmdBase):
     def run(self):
+        from dvc.exceptions import DvcException
+
         try:
             statement = (
                 "This will destroy all information about your pipelines,"
