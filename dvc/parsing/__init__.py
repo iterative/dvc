@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Union
 
 from funcy import cached_property, collecting, first, isa, join, reraise
 
-from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import ParseError
 from dvc.path_info import PathInfo
@@ -34,7 +33,6 @@ logger = logging.getLogger(__name__)
 STAGES_KWD = "stages"
 VARS_KWD = "vars"
 WDIR_KWD = "wdir"
-DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 PARAMS_KWD = "params"
 FOREACH_KWD = "foreach"
 DO_KWD = "do"
@@ -130,9 +128,12 @@ class DataResolver:
         check_interpolations(vars_, VARS_KWD, self.relpath)
         self.context: Context = Context()
 
+        from dvc.dependency.param import ParamsDependency
+
+        default_file = ParamsDependency.DEFAULT_PARAMS_FILE
         try:
             args = tree, vars_, wdir  # load from `vars` section
-            self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
+            self.context.load_from_vars(*args, default=default_file)
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
 
