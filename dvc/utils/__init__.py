@@ -12,8 +12,6 @@ import time
 from typing import Optional, Tuple
 
 import colorama
-import nanotime
-from shortuuid import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -230,10 +228,14 @@ def fix_env(env=None):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
+    from shortuuid import uuid
+
     return os.fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():
+    import nanotime
+
     return int(nanotime.timestamp(time.time()))
 
 

@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
-from .lock import LockError
 from .utils import relpath
 
 INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}
@@ -60,6 +59,8 @@ def _infos_to_str(infos):
 
 
 def _check_blockers(lock, info, *, mode, waiters):
+    from .lock import LockError
+
     for path_info in waiters:
         blockers = [
             blocker
