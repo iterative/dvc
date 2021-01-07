@@ -55,9 +55,7 @@ def fill_stage_outputs(stage, **kwargs):
 
     stage.outs = []
 
-    stage.outs += _load_live_outputs(
-        stage, kwargs.get("live", None), kwargs.get("live_summary", False)
-    )
+    stage.outs += _load_live_output(stage, **kwargs)
 
     for key in keys:
         stage.outs += loads_from(
@@ -71,17 +69,21 @@ def fill_stage_outputs(stage, **kwargs):
         )
 
 
-def _load_live_outputs(stage, live_l=None, live_summary=False):
+def _load_live_output(
+    stage, live=None, live_summary=False, live_report=False, **kwargs
+):
     from dvc.output import BaseOutput, loads_from
 
     outs = []
-    if live_l:
-
+    if live:
         outs += loads_from(
             stage,
-            [live_l],
+            [live],
             use_cache=False,
-            live={BaseOutput.PARAM_LIVE_SUMMARY: live_summary},
+            live={
+                BaseOutput.PARAM_LIVE_SUMMARY: live_summary,
+                BaseOutput.PARAM_LIVE_REPORT: live_report,
+            },
         )
 
     return outs

@@ -7,7 +7,7 @@ from dvc.exceptions import MetricsError
 
 LIVE_SCRITP = dedent(
     """
-        from dvclive import dvclive
+        import dvclive
         import sys
         r = 2
         for i in range(r):
@@ -22,7 +22,7 @@ def live_stage(tmp_dir, scm, dvc):
 
     pytest.skip("dvclive does not exist yet")
 
-    def make(summary=True):
+    def make(summary=True, report=True):
         tmp_dir.gen("train.py", LIVE_SCRITP)
         tmp_dir.gen("params.yaml", "foo: 1")
         stage = dvc.run(
@@ -32,6 +32,7 @@ def live_stage(tmp_dir, scm, dvc):
             name="live_stage",
             live="logs",
             live_summary=summary,
+            live_report=report,
         )
 
         scm.add(["dvc.yaml", "dvc.lock", "train.py", "params.yaml"])
@@ -41,8 +42,9 @@ def live_stage(tmp_dir, scm, dvc):
     yield make
 
 
+@pytest.mark.parametrize("report", (True, False))
 @pytest.mark.parametrize("summary", (True, False))
-def test_export_config_tmp(tmp_dir, dvc, mocker, summary):
+def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
     run_spy = mocker.spy(stage_module.run, "_run")
     tmp_dir.gen("src", "dependency")
     dvc.run(
@@ -51,6 +53,7 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary):
         name="run_logger",
         live="logs",
         live_summary=summary,
+        live_report=report,
     )
 
     assert run_spy.call_count == 1
@@ -61,6 +64,9 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary):
 
     assert "DVCLIVE_SUMMARY" in kwargs["env"]
     assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
+
+    assert "DVCLIVE_REPORT" in kwargs["env"]
+    assert kwargs["env"]["DVCLIVE_REPORT"] == str(int(report))
 
 
 @pytest.mark.parametrize("summary", (True, False))
@@ -115,3 +121,10 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage):
 
     res = dvc.experiments.show()
     assert "logs.json" in res[baseline_rev][exp_rev]["metrics"].keys()
+
+
+@pytest.mark.parametrize("report", [True, False])
+def test_live_report(tmp_dir, dvc, live_stage, report):
+    live_stage(report=report)
+
+    assert (tmp_dir / "logs.html").is_file() == report

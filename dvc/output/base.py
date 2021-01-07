@@ -9,7 +9,7 @@ from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
-from dvc.env import DVCLIVE_PATH, DVCLIVE_SUMMARY
+from dvc.env import DVCLIVE_PATH, DVCLIVE_REPORT, DVCLIVE_SUMMARY
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -81,6 +81,7 @@ class BaseOutput:
     PARAM_ISEXEC = "isexec"
     PARAM_LIVE = "live"
     PARAM_LIVE_SUMMARY = "summary"
+    PARAM_LIVE_REPORT = "report"
 
     METRIC_SCHEMA = Any(
         None,
@@ -619,6 +620,9 @@ class BaseOutput:
 
                 env[DVCLIVE_SUMMARY] = str(
                     int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
+                )
+                env[DVCLIVE_REPORT] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_REPORT, True))
                 )
             return env
         return {}

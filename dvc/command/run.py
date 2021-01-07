@@ -44,6 +44,7 @@ class CmdRun(CmdBase):
                 plots_no_cache=self.args.plots_no_cache,
                 live=self.args.live,
                 live_summary=not self.args.live_no_summary,
+                live_report=not self.args.live_no_report,
                 deps=self.args.deps,
                 params=self.args.params,
                 fname=self.args.file,
@@ -165,13 +166,19 @@ def add_parser(subparsers, parent_parser):
         metavar="<path>",
     )
     run_parser.add_argument(
-        "--live", help=argparse.SUPPRESS, metavar="<path>",
+        "--live", help="Declare output as dvclive.", metavar="<path>",
     )
     run_parser.add_argument(
         "--live-no-summary",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Signal dvclive logger to not dump latest metrics file.",
+    )
+    run_parser.add_argument(
+        "--live-no-report",
+        action="store_true",
+        default=False,
+        help="Signal dvclive logger to not produce training report.",
     )
     run_parser.add_argument(
         "--file", metavar="<filename>", help=argparse.SUPPRESS,
