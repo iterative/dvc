@@ -226,7 +226,7 @@ def fix_env(env=None):
     return env
 
 
-def tmp_fname(fname):
+def tmp_fname(fname=""):
     """ Temporary name for a partial download """
     from shortuuid import uuid
 

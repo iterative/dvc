@@ -12,7 +12,6 @@ from funcy import decorator
 from shortuuid import uuid
 
 import dvc.prompt as prompt
-from dvc import tree as dvc_tree
 from dvc.dir_info import DirInfo
 from dvc.exceptions import (
     CacheLinkError,
@@ -24,7 +23,6 @@ from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
-from dvc.utils.stream import HashedStreamReader
 
 from ..tree.base import RemoteActionNotImplemented
 
@@ -251,6 +249,8 @@ class CloudCache:
         self.tree.state.save(cache_info, hash_info)
 
     def _transfer_file_as_whole(self, from_tree, from_info):
+        from dvc import tree as dvc_tree
+
         # When we can't use the chunked upload, we have to first download
         # and then calculate the hash as if it were a local file and then
         # upload it.
@@ -266,20 +266,22 @@ class CloudCache:
             return hash_info
 
     def _transfer_file_as_chunked(self, from_tree, from_info):
-        tmp_info = self.tree.path_info / uuid()
+        from dvc.utils import tmp_fname
+        from dvc.utils.stream import HashedStreamReader
+
+        tmp_info = self.tree.path_info / tmp_fname()
         with from_tree.open(
             from_info, mode="rb", chunk_size=from_tree.CHUNK_SIZE
         ) as stream:
-            wrapped_file = HashedStreamReader(stream)
+            stream_reader = HashedStreamReader(stream)
             # Since we don't know the hash beforehand, we'll
             # upload it to a temporary location and then move
             # it.
-            self.tree.upload_fobj(wrapped_file, tmp_info)
+            self.tree.upload_fobj(stream_reader, tmp_info)
 
-        self.tree.move(
-            tmp_info, self.hash_to_path(wrapped_file.hash_info.value)
-        )
-        return wrapped_file.hash_info
+        hash_info = stream_reader.hash_info
+        self.tree.move(tmp_info, self.hash_to_path(hash_info.value))
+        return hash_info
 
     def transfer_file(self, from_tree, from_info):
         try:
