@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import TYPE_CHECKING
 
 import colorama
 
@@ -14,20 +15,29 @@ from ..repo.scm_context import scm_context
 from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_paths
 from . import locked
 
+if TYPE_CHECKING:
+    from dvc.types import TargetType
+
+
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
 def add(
-    repo, targets, recursive=False, no_commit=False, fname=None, **kwargs,
+    repo,
+    targets: "TargetType",
+    recursive=False,
+    no_commit=False,
+    fname=None,
+    **kwargs,
 ):
+    from dvc.utils.collections import ensure_list
+
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
-    if isinstance(targets, str):
-        targets = [targets]
-
+    targets = ensure_list(targets)
     link_failures = []
     stages_list = []
     num_targets = len(targets)

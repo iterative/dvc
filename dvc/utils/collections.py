@@ -1,5 +1,6 @@
 import os
 from collections.abc import Mapping
+from typing import Iterable, List, Union
 
 from pygtrie import StringTrie as _StringTrie
 
@@ -57,3 +58,11 @@ def apply_diff(src, dest):
                 src.__class__.__name__, dest.__class__.__name__
             )
         )
+
+
+def ensure_list(item: Union[Iterable[str], str, None]) -> List[str]:
+    if item is None:
+        return []
+    if isinstance(item, str):
+        return [item]
+    return list(item)

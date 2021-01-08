@@ -14,6 +14,7 @@ from dvc.utils.serialize import LOADERS, ParseError
 if TYPE_CHECKING:
     from dvc.output.base import BaseOutput
     from dvc.repo import Repo
+    from dvc.types import DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ def _is_params(dep: "BaseOutput"):
     return isinstance(dep, ParamsDependency)
 
 
-def _collect_configs(repo: "Repo", rev, targets=None) -> List[PathInfo]:
+def _collect_configs(repo: "Repo", rev, targets=None) -> List["DvcPath"]:
     params, path_infos = collect(
         repo,
         targets=targets or [],
