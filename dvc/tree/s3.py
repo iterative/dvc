@@ -202,6 +202,7 @@ class S3Tree(BaseTree):
         kwargs = {"Prefix": path_info.path}
         if max_items is not None:
             kwargs["MaxKeys"] = max_items
+            kwargs["limit"] = max_items
 
         with self._get_bucket(path_info.bucket) as bucket:
             for obj_summary in bucket.objects.filter(**kwargs):
