@@ -359,7 +359,7 @@ def add_parser(subparsers, parent_parser):
     )
     stages_parser.add_argument(
         "targets", nargs="*", default=["dvc.yaml"], help="Stages to list from",
-    ).complete = completion.STAGE
+    ).complete = completion.DVCFILES_AND_STAGE
     stages_parser.add_argument(
         "-s",
         "--short",
