@@ -59,7 +59,7 @@ class BaseTree:
     TRAVERSE_PREFIX_LEN = 3
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
-    CHUNK_SIZE = 512 * 1024 * 1024
+    CHUNK_SIZE = 64 * 1024 * 1024
 
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None

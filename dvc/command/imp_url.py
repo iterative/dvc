@@ -10,16 +10,12 @@ logger = logging.getLogger(__name__)
 
 class CmdImportUrl(CmdBase):
     def run(self):
-        if self.args.no_exec and self.args.straight_to_remote:
-            logger.error(
-                "--no-exec can't be combined with --straight-to-remote"
-            )
+        if self.args.no_exec and self.args.to_remote:
+            logger.error("--no-exec can't be combined with --to-remote")
             return 1
 
-        if self.args.remote and not self.args.straight_to_remote:
-            logger.error(
-                "--remote can't be used alone without --straight-to-remote"
-            )
+        if self.args.remote and not self.args.to_remote:
+            logger.error("--remote can't be used alone without --to-remote")
             return 1
 
         try:
@@ -29,7 +25,7 @@ class CmdImportUrl(CmdBase):
                 fname=self.args.file,
                 no_exec=self.args.no_exec,
                 remote=self.args.remote,
-                straight_to_remote=self.args.straight_to_remote,
+                to_remote=self.args.to_remote,
                 desc=self.args.desc,
             )
         except DvcException:
@@ -83,7 +79,7 @@ def add_parser(subparsers, parent_parser):
         help="Only create DVC-file without actually downloading it.",
     )
     import_parser.add_argument(
-        "--straight-to-remote",
+        "--to-remote",
         action="store_true",
         default=False,
         help="Download it directly to the remote",

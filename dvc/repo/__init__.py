@@ -54,6 +54,7 @@ def locked(f):
 class Repo:
     DVC_DIR = ".dvc"
 
+    from dvc.repo._transfer import _transfer
     from dvc.repo.add import add
     from dvc.repo.brancher import brancher
     from dvc.repo.checkout import checkout

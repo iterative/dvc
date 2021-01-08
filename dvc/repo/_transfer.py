@@ -10,39 +10,25 @@ from . import locked
 
 @locked
 @scm_context
-def imp_url(
+def _transfer(
     self,
     url,
+    command,
     out=None,
     fname=None,
     erepo=None,
     frozen=True,
-    no_exec=False,
     remote=None,
-    to_remote=False,
     desc=None,
     jobs=None,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
 
-    if to_remote:
-        return self._transfer(  # pylint: disable=protected-access
-            url,
-            "import-url",
-            out=out,
-            fname=fname,
-            erepo=erepo,
-            frozen=frozen,
-            remote=remote,
-            desc=desc,
-            jobs=jobs,
-        )
-
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out)
 
-    # NOTE: when user is importing something from within their own repository
+    # NOTE: when user is transfering something from within their own repository
     if (
         erepo is None
         and os.path.exists(url)
@@ -50,20 +36,23 @@ def imp_url(
     ):
         url = relpath(url, wdir)
 
+    deps = []
+    if command == "import-url":
+        deps.append(url)
+
     stage = create_stage(
         Stage,
         self,
         fname or path,
         wdir=wdir,
-        deps=[url],
+        deps=deps,
         outs=[out],
         erepo=erepo,
     )
-
     restore_meta(stage)
+
     if stage.can_be_skipped:
         return None
-
     if desc:
         stage.outs[0].desc = desc
 
@@ -75,13 +64,10 @@ def imp_url(
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
-    if no_exec:
-        stage.ignore_outs()
-    else:
-        stage.run(jobs=jobs)
-
     stage.frozen = frozen
+    stage.outs[0].hash_info = self.cloud.transfer(
+        url, jobs=jobs, remote=remote, command=command
+    )
 
     dvcfile.dump(stage)
-
     return stage

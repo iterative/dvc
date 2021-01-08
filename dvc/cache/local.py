@@ -40,9 +40,7 @@ class LocalCache(CloudCache):
         # NOTE: `self.cache_path` is already normalized so we can simply use
         # `os.sep` instead of `os.path.join`. This results in this helper
         # being ~5.5 times faster.
-        return PathInfo(
-            f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
-        )
+        return f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
 
     def hashes_exist(
         self, hashes, jobs=None, name=None

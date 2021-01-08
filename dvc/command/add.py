@@ -18,13 +18,11 @@ class CmdAdd(CmdBase):
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
 
-            if len(self.args.targets) > 1 and self.args.straight_to_remote:
-                logger.error(
-                    "--straight-to-remote can't used with multiple targets"
-                )
+            if len(self.args.targets) > 1 and self.args.to_remote:
+                logger.error("--to-remote can't used with multiple targets")
                 return 1
 
-            if not self.args.straight_to_remote:
+            if not self.args.to_remote:
                 if self.args.remote:
                     command = "--remote"
                 elif self.args.out:
@@ -34,8 +32,7 @@ class CmdAdd(CmdBase):
 
                 if command is not None:
                     logger.error(
-                        f"--{command} can't be used without"
-                        " --straight-to-remote"
+                        f"--{command} can't be used without" " --to-remote"
                     )
                     return 1
 
@@ -49,7 +46,7 @@ class CmdAdd(CmdBase):
                 desc=self.args.desc,
                 out=self.args.out,
                 remote=self.args.remote,
-                straight_to_remote=self.args.straight_to_remote,
+                to_remote=self.args.to_remote,
             )
 
         except DvcException:
@@ -106,7 +103,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<filename>",
     )
     parser.add_argument(
-        "--straight-to-remote",
+        "--to-remote",
         action="store_true",
         default=False,
         help="Download it directly to the remote",

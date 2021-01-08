@@ -22,7 +22,7 @@ def test_import_url(mocker):
         fname="file",
         no_exec=False,
         remote=None,
-        straight_to_remote=False,
+        to_remote=False,
         desc="description",
     )
 
@@ -68,18 +68,18 @@ def test_import_url_no_exec(mocker):
         fname="file",
         no_exec=True,
         remote=None,
-        straight_to_remote=False,
+        to_remote=False,
         desc="description",
     )
 
 
-def test_import_url_straight_to_remote(mocker):
+def test_import_url_to_remote(mocker):
     cli_args = parse_args(
         [
             "import-url",
             "s3://bucket/foo",
             "bar",
-            "--straight-to-remote",
+            "--to-remote",
             "--remote",
             "remote",
             "--desc",
@@ -99,18 +99,18 @@ def test_import_url_straight_to_remote(mocker):
         fname=None,
         no_exec=False,
         remote="remote",
-        straight_to_remote=True,
+        to_remote=True,
         desc="description",
     )
 
 
-def test_import_url_straight_to_remote_invalid_combination(mocker, caplog):
+def test_import_url_to_remote_invalid_combination(mocker, caplog):
     cli_args = parse_args(
         [
             "import-url",
             "s3://bucket/foo",
             "bar",
-            "--straight-to-remote",
+            "--to-remote",
             "--remote",
             "remote",
             "--no-exec",
@@ -121,7 +121,7 @@ def test_import_url_straight_to_remote_invalid_combination(mocker, caplog):
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "--no-exec can't be combined with --straight-to-remote"
+        expected_msg = "--no-exec can't be combined with --to-remote"
         assert expected_msg in caplog.text
 
     cli_args = parse_args(
@@ -131,7 +131,5 @@ def test_import_url_straight_to_remote_invalid_combination(mocker, caplog):
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = (
-            "--remote can't be used alone without --straight-to-remote"
-        )
+        expected_msg = "--remote can't be used alone without --to-remote"
         assert expected_msg in caplog.text

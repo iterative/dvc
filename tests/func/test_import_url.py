@@ -265,13 +265,13 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
     ],
     indirect=True,
 )
-def test_import_url_straight_to_remote_single_file(
+def test_import_url_to_remote_single_file(
     tmp_dir, dvc, workspace, local_remote
 ):
     workspace.gen("foo", "foo")
 
     url = "remote://workspace/foo"
-    stage = dvc.imp_url(url, straight_to_remote=True)
+    stage = dvc.imp_url(url, to_remote=True)
 
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
@@ -300,9 +300,7 @@ def test_import_url_straight_to_remote_single_file(
     ],
     indirect=True,
 )
-def test_import_url_straight_to_remote_directory(
-    tmp_dir, dvc, workspace, local_remote
-):
+def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
     workspace.gen(
         {
             "data": {
@@ -314,7 +312,7 @@ def test_import_url_straight_to_remote_directory(
     )
 
     url = "remote://workspace/data"
-    stage = dvc.imp_url(url, straight_to_remote=True)
+    stage = dvc.imp_url(url, to_remote=True)
 
     assert not (tmp_dir / "data").exists()
     assert (tmp_dir / "data.dvc").exists()

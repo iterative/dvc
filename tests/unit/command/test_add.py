@@ -35,17 +35,17 @@ def test_add(mocker, dvc):
         external=True,
         out=None,
         remote=None,
-        straight_to_remote=False,
+        to_remote=False,
         desc="stage description",
     )
 
 
-def test_add_straight_to_remote(mocker):
+def test_add_to_remote(mocker):
     cli_args = parse_args(
         [
             "add",
             "s3://bucket/foo",
-            "--straight-to-remote",
+            "--to-remote",
             "--out",
             "bar",
             "--remote",
@@ -68,21 +68,21 @@ def test_add_straight_to_remote(mocker):
         external=False,
         out="bar",
         remote="remote",
-        straight_to_remote=True,
+        to_remote=True,
         desc=None,
     )
 
 
-def test_add_straight_to_remote_invalid_combinations(mocker, caplog):
+def test_add_to_remote_invalid_combinations(mocker, caplog):
     cli_args = parse_args(
-        ["add", "s3://bucket/foo", "s3://bucket/bar", "--straight-to-remote"]
+        ["add", "s3://bucket/foo", "s3://bucket/bar", "--to-remote"]
     )
     assert cli_args.func == CmdAdd
 
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "--straight-to-remote can't used with multiple targets"
+        expected_msg = "--to-remote can't used with multiple targets"
         assert expected_msg in caplog.text
 
     for option in "--remote", "--out":
@@ -91,7 +91,5 @@ def test_add_straight_to_remote_invalid_combinations(mocker, caplog):
         cmd = cli_args.func(cli_args)
         with caplog.at_level(logging.ERROR, logger="dvc"):
             assert cmd.run() == 1
-            expected_msg = (
-                f"--{option} can't be used without --straight-to-remote"
-            )
+            expected_msg = f"--{option} can't be used without --to-remote"
             assert expected_msg in caplog.text

@@ -30,7 +30,7 @@ def add(
     recursive=False,
     no_commit=False,
     fname=None,
-    straight_to_remote=False,
+    to_remote=False,
     out=None,
     remote=None,
     **kwargs,
@@ -42,21 +42,19 @@ def add(
 
     targets = ensure_list(targets)
 
-    if straight_to_remote:
+    if to_remote:
         if len(targets) != 1:
             raise ValueError(
                 "Can't use straigh_to_remote option with multiple targets"
             )
 
-        return repo.imp_url(
-            url=targets[0],
+        return repo._transfer(  # pylint: disable=protected-access
+            targets[0],
+            "add",
             out=out,
-            remote=remote,
-            desc=kwargs.get("desc"),
             fname=kwargs.get("fname"),
-            command="add",
-            track_remote_url=False,
-            straight_to_remote=True,
+            desc=kwargs.get("desc"),
+            remote=remote,
         )
 
     link_failures = []
