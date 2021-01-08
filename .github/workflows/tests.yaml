@@ -66,8 +66,6 @@ jobs:
       run: |
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
-    - name: stages
-      run: dvc stages --all
     - name: run tests
       run: python -m tests --all --cov-report=xml --cov-report=term --tap-combined
     - name: upload coverage report
