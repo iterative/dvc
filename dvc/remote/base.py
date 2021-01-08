@@ -472,9 +472,9 @@ class Remote:
 
         return ret
 
-    def transfer(self, from_tree, jobs=None, no_progress_bar=False):
+    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
         return self.cache.transfer(
-            from_tree, jobs=jobs, no_progress_bar=no_progress_bar
+            from_tree, from_info, jobs=jobs, no_progress_bar=no_progress_bar
         )
 
     @staticmethod

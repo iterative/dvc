@@ -4,7 +4,8 @@ import json
 import logging
 import os
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
@@ -283,7 +284,7 @@ class CloudCache:
         self.tree.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
         return hash_info
 
-    def transfer_file(self, from_tree, from_info):
+    def _transfer_file(self, from_tree, from_info):
         try:
             hash_info = self._transfer_file_as_chunked(from_tree, from_info)
         except RemoteActionNotImplemented:
@@ -291,53 +292,66 @@ class CloudCache:
 
         return hash_info
 
-    def transfer_directory(self, from_tree, from_info, jobs, pbar=None):
-        dir_info = DirInfo()
+    def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):
+        from_infos = from_tree.walk_files(from_info)
+
+        rel_path_infos = {}
+
+        def create_futures(executor, amount):
+            for entry_info in itertools.islice(from_infos, amount):
+                pbar.total += 1
+                task = executor.submit(
+                    pbar.wrap_fn(self._transfer_file), from_tree, entry_info
+                )
+                rel_path_infos[task] = entry_info.relative_to(from_info)
+                yield task
+
+        pbar.total = 0
         with ThreadPoolExecutor(max_workers=jobs) as executor:
-            futures = {
-                executor.submit(
-                    self.transfer_file, from_tree, from_info
-                ): from_info.relative_to(from_tree.path_info)
-                for from_info in from_tree.walk_files(from_info)
-            }
-            if pbar is not None:
-                pbar.total = len(futures)
+            tasks = set(create_futures(executor, jobs * 5))
 
-            for future in as_completed(futures):
-                dir_info.trie[futures[future].parts] = future.result()
-                if pbar is not None:
-                    pbar.update()
+            while tasks:
+                done, tasks = futures.wait(
+                    tasks, return_when=futures.FIRST_COMPLETED
+                )
+                tasks.update(create_futures(executor, len(done)))
+                for task in done:
+                    yield rel_path_infos.pop(task), task.result()
 
+    def _transfer_directory(
+        self, from_tree, from_info, jobs, no_progress_bar=False
+    ):
+        dir_info = DirInfo()
+
+        with Tqdm(total=1, unit="file", disable=no_progress_bar) as pbar:
+            for entry_info, entry_hash in self._transfer_directory_contents(
+                from_tree, from_info, jobs, pbar
+            ):
+                dir_info.trie[entry_info.parts] = entry_hash
+
+        local_cache = self.repo.cache.local
         (
             hash_info,
-            hash_path_info,
-        ) = self.repo.cache.local._get_dir_info_hash(  # noqa, pylint: disable=protected-access
+            to_info,
+        ) = local_cache._get_dir_info_hash(  # pylint: disable=protected-access
             dir_info
         )
-        self.tree.upload(
-            hash_path_info, self.tree.hash_to_path_info(hash_info.value)
-        )
+
+        self.tree.upload(to_info, self.tree.hash_to_path_info(hash_info.value))
         return hash_info
 
-    def transfer(self, from_tree, jobs=None, no_progress_bar=False):
+    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
         jobs = jobs or min((from_tree.jobs, self.tree.jobs))
-        from_info = from_tree.path_info
 
-        with Tqdm(
-            desc="Transfering files to the remote",
-            unit="Files",
-            disable=no_progress_bar,
-            total=1,
-        ) as pbar:
-            if from_tree.isdir(from_info):
-                hash_info = self.transfer_directory(
-                    from_tree, from_info, jobs=jobs, pbar=pbar
-                )
-            else:
-                hash_info = self.transfer_file(from_tree, from_info)
-                pbar.update()
-
-        return hash_info
+        if from_tree.isdir(from_info):
+            return self._transfer_directory(
+                from_tree,
+                from_info,
+                jobs=jobs,
+                no_progress_bar=no_progress_bar,
+            )
+        else:
+            return self._transfer_file(from_tree, from_info)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -362,6 +376,8 @@ class CloudCache:
         return self.cache_types[0] == "copy"
 
     def _get_dir_info_hash(self, dir_info):
+        import tempfile
+
         from dvc.path_info import PathInfo
         from dvc.utils import tmp_fname
 
