@@ -19,6 +19,12 @@ repos:
           - flake8-string-format
     repo: https://gitlab.com/pycqa/flake8
     rev: 3.8.4
+  - hooks:
+      -  id: mypy
+         language_version: python3
+         files: ^dvc/
+    repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v0.790'
   - repo: local
     hooks:
     - id: pylint

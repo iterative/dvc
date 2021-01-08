@@ -50,9 +50,10 @@ class Plots:
         Data parsing is postponed, since it's affected by props.
         """
         from dvc.tree.repo import RepoTree
+        from dvc.utils.collections import ensure_list
 
-        targets = [targets] if isinstance(targets, str) else targets or []
-        data = {}
+        targets = ensure_list(targets)
+        data: Dict[str, Dict] = {}
         for rev in self.repo.brancher(revs=revs):
             # .brancher() adds unwanted workspace
             if revs is not None and rev not in revs:
@@ -121,18 +122,18 @@ class Plots:
 
     def show(
         self,
-        targets=None,
+        targets: List[str] = None,
         revs=None,
         props=None,
         templates=None,
         recursive=False,
     ):
+        from dvc.utils.collections import ensure_list
 
         data = self.collect(targets, revs, recursive)
 
         # If any mentioned plot doesn't have any data then that's an error
-        targets = [targets] if isinstance(targets, str) else targets or []
-        for target in targets:
+        for target in ensure_list(targets):
             rpath = relpath(target, self.repo.root_dir)
             if not any(
                 "data" in rev_data[key]

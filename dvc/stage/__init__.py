@@ -37,6 +37,7 @@ from .utils import (
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
+Env = Dict[str, str]
 
 
 def loads_from(cls, repo, path, wdir, data):
@@ -252,8 +253,8 @@ class Stage(params.StageParams):
         return any(out.checkpoint for out in self.outs)
 
     @property
-    def env(self) -> Dict[str, str]:
-        env = {}
+    def env(self) -> Env:
+        env: Env = {}
         for out in self.outs:
             if any(out.env.keys() and env.keys()):
                 raise DvcException("Duplicated env variable")
