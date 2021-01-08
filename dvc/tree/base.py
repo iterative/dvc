@@ -169,14 +169,12 @@ class BaseTree:
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def open(
-        self, path_info, mode: str = "r", encoding: str = None, **kwargs,
-    ):
+    def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         if hasattr(self, "_generate_download_url"):
             # pylint:disable=no-member
             func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
-            return open_url(get_url, mode=mode, encoding=encoding, **kwargs,)
+            return open_url(get_url, mode=mode, encoding=encoding, **kwargs)
 
         raise RemoteActionNotImplemented("open", self.scheme)
 

@@ -59,7 +59,6 @@ def imp_url(
         outs=[out],
         erepo=erepo,
     )
-
     restore_meta(stage)
     if stage.can_be_skipped:
         return None

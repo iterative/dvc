@@ -249,22 +249,21 @@ class CloudCache:
         self.tree.state.save(cache_info, hash_info)
 
     def _transfer_file_as_whole(self, from_tree, from_info):
-        from dvc import tree as dvc_tree
+        from dvc.utils import tmp_fname
 
         # When we can't use the chunked upload, we have to first download
         # and then calculate the hash as if it were a local file and then
         # upload it.
-        with tempfile.NamedTemporaryFile() as temp_file:
-            temp_tree = dvc_tree.get_cloud_tree(self.repo, url=temp_file.name)
-            from_tree.download(from_info, temp_tree.path_info)
+        local_tree = self.repo.cache.local.tree
+        local_info = local_tree.path_info / tmp_fname()
 
-            hash_info = temp_tree.get_file_hash(temp_tree.path_info)
-            self.tree.upload(
-                temp_tree.path_info,
-                self.tree.hash_to_path_info(hash_info.value),
-            )
+        from_tree.download(from_info, local_info)
+        hash_info = local_tree.get_file_hash(local_info)
 
-            return hash_info
+        self.tree.upload(
+            local_info, self.tree.hash_to_path_info(hash_info.value),
+        )
+        return hash_info
 
     def _transfer_file_as_chunked(self, from_tree, from_info):
         from dvc.utils import tmp_fname
@@ -292,7 +291,7 @@ class CloudCache:
 
         return hash_info
 
-    def transfer_directory(self, from_tree, from_info, jobs, callback=None):
+    def transfer_directory(self, from_tree, from_info, jobs, pbar=None):
         dir_info = DirInfo()
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {
@@ -301,10 +300,13 @@ class CloudCache:
                 ): from_info.relative_to(from_tree.path_info)
                 for from_info in from_tree.walk_files(from_info)
             }
+            if pbar is not None:
+                pbar.total = len(futures)
+
             for future in as_completed(futures):
                 dir_info.trie[futures[future].parts] = future.result()
-                if callback is not None:
-                    callback()
+                if pbar is not None:
+                    pbar.update()
 
         (
             hash_info,
@@ -325,14 +327,15 @@ class CloudCache:
             desc="Transfering files to the remote",
             unit="Files",
             disable=no_progress_bar,
+            total=1,
         ) as pbar:
             if from_tree.isdir(from_info):
                 hash_info = self.transfer_directory(
-                    from_tree, from_info, jobs=jobs, callback=pbar.update
+                    from_tree, from_info, jobs=jobs, pbar=pbar
                 )
             else:
                 hash_info = self.transfer_file(from_tree, from_info)
-                pbar.update(1)
+                pbar.update()
 
         return hash_info
 
