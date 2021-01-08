@@ -336,7 +336,7 @@ class CmdStages(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     stages_parser = subparsers.add_parser(
-        "stages", parents=[parent_parser], help="List stages",
+        "stages", parents=[parent_parser], description="List stages.",
     )
     stages_parser.add_argument(
         "-R",
