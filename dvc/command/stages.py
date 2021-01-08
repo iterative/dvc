@@ -40,7 +40,7 @@ def get_info(stage: "Stage") -> List[Tuple[str, int]]:
     ]
 
 
-def sizeof_fmt(size: int, suffix: str = "B", decimal_places: int = 1) -> str:
+def sizeof_fmt(size: float, suffix: str = "B", decimal_places: int = 1) -> str:
     unit = ""
     for unit in ["", "Ki", "Mi", "Gi"]:
         if size < 1024.0 or unit == "GiB":
