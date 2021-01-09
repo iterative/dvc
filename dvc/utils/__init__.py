@@ -351,14 +351,21 @@ def env2bool(var, undefined=False):
 
 
 def resolve_output(inp, out):
+    import errno
     from urllib.parse import urlparse
 
     name = os.path.basename(os.path.normpath(urlparse(inp).path))
     if not out:
-        return name
-    if os.path.isdir(out):
-        return os.path.join(out, name)
-    return out
+        ret = name
+    elif os.path.isdir(out):
+        ret = os.path.join(out, name)
+    else:
+        ret = out
+
+    if os.path.exists(ret):
+        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), ret)
+
+    return ret
 
 
 def resolve_paths(repo, out):

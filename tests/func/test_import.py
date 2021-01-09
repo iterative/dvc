@@ -338,6 +338,7 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
     scm.tag("ref-to-branch")
 
     # Overwrite via import
+    (tmp_dir / "foo_imported").unlink()
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", rev="master")
 
     remove(stage.outs[0].cache_path)

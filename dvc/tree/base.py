@@ -1,6 +1,4 @@
-import errno
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
@@ -409,11 +407,6 @@ class BaseTree:
 
         if from_info.scheme != self.scheme:
             raise NotImplementedError
-
-        if os.path.exists(to_info):
-            raise FileExistsError(
-                errno.EEXIST, os.strerror(errno.EEXIST), to_info
-            )
 
         if to_info.scheme == self.scheme != "local":
             self.copy(from_info, to_info)

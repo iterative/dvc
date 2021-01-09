@@ -893,6 +893,7 @@ class TestReproAlreadyCached(TestRepro):
         self.assertNotEqual(run_out.hash_info, repro_out.hash_info)
 
     def test_force_import(self):
+        remove(self.BAR)
         ret = main(["import-url", self.FOO, self.BAR])
         self.assertEqual(ret, 0)
 
