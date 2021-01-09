@@ -22,7 +22,7 @@ def _show_md(diff, show_hash=False, hide_missing=False):
 
     header = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
-    statuses = ["added", "deleted", "modified"]
+    statuses = ["added", "deleted", "renamed", "modified"]
     if not hide_missing:
         statuses.append("not in cache")
     for status in statuses:
@@ -31,6 +31,8 @@ def _show_md(diff, show_hash=False, hide_missing=False):
             continue
         for entry in entries:
             path = entry["path"]
+            if isinstance(path, dict):
+                path = f"{path['old']} -> {path['new']}"
             if show_hash:
                 check_sum = _digest(entry.get("hash", ""))
                 rows.append([status, check_sum, path])
@@ -72,13 +74,14 @@ class CmdDiff(CmdBase):
             "added": colorama.Fore.GREEN,
             "modified": colorama.Fore.YELLOW,
             "deleted": colorama.Fore.RED,
+            "renamed": colorama.Fore.GREEN,
             "not in cache": colorama.Fore.YELLOW,
         }
 
         summary = {}
         groups = []
 
-        states = ["added", "deleted", "modified"]
+        states = ["added", "deleted", "renamed", "modified"]
         if not hide_missing:
             states.append("not in cache")
         for state in states:
@@ -92,6 +95,8 @@ class CmdDiff(CmdBase):
 
             for entry in entries:
                 path = entry["path"]
+                if isinstance(path, dict):
+                    path = f"{path['old']} -> {path['new']}"
                 checksum = entry.get("hash")
                 summary[state] += 1 if not path.endswith(os.sep) else 0
                 content.append(
@@ -99,7 +104,7 @@ class CmdDiff(CmdBase):
                         space="    ",
                         checksum=_digest(checksum) if checksum else "",
                         separator="  " if checksum else "",
-                        path=entry["path"],
+                        path=path,
                     )
                 )
 
@@ -117,7 +122,7 @@ class CmdDiff(CmdBase):
 
         fmt = (
             "files summary: {added} added, {deleted} deleted,"
-            " {modified} modified"
+            " {renamed} renamed, {modified} modified"
         )
         if not hide_missing:
             fmt += ", {not in cache} not in cache"
@@ -138,7 +143,12 @@ class CmdDiff(CmdBase):
                 del diff["not in cache"]
 
             for key, entries in diff.items():
-                entries = sorted(entries, key=lambda entry: entry["path"])
+                entries = sorted(
+                    entries,
+                    key=lambda entry: entry["path"]["old"]
+                    if isinstance(entry["path"], dict)
+                    else entry["path"],
+                )
                 if not show_hash:
                     for entry in entries:
                         del entry["hash"]

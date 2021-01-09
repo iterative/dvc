@@ -65,6 +65,17 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     deleted = sorted(deleted_or_missing - set(missing))
     modified = sorted(set(old) & set(new))
 
+    # Cases when file was changed and renamed are resulted
+    # in having deleted and added record
+    # To cover such cases we need to change hashing function
+    # to produce rolling/chunking hash
+
+    renamed = _calculate_renamed(new, old, added, deleted)
+
+    for renamed_item in renamed:
+        added.remove(renamed_item["path"]["new"])
+        deleted.remove(renamed_item["path"]["old"])
+
     ret = {
         "added": [{"path": path, "hash": new[path]} for path in added],
         "deleted": [{"path": path, "hash": old[path]} for path in deleted],
@@ -73,6 +84,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
             for path in modified
             if old[path] != new[path]
         ],
+        "renamed": renamed,
         "not in cache": [
             {"path": path, "hash": old[path]} for path in missing
         ],
@@ -171,3 +183,34 @@ def _targets_to_path_infos(repo_tree, targets):
             missing.append(target)
 
     return path_infos, missing
+
+
+def _calculate_renamed(new, old, added, deleted):
+    old_inverted = {}
+    # It is needed to be dict of lists to cover cases
+    # when repo has paths with same hash
+    for path, path_hash in old.items():
+        bucket = old_inverted.get(path_hash, None)
+        if bucket is None:
+            old_inverted[path_hash] = [path]
+        else:
+            bucket.append(path)
+
+    renamed = []
+    for path in added:
+        path_hash = new[path]
+        old_paths = old_inverted.get(path_hash, None)
+        if not old_paths:
+            continue
+        old_path = None
+        for tmp_old_path in old_paths:
+            if tmp_old_path in deleted:
+                old_path = tmp_old_path
+                break
+        if not old_path:
+            continue
+        renamed.append(
+            {"path": {"old": old_path, "new": path}, "hash": path_hash}
+        )
+
+    return renamed
