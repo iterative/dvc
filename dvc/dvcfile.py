@@ -37,6 +37,11 @@ PIPELINE_FILE = "dvc.yaml"
 PIPELINE_LOCK = "dvc.lock"
 
 
+class FileIsGitIgnored(DvcException):
+    def __init__(self, path):
+        super().__init__(f"{path} is git-ignored.")
+
+
 class LockfileCorruptedError(DvcException):
     pass
 
@@ -103,18 +108,31 @@ class FileMixin:
     def exists(self):
         return self.repo.tree.exists(self.path)
 
+    def _is_git_ignored(self):
+        from dvc.tree.local import LocalTree
+
+        return isinstance(
+            self.repo.tree, LocalTree
+        ) and self.repo.scm.is_ignored(self.path)
+
     def _load(self):
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC-file
         # 3. path doesn't represent a regular file
+        # 4. when the file is git ignored
         if not self.exists():
-            raise StageFileDoesNotExistError(self.path)
+            dvc_ignored = self.repo.tree.dvcignore.is_ignored_file(self.path)
+            raise StageFileDoesNotExistError(
+                self.path, dvc_ignored=dvc_ignored
+            )
+
         if self.verify:
             check_dvc_filename(self.path)
         if not self.repo.tree.isfile(self.path):
             raise StageFileIsNotDvcFileError(self.path)
-
+        if self._is_git_ignored():
+            raise FileIsGitIgnored(self.path)
         with self.repo.tree.open(self.path) as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
