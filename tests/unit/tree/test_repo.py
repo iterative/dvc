@@ -377,7 +377,9 @@ def test_subrepos(tmp_dir, scm, dvc):
             True,
             [
                 PathInfo("dir") / "repo" / "foo.dvc",
+                PathInfo("dir") / "repo" / ".dvcignore",
                 PathInfo("dir") / "repo" / "dir1.dvc",
+                PathInfo("dir") / "repo2" / ".dvcignore",
                 PathInfo("dir") / "repo2" / "lorem.dvc",
                 PathInfo("dir") / "repo2" / "dir2.dvc",
             ],
@@ -409,12 +411,10 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
         PathInfo("dir") / "repo",
         PathInfo("dir") / "repo.txt",
         PathInfo("dir") / "repo2",
-        PathInfo("dir") / "repo" / ".dvcignore",
         PathInfo("dir") / "repo" / ".gitignore",
         PathInfo("dir") / "repo" / "foo",
         PathInfo("dir") / "repo" / "dir1",
         PathInfo("dir") / "repo" / "dir1" / "bar",
-        PathInfo("dir") / "repo2" / ".dvcignore",
         PathInfo("dir") / "repo2" / ".gitignore",
         PathInfo("dir") / "repo2" / "lorem",
         PathInfo("dir") / "repo2" / "dir2",
@@ -583,7 +583,7 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
     for repo_dir in subrepos:
         make_subrepo(repo_dir, scm)
 
-    extras = {".dvcignore", ".gitignore"}  # these files are always there
+    extras = {".gitignore"}  # these files are always there
     expected = {}
     for repo_dir in subrepos + [tmp_dir]:
         base = os.path.basename(repo_dir)

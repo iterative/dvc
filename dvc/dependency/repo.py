@@ -77,10 +77,16 @@ class RepoDependency(LocalDependency):
         with self._make_repo(cache_dir=cache.cache_dir) as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
+            path_info = PathInfo(repo.root_dir) / self.def_path
+            hash_info = cache.save(
+                path_info,
+                repo.repo_tree,
+                None,
+                jobs=jobs,
+                follow_subrepos=False,
+            )
 
-            _, _, cache_infos = repo.fetch_external([self.def_path], jobs=jobs)
-
-        cache.checkout(to.path_info, cache_infos[0])
+        cache.checkout(to.path_info, hash_info)
 
     def update(self, rev=None):
         if rev:

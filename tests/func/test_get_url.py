@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
@@ -24,10 +26,12 @@ def test_get_dir(tmp_dir):
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_get_url_to_dir(tmp_dir, dname):
-    tmp_dir.gen({"foo": "foo contents", "dir": {"subdir": {}}})
+def test_get_url_to_dir(
+    tmp_dir, tmp_path_factory, dname,
+):
+    tmp_dir.gen({"src": {"foo": "foo contents"}, "dir": {"subdir": {}}})
 
-    Repo.get_url("foo", dname)
+    Repo.get_url(os.path.join("src", "foo"), dname)
 
     assert (tmp_dir / dname).is_dir()
     assert (tmp_dir / dname / "foo").read_text() == "foo contents"

@@ -80,21 +80,36 @@ def fetch(
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
+    from dvc.path_info import PathInfo
     from dvc.scm.base import CloneError
 
-    failed, downloaded = 0, 0
+    failed = 0
+
+    results = []
+
+    def cb(result):
+        results.append(result)
+
     cache = self.cache.local
     try:
         with external_repo(
             repo_url, repo_rev, cache_dir=cache.cache_dir
         ) as repo:
-            d, f, _ = repo.fetch_external(files, jobs=jobs)
-            downloaded += d
-            failed += f
+            root = PathInfo(repo.root_dir)
+            for path in files:
+                path_info = root / path
+                self.cache.local.save(
+                    path_info,
+                    repo.repo_tree,
+                    None,
+                    jobs=jobs,
+                    download_callback=cb,
+                    follow_subrepos=False,
+                )
     except CloneError:
         failed += 1
         logger.exception(
             "failed to fetch data for '{}'".format(", ".join(files))
         )
 
-    return downloaded, failed
+    return sum(results), failed

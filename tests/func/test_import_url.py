@@ -69,7 +69,7 @@ class TestImportFilename(TestDvc):
         os.mkdir("sub")
 
         path = os.path.join("sub", "bar.dvc")
-        ret = main(["import-url", "--file", path, self.external_source])
+        ret = main(["import-url", "--file", path, self.external_source, "out"])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists(path))
 

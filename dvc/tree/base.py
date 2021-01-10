@@ -400,6 +400,7 @@ class BaseTree:
         file_mode=None,
         dir_mode=None,
         jobs=None,
+        **kwargs,
     ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
@@ -423,9 +424,10 @@ class BaseTree:
                 file_mode,
                 dir_mode,
                 jobs,
+                **kwargs,
             )
         return self._download_file(
-            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+            from_info, to_info, name, no_progress_bar, file_mode, dir_mode,
         )
 
     def _download_dir(
@@ -437,8 +439,9 @@ class BaseTree:
         file_mode,
         dir_mode,
         jobs,
+        **kwargs,
     ):
-        from_infos = list(self.walk_files(from_info))
+        from_infos = list(self.walk_files(from_info, **kwargs))
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )
