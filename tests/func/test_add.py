@@ -1007,3 +1007,16 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 
     hash_info = stage.outs[0].hash_info
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+
+
+@pytest.mark.parametrize(
+    "invalid_opt, kwargs",
+    [
+        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
+        ("no_commit", {"targets": ["foo"], "no_commit": True}),
+        ("recursive", {"targets": ["foo"], "recursive": True},),
+    ],
+)
+def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
+    with pytest.raises(ValueError, match=invalid_opt):
+        dvc.add(to_remote=True, **kwargs)

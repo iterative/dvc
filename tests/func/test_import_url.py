@@ -337,3 +337,8 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
             local_remote.hash_to_path_info(file_part["md5"]).read_text()
             == file_part["relpath"]
         )
+
+
+def test_import_url_to_remote_invalid_combinations(dvc):
+    with pytest.raises(ValueError, match="no_exec"):
+        dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)

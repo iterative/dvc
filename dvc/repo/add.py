@@ -45,13 +45,13 @@ def add(
         if len(targets) != 1:
             invalid_opt = "multiple targets"
         elif no_commit:
-            invalid_opt = "no commit option"
+            invalid_opt = "no_commit"
         elif recursive:
-            invalid_opt = "recursive option"
+            invalid_opt = "recursive"
 
         if invalid_opt is not None:
             raise ValueError(
-                f"to-remote option can't be used with {invalid_opt}"
+                f"to-remote option can't be combined with {invalid_opt}"
             )
 
     link_failures = []

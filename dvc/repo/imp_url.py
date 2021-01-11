@@ -29,6 +29,9 @@ def imp_url(
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out)
 
+    if to_remote and no_exec:
+        raise ValueError("to-remote option can't be combined with no_exec")
+
     # NOTE: when user is importing something from within their own repository
     if (
         erepo is None
