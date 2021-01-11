@@ -153,14 +153,6 @@ class ExternalRepo(Repo):
             self, subrepos=self.subrepos, repo_factory=self.make_repo
         )
 
-    def get_rev(self):
-        from dvc.tree.local import LocalTree
-
-        assert self.scm
-        if isinstance(self.tree, LocalTree):
-            return self.scm.get_rev()
-        return self.tree.rev
-
     def _get_tree_for(self, repo, **kwargs):
         """
         Provides a combined tree of a single repo with dvc + git/local tree.
