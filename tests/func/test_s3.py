@@ -1,4 +1,3 @@
-import io
 from functools import wraps
 
 import boto3
@@ -124,16 +123,12 @@ def test_s3_isdir(tmp_dir, dvc, s3):
 
 
 @mock_s3
-def test_multipart_upload(dvc):
-    from_info, to_info = _get_src_dst()
-    s3 = boto3.client("s3")
-    s3.create_bucket(Bucket=from_info.bucket)
+def test_s3_upload_fobj(tmp_dir, dvc, s3):
+    s3.gen({"data": {"foo": "foo"}})
+    tree = S3Tree(dvc, s3.config)
 
-    tree = S3Tree(dvc, {"url": str(to_info)})
+    to_info = s3 / "data" / "bar"
+    with tree.open(s3 / "data" / "foo", "wb") as stream:
+        tree.upload_fobj(stream, to_info, 1)
 
-    stream = io.BytesIO(b"data")
-    tree.upload_fobj(stream, to_info, 1)
-
-    assert tree.exists(to_info)
-    with tree.open(to_info) as stream:
-        assert stream.read() == "data"
+    assert to_info.read_text() == "foo"
