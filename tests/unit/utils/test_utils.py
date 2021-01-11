@@ -95,10 +95,11 @@ def test_file_md5_to_unix(tmp_dir):
     tmp_dir.gen("unix", b"foo content\n")
     tmp_dir.gen("dos", b"foo content\r\n")
 
-    assert file_md5("dos")[0]  == unixmd5
+    assert file_md5("dos")[0] == unixmd5
     assert file_md5("unix")[0] == unixmd5
     assert file_md5("dos", to_unix=False)[0] == dosmd5
     assert file_md5("unix", to_unix=False)[0] == unixmd5
+
 
 def test_tmp_fname():
     file_path = os.path.join("path", "to", "file")
