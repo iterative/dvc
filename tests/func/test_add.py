@@ -997,7 +997,7 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
     local_cloud.gen("foo", "foo")
 
     url = "remote://upstream/foo"
-    stage = dvc.add(url, to_remote=True)
+    [stage] = dvc.add(url, to_remote=True)
 
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()

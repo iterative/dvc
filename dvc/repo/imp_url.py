@@ -26,19 +26,6 @@ def imp_url(
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
 
-    if to_remote:
-        return self._transfer(  # pylint: disable=protected-access
-            url,
-            "import-url",
-            out=out,
-            fname=fname,
-            erepo=erepo,
-            frozen=frozen,
-            remote=remote,
-            desc=desc,
-            jobs=jobs,
-        )
-
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out)
 
@@ -76,6 +63,10 @@ def imp_url(
 
     if no_exec:
         stage.ignore_outs()
+    elif to_remote:
+        stage.outs[0].hash_info = self.cloud.transfer(
+            url, jobs=jobs, remote=remote, command="import-url"
+        )
     else:
         stage.run(jobs=jobs)
 
