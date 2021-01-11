@@ -25,23 +25,23 @@ def dos2unix(data):
     return data.replace(b"\r\n", b"\n")
 
 
-def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
+def _fobj_md5(fobj, hash_md5, to_unix, progress_func=None):
     while True:
         data = fobj.read(LOCAL_CHUNK_SIZE)
         if not data:
             break
 
-        if binary:
-            chunk = data
-        else:
+        if to_unix:
             chunk = dos2unix(data)
+        else:
+            chunk = data
 
         hash_md5.update(chunk)
         if progress_func:
             progress_func(len(data))
 
 
-def file_md5(fname, tree=None):
+def file_md5(fname, to_unix=True, tree=None):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.istextfile import istextfile
     from dvc.progress import Tqdm
@@ -57,7 +57,7 @@ def file_md5(fname, tree=None):
 
     if exists_func(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname, tree=tree)
+        to_unix = to_unix and istextfile(fname, tree=tree)
         size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
@@ -76,7 +76,7 @@ def file_md5(fname, tree=None):
             leave=False,
         ) as pbar:
             with open_func(fname, "rb") as fobj:
-                _fobj_md5(fobj, hash_md5, binary, pbar.update)
+                _fobj_md5(fobj, hash_md5, to_unix, pbar.update)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
 

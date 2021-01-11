@@ -89,6 +89,17 @@ def test_file_md5(tmp_dir):
     assert file_md5("foo") == file_md5(PathInfo("foo"))
 
 
+def test_file_md5_to_unix(tmp_dir):
+    unixmd5 = "fe7297fc04aa54f76ac9537f1a22aa15"
+    dosmd5 = "3060ccb598fd503335eae431903f1ef1"
+    tmp_dir.gen("unix", b"foo content\n")
+    tmp_dir.gen("dos", b"foo content\r\n")
+
+    assert file_md5("dos")[0]  == unixmd5
+    assert file_md5("unix")[0] == unixmd5
+    assert file_md5("dos", to_unix=False)[0] == dosmd5
+    assert file_md5("unix", to_unix=False)[0] == unixmd5
+
 def test_tmp_fname():
     file_path = os.path.join("path", "to", "file")
     file_path_info = PathInfo(file_path)

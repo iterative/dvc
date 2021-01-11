@@ -303,7 +303,8 @@ class LocalTree(BaseTree):
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
     def get_file_hash(self, path_info):
-        hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
+        to_unix=self.repo.config["core"].get("dos2unix")
+        hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, to_unix=to_unix)[0],)
 
         if hash_info:
             hash_info.size = os.path.getsize(path_info)
