@@ -111,3 +111,11 @@ def test_copy_multipart_preserve_etag():
     s3.create_bucket(Bucket=from_info.bucket)
     _upload_multipart(s3, from_info.bucket, from_info.path)
     S3Tree._copy(s3, from_info, to_info, {})
+
+
+def test_s3_isdir(tmp_dir, dvc, s3):
+    s3.gen({"data": {"foo": "foo"}})
+    tree = S3Tree(dvc, s3.config)
+
+    assert not tree.isdir(s3 / "data" / "foo")
+    assert tree.isdir(s3 / "data")
