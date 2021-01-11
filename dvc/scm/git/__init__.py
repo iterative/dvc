@@ -64,6 +64,10 @@ class GitBackends(Mapping):
         for backend in self.initialized.values():
             backend.close()
 
+    def reset_all(self) -> None:
+        for backend in self.initialized.values():
+            backend._reset()  # pylint: disable=protected-access
+
 
 class Git(Base):
     """Class for managing Git."""
@@ -450,3 +454,6 @@ class Git(Base):
             if rev:
                 logger.debug("Restoring stashed workspace")
                 self.stash.pop()
+
+    def _reset(self) -> None:
+        self.backends.reset_all()

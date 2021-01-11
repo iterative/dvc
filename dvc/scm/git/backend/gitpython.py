@@ -5,7 +5,7 @@ import os
 from functools import partial
 from typing import Callable, Iterable, Mapping, Optional, Tuple
 
-from funcy import first
+from funcy import first, ignore
 
 from dvc.progress import Tqdm
 from dvc.scm.base import CloneError, RevError, SCMError
@@ -111,8 +111,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def git(self):
         return self.repo.git
 
-    def is_ignored(self, path):
-        raise NotImplementedError
+    def is_ignored(self, path: str) -> bool:
+        from git.exc import GitCommandError
+
+        func = ignore(GitCommandError)(self.repo.git.check_ignore)
+        return bool(func(path))
 
     @property
     def root_dir(self) -> str:

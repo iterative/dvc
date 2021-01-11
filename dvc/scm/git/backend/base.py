@@ -23,7 +23,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def is_ignored(self, path):
+    def is_ignored(self, path: str) -> bool:
         """Return True if the specified path is gitignored."""
 
     @property
@@ -305,3 +305,6 @@ class BaseGitBackend(ABC):
         If ignored is True, gitignored files will be included in
         untracked_paths.
         """
+
+    def _reset(self) -> None:
+        pass

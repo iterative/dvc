@@ -148,11 +148,12 @@ class Repo:
 
         tree_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:
-            self.tree = scm.get_tree(rev, **tree_kwargs)
+            self._tree = scm.get_tree(rev, **tree_kwargs)
         else:
-            self.tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
+            self._tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
 
         self.config = Config(self.dvc_dir, tree=self.tree, config=config)
+        self._uninitialized = uninitialized
         self._scm = scm
 
         # used by RepoTree to determine if it should traverse subrepos
@@ -184,16 +185,28 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
-        self.stage_collection_error_handler = None
         self.live = Live(self)
+
+        self.stage_collection_error_handler = None
         self._lock_depth = 0
 
     @cached_property
     def scm(self):
         from dvc.scm import SCM
+        from dvc.scm.base import SCMError
+
+        if self._scm:
+            return self._scm
 
         no_scm = self.config["core"].get("no_scm", False)
-        return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
+        try:
+            return SCM(self.root_dir, no_scm=no_scm)
+        except SCMError:
+            if self._uninitialized:
+                # might not be a git/dvc repo at all
+                # used in `params/metrics/plots/live` targets
+                return SCM(self.root_dir, no_scm=True)
+            raise
 
     @cached_property
     def experiments(self):
@@ -442,6 +455,7 @@ class Repo:
         self.scm.close()
 
     def _reset(self):
+        self.scm._reset()  # pylint: disable=protected-access
         self.__dict__.pop("outs_trie", None)
         self.__dict__.pop("outs_graph", None)
         self.__dict__.pop("graph", None)

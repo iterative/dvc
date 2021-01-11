@@ -6,6 +6,8 @@ import stat
 from io import BytesIO, StringIO
 from typing import Callable, Dict, Iterable, Mapping, Optional, Tuple
 
+from funcy import cached_property
+
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.scm.base import SCMError
@@ -223,11 +225,18 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             self._stashes[ref] = DulwichStash(self.repo, ref=os.fsencode(ref))
         return self._stashes[ref]
 
-    def is_ignored(self, path):
-        from dulwich import ignore
+    @cached_property
+    def ignore_manager(self):
+        from dulwich.ignore import IgnoreFilterManager
 
-        manager = ignore.IgnoreFilterManager.from_repo(self.repo)
-        return manager.is_ignored(relpath(path, self.root_dir))
+        return IgnoreFilterManager.from_repo(self.repo)
+
+    def is_ignored(self, path: str) -> bool:
+        # `is_ignored` returns `false` if excluded in `.gitignore` and
+        # `None` if it's not mentioned at all. `True` if it is ignored.
+        return bool(
+            self.ignore_manager.is_ignored(relpath(path, self.root_dir))
+        )
 
     def set_ref(
         self,
@@ -550,3 +559,6 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             [os.fsdecode(name) for name in unstaged],
             [os.fsdecode(name) for name in untracked],
         )
+
+    def _reset(self) -> None:
+        self.__dict__.pop("ignore_manager", None)

@@ -78,10 +78,12 @@ def test_ignore(tmp_dir, scm):
 
     scm.ignore(foo)
     assert (tmp_dir / ".gitignore").is_file()
+    scm._reset()
     assert _count_gitignore_entries(target) == 1
 
     scm.ignore(foo)
     assert (tmp_dir / ".gitignore").is_file()
+    scm._reset()
     assert _count_gitignore_entries(target) == 1
 
     scm.ignore_remove(foo)
