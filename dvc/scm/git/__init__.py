@@ -5,7 +5,7 @@ import os
 import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
-from functools import partialmethod
+from functools import partial, partialmethod
 from typing import Dict, Iterable, List, Optional, Set, Type
 
 from funcy import cached_property, first
@@ -350,9 +350,7 @@ class Git(Base):
         trie = GitTrie(tree_obj, resolved)
         return GitTree(self.root_dir, trie, **kwargs)
 
-    def is_ignored(self, path: str) -> bool:
-        return self.dulwich.is_ignored(path)
-
+    is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")
     commit = partialmethod(_backend_func, "commit")
     checkout = partialmethod(_backend_func, "checkout")
