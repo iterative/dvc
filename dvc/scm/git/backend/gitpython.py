@@ -8,7 +8,7 @@ from typing import Callable, Iterable, Mapping, Optional, Tuple
 from funcy import first, ignore
 
 from dvc.progress import Tqdm
-from dvc.scm.base import CloneError, RevError, SCMError
+from dvc.scm.base import CloneError, MergeConflictError, RevError, SCMError
 from dvc.utils import fix_env, is_binary
 
 from ..objects import GitObject
@@ -524,3 +524,30 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         self, ignored: bool = False
     ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
         raise NotImplementedError
+
+    def merge(
+        self,
+        rev: str,
+        commit: bool = True,
+        msg: Optional[str] = None,
+        squash: bool = False,
+    ) -> Optional[str]:
+        from git.exc import GitCommandError
+
+        if commit and squash:
+            raise SCMError("Cannot merge with 'squash' and 'commit'")
+
+        if commit and not msg:
+            raise SCMError("Merge commit message is required")
+
+        merge = partial(self.git.merge, rev)
+        try:
+            if commit:
+                merge(m=msg)
+                return self.get_rev()
+            merge(no_commit=True, squash=True)
+        except GitCommandError as exc:
+            if "CONFLICT" in str(exc):
+                raise MergeConflictError("Merge contained conflicts") from exc
+            raise SCMError("Merge failed") from exc
+        return None

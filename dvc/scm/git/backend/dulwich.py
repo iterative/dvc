@@ -562,3 +562,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def _reset(self) -> None:
         self.__dict__.pop("ignore_manager", None)
+
+    def merge(
+        self,
+        rev: str,
+        commit: bool = True,
+        msg: Optional[str] = None,
+        squash: bool = False,
+    ) -> Optional[str]:
+        raise NotImplementedError

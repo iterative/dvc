@@ -34,6 +34,10 @@ class NoSCMError(SCMError):
         super().__init__(msg)
 
 
+class MergeConflictError(SCMError):
+    pass
+
+
 class Base:
     """Base class for source control management driver implementations."""
 

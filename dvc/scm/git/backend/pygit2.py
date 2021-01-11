@@ -4,7 +4,7 @@ import os
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, Mapping, Optional, Tuple
 
-from dvc.scm.base import SCMError
+from dvc.scm.base import MergeConflictError, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
@@ -235,3 +235,39 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         self, ignored: bool = False
     ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
         raise NotImplementedError
+
+    def merge(
+        self,
+        rev: str,
+        commit: bool = True,
+        msg: Optional[str] = None,
+        squash: bool = False,
+    ) -> Optional[str]:
+        # pylint: disable=no-name-in-module
+        from pygit2 import GIT_RESET_MIXED, GitError
+
+        if commit and squash:
+            raise SCMError("Cannot merge with 'squash' and 'commit'")
+
+        if commit and not msg:
+            raise SCMError("Merge commit message is required")
+
+        try:
+            self.repo.merge(rev)
+        except GitError as exc:
+            raise SCMError("Merge failed") from exc
+
+        if self.repo.index.conflicts:
+            raise MergeConflictError("Merge contained conflicts")
+
+        if commit:
+            user = self.repo.default_signature
+            tree = self.repo.index.write_tree()
+            merge_commit = self.repo.create_commit(
+                "HEAD", user, user, msg, tree, [self.repo.head.target, rev]
+            )
+            return str(merge_commit)
+        if squash:
+            self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
+            self.repo.state_cleanup()
+        return None
