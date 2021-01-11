@@ -5,6 +5,7 @@ from io import BytesIO, StringIO
 from typing import Callable, Iterable, Mapping, Optional, Tuple
 
 from dvc.scm.base import SCMError
+from dvc.utils import relpath
 
 from ..objects import GitObject
 from .base import BaseGitBackend
@@ -146,8 +147,8 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def _get_stash(self, ref: str):
         raise NotImplementedError
 
-    def is_ignored(self, path):
-        raise NotImplementedError
+    def is_ignored(self, path: str) -> bool:
+        return self.repo.path_is_ignored(relpath(path, self.root_dir))
 
     def set_ref(
         self,

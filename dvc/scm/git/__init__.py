@@ -64,6 +64,10 @@ class GitBackends(Mapping):
         for backend in self.initialized.values():
             backend.close()
 
+    def reset_all(self) -> None:
+        for backend in self.initialized.values():
+            backend._reset()
+
 
 class Git(Base):
     """Class for managing Git."""
@@ -346,7 +350,9 @@ class Git(Base):
         trie = GitTrie(tree_obj, resolved)
         return GitTree(self.root_dir, trie, **kwargs)
 
-    is_ignored = partialmethod(_backend_func, "is_ignored")
+    def is_ignored(self, path: str) -> bool:
+        return self.dulwich.is_ignored(path)
+
     add = partialmethod(_backend_func, "add")
     commit = partialmethod(_backend_func, "commit")
     checkout = partialmethod(_backend_func, "checkout")
@@ -450,3 +456,6 @@ class Git(Base):
             if rev:
                 logger.debug("Restoring stashed workspace")
                 self.stash.pop()
+
+    def _reset(self) -> None:
+        self.backends.reset_all()

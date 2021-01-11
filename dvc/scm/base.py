@@ -174,3 +174,6 @@ class Base:
 
     def close(self):
         """ Method to close the files """
+
+    def _reset(self) -> None:
+        pass
