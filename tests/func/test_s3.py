@@ -116,6 +116,6 @@ def test_copy_multipart_preserve_etag():
 def test_s3_isdir(tmp_dir, dvc, s3):
     s3.gen({"data": {"foo": "foo"}})
     tree = S3Tree(dvc, s3.config)
-    
+
     assert not tree.isdir(s3 / "data" / "foo")
     assert tree.isdir(s3 / "data")
