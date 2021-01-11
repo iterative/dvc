@@ -3,7 +3,6 @@ import itertools
 import json
 import logging
 import os
-import tempfile
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy

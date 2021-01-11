@@ -122,6 +122,7 @@ def test_s3_isdir(tmp_dir, dvc, s3):
     assert not tree.isdir(s3 / "data" / "foo")
     assert tree.isdir(s3 / "data")
 
+
 @mock_s3
 def test_multipart_upload(dvc):
     from_info, to_info = _get_src_dst()

@@ -65,8 +65,8 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             return file_hash
         raise FileNotFoundError
 
-    def open(
-        self, path: PathInfo, mode="r", encoding="utf-8", remote=None
+    def open(  # type: ignore
+        self, path: PathInfo, mode="r", encoding="utf-8", remote=None, **kwargs
     ):  # pylint: disable=arguments-differ
         try:
             outs = self._find_outs(path, strict=False)
