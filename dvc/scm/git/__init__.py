@@ -5,7 +5,7 @@ import os
 import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
-from functools import partial, partialmethod
+from functools import partialmethod
 from typing import Dict, Iterable, List, Optional, Set, Type
 
 from funcy import cached_property, first
@@ -66,7 +66,7 @@ class GitBackends(Mapping):
 
     def reset_all(self) -> None:
         for backend in self.initialized.values():
-            backend._reset()
+            backend._reset()  # pylint: disable=protected-access
 
 
 class Git(Base):
