@@ -2,6 +2,7 @@ import getpass
 import io
 import logging
 import os
+import shutil
 import threading
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
@@ -11,7 +12,6 @@ from funcy import first, memoize, silent, wrap_with
 import dvc.prompt as prompt
 from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
-from dvc.utils.fs import copy_fobj_to_fobj
 
 from ..base import BaseTree
 from ..pool import get_connection
@@ -262,8 +262,12 @@ class SSHTree(BaseTree):
             )
 
     def upload_fobj(self, fobj, to_info, no_progress_bar=False):
-        with self.open(to_info, mode="wb") as fdest:
-            copy_fobj_to_fobj(fobj, fdest, self.CHUNK_SIZE, no_progress_bar)
+        from dvc.progress import Tqdm
+
+        with Tqdm(bytes=True, disable=no_progress_bar) as pbar:
+            with pbar.wrapattr(fobj, "read") as fobj:
+                with self.open(to_info, mode="wb") as fdest:
+                    shutil.copyfileobj(fobj, fdest, length=self.CHUNK_SIZE)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

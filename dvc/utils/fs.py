@@ -201,22 +201,10 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
                     fdest_wrapped.write(buf)
 
 
-def copy_fobj_to_file(fsrc, dest):
+def copy_fobj_to_file(fsrc, dest, chunk_size=None):
     """Copy contents of open file object to destination path."""
     with open(dest, "wb+") as fdest:
-        shutil.copyfileobj(fsrc, fdest)
-
-
-def copy_fobj_to_fobj(fsrc, fdest, chunk_size=-1, no_progress_bar=False):
-    from dvc.progress import Tqdm
-
-    with Tqdm(disable=no_progress_bar, bytes=True) as pbar:
-        while True:
-            data = fsrc.read(chunk_size)
-            if not data:
-                break
-            fdest.write(data)
-            pbar.update(len(data))
+        shutil.copyfileobj(fsrc, fdest, length=chunk_size)
 
 
 def walk_files(directory):

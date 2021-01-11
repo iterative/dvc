@@ -239,7 +239,7 @@ class BaseTree:
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
-    def copy_fobj(self, fobj, to_info):
+    def copy_fobj(self, fobj, to_info, chunk_size=None):
         raise RemoteActionNotImplemented("copy_fobj", self.scheme)
 
     def symlink(self, from_info, to_info):

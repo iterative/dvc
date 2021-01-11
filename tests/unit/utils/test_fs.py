@@ -14,7 +14,6 @@ from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
     contains_symlink_up_to,
     copy_fobj_to_file,
-    copy_fobj_to_fobj,
     copyfile,
     get_inode,
     get_mtime_and_size,
@@ -269,16 +268,6 @@ def test_copy_fobj_to_file(tmp_dir):
 
     with open(src, "rb") as fobj:
         copy_fobj_to_file(fobj, dest)
-    assert filecmp.cmp(src, dest)
-
-
-def test_copy_fobj_to_fobj(tmp_dir):
-    tmp_dir.gen({"foo": "foo"})
-    src = tmp_dir / "foo"
-    dest = tmp_dir / "bar"
-
-    with open(src, "rb") as fsrc, open(dest, "wb") as fdest:
-        copy_fobj_to_fobj(fsrc, fdest)
     assert filecmp.cmp(src, dest)
 
 
