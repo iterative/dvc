@@ -199,13 +199,13 @@ class S3Tree(BaseTree):
         return path_info.path in self._list_paths(path_info)
 
     def _list_paths(self, path_info, max_items=None):
-        kwargs = {"Prefix": path_info.path}
-        if max_items is not None:
-            kwargs["MaxKeys"] = max_items
-            kwargs["limit"] = max_items
-
         with self._get_bucket(path_info.bucket) as bucket:
-            for obj_summary in bucket.objects.filter(**kwargs):
+            obj_summaries = bucket.objects.filter(Prefix=path_info.path)
+            if max_items is not None:
+                obj_summaries = obj_summaries.page_size(max_items).limit(
+                    max_items
+                )
+            for obj_summary in obj_summaries:
                 yield obj_summary.key
 
     def walk_files(self, path_info, **kwargs):
