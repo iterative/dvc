@@ -113,15 +113,9 @@ def test_copy_multipart_preserve_etag():
     S3Tree._copy(s3, from_info, to_info, {})
 
 
-@mock_s3
-def test_s3_isdir(tmp_dir, dvc, scm):
-    path_info = S3Tree.PATH_CLS("s3://bucket/data/foo")
-    tree = S3Tree(dvc, {"url": str(path_info.parent)})
-
-    s3 = tree.s3.meta.client
-    s3.create_bucket(Bucket=path_info.bucket)
-    s3.put_object(Bucket=path_info.bucket, Key=path_info.path, Body="data")
-
-    tree.makedirs(path_info.parent)
-    assert not tree.isdir(path_info)
-    assert tree.isdir(path_info.parent)
+def test_s3_isdir(tmp_dir, dvc, s3):
+    s3.gen({"data": {"foo": "foo"}})
+    tree = S3Tree(dvc, s3.config)
+    
+    assert not tree.isdir(s3 / "data" / "foo")
+    assert tree.isdir(s3 / "data")
