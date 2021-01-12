@@ -8,7 +8,7 @@ def test_hashed_stream_reader(tmp_dir):
     foo = tmp_dir / "foo"
     with open(foo, "rb") as fobj:
         stream_reader = HashedStreamReader(fobj)
-        stream_reader.read()
+        assert stream_reader.read(3) == b"foo"
 
     hex_digest, _ = file_md5(foo)
     assert stream_reader.is_text_file
