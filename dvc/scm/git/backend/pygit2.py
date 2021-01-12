@@ -225,8 +225,25 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         raise NotImplementedError
 
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
-        raise NotImplementedError
+    def checkout_index(
+        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+    ):
+        from pygit2 import (
+            GIT_CHECKOUT_FORCE,
+            GIT_CHECKOUT_RECREATE_MISSING,
+            GIT_CHECKOUT_SAFE,
+        )
+
+        strategy = GIT_CHECKOUT_RECREATE_MISSING
+        if force:
+            strategy |= GIT_CHECKOUT_FORCE
+        else:
+            strategy |= GIT_CHECKOUT_SAFE
+        self.repo.checkout_index(
+            self.repo.index,
+            paths=list(paths) if paths else None,
+            strategy=strategy,
+        )
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         raise NotImplementedError

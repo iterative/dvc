@@ -385,7 +385,7 @@ class Git(Base):
     describe = partialmethod(_backend_func, "describe")
     diff = partialmethod(_backend_func, "diff")
     reset = partialmethod(_backend_func, "reset")
-    checkout_paths = partialmethod(_backend_func, "checkout_paths")
+    checkout_index = partialmethod(_backend_func, "checkout_index")
     status = partialmethod(_backend_func, "status")
     merge = partialmethod(_backend_func, "merge")
 

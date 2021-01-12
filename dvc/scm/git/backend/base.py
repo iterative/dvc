@@ -290,8 +290,10 @@ class BaseGitBackend(ABC):
         """Reset current git HEAD."""
 
     @abstractmethod
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
-        """Checkout the specified paths from HEAD index."""
+    def checkout_index(
+        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+    ):
+        """Checkout the specified paths from index."""
 
     @abstractmethod
     def status(

@@ -539,7 +539,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         raise NotImplementedError
 
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
+    def checkout_index(
+        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+    ):
         raise NotImplementedError
 
     def status(

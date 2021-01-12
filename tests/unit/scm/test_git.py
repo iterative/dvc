@@ -368,3 +368,19 @@ def test_merge(tmp_dir, scm, git, squash):
         assert scm.get_rev() == init_rev
     else:
         assert scm.get_rev() == merge_rev
+
+
+def test_checkout_index(tmp_dir, scm, git):
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="init")
+    tmp_dir.gen("foo", "baz")
+
+    git.checkout_index(["foo"], force=True)
+    assert (tmp_dir / "foo").read_text() == "foo"
+
+    tmp_dir.gen({"foo": "baz", "bar": "baz"})
+    git.checkout_index(force=True)
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "bar").read_text() == "bar"

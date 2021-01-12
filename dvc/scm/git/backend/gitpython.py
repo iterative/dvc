@@ -515,10 +515,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         self.repo.head.reset(index=True, working_tree=hard, paths=paths)
 
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
+    def checkout_index(
+        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+    ):
         """Checkout the specified paths from HEAD index."""
-        if paths:
-            self.repo.index.checkout(paths=paths, force=force)
+        self.repo.index.checkout(paths=paths, force=force)
 
     def status(
         self, ignored: bool = False
