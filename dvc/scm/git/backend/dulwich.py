@@ -117,8 +117,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.commondir()
 
-    def add(self, paths: Iterable[str]):
+    def add(self, paths: Iterable[str], update=False):
         from dvc.utils.fs import walk_files
+
+        if update:
+            raise NotImplementedError
 
         if isinstance(paths, str):
             paths = [paths]
@@ -539,7 +542,13 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         raise NotImplementedError
 
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
+    def checkout_index(
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
+    ):
         raise NotImplementedError
 
     def status(
@@ -562,3 +571,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def _reset(self) -> None:
         self.__dict__.pop("ignore_manager", None)
+
+    def merge(
+        self,
+        rev: str,
+        commit: bool = True,
+        msg: Optional[str] = None,
+        squash: bool = False,
+    ) -> Optional[str]:
+        raise NotImplementedError

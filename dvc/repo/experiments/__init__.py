@@ -251,7 +251,7 @@ class Experiments:
         ]
         if lock_files:
             self.scm.reset(paths=lock_files)
-            self.scm.checkout_paths(lock_files, force=True)
+            self.scm.checkout_index(paths=lock_files, force=True)
 
     def _stash_msg(
         self,

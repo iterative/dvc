@@ -8,11 +8,12 @@ from tests.basic_env import TestDvcGit
 
 # Behaves the same as SCM but will test against all suported Git backends.
 # tmp_dir.scm will still contain a default SCM instance.
-@pytest.fixture(params=["gitpython", "dulwich"])
+@pytest.fixture(params=["gitpython", "dulwich", "pygit2"])
 def git(tmp_dir, scm, request):
     from dvc.scm.git import Git
 
     git_ = Git(os.fspath(tmp_dir), backends=[request.param])
+    git_.test_backend = request.param
     yield git_
     git_.close()
 
@@ -140,6 +141,9 @@ def test_branch_revs(tmp_dir, scm):
 
 
 def test_set_ref(tmp_dir, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.scm_gen({"file": "1"}, commit="commit")
@@ -167,6 +171,9 @@ def test_set_ref(tmp_dir, git):
 
 
 def test_get_ref(tmp_dir, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.gen(
@@ -185,6 +192,9 @@ def test_get_ref(tmp_dir, git):
 
 
 def test_remove_ref(tmp_dir, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.gen(os.path.join(".git", "refs", "foo", "bar"), init_rev)
@@ -282,6 +292,8 @@ def test_list_all_commits(tmp_dir, scm):
 
 
 def test_ignore_remove_empty(tmp_dir, scm, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
 
     test_entries = [
         {"entry": "/foo1", "path": f"{tmp_dir}/foo1"},
@@ -310,6 +322,9 @@ def test_ignore_remove_empty(tmp_dir, scm, git):
 def test_commit_no_verify(tmp_dir, scm, git, hook):
     import stat
 
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
     hook_file = os.path.join(".git", "hooks", hook)
     tmp_dir.gen(
         hook_file, "#!/usr/bin/env python\nimport sys\nsys.exit(1)",
@@ -321,3 +336,77 @@ def test_commit_no_verify(tmp_dir, scm, git, hook):
     with pytest.raises(SCMError):
         git.commit("commit foo")
     git.commit("commit foo", no_verify=True)
+
+
+@pytest.mark.parametrize("squash", [True, False])
+def test_merge(tmp_dir, scm, git, squash):
+    from dvc.scm.base import MergeConflictError
+
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen("foo", "foo", commit="init")
+    init_rev = scm.get_rev()
+
+    scm.checkout("branch", create_new=True)
+    tmp_dir.scm_gen("foo", "bar", commit="bar")
+    branch = scm.resolve_rev("branch")
+
+    scm.checkout("master")
+
+    with pytest.raises(MergeConflictError):
+        tmp_dir.scm_gen("foo", "baz", commit="baz")
+        git.merge(branch, commit=not squash, squash=squash, msg="merge")
+
+    scm.gitpython.git.reset(init_rev, hard=True)
+    merge_rev = git.merge(
+        branch, commit=not squash, squash=squash, msg="merge"
+    )
+    assert (tmp_dir / "foo").read_text() == "bar"
+    if squash:
+        assert merge_rev is None
+        assert scm.get_rev() == init_rev
+    else:
+        assert scm.get_rev() == merge_rev
+
+
+def test_checkout_index(tmp_dir, scm, git):
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="init")
+    tmp_dir.gen("foo", "baz")
+
+    git.checkout_index(["foo"], force=True)
+    assert (tmp_dir / "foo").read_text() == "foo"
+
+    tmp_dir.gen({"foo": "baz", "bar": "baz"})
+    git.checkout_index(force=True)
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "bar").read_text() == "bar"
+
+
+@pytest.mark.parametrize(
+    "strategy, expected", [("ours", "baz"), ("theirs", "bar")],
+)
+def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
+    from dvc.scm.base import MergeConflictError
+
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"file": "foo"}, commit="init")
+    scm.checkout("branch", create_new=True)
+    tmp_dir.scm_gen({"file": "bar"}, commit="bar")
+    bar = scm.get_rev()
+    scm.checkout("master")
+    tmp_dir.scm_gen({"file": "baz"}, commit="baz")
+
+    try:
+        git.merge(bar, commit=False, squash=True)
+    except MergeConflictError:
+        if strategy == "ours":
+            git.checkout_index(ours=True)
+        else:
+            git.checkout_index(theirs=True)
+    assert (tmp_dir / "file").read_text() == expected

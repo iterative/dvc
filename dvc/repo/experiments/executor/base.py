@@ -106,9 +106,8 @@ class BaseExecutor(ABC):
             # committing
             head = EXEC_BRANCH if branch else EXEC_HEAD
             self.scm.checkout(head, detach=True)
-            self.scm.gitpython.repo.git.merge(
-                EXEC_MERGE, squash=True, no_commit=True
-            )
+            merge_rev = self.scm.get_ref(EXEC_MERGE)
+            self.scm.merge(merge_rev, squash=True, commit=False)
         finally:
             os.chdir(cwd)
 
@@ -400,7 +399,7 @@ class BaseExecutor(ABC):
                 raise ExperimentExistsError(ref_info.name)
             logger.debug("Commit to new experiment branch '%s'", branch)
 
-        scm.gitpython.repo.git.add(update=True)
+        scm.add([], update=True)
         scm.commit(f"dvc: commit experiment {exp_hash}", no_verify=True)
         new_rev = scm.get_rev()
         scm.set_ref(branch, new_rev, old_ref=old_ref)

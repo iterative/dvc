@@ -8,7 +8,7 @@ from typing import Callable, Iterable, Mapping, Optional, Tuple
 from funcy import first, ignore
 
 from dvc.progress import Tqdm
-from dvc.scm.base import CloneError, RevError, SCMError
+from dvc.scm.base import CloneError, MergeConflictError, RevError, SCMError
 from dvc.utils import fix_env, is_binary
 
 from ..objects import GitObject
@@ -188,11 +188,14 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.git_dir
 
-    def add(self, paths: Iterable[str]):
+    def add(self, paths: Iterable[str], update=False):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
-            self.repo.index.add(paths)
+            if update:
+                self.git.add(*paths, update=True)
+            else:
+                self.repo.index.add(paths)
         except AssertionError:
             msg = (
                 "failed to add '{}' to git. You can add those files "
@@ -487,7 +490,16 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return commit.hexsha, False
 
     def _stash_apply(self, rev: str):
-        self.git.stash("apply", rev)
+        from git.exc import GitCommandError
+
+        try:
+            self.git.stash("apply", rev)
+        except GitCommandError as exc:
+            if "CONFLICT" in str(exc):
+                raise MergeConflictError(
+                    "Stash apply resulted in merge conflicts"
+                ) from exc
+            raise SCMError("Could not apply stash") from exc
 
     def reflog_delete(
         self, ref: str, updateref: bool = False, rewrite: bool = False
@@ -515,12 +527,56 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         self.repo.head.reset(index=True, working_tree=hard, paths=paths)
 
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
+    def checkout_index(
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
+    ):
         """Checkout the specified paths from HEAD index."""
-        if paths:
+        assert not (ours and theirs)
+        if ours or theirs:
+            args = ["--ours"] if ours else ["--theirs"]
+            if force:
+                args.append("--force")
+            args.append("--")
+            if paths:
+                args.extend(list(paths))
+            else:
+                args.append(".")
+            self.repo.git.checkout(*args)
+        else:
             self.repo.index.checkout(paths=paths, force=force)
 
     def status(
         self, ignored: bool = False
     ) -> Tuple[Mapping[str, Iterable[str]], Iterable[str], Iterable[str]]:
         raise NotImplementedError
+
+    def merge(
+        self,
+        rev: str,
+        commit: bool = True,
+        msg: Optional[str] = None,
+        squash: bool = False,
+    ) -> Optional[str]:
+        from git.exc import GitCommandError
+
+        if commit and squash:
+            raise SCMError("Cannot merge with 'squash' and 'commit'")
+
+        if commit and not msg:
+            raise SCMError("Merge commit message is required")
+
+        merge = partial(self.git.merge, rev)
+        try:
+            if commit:
+                merge(m=msg)
+                return self.get_rev()
+            merge(no_commit=True, squash=True)
+        except GitCommandError as exc:
+            if "CONFLICT" in str(exc):
+                raise MergeConflictError("Merge contained conflicts") from exc
+            raise SCMError("Merge failed") from exc
+        return None

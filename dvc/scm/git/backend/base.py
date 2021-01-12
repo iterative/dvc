@@ -52,7 +52,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def add(self, paths: Iterable[str]):
+    def add(self, paths: Iterable[str], update=False):
         pass
 
     @abstractmethod
@@ -290,8 +290,14 @@ class BaseGitBackend(ABC):
         """Reset current git HEAD."""
 
     @abstractmethod
-    def checkout_paths(self, paths: Iterable[str], force: bool = False):
-        """Checkout the specified paths from HEAD index."""
+    def checkout_index(
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
+    ):
+        """Checkout the specified paths from index."""
 
     @abstractmethod
     def status(
@@ -308,3 +314,30 @@ class BaseGitBackend(ABC):
 
     def _reset(self) -> None:
         pass
+
+    @abstractmethod
+    def merge(
+        self,
+        rev: str,
+        commit: bool = True,
+        msg: Optional[str] = None,
+        squash: bool = False,
+    ) -> Optional[str]:
+        """Merge specified commit into the current (working copy) branch.
+
+        Args:
+            rev: Git revision to merge.
+            commit: If True, merge will be committed using `msg` as the commit
+                message. If False, the merge changes will be staged but not
+                committed.
+            msg: Merge commit message, required if `commit` is True.
+            squash: If True, working tree state will be updated with merge
+                results, but no commit will be made and no changes will be
+                staged. `commit` must be False when `squash` is True.
+
+        If conflicts are present after merging, MergeConflictError will be
+        raised. The caller is responsible for either resolving the conflicts
+        or resetting the repository state.
+
+        Returns revision of the merge commit or None if no commit was made.
+        """
