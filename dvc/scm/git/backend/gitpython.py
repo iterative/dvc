@@ -487,7 +487,16 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return commit.hexsha, False
 
     def _stash_apply(self, rev: str):
-        self.git.stash("apply", rev)
+        from git.exc import GitCommandError
+
+        try:
+            self.git.stash("apply", rev)
+        except GitCommandError as exc:
+            if "CONFLICT" in str(exc):
+                raise MergeConflictError(
+                    "Stash apply resulted in merge conflicts"
+                ) from exc
+            raise SCMError("Could not apply stash") from exc
 
     def reflog_delete(
         self, ref: str, updateref: bool = False, rewrite: bool = False
@@ -516,10 +525,26 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         self.repo.head.reset(index=True, working_tree=hard, paths=paths)
 
     def checkout_index(
-        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
     ):
         """Checkout the specified paths from HEAD index."""
-        self.repo.index.checkout(paths=paths, force=force)
+        assert not (ours and theirs)
+        if ours or theirs:
+            args = ["--ours"] if ours else ["--theirs"]
+            if force:
+                args.append("--force")
+            args.append("--")
+            if paths:
+                args.extend(list(paths))
+            else:
+                args.append(".")
+            self.repo.git.checkout(*args)
+        else:
+            self.repo.index.checkout(paths=paths, force=force)
 
     def status(
         self, ignored: bool = False

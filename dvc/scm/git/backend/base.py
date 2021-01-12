@@ -291,7 +291,11 @@ class BaseGitBackend(ABC):
 
     @abstractmethod
     def checkout_index(
-        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
     ):
         """Checkout the specified paths from index."""
 

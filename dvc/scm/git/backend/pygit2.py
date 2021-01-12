@@ -226,24 +226,50 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def checkout_index(
-        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
     ):
         from pygit2 import (
+            GIT_CHECKOUT_ALLOW_CONFLICTS,
             GIT_CHECKOUT_FORCE,
             GIT_CHECKOUT_RECREATE_MISSING,
             GIT_CHECKOUT_SAFE,
         )
 
+        assert not (ours and theirs)
         strategy = GIT_CHECKOUT_RECREATE_MISSING
-        if force:
+        if force or ours or theirs:
             strategy |= GIT_CHECKOUT_FORCE
         else:
             strategy |= GIT_CHECKOUT_SAFE
+
+        if ours or theirs:
+            strategy |= GIT_CHECKOUT_ALLOW_CONFLICTS
+
+        index = self.repo.index
         self.repo.checkout_index(
-            self.repo.index,
+            index=index,
             paths=list(paths) if paths else None,
             strategy=strategy,
         )
+
+        if index.conflicts and (ours or theirs):
+            for ancestor, ours_entry, theirs_entry in index.conflicts:
+                if not ancestor:
+                    continue
+                if ours:
+                    entry = ours_entry
+                    index.add(ours_entry)
+                else:
+                    entry = theirs_entry
+                path = os.path.join(self.repo.workdir, entry.path)
+                with open(path, "wb") as fobj:
+                    fobj.write(self.repo.get(entry.id).read_raw())
+                index.add(entry.path)
+            index.write()
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         raise NotImplementedError

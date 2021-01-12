@@ -384,3 +384,29 @@ def test_checkout_index(tmp_dir, scm, git):
     git.checkout_index(force=True)
     assert (tmp_dir / "foo").read_text() == "foo"
     assert (tmp_dir / "bar").read_text() == "bar"
+
+
+@pytest.mark.parametrize(
+    "strategy, expected", [("ours", "baz"), ("theirs", "bar")],
+)
+def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
+    from dvc.scm.base import MergeConflictError
+
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"file": "foo"}, commit="init")
+    scm.checkout("branch", create_new=True)
+    tmp_dir.scm_gen({"file": "bar"}, commit="bar")
+    bar = scm.get_rev()
+    scm.checkout("master")
+    tmp_dir.scm_gen({"file": "baz"}, commit="baz")
+
+    try:
+        git.merge(bar, commit=False, squash=True)
+    except MergeConflictError:
+        if strategy == "ours":
+            git.checkout_index(ours=True)
+        else:
+            git.checkout_index(theirs=True)
+    assert (tmp_dir / "file").read_text() == expected

@@ -540,7 +540,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def checkout_index(
-        self, paths: Optional[Iterable[str]] = None, force: bool = False,
+        self,
+        paths: Optional[Iterable[str]] = None,
+        force: bool = False,
+        ours: bool = False,
+        theirs: bool = False,
     ):
         raise NotImplementedError
 
