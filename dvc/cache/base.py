@@ -292,11 +292,10 @@ class CloudCache:
         return hash_info
 
     def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):
+        rel_path_infos = {}
         from_infos = from_tree.walk_files(from_info)
 
-        rel_path_infos = {}
-
-        def create_futures(executor, amount):
+        def create_tasks(executor, amount):
             for entry_info in itertools.islice(from_infos, amount):
                 pbar.total += 1
                 task = executor.submit(
@@ -307,13 +306,13 @@ class CloudCache:
 
         pbar.total = 0
         with ThreadPoolExecutor(max_workers=jobs) as executor:
-            tasks = set(create_futures(executor, jobs * 5))
+            tasks = set(create_tasks(executor, jobs * 5))
 
             while tasks:
                 done, tasks = futures.wait(
                     tasks, return_when=futures.FIRST_COMPLETED
                 )
-                tasks.update(create_futures(executor, len(done)))
+                tasks.update(create_tasks(executor, len(done)))
                 for task in done:
                     yield rel_path_infos.pop(task), task.result()
 
@@ -322,7 +321,7 @@ class CloudCache:
     ):
         dir_info = DirInfo()
 
-        with Tqdm(total=1, unit="file", disable=no_progress_bar) as pbar:
+        with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
             for entry_info, entry_hash in self._transfer_directory_contents(
                 from_tree, from_info, jobs, pbar
             ):

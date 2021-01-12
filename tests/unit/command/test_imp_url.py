@@ -131,5 +131,5 @@ def test_import_url_to_remote_invalid_combination(mocker, caplog):
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "--remote can't be used alone without --to-remote"
+        expected_msg = "--remote can't be used without --to-remote"
         assert expected_msg in caplog.text

@@ -7,6 +7,7 @@ import pytest
 
 from dvc.cache import Cache
 from dvc.dependency.base import DependencyDoesNotExistError
+from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.stage import Stage
 from dvc.utils.fs import makedirs
@@ -340,5 +341,5 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
 
 def test_import_url_to_remote_invalid_combinations(dvc):
-    with pytest.raises(ValueError, match="no_exec"):
+    with pytest.raises(InvalidArgumentError, match="--no-exec"):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)

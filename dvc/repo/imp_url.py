@@ -4,7 +4,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
 
-from ..exceptions import OutputDuplicationError
+from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
 
 
@@ -30,7 +30,14 @@ def imp_url(
     path, wdir, out = resolve_paths(self, out)
 
     if to_remote and no_exec:
-        raise ValueError("to-remote option can't be combined with no_exec")
+        raise InvalidArgumentError(
+            "--no-exec can't be combined with --to-remote"
+        )
+
+    if not to_remote and remote:
+        raise InvalidArgumentError(
+            "--remote can't be used without --to-remote"
+        )
 
     # NOTE: when user is importing something from within their own repository
     if (

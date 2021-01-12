@@ -18,24 +18,6 @@ class CmdAdd(CmdBase):
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
 
-            if len(self.args.targets) > 1 and self.args.to_remote:
-                logger.error("--to-remote can't used with multiple targets")
-                return 1
-
-            if not self.args.to_remote:
-                if self.args.remote:
-                    command = "--remote"
-                elif self.args.out:
-                    command = "--out"
-                else:
-                    command = None
-
-                if command is not None:
-                    logger.error(
-                        f"--{command} can't be used without" " --to-remote"
-                    )
-                    return 1
-
             self.repo.add(
                 self.args.targets,
                 recursive=self.args.recursive,
@@ -99,7 +81,6 @@ def add_parser(subparsers, parent_parser):
         "-o",
         "--out",
         help="Destination path to put files to.",
-        nargs="?",
         metavar="<filename>",
     )
     parser.add_argument(

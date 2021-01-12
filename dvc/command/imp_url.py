@@ -10,14 +10,6 @@ logger = logging.getLogger(__name__)
 
 class CmdImportUrl(CmdBase):
     def run(self):
-        if self.args.no_exec and self.args.to_remote:
-            logger.error("--no-exec can't be combined with --to-remote")
-            return 1
-
-        if self.args.remote and not self.args.to_remote:
-            logger.error("--remote can't be used alone without --to-remote")
-            return 1
-
         try:
             self.repo.imp_url(
                 self.args.url,

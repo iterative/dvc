@@ -6,6 +6,7 @@ import colorama
 
 from ..exceptions import (
     CacheLinkError,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def add(
+def add(  # noqa: C901
     repo,
     targets: "TargetType",
     recursive=False,
@@ -40,19 +41,24 @@ def add(
 
     targets = ensure_list(targets)
 
+    invalid_opt = None
     if to_remote:
-        invalid_opt = None
+        message = "{option} can't be used with --to-remote"
         if len(targets) != 1:
             invalid_opt = "multiple targets"
         elif no_commit:
-            invalid_opt = "no_commit"
+            invalid_opt = "--no-commit option"
         elif recursive:
-            invalid_opt = "recursive"
+            invalid_opt = "--recursive option"
+    else:
+        message = "{option} can't be used without --to-remote"
+        if kwargs.get("out"):
+            invalid_opt = "--out"
+        elif kwargs.get("remote"):
+            invalid_opt = "--remote"
 
-        if invalid_opt is not None:
-            raise ValueError(
-                f"to-remote option can't be combined with {invalid_opt}"
-            )
+    if invalid_opt is not None:
+        raise InvalidArgumentError(message.format(option=invalid_opt))
 
     link_failures = []
     stages_list = []

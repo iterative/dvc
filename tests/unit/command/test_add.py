@@ -82,7 +82,7 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
     cmd = cli_args.func(cli_args)
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
-        expected_msg = "--to-remote can't used with multiple targets"
+        expected_msg = "multiple targets can't be used with --to-remote"
         assert expected_msg in caplog.text
 
     for option in "--remote", "--out":
@@ -91,5 +91,5 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
         cmd = cli_args.func(cli_args)
         with caplog.at_level(logging.ERROR, logger="dvc"):
             assert cmd.run() == 1
-            expected_msg = f"--{option} can't be used without --to-remote"
+            expected_msg = f"{option} can't be used without --to-remote"
             assert expected_msg in caplog.text

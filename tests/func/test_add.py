@@ -16,6 +16,7 @@ from dvc.cache import Cache
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -1013,10 +1014,10 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
     "invalid_opt, kwargs",
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
-        ("no_commit", {"targets": ["foo"], "no_commit": True}),
-        ("recursive", {"targets": ["foo"], "recursive": True},),
+        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
+        ("--recursive", {"targets": ["foo"], "recursive": True},),
     ],
 )
 def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
-    with pytest.raises(ValueError, match=invalid_opt):
+    with pytest.raises(InvalidArgumentError, match=invalid_opt):
         dvc.add(to_remote=True, **kwargs)
