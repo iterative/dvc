@@ -39,7 +39,7 @@ def external_repo(url, rev=None, for_write=False, **kwargs):
         url=url,
         scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
-        for_write=for_write,
+        subrepos=not for_write,
         uninitialized=True,
         **kwargs,
     )
@@ -110,14 +110,13 @@ class ExternalRepo(Repo):
         url,
         scm=None,
         rev=None,
-        for_write=False,
         cache_dir=None,
         cache_types=None,
         uninitialized=False,
+        subrepos=False,
         **kwargs,
     ):
         self.url = url
-        self.for_write = for_write
         self.tree_confs = kwargs
 
         self._cache_config = {
@@ -137,6 +136,7 @@ class ExternalRepo(Repo):
             rev=rev,
             uninitialized=uninitialized,
             config=config,
+            subrepos=subrepos,
         )
 
     def __str__(self):
@@ -145,7 +145,7 @@ class ExternalRepo(Repo):
     @cached_property
     def repo_tree(self):
         return self._get_tree_for(
-            self, subrepos=not self.for_write, repo_factory=self.make_repo
+            self, subrepos=self.subrepos, repo_factory=self.make_repo
         )
 
     def get_rev(self):
