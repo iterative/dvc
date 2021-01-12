@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from mock import patch
 
-from dvc.dvcfile import DVC_FILE, Dvcfile
+from dvc.dvcfile import DVC_FILE, PIPELINE_FILE, Dvcfile
 from dvc.exceptions import (
     CyclicGraphError,
     ReproductionError,
@@ -1270,3 +1270,27 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     }
     assert dvc.reproduce(stage.addressing)[0] == stage
     m.assert_called_once_with(stage, checkpoint_func=None, dry=False)
+
+
+def test_gitignore_changes_after_repro(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen("file", "file")
+    stage_name = "copy-foo-bar"
+    old = "foo"
+    new = "bar"
+    stage = run_copy("file", old, name=stage_name)
+    dvc.reproduce(stage.addressing)
+    with open(scm.GITIGNORE) as f:
+        a = f.readlines()
+        assert "/{}\n".format(old) in a and "/{}\n".format(new) not in a
+    stage_yaml = load_yaml(PIPELINE_FILE)
+    stage_yaml["stages"][stage_name]["cmd"] = stage_yaml["stages"][stage_name][
+        "cmd"
+    ].replace(old, new)
+    stage_yaml["stages"][stage_name]["outs"].remove(old)
+    stage_yaml["stages"][stage_name]["outs"].append(new)
+    dump_yaml(PIPELINE_FILE, stage_yaml)
+    main(["repro", "copy-foo-bar"])
+
+    with open(scm.GITIGNORE) as f:
+        a = f.readlines()
+        assert "/{}\n".format(new) in a and "/{}\n".format(old) not in a
