@@ -2,7 +2,7 @@ import locale
 import logging
 import os
 from io import BytesIO, StringIO
-from typing import Callable, Iterable, Mapping, Optional, Tuple
+from typing import Callable, Iterable, List, Mapping, Optional, Tuple
 
 from dvc.scm.base import MergeConflictError, SCMError
 from dvc.utils import relpath
@@ -250,10 +250,14 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             strategy |= GIT_CHECKOUT_ALLOW_CONFLICTS
 
         index = self.repo.index
+        if paths:
+            path_list: Optional[List[str]] = [
+                relpath(path, self.root_dir) for path in paths
+            ]
+        else:
+            path_list = None
         self.repo.checkout_index(
-            index=index,
-            paths=list(paths) if paths else None,
-            strategy=strategy,
+            index=index, paths=path_list, strategy=strategy,
         )
 
         if index.conflicts and (ours or theirs):
@@ -265,7 +269,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                     index.add(ours_entry)
                 else:
                     entry = theirs_entry
-                path = os.path.join(self.repo.workdir, entry.path)
+                path = os.path.join(self.root_dir, entry.path)
                 with open(path, "wb") as fobj:
                     fobj.write(self.repo.get(entry.id).read_raw())
                 index.add(entry.path)
