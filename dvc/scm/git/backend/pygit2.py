@@ -243,7 +243,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         msg: Optional[str] = None,
         squash: bool = False,
     ) -> Optional[str]:
-        # pylint: disable=no-name-in-module
         from pygit2 import GIT_RESET_MIXED, GitError
 
         if commit and squash:
