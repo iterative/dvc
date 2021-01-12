@@ -20,9 +20,8 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def apply(repo, rev, force=False, **kwargs):
-    from git.exc import GitCommandError
-
     from dvc.repo.checkout import checkout as dvc_checkout
+    from dvc.scm.base import SCMError
 
     exps = repo.experiments
 
@@ -44,23 +43,23 @@ def apply(repo, rev, force=False, **kwargs):
     else:
         workspace = None
 
-    repo.scm.gitpython.repo.git.merge(exp_rev, squash=True, no_commit=True)
+    repo.scm.merge(exp_rev, commit=False)
 
     if workspace:
         try:
             repo.scm.stash.apply(workspace)
-        except GitCommandError:
+        except SCMError:
             # Applied experiment conflicts with user's workspace changes
             if force:
                 # prefer applied experiment changes over prior stashed changes
-                repo.scm.gitpython.repo.git.checkout("--ours", "--", ".")
+                repo.scm.checkout_index(ours=True)
             else:
                 # revert applied changes and restore user's workspace
                 repo.scm.reset(hard=True)
                 repo.scm.stash.pop()
                 raise ApplyConflictError(rev)
         repo.scm.stash.drop()
-    repo.scm.gitpython.repo.git.reset()
+    repo.scm.reset()
 
     if stash_rev:
         args_path = os.path.join(repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
