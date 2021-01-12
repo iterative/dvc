@@ -117,8 +117,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.commondir()
 
-    def add(self, paths: Iterable[str]):
+    def add(self, paths: Iterable[str], update=False):
         from dvc.utils.fs import walk_files
+
+        if update:
+            raise NotImplementedError
 
         if isinstance(paths, str):
             paths = [paths]

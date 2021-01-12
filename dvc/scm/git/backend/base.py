@@ -52,7 +52,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def add(self, paths: Iterable[str]):
+    def add(self, paths: Iterable[str], update=False):
         pass
 
     @abstractmethod
