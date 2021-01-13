@@ -10,19 +10,11 @@ logger = logging.getLogger(__name__)
 
 class CmdRemove(CmdBase):
     def run(self):
-        from dvc.stage.exceptions import StageNotFound
-
         for target in self.args.targets:
             try:
                 self.repo.remove(target, outs=self.args.outs)
-            except StageNotFound:
-                logger.error(
-                    f"failed to remove '{target}'. Make sure the target"
-                    f" is either a .dvc file or a name of the stage"
-                )
-                return 1
-            except DvcException:
-                logger.exception(f"failed to remove '{target}'")
+            except DvcException as exc:
+                logger.error(exc)
                 return 1
         return 0
 
