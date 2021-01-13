@@ -471,7 +471,7 @@ class Experiments:
             **kwargs,
         )
 
-    def _get_last_checkpoint(self):
+    def _get_last_checkpoint(self) -> str:
         rev = self.scm.get_ref(EXEC_CHECKPOINT)
         if rev:
             return rev
@@ -696,6 +696,7 @@ class Experiments:
             elif self.scm.get_ref(EXEC_BRANCH):
                 self.scm.remove_ref(EXEC_BRANCH)
             try:
+                orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
                 exec_result = BaseExecutor.reproduce(
                     None,
                     rev,
@@ -723,6 +724,9 @@ class Experiments:
                 self.scm.remove_ref(EXEC_BASELINE)
                 if entry.branch:
                     self.scm.remove_ref(EXEC_BRANCH)
+                checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
+                if checkpoint and checkpoint != orig_checkpoint:
+                    self.scm.set_ref(EXEC_APPLY, checkpoint)
 
     def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
