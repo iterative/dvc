@@ -2,9 +2,12 @@ import os
 from operator import itemgetter
 from os.path import join
 
+import pytest
+
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm import SCM
+from dvc.tree import get_cloud_tree
 from dvc.tree.local import LocalTree
 from dvc.tree.repo import RepoTree
 from dvc.utils.fs import remove
@@ -273,3 +276,44 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     kw = {"ignore_subrepos": False}
     assert get_dirs(next(dvc_tree.walk(path, **kw))) == ["subdir"]
     assert get_dirs(next(scm_tree.walk(path, **kw))) == ["subdir"]
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("http"),
+    ],
+    indirect=True,
+)
+def test_tree_getsize_single_file(dvc, workspace):
+    workspace.gen({"data": {"foo": "foo", "bar": "bar"}, "baz": "baz"})
+    tree = get_cloud_tree(dvc, url=workspace.url)
+    path_info = tree.path_info
+
+    assert tree.getsize(path_info / "baz") == 3
+    assert tree.getsize(path_info / "data" / "foo") == 3
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+    ],
+    indirect=True,
+)
+def test_tree_getsize_directory(dvc, workspace):
+    workspace.gen({"data": {"foo": "foo", "bar": "bar"}, "baz": "baz"})
+    tree = get_cloud_tree(dvc, url=workspace.url)
+    path_info = tree.path_info
+
+    assert tree.getsize(path_info) == 9
+    assert tree.getsize(path_info / "data") == 6
