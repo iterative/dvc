@@ -2,6 +2,7 @@ import collections
 import contextlib
 import logging
 import os
+from typing import TYPE_CHECKING, Any, Union
 
 from voluptuous import MultipleInvalid
 
@@ -14,6 +15,7 @@ from dvc.stage.exceptions import (
     StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
+from dvc.types import AnyPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
@@ -23,6 +25,9 @@ from dvc.utils.serialize import (
     parse_yaml,
     parse_yaml_for_update,
 )
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -381,12 +386,19 @@ class Lockfile(FileMixin):
 
 
 class Dvcfile:
-    def __new__(cls, repo, path, **kwargs):
+    def __new__(cls, repo: "Repo", path: AnyPath, **kwargs: Any):
         assert path
         assert repo
 
-        _, ext = os.path.splitext(path)
-        if ext in [".yaml", ".yml"]:
-            return PipelineFile(repo, path, **kwargs)
-        # fallback to single stage file for better error messages
-        return SingleStageFile(repo, path, **kwargs)
+        return make_dvcfile(repo, path, **kwargs)
+
+
+DVCFile = Union["PipelineFile", "SingleStageFile"]
+
+
+def make_dvcfile(repo: "Repo", path: AnyPath, **kwargs: Any) -> DVCFile:
+    _, ext = os.path.splitext(str(path))
+    if ext in [".yaml", ".yml"]:
+        return PipelineFile(repo, path, **kwargs)
+    # fallback to single stage file for better error messages
+    return SingleStageFile(repo, path, **kwargs)

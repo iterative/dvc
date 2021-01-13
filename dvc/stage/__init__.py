@@ -3,7 +3,7 @@ import os
 import string
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from funcy import cached_property, project
 
@@ -33,6 +33,9 @@ from .utils import (
     get_dump,
     stage_dump_eq,
 )
+
+if TYPE_CHECKING:
+    from dvc.dvcfile import DVCFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
@@ -166,7 +169,7 @@ class Stage(params.StageParams):
         self.__dict__.pop("relpath", None)
 
     @property
-    def dvcfile(self):
+    def dvcfile(self) -> "DVCFile":
         if self.path and self._dvcfile and self.path == self._dvcfile.path:
             return self._dvcfile
 
@@ -176,13 +179,13 @@ class Stage(params.StageParams):
                 "and is detached from dvcfile."
             )
 
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import make_dvcfile
 
-        self._dvcfile = Dvcfile(self.repo, self.path)
+        self._dvcfile = make_dvcfile(self.repo, self.path)
         return self._dvcfile
 
     @dvcfile.setter
-    def dvcfile(self, dvcfile):
+    def dvcfile(self, dvcfile: "DVCFile") -> None:
         self._dvcfile = dvcfile
 
     def __repr__(self):
@@ -665,6 +668,9 @@ class Stage(params.StageParams):
         self._check_can_merge(other, ancestor_out)
 
         self.outs[0].merge(ancestor_out, other.outs[0])
+
+    def dump(self, update_lock: bool = False):
+        self.dvcfile.dump(self, update_lock=update_lock)
 
 
 class PipelineStage(Stage):
