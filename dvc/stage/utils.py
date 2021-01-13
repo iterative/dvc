@@ -2,7 +2,7 @@ import os
 import pathlib
 from contextlib import suppress
 from itertools import product
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
@@ -22,7 +22,7 @@ from .exceptions import (
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-    from . import Stage
+    from . import PipelineStage, Stage
 
 
 def check_stage_path(repo, path, is_wdir=False):
@@ -299,18 +299,22 @@ def _get_file_path(kwargs):
     )
 
 
-def _check_stage_exists(dvcfile, stage):
+def _check_stage_exists(
+    repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str
+):
+    from dvc.dvcfile import make_dvcfile
     from dvc.stage import PipelineStage
     from dvc.stage.exceptions import (
         DuplicateStageName,
         StageFileAlreadyExistsError,
     )
 
+    dvcfile = make_dvcfile(repo, path)
     if not dvcfile.exists():
         return
 
     hint = "Use '--force' to overwrite."
-    if stage.__class__ != PipelineStage:
+    if not isinstance(stage, PipelineStage):
         raise StageFileAlreadyExistsError(
             f"'{stage.relpath}' already exists. {hint}"
         )
@@ -320,11 +324,31 @@ def _check_stage_exists(dvcfile, stage):
         )
 
 
+def check_graphs(
+    repo: "Repo", stage: Union["Stage", "PipelineStage"], force: bool = True
+) -> None:
+    """Checks graph and if that stage already exists.
+
+    If it exists in the dvc.yaml file, it errors out unless force is given.
+    """
+    from dvc.exceptions import OutputDuplicationError
+
+    try:
+        if force:
+            with suppress(ValueError):
+                repo.stages.remove(stage)
+        else:
+            _check_stage_exists(repo, stage, stage.path)
+        repo.check_modified_graph([stage])
+    except OutputDuplicationError as exc:
+        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
+
+
 def create_stage_from_cli(
     repo: "Repo", single_stage: bool = False, fname: str = None, **kwargs: Any
-) -> "Stage":
-    from dvc.dvcfile import PIPELINE_FILE, Dvcfile
-    from dvc.exceptions import OutputDuplicationError
+) -> Union["Stage", "PipelineStage"]:
+
+    from dvc.dvcfile import PIPELINE_FILE
 
     from . import PipelineStage, Stage, create_stage, restore_meta
 
@@ -344,16 +368,4 @@ def create_stage_from_cli(
         stage_cls, repo=repo, path=path, params=params, **kwargs
     )
     restore_meta(stage)
-
-    try:
-        if kwargs.get("force", True):
-            with suppress(ValueError):
-                repo.stages.remove(stage)
-        else:
-            dvcfile = Dvcfile(repo, stage.path)
-            _check_stage_exists(dvcfile, stage)
-        repo.check_modified_graph([stage])
-    except OutputDuplicationError as exc:
-        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
-
     return stage

@@ -18,7 +18,7 @@ def run(
     single_stage: bool = False,
     **kwargs
 ):
-    from dvc.stage.utils import create_stage_from_cli
+    from dvc.stage.utils import check_graphs, create_stage_from_cli
 
     if not kwargs.get("cmd"):
         raise InvalidArgumentError("command is not specified")
@@ -41,6 +41,11 @@ def run(
     stage = create_stage_from_cli(
         self, single_stage=single_stage, fname=fname, **kwargs
     )
+    if kwargs.get("run_cache", True) and stage.can_be_skipped:
+        return None
+
+    check_graphs(self, stage, force=kwargs.get("force", True))
+
     if no_exec:
         stage.ignore_outs()
     else:
