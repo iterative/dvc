@@ -148,6 +148,12 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             return True
         raise HTTPError(res.status_code, res.reason)
 
+    def getsize(self, path_info):
+        response = self.request("GET", path_info.url, stream=True)
+        if response.status_code != 200:
+            raise HTTPError(response.status_code, response.reason)
+        return self._content_length(response)
+
     def get_file_hash(self, path_info):
         url = path_info.url
 

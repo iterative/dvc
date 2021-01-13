@@ -564,6 +564,12 @@ class GDriveTree(BaseTree):
     def get_file_hash(self, path_info):
         raise NotImplementedError
 
+    def getsize(self, path_info):
+        item_id = self._get_item_id(path_info)
+        gdrive_file = self._drive.CreateFile({"id": item_id})
+        gdrive_file.FetchMetadata(fields="fileSize")
+        return gdrive_file.get("fileSize")
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):

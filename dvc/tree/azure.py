@@ -160,6 +160,13 @@ class AzureTree(BaseTree):
             path_info.bucket, path_info.path
         ).delete_blob()
 
+    def getsize(self, path_info):
+        blob_client = self.blob_service.get_blob_client(
+            path_info.bucket, path_info.path
+        )
+        properties = blob_client.get_blob_properties()
+        return properties.size
+
     def get_file_hash(self, path_info):
         return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))
 

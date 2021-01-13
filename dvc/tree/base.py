@@ -220,6 +220,9 @@ class BaseTree:
     def is_empty(self, path_info):
         return False
 
+    def getsize(self, path_info):
+        return None
+
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
 
