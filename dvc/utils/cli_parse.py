@@ -34,7 +34,7 @@ def loads_params_from_cli(
     for path, param_keys in normalized_params.items():
         for param_str in param_keys:
             try:
-                key, _, value = param_str.split("=")
+                key, _, value = param_str.partition("=")
                 # interpret value strings using YAML rules
                 parsed = loads_yaml(value)
                 ret[path][key] = parsed
