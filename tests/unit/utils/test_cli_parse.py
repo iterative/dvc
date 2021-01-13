@@ -1,8 +1,8 @@
-from dvc.utils.cli_parse import parse_params_from_cli
+from dvc.utils.cli_parse import parse_params
 
 
 def test_parse_params():
-    assert parse_params_from_cli(
+    assert parse_params(
         [
             "param1",
             "file1:param1,param2",

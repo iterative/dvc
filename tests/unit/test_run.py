@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.repo.run import is_valid_name
+from dvc.stage.utils import is_valid_name
 
 
 @pytest.mark.parametrize("name", ["copy_name", "copy-name", "copyName", "12"])

@@ -1,17 +1,28 @@
 import os
 import pathlib
+from contextlib import suppress
 from itertools import product
+from typing import TYPE_CHECKING, Any, Union
 
-from funcy import lsplit, rpartial
+from funcy import concat, first, lsplit, rpartial, without
+
+from dvc.utils.cli_parse import parse_params
+from dvc.utils.collections import chunk_dict
 
 from ..hash_info import HashInfo
 from .exceptions import (
+    InvalidStageName,
     MissingDataSource,
     StageExternalOutputsError,
     StagePathNotDirectoryError,
     StagePathNotFoundError,
     StagePathOutsideError,
 )
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+
+    from . import PipelineStage, Stage
 
 
 def check_stage_path(repo, path, is_wdir=False):
@@ -251,3 +262,110 @@ def split_params_deps(stage):
     from ..dependency import ParamsDependency
 
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
+
+
+def is_valid_name(name: str):
+    from . import INVALID_STAGENAME_CHARS
+
+    return not INVALID_STAGENAME_CHARS & set(name)
+
+
+def _get_file_path(kwargs):
+    """Determine file path from the first output name.
+
+    Used in creating .dvc files.
+    """
+    from dvc.dvcfile import DVC_FILE, DVC_FILE_SUFFIX
+
+    out = first(
+        concat(
+            kwargs.get("outs", []),
+            kwargs.get("outs_no_cache", []),
+            kwargs.get("metrics", []),
+            kwargs.get("metrics_no_cache", []),
+            kwargs.get("plots", []),
+            kwargs.get("plots_no_cache", []),
+            kwargs.get("outs_persist", []),
+            kwargs.get("outs_persist_no_cache", []),
+            kwargs.get("checkpoints", []),
+            without([kwargs.get("live", None)], None),
+        )
+    )
+
+    return (
+        os.path.basename(os.path.normpath(out)) + DVC_FILE_SUFFIX
+        if out
+        else DVC_FILE
+    )
+
+
+def _check_stage_exists(
+    repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str
+):
+    from dvc.dvcfile import make_dvcfile
+    from dvc.stage import PipelineStage
+    from dvc.stage.exceptions import (
+        DuplicateStageName,
+        StageFileAlreadyExistsError,
+    )
+
+    dvcfile = make_dvcfile(repo, path)
+    if not dvcfile.exists():
+        return
+
+    hint = "Use '--force' to overwrite."
+    if not isinstance(stage, PipelineStage):
+        raise StageFileAlreadyExistsError(
+            f"'{stage.relpath}' already exists. {hint}"
+        )
+    elif stage.name and stage.name in dvcfile.stages:
+        raise DuplicateStageName(
+            f"Stage '{stage.name}' already exists in '{stage.relpath}'. {hint}"
+        )
+
+
+def check_graphs(
+    repo: "Repo", stage: Union["Stage", "PipelineStage"], force: bool = True
+) -> None:
+    """Checks graph and if that stage already exists.
+
+    If it exists in the dvc.yaml file, it errors out unless force is given.
+    """
+    from dvc.exceptions import OutputDuplicationError
+
+    try:
+        if force:
+            with suppress(ValueError):
+                repo.stages.remove(stage)
+        else:
+            _check_stage_exists(repo, stage, stage.path)
+        repo.check_modified_graph([stage])
+    except OutputDuplicationError as exc:
+        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
+
+
+def create_stage_from_cli(
+    repo: "Repo", single_stage: bool = False, fname: str = None, **kwargs: Any
+) -> Union["Stage", "PipelineStage"]:
+
+    from dvc.dvcfile import PIPELINE_FILE
+
+    from . import PipelineStage, Stage, create_stage, restore_meta
+
+    if single_stage:
+        kwargs.pop("name", None)
+        stage_cls = Stage
+        path = fname or _get_file_path(kwargs)
+    else:
+        stage_name = kwargs.get("name", None)
+        path = PIPELINE_FILE
+        stage_cls = PipelineStage
+        if not (stage_name and is_valid_name(stage_name)):
+            raise InvalidStageName
+
+    params = chunk_dict(parse_params(kwargs.pop("params", [])))
+    stage = create_stage(
+        stage_cls, repo=repo, path=path, params=params, **kwargs
+    )
+    restore_meta(stage)
+    return stage
