@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
+from dvc.exceptions import InvalidArgumentError
 from dvc.utils.cli_parse import parse_params
 from dvc.utils.collections import chunk_dict
 
@@ -352,16 +353,36 @@ def create_stage_from_cli(
 
     from . import PipelineStage, Stage, create_stage, restore_meta
 
+    cmd = kwargs.get("cmd")
+    if not cmd:
+        raise InvalidArgumentError("command is not specified")
+
+    stage_name = kwargs.get("name")
+    if stage_name and single_stage:
+        raise InvalidArgumentError(
+            "`-n|--name` is incompatible with `--single-stage`"
+        )
+    if stage_name and fname:
+        raise InvalidArgumentError(
+            "`--file` is currently incompatible with `-n|--name` "
+            "and requires `--single-stage`"
+        )
+    if not stage_name and not single_stage:
+        raise InvalidArgumentError("`-n|--name` is required")
+
     if single_stage:
         kwargs.pop("name", None)
         stage_cls = Stage
         path = fname or _get_file_path(kwargs)
     else:
-        stage_name = kwargs.get("name", None)
         path = PIPELINE_FILE
         stage_cls = PipelineStage
         if not (stage_name and is_valid_name(stage_name)):
             raise InvalidStageName
+
+    kwargs["cmd"] = cmd[0] if isinstance(cmd, list) and len(cmd) == 1 else cmd
+    kwargs["live_summary"] = not kwargs.pop("live_no_summary", False)
+    kwargs["live_report"] = not kwargs.pop("live_no_report", False)
 
     params = chunk_dict(parse_params(kwargs.pop("params", [])))
     stage = create_stage(

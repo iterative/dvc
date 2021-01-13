@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
@@ -43,8 +42,8 @@ class CmdRun(CmdBase):
                 plots=self.args.plots,
                 plots_no_cache=self.args.plots_no_cache,
                 live=self.args.live,
-                live_summary=not self.args.live_no_summary,
-                live_report=not self.args.live_no_report,
+                live_no_summary=self.args.live_no_summary,
+                live_no_report=self.args.live_no_report,
                 deps=self.args.deps,
                 params=self.args.params,
                 fname=self.args.file,
@@ -91,6 +90,8 @@ class CmdRun(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
+    from dvc.command.stage import _add_common_args
+
     RUN_HELP = "Generate a stage file from a command and execute the command."
     run_parser = subparsers.add_parser(
         "run",
@@ -100,107 +101,17 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     run_parser.add_argument(
-        "-d",
-        "--deps",
-        action="append",
-        default=[],
-        help="Declare dependencies for reproducible cmd.",
-        metavar="<path>",
-    ).complete = completion.FILE
-    run_parser.add_argument(
         "-n", "--name", help="Stage name.",
     )
-    run_parser.add_argument(
-        "-o",
-        "--outs",
-        action="append",
-        default=[],
-        help="Declare output file or directory.",
-        metavar="<filename>",
-    ).complete = completion.FILE
-    run_parser.add_argument(
-        "-O",
-        "--outs-no-cache",
-        action="append",
-        default=[],
-        help="Declare output file or directory "
-        "(do not put into DVC cache).",
-        metavar="<filename>",
-    ).complete = completion.FILE
-    run_parser.add_argument(
-        "-p",
-        "--params",
-        action="append",
-        default=[],
-        help="Declare parameter to use as additional dependency.",
-        metavar="[<filename>:]<params_list>",
-    ).complete = completion.FILE
-    run_parser.add_argument(
-        "-m",
-        "--metrics",
-        action="append",
-        default=[],
-        help="Declare output metrics file.",
-        metavar="<path>",
-    )
-    run_parser.add_argument(
-        "-M",
-        "--metrics-no-cache",
-        action="append",
-        default=[],
-        help="Declare output metrics file (do not put into DVC cache).",
-        metavar="<path>",
-    )
-    run_parser.add_argument(
-        "--plots",
-        action="append",
-        default=[],
-        help="Declare output plot file.",
-        metavar="<path>",
-    )
-    run_parser.add_argument(
-        "--plots-no-cache",
-        action="append",
-        default=[],
-        help="Declare output plot file (do not put into DVC cache).",
-        metavar="<path>",
-    )
-    run_parser.add_argument(
-        "--live", help="Declare output as dvclive.", metavar="<path>",
-    )
-    run_parser.add_argument(
-        "--live-no-summary",
-        action="store_true",
-        default=False,
-        help="Signal dvclive logger to not dump latest metrics file.",
-    )
-    run_parser.add_argument(
-        "--live-no-report",
-        action="store_true",
-        default=False,
-        help="Signal dvclive logger to not produce training report.",
-    )
+    _add_common_args(run_parser)
     run_parser.add_argument(
         "--file", metavar="<filename>", help=argparse.SUPPRESS,
-    )
-    run_parser.add_argument(
-        "-w",
-        "--wdir",
-        help="Directory within your repo to run your command in.",
-        metavar="<path>",
     )
     run_parser.add_argument(
         "--no-exec",
         action="store_true",
         default=False,
         help="Only create stage file without actually running it.",
-    )
-    run_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Overwrite existing stage",
     )
     run_parser.add_argument(
         "--no-run-cache",
@@ -218,55 +129,10 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     run_parser.add_argument(
-        "--outs-persist",
-        action="append",
-        default=[],
-        help="Declare output file or directory that will not be "
-        "removed upon repro.",
-        metavar="<filename>",
-    )
-    run_parser.add_argument(
-        "--outs-persist-no-cache",
-        action="append",
-        default=[],
-        help="Declare output file or directory that will not be "
-        "removed upon repro (do not put into DVC cache).",
-        metavar="<filename>",
-    )
-    run_parser.add_argument(
-        "-c",
-        "--checkpoints",
-        action="append",
-        default=[],
-        help=argparse.SUPPRESS,
-        metavar="<filename>",
-    ).complete = completion.FILE
-    run_parser.add_argument(
-        "--always-changed",
-        action="store_true",
-        default=False,
-        help="Always consider this DVC-file as changed.",
-    )
-    run_parser.add_argument(
         "--single-stage",
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
-    )
-    run_parser.add_argument(
-        "--external",
-        action="store_true",
-        default=False,
-        help="Allow outputs that are outside of the DVC repository.",
-    )
-    run_parser.add_argument(
-        "--desc",
-        type=str,
-        metavar="<text>",
-        help=(
-            "User description of the stage (optional). "
-            "This doesn't affect any DVC operations."
-        ),
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."
