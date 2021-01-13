@@ -1,43 +1,17 @@
 import logging
 from typing import Iterable, Optional
 
-from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
+from dvc.utils.cli_parse import loads_params_from_cli
 
 logger = logging.getLogger(__name__)
-
-
-def _parse_params(path_params: Iterable):
-    from ruamel.yaml import YAMLError
-
-    from dvc.dependency.param import ParamsDependency
-    from dvc.utils.serialize import loads_yaml
-
-    ret = {}
-    for path_param in path_params:
-        path, _, params_str = path_param.rpartition(":")
-        # remove empty strings from params, on condition such as `-p "file1:"`
-        params = {}
-        for param_str in filter(bool, params_str.split(",")):
-            try:
-                # interpret value strings using YAML rules
-                key, value = param_str.split("=")
-                params[key] = loads_yaml(value)
-            except (ValueError, YAMLError):
-                raise InvalidArgumentError(
-                    f"Invalid param/value pair '{param_str}'"
-                )
-        if not path:
-            path = ParamsDependency.DEFAULT_PARAMS_FILE
-        ret[path] = params
-    return ret
 
 
 @locked
 def run(
     repo,
-    targets: Optional[Iterable] = None,
-    params: Optional[Iterable] = None,
+    targets: Optional[Iterable[str]] = None,
+    params: Optional[Iterable[str]] = None,
     run_all: Optional[bool] = False,
     jobs: Optional[int] = 1,
     tmp_dir: Optional[bool] = False,
@@ -54,9 +28,7 @@ def run(
         return repo.experiments.reproduce_queued(jobs=jobs)
 
     if params:
-        params = _parse_params(params)
-    else:
-        params = []
+        params = loads_params_from_cli(params)
     return repo.experiments.reproduce_one(
         targets=targets, params=params, tmp_dir=tmp_dir, **kwargs
     )
