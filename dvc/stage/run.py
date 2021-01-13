@@ -5,7 +5,6 @@ import subprocess
 import threading
 from contextlib import contextmanager
 
-from dvc.env import DVC_CHECKPOINT, DVC_ROOT
 from dvc.utils import fix_env
 
 from .decorators import relock_repo, unlocked_repo
@@ -52,11 +51,8 @@ def _enforce_cmd_list(cmd):
 
 def prepare_kwargs(stage, checkpoint_func=None):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
-    if checkpoint_func:
-        # indicate that checkpoint cmd is being run inside DVC
-        kwargs["env"].update(_checkpoint_env(stage))
 
-    kwargs["env"].update(stage.env)
+    kwargs["env"].update(stage.env(checkpoint_func=checkpoint_func))
 
     # NOTE: when you specify `shell=True`, `Popen` [1] will default to
     # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
@@ -141,10 +137,6 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
 
     run = cmd_run if dry else unlocked_repo(cmd_run)
     run(stage, dry=dry, checkpoint_func=checkpoint_func)
-
-
-def _checkpoint_env(stage):
-    return {DVC_CHECKPOINT: "1", DVC_ROOT: stage.repo.root_dir}
 
 
 @contextmanager
