@@ -264,7 +264,7 @@ def split_params_deps(stage):
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
 
 
-def _is_valid_name(name: str):
+def is_valid_name(name: str):
     from . import INVALID_STAGENAME_CHARS
 
     return not INVALID_STAGENAME_CHARS & set(name)
@@ -336,7 +336,7 @@ def create_stage_from_cli(
         stage_name = kwargs.get("name", None)
         path = PIPELINE_FILE
         stage_cls = PipelineStage
-        if not (stage_name and _is_valid_name(stage_name)):
+        if not (stage_name and is_valid_name(stage_name)):
             raise InvalidStageName
 
     params = chunk_dict(parse_params(kwargs.pop("params", [])))
