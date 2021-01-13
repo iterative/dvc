@@ -282,7 +282,6 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     "workspace",
     [
         pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
@@ -303,7 +302,6 @@ def test_tree_getsize_single_file(dvc, workspace):
     "workspace",
     [
         pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
