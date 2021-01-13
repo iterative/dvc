@@ -417,22 +417,44 @@ class Experiments:
             )
 
         last_applied = self.scm.get_ref(EXEC_APPLY)
+        try:
+            if last_applied:
+                self.check_baseline(last_applied)
+            self.check_baseline(resume_rev)
+        except BaselineMismatchError:
+            # If HEAD has moved since the the last applied checkpoint,
+            # the applied checkpoint is no longer valid
+            self.scm.remove_ref(EXEC_APPLY)
+            last_applied = None
+            checkpoint_resume = None
         if resume_rev != last_applied:
-            if last_applied is None:
-                msg = "Current workspace does not contain an experiment. "
+            if checkpoint_resume == self.LAST_CHECKPOINT:
+                display_rev: Optional[str] = resume_rev[:7]
             else:
-                msg = (
-                    f"Checkpoint '{checkpoint_resume[:7]}' does not match the "
-                    "most recently applied experiment in your workspace "
-                    f"('{last_applied[:7]}')."
-                )
+                display_rev = checkpoint_resume
 
-            raise DvcException(
-                f"{msg}\n"
-                "To resume this experiment run:\n\n"
-                f"\tdvc exp apply {checkpoint_resume[:7]}\n\n"
-                "And then retry this 'dvc exp res' command."
-            )
+            if display_rev:
+                if last_applied is None:
+                    msg = (
+                        f"Checkpoint '{display_rev}' cannot be resumed until "
+                        "it is applied to your workspace."
+                    )
+                else:
+                    msg = (
+                        f"Checkpoint '{display_rev}' does not match the "
+                        "most recently applied experiment in your workspace "
+                        f"('{last_applied[:7]}')."
+                    )
+                msg = (
+                    f"{msg}\n"
+                    "To resume this experiment run:\n\n"
+                    f"\tdvc exp apply {display_rev}\n\n"
+                    "And then retry this 'dvc exp res' command."
+                )
+            else:
+                msg = "No existing checkpoint to resume in your workspace."
+
+            raise DvcException(msg)
 
         baseline_rev = self._get_baseline(branch)
         logger.debug(
@@ -449,7 +471,7 @@ class Experiments:
             **kwargs,
         )
 
-    def _get_last_checkpoint(self):
+    def _get_last_checkpoint(self) -> str:
         rev = self.scm.get_ref(EXEC_CHECKPOINT)
         if rev:
             return rev
@@ -674,6 +696,7 @@ class Experiments:
             elif self.scm.get_ref(EXEC_BRANCH):
                 self.scm.remove_ref(EXEC_BRANCH)
             try:
+                orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
                 exec_result = BaseExecutor.reproduce(
                     None,
                     rev,
@@ -701,6 +724,9 @@ class Experiments:
                 self.scm.remove_ref(EXEC_BASELINE)
                 if entry.branch:
                     self.scm.remove_ref(EXEC_BRANCH)
+                checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
+                if checkpoint and checkpoint != orig_checkpoint:
+                    self.scm.set_ref(EXEC_APPLY, checkpoint)
 
     def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
