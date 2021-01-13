@@ -138,7 +138,7 @@ class GSTree(BaseTree):
         blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
         return blob.exists()
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         bucket = self.gs.bucket(path_info.bucket)
         blob = bucket.get_blob(path_info.path)
         return blob.size

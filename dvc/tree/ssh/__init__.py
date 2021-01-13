@@ -247,7 +247,7 @@ class SSHTree(BaseTree):
 
             return hash_info
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
 

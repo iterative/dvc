@@ -182,7 +182,7 @@ class HDFSTree(BaseTree):
             file_info = hdfs.get_file_info(path_info.path)
             return file_info.type == pyarrow.fs.FileType.Directory
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         with self.hdfs(path_info) as hdfs:
             file_info = hdfs.get_file_info(path_info.path)
             return file_info.size

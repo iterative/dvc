@@ -148,7 +148,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             return True
         raise HTTPError(res.status_code, res.reason)
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         response = self.request("GET", path_info.url, stream=True)
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)

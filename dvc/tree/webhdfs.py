@@ -122,7 +122,7 @@ class WebHDFSTree(BaseTree):
         status = self.hdfs_client.status(path_info.path, strict=False)
         return status is not None
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         return self.hdfs_client.status(path_info.path)["length"]
 
     def get_file_hash(self, path_info):
@@ -158,7 +158,7 @@ class WebHDFSTree(BaseTree):
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
-        total = self._getsize(from_info)
+        total = self.getsize(from_info)
         with Tqdm(
             desc=name, total=total, disable=no_progress_bar, bytes=True
         ) as pbar:

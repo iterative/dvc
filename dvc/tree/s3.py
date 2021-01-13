@@ -201,7 +201,7 @@ class S3Tree(BaseTree):
 
         return path_info.path in self._list_paths(path_info)
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         with self._get_obj(path_info) as obj:
             return obj.content_length
 

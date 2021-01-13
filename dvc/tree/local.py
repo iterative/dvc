@@ -216,7 +216,7 @@ class LocalTree(BaseTree):
         #   * Windows with NTFS has a limit of 1024 hard links on a file
         #
         # That's why we simply create an empty file rather than a link.
-        if self._getsize(from_info) == 0:
+        if self.getsize(from_info) == 0:
             self.open(to_info, "w").close()
 
             logger.debug("Created empty file: %s -> %s", from_info, to_info)
@@ -311,7 +311,7 @@ class LocalTree(BaseTree):
         return hash_info
 
     @staticmethod
-    def _getsize(path_info):
+    def getsize(path_info):
         return os.path.getsize(path_info)
 
     def _upload(

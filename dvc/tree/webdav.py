@@ -199,7 +199,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             with Tqdm.wrapattr(
                 fd,
                 "write",
-                total=None if no_progress_bar else self._getsize(from_info),
+                total=None if no_progress_bar else self.getsize(from_info),
                 leave=False,
                 desc=from_info.url if name is None else name,
                 disable=no_progress_bar,
@@ -236,6 +236,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 )
 
     # Queries size of file at remote
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         # Get file size from info dictionary and convert to int (from str)
         return int(self._client.info(path_info.path)["size"])

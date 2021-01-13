@@ -160,7 +160,7 @@ class AzureTree(BaseTree):
             path_info.bucket, path_info.path
         ).delete_blob()
 
-    def _getsize(self, path_info):
+    def getsize(self, path_info):
         blob_client = self.blob_service.get_blob_client(
             path_info.bucket, path_info.path
         )
