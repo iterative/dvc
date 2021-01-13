@@ -39,7 +39,7 @@ PIPELINE_LOCK = "dvc.lock"
 
 class FileIsGitIgnored(DvcException):
     def __init__(self, path):
-        super().__init__(f"{path} is git-ignored.")
+        super().__init__(f"'{path}' is git-ignored.")
 
 
 class LockfileCorruptedError(DvcException):
