@@ -20,7 +20,7 @@ class StageFileDoesNotExistError(DvcException):
     def __init__(self, fname, dvc_ignored=False):
         self.file = fname
         message = self.DVC_IGNORED if dvc_ignored else self.DOES_NOT_EXIST
-        super().__init__(f"'{self.file}' " + message)
+        super().__init__(f"'{self.file}' {message}")
 
 
 class StageFileAlreadyExistsError(DvcException):
