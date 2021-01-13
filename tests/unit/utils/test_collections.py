@@ -51,6 +51,8 @@ def test_apply_diff_seq():
 
 
 def test_chunk_dict():
+    assert chunk_dict({}) == []
+
     d = {"a": 1, "b": 2, "c": 3}
     assert chunk_dict(d) == [{"a": 1}, {"b": 2}, {"c": 3}]
     assert chunk_dict(d, 2) == [{"a": 1, "b": 2}, {"c": 3}]
