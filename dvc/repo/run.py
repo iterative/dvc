@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 def run(
     self: "Repo",
     fname: str = None,
-    no_exec=False,
+    no_exec: bool = False,
     single_stage: bool = False,
     **kwargs
 ):
