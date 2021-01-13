@@ -9,7 +9,7 @@ import re
 import stat
 import sys
 import time
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypeVar
 
 import colorama
 
@@ -485,3 +485,13 @@ def glob_targets(targets, glob=True, recursive=True):
         for target in targets
         for exp_target in iglob(target, recursive=recursive)
     ]
+
+
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
+
+
+def chunk_dict(d: Dict[_KT, _VT], size: int = 1) -> List[Dict[_KT, _VT]]:
+    from funcy import chunks
+
+    return [{key: d[key] for key in chunk} for chunk in chunks(size, d)]

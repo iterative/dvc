@@ -1,7 +1,10 @@
 import os
 from contextlib import suppress
 
-from funcy import concat, first, lfilter, without
+from funcy import concat, first, without
+
+from dvc.utils import chunk_dict
+from dvc.utils.cli_parse import parse_params_from_cli
 
 from . import locked
 from .scm_context import scm_context
@@ -11,19 +14,6 @@ def is_valid_name(name: str):
     from ..stage import INVALID_STAGENAME_CHARS
 
     return not INVALID_STAGENAME_CHARS & set(name)
-
-
-def parse_params(path_params):
-    ret = []
-    for path_param in path_params:
-        path, _, params_str = path_param.rpartition(":")
-        # remove empty strings from params, on condition such as `-p "file1:"`
-        params = lfilter(bool, params_str.split(","))
-        if not path:
-            ret.extend(params)
-        else:
-            ret.append({path: params})
-    return ret
 
 
 def _get_file_path(kwargs):
@@ -109,7 +99,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         if not is_valid_name(stage_name):
             raise InvalidStageName
 
-    params = parse_params(kwargs.pop("params", []))
+    params = chunk_dict(parse_params_from_cli(kwargs.pop("params", [])))
     stage = create_stage(
         stage_cls, repo=self, path=path, params=params, **kwargs
     )
