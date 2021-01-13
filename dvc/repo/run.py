@@ -3,8 +3,8 @@ from contextlib import suppress
 
 from funcy import concat, first, without
 
-from dvc.utils import chunk_dict
 from dvc.utils.cli_parse import parse_params_from_cli
+from dvc.utils.collections import chunk_dict
 
 from . import locked
 from .scm_context import scm_context

@@ -1,5 +1,5 @@
 # pylint: disable=unidiomatic-typecheck
-from dvc.utils.collections import apply_diff
+from dvc.utils.collections import apply_diff, chunk_dict
 
 
 class MyDict(dict):
@@ -48,3 +48,11 @@ def test_apply_diff_seq():
     dest = {"l": inner}
     apply_diff(src, dest)
     assert dest["l"] is inner, "Updates inner lists"
+
+
+def test_chunk_dict():
+    d = {"a": 1, "b": 2, "c": 3}
+    assert chunk_dict(d) == [{"a": 1}, {"b": 2}, {"c": 3}]
+    assert chunk_dict(d, 2) == [{"a": 1, "b": 2}, {"c": 3}]
+    assert chunk_dict(d, 3) == [d]
+    assert chunk_dict(d, 4) == [d]
