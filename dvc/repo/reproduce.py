@@ -2,7 +2,7 @@ import logging
 import typing
 from functools import partial
 
-from dvc.exceptions import ReproductionError
+from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.scm_context import scm_context
 
 from . import locked
@@ -24,9 +24,9 @@ def _reproduce_stage(stage, **kwargs):
         if checkpoint_func:
             kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
         else:
-            logger.warning(
-                "Checkpoint stages are not fully supported in 'dvc repro'. "
-                "Checkpoint stages should be reproduced with 'dvc exp run' "
+            raise DvcException(
+                "Checkpoint stages are not supported in 'dvc repro'. "
+                "Checkpoint stages must be reproduced with 'dvc exp run' "
                 "or 'dvc exp resume'."
             )
 
