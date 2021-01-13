@@ -132,3 +132,12 @@ def test_branch_config(tmp_dir, scm):
 
     dvc = Repo(scm=scm, rev="branch")
     assert dvc.config["remote"]["branch"]["url"] == "/some/path"
+
+
+def test_dynamic_cache_initalization(tmp_dir, scm):
+    dvc = Repo.init()
+    with dvc.config.edit() as conf:
+        conf["cache"]["ssh"] = "foo"
+        conf["remote"]["foo"] = {"url": "remote://bar/baz"}
+
+    Repo(str(tmp_dir))
