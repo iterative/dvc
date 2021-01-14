@@ -714,7 +714,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(LocalTree, "unprotect")
+    unprotect_spy = mocker.spy(dvc.cache.local, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called

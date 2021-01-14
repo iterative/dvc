@@ -53,11 +53,15 @@ def test_get_cloud_tree_validate(tmp_dir, dvc):
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize(
-    "mode, expected", [(None, LocalTree.CACHE_MODE), (0o777, 0o777)],
+    "mode, expected", [(None, None), (0o777, 0o777)],
 )
 def test_upload_file_mode(tmp_dir, mode, expected):
     tmp_dir.gen("src", "foo")
     src = PathInfo(tmp_dir / "src")
+
+    if not expected:
+        expected = stat.S_IMODE((tmp_dir / "src").stat().st_mode)
+
     dest = PathInfo(tmp_dir / "dest")
     tree = LocalTree(None, {"url": os.fspath(tmp_dir)})
     tree.upload(src, dest, file_mode=mode)

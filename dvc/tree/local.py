@@ -5,14 +5,12 @@ import stat
 from typing import Any, Dict
 
 from funcy import cached_property
-from shortuuid import uuid
 
-from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
-from dvc.utils import file_md5, is_exec, relpath, tmp_fname
+from dvc.utils import file_md5, is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from .base import BaseTree
@@ -27,7 +25,6 @@ class LocalTree(BaseTree):
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
 
-    CACHE_MODE = 0o444
     SHARED_MODE_MAP: Dict[Any, Any] = {
         None: (0o644, 0o755),
         "group": (0o664, 0o775),
@@ -253,55 +250,6 @@ class LocalTree(BaseTree):
             if actual != mode:
                 raise
 
-    def _unprotect_file(self, path):
-        if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug("Unprotecting '%s'", path)
-            tmp = os.path.join(os.path.dirname(path), "." + uuid())
-
-            # The operations order is important here - if some application
-            # would access the file during the process of copyfile then it
-            # would get only the part of file. So, at first, the file should be
-            # copied with the temporary name, and then original file should be
-            # replaced by new.
-            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
-            remove(path)
-            os.rename(tmp, path)
-
-        else:
-            logger.debug(
-                "Skipping copying for '%s', since it is not "
-                "a symlink or a hardlink.",
-                path,
-            )
-
-        os.chmod(path, self.file_mode)
-
-    def _unprotect_dir(self, path):
-        for fname in self.walk_files(path):
-            self._unprotect_file(fname)
-
-    def unprotect(self, path_info):
-        if not os.path.exists(path_info):
-            raise DvcException(
-                f"can't unprotect non-existing data '{path_info}'"
-            )
-
-        if os.path.isdir(path_info):
-            self._unprotect_dir(path_info)
-        else:
-            self._unprotect_file(path_info)
-
-    def protect(self, path_info):
-        self.chmod(path_info, self.CACHE_MODE)
-
-    def is_protected(self, path_info):
-        try:
-            mode = os.stat(path_info).st_mode
-        except FileNotFoundError:
-            return False
-
-        return stat.S_IMODE(mode) == self.CACHE_MODE
-
     def get_file_hash(self, path_info):
         hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
 
@@ -332,8 +280,6 @@ class LocalTree(BaseTree):
 
         if file_mode is not None:
             self.chmod(tmp_file, file_mode)
-        else:
-            self.protect(tmp_file)
         os.replace(tmp_file, to_info)
 
     @staticmethod

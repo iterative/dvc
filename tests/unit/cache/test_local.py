@@ -36,7 +36,8 @@ def test_status_download_optimization(mocker, dvc):
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
 def test_is_protected(tmp_dir, dvc, link_name):
-    tree = LocalTree(dvc, {})
+    cache = dvc.cache.local
+    tree = cache.tree
     link_method = getattr(tree, link_name)
 
     (tmp_dir / "foo").write_text("foo")
@@ -46,47 +47,45 @@ def test_is_protected(tmp_dir, dvc, link_name):
 
     link_method(foo, link)
 
-    assert not tree.is_protected(foo)
-    assert not tree.is_protected(link)
+    assert not cache.is_protected(foo)
+    assert not cache.is_protected(link)
 
-    tree.protect(foo)
+    cache.protect(foo)
 
-    assert tree.is_protected(foo)
-    assert tree.is_protected(link)
+    assert cache.is_protected(foo)
+    assert cache.is_protected(link)
 
-    tree.unprotect(link)
+    cache.unprotect(link)
 
-    assert not tree.is_protected(link)
+    assert not cache.is_protected(link)
     if os.name == "nt" and link_name == "hardlink":
         # NOTE: NTFS doesn't allow deleting read-only files, which forces us to
         # set write perms on the link, which propagates to the source.
-        assert not tree.is_protected(foo)
+        assert not cache.is_protected(foo)
     else:
-        assert tree.is_protected(foo)
+        assert cache.is_protected(foo)
 
 
 @pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES])
-def test_protect_ignore_errors(tmp_dir, mocker, err):
+def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
     foo = PathInfo("foo")
-    tree = LocalTree(None, {})
 
-    tree.protect(foo)
+    dvc.cache.local.protect(foo)
 
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(err, "something")
     )
-    tree.protect(foo)
+    dvc.cache.local.protect(foo)
     assert mock_chmod.called
 
 
-def test_protect_ignore_erofs(tmp_dir, mocker):
+def test_protect_ignore_erofs(tmp_dir, dvc, mocker):
     tmp_dir.gen("foo", "foo")
     foo = PathInfo("foo")
-    tree = LocalTree(None, {})
 
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(errno.EROFS, "read-only fs")
     )
-    tree.protect(foo)
+    dvc.cache.local.protect(foo)
     assert mock_chmod.called

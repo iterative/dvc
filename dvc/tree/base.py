@@ -60,7 +60,6 @@ class BaseTree:
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
 
-    CACHE_MODE: Optional[int] = None
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
 
@@ -251,18 +250,7 @@ class BaseTree:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
-    @staticmethod
-    def protect(path_info):
-        pass
-
-    def is_protected(self, path_info):
-        return False
-
     # pylint: enable=unused-argument
-
-    @staticmethod
-    def unprotect(path_info):
-        pass
 
     @classmethod
     def is_dir_hash(cls, hash_):
