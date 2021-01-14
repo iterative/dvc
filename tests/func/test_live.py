@@ -31,8 +31,8 @@ def live_stage(tmp_dir, scm, dvc):
             deps=["train.py"],
             name="live_stage",
             live="logs",
-            live_summary=summary,
-            live_report=report,
+            live_no_summary=not summary,
+            live_no_report=not report,
         )
 
         scm.add(["dvc.yaml", "dvc.lock", "train.py", "params.yaml"])
@@ -52,8 +52,8 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
         deps=["src"],
         name="run_logger",
         live="logs",
-        live_summary=summary,
-        live_report=report,
+        live_no_summary=not summary,
+        live_no_report=not report,
     )
 
     assert run_spy.call_count == 1

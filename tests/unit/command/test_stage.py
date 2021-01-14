@@ -57,11 +57,13 @@ def test_stage_add(mocker, dvc, extra_args, expected_extra):
         ]
     )
     assert cli_args.func == CmdStageAdd
+    m = mocker.patch.object(CmdStageAdd, "create")
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.stage.utils.create_stage_from_cli")
 
     assert cmd.run() == 0
+    assert m.call_args[0] == (cmd.repo, True)
+
     expected = dict(
         name="name",
         deps=["deps"],
@@ -76,7 +78,6 @@ def test_stage_add(mocker, dvc, extra_args, expected_extra):
         live_no_summary=True,
         live_no_report=True,
         wdir="wdir",
-        force=True,
         outs_persist=["outs-persist"],
         outs_persist_no_cache=["outs-persist-no-cache"],
         checkpoints=["checkpoints"],
