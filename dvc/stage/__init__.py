@@ -231,7 +231,7 @@ class Stage(params.StageParams):
         A callback stage is always considered as changed,
         so it runs on every `dvc repro` call.
         """
-        return not self.is_data_source and len(self.deps) == 0
+        return self.cmd and not any((self.deps, self.outs))
 
     @property
     def is_import(self):
@@ -268,13 +268,7 @@ class Stage(params.StageParams):
         if self.frozen:
             return False
 
-        if self.is_callback:
-            logger.debug(
-                "%s has a command but no dependencies", self.addressing
-            )
-            return True
-
-        if self.always_changed or self.is_checkpoint:
+        if self.is_callback or self.always_changed or self.is_checkpoint:
             return True
 
         return self._changed_deps()

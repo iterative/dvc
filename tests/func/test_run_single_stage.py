@@ -679,11 +679,7 @@ def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
 def test_rerun_callback(dvc):
     def run_callback(force=False):
         return dvc.run(
-            cmd="echo content > out",
-            outs=["out"],
-            deps=[],
-            force=force,
-            single_stage=True,
+            cmd="echo content > out", force=force, single_stage=True,
         )
 
     assert run_callback() is not None
@@ -768,6 +764,7 @@ class TestRunPersist(TestDvc):
             [
                 "run",
                 "--single-stage",
+                "--always-changed",
                 self.outs_command,
                 file,
                 f"echo {file_content} >> {file}",

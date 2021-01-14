@@ -56,10 +56,6 @@ class TestReproDepDirWithOutputsUnderItMultiStage(
     pass
 
 
-class TestReproNoDepsMultiStage(MultiStageRun, test_repro.TestReproNoDeps):
-    pass
-
-
 class TestReproForceMultiStage(MultiStageRun, test_repro.TestReproForce):
     pass
 
