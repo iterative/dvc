@@ -375,7 +375,10 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         if name == "HEAD":
             try:
-                return self.repo.head.commit.hexsha
+                if follow or self.repo.head.is_detached:
+                    return self.repo.head.commit.hexsha
+                else:
+                    return f"refs/heads/{self.repo.active_branch}"
             except (GitCommandError, ValueError):
                 return None
         elif name.startswith("refs/heads/"):

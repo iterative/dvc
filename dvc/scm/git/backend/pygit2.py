@@ -93,7 +93,23 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
     ):
-        raise NotImplementedError
+        from pygit2 import GitError
+
+        if create_new:
+            commit = self.repo.revparse_single("HEAD")
+            new_branch = self.repo.branches.local.create(branch, commit)
+            self.repo.checkout(new_branch)
+        else:
+            try:
+                commit, ref = self.repo.resolve_refish(branch)
+            except (KeyError, GitError):
+                raise RevError(f"unknown Git revision '{branch}'")
+            self.repo.checkout_tree(commit)
+            detach = kwargs.get("detach", False)
+            if ref and not detach:
+                self.repo.set_head(ref.name)
+            else:
+                self.repo.set_head(commit.id)
 
     def pull(self, **kwargs):
         raise NotImplementedError

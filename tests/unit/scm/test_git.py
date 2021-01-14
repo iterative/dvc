@@ -443,3 +443,27 @@ def test_resolve_rev(tmp_dir, scm, make_tmp_dir, git):
 
     with pytest.raises(RevError):
         git.resolve_rev("baz")
+
+
+def test_checkout(tmp_dir, scm, git):
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"foo": "foo"}, commit="foo")
+    foo_rev = scm.get_rev()
+    tmp_dir.scm_gen("foo", "bar", commit="bar")
+    bar_rev = scm.get_rev()
+
+    git.checkout("branch", create_new=True)
+    assert git.get_ref("HEAD", follow=False) == "refs/heads/branch"
+    assert (tmp_dir / "foo").read_text() == "bar"
+
+    git.checkout("master", detach=True)
+    assert git.get_ref("HEAD", follow=False) == bar_rev
+
+    git.checkout("master")
+    assert git.get_ref("HEAD", follow=False) == "refs/heads/master"
+
+    git.checkout(foo_rev[:7])
+    assert git.get_ref("HEAD", follow=False) == foo_rev
+    assert (tmp_dir / "foo").read_text() == "foo"
