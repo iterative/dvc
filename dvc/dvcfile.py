@@ -361,6 +361,24 @@ class Lockfile(FileMixin):
         version = LOCKFILE_VERSION.V2.value  # pylint:disable=no-member
         return {SCHEMA_KWD: version}
 
+    def _remove_unused_outs_in_gitignore(
+        self, orig_stage: dict, new_stage: dict
+    ):
+        def get_out_path_set(stage_data: dict) -> set:
+            stage_outs = stage_data.get("outs", [])
+            path_list = []
+            for out in stage_outs:
+                if isinstance(out, dict) and "path" in out:
+                    path_list.append(out["path"])
+            return set(path_list)
+
+        orig_set = get_out_path_set(orig_stage)
+        new_set = get_out_path_set(new_stage)
+        remove_set = orig_set - new_set
+        for path in remove_set:
+            path = os.path.abspath(path)
+            self.repo.scm.ignore_remove(path)
+
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
 
@@ -378,13 +396,16 @@ class Lockfile(FileMixin):
                     logger.info("Generating lock file '%s'", self.relpath)
 
             data["stages"] = data.get("stages", {})
-            modified = data["stages"].get(stage.name, {}) != stage_data.get(
-                stage.name, {}
-            )
+            orig_stage_data = data["stages"].get(stage.name, {})
+            new_stage_data = stage_data.get(stage.name, {})
+            modified = orig_stage_data != new_stage_data
+
             if modified:
                 logger.info("Updating lock file '%s'", self.relpath)
 
             data["stages"].update(stage_data)
+
+        self._remove_unused_outs_in_gitignore(orig_stage_data, new_stage_data)
 
         if modified:
             self.repo.scm.track_file(self.relpath)
