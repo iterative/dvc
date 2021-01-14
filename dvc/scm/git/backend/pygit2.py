@@ -4,7 +4,7 @@ import os
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple
 
-from dvc.scm.base import MergeConflictError, SCMError
+from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
@@ -136,7 +136,24 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def resolve_rev(self, rev: str) -> str:
-        raise NotImplementedError
+        from pygit2 import GitError
+
+        try:
+            commit, _ref = self.repo.resolve_refish(rev)
+            return str(commit.id)
+        except (KeyError, GitError):
+            pass
+
+        # Look for single exact match in remote refs
+        shas = {
+            self.get_ref(f"refs/remotes/{remote.name}/{rev}")
+            for remote in self.repo.remotes
+        } - {None}
+        if len(shas) > 1:
+            raise RevError(f"ambiguous Git revision '{rev}'")
+        if len(shas) == 1:
+            return shas.pop()  # type: ignore
+        raise RevError(f"unknown Git revision '{rev}'")
 
     def resolve_commit(self, rev: str) -> str:
         raise NotImplementedError

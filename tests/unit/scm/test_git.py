@@ -401,3 +401,45 @@ def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
         else:
             git.checkout_index(theirs=True)
     assert (tmp_dir / "file").read_text() == expected
+
+
+def test_resolve_rev(tmp_dir, scm, make_tmp_dir, git):
+    from dvc.scm.base import RevError
+
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    remote_dir = make_tmp_dir("git-remote", scm=True)
+    url = "file://{}".format(remote_dir.resolve().as_posix())
+    scm.gitpython.repo.create_remote("origin", url)
+    scm.gitpython.repo.create_remote("upstream", url)
+
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = scm.get_rev()
+    tmp_dir.scm_gen({"file": "1"}, commit="1")
+    rev = scm.get_rev()
+    scm.checkout("branch", create_new=True)
+    tmp_dir.gen(
+        {
+            os.path.join(".git", "refs", "foo"): rev,
+            os.path.join(".git", "refs", "remotes", "origin", "bar"): rev,
+            os.path.join(".git", "refs", "remotes", "origin", "baz"): rev,
+            os.path.join(
+                ".git", "refs", "remotes", "upstream", "baz"
+            ): init_rev,
+        }
+    )
+
+    assert git.resolve_rev(rev) == rev
+    assert git.resolve_rev(rev[:7]) == rev
+    assert git.resolve_rev("HEAD") == rev
+    assert git.resolve_rev("branch") == rev
+    assert git.resolve_rev("refs/foo") == rev
+    assert git.resolve_rev("bar") == rev
+    assert git.resolve_rev("origin/baz") == rev
+
+    with pytest.raises(RevError):
+        git.resolve_rev("qux")
+
+    with pytest.raises(RevError):
+        git.resolve_rev("baz")
