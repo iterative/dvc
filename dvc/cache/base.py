@@ -261,7 +261,9 @@ class CloudCache:
         hash_info = local_tree.get_file_hash(local_info)
 
         self.tree.upload(
-            local_info, self.tree.hash_to_path_info(hash_info.value),
+            local_info,
+            self.tree.hash_to_path_info(hash_info.value),
+            name=from_info.name,
         )
         return hash_info
 
