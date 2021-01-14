@@ -279,20 +279,18 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
 
 
 @pytest.mark.parametrize(
-    "workspace",
+    "cloud",
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("http"),
     ],
-    indirect=True,
 )
-def test_tree_getsize(dvc, workspace):
-    workspace.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
-    tree = get_cloud_tree(dvc, url=workspace.url)
+def test_tree_getsize(dvc, cloud):
+    cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
+    tree = get_cloud_tree(dvc, **cloud.config)
     path_info = tree.path_info
 
     assert tree.getsize(path_info / "baz") == 7
