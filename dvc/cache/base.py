@@ -221,7 +221,7 @@ class CloudCache:
                 path_info
             ):
                 # Default relink procedure involves unneeded copy
-                self.tree.unprotect(path_info)
+                self.unprotect(path_info)
             else:
                 self.tree.remove(path_info)
                 self.link(cache_info, path_info)
@@ -281,7 +281,9 @@ class CloudCache:
 
         from_info = PathInfo(tmp)
         to_info = self.tree.path_info / tmp_fname("")
-        self.tree.upload(from_info, to_info, no_progress_bar=True)
+        self.tree.upload(
+            from_info, to_info, no_progress_bar=True, file_mode=self.CACHE_MODE
+        )
 
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
@@ -373,6 +375,15 @@ class CloudCache:
     def hash_to_path(self, hash_):
         return self.tree.hash_to_path_info(hash_)
 
+    def protect(self, path_info):  # pylint: disable=unused-argument
+        pass
+
+    def is_protected(self, path_info):  # pylint: disable=unused-argument
+        return False
+
+    def unprotect(self, path_info):  # pylint: disable=unused-argument
+        pass
+
     def changed_cache_file(self, hash_info):
         """Compare the given hash with the (corresponding) actual one.
 
@@ -387,7 +398,7 @@ class CloudCache:
         """
         # Prefer string path over PathInfo when possible due to performance
         cache_info = self.hash_to_path(hash_info.value)
-        if self.tree.is_protected(cache_info):
+        if self.is_protected(cache_info):
             logger.trace(
                 "Assuming '%s' is unchanged since it is read-only", cache_info
             )
@@ -408,7 +419,7 @@ class CloudCache:
         if actual.value.split(".")[0] == hash_info.value.split(".")[0]:
             # making cache file read-only so we don't need to check it
             # next time
-            self.tree.protect(cache_info)
+            self.protect(cache_info)
             return False
 
         if self.tree.exists(cache_info):

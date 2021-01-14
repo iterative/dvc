@@ -2,13 +2,14 @@ import logging
 import os
 
 from funcy import cached_property
+from shortuuid import uuid
 
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 
-from ..tree.local import LocalTree
-from ..utils.fs import walk_files
+from ..utils import relpath
+from ..utils.fs import copyfile, remove, walk_files
 from .base import CloudCache
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class LocalCache(CloudCache):
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-    CACHE_MODE = LocalTree.CACHE_MODE
+    CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
     def __init__(self, tree):
@@ -89,3 +90,56 @@ class LocalCache(CloudCache):
         info = self.tree.hash_to_path_info(hash_)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
         self.tree.remove(path_info)
+
+    def _unprotect_file(self, path):
+        if self.tree.is_symlink(path) or self.tree.is_hardlink(path):
+            logger.debug("Unprotecting '%s'", path)
+            tmp = os.path.join(os.path.dirname(path), "." + uuid())
+
+            # The operations order is important here - if some application
+            # would access the file during the process of copyfile then it
+            # would get only the part of file. So, at first, the file should be
+            # copied with the temporary name, and then original file should be
+            # replaced by new.
+            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
+            remove(path)
+            os.rename(tmp, path)
+
+        else:
+            logger.debug(
+                "Skipping copying for '%s', since it is not "
+                "a symlink or a hardlink.",
+                path,
+            )
+
+        os.chmod(path, self.tree.file_mode)
+
+    def _unprotect_dir(self, path):
+        for fname in self.tree.walk_files(path):
+            self._unprotect_file(fname)
+
+    def unprotect(self, path_info):
+        if not os.path.exists(path_info):
+            from dvc.exceptions import DvcException
+
+            raise DvcException(
+                f"can't unprotect non-existing data '{path_info}'"
+            )
+
+        if os.path.isdir(path_info):
+            self._unprotect_dir(path_info)
+        else:
+            self._unprotect_file(path_info)
+
+    def protect(self, path_info):
+        self.tree.chmod(path_info, self.CACHE_MODE)
+
+    def is_protected(self, path_info):
+        import stat
+
+        try:
+            mode = os.stat(path_info).st_mode
+        except FileNotFoundError:
+            return False
+
+        return stat.S_IMODE(mode) == self.CACHE_MODE

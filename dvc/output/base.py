@@ -430,7 +430,7 @@ class BaseOutput:
 
     def unprotect(self):
         if self.exists:
-            self.tree.unprotect(self.path_info)
+            self.cache.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
         if not self.is_dir_checksum:

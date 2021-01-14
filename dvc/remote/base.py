@@ -309,15 +309,24 @@ class Remote:
         )
 
         if download:
+            # NOTE: don't set CACHE_MODE if we don't trust the remote, so that
+            # cache could verify these files by-hand later.
+            if self.tree.verify:
+                mode = self.tree.file_mode
+            else:
+                mode = cache.CACHE_MODE
             func = partial(
                 _log_exceptions(self.tree.download, "download"),
                 dir_mode=cache.tree.dir_mode,
-                file_mode=cache.tree.file_mode,
+                file_mode=mode,
             )
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = _log_exceptions(self.tree.upload, "upload")
+            func = partial(
+                _log_exceptions(self.tree.upload, "upload"),
+                file_mode=self.cache.CACHE_MODE,
+            )
             status = STATUS_NEW
             desc = "Uploading"
 
