@@ -2,6 +2,7 @@ import logging
 import os
 import string
 from collections import defaultdict
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Optional
 
@@ -135,7 +136,7 @@ class Stage(params.StageParams):
         always_changed=False,
         stage_text=None,
         dvcfile=None,
-        desc=None,
+        desc: Optional[str] = None,
         meta=None,
     ):
         if deps is None:
@@ -154,7 +155,7 @@ class Stage(params.StageParams):
         self.always_changed = always_changed
         self._stage_text = stage_text
         self._dvcfile = dvcfile
-        self.desc = desc
+        self.desc: Optional[str] = desc
         self.meta = meta
         self.raw_data = RawData()
 
@@ -254,6 +255,15 @@ class Stage(params.StageParams):
         since the checkpoint out is a circular dependency.
         """
         return any(out.checkpoint for out in self.outs)
+
+    def short_description(self) -> Optional["str"]:
+        desc: Optional["str"] = None
+        if self.desc:
+            with suppress(ValueError):
+                # try to use first non-empty line as a description
+                line = next(filter(None, self.desc.splitlines()))
+                desc = line.strip()
+        return desc
 
     def _read_env(self, out, checkpoint_func=None) -> Env:
         env: Env = {}
