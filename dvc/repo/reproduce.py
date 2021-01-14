@@ -123,14 +123,10 @@ def reproduce(
                     stages.add(stage)
     else:
         for target in targets:
-            stages.update(
-                self.stage.collect(
-                    target,
-                    recursive=recursive,
-                    accept_group=accept_group,
-                    glob=glob,
-                )
+            granular_stages = self.stage.collect_granular(
+                target, recursive=recursive, accept_group=accept_group
             )
+            stages.update([stage_info.stage for stage_info in granular_stages])
 
     return _reproduce_stages(self.graph, list(stages), **kwargs)
 

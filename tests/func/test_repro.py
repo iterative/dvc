@@ -10,6 +10,7 @@ from mock import patch
 from dvc.dvcfile import DVC_FILE, Dvcfile
 from dvc.exceptions import (
     CyclicGraphError,
+    NoOutputOrStageError,
     ReproductionError,
     StagePathAsOutputError,
 )
@@ -1092,7 +1093,7 @@ def test_recursive_repro_recursive_missing_file(dvc):
     """
     with pytest.raises(StageFileDoesNotExistError):
         dvc.reproduce("notExistingStage.dvc", recursive=True)
-    with pytest.raises(StageFileDoesNotExistError):
+    with pytest.raises(NoOutputOrStageError):
         dvc.reproduce("notExistingDir/", recursive=True)
 
 
