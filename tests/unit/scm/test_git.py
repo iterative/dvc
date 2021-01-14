@@ -141,9 +141,6 @@ def test_branch_revs(tmp_dir, scm):
 
 
 def test_set_ref(tmp_dir, git):
-    if git.test_backend == "pygit2":
-        pytest.skip()
-
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.scm_gen({"file": "1"}, commit="commit")
@@ -171,9 +168,6 @@ def test_set_ref(tmp_dir, git):
 
 
 def test_get_ref(tmp_dir, git):
-    if git.test_backend == "pygit2":
-        pytest.skip()
-
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.gen(
@@ -192,9 +186,6 @@ def test_get_ref(tmp_dir, git):
 
 
 def test_remove_ref(tmp_dir, git):
-    if git.test_backend == "pygit2":
-        pytest.skip()
-
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.gen(os.path.join(".git", "refs", "foo", "bar"), init_rev)

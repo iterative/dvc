@@ -158,13 +158,33 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         symbolic: Optional[bool] = False,
     ):
-        raise NotImplementedError
+        if old_ref and old_ref != self.get_ref(name, follow=False):
+            raise SCMError(f"Failed to set '{name}'")
 
-    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
-        raise NotImplementedError
+        if symbolic:
+            ref = self.repo.create_reference_symbolic(name, new_ref, True)
+        else:
+            ref = self.repo.create_reference_direct(name, new_ref, True)
+        if message:
+            ref.set_target(new_ref, message)
+
+    def get_ref(self, name, follow: bool = True) -> Optional[str]:
+        from pygit2 import GIT_REF_SYMBOLIC
+
+        ref = self.repo.references.get(name)
+        if not ref:
+            return None
+        if follow and ref.type == GIT_REF_SYMBOLIC:
+            ref = ref.resolve()
+        return str(ref.target)
 
     def remove_ref(self, name: str, old_ref: Optional[str] = None):
-        raise NotImplementedError
+        ref = self.repo.references.get(name)
+        if not ref:
+            raise SCMError(f"Ref '{name}' does not exist")
+        if old_ref and old_ref != str(ref.target):
+            raise SCMError(f"Failed to remove '{name}'")
+        ref.delete()
 
     def iter_refs(self, base: Optional[str] = None):
         raise NotImplementedError
