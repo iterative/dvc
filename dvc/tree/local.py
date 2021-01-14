@@ -282,10 +282,10 @@ class LocalTree(BaseTree):
             self.chmod(tmp_file, file_mode)
         os.replace(tmp_file, to_info)
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False):
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
         from dvc.progress import Tqdm
 
-        with Tqdm(bytes=True, disable=no_progress_bar) as pbar:
+        with Tqdm(bytes=True, disable=no_progress_bar, **pbar_args) as pbar:
             with pbar.wrapattr(fobj, "read") as fobj:
                 self.copy_fobj(fobj, to_info, chunk_size=self.CHUNK_SIZE)
 

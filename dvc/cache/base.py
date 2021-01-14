@@ -277,7 +277,12 @@ class CloudCache:
             # Since we don't know the hash beforehand, we'll
             # upload it to a temporary location and then move
             # it.
-            self.tree.upload_fobj(stream_reader, tmp_info)
+            self.tree.upload_fobj(
+                stream_reader,
+                tmp_info,
+                total=from_tree.getsize(from_info),
+                desc=from_info.name,
+            )
 
         hash_info = stream_reader.hash_info
         self.tree.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
