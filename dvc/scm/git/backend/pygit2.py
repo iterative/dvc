@@ -187,7 +187,9 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         ref.delete()
 
     def iter_refs(self, base: Optional[str] = None):
-        raise NotImplementedError
+        for ref in self.repo.references:
+            if ref.startswith(base):
+                yield ref
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
