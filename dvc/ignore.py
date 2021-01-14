@@ -118,11 +118,11 @@ class DvcIgnorePatterns(DvcIgnore):
                 break
         return result
 
-    def _ignore_details(self, path, is_dir):
+    def _ignore_details(self, path, is_dir: bool):
         result = []
-        for (regex, ignore), pattern_info in list(
+        for (regex, _), pattern_info in list(
             zip(self.regex_pattern_list, self.pattern_list)
-        )[::-1]:
+        ):
             # skip system pattern
             if not pattern_info.file_info:
                 continue
@@ -134,11 +134,9 @@ class DvcIgnorePatterns(DvcIgnore):
                 matches |= bool(regex.match(f"{path}/"))
 
             if matches:
-                if not ignore and len(result) == 0:
-                    break
                 result.append(pattern_info.file_info)
 
-        return result[::-1]
+        return result
 
     def __hash__(self):
         return hash(self.dirname + ":" + str(self.pattern_list))
