@@ -93,7 +93,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
     ):
-        from pygit2 import GIT_RESET_MIXED, GitError
+        from pygit2 import GitError
 
         if create_new:
             commit = self.repo.revparse_single("HEAD")
@@ -110,7 +110,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 self.repo.set_head(ref.name)
             else:
                 self.repo.set_head(commit.id)
-            self.repo.reset(commit.id, GIT_RESET_MIXED)
 
     def pull(self, **kwargs):
         raise NotImplementedError
