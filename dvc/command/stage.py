@@ -133,6 +133,7 @@ def _add_common_args(parser):
         metavar="<filename>",
     )
     parser.add_argument(
+        "-C",
         "--checkpoints",
         action="append",
         default=[],
