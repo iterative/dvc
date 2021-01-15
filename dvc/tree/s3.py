@@ -345,6 +345,18 @@ class S3Tree(BaseTree):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
+    def _iter_hashes(self, path_info, **kwargs):
+        prefix = (path_info / "").path
+        with self._get_bucket(path_info.bucket) as bucket:
+            for obj_summary in bucket.objects.filter(Prefix=prefix):
+                file_info = path_info.replace(path=obj_summary.key)
+                self._check_ignored(file_info)
+                yield file_info, HashInfo(
+                    self.PARAM_CHECKSUM,
+                    obj_summary.e_tag.strip('"'),
+                    size=obj_summary.size,
+                )
+
     def get_file_hash(self, path_info):
         with self._get_obj(path_info) as obj:
             return HashInfo(

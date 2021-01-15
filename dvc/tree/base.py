@@ -287,7 +287,6 @@ class BaseTree:
         return self.path_info / hash_[0:2] / hash_[2:]
 
     def _calculate_hashes(self, file_infos):
-        file_infos = list(file_infos)
         with Tqdm(
             total=len(file_infos),
             unit="md5",
@@ -298,24 +297,27 @@ class BaseTree:
                 hash_infos = executor.map(worker, file_infos)
                 return dict(zip(file_infos, hash_infos))
 
+    def _check_ignored(self, path_ignore):
+        if DvcIgnore.DVCIGNORE_FILE == path_ignore.name:
+            raise DvcIgnoreInCollectedDirError(path_ignore.parent)
+
+    def _iter_hashes(self, path_info, **kwargs):
+        file_infos = []
+        for file_info in self.walk_files(path_info, **kwargs):
+            self._check_ignored(file_info)
+            hash_info = self.state.get(  # pylint: disable=assignment-from-none
+                file_info
+            )
+            if not hash_info:
+                file_infos.append(file_info)
+                continue
+            yield file_info, hash_info
+
+        yield from self._calculate_hashes(file_infos).items()
+
     def _collect_dir(self, path_info, **kwargs):
-
-        file_infos = set()
-
-        for fname in self.walk_files(path_info, **kwargs):
-            if DvcIgnore.DVCIGNORE_FILE == fname.name:
-                raise DvcIgnoreInCollectedDirError(fname.parent)
-
-            file_infos.add(fname)
-
-        hash_infos = {fi: self.state.get(fi) for fi in file_infos}
-        not_in_state = {fi for fi, hi in hash_infos.items() if hi is None}
-
-        new_hash_infos = self._calculate_hashes(not_in_state)
-        hash_infos.update(new_hash_infos)
-
         dir_info = DirInfo()
-        for fi, hi in hash_infos.items():
+        for fi, hi in self._iter_hashes(path_info, **kwargs):
             # NOTE: this is lossy transformation:
             #   "hey\there" -> "hey/there"
             #   "hey/there" -> "hey/there"
