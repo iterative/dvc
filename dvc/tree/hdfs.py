@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import re
+import shutil
 import subprocess
 from collections import deque
 from contextlib import closing, contextmanager
@@ -162,7 +163,7 @@ class HDFSTree(BaseTree):
                     with closing(
                         hdfs.open_output_stream(tmp_info.path)
                     ) as tmp_fobj:
-                        tmp_fobj.write(from_fobj.read())
+                        shutil.copyfileobj(from_fobj, tmp_fobj)
                     hdfs.move(tmp_info.path, to_info.path)
                 except Exception:
                     self.remove(tmp_info)
