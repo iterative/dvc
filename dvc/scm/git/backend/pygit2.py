@@ -100,6 +100,8 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             new_branch = self.repo.branches.local.create(branch, commit)
             self.repo.checkout(new_branch)
         else:
+            if branch == "-":
+                branch = "@{-1}"
             try:
                 commit, ref = self.repo.resolve_refish(branch)
             except (KeyError, GitError):
