@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import re
+import shutil
 import subprocess
 from collections import deque
 from contextlib import closing, contextmanager
@@ -125,9 +126,17 @@ class HDFSTree(BaseTree):
             with hdfs.open(from_info.path, "rb") as from_fobj:
                 tmp_info = to_info.parent / tmp_fname(to_info.name)
                 try:
+<<<<<<< HEAD
                     with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
                         tmp_fobj.upload(from_fobj)
                     hdfs.rename(tmp_info.path, to_info.path)
+=======
+                    with closing(
+                        hdfs.open_output_stream(tmp_info.path)
+                    ) as tmp_fobj:
+                        shutil.copyfileobj(from_fobj, tmp_fobj)
+                    hdfs.move(tmp_info.path, to_info.path)
+>>>>>>> 273518afa... hdfs: copy: don't read everything into memory (#5277)
                 except Exception:
                     self.remove(tmp_info)
                     raise

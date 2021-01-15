@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import threading
 from contextlib import contextmanager
 from urllib.parse import urlparse
@@ -131,8 +132,8 @@ class WebHDFSTree(BaseTree):
 
     def copy(self, from_info, to_info, **_kwargs):
         with self.hdfs_client.read(from_info.path) as reader:
-            content = reader.read()
-        self.hdfs_client.write(to_info.path, data=content)
+            with self.hdfs_client.write(to_info.path) as writer:
+                shutil.copyfileobj(reader, writer)
 
     def move(self, from_info, to_info, mode=None):
         self.hdfs_client.makedirs(to_info.parent.path)
