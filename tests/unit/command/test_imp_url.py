@@ -7,7 +7,17 @@ from dvc.exceptions import DvcException
 
 def test_import_url(mocker):
     cli_args = parse_args(
-        ["import-url", "src", "out", "--file", "file", "--desc", "description"]
+        [
+            "import-url",
+            "src",
+            "out",
+            "--file",
+            "file",
+            "--jobs",
+            "4",
+            "--desc",
+            "description",
+        ]
     )
     assert cli_args.func == CmdImportUrl
 
@@ -24,6 +34,7 @@ def test_import_url(mocker):
         remote=None,
         to_remote=False,
         desc="description",
+        jobs=4,
     )
 
 
@@ -70,6 +81,7 @@ def test_import_url_no_exec(mocker):
         remote=None,
         to_remote=False,
         desc="description",
+        jobs=None,
     )
 
 
@@ -101,6 +113,7 @@ def test_import_url_to_remote(mocker):
         remote="remote",
         to_remote=True,
         desc="description",
+        jobs=None,
     )
 
 

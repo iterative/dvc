@@ -19,6 +19,7 @@ class CmdImportUrl(CmdBase):
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 desc=self.args.desc,
+                jobs=self.args.jobs,
             )
         except DvcException:
             logger.exception(
@@ -81,6 +82,17 @@ def add_parser(subparsers, parent_parser):
         "--remote",
         help="Remote storage to download to",
         metavar="<name>",
+    )
+    import_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     import_parser.add_argument(
         "--desc",

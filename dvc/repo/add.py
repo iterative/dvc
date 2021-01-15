@@ -56,6 +56,8 @@ def add(  # noqa: C901
             invalid_opt = "--out"
         elif kwargs.get("remote"):
             invalid_opt = "--remote"
+        elif kwargs.get("jobs"):
+            invalid_opt = "--jobs"
 
     if invalid_opt is not None:
         raise InvalidArgumentError(message.format(option=invalid_opt))

@@ -37,6 +37,7 @@ def test_add(mocker, dvc):
         remote=None,
         to_remote=False,
         desc="stage description",
+        jobs=None,
     )
 
 
@@ -70,6 +71,7 @@ def test_add_to_remote(mocker):
         remote="remote",
         to_remote=True,
         desc=None,
+        jobs=None,
     )
 
 
@@ -85,8 +87,12 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
         expected_msg = "multiple targets can't be used with --to-remote"
         assert expected_msg in caplog.text
 
-    for option in "--remote", "--out":
-        cli_args = parse_args(["add", "foo", option, "bar"])
+    for option, value in (
+        ("--remote", "remote"),
+        ("--out", "bar"),
+        ("--jobs", "4"),
+    ):
+        cli_args = parse_args(["add", "foo", option, value])
 
         cmd = cli_args.func(cli_args)
         with caplog.at_level(logging.ERROR, logger="dvc"):
