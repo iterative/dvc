@@ -273,16 +273,21 @@ class Stage(params.StageParams):
                     int(config.get(BaseOutput.PARAM_LIVE_REPORT, True))
                 )
         elif out.checkpoint and checkpoint_func:
-            from dvc.env import DVC_CHECKPOINT, DVC_ROOT
+            from dvc.env import DVC_CHECKPOINT
 
-            env.update({DVC_CHECKPOINT: "1", DVC_ROOT: self.repo.root_dir})
+            env.update({DVC_CHECKPOINT: "1"})
         return env
 
     def env(self, checkpoint_func=None) -> Env:
+        from dvc.env import DVC_ROOT
+
         env: Env = {}
+        if self.repo:
+            env.update({DVC_ROOT: self.repo.root_dir})
+
         for out in self.outs:
             current = self._read_env(out, checkpoint_func=checkpoint_func)
-            if any(current.keys() and env.keys()):
+            if set(env.keys()).intersection(set(current.keys())):
                 raise DvcException("Duplicated env variable")
             env.update(current)
         return env
