@@ -467,3 +467,34 @@ def test_checkout(tmp_dir, scm, git):
     git.checkout(foo_rev[:7])
     assert git.get_ref("HEAD", follow=False) == foo_rev
     assert (tmp_dir / "foo").read_text() == "foo"
+
+
+def test_reset(tmp_dir, scm, git):
+    if git.test_backend == "dulwich":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"foo": "foo"}, commit="init")
+
+    tmp_dir.gen("foo", "bar")
+    scm.add(["foo"])
+    git.reset()
+    assert (tmp_dir / "foo").read_text() == "bar"
+    staged, unstaged, _ = scm.status()
+    assert len(staged) == 0
+    assert list(unstaged) == ["foo"]
+
+    scm.add(["foo"])
+    git.reset(hard=True)
+    assert (tmp_dir / "foo").read_text() == "foo"
+    staged, unstaged, _ = scm.status()
+    assert len(staged) == 0
+    assert len(unstaged) == 0
+
+    tmp_dir.gen({"foo": "bar", "bar": "bar"})
+    scm.add(["foo", "bar"])
+    git.reset(paths=["foo"])
+    assert (tmp_dir / "foo").read_text() == "bar"
+    assert (tmp_dir / "bar").read_text() == "bar"
+    staged, unstaged, _ = scm.status()
+    assert len(staged) == 1
+    assert len(unstaged) == 1

@@ -93,7 +93,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
     ):
-        from pygit2 import GitError
+        from pygit2 import GIT_RESET_MIXED, GitError
 
         if create_new:
             commit = self.repo.revparse_single("HEAD")
@@ -110,6 +110,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 self.repo.set_head(ref.name)
             else:
                 self.repo.set_head(commit.id)
+            self.repo.reset(commit.id, GIT_RESET_MIXED)
 
     def pull(self, **kwargs):
         raise NotImplementedError
@@ -278,7 +279,20 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
-        raise NotImplementedError
+        from pygit2 import GIT_RESET_HARD, GIT_RESET_MIXED, IndexEntry
+
+        self.repo.index.read()
+        if paths is not None:
+            tree = self.repo.revparse_single("HEAD").tree
+            for path in paths:
+                rel = relpath(path, self.root_dir)
+                obj = tree[relpath(rel, self.root_dir)]
+                self.repo.index.add(IndexEntry(rel, obj.oid, obj.filemode))
+        elif hard:
+            self.repo.reset(self.repo.head.target, GIT_RESET_HARD)
+        else:
+            self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
+        self.repo.index.write()
 
     def checkout_index(
         self,
@@ -304,6 +318,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if ours or theirs:
             strategy |= GIT_CHECKOUT_ALLOW_CONFLICTS
 
+        self.repo.index.read()
         index = self.repo.index
         if paths:
             path_list: Optional[List[str]] = [
@@ -358,6 +373,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         except GitError as exc:
             raise SCMError("Merge failed") from exc
 
+        self.repo.index.read()
         if self.repo.index.conflicts:
             raise MergeConflictError("Merge contained conflicts")
 
