@@ -4,6 +4,8 @@ import platform
 import subprocess
 import uuid
 from contextlib import contextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -11,6 +13,8 @@ from dvc.path_info import URLInfo
 from tests import PY39, PYARROW_NOT_AVAILABLE
 
 from .base import Base
+
+_hdfs_root = TemporaryDirectory()
 
 
 class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
@@ -154,66 +158,113 @@ def hdfs_server(hadoop, docker_compose, docker_services):
 
 
 @pytest.fixture
-def hdfs(hdfs_server):
+def real_hdfs(hdfs_server):
     port = hdfs_server["hdfs"]
     url = f"hdfs://127.0.0.1:{port}/{uuid.uuid4()}"
     yield HDFS(url)
 
 
-class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
-    @contextmanager
-    def _webhdfs(self):
-        from hdfs import InsecureClient
+def md5md5crc32c(path):
+    # https://github.com/colinmarc/hdfs/blob/f2f512db170db82ad41590c4ba3b7718b13317d2/file_reader.go#L76
+    import hashlib
 
-        client = InsecureClient(f"http://{self.host}:{self.port}", self.user)
-        yield client
+    from crc32c import crc32c  # pylint: disable=no-name-in-module
 
-    def is_file(self):
-        with self._webhdfs() as _hdfs:
-            return _hdfs.status(self.path)["type"] == "FILE"
+    # dfs.bytes-per-checksum = 512, default on hadoop 2.7
+    bytes_per_checksum = 512
+    padded = 32
+    total = 0
 
-    def is_dir(self):
-        with self._webhdfs() as _hdfs:
-            return _hdfs.status(self.path)["type"] == "DIRECTORY"
+    md5md5 = hashlib.md5()
 
-    def exists(self):
-        with self._webhdfs() as _hdfs:
-            return _hdfs.status(self.path, strict=False) is not None
+    with open(path, "rb") as fobj:
+        while True:
+            block = fobj.read(bytes_per_checksum)
+            if not block:
+                break
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
-        assert mode == 0o777
-        assert parents
-        assert not exist_ok
+            crc_int = crc32c(block)
 
-        with self._webhdfs() as _hdfs:
-            # NOTE: hdfs.makekdirs always creates parents
-            _hdfs.makedirs(self.path, permission=mode)
+            # NOTE: hdfs is big-endian
+            crc_bytes = crc_int.to_bytes(
+                (crc_int.bit_length() + 7) // 8, "big"
+            )
 
-    def write_bytes(self, contents):
-        with self._webhdfs() as _hdfs:
-            with _hdfs.write(self.path, overwrite=True) as writer:
-                writer.write(contents)
+            md5 = hashlib.md5(crc_bytes).digest()
 
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
+            total += len(md5)
+            if padded < total:
+                padded *= 2
 
-    def read_bytes(self):
-        with self._webhdfs() as _hdfs:
-            with _hdfs.read(self.path) as reader:
-                return reader.read()
+            md5md5.update(md5)
 
-    def read_text(self, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        return self.read_bytes().decode(encoding)
+    md5md5.update(b"\0" * (padded - total))
+    return "000002000000000000000000" + md5md5.hexdigest()
+
+
+def hadoop_fs_checksum(path_info):
+
+    return md5md5crc32c(Path(_hdfs_root.name) / path_info.path.lstrip("/"))
+
+
+class FakeHadoopFileSystem:
+    def __init__(self, *args, **kwargs):
+        from pyarrow.fs import LocalFileSystem
+
+        self._root = Path(_hdfs_root.name)
+        self._fs = LocalFileSystem()
+
+    def _path(self, path):
+        from pyarrow.fs import FileSelector
+
+        if isinstance(path, FileSelector):
+            return FileSelector(
+                os.fspath(self._root / path.base_dir.lstrip("/")),
+                path.allow_not_found,
+                path.recursive,
+            )
+
+        return os.fspath(self._root / path.lstrip("/"))
+
+    def create_dir(self, path):
+        return self._fs.create_dir(self._path(path))
+
+    def open_input_stream(self, path):
+        return self._fs.open_input_stream(self._path(path))
+
+    def open_output_stream(self, path):
+        import posixpath
+
+        # NOTE: HadoopFileSystem.open_output_stream creates directories
+        # automatically.
+        self.create_dir(posixpath.dirname(path))
+        return self._fs.open_output_stream(self._path(path))
+
+    def get_file_info(self, path):
+        return self._fs.get_file_info(self._path(path))
+
+    def move(self, from_path, to_path):
+        self._fs.move(self._path(from_path), self._path(to_path))
+
+    def delete_file(self, path):
+        self._fs.delete_file(self._path(path))
 
 
 @pytest.fixture
-def webhdfs(hdfs_server):
-    port = hdfs_server["webhdfs"]
-    url = f"webhdfs://127.0.0.1:{port}/{uuid.uuid4()}"
-    yield WebHDFS(url)
+def hdfs(mocker):
+    if PY39:
+        pytest.skip(PYARROW_NOT_AVAILABLE)
+
+    # Windows might not have Visual C++ Redistributable for Visual Studio
+    # 2015 installed, which will result in the following error:
+    # "The pyarrow installation is not built with support for
+    # 'HadoopFileSystem'"
+    mocker.patch("pyarrow.fs._not_imported", [])
+    mocker.patch(
+        "pyarrow.fs.HadoopFileSystem", FakeHadoopFileSystem, create=True
+    )
+
+    mocker.patch("dvc.tree.hdfs._hadoop_fs_checksum", hadoop_fs_checksum)
+
+    url = f"hdfs://example.com:12345/{uuid.uuid4()}"
+    yield HDFS(url)

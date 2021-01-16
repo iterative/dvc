@@ -151,6 +151,7 @@ tests_requirements = [
     "filelock",
     "mypy",
     "wsgidav",
+    "crc32c",
 ]
 
 setup(
