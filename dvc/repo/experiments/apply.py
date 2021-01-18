@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @scm_context
 def apply(repo, rev, force=False, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
-    from dvc.scm.base import SCMError
+    from dvc.scm.base import MergeConflictError, SCMError
 
     exps = repo.experiments
 
@@ -48,7 +48,7 @@ def apply(repo, rev, force=False, **kwargs):
     if workspace:
         try:
             repo.scm.stash.apply(workspace)
-        except SCMError:
+        except MergeConflictError as exc:
             # Applied experiment conflicts with user's workspace changes
             if force:
                 # prefer applied experiment changes over prior stashed changes
@@ -57,7 +57,9 @@ def apply(repo, rev, force=False, **kwargs):
                 # revert applied changes and restore user's workspace
                 repo.scm.reset(hard=True)
                 repo.scm.stash.pop()
-                raise ApplyConflictError(rev)
+                raise ApplyConflictError(rev) from exc
+        except SCMError as exc:
+            raise ApplyConflictError(rev) from exc
         repo.scm.stash.drop()
     repo.scm.reset()
 
