@@ -8,19 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class CmdStageAdd(CmdBase):
-    @staticmethod
-    def create(repo, force, **kwargs):
-        from dvc.stage.utils import check_graphs, create_stage_from_cli
-
-        stage = create_stage_from_cli(repo, **kwargs)
-        check_graphs(repo, stage, force=force)
-        return stage
-
     def run(self):
-        stage = self.create(self.repo, self.args.force, **vars(self.args))
+        kwargs = vars(self.args)
+        stage = self.repo.stage.create_from_cli(validate=True, **kwargs)
+
         stage.ignore_outs()
         stage.dump()
-
         return 0
 
 
