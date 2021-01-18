@@ -262,7 +262,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         ):
             raise SCMError(f"Failed to set '{name}'")
 
-    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
+    def get_ref(self, name, follow: bool = True) -> Optional[str]:
         from dulwich.refs import parse_symref_value
 
         name_b = os.fsencode(name)

@@ -50,7 +50,7 @@ class TestInstall:
         os.unlink("file")
         scm.install()
 
-        scm.checkout("new_branch", create_new=True)
+        scm.gitpython.git.checkout("-b", "new_branch")
 
         assert os.path.isfile("file")
 

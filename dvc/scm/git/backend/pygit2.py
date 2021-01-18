@@ -4,7 +4,7 @@ import os
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple
 
-from dvc.scm.base import MergeConflictError, SCMError
+from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
@@ -93,7 +93,25 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def checkout(
         self, branch: str, create_new: Optional[bool] = False, **kwargs,
     ):
-        raise NotImplementedError
+        from pygit2 import GitError
+
+        if create_new:
+            commit = self.repo.revparse_single("HEAD")
+            new_branch = self.repo.branches.local.create(branch, commit)
+            self.repo.checkout(new_branch)
+        else:
+            if branch == "-":
+                branch = "@{-1}"
+            try:
+                commit, ref = self.repo.resolve_refish(branch)
+            except (KeyError, GitError):
+                raise RevError(f"unknown Git revision '{branch}'")
+            self.repo.checkout_tree(commit)
+            detach = kwargs.get("detach", False)
+            if ref and not detach:
+                self.repo.set_head(ref.name)
+            else:
+                self.repo.set_head(commit.id)
 
     def pull(self, **kwargs):
         raise NotImplementedError
@@ -136,7 +154,24 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def resolve_rev(self, rev: str) -> str:
-        raise NotImplementedError
+        from pygit2 import GitError
+
+        try:
+            commit, _ref = self.repo.resolve_refish(rev)
+            return str(commit.id)
+        except (KeyError, GitError):
+            pass
+
+        # Look for single exact match in remote refs
+        shas = {
+            self.get_ref(f"refs/remotes/{remote.name}/{rev}")
+            for remote in self.repo.remotes
+        } - {None}
+        if len(shas) > 1:
+            raise RevError(f"ambiguous Git revision '{rev}'")
+        if len(shas) == 1:
+            return shas.pop()  # type: ignore
+        raise RevError(f"unknown Git revision '{rev}'")
 
     def resolve_commit(self, rev: str) -> str:
         raise NotImplementedError
@@ -158,16 +193,38 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         symbolic: Optional[bool] = False,
     ):
-        raise NotImplementedError
+        if old_ref and old_ref != self.get_ref(name, follow=False):
+            raise SCMError(f"Failed to set '{name}'")
 
-    def get_ref(self, name, follow: Optional[bool] = True) -> Optional[str]:
-        raise NotImplementedError
+        if symbolic:
+            ref = self.repo.create_reference_symbolic(name, new_ref, True)
+        else:
+            ref = self.repo.create_reference_direct(name, new_ref, True)
+        if message:
+            ref.set_target(new_ref, message)
+
+    def get_ref(self, name, follow: bool = True) -> Optional[str]:
+        from pygit2 import GIT_REF_SYMBOLIC
+
+        ref = self.repo.references.get(name)
+        if not ref:
+            return None
+        if follow and ref.type == GIT_REF_SYMBOLIC:
+            ref = ref.resolve()
+        return str(ref.target)
 
     def remove_ref(self, name: str, old_ref: Optional[str] = None):
-        raise NotImplementedError
+        ref = self.repo.references.get(name)
+        if not ref:
+            raise SCMError(f"Ref '{name}' does not exist")
+        if old_ref and old_ref != str(ref.target):
+            raise SCMError(f"Failed to remove '{name}'")
+        ref.delete()
 
     def iter_refs(self, base: Optional[str] = None):
-        raise NotImplementedError
+        for ref in self.repo.references:
+            if ref.startswith(base):
+                yield ref
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
@@ -223,7 +280,20 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
-        raise NotImplementedError
+        from pygit2 import GIT_RESET_HARD, GIT_RESET_MIXED, IndexEntry
+
+        self.repo.index.read(False)
+        if paths is not None:
+            tree = self.repo.revparse_single("HEAD").tree
+            for path in paths:
+                rel = relpath(path, self.root_dir)
+                obj = tree[relpath(rel, self.root_dir)]
+                self.repo.index.add(IndexEntry(rel, obj.oid, obj.filemode))
+            self.repo.index.write()
+        elif hard:
+            self.repo.reset(self.repo.head.target, GIT_RESET_HARD)
+        else:
+            self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
 
     def checkout_index(
         self,
@@ -299,7 +369,9 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Merge commit message is required")
 
         try:
+            self.repo.index.read(False)
             self.repo.merge(rev)
+            self.repo.index.write()
         except GitError as exc:
             raise SCMError("Merge failed") from exc
 
@@ -316,4 +388,5 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if squash:
             self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
             self.repo.state_cleanup()
+            self.repo.index.write()
         return None

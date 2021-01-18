@@ -370,14 +370,15 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         except GitCommandError as exc:
             raise SCMError(f"Failed to set ref '{name}'") from exc
 
-    def get_ref(
-        self, name: str, follow: Optional[bool] = True
-    ) -> Optional[str]:
+    def get_ref(self, name: str, follow: bool = True) -> Optional[str]:
         from git.exc import GitCommandError
 
         if name == "HEAD":
             try:
-                return self.repo.head.commit.hexsha
+                if follow or self.repo.head.is_detached:
+                    return self.repo.head.commit.hexsha
+                else:
+                    return f"refs/heads/{self.repo.active_branch}"
             except (GitCommandError, ValueError):
                 return None
         elif name.startswith("refs/heads/"):
@@ -495,7 +496,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         try:
             self.git.stash("apply", rev)
         except GitCommandError as exc:
-            if "CONFLICT" in str(exc):
+            out = str(exc)
+            if "CONFLICT" in out or "already exists" in out:
                 raise MergeConflictError(
                     "Stash apply resulted in merge conflicts"
                 ) from exc
