@@ -1,6 +1,7 @@
 from textwrap import dedent
 
 import pytest
+from funcy import first
 
 from dvc import stage as stage_module
 from dvc.exceptions import MetricsError
@@ -128,3 +129,75 @@ def test_live_report(tmp_dir, dvc, live_stage, report):
     live_stage(report=report)
 
     assert (tmp_dir / "logs.html").is_file() == report
+
+
+@pytest.fixture
+def live_checkpoint_stage(tmp_dir, scm, dvc):
+    SCRIPT = dedent(
+        """
+            import os
+            import dvclive
+
+            def read(path):
+                value=0
+                if os.path.exists(path):
+                    with open(path, 'r') as fobj:
+                        try:
+                            value = int(fobj.read())
+                        except ValueError:
+                            pass
+                return value
+
+            def dump(value, path):
+                with open(path, "w") as fobj:
+                    fobj.write(str(value))
+
+            r = 4
+            checkpoint_file = "checkpoint"
+
+            value = read(checkpoint_file)
+
+            for i in range(1,r):
+                m = i + value
+                dump(m, checkpoint_file)
+                loss = 1/m
+                dvclive.log("loss", loss)
+                dvclive.log("accuracy", 1-loss)
+                dvclive.next_step()"""
+    )
+
+    def make(summary=True, report=True):
+        tmp_dir.gen("train.py", SCRIPT)
+        tmp_dir.gen("params.yaml", "foo: 1")
+        stage = dvc.run(
+            cmd="python train.py",
+            params=["foo"],
+            deps=["train.py"],
+            name="live_stage",
+            live="logs",
+            live_summary=summary,
+            live_report=report,
+            checkpoints=["checkpoint"],
+        )
+
+        scm.add(["dvc.yaml", "train.py", "params.yaml", ".gitignore"])
+        scm.commit("initial: live_stage")
+
+        return stage
+
+    yield make
+
+
+def test_live_checkpoints_resume(tmp_dir, scm, dvc, live_checkpoint_stage):
+    checkpoint_stage = live_checkpoint_stage()
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=False
+    )
+
+    checkpoint_resume = first(results)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=checkpoint_resume,
+        tmp_dir=False,
+    )

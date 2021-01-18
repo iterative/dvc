@@ -361,7 +361,7 @@ class Stage(params.StageParams):
     def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if (out.persist or out.checkpoint) and not force:
+            if (out.persist or out.checkpoint or out.live) and not force:
                 out.unprotect()
                 continue
 
