@@ -496,7 +496,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         try:
             self.git.stash("apply", rev)
         except GitCommandError as exc:
-            if "CONFLICT" in str(exc):
+            out = str(exc)
+            if "CONFLICT" in out or "already exists" in out:
                 raise MergeConflictError(
                     "Stash apply resulted in merge conflicts"
                 ) from exc
