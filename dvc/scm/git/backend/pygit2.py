@@ -282,18 +282,18 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         from pygit2 import GIT_RESET_HARD, GIT_RESET_MIXED, IndexEntry
 
-        self.repo.index.read()
         if paths is not None:
+            self.repo.index.read()
             tree = self.repo.revparse_single("HEAD").tree
             for path in paths:
                 rel = relpath(path, self.root_dir)
                 obj = tree[relpath(rel, self.root_dir)]
                 self.repo.index.add(IndexEntry(rel, obj.oid, obj.filemode))
+            self.repo.index.write()
         elif hard:
             self.repo.reset(self.repo.head.target, GIT_RESET_HARD)
         else:
             self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
-        self.repo.index.write()
 
     def checkout_index(
         self,
@@ -319,7 +319,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if ours or theirs:
             strategy |= GIT_CHECKOUT_ALLOW_CONFLICTS
 
-        self.repo.index.read()
         index = self.repo.index
         if paths:
             path_list: Optional[List[str]] = [
@@ -374,7 +373,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         except GitError as exc:
             raise SCMError("Merge failed") from exc
 
-        self.repo.index.read()
         if self.repo.index.conflicts:
             raise MergeConflictError("Merge contained conflicts")
 
