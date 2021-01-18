@@ -282,8 +282,8 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         from pygit2 import GIT_RESET_HARD, GIT_RESET_MIXED, IndexEntry
 
+        self.repo.index.read(False)
         if paths is not None:
-            self.repo.index.read()
             tree = self.repo.revparse_single("HEAD").tree
             for path in paths:
                 rel = relpath(path, self.root_dir)
@@ -369,7 +369,9 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Merge commit message is required")
 
         try:
+            self.repo.index.read(False)
             self.repo.merge(rev)
+            self.repo.index.write()
         except GitError as exc:
             raise SCMError("Merge failed") from exc
 
@@ -386,4 +388,5 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if squash:
             self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
             self.repo.state_cleanup()
+            self.repo.index.write()
         return None
