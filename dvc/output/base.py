@@ -1,15 +1,13 @@
 import logging
 import os
 from copy import copy
-from typing import Dict, Type
+from typing import Type
 from urllib.parse import urlparse
 
-from funcy import cached_property, project
 from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
-from dvc.env import DVCLIVE_PATH, DVCLIVE_REPORT, DVCLIVE_SUMMARY
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -607,22 +605,3 @@ class BaseOutput:
         self.hash_info = self.cache.merge(
             ancestor_info, self.hash_info, other.hash_info
         )
-
-    @cached_property
-    def env(self) -> Dict[str, str]:
-        if self.live:
-            from dvc.schema import LIVE_PROPS
-
-            env = {DVCLIVE_PATH: str(self.path_info)}
-            if isinstance(self.live, dict):
-
-                config = project(self.live, LIVE_PROPS)
-
-                env[DVCLIVE_SUMMARY] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
-                )
-                env[DVCLIVE_REPORT] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_REPORT, True))
-                )
-            return env
-        return {}

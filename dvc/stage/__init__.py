@@ -255,13 +255,41 @@ class Stage(params.StageParams):
         """
         return any(out.checkpoint for out in self.outs)
 
-    @property
-    def env(self) -> Env:
+    def _read_env(self, out, checkpoint_func=None) -> Env:
         env: Env = {}
+        if out.live:
+            from dvc.env import DVCLIVE_PATH, DVCLIVE_REPORT, DVCLIVE_SUMMARY
+            from dvc.output import BaseOutput
+            from dvc.schema import LIVE_PROPS
+
+            env[DVCLIVE_PATH] = str(out.path_info)
+            if isinstance(out.live, dict):
+                config = project(out.live, LIVE_PROPS)
+
+                env[DVCLIVE_SUMMARY] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
+                )
+                env[DVCLIVE_REPORT] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_REPORT, True))
+                )
+        elif out.checkpoint and checkpoint_func:
+            from dvc.env import DVC_CHECKPOINT
+
+            env.update({DVC_CHECKPOINT: "1"})
+        return env
+
+    def env(self, checkpoint_func=None) -> Env:
+        from dvc.env import DVC_ROOT
+
+        env: Env = {}
+        if self.repo:
+            env.update({DVC_ROOT: self.repo.root_dir})
+
         for out in self.outs:
-            if any(out.env.keys() and env.keys()):
+            current = self._read_env(out, checkpoint_func=checkpoint_func)
+            if set(env.keys()).intersection(set(current.keys())):
                 raise DvcException("Duplicated env variable")
-            env.update(out.env)
+            env.update(current)
         return env
 
     def changed_deps(self):
