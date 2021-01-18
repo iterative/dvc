@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from dvc.info import get_dvc_info, psutil
+from dvc.info import get_dvc_info
 
 # Python's version is in the shape of:
 # <major>.<minor>.<patch>[{a|b|rc}N][.postN][.devN]
@@ -85,7 +85,6 @@ def test_remotes(tmp_dir, dvc, caplog):
     assert re.search("Remotes: (ssh, azure|azure, ssh)", dvc_info)
 
 
-@pytest.mark.skipif(psutil is None, reason="No psutil.")
 def test_fs_info_in_repo(tmp_dir, dvc, caplog):
     os.mkdir(dvc.cache.local.cache_dir)
     dvc_info = get_dvc_info()
@@ -104,7 +103,6 @@ def test_info_outside_of_repo(tmp_dir, caplog):
     assert "Repo:" not in dvc_info
 
 
-@pytest.mark.skipif(psutil is None, reason="No psutil.")
 def test_fs_info_outside_of_repo(tmp_dir, caplog):
     dvc_info = get_dvc_info()
     assert re.search(r"DVC version: \d+\.\d+\.\d+.*", dvc_info)
