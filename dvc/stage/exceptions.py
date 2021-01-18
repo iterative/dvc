@@ -80,7 +80,9 @@ class MissingDataSource(DvcException):
         super().__init__(msg)
 
 
-class StageNotFound(DvcException):
+class StageNotFound(KeyError, DvcException):
+    __str__ = DvcException.__str__
+
     def __init__(self, file, name):
         self.file = file.relpath
         self.name = name
