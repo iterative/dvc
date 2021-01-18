@@ -57,6 +57,15 @@ class TestRepro(SingleStageRun, TestDvc):
         )
 
 
+class TestReproByOuts(TestRepro):
+    def test(self):
+        with open(self.FOO, "a") as dep_file:
+            dep_file.write("hello")
+
+        res = self.dvc.reproduce(targets=[self.file1])
+        self.assertIn(self.dvc.stage.get_target(self.file1_stage), res)
+
+
 class TestReproFail(TestRepro):
     def test(self):
         os.unlink(self.CODE)
