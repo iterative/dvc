@@ -73,6 +73,7 @@ install_requires = [
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
     "networkx>=2.1",
+    "psutil>=5.8.0",
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
     "dataclasses==0.7; python_version < '3.7'",
