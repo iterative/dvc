@@ -60,6 +60,24 @@ class OutputNotFoundError(DvcException):
         )
 
 
+class OutputNotCreatedError(DvcException):
+    """Thrown if the specified output file could not be created.
+
+    Args:
+        output (unicode): path to the file
+    """
+
+    def __init__(self, output):
+        from dvc.utils import relpath
+
+        self.output = output
+        super().__init__(
+            "Unable to create output file '{path}'".format(
+                path=relpath(self.output)
+            )
+        )
+
+
 class StagePathAsOutputError(DvcException):
     """Thrown if directory that stage is going to be saved in is specified as
     an output of another stage.

@@ -18,6 +18,12 @@ class CmdAdd(CmdBase):
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
 
+            if len(self.args.targets) != 1 and self.args.output:
+                logger.error(
+                    "cannot add more than one file when using --output"
+                )
+                return 1
+
             self.repo.add(
                 self.args.targets,
                 recursive=self.args.recursive,
@@ -26,6 +32,7 @@ class CmdAdd(CmdBase):
                 external=self.args.external,
                 glob=self.args.glob,
                 desc=self.args.desc,
+                output=self.args.output,
             )
 
         except DvcException:
@@ -82,6 +89,13 @@ def add_parser(subparsers, parent_parser):
             "User description of the data (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        metavar="<path>",
+        help="Output path for the file, if it lives outside the repo.",
     )
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add.",

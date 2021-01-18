@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from typing import TYPE_CHECKING
 
 import colorama
@@ -7,6 +8,7 @@ import colorama
 from ..exceptions import (
     CacheLinkError,
     OutputDuplicationError,
+    OutputNotCreatedError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
@@ -30,6 +32,7 @@ def add(
     recursive=False,
     no_commit=False,
     fname=None,
+    output=None,
     **kwargs,
 ):
     from dvc.utils.collections import ensure_list
@@ -38,6 +41,20 @@ def add(
         raise RecursiveAddingWhileUsingFilename()
 
     targets = ensure_list(targets)
+
+    if output:
+        try:
+            dname = os.path.dirname(output)
+
+            if dname and not os.path.isdir(dname):
+                os.makedirs(dname)
+
+            shutil.copy2(targets[0], output)
+
+            targets = [output]
+        except OSError:
+            raise OutputNotCreatedError(output)
+
     link_failures = []
     stages_list = []
     num_targets = len(targets)
