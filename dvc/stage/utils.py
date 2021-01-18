@@ -325,28 +325,37 @@ def _check_stage_exists(
         )
 
 
-def check_graphs(
-    repo: "Repo", stage: Union["Stage", "PipelineStage"], force: bool = True
+def validate_state(
+    repo: "Repo", new: Union["Stage", "PipelineStage"], force: bool = False,
 ) -> None:
-    """Checks graph and if that stage already exists.
+    """Validates that the new stage:
 
-    If it exists in the dvc.yaml file, it errors out unless force is given.
+    * does not already exist with the same (name, path), unless force is True.
+    * does not affect the correctness of the repo's graph (to-be graph).
     """
-    from dvc.exceptions import OutputDuplicationError
+    stages = repo.stages[:] if force else None
+    if force:
+        # remove an existing stage (if exists)
+        with suppress(ValueError):
+            # uses name and path to determine this which is same for the
+            # existing (if any) and the new one
+            stages.remove(new)
+    else:
+        _check_stage_exists(repo, new, new.path)
+        # if not `force`, we don't need to replace existing stage with the new
+        # one, as the dumping this is not going to replace it anyway (as the
+        # stage with same path + name does not exist (from above check).
 
-    try:
-        if force:
-            with suppress(ValueError):
-                repo.stages.remove(stage)
-        else:
-            _check_stage_exists(repo, stage, stage.path)
-        repo.check_modified_graph([stage])
-    except OutputDuplicationError as exc:
-        raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
+    repo.check_modified_graph(new_stages=[new], old_stages=stages)
 
 
 def create_stage_from_cli(
-    repo: "Repo", single_stage: bool = False, fname: str = None, **kwargs: Any
+    repo: "Repo",
+    single_stage: bool = False,
+    fname: str = None,
+    validate: bool = False,
+    force: bool = False,
+    **kwargs: Any,
 ) -> Union["Stage", "PipelineStage"]:
 
     from dvc.dvcfile import PIPELINE_FILE
@@ -388,5 +397,9 @@ def create_stage_from_cli(
     stage = create_stage(
         stage_cls, repo=repo, path=path, params=params, **kwargs
     )
+
+    if validate:
+        validate_state(repo, stage, force=force)
+
     restore_meta(stage)
     return stage

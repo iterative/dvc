@@ -3,7 +3,7 @@ import logging
 import os
 import typing
 from contextlib import suppress
-from typing import Iterable, List, NamedTuple, Optional, Set, Tuple
+from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, Union
 
 from dvc.exceptions import (
     DvcException,
@@ -19,7 +19,7 @@ if typing.TYPE_CHECKING:
     from networkx import DiGraph
 
     from dvc.repo import Repo
-    from dvc.stage import Stage
+    from dvc.stage import PipelineStage, Stage
     from dvc.stage.loader import StageLoader
     from dvc.types import OptStr
 
@@ -92,6 +92,21 @@ def _collect_specific_target(
 class StageLoad:
     def __init__(self, repo: "Repo") -> None:
         self.repo = repo
+
+    def create_from_cli(
+        self, validate: bool = False, **kwargs
+    ) -> Union["Stage", "PipelineStage"]:
+        """Creates a stage from CLI args passed as kwargs.
+
+        Args:
+            validate: if true, the new created stage is checked against the
+                stages in the repo. Eg: graph correctness,
+                potential overwrites in dvc.yaml file (unless `force=True`).
+        """
+        from dvc.stage.utils import create_stage_from_cli
+
+        kwargs.update(validate=validate)
+        return create_stage_from_cli(self.repo, **kwargs)
 
     def from_target(
         self, target: str, accept_group: bool = False, glob: bool = False,

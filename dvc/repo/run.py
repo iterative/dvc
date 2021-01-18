@@ -1,9 +1,11 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from . import locked
 from .scm_context import scm_context
 
 if TYPE_CHECKING:
+    from dvc.stage import PipelineStage, Stage
+
     from . import Repo
 
 
@@ -11,29 +13,24 @@ if TYPE_CHECKING:
 @scm_context
 def run(
     self: "Repo",
-    fname: str = None,
     no_exec: bool = False,
-    single_stage: bool = False,
+    no_commit: bool = False,
+    run_cache: bool = True,
+    force: bool = True,
     **kwargs
-):
-    from dvc.stage.utils import check_graphs, create_stage_from_cli
+) -> Union["Stage", "PipelineStage", None]:
+    from dvc.stage.utils import validate_state
 
-    stage = create_stage_from_cli(
-        self, single_stage=single_stage, fname=fname, **kwargs
-    )
-
-    if kwargs.get("run_cache", True) and stage.can_be_skipped:
+    stage = self.stage.create_from_cli(**kwargs)
+    if run_cache and stage.can_be_skipped:
         return None
 
-    check_graphs(self, stage, force=kwargs.get("force", True))
+    validate_state(self, stage, force=force)
 
     if no_exec:
         stage.ignore_outs()
     else:
-        stage.run(
-            no_commit=kwargs.get("no_commit", False),
-            run_cache=kwargs.get("run_cache", True),
-        )
+        stage.run(no_commit=no_commit, run_cache=run_cache)
 
     stage.dump(update_lock=not no_exec)
     return stage

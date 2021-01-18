@@ -85,7 +85,7 @@ def add(
                 )
             except OutputDuplicationError as exc:
                 raise OutputDuplicationError(
-                    exc.output, set(exc.stages) - set(stages)
+                    exc.output, list(set(exc.stages) - set(stages))
                 )
 
             link_failures.extend(
