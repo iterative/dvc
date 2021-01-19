@@ -3,6 +3,7 @@ import logging
 import os
 import typing
 from contextlib import suppress
+from functools import partial
 from typing import (
     Callable,
     Iterable,
@@ -13,7 +14,6 @@ from typing import (
     Tuple,
     Union,
 )
-from functools import partial
 
 from dvc.exceptions import (
     DvcException,
