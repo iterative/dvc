@@ -7,6 +7,7 @@ class DvcException(Exception):
 
     def __init__(self, msg, *args):
         assert msg
+        self.msg = msg
         super().__init__(msg, *args)
 
 

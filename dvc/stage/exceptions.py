@@ -80,15 +80,18 @@ class MissingDataSource(DvcException):
         super().__init__(msg)
 
 
-class StageNotFound(KeyError, DvcException):
-    __str__ = DvcException.__str__
-
+class StageNotFound(DvcException, KeyError):
     def __init__(self, file, name):
         self.file = file.relpath
         self.name = name
         super().__init__(
             f"Stage '{self.name}' not found inside '{self.file}' file"
         )
+
+    def __str__(self):
+        # `KeyError` quotes the message
+        # see: https://bugs.python.org/issue2651
+        return self.msg
 
 
 class StageNameUnspecified(DvcException):
