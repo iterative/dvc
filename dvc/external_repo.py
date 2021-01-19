@@ -44,6 +44,10 @@ def external_repo(url, rev=None, for_write=False, cache_dir=None, **kwargs):
         cache_dir=cache_dir or _get_cache_dir(url),
         **kwargs,
     )
+
+    if "fetch" not in conf:
+        conf["fetch"] = True
+
     repo = ExternalRepo(**conf)
 
     try:
@@ -149,20 +153,14 @@ class ExternalRepo(Repo):
 
     @cached_property
     def repo_tree(self):
-        return self._get_tree_for(
-            self, subrepos=self.subrepos, repo_factory=self.make_repo
-        )
-
-    def _get_tree_for(self, repo, **kwargs):
-        """
-        Provides a combined tree of a single repo with dvc + git/local tree.
-        """
         from dvc.tree.repo import RepoTree
 
-        kw = {**self.tree_confs, **kwargs}
-        if "fetch" not in kw:
-            kw["fetch"] = True
-        return RepoTree(repo, **kw)
+        return RepoTree(
+            self,
+            subrepos=self.subrepos,
+            repo_factory=self.make_repo,
+            **self.tree_confs,
+        )
 
     def make_repo(self, path):
         config = self._cache_config.copy()
