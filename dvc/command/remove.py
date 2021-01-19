@@ -13,8 +13,8 @@ class CmdRemove(CmdBase):
         for target in self.args.targets:
             try:
                 self.repo.remove(target, outs=self.args.outs)
-            except DvcException as exc:
-                logger.error(exc)
+            except DvcException:
+                logger.exception("")
                 return 1
         return 0
 
