@@ -38,11 +38,11 @@ def plot_data(filename, revision, content):
     _, extension = os.path.splitext(filename.lower())
     if extension == ".json":
         return JSONPlotData(filename, revision, content)
-    elif extension == ".csv":
+    if extension == ".csv":
         return CSVPlotData(filename, revision, content)
-    elif extension == ".tsv":
+    if extension == ".tsv":
         return CSVPlotData(filename, revision, content, delimiter="\t")
-    elif extension == ".yaml":
+    if extension == ".yaml":
         return YAMLPlotData(filename, revision, content)
     raise PlotMetricTypeError(filename)
 

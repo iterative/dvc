@@ -169,18 +169,17 @@ class Container(Node, ABC):
         if value is None or isinstance(value, PRIMITIVES):
             assert meta
             return Value(value, meta=meta)
-        elif isinstance(value, Node):
+        if isinstance(value, Node):
             return value
-        elif isinstance(value, (list, dict)):
+        if isinstance(value, (list, dict)):
             assert meta
             container = CtxDict if isinstance(value, dict) else CtxList
             return container(value, meta=meta)
-        else:
-            msg = (
-                "Unsupported value of type "
-                f"'{type(value).__name__}' in '{meta}'"
-            )
-            raise TypeError(msg)
+        msg = (
+            "Unsupported value of type "
+            f"'{type(value).__name__}' in '{meta}'"
+        )
+        raise TypeError(msg)
 
     def __repr__(self):
         return repr(self.data)

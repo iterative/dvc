@@ -1140,11 +1140,10 @@ def _format_dvc_line(line):
     if "cache:" in line or "md5:" in line:
         return line + " # line comment"
     # Format command as one word per line
-    elif line.startswith("cmd: "):
+    if line.startswith("cmd: "):
         pre, command = line.split(None, 1)
         return pre + " >\n" + "\n".join("  " + s for s in command.split())
-    else:
-        return line
+    return line
 
 
 def test_downstream(dvc):

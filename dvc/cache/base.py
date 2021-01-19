@@ -355,8 +355,7 @@ class CloudCache:
                 jobs=jobs,
                 no_progress_bar=no_progress_bar,
             )
-        else:
-            return self._transfer_file(from_tree, from_info)
+        return self._transfer_file(from_tree, from_info)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
