@@ -1,5 +1,6 @@
 import logging
 import os
+import posixpath
 import shutil
 import threading
 from contextlib import contextmanager
@@ -34,6 +35,7 @@ class WebHDFSTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
     PARAM_CHECKSUM = "checksum"
+    TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -105,10 +107,9 @@ class WebHDFSTree(BaseTree):
             return
 
         root = path_info.path
-        for path, _, files in self.hdfs_client.walk(root):
-            for file_ in files:
-                path = os.path.join(path, file_)
-                yield path_info.replace(path=path)
+        for path, _, fnames in self.hdfs_client.walk(root):
+            for fname in fnames:
+                yield path_info.replace(path=posixpath.join(path, fname))
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:

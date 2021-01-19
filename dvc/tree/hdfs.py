@@ -19,6 +19,45 @@ from .pool import get_connection
 logger = logging.getLogger(__name__)
 
 
+def _hadoop_fs(cmd, user=None):
+    cmd = "hadoop fs -" + cmd
+    if user:
+        cmd = f"HADOOP_USER_NAME={user} " + cmd
+
+    # NOTE: close_fds doesn't work with redirected stdin/stdout/stderr.
+    # See https://github.com/iterative/dvc/issues/1197.
+    close_fds = os.name != "nt"
+
+    executable = os.getenv("SHELL") if os.name != "nt" else None
+    p = subprocess.Popen(
+        cmd,
+        shell=True,
+        close_fds=close_fds,
+        executable=executable,
+        env=fix_env(os.environ),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out, err = p.communicate()
+    if p.returncode != 0:
+        raise RemoteCmdError("hdfs", cmd, p.returncode, err)
+    return out.decode("utf-8")
+
+
+def _group(regex, s, gname):
+    match = re.match(regex, s)
+    assert match is not None
+    return match.group(gname)
+
+
+def _hadoop_fs_checksum(path_info):
+    # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
+    regex = r".*\t.*\t(?P<checksum>.*)"
+    stdout = _hadoop_fs(f"checksum {path_info.url}", user=path_info.user)
+    return _group(regex, stdout, "checksum")
+
+
 class HDFSTree(BaseTree):
     scheme = Schemes.HDFS
     REQUIRES = {"pyarrow": "pyarrow"}
@@ -188,52 +227,13 @@ class HDFSTree(BaseTree):
             file_info = hdfs.get_file_info(path_info.path)
             return file_info.size
 
-    def hadoop_fs(self, cmd, user=None):
-        cmd = "hadoop fs -" + cmd
-        if user:
-            cmd = f"HADOOP_USER_NAME={user} " + cmd
-
-        # NOTE: close_fds doesn't work with redirected stdin/stdout/stderr.
-        # See https://github.com/iterative/dvc/issues/1197.
-        close_fds = os.name != "nt"
-
-        executable = os.getenv("SHELL") if os.name != "nt" else None
-        p = subprocess.Popen(
-            cmd,
-            shell=True,
-            close_fds=close_fds,
-            executable=executable,
-            env=fix_env(os.environ),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        out, err = p.communicate()
-        if p.returncode != 0:
-            raise RemoteCmdError(self.scheme, cmd, p.returncode, err)
-        return out.decode("utf-8")
-
-    @staticmethod
-    def _group(regex, s, gname):
-        match = re.match(regex, s)
-        assert match is not None
-        return match.group(gname)
-
     def get_file_hash(self, path_info):
         # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
-        regex = r".*\t.*\t(?P<checksum>.*)"
-        stdout = self.hadoop_fs(
-            f"checksum {path_info.url}", user=path_info.user
+        return HashInfo(
+            self.PARAM_CHECKSUM,
+            _hadoop_fs_checksum(path_info),
+            size=self.getsize(path_info),
         )
-        hash_info = HashInfo(
-            self.PARAM_CHECKSUM, self._group(regex, stdout, "checksum"),
-        )
-
-        with self.hdfs(path_info) as hdfs:
-            file_info = hdfs.get_file_info(path_info.path)
-            hash_info.size = file_info.size
-
-        return hash_info
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
