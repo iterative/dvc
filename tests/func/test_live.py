@@ -1,3 +1,4 @@
+from copy import deepcopy
 from textwrap import dedent
 
 import pytest
@@ -152,17 +153,16 @@ def live_checkpoint_stage(tmp_dir, scm, dvc):
                 with open(path, "w") as fobj:
                     fobj.write(str(value))
 
-            r = 4
+            r = 3
             checkpoint_file = "checkpoint"
 
             value = read(checkpoint_file)
-
             for i in range(1,r):
                 m = i + value
                 dump(m, checkpoint_file)
-                loss = 1/m
-                dvclive.log("loss", loss)
-                dvclive.log("accuracy", 1-loss)
+
+                dvclive.log("metric1", m)
+                dvclive.log("metric2", m *2)
                 dvclive.next_step()"""
     )
 
@@ -188,6 +188,19 @@ def live_checkpoint_stage(tmp_dir, scm, dvc):
     yield make
 
 
+def checkpoints_metric(show_results, metric_file, metric_name):
+    tmp = deepcopy(show_results)
+    tmp.pop("workspace")
+    tmp = first(tmp.values())
+    tmp.pop("baseline")
+    return list(
+        map(
+            lambda exp: exp["metrics"][metric_file][metric_name],
+            list(tmp.values()),
+        )
+    )
+
+
 def test_live_checkpoints_resume(tmp_dir, scm, dvc, live_checkpoint_stage):
     checkpoint_stage = live_checkpoint_stage()
     results = dvc.experiments.run(
@@ -196,8 +209,34 @@ def test_live_checkpoints_resume(tmp_dir, scm, dvc, live_checkpoint_stage):
 
     checkpoint_resume = first(results)
 
-    results = dvc.experiments.run(
+    dvc.experiments.run(
         checkpoint_stage.addressing,
         checkpoint_resume=checkpoint_resume,
         tmp_dir=False,
     )
+
+    results = dvc.experiments.show()
+    assert checkpoints_metric(results, "logs.json", "step") == [
+        5,
+        5,
+        4,
+        3,
+        3,
+        2,
+    ]
+    assert checkpoints_metric(results, "logs.json", "metric1") == [
+        0.5,
+        0.5,
+        0.4,
+        0.3,
+        0.3,
+        0.2,
+    ]
+    assert checkpoints_metric(results, "logs.json", "metric2") == [
+        1,
+        1,
+        0.8,
+        0.6,
+        0.6,
+        0.4,
+    ]
