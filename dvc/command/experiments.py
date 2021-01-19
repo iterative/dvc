@@ -212,9 +212,9 @@ def _format_field(val, precision=DEFAULT_PRECISION):
     if isinstance(val, float):
         fmt = f"{{:.{precision}g}}"
         return fmt.format(val)
-    elif isinstance(val, Mapping):
+    if isinstance(val, Mapping):
         return {k: _format_field(v) for k, v in val.items()}
-    elif isinstance(val, list):
+    if isinstance(val, list):
         return [_format_field(x) for x in val]
     return str(val)
 

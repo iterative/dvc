@@ -170,7 +170,7 @@ class StageLoad:
 
         if accept_group and stages.is_foreach_generated(name):
             return self._get_group_keys(stages, name)
-        elif glob:
+        if glob:
             return fnmatch.filter(stages.keys(), name)
         return [name]
 

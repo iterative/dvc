@@ -289,8 +289,7 @@ class DvcIgnoreFilter:
         ignore_pattern = self._get_trie_pattern(dirname)
         if ignore_pattern:
             return ignore_pattern.matches(dirname, basename, is_dir)
-        else:
-            return False
+        return False
 
     def _is_subrepo(self, path):
         dirname, basename = os.path.split(os.path.normpath(path))

@@ -109,9 +109,9 @@ def recurse(f):
         g = rpartial(wrapper, *args)
         if isinstance(data, Mapping):
             return {g(k): g(v) for k, v in data.items()}
-        elif isinstance(data, Seq):
+        if isinstance(data, Seq):
             return type(data)(map(g, data))
-        elif isinstance(data, str):
+        if isinstance(data, str):
             return f(data, *args)
         return data
 
