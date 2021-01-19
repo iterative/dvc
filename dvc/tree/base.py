@@ -59,6 +59,7 @@ class BaseTree:
     TRAVERSE_PREFIX_LEN = 3
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
+    CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
     SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
@@ -168,12 +169,12 @@ class BaseTree:
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def open(self, path_info, mode: str = "r", encoding: str = None):
+    def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         if hasattr(self, "_generate_download_url"):
             # pylint:disable=no-member
             func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
-            return open_url(get_url, mode=mode, encoding=encoding)
+            return open_url(get_url, mode=mode, encoding=encoding, **kwargs)
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
@@ -238,7 +239,7 @@ class BaseTree:
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
-    def copy_fobj(self, fobj, to_info):
+    def copy_fobj(self, fobj, to_info, chunk_size=None):
         raise RemoteActionNotImplemented("copy_fobj", self.scheme)
 
     def symlink(self, from_info, to_info):
@@ -381,6 +382,9 @@ class BaseTree:
             no_progress_bar=no_progress_bar,
             file_mode=file_mode,
         )
+
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False):
+        raise RemoteActionNotImplemented("upload_fobj", self.scheme)
 
     def download(
         self,

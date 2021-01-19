@@ -4,7 +4,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
 from dvc.utils.fs import path_isin
 
-from ..exceptions import OutputDuplicationError
+from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
 
 
@@ -18,6 +18,8 @@ def imp_url(
     erepo=None,
     frozen=True,
     no_exec=False,
+    remote=None,
+    to_remote=False,
     desc=None,
     jobs=None,
 ):
@@ -26,6 +28,16 @@ def imp_url(
 
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(self, out)
+
+    if to_remote and no_exec:
+        raise InvalidArgumentError(
+            "--no-exec can't be combined with --to-remote"
+        )
+
+    if not to_remote and remote:
+        raise InvalidArgumentError(
+            "--remote can't be used without --to-remote"
+        )
 
     # NOTE: when user is importing something from within their own repository
     if (
@@ -61,6 +73,10 @@ def imp_url(
 
     if no_exec:
         stage.ignore_outs()
+    elif to_remote:
+        stage.outs[0].hash_info = self.cloud.transfer(
+            url, jobs=jobs, remote=remote, command="import-url"
+        )
     else:
         stage.run(jobs=jobs)
 

@@ -119,3 +119,14 @@ def test_s3_isdir(tmp_dir, dvc, s3):
 
     assert not tree.isdir(s3 / "data" / "foo")
     assert tree.isdir(s3 / "data")
+
+
+def test_s3_upload_fobj(tmp_dir, dvc, s3):
+    s3.gen({"data": {"foo": "foo"}})
+    tree = S3Tree(dvc, s3.config)
+
+    to_info = s3 / "data" / "bar"
+    with tree.open(s3 / "data" / "foo", "rb") as stream:
+        tree.upload_fobj(stream, to_info, 1)
+
+    assert to_info.read_text() == "foo"

@@ -64,7 +64,7 @@ class HDFSTree(BaseTree):
         )
 
     @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb"}
 
         try:

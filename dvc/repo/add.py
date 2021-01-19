@@ -6,13 +6,14 @@ import colorama
 
 from ..exceptions import (
     CacheLinkError,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
-from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_paths
+from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
 from . import locked
 
 if TYPE_CHECKING:
@@ -24,12 +25,13 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def add(
+def add(  # noqa: C901
     repo,
     targets: "TargetType",
     recursive=False,
     no_commit=False,
     fname=None,
+    to_remote=False,
     **kwargs,
 ):
     from dvc.utils.collections import ensure_list
@@ -38,6 +40,28 @@ def add(
         raise RecursiveAddingWhileUsingFilename()
 
     targets = ensure_list(targets)
+
+    invalid_opt = None
+    if to_remote:
+        message = "{option} can't be used with --to-remote"
+        if len(targets) != 1:
+            invalid_opt = "multiple targets"
+        elif no_commit:
+            invalid_opt = "--no-commit option"
+        elif recursive:
+            invalid_opt = "--recursive option"
+    else:
+        message = "{option} can't be used without --to-remote"
+        if kwargs.get("out"):
+            invalid_opt = "--out"
+        elif kwargs.get("remote"):
+            invalid_opt = "--remote"
+        elif kwargs.get("jobs"):
+            invalid_opt = "--jobs"
+
+    if invalid_opt is not None:
+        raise InvalidArgumentError(message.format(option=invalid_opt))
+
     link_failures = []
     stages_list = []
     num_targets = len(targets)
@@ -64,7 +88,12 @@ def add(
                 )
 
             stages = _create_stages(
-                repo, sub_targets, fname, pbar=pbar, **kwargs,
+                repo,
+                sub_targets,
+                fname,
+                pbar=pbar,
+                to_remote=to_remote,
+                **kwargs,
             )
 
             try:
@@ -89,7 +118,15 @@ def add(
                 )
 
             link_failures.extend(
-                _process_stages(repo, stages, no_commit, pbar)
+                _process_stages(
+                    repo,
+                    sub_targets,
+                    stages,
+                    no_commit,
+                    pbar,
+                    to_remote,
+                    **kwargs,
+                )
             )
             stages_list += stages
 
@@ -110,11 +147,28 @@ def add(
     return stages_list
 
 
-def _process_stages(repo, stages, no_commit, pbar):
+def _process_stages(
+    repo, sub_targets, stages, no_commit, pbar, to_remote, **kwargs
+):
     link_failures = []
     from dvc.dvcfile import Dvcfile
 
     from ..output.base import OutputDoesNotExistError
+
+    if to_remote:
+        # Already verified in the add()
+        assert len(stages) == 1
+        assert len(sub_targets) == 1
+
+        [stage] = stages
+        stage.outs[0].hash_info = repo.cloud.transfer(
+            sub_targets[0],
+            jobs=kwargs.get("jobs"),
+            remote=kwargs.get("remote"),
+            command="add",
+        )
+        Dvcfile(repo, stage.path).dump(stage)
+        return link_failures
 
     with Tqdm(
         total=len(stages),
@@ -162,7 +216,15 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(
-    repo, targets, fname, pbar=None, external=False, glob=False, desc=None,
+    repo,
+    targets,
+    fname,
+    to_remote=False,
+    pbar=None,
+    external=False,
+    glob=False,
+    desc=None,
+    **kwargs,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
@@ -176,6 +238,8 @@ def _create_stages(
         disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
+        if to_remote:
+            out = resolve_output(out, kwargs.get("out"))
         path, wdir, out = resolve_paths(repo, out)
         stage = create_stage(
             Stage,

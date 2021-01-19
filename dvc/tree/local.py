@@ -56,7 +56,7 @@ class LocalTree(BaseTree):
         return cls(self, root)
 
     @staticmethod
-    def open(path_info, mode="r", encoding=None):
+    def open(path_info, mode="r", encoding=None, **kwargs):
         return open(path_info, mode=mode, encoding=encoding)
 
     def exists(self, path_info, use_dvcignore=True):
@@ -180,11 +180,11 @@ class LocalTree(BaseTree):
             self.remove(tmp_info)
             raise
 
-    def copy_fobj(self, fobj, to_info):
+    def copy_fobj(self, fobj, to_info, chunk_size=None):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:
-            copy_fobj_to_file(fobj, tmp_info)
+            copy_fobj_to_file(fobj, tmp_info, chunk_size=chunk_size)
             os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
@@ -281,6 +281,13 @@ class LocalTree(BaseTree):
         if file_mode is not None:
             self.chmod(tmp_file, file_mode)
         os.replace(tmp_file, to_info)
+
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        from dvc.progress import Tqdm
+
+        with Tqdm(bytes=True, disable=no_progress_bar, **pbar_args) as pbar:
+            with pbar.wrapattr(fobj, "read") as fobj:
+                self.copy_fobj(fobj, to_info, chunk_size=self.CHUNK_SIZE)
 
     @staticmethod
     def _download(

@@ -201,10 +201,10 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
                     fdest_wrapped.write(buf)
 
 
-def copy_fobj_to_file(fsrc, dest):
+def copy_fobj_to_file(fsrc, dest, chunk_size=None):
     """Copy contents of open file object to destination path."""
     with open(dest, "wb+") as fdest:
-        shutil.copyfileobj(fsrc, fdest)
+        shutil.copyfileobj(fsrc, fdest, length=chunk_size)
 
 
 def walk_files(directory):

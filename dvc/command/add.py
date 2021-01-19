@@ -26,6 +26,10 @@ class CmdAdd(CmdBase):
                 external=self.args.external,
                 glob=self.args.glob,
                 desc=self.args.desc,
+                out=self.args.out,
+                remote=self.args.remote,
+                to_remote=self.args.to_remote,
+                jobs=self.args.jobs,
             )
 
         except DvcException:
@@ -73,6 +77,35 @@ def add_parser(subparsers, parent_parser):
         "--file",
         help="Specify name of the DVC-file this command will generate.",
         metavar="<filename>",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        help="Destination path to put files to.",
+        metavar="<path>",
+    )
+    parser.add_argument(
+        "--to-remote",
+        action="store_true",
+        default=False,
+        help="Download it directly to the remote",
+    )
+    parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to download to",
+        metavar="<name>",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     parser.add_argument(
         "--desc",

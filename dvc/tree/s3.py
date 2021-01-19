@@ -80,7 +80,10 @@ class S3Tree(BaseTree):
         session = boto3.session.Session(**session_opts)
 
         return session.resource(
-            "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
+            "s3",
+            endpoint_url=self.endpoint_url,
+            use_ssl=self.use_ssl,
+            config=boto3.session.Config(signature_version="s3v4"),
         )
 
     @contextmanager
@@ -360,6 +363,27 @@ class S3Tree(BaseTree):
             ) as pbar:
                 obj.upload_file(
                     from_file, Callback=pbar.update, ExtraArgs=self.extra_args,
+                )
+
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        from boto3.s3.transfer import TransferConfig
+
+        config = TransferConfig(
+            multipart_threshold=self.CHUNK_SIZE,
+            multipart_chunksize=self.CHUNK_SIZE,
+            max_concurrency=1,
+            use_threads=False,
+        )
+        with self._get_s3() as s3:
+            with Tqdm(
+                disable=no_progress_bar, bytes=True, **pbar_args
+            ) as pbar:
+                s3.meta.client.upload_fileobj(
+                    fobj,
+                    to_info.bucket,
+                    to_info.path,
+                    Config=config,
+                    Callback=pbar.update,
                 )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):

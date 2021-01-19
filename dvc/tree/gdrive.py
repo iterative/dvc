@@ -389,7 +389,7 @@ class GDriveTree(BaseTree):
 
     @contextmanager
     @_gdrive_retry
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb"}
 
         item_id = self._get_item_id(path_info)

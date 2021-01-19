@@ -3,6 +3,7 @@ import itertools
 import json
 import logging
 import os
+from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
@@ -246,6 +247,116 @@ class CloudCache:
                     callback(1)
 
         self.tree.state.save(cache_info, hash_info)
+
+    def _transfer_file_as_whole(self, from_tree, from_info):
+        from dvc.utils import tmp_fname
+
+        # When we can't use the chunked upload, we have to first download
+        # and then calculate the hash as if it were a local file and then
+        # upload it.
+        local_tree = self.repo.cache.local.tree
+        local_info = local_tree.path_info / tmp_fname()
+
+        from_tree.download(from_info, local_info)
+        hash_info = local_tree.get_file_hash(local_info)
+
+        self.tree.upload(
+            local_info,
+            self.tree.hash_to_path_info(hash_info.value),
+            name=from_info.name,
+        )
+        return hash_info
+
+    def _transfer_file_as_chunked(self, from_tree, from_info):
+        from dvc.utils import tmp_fname
+        from dvc.utils.stream import HashedStreamReader
+
+        tmp_info = self.tree.path_info / tmp_fname()
+        with from_tree.open(
+            from_info, mode="rb", chunk_size=from_tree.CHUNK_SIZE
+        ) as stream:
+            stream_reader = HashedStreamReader(stream)
+            # Since we don't know the hash beforehand, we'll
+            # upload it to a temporary location and then move
+            # it.
+            self.tree.upload_fobj(
+                stream_reader,
+                tmp_info,
+                total=from_tree.getsize(from_info),
+                desc=from_info.name,
+            )
+
+        hash_info = stream_reader.hash_info
+        self.tree.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
+        return hash_info
+
+    def _transfer_file(self, from_tree, from_info):
+        try:
+            hash_info = self._transfer_file_as_chunked(from_tree, from_info)
+        except RemoteActionNotImplemented:
+            hash_info = self._transfer_file_as_whole(from_tree, from_info)
+
+        return hash_info
+
+    def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):
+        rel_path_infos = {}
+        from_infos = from_tree.walk_files(from_info)
+
+        def create_tasks(executor, amount):
+            for entry_info in itertools.islice(from_infos, amount):
+                pbar.total += 1
+                task = executor.submit(
+                    pbar.wrap_fn(self._transfer_file), from_tree, entry_info
+                )
+                rel_path_infos[task] = entry_info.relative_to(from_info)
+                yield task
+
+        pbar.total = 0
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            tasks = set(create_tasks(executor, jobs * 5))
+
+            while tasks:
+                done, tasks = futures.wait(
+                    tasks, return_when=futures.FIRST_COMPLETED
+                )
+                tasks.update(create_tasks(executor, len(done)))
+                for task in done:
+                    yield rel_path_infos.pop(task), task.result()
+
+    def _transfer_directory(
+        self, from_tree, from_info, jobs, no_progress_bar=False
+    ):
+        dir_info = DirInfo()
+
+        with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
+            for entry_info, entry_hash in self._transfer_directory_contents(
+                from_tree, from_info, jobs, pbar
+            ):
+                dir_info.trie[entry_info.parts] = entry_hash
+
+        local_cache = self.repo.cache.local
+        (
+            hash_info,
+            to_info,
+        ) = local_cache._get_dir_info_hash(  # pylint: disable=protected-access
+            dir_info
+        )
+
+        self.tree.upload(to_info, self.tree.hash_to_path_info(hash_info.value))
+        return hash_info
+
+    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
+        jobs = jobs or min((from_tree.jobs, self.tree.jobs))
+
+        if from_tree.isdir(from_info):
+            return self._transfer_directory(
+                from_tree,
+                from_info,
+                jobs=jobs,
+                no_progress_bar=no_progress_bar,
+            )
+        else:
+            return self._transfer_file(from_tree, from_info)
 
     def _cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""

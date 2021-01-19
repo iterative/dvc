@@ -92,6 +92,24 @@ class DataCloud:
             show_checksums=show_checksums,
         )
 
+    def transfer(self, source, jobs=None, remote=None, command=None):
+        """Transfer data items in a cloud-agnostic way.
+
+        Args:
+            source (str): url for the source location.
+            jobs (int): number of jobs that can be running simultaneously.
+            remote (dvc.remote.base.BaseRemote): optional remote to compare
+                cache to. By default remote from core.remote config option
+                is used.
+            command (bool): the command which is benefitting from this function
+                (to be used for reporting better error messages).
+        """
+        from dvc.tree import get_cloud_tree
+
+        from_tree = get_cloud_tree(self.repo, url=source)
+        remote = self.get_remote(remote, command)
+        return remote.transfer(from_tree, from_tree.path_info, jobs=jobs)
+
     def status(
         self,
         cache,

@@ -472,6 +472,11 @@ class Remote:
 
         return ret
 
+    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
+        return self.cache.transfer(
+            from_tree, from_info, jobs=jobs, no_progress_bar=no_progress_bar
+        )
+
     @staticmethod
     def _log_missing_caches(hash_info_dict):
         missing_caches = [

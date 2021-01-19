@@ -1,4 +1,9 @@
+import hashlib
 import io
+
+from dvc.hash_info import HashInfo
+from dvc.istextfile import istextblock
+from dvc.utils import dos2unix
 
 
 class IterStream(io.RawIOBase):
@@ -54,3 +59,30 @@ class IterStream(io.RawIOBase):
             except StopIteration:
                 break
         return self.leftover[:n]
+
+
+class HashedStreamReader:
+
+    PARAM_CHECKSUM = "md5"
+
+    def __init__(self, fobj):
+        self.md5 = hashlib.md5()
+        self.is_text_file = None
+        self.reader = fobj.read1 if hasattr(fobj, "read1") else fobj.read
+
+    def read(self, n=-1):
+        chunk = self.reader(n)
+        if self.is_text_file is None:
+            self.is_text_file = istextblock(chunk)
+
+        if self.is_text_file:
+            data = dos2unix(chunk)
+        else:
+            data = chunk
+        self.md5.update(data)
+
+        return chunk
+
+    @property
+    def hash_info(self):
+        return HashInfo(self.PARAM_CHECKSUM, self.md5.hexdigest(), nfiles=1)

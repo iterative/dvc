@@ -16,6 +16,7 @@ from dvc.cache import Cache
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -991,3 +992,32 @@ def test_add_long_fname(tmp_dir, dvc):
 
     dvc.add("data")
     assert (tmp_dir / "data").read_text() == {name: "foo"}
+
+
+def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
+    local_cloud.gen("foo", "foo")
+
+    url = "remote://upstream/foo"
+    [stage] = dvc.add(url, to_remote=True)
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+
+
+@pytest.mark.parametrize(
+    "invalid_opt, kwargs",
+    [
+        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
+        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
+        ("--recursive", {"targets": ["foo"], "recursive": True},),
+    ],
+)
+def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
+    with pytest.raises(InvalidArgumentError, match=invalid_opt):
+        dvc.add(to_remote=True, **kwargs)
