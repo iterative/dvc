@@ -302,7 +302,13 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     stage_list_parser.add_argument(
-        "targets", nargs="*", default=["dvc.yaml"], help="Stages to list from",
+        "targets",
+        nargs="*",
+        default=["dvc.yaml"],
+        help=(
+            "Show stages from a dvc.yaml/.dvc file or a directory. "
+            "'dvc.yaml' by default"
+        ),
     )
     stage_list_parser.add_argument(
         "--all",
@@ -321,7 +327,7 @@ def add_parser(subparsers, parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="List all stages inside the directory.",
+        help="List all stages inside the specified directory.",
     )
     stage_list_parser.add_argument(
         "--names-only",
