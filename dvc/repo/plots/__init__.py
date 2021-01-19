@@ -102,7 +102,7 @@ class Plots:
         plots = _prepare_plots(data, revs, props)
 
         result = {}
-        for datafile, desc in sorted(plots.items()):
+        for datafile, desc in plots.items():
             try:
                 result[datafile] = _render(
                     datafile, desc["data"], desc["props"], templates
