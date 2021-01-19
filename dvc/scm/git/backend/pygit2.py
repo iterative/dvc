@@ -210,15 +210,18 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         symbolic: Optional[bool] = False,
     ):
+        if message:
+            # pygit2 reflog message handling is bugged in 1.4.0
+            # see: https://github.com/libgit2/pygit2/issues/1061
+            raise NotImplementedError
+
         if old_ref and old_ref != self.get_ref(name, follow=False):
             raise SCMError(f"Failed to set '{name}'")
 
         if symbolic:
-            ref = self.repo.create_reference_symbolic(name, new_ref, True)
+            self.repo.create_reference_symbolic(name, new_ref, True)
         else:
-            ref = self.repo.create_reference_direct(name, new_ref, True)
-        if message:
-            ref.set_target(new_ref, message)
+            self.repo.create_reference_direct(name, new_ref, True)
 
     def get_ref(self, name, follow: bool = True) -> Optional[str]:
         from pygit2 import GIT_REF_SYMBOLIC

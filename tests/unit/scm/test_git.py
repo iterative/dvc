@@ -165,6 +165,28 @@ def test_set_ref(tmp_dir, git):
     )
 
 
+def test_set_ref_with_message(tmp_dir, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = tmp_dir.scm.get_rev()
+    tmp_dir.scm_gen({"file": "1"}, commit="commit")
+    commit_rev = tmp_dir.scm.get_rev()
+
+    git.set_ref("refs/foo/bar", init_rev, message="init message")
+    assert (
+        "init message"
+        in (tmp_dir / ".git" / "logs" / "refs" / "foo" / "bar").read_text()
+    )
+
+    git.set_ref("refs/foo/bar", commit_rev, message="modify message")
+    assert (
+        "modify message"
+        in (tmp_dir / ".git" / "logs" / "refs" / "foo" / "bar").read_text()
+    )
+
+
 def test_get_ref(tmp_dir, git):
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
