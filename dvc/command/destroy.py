@@ -33,7 +33,10 @@ class CmdDestroy(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    DESTROY_HELP = "Remove DVC-files, local DVC config and data cache."
+    DESTROY_HELP = (
+        "Terminate the DVC project by removing all DVC files."
+        " Data files and directories will remain."
+    )
 
     destroy_parser = subparsers.add_parser(
         "destroy",

@@ -63,10 +63,12 @@ class CmdGC(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    GC_HELP = "Garbage collect unused objects from cache or remote storage."
+    GC_HELP = (
+        "Delete unused files and directories from the cache or remote storage."
+    )
     GC_DESCRIPTION = (
-        "Removes all files in the cache or a remote which are not in\n"
-        "use by the specified Git revisions (defaults to just HEAD)."
+        "Delete any files which are not used in the specified Git revisions "
+        "(defaults to just HEAD) from the cache or remote storage."
     )
     gc_parser = subparsers.add_parser(
         "gc",

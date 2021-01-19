@@ -68,8 +68,7 @@ class CmdCheckout(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    CHECKOUT_HELP = "Checkout data files from cache."
-
+    CHECKOUT_HELP = "Restore tracked files and directories in the workspace."
     checkout_parser = subparsers.add_parser(
         "checkout",
         parents=[parent_parser],

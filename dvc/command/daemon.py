@@ -35,7 +35,7 @@ class CmdDaemonAnalytics(CmdDaemonBase):
 
 
 def add_parser(subparsers, parent_parser):
-    DAEMON_HELP = "Service daemon."
+    DAEMON_HELP = "Service daemon"
     daemon_parser = subparsers.add_parser(
         "daemon",
         parents=[parent_parser],
@@ -59,7 +59,7 @@ def add_parser(subparsers, parent_parser):
     )
     daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
 
-    DAEMON_ANALYTICS_HELP = "Send dvc usage analytics."
+    DAEMON_ANALYTICS_HELP = "Send DVC usage analytics."
     daemon_analytics_parser = daemon_subparsers.add_parser(
         "analytics",
         parents=[parent_parser],

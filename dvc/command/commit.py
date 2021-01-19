@@ -33,11 +33,7 @@ class CmdCommit(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    COMMIT_HELP = (
-        "Record changes to files or directories tracked by DVC"
-        " by storing the current versions in the cache."
-    )
-
+    COMMIT_HELP = "Record changes to tracked files or directories."
     commit_parser = subparsers.add_parser(
         "commit",
         parents=[parent_parser],

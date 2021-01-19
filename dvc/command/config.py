@@ -190,8 +190,7 @@ parent_config_parser.set_defaults(level=None)
 
 
 def add_parser(subparsers, parent_parser):
-    CONFIG_HELP = "Get or set config options."
-
+    CONFIG_HELP = "Get or set configuration options."
     config_parser = subparsers.add_parser(
         "config",
         parents=[parent_config_parser, parent_parser],

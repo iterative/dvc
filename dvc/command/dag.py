@@ -111,7 +111,7 @@ class CmdDAG(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    DAG_HELP = "Visualize DVC project DAG."
+    DAG_HELP = "Visualize the project's pipeline(s) as one or more graphs."
     dag_parser = subparsers.add_parser(
         "dag",
         parents=[parent_parser],

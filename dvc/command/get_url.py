@@ -22,12 +22,12 @@ class CmdGetUrl(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
-    GET_HELP = "Download or copy files from URL."
+    GETURL_HELP = "Download a file or directory from a supported URL."
     get_parser = subparsers.add_parser(
         "get-url",
         parents=[parent_parser],
-        description=append_doc_link(GET_HELP, "get-url"),
-        help=GET_HELP,
+        description=append_doc_link(GETURL_HELP, "get-url"),
+        help=GETURL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(

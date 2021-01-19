@@ -129,7 +129,6 @@ def add_parser(subparsers, _parent_parser):
 
     # Pull
     PULL_HELP = "Download tracked files or directories from remote storage."
-
     pull_parser = subparsers.add_parser(
         "pull",
         parents=[shared_parent_parser()],
@@ -197,7 +196,6 @@ def add_parser(subparsers, _parent_parser):
 
     # Push
     PUSH_HELP = "Upload tracked files or directories to remote storage."
-
     push_parser = subparsers.add_parser(
         "push",
         parents=[shared_parent_parser()],
@@ -260,7 +258,6 @@ def add_parser(subparsers, _parent_parser):
     FETCH_HELP = (
         "Download files or directories from remote storage to the cache."
     )
-
     fetch_parser = subparsers.add_parser(
         "fetch",
         parents=[shared_parent_parser()],
@@ -318,9 +315,9 @@ def add_parser(subparsers, _parent_parser):
 
     # Status
     STATUS_HELP = (
-        "Show changed stages, compare local cache and a remote storage."
+        "Report changes in the project's pipelines, and compare"
+        " the cache to the workspace or to remote storage."
     )
-
     status_parser = subparsers.add_parser(
         "status",
         parents=[shared_parent_parser()],

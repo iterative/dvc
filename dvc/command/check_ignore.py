@@ -81,15 +81,14 @@ class CmdCheckIgnore(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = (
+    CHECKIGNORE_HELP = (
         "Check whether files or directories are excluded due to `.dvcignore`."
     )
-
     parser = subparsers.add_parser(
         "check-ignore",
         parents=[parent_parser],
-        description=append_doc_link(ADD_HELP, "check-ignore"),
-        help=ADD_HELP,
+        description=append_doc_link(CHECKIGNORE_HELP, "check-ignore"),
+        help=CHECKIGNORE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(

@@ -82,7 +82,7 @@ class CmdMergeDriver(CmdHookBase):
 
 
 def add_parser(subparsers, parent_parser):
-    GIT_HOOK_HELP = "Run GIT hook."
+    GIT_HOOK_HELP = "Run Git hook."
 
     git_hook_parser = subparsers.add_parser(
         "git-hook",
@@ -98,7 +98,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(git_hook_subparsers)
 
-    PRE_COMMIT_HELP = "Run pre-commit GIT hook."
+    PRE_COMMIT_HELP = "Run pre-commit Git hook."
     pre_commit_parser = git_hook_subparsers.add_parser(
         "pre-commit",
         parents=[parent_parser],
@@ -110,7 +110,7 @@ def add_parser(subparsers, parent_parser):
     )
     pre_commit_parser.set_defaults(func=CmdPreCommit)
 
-    POST_CHECKOUT_HELP = "Run post-checkout GIT hook."
+    POST_CHECKOUT_HELP = "Run post-checkout Git hook."
     post_checkout_parser = git_hook_subparsers.add_parser(
         "post-checkout",
         parents=[parent_parser],
@@ -122,7 +122,7 @@ def add_parser(subparsers, parent_parser):
     )
     post_checkout_parser.set_defaults(func=CmdPostCheckout)
 
-    PRE_PUSH_HELP = "Run pre-push GIT hook."
+    PRE_PUSH_HELP = "Run pre-push Git hook."
     pre_push_parser = git_hook_subparsers.add_parser(
         "pre-push",
         parents=[parent_parser],
@@ -134,7 +134,7 @@ def add_parser(subparsers, parent_parser):
     )
     pre_push_parser.set_defaults(func=CmdPrePush)
 
-    MERGE_DRIVER_HELP = "Run GIT merge driver."
+    MERGE_DRIVER_HELP = "Run Git merge driver."
     merge_driver_parser = git_hook_subparsers.add_parser(
         "merge-driver",
         parents=[parent_parser],
