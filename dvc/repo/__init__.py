@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
 
 from funcy import cached_property, cat
 
@@ -187,7 +187,9 @@ class Repo:
         self.params = Params(self)
         self.live = Live(self)
 
-        self.stage_collection_error_handler = None
+        self.stage_collection_error_handler: Optional[
+            Callable[[str, Exception], None]
+        ] = None
         self._lock_depth = 0
 
     @cached_property

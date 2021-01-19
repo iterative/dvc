@@ -1,10 +1,108 @@
 import argparse
 import logging
+from itertools import chain, filterfalse
+from typing import TYPE_CHECKING, Dict, Iterable, List
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 
+if TYPE_CHECKING:
+    from dvc.output.base import BaseOutput
+    from dvc.stage import Stage
+
 logger = logging.getLogger(__name__)
+
+MAX_TEXT_LENGTH = 80
+ELLIPSIS = "…"
+
+
+def generate_description(stage: "Stage") -> str:
+    def part_desc(outs: Iterable["BaseOutput"]) -> str:
+        return ", ".join(out.def_path for out in outs)
+
+    if not stage.deps and not stage.outs:
+        return "No outputs or dependencies."
+
+    if not stage.outs and stage.deps:
+        return "Stage depends on " + part_desc(stage.deps)
+
+    def is_plot_or_metric(out: "BaseOutput"):
+        return bool(out.plot) or bool(out.metric)
+
+    desc: List[str] = []
+
+    outs = list(filterfalse(is_plot_or_metric, stage.outs))
+    if outs:
+        desc.append("Produces " + part_desc(outs))
+
+    plots_and_metrics = list(filter(is_plot_or_metric, stage.outs))
+    if plots_and_metrics:
+        desc.append("Generates " + part_desc(plots_and_metrics))
+
+    return "; ".join(desc)
+
+
+def prepare_description(
+    stage: "Stage", max_length: int = MAX_TEXT_LENGTH
+) -> str:
+    desc = stage.short_description() or generate_description(stage)
+    if len(desc) > max_length:
+        return desc[: max_length - 1] + ELLIPSIS
+    return desc
+
+
+def prepare_stages_data(
+    stages: Iterable["Stage"],
+    description: bool = True,
+    max_length: int = MAX_TEXT_LENGTH,
+) -> Dict[str, str]:
+    return {
+        stage.addressing: prepare_description(stage, max_length=max_length)
+        if description
+        else ""
+        for stage in stages
+    }
+
+
+class CmdStageList(CmdBase):
+    def _get_stages(self) -> Iterable["Stage"]:
+        if self.args.all:
+            stages: List["Stage"] = self.repo.stages  # type: ignore
+            logger.trace(  # type: ignore[attr-defined]
+                "%d no. of stages found", len(stages)
+            )
+            return stages
+
+        # removing duplicates while maintaining order
+        collected = chain.from_iterable(
+            self.repo.stage.collect(
+                target=target,
+                recursive=self.args.recursive,
+                accept_group=True,
+            )
+            for target in self.args.targets
+        )
+        return dict.fromkeys(collected).keys()
+
+    def run(self):
+        from dvc.utils.diff import table
+
+        def log_error(relpath: str, exc: Exception):
+            if self.args.fail:
+                raise exc
+            logger.debug("Stages from %s failed to load", relpath)
+
+        # silence stage collection error by default
+        self.repo.stage_collection_error_handler = log_error
+
+        stages = self._get_stages()
+        names_only = self.args.names_only
+
+        data = prepare_stages_data(stages, description=not names_only)
+        if data:
+            print(table(header=(), rows=data.items()))
+
+        return 0
 
 
 class CmdStageAdd(CmdBase):
@@ -194,3 +292,47 @@ def add_parser(subparsers, parent_parser):
     )
     _add_common_args(stage_add_parser)
     stage_add_parser.set_defaults(func=CmdStageAdd)
+
+    STAGE_LIST_HELP = "List stages."
+    stage_list_parser = stage_subparsers.add_parser(
+        "list",
+        parents=[parent_parser],
+        description=append_doc_link(STAGE_LIST_HELP, "stage/list"),
+        help=STAGE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    stage_list_parser.add_argument(
+        "targets",
+        nargs="*",
+        default=["dvc.yaml"],
+        help=(
+            "Show stages from a dvc.yaml/.dvc file or a directory. "
+            "'dvc.yaml' by default"
+        ),
+    )
+    stage_list_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="List all of the stages in the repo.",
+    )
+    stage_list_parser.add_argument(
+        "--fail",
+        action="store_true",
+        default=False,
+        help="Fail immediately if there's an error.",
+    )
+    stage_list_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="List all stages inside the specified directory.",
+    )
+    stage_list_parser.add_argument(
+        "--names-only",
+        action="store_true",
+        default=False,
+        help="List only the name of the stages.",
+    )
+    stage_list_parser.set_defaults(func=CmdStageList)

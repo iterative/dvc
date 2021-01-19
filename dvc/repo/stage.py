@@ -3,7 +3,16 @@ import logging
 import os
 import typing
 from contextlib import suppress
-from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import (
+    Callable,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from dvc.exceptions import (
     DvcException,
@@ -351,20 +360,20 @@ class StageLoad:
 
         return [StageInfo(stage) for stage in stages]
 
-    def collect_repo(self, onerror=None):
+    def collect_repo(self, onerror: Callable[[str, Exception], None] = None):
         """Collects all of the stages present in the DVC repo.
 
         Args:
             onerror (optional): callable that will be called with two args:
                 the filepath whose collection failed and the exc instance.
-                The decision to raise error is with the callback.
-                Otherwise, the file will be skipped, and dvc will partially
-                load the stages.
+                It can report the error to continue with the collection
+                (and, skip failed ones), or raise the exception to abort
+                the collection.
         """
         from dvc.dvcfile import is_valid_filename
 
         stages = []
-        outs = set()
+        outs: Set[str] = set()
         for root, dirs, files in self.tree.walk(self.repo.root_dir):
             for file_name in filter(is_valid_filename, files):
                 file_path = os.path.join(root, file_name)
