@@ -245,7 +245,13 @@ class BaseGitBackend(ABC):
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        """Push a commit onto the specified stash."""
+        """Push a commit onto the specified stash.
+
+        Returns a tuple of the form (rev, need_reset) where need_reset
+        indicates whether or not the workspace should be `reset --hard`
+        (some backends will not clean the workspace after creating a stash
+        commit).
+        """
 
     @abstractmethod
     def _stash_apply(self, rev: str):

@@ -308,9 +308,32 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        raise NotImplementedError
+        from dvc.scm.git import Stash
+
+        # TODO: support custom refspecs once pygit2's reflog handling is fixed
+        if ref != Stash.DEFAULT_STASH:
+            raise NotImplementedError
+
+        oid = self.repo.stash(
+            self.repo.default_signature,
+            message=message,
+            include_untracked=include_untracked,
+        )
+        return str(oid), False
 
     def _stash_apply(self, rev: str):
+        from dvc.scm.git import Stash
+
+        # libgit2 stash apply only accepts refs/stash items by index. If rev is
+        # not in refs/stash, we will push it onto the stash, and then pop it
+        commit, _ref = self.repo.resolve_refish(rev)
+        stash = self.repo.references.get(Stash.DEFAULT_STASH)
+        if stash:
+            for i, entry in enumerate(stash.log()):
+                if entry.oid_new == commit.id:
+                    self.repo.stash_apply(i)
+                    return
+
         raise NotImplementedError
 
     def reflog_delete(
