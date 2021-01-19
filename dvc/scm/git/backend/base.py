@@ -96,7 +96,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def is_dirty(self, **kwargs) -> bool:
+    def is_dirty(self, untracked_files: bool = False) -> bool:
         pass
 
     @abstractmethod

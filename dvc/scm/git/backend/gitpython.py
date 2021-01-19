@@ -249,8 +249,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_tracked(self, path):
         return bool(self.repo.git.ls_files(path))
 
-    def is_dirty(self, **kwargs):
-        return self.repo.is_dirty(**kwargs)
+    def is_dirty(self, untracked_files: bool = False) -> bool:
+        return self.repo.is_dirty(untracked_files=untracked_files)
 
     def active_branch(self):
         return self.repo.active_branch.name

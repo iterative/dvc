@@ -136,7 +136,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_tracked(self, path: str) -> bool:
         raise NotImplementedError
 
-    def is_dirty(self, **kwargs) -> bool:
+    def is_dirty(self, untracked_files: bool = False) -> bool:
         raise NotImplementedError
 
     def active_branch(self) -> str:

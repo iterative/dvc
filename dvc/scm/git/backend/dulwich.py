@@ -222,8 +222,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 return True
         return False
 
-    def is_dirty(self, **kwargs) -> bool:
-        raise NotImplementedError
+    def is_dirty(self, untracked_files: bool = False) -> bool:
+        staged, unstaged, untracked = self.status()
+        return bool(staged or unstaged or (untracked_files and untracked))
 
     def active_branch(self) -> str:
         raise NotImplementedError
@@ -244,7 +245,10 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return DulwichObject(self.repo, ".", stat.S_IFDIR, tree.id)
 
     def get_rev(self) -> str:
-        raise NotImplementedError
+        rev = self.get_ref("HEAD")
+        if rev:
+            return rev
+        raise SCMError("Empty git repo")
 
     def resolve_rev(self, rev: str) -> str:
         raise NotImplementedError
