@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def external_repo(url, rev=None, for_write=False, **kwargs):
+def external_repo(url, rev=None, for_write=False, cache_dir=None, **kwargs):
     from dvc.config import NoRemoteError
     from dvc.scm.git import Git
 
@@ -39,8 +39,9 @@ def external_repo(url, rev=None, for_write=False, **kwargs):
         url=url,
         scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
-        for_write=for_write,
+        subrepos=not for_write,
         uninitialized=True,
+        cache_dir=cache_dir or _get_cache_dir(url),
         **kwargs,
     )
     repo = ExternalRepo(**conf)
@@ -65,6 +66,15 @@ def external_repo(url, rev=None, for_write=False, **kwargs):
 
 CLONES: Dict[str, str] = {}
 CACHE_DIRS: Dict[str, str] = {}
+
+
+@wrap_with(threading.Lock())
+def _get_cache_dir(url):
+    try:
+        cache_dir = CACHE_DIRS[url]
+    except KeyError:
+        cache_dir = CACHE_DIRS[url] = tempfile.mkdtemp("dvc-cache")
+    return cache_dir
 
 
 def clean_repos():
@@ -110,22 +120,16 @@ class ExternalRepo(Repo):
         url,
         scm=None,
         rev=None,
-        for_write=False,
         cache_dir=None,
         cache_types=None,
         uninitialized=False,
+        subrepos=False,
         **kwargs,
     ):
         self.url = url
-        self.for_write = for_write
         self.tree_confs = kwargs
 
-        self._cache_config = {
-            "cache": {
-                "dir": cache_dir or self._get_cache_dir(),
-                "type": cache_types,
-            }
-        }
+        self._cache_config = {"cache": {"dir": cache_dir, "type": cache_types}}
 
         config = self._cache_config.copy()
         if os.path.isdir(url):
@@ -137,6 +141,7 @@ class ExternalRepo(Repo):
             rev=rev,
             uninitialized=uninitialized,
             config=config,
+            subrepos=subrepos,
         )
 
     def __str__(self):
@@ -145,7 +150,7 @@ class ExternalRepo(Repo):
     @cached_property
     def repo_tree(self):
         return self._get_tree_for(
-            self, subrepos=not self.for_write, repo_factory=self.make_repo
+            self, subrepos=self.subrepos, repo_factory=self.make_repo
         )
 
     def get_rev(self):
@@ -174,14 +179,6 @@ class ExternalRepo(Repo):
             repo_path = os.path.join(self.url, rel)
             config.update(_get_remote_config(repo_path))
         return Repo(path, scm=self.scm, rev=self.get_rev(), config=config)
-
-    @wrap_with(threading.Lock())
-    def _get_cache_dir(self):
-        try:
-            cache_dir = CACHE_DIRS[self.url]
-        except KeyError:
-            cache_dir = CACHE_DIRS[self.url] = tempfile.mkdtemp("dvc-cache")
-        return cache_dir
 
 
 def _cached_clone(url, rev, for_write=False):
