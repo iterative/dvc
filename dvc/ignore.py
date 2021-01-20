@@ -98,8 +98,7 @@ class DvcIgnorePatterns(DvcIgnore):
 
         if details:
             return self._ignore_details(path, is_dir)
-        else:
-            return self.ignore(path, is_dir)
+        return self.ignore(path, is_dir)
 
     def ignore(self, path, is_dir):
         def matches(pattern, path, is_dir) -> bool:
