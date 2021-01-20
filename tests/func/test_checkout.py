@@ -974,3 +974,14 @@ def test_checkout_partial_subdir(tmp_dir, dvc):
         "foo": "foo",
         "sub_dir": {"bar": "bar", "baz": "baz"},
     }
+
+
+def test_checkout_file(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    stats = dvc.checkout("foo")
+    assert not any(stats.values())
+
+    os.unlink("foo")
+    stats = dvc.checkout("foo")
+    assert stats["added"] == ["foo"]

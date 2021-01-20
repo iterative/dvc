@@ -92,7 +92,7 @@ class CloudCache:
         return DirInfo.from_list(d)
 
     def _filter_hash_info(self, hash_info, path_info, filter_info):
-        if not filter_info:
+        if not filter_info or path_info == filter_info:
             return hash_info
 
         dir_info = self.get_dir_cache(hash_info)
