@@ -251,7 +251,7 @@ def test_unknown_subcommand_help(capsys):
     reason="exit_on_error for command suggestions requires Python 3.9",
 )
 @pytest.mark.parametrize(
-    "typo,suggestion", [("addd", "add"), ("stats", "status")],
+    "typo,suggestion", [("addd", "add"), ("comit", "commit")],
 )
 def test_similar_command_single_suggestion(typo, suggestion, caplog):
     try:
