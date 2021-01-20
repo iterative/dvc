@@ -44,7 +44,8 @@ def add(  # noqa: C901
     to_cache = kwargs.get("out") and not to_remote
     invalid_opt = None
     if to_remote or to_cache:
-        message = "{option} can't be used with --to-remote"
+        message = "{option} can't be used with "
+        message += "--to-remote" if to_remote else "-o"
         if len(targets) != 1:
             invalid_opt = "multiple targets"
         elif no_commit:
