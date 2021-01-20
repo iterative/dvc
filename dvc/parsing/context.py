@@ -6,7 +6,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from funcy import identity, lfilter, nullcontext, select
 
@@ -24,6 +24,7 @@ from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 SeqOrMap = Union[Sequence, Mapping]
+DictStr = Dict[str, Any]
 
 
 class ContextError(DvcException):
@@ -47,13 +48,16 @@ class ReservedKeyError(ContextError):
 class MergeError(ContextError):
     def __init__(self, key, new, into):
         self.key = key
-        if not isinstance(into[key], Node) or not isinstance(new, Node):
+        to_node = into[key]
+        if not isinstance(to_node, Node) or not isinstance(new, Node):
             super().__init__(
                 f"cannot merge '{key}' as it already exists in {into}"
             )
             return
 
-        preexisting = into[key].meta.source
+        assert isinstance(to_node, Node)
+        assert isinstance(new, Node)
+        preexisting = to_node.meta.source
         new_src = new.meta.source
         path = new.meta.path()
         super().__init__(
@@ -66,10 +70,13 @@ class ParamsLoadError(ContextError):
     pass
 
 
-class KeyNotInContext(ContextError):
-    def __init__(self, key) -> None:
-        self.key = key
+class KeyNotInContext(ContextError, KeyError):
+    def __init__(self, key: str) -> None:
+        self.key: str = key
         super().__init__(f"Could not find '{key}'")
+
+    def __str__(self):
+        return self.msg
 
 
 class VarsAlreadyLoaded(ContextError):
@@ -114,11 +121,13 @@ class Meta:
         return ".".join(self.dpaths)
 
 
-def _default_meta():
-    return Meta(source=None)
+def _default_meta() -> Meta:
+    return Meta()
 
 
 class Node:
+    meta: Meta
+
     def get_sources(self):
         raise NotImplementedError
 
@@ -251,7 +260,7 @@ class CtxList(Container, MutableSequence):
     def __deepcopy__(self, _):
         # optimization: we don't support overriding a list
         new = CtxList([])
-        new.data = self.data[:]  # shortcircuting __setitem__
+        new.data = self.data[:]  # Short-circuiting __setitem__
         return new
 
 
@@ -283,7 +292,7 @@ class CtxDict(Container, MutableMapping):
         for k, v in self.items():
             new.data[k] = (
                 deepcopy(v) if isinstance(v, Container) else v
-            )  # shortcircuting __setitem__
+            )  # short-circuiting __setitem__
         return new
 
 
@@ -307,9 +316,10 @@ class Context(CtxDict):
         self._tracked_data = defaultdict(dict)
 
     def _track_data(self, node):
-        if not self._track:
+        if not self._track or not isinstance(node, Node):
             return
 
+        assert isinstance(node, Node)
         if node.meta and node.meta.local:
             return
 
@@ -321,7 +331,7 @@ class Context(CtxDict):
             params_file.update({key: node.value for key in keys})
 
     def select(
-        self, key: str, unwrap=False
+        self, key: str, unwrap: bool = False
     ):  # pylint: disable=arguments-differ
         """Select the item using key, similar to `__getitem__`
            but can track the usage of the data on interpolation
@@ -345,7 +355,9 @@ class Context(CtxDict):
         return node.value if unwrap else node
 
     @classmethod
-    def load_from(cls, tree, path: PathInfo, select_keys=None) -> "Context":
+    def load_from(
+        cls, tree, path: PathInfo, select_keys: List[str] = None
+    ) -> "Context":
         from dvc.utils.serialize import LOADERS
 
         file = relpath(path)
@@ -364,7 +376,6 @@ class Context(CtxDict):
                 f"expected a dictionary, got '{typ}' in file '{file}'"
             )
 
-        select_keys = select_keys or []
         if select_keys:
             try:
                 data = {key: data[key] for key in select_keys}
@@ -376,7 +387,7 @@ class Context(CtxDict):
 
         meta = Meta(source=file, local=False)
         ctx = cls(data, meta=meta)
-        ctx.imports[os.path.abspath(path)] = select_keys or None
+        ctx.imports[os.path.abspath(path)] = select_keys
         return ctx
 
     def merge_update(self, other: "Context", overwrite=False):
@@ -389,7 +400,7 @@ class Context(CtxDict):
         self, tree, item: str, wdir: PathInfo, overwrite=False,
     ):
         path, _, keys_str = item.partition(":")
-        select_keys = lfilter(bool, keys_str.split(","))
+        select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
         path_info = wdir / path
 
         abspath = os.path.abspath(path_info)
@@ -420,7 +431,7 @@ class Context(CtxDict):
             raise VarsAlreadyLoaded(
                 f"cannot partially load '{item}' as it's already loaded."
             )
-        elif keys and isinstance(self.imports[path], list):
+        elif isinstance(self.imports[path], list):
             if not set(keys).isdisjoint(set(self.imports[path])):
                 raise VarsAlreadyLoaded(
                     f"cannot load '{item}' as it's partially loaded already"
@@ -484,13 +495,13 @@ class Context(CtxDict):
                 self._reserved_keys.pop(key)
 
     @contextmanager
-    def set_temporarily(self, to_set, reserve=False):
+    def set_temporarily(self, to_set: DictStr, reserve: bool = False):
         cm = self.reserved(*to_set) if reserve else nullcontext()
 
         non_existing = frozenset(to_set.keys() - self.keys())
         prev = {key: self[key] for key in to_set if key not in non_existing}
-        to_set = CtxDict(to_set)
-        self.update(to_set)
+        temp = CtxDict(to_set)
+        self.update(temp)
 
         try:
             with cm:
@@ -500,13 +511,17 @@ class Context(CtxDict):
             for key in non_existing:
                 self.data.pop(key, None)
 
-    def resolve(self, src, unwrap=True, skip_interpolation_checks=False):
+    def resolve(
+        self, src, unwrap=True, skip_interpolation_checks=False
+    ) -> Any:
         """Recursively resolves interpolation and returns resolved data.
 
         Args:
             src: Data (str/list/dict etc.) to resolve
             unwrap: Unwrap CtxDict/CtxList/Value to it's original data if
-                    inside `src`. Defaults to True.
+                inside `src`. Defaults to True.
+            skip_interpolation_checks: Skip interpolation checks for error
+                The callee is responsible to check for errors in advance.
 
         >>> c = Context({"three": 3})
         >>> c.resolve({"lst": [1, 2, "${three}"]})
@@ -517,7 +532,7 @@ class Context(CtxDict):
 
     def resolve_str(
         self, src: str, unwrap=True, skip_interpolation_checks=False
-    ):
+    ) -> str:
         """Resolves interpolated string to it's original value,
         or in case of multiple interpolations, a combined string.
 

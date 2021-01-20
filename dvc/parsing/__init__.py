@@ -1,7 +1,17 @@
 import logging
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from funcy import cached_property, collecting, first, isa, join, reraise
 
@@ -16,6 +26,7 @@ from .context import (
     KeyNotInContext,
     MergeError,
     Node,
+    SeqOrMap,
     VarsAlreadyLoaded,
 )
 from .interpolate import (
@@ -26,6 +37,8 @@ from .interpolate import (
 )
 
 if TYPE_CHECKING:
+    from typing_extensions import NoReturn
+
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
@@ -38,9 +51,9 @@ FOREACH_KWD = "foreach"
 DO_KWD = "do"
 
 DEFAULT_PARAMS_FILE = "params.yaml"
-DEFAULT_SENTINEL = object()
 
 JOIN = "@"
+DictStr = Dict[str, Any]
 
 
 class ResolveError(DvcException):
@@ -51,11 +64,11 @@ class EntryNotFound(DvcException):
     pass
 
 
-def _format_preamble(msg, path, spacing=" "):
+def _format_preamble(msg: str, path: str, spacing: str = " ") -> str:
     return f"failed to parse {msg} in '{path}':{spacing}"
 
 
-def format_and_raise(exc, msg, path):
+def format_and_raise(exc: Exception, msg: str, path: str) -> "NoReturn":
     spacing = (
         "\n"
         if isinstance(exc, (ParseError, MergeError, VarsAlreadyLoaded))
@@ -68,7 +81,9 @@ def format_and_raise(exc, msg, path):
     _reraise_err(ResolveError, message, from_exc=exc)
 
 
-def _reraise_err(exc_cls, *args, from_exc=None):
+def _reraise_err(
+    exc_cls: Type[Exception], *args, from_exc: Exception = None
+) -> "NoReturn":
     err = exc_cls(*args)
     if from_exc and logger.isEnabledFor(logging.DEBUG):
         raise err from from_exc
@@ -76,7 +91,7 @@ def _reraise_err(exc_cls, *args, from_exc=None):
 
 
 def check_syntax_errors(
-    definition: dict, name: str, path: str, where: str = "stages"
+    definition: DictStr, name: str, path: str, where: str = "stages"
 ):
     for key, d in definition.items():
         try:
@@ -85,18 +100,18 @@ def check_syntax_errors(
             format_and_raise(exc, f"'{where}.{name}.{key}'", path)
 
 
-def is_map_or_seq(data):
+def is_map_or_seq(data: Any) -> bool:
     _is_map_or_seq = isa(Mapping, Sequence)
     return not isinstance(data, str) and _is_map_or_seq(data)
 
 
-def split_foreach_name(name):
+def split_foreach_name(name: str) -> Tuple[str, Optional[str]]:
     group, *keys = name.rsplit(JOIN, maxsplit=1)
     return group, first(keys)
 
 
-def check_interpolations(data, where, path):
-    def func(s):
+def check_interpolations(data: DictStr, where: str, path: str):
+    def func(s: DictStr) -> None:
         if is_interpolated_string(s):
             raise ResolveError(
                 _format_preamble(f"'{where}'", path)
@@ -107,7 +122,6 @@ def check_interpolations(data, where, path):
 
 
 Definition = Union["ForeachDefinition", "EntryDefinition"]
-DictStr = Dict[str, Any]
 
 
 def make_definition(
@@ -148,7 +162,7 @@ class DataResolver:
             for name, definition in stages_data.items()
         }
 
-    def resolve_one(self, name):
+    def resolve_one(self, name: str):
         group, key = split_foreach_name(name)
 
         if not self._has_group_and_key(group, key):
@@ -160,6 +174,8 @@ class DataResolver:
         definition = self.definitions[group]
         if isinstance(definition, EntryDefinition):
             return definition.resolve()
+
+        assert key
         return definition.resolve_one(key)
 
     def resolve(self):
@@ -170,10 +186,10 @@ class DataResolver:
         )
         return {STAGES_KWD: data}
 
-    def has_key(self, key):
+    def has_key(self, key: str):
         return self._has_group_and_key(*split_foreach_name(key))
 
-    def _has_group_and_key(self, group, key=None):
+    def _has_group_and_key(self, group: str, key: str = None):
         try:
             definition = self.definitions[group]
         except KeyError:
@@ -193,7 +209,7 @@ class DataResolver:
                 continue
             yield name
 
-    def track_vars(self, name, vars_):
+    def track_vars(self, name: str, vars_) -> None:
         self.tracked_vars[name] = vars_
 
 
@@ -203,7 +219,7 @@ class EntryDefinition:
         resolver: DataResolver,
         context: Context,
         name: str,
-        definition: dict,
+        definition: DictStr,
         where: str = STAGES_KWD,
     ):
         self.resolver = resolver
@@ -221,7 +237,7 @@ class EntryDefinition:
             return self.wdir
 
         try:
-            wdir = to_str(context.resolve_str(wdir, unwrap=True))
+            wdir = to_str(context.resolve_str(wdir))
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
         return self.wdir / wdir
@@ -232,7 +248,7 @@ class EntryDefinition:
         except ContextError as exc:
             format_and_raise(exc, f"stage '{self.name}'", self.relpath)
 
-    def resolve_stage(self, skip_checks=False):
+    def resolve_stage(self, skip_checks: bool = False) -> DictStr:
         context = self.context
         name = self.name
         if not skip_checks:
@@ -278,7 +294,9 @@ class EntryDefinition:
         self.resolver.track_vars(name, tracked_data)
         return {name: resolved}
 
-    def _resolve(self, context, value, key, skip_checks):
+    def _resolve(
+        self, context: "Context", value: Any, key: str, skip_checks: bool
+    ) -> DictStr:
         try:
             return context.resolve(
                 value, skip_interpolation_checks=skip_checks
@@ -300,7 +318,7 @@ class ForeachDefinition:
         resolver: DataResolver,
         context: Context,
         name: str,
-        definition: dict,
+        definition: DictStr,
         where: str = STAGES_KWD,
     ):
         self.resolver = resolver
@@ -325,7 +343,7 @@ class ForeachDefinition:
     def resolved_iterable(self):
         return self._resolve_foreach_data()
 
-    def _resolve_foreach_data(self):
+    def _resolve_foreach_data(self) -> SeqOrMap:
         try:
             iterable = self.context.resolve(self.foreach_data, unwrap=False)
         except (ContextError, ParseError) as exc:
@@ -351,7 +369,7 @@ class ForeachDefinition:
                 f" in '{self.relpath}': expected list/dictionary, got " + typ
             )
 
-    def _warn_if_overwriting(self, keys):
+    def _warn_if_overwriting(self, keys: List[str]):
         warn_for = [k for k in keys if k in self.context]
         if warn_for:
             linking_verb = "is" if len(warn_for) == 1 else "are"
@@ -363,7 +381,7 @@ class ForeachDefinition:
                 self.name,
             )
 
-    def _inserted_keys(self, iterable):
+    def _inserted_keys(self, iterable) -> List[str]:
         keys = [self.pair.value]
         if isinstance(iterable, Mapping):
             keys.append(self.pair.key)
@@ -384,22 +402,22 @@ class ForeachDefinition:
         # for simple lists, eg: ["foo", "bar"],  contents are the key itself
         return {to_str(value): value for value in iterable}
 
-    def has_member(self, key):
+    def has_member(self, key: str) -> bool:
         return key in self.normalized_iterable
 
     def get_generated_names(self):
         return list(map(self._generate_name, self.normalized_iterable))
 
-    def _generate_name(self, key):
+    def _generate_name(self, key: str) -> str:
         return f"{self.name}{JOIN}{key}"
 
-    def resolve_all(self):
+    def resolve_all(self) -> DictStr:
         return join(map(self.resolve_one, self.normalized_iterable))
 
-    def resolve_one(self, key):
+    def resolve_one(self, key: str) -> DictStr:
         return self._each_iter(key)
 
-    def _each_iter(self, key):
+    def _each_iter(self, key: str) -> DictStr:
         err_message = f"Could not find '{key}' in foreach group '{self.name}'"
         with reraise(KeyError, EntryNotFound(err_message)):
             value = self.normalized_iterable[key]
@@ -432,3 +450,8 @@ class ForeachDefinition:
                 format_and_raise(
                     exc, f"stage '{generated}'", self.relpath,
                 )
+
+            # let mypy know that this state is unreachable as format_and_raise
+            # does not return at all (it's not able to understand it for some
+            # reason)
+            raise AssertionError("unreachable")
