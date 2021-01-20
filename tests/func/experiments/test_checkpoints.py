@@ -40,9 +40,9 @@ def test_new_checkpoint(
     "checkpoint_resume, workspace",
     [
         (Experiments.LAST_CHECKPOINT, True),
-        # (Experiments.LAST_CHECKPOINT, False),
-        # ("foo", True),
-        # ("foo", False),
+        (Experiments.LAST_CHECKPOINT, False),
+        ("foo", True),
+        ("foo", False),
     ],
 )
 def test_resume_checkpoint(

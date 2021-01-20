@@ -134,6 +134,9 @@ def test_live_report(tmp_dir, dvc, live_stage, report):
 
 @pytest.fixture
 def live_checkpoint_stage(tmp_dir, scm, dvc):
+
+    pytest.skip("dvclive does not exist yet")
+
     SCRIPT = dedent(
         """
             import os
@@ -162,30 +165,25 @@ def live_checkpoint_stage(tmp_dir, scm, dvc):
                 dump(m, checkpoint_file)
 
                 dvclive.log("metric1", m)
-                dvclive.log("metric2", m *2)
+                dvclive.log("metric2", m * 2)
                 dvclive.next_step()"""
     )
 
-    def make(summary=True, report=True):
-        tmp_dir.gen("train.py", SCRIPT)
-        tmp_dir.gen("params.yaml", "foo: 1")
-        stage = dvc.run(
-            cmd="python train.py",
-            params=["foo"],
-            deps=["train.py"],
-            name="live_stage",
-            live="logs",
-            live_summary=summary,
-            live_report=report,
-            checkpoints=["checkpoint"],
-        )
+    tmp_dir.gen("train.py", SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python train.py",
+        params=["foo"],
+        deps=["train.py"],
+        name="live_stage",
+        live="logs",
+        checkpoints=["checkpoint"],
+        no_exec=True,
+    )
 
-        scm.add(["dvc.yaml", "train.py", "params.yaml", ".gitignore"])
-        scm.commit("initial: live_stage")
-
-        return stage
-
-    yield make
+    scm.add(["dvc.yaml", "train.py", "params.yaml", ".gitignore"])
+    scm.commit("initial: live_stage")
+    yield stage
 
 
 def checkpoints_metric(show_results, metric_file, metric_name):
@@ -202,41 +200,40 @@ def checkpoints_metric(show_results, metric_file, metric_name):
 
 
 def test_live_checkpoints_resume(tmp_dir, scm, dvc, live_checkpoint_stage):
-    checkpoint_stage = live_checkpoint_stage()
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=False
+        live_checkpoint_stage.addressing, params=["foo=2"], tmp_dir=False
     )
 
     checkpoint_resume = first(results)
 
     dvc.experiments.run(
-        checkpoint_stage.addressing,
+        live_checkpoint_stage.addressing,
         checkpoint_resume=checkpoint_resume,
         tmp_dir=False,
     )
 
     results = dvc.experiments.show()
     assert checkpoints_metric(results, "logs.json", "step") == [
-        5,
-        5,
-        4,
         3,
         3,
         2,
+        1,
+        1,
+        0,
     ]
     assert checkpoints_metric(results, "logs.json", "metric1") == [
-        0.5,
-        0.5,
-        0.4,
-        0.3,
-        0.3,
-        0.2,
+        4,
+        4,
+        3,
+        2,
+        2,
+        1,
     ]
     assert checkpoints_metric(results, "logs.json", "metric2") == [
-        1,
-        1,
-        0.8,
-        0.6,
-        0.6,
-        0.4,
+        8,
+        8,
+        6,
+        4,
+        4,
+        2,
     ]
