@@ -404,20 +404,13 @@ def test_ignore_in_added_dir(tmp_dir, dvc):
     assert not ignored_path.exists()
 
 
-@pytest.mark.parametrize(
-    "ignore_patterns,raise_error",
-    [("*.log", True), ("*.log\n!foo.log", False)],
-)
-def test_ignored_output(
-    tmp_dir, scm, dvc, run_copy, ignore_patterns, raise_error
-):
-    tmp_dir.gen({".dvcignore": ignore_patterns, "foo": "foo content"})
+def test_ignored_output(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen({".dvcignore": "*.log\n!foo.log", "foo": "foo content"})
 
-    if raise_error:
-        with pytest.raises(OutputIsIgnoredError):
-            run_copy("foo", "foo.log", name="copy")
-    else:
-        run_copy("foo", "foo.log", name="copy")
+    with pytest.raises(OutputIsIgnoredError):
+        run_copy("foo", "abc.log", name="copy")
+
+    run_copy("foo", "foo.log", name="copy")
 
 
 def test_ignored_output_nested(tmp_dir, scm, dvc, run_copy):
