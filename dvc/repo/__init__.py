@@ -210,6 +210,14 @@ class Repo:
                 return SCM(self.root_dir, no_scm=True)
             raise
 
+    def get_rev(self):
+        from dvc.tree.local import LocalTree
+
+        assert self.scm
+        if isinstance(self.tree, LocalTree):
+            return self.scm.get_rev()
+        return self.tree.rev
+
     @cached_property
     def experiments(self):
         from dvc.repo.experiments import Experiments
