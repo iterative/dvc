@@ -41,7 +41,7 @@ def _collect_configs(repo: "Repo", rev, targets=None) -> List["DvcPath"]:
             PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE
         )
         if default_params not in path_infos:
-            path_infos.insert(0, default_params)
+            path_infos.append(default_params)
     return list(path_infos)
 
 
