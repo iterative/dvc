@@ -127,7 +127,6 @@ tests_requirements = [
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
-    "awscli>=1.16.297",
     "google-compute-engine==2.8.13",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
