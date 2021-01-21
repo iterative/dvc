@@ -1188,7 +1188,7 @@ def _add_run_common(parser):
         action="append",
         default=[],
         help="Use the specified param values when reproducing pipelines.",
-        metavar="[<filename>:]<params_list>",
+        metavar="[<filename>:]<param_name>=<param_value>",
     )
     parser.add_argument(
         "--queue",
