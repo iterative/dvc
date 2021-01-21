@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from mock import patch
 
-from dvc.dvcfile import DVC_FILE, Dvcfile
+from dvc.dvcfile import DVC_FILE, PIPELINE_FILE, PIPELINE_LOCK, Dvcfile
 from dvc.exceptions import (
     CyclicGraphError,
     ReproductionError,
@@ -1249,3 +1249,18 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
     m.assert_called_once_with(
         stage, checkpoint_func=None, dry=False, run_env=None
     )
+
+
+def test_lockfile_changes_after_repro(tmp_dir, scm, dvc):
+    assert main(["run", "-n", "A", "-o", "A", "echo A>A"]) == 0
+    assert main(["run", "-n", "B", "-d", "A", "-o", "B", "echo B>B"]) == 0
+    stage_yaml = load_yaml(PIPELINE_FILE)
+    stage_yaml["stages"].pop("A")
+    dump_yaml(PIPELINE_FILE, stage_yaml)
+    lock_yaml = load_yaml(PIPELINE_LOCK)
+    assert "A" in lock_yaml["stages"]
+    print(lock_yaml)
+    dvc.reproduce(force=True)
+
+    lock_yaml = load_yaml(PIPELINE_LOCK)
+    assert "A" not in lock_yaml["stages"]
