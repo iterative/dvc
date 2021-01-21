@@ -11,6 +11,7 @@ if typing.TYPE_CHECKING:
     from typing import List, Match
 
     from pyparsing import ParseException
+    from typing_extensions import NoReturn
 
     from .context import Context
 
@@ -62,7 +63,7 @@ def normalize_key(key: str):
     return key.replace(LBRACK, PERIOD).replace(RBRACK, "")
 
 
-def format_and_raise_parse_error(exc):
+def format_and_raise_parse_error(exc) -> "NoReturn":
     raise ParseError(_format_exc_msg(exc))
 
 
@@ -103,13 +104,13 @@ def _format_exc_msg(exc: "ParseException"):
 
 
 def recurse(f):
-    Seq = (list, tuple, set)
+    seq = (list, tuple, set)
 
     def wrapper(data, *args):
         g = rpartial(wrapper, *args)
         if isinstance(data, Mapping):
             return {g(k): g(v) for k, v in data.items()}
-        if isinstance(data, Seq):
+        if isinstance(data, seq):
             return type(data)(map(g, data))
         if isinstance(data, str):
             return f(data, *args)
@@ -118,7 +119,7 @@ def recurse(f):
     return wrapper
 
 
-def check_recursive_parse_errors(data: dict):
+def check_recursive_parse_errors(data):
     func = recurse(check_expression)
     return func(data)
 

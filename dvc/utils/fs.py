@@ -5,13 +5,16 @@ import shutil
 import stat
 import sys
 
-from dvc.exceptions import DvcException, FileOwnershipError
+from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import dict_md5
 
 logger = logging.getLogger(__name__)
 
 LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
+
+umask = os.umask(0)
+os.umask(umask)
 
 
 def fs_copy(src, dst):
@@ -82,7 +85,7 @@ def contains_symlink_up_to(path, base_path):
     return contains_symlink_up_to(os.path.dirname(path), base_path)
 
 
-def move(src, dst, mode=None):
+def move(src, dst):
     """Atomically move src to dst and chmod it with mode.
 
     Moving is performed in two stages to make the whole operation atomic in
@@ -93,15 +96,6 @@ def move(src, dst, mode=None):
 
     dst = os.path.abspath(dst)
     tmp = f"{dst}.{uuid()}"
-
-    try:
-        if mode is not None:
-            os.chmod(src, mode)
-    except OSError as e:
-        if e.errno not in [errno.EACCES, errno.EPERM]:
-            raise
-        else:
-            raise FileOwnershipError(src)
 
     if os.path.islink(src):
         shutil.copy(src, tmp)
@@ -162,14 +156,31 @@ def makedirs(path, exist_ok=False, mode=None):
         os.makedirs(path, exist_ok=exist_ok)
         return
 
-    # utilize umask to set proper permissions since Python 3.7 the `mode`
-    # `makedirs` argument no longer affects the file permission bits of
-    # newly-created intermediate-level directories.
-    umask = os.umask(0o777 - mode)
+    # Modified version of os.makedirs() with support for extended mode
+    # (e.g. S_ISGID)
+    head, tail = os.path.split(path)
+    if not tail:
+        head, tail = os.path.split(head)
+    if head and tail and not os.path.exists(head):
+        try:
+            makedirs(head, exist_ok=exist_ok, mode=mode)
+        except FileExistsError:
+            # Defeats race condition when another thread created the path
+            pass
+        cdir = os.curdir
+        if isinstance(tail, bytes):
+            cdir = bytes(os.curdir, "ASCII")
+        if tail == cdir:  # xxx/newdir/. exists if xxx/newdir exists
+            return
     try:
-        os.makedirs(path, exist_ok=exist_ok)
-    finally:
-        os.umask(umask)
+        os.mkdir(path, mode)
+    except OSError:
+        # Cannot rely on checking for EEXIST, since the operating system
+        # could give priority to other errors like EACCES or EROFS
+        if not exist_ok or not os.path.isdir(path):
+            raise
+
+    os.chmod(path, mode)
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
@@ -184,6 +195,9 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
 
     try:
         System.reflink(src, dest)
+        # NOTE: reflink has a new inode, but has the same mode as the src,
+        # so we need to chmod it to look like a normal copy.
+        os.chmod(dest, 0o666 & ~umask)
     except DvcException:
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
             with Tqdm.wrapattr(
