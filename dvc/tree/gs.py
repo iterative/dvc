@@ -46,24 +46,9 @@ def dynamic_chunk_size(func):
 
 
 @dynamic_chunk_size
-def _upload_to_bucket(
-    bucket,
-    from_file,
-    to_info,
-    chunk_size=None,
-    name=None,
-    no_progress_bar=False,
-):
+def _upload_to_bucket(bucket, fobj, to_info, chunk_size=None):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size)
-    with open(from_file, mode="rb") as fobj:
-        with Tqdm.wrapattr(
-            fobj,
-            "read",
-            desc=name or to_info.path,
-            total=os.path.getsize(from_file),
-            disable=no_progress_bar,
-        ) as wrapped:
-            blob.upload_from_file(wrapped)
+    blob.upload_from_file(fobj)
 
 
 class GSTree(BaseTree):
@@ -205,17 +190,28 @@ class GSTree(BaseTree):
             size=blob.size,
         )
 
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        bucket = self.gs.bucket(to_info.bucket)
+        with Tqdm.wrapattr(
+            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
+        ):
+            # With other references being given in the @dynamic_chunk_size
+            # this function does not respect tree.CHUNK_SIZE, since it is
+            # too big for GS to handle. Rather it dynamically tries to find
+            # the best size and uploads in that way.
+            _upload_to_bucket(bucket, fobj, to_info)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        bucket = self.gs.bucket(to_info.bucket)
-        _upload_to_bucket(
-            bucket,
-            from_file,
-            to_info,
-            name=name,
-            no_progress_bar=no_progress_bar,
-        )
+        with open(from_file, mode="rb") as fobj:
+            self.upload_fobj(
+                fobj,
+                to_info,
+                desc=name or to_info.path,
+                total=os.path.getsize(from_file),
+                no_progress_bar=no_progress_bar,
+            )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(from_info.bucket)
