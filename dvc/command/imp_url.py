@@ -34,7 +34,7 @@ class CmdImportUrl(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORTURL_HELP = (
-        "Download a file or directory from a supported URL, and track it."
+        "Download a file or directory from a supported URL, " "and track it."
     )
 
     import_parser = subparsers.add_parser(
