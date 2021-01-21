@@ -103,7 +103,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
     "changes, expected",
     [
         [["foo=baz"], "{foo: baz, goo: {bag: 3}, lorem: false}"],
-        [["foo=baz,goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
+        [["foo=baz", "goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
         [
             ["goo.bag=4"],
             "{foo: [bar: 1, baz: 2], goo: {bag: 4}, lorem: false}",
@@ -114,7 +114,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
             "{foo: [bar: 1, baz: 3], goo: {bag: 3}, lorem: false}",
         ],
         [
-            ["foo[1]=- baz\n- goo"],
+            ["foo[1]=[baz, goo]"],
             "{foo: [bar: 1, [baz, goo]], goo: {bag: 3}, lorem: false}",
         ],
         [
@@ -261,7 +261,11 @@ def test_update_py_params(tmp_dir, scm, dvc):
 
     results = dvc.experiments.run(
         stage.addressing,
-        params=["params.py:FLOAT=0.1,Train.seed=2121,Klass.a=222"],
+        params=[
+            "params.py:FLOAT=0.1",
+            "params.py:Train.seed=2121",
+            "params.py:Klass.a=222",
+        ],
         tmp_dir=True,
     )
     exp_a = first(results)

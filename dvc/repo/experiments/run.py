@@ -2,7 +2,7 @@ import logging
 from typing import Iterable, Optional
 
 from dvc.repo import locked
-from dvc.utils.cli_parse import loads_params
+from dvc.utils.cli_parse import loads_param_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def run(
         return repo.experiments.reproduce_queued(jobs=jobs)
 
     if params:
-        params = loads_params(params)
+        params = loads_param_overrides(params)
     return repo.experiments.reproduce_one(
         targets=targets, params=params, tmp_dir=tmp_dir, **kwargs
     )
