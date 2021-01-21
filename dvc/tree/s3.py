@@ -54,6 +54,7 @@ class S3Tree(BaseTree):
 
         self.access_key_id = config.get("access_key_id")
         self.secret_access_key = config.get("secret_access_key")
+        self.session_token = config.get("session_token")
 
         shared_creds = config.get("credentialpath")
         if shared_creds:
@@ -73,6 +74,8 @@ class S3Tree(BaseTree):
             session_opts["aws_access_key_id"] = self.access_key_id
         if self.secret_access_key:
             session_opts["aws_secret_access_key"] = self.secret_access_key
+        if self.session_token:
+            session_opts["aws_session_token"] = self.session_token
 
         session = boto3.session.Session(**session_opts)
 
