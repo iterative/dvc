@@ -184,6 +184,16 @@ class AzureTree(BaseTree):
             ) as wrapped:
                 blob_client.upload_blob(wrapped, overwrite=True)
 
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        blob_client = self.blob_service.get_blob_client(
+            to_info.bucket, to_info.path
+        )
+        blob_client.max_block_size = self.CHUNK_SIZE
+        blob_client.min_large_block_upload_threshold = self.CHUNK_SIZE
+
+        with Tqdm.wrapattr(fobj, "read", bytes=True, **pbar_args) as wrapped:
+            blob_client.upload_blob(wrapped, overwrite=True, max_concurrency=1)
+
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
