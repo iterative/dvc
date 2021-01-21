@@ -107,11 +107,13 @@ class CmdStageList(CmdBase):
 
 class CmdStageAdd(CmdBase):
     def run(self):
+        repo = self.repo
         kwargs = vars(self.args)
-        stage = self.repo.stage.create_from_cli(validate=True, **kwargs)
+        stage = repo.stage.create_from_cli(validate=True, **kwargs)
 
-        stage.ignore_outs()
-        stage.dump()
+        with repo.scm.track_file_changes(config=repo.config):
+            stage.ignore_outs()
+            stage.dump()
         return 0
 
 
