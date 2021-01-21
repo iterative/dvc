@@ -1037,7 +1037,7 @@ def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
 
     shutil.rmtree(data)
     status = dvc.checkout(str(data))
-    assert status["added"] == ["data/"]
+    assert status["added"] == ["data" + os.sep]
     assert data.read_text() == {"data": {"foo": "foo", "bar": "bar"}}
 
 
