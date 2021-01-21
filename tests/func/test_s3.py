@@ -130,3 +130,28 @@ def test_s3_upload_fobj(tmp_dir, dvc, s3):
         tree.upload_fobj(stream, to_info, 1)
 
     assert to_info.read_text() == "foo"
+
+
+def test_s3_info(dvc, s3):
+    s3.gen({"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}})
+    tree = S3Tree(dvc, s3.config)
+
+    all_info = tuple(tree.info(s3 / "data"))
+    assert len(all_info) == 3
+    assert {file_info.name for file_info, _ in all_info} == {
+        "foo",
+        "bar",
+        "baz",
+    }
+    assert sum(details["size"] for _, details in all_info) == 9
+
+
+def test_s3_info_file(dvc, s3):
+    s3.gen("foo", "foo")
+    tree = S3Tree(dvc, s3.config)
+
+    assert tree.info(s3 / "foo")
+    all_info = tree.info(s3 / "foo")
+    assert all_info.keys() == {"size", "e_tag", "last_modified"}
+    assert all_info["size"] == 3
+    assert all_info["e_tag"] == "acbd18db4cc2f85cedef654fccc4a4d8"

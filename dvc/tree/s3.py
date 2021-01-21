@@ -239,7 +239,8 @@ class S3Tree(BaseTree):
 
     def info(self, path_info):
         if self.isfile(path_info):
-            return next(self._dir_info(path_info))
+            _, details = next(self._dir_info(path_info))
+            return details
         return self._dir_info(path_info / "")
 
     def remove(self, path_info):
