@@ -162,7 +162,10 @@ def _process_stages(
 
         if to_remote:
             out.hash_info = repo.cloud.transfer(
-                target, remote=kwargs.get("remote"), command="add"
+                target,
+                jobs=kwargs.get("jobs"),
+                remote=kwargs.get("remote"),
+                command="add",
             )
         else:
             from dvc.tree import get_cloud_tree
@@ -172,7 +175,7 @@ def _process_stages(
                 from_tree,
                 from_tree.path_info,
                 out_info=out.path_info,
-                jobs=from_tree.jobs,
+                jobs=kwargs.get("jobs"),
             )
             repo.cache.local.checkout(out.path_info, out.hash_info)
 
