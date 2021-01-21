@@ -345,29 +345,12 @@ class GDriveTree(BaseTree):
         return item.get("driveId", None)
 
     @_gdrive_retry
-    def _gdrive_upload_file(
-        self,
-        parent_id,
-        title,
-        no_progress_bar=False,
-        from_file="",
-        progress_name="",
-    ):
+    def _gdrive_upload_fobj(self, fobj, parent_id, title):
         item = self._drive.CreateFile(
             {"title": title, "parents": [{"id": parent_id}]}
         )
-
-        with open(from_file, "rb") as fobj:
-            total = os.path.getsize(from_file)
-            with Tqdm.wrapattr(
-                fobj,
-                "read",
-                desc=progress_name,
-                total=total,
-                disable=no_progress_bar,
-            ) as wrapped:
-                item.content = wrapped
-                item.Upload()
+        item.content = fobj
+        item.Upload()
         return item
 
     @_gdrive_retry
@@ -570,16 +553,27 @@ class GDriveTree(BaseTree):
         gdrive_file.FetchMetadata(fields="fileSize")
         return gdrive_file.get("fileSize")
 
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        dirname = to_info.parent
+        assert dirname
+        parent_id = self._get_item_id(dirname, create=True)
+
+        with Tqdm.wrapattr(
+            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
+        ) as wrapped:
+            self._gdrive_upload_fobj(wrapped, parent_id, to_info.name)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        dirname = to_info.parent
-        assert dirname
-        parent_id = self._get_item_id(dirname, True)
-
-        self._gdrive_upload_file(
-            parent_id, to_info.name, no_progress_bar, from_file, name
-        )
+        with open(from_file, "rb") as fobj:
+            self.upload_fobj(
+                fobj,
+                to_info,
+                no_progress_bar=no_progress_bar,
+                desc=name or to_info.name,
+                total=os.path.getsize(from_file),
+            )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         item_id = self._get_item_id(from_info)

@@ -194,12 +194,12 @@ class GSTree(BaseTree):
         bucket = self.gs.bucket(to_info.bucket)
         with Tqdm.wrapattr(
             fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
-        ):
+        ) as wrapped:
             # With other references being given in the @dynamic_chunk_size
             # this function does not respect tree.CHUNK_SIZE, since it is
             # too big for GS to handle. Rather it dynamically tries to find
             # the best size and uploads in that way.
-            _upload_to_bucket(bucket, fobj, to_info)
+            _upload_to_bucket(bucket, wrapped, to_info)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
