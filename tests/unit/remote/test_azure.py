@@ -42,3 +42,13 @@ def test_get_file_hash(tmp_dir, azure):
     assert hash_
     assert isinstance(hash_, str)
     assert hash_.strip("'").strip('"') == hash_
+
+
+def test_azure_info_file(dvc, tmp_dir, azure):
+    tmp_dir.gen("foo", "foo")
+    tree = AzureTree(dvc, azure.config)
+
+    tree.upload(PathInfo("foo"), azure / "foo")
+    details = tree.info(azure / "foo")
+    assert details["size"] == 3
+    assert details["e_tag"] == tree.get_file_hash(azure / "foo").value

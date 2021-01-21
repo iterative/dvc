@@ -230,6 +230,9 @@ class S3Tree(BaseTree):
     def _dir_info(self, path_info):
         with self._get_bucket(path_info.bucket) as bucket:
             for obj_summary in bucket.objects.filter(Prefix=path_info.path):
+                if obj_summary.key.endswith("/"):
+                    continue
+
                 file_info = path_info.replace(path=obj_summary.key)
                 yield file_info, {
                     "size": obj_summary.size,

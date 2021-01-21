@@ -151,6 +151,25 @@ class AzureTree(BaseTree):
 
             yield path_info.replace(path=fname)
 
+    def _dir_info(self, path_info):
+        container_client = self.blob_service.get_container_client(
+            path_info.bucket
+        )
+        for blob in container_client.list_blobs(
+            name_starts_with=path_info.path
+        ):
+            yield blob.name, {
+                "size": blob.size,
+                "e_tag": blob.etag.strip('"'),
+                "last_modified": blob.last_modified,
+            }
+
+    def info(self, path_info):
+        if self.isfile(path_info):
+            _, details = next(self._dir_info(path_info))
+            return details
+        return self._dir_info(path_info / "")
+
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
@@ -166,6 +185,13 @@ class AzureTree(BaseTree):
         )
         properties = blob_client.get_blob_properties()
         return properties.size
+
+    def _iter_hashes(self, path_info, **kwargs):
+        for file_info, details in self.info(path_info):
+            self._check_ignored(file_info)
+            yield file_info, HashInfo(
+                self.PARAM_CHECKSUM, details["e_tag"], size=details["size"],
+            )
 
     def get_file_hash(self, path_info):
         return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))

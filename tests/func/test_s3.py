@@ -154,4 +154,4 @@ def test_s3_info_file(dvc, s3):
     all_info = tree.info(s3 / "foo")
     assert all_info.keys() == {"size", "e_tag", "last_modified"}
     assert all_info["size"] == 3
-    assert all_info["e_tag"] == "acbd18db4cc2f85cedef654fccc4a4d8"
+    assert all_info["e_tag"] == tree.get_file_hash(s3 / "foo").value
