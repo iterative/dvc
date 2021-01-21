@@ -128,6 +128,10 @@ class Repo:
         subrepos=False,
         uninitialized=False,
         config=None,
+        url=None,
+        repo_factory=None,
+        fetch=None,
+        stream=None,
     ):
         from dvc.cache import Cache
         from dvc.config import Config
@@ -141,6 +145,13 @@ class Repo:
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
         from dvc.tree.local import LocalTree
+
+        self.url = url
+        self._tree_conf = {
+            "stream": stream,
+            "fetch": fetch,
+            "repo_factory": repo_factory,
+        }
 
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
@@ -191,6 +202,9 @@ class Repo:
             Callable[[str, Exception], None]
         ] = None
         self._lock_depth = 0
+
+    def __str__(self):
+        return self.url or self.root_dir
 
     @cached_property
     def scm(self):
@@ -442,7 +456,7 @@ class Repo:
     def repo_tree(self):
         from dvc.tree.repo import RepoTree
 
-        return RepoTree(self, subrepos=self.subrepos, fetch=True)
+        return RepoTree(self, subrepos=self.subrepos, **self._tree_conf)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):

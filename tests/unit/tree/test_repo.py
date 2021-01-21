@@ -422,11 +422,15 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     ]
 
     actual = []
-    for root, dirs, files in tree.walk("dir", dvcfiles=dvcfiles):
+    for root, dirs, files in tree.walk(
+        os.path.join(tree.root_dir, "dir"), dvcfiles=dvcfiles
+    ):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
-    expected = [str(path) for path in expected + extra_expected]
+    expected = [
+        os.path.join(tree.root_dir, path) for path in expected + extra_expected
+    ]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
@@ -608,7 +612,7 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
         expected[str(tmp_dir / "subrepo1")].add("subrepo3")
 
     actual = {}
-    tree = RepoTree(dvc, subrepos=traverse_subrepos)
+    tree = RepoTree(dvc, subrepos=traverse_subrepos, fetch=True)
     for root, dirs, files in tree.walk(str(tmp_dir)):
         actual[root] = set(dirs + files)
     assert expected == actual

@@ -94,7 +94,14 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         repo = starting_repo
         for d in dirs:
             if self._is_dvc_repo(d):
-                repo = self.repo_factory(d)
+                repo = self.repo_factory(
+                    d,
+                    scm=self.repo.scm,
+                    rev=self.repo.get_rev(),
+                    repo_factory=self.repo_factory,
+                    fetch=self.fetch,
+                    stream=self.stream,
+                )
                 self._dvctrees[repo.root_dir] = DvcTree(
                     repo, **self._dvctree_configs
                 )
@@ -126,11 +133,11 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
     @property
     def fetch(self):
-        return "fetch" in self._dvctree_configs
+        return self._dvctree_configs.get("fetch")
 
     @property
     def stream(self):
-        return "stream" in self._dvctree_configs
+        return self._dvctree_configs.get("stream")
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs

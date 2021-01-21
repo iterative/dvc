@@ -5,7 +5,7 @@ import threading
 from contextlib import contextmanager
 from typing import Dict
 
-from funcy import cached_property, retry, wrap_with
+from funcy import retry, wrap_with
 
 from dvc.exceptions import (
     FileMissingError,
@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def external_repo(url, rev=None, for_write=False, cache_dir=None, **kwargs):
+def external_repo(
+    url, rev=None, for_write=False, cache_dir=None, cache_types=None, **kwargs
+):
     from dvc.config import NoRemoteError
     from dvc.scm.git import Git
 
@@ -33,22 +35,41 @@ def external_repo(url, rev=None, for_write=False, cache_dir=None, **kwargs):
     # the tip of the default branch
     rev = rev or "refs/remotes/origin/HEAD"
 
+    cache_config = {
+        "cache": {
+            "dir": cache_dir or _get_cache_dir(url),
+            "type": cache_types,
+        }
+    }
+
+    config = _get_remote_config(url) if os.path.isdir(url) else {}
+    config.update(cache_config)
+
+    def make_repo(path, **_kwargs):
+        _config = cache_config.copy()
+        if os.path.isdir(url):
+            rel = os.path.relpath(path, _kwargs["scm"].root_dir)
+            repo_path = os.path.join(url, rel)
+            _config.update(_get_remote_config(repo_path))
+        return Repo(path, config=_config, **_kwargs)
+
     root_dir = path if for_write else os.path.realpath(path)
-    conf = dict(
+    repo_kwargs = dict(
         root_dir=root_dir,
         url=url,
         scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
         subrepos=not for_write,
         uninitialized=True,
-        cache_dir=cache_dir or _get_cache_dir(url),
+        config=config,
+        repo_factory=make_repo,
         **kwargs,
     )
 
-    if "fetch" not in conf:
-        conf["fetch"] = True
+    if "fetch" not in repo_kwargs:
+        repo_kwargs["fetch"] = True
 
-    repo = ExternalRepo(**conf)
+    repo = Repo(**repo_kwargs)
 
     try:
         yield repo
@@ -113,62 +134,6 @@ def _get_remote_config(url):
         return {"remote": {name: repo.config["remote"][name]}}
     finally:
         repo.close()
-
-
-class ExternalRepo(Repo):
-    # pylint: disable=no-member
-
-    def __init__(
-        self,
-        root_dir,
-        url,
-        scm=None,
-        rev=None,
-        cache_dir=None,
-        cache_types=None,
-        uninitialized=False,
-        subrepos=False,
-        **kwargs,
-    ):
-        self.url = url
-        self.tree_confs = kwargs
-
-        self._cache_config = {"cache": {"dir": cache_dir, "type": cache_types}}
-
-        config = self._cache_config.copy()
-        if os.path.isdir(url):
-            config.update(_get_remote_config(url))
-
-        super().__init__(
-            root_dir,
-            scm=scm,
-            rev=rev,
-            uninitialized=uninitialized,
-            config=config,
-            subrepos=subrepos,
-        )
-
-    def __str__(self):
-        return self.url
-
-    @cached_property
-    def repo_tree(self):
-        from dvc.tree.repo import RepoTree
-
-        return RepoTree(
-            self,
-            subrepos=self.subrepos,
-            repo_factory=self.make_repo,
-            **self.tree_confs,
-        )
-
-    def make_repo(self, path):
-        config = self._cache_config.copy()
-        if os.path.isdir(self.url):
-            rel = os.path.relpath(path, self.root_dir)
-            repo_path = os.path.join(self.url, rel)
-            config.update(_get_remote_config(repo_path))
-        return Repo(path, scm=self.scm, rev=self.get_rev(), config=config)
 
 
 def _cached_clone(url, rev, for_write=False):
