@@ -304,6 +304,7 @@ def test_tree_getsize(dvc, cloud):
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("http"),
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("oss"),
         pytest.lazy_fixture("s3"),
@@ -314,10 +315,14 @@ def test_tree_getsize(dvc, cloud):
 def test_tree_upload_fobj(dvc, tmp_dir, cloud):
     tmp_dir.gen("foo", "foo")
     tree = get_cloud_tree(dvc, **cloud.config)
-    path_info = tree.path_info
 
-    with open(tmp_dir / "foo", "rb") as stream:
-        tree.upload_fobj(stream, path_info / "foo")
+    from_info = tmp_dir / "foo"
+    to_info = tree.path_info / "foo"
 
-    with tree.open(path_info / "foo", "rb") as stream:
-        assert stream.read() == b"foo"
+    with open(from_info, "rb") as stream:
+        tree.upload_fobj(stream, to_info)
+
+    assert tree.exists(to_info)
+    tree.download(to_info, from_info)
+    with open(from_info) as stream:
+        assert stream.read() == "foo"

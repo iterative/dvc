@@ -169,6 +169,26 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
 
         return HashInfo(self.PARAM_CHECKSUM, etag)
 
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        def chunks(fobj):
+            with Tqdm.wrapattr(
+                fobj,
+                "read",
+                bytes=True,
+                leave=False,
+                disable=no_progress_bar,
+                **pbar_args,
+            ) as wrapped:
+                while True:
+                    chunk = wrapped.read(self.CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    yield chunk
+
+        response = self.request(self.method, to_info.url, data=chunks(fobj))
+        if response.status_code not in (200, 201):
+            raise HTTPError(response.status_code, response.reason)
+
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)
         if response.status_code != 200:
@@ -190,27 +210,14 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        def chunks():
-            with open(from_file, "rb") as fd:
-                with Tqdm.wrapattr(
-                    fd,
-                    "read",
-                    total=None
-                    if no_progress_bar
-                    else os.path.getsize(from_file),
-                    leave=False,
-                    desc=to_info.url if name is None else name,
-                    disable=no_progress_bar,
-                ) as fd_wrapped:
-                    while True:
-                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        yield chunk
-
-        response = self.request(self.method, to_info.url, data=chunks())
-        if response.status_code not in (200, 201):
-            raise HTTPError(response.status_code, response.reason)
+        with open(from_file, "rb") as fobj:
+            self.upload_fobj(
+                fobj,
+                to_info,
+                no_progress_bar=no_progress_bar,
+                desc=name or to_info.url,
+                total=os.path.getsize(from_file),
+            )
 
     @staticmethod
     def _content_length(response):
