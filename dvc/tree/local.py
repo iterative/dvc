@@ -2,7 +2,6 @@ import errno
 import logging
 import os
 import stat
-from typing import Any, Dict
 
 from funcy import cached_property
 
@@ -24,11 +23,6 @@ class LocalTree(BaseTree):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
-
-    SHARED_MODE_MAP: Dict[Any, Any] = {
-        None: (0o644, 0o755),
-        "group": (0o664, 0o775),
-    }
 
     def __init__(self, repo, config, use_dvcignore=False, dvcignore_root=None):
         super().__init__(repo, config)
@@ -140,7 +134,7 @@ class LocalTree(BaseTree):
         remove(path_info)
 
     def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True, mode=self.dir_mode)
+        makedirs(path_info, exist_ok=True)
 
     def set_exec(self, path_info):
         mode = self.stat(path_info).st_mode
@@ -156,25 +150,17 @@ class LocalTree(BaseTree):
 
         return os.stat(path)
 
-    def move(self, from_info, to_info, mode=None):
+    def move(self, from_info, to_info):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
         self.makedirs(to_info.parent)
-
-        if mode is None:
-            if self.isfile(from_info):
-                mode = self.file_mode
-            else:
-                mode = self.dir_mode
-
-        move(from_info, to_info, mode=mode)
+        move(from_info, to_info)
 
     def copy(self, from_info, to_info):
         tmp_info = to_info.parent / tmp_fname("")
         try:
             System.copy(from_info, tmp_info)
-            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -185,7 +171,6 @@ class LocalTree(BaseTree):
         tmp_info = to_info.parent / tmp_fname("")
         try:
             copy_fobj_to_file(fobj, tmp_info, chunk_size=chunk_size)
-            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -226,12 +211,7 @@ class LocalTree(BaseTree):
         return System.is_hardlink(path_info)
 
     def reflink(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname("")
-        System.reflink(from_info, tmp_info)
-        # NOTE: reflink has its own separate inode, so you can set permissions
-        # that are different from the source.
-        os.chmod(tmp_info, self.file_mode)
-        os.rename(tmp_info, to_info)
+        System.reflink(from_info, to_info)
 
     def chmod(self, path_info, mode):
         try:
@@ -263,13 +243,7 @@ class LocalTree(BaseTree):
         return os.path.getsize(path_info)
 
     def _upload(
-        self,
-        from_file,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        file_mode=None,
-        **_kwargs,
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,
     ):
         makedirs(to_info.parent, exist_ok=True)
 
@@ -277,9 +251,6 @@ class LocalTree(BaseTree):
         copyfile(
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
-
-        if file_mode is not None:
-            self.chmod(tmp_file, file_mode)
         os.replace(tmp_file, to_info)
 
     def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):

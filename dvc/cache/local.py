@@ -9,7 +9,7 @@ from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 
 from ..utils import relpath
-from ..utils.fs import copyfile, remove, walk_files
+from ..utils.fs import copyfile, remove, umask, walk_files
 from .base import CloudCache
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,14 @@ class LocalCache(CloudCache):
         super().__init__(tree)
         self.cache_dir = tree.config.get("url")
 
+        shared = tree.config.get("shared")
+        if shared:
+            self._file_mode = 0o664
+            self._dir_mode = 0o2775
+        else:
+            self._file_mode = 0o666 & ~umask
+            self._dir_mode = 0o777 & ~umask
+
     @property
     def cache_dir(self):
         return self.tree.path_info.fspath if self.tree.path_info else None
@@ -35,6 +43,20 @@ class LocalCache(CloudCache):
     @cached_property
     def cache_path(self):
         return os.path.abspath(self.cache_dir)
+
+    def move(self, from_info, to_info):
+        super().move(from_info, to_info)
+        os.chmod(to_info, self._file_mode)
+
+    def makedirs(self, path_info):
+        from dvc.utils.fs import makedirs
+
+        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
+
+    def link(self, from_info, to_info):
+        super().link(from_info, to_info)
+        if self.cache_types[0] not in ("symlink", "hardlink"):
+            os.chmod(to_info, self._file_mode)
 
     def hash_to_path(self, hash_):
         # NOTE: `self.cache_path` is already normalized so we can simply use
@@ -112,7 +134,7 @@ class LocalCache(CloudCache):
                 path,
             )
 
-        os.chmod(path, self.tree.file_mode)
+        os.chmod(path, self._file_mode)
 
     def _unprotect_dir(self, path):
         for fname in self.tree.walk_files(path):

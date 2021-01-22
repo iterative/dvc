@@ -1,11 +1,8 @@
-import os
-import stat
-
 import pytest
 
 from dvc.config import ConfigError
-from dvc.path_info import CloudURLInfo, PathInfo
-from dvc.tree import LocalTree, get_cloud_tree
+from dvc.path_info import CloudURLInfo
+from dvc.tree import get_cloud_tree
 
 
 def test_get_cloud_tree(tmp_dir, dvc):
@@ -49,22 +46,3 @@ def test_get_cloud_tree_validate(tmp_dir, dvc):
 
     with pytest.raises(ConfigError):
         get_cloud_tree(dvc, name="second")
-
-
-@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
-@pytest.mark.parametrize(
-    "mode, expected", [(None, None), (0o777, 0o777)],
-)
-def test_upload_file_mode(tmp_dir, mode, expected):
-    tmp_dir.gen("src", "foo")
-    src = PathInfo(tmp_dir / "src")
-
-    if not expected:
-        expected = stat.S_IMODE((tmp_dir / "src").stat().st_mode)
-
-    dest = PathInfo(tmp_dir / "dest")
-    tree = LocalTree(None, {"url": os.fspath(tmp_dir)})
-    tree.upload(src, dest, file_mode=mode)
-    assert (tmp_dir / "dest").exists()
-    assert (tmp_dir / "dest").read_text() == "foo"
-    assert stat.S_IMODE(os.stat(dest).st_mode) == expected

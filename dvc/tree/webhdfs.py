@@ -139,7 +139,7 @@ class WebHDFSTree(BaseTree):
             with self.hdfs_client.write(to_info.path) as writer:
                 shutil.copyfileobj(reader, writer)
 
-    def move(self, from_info, to_info, mode=None):
+    def move(self, from_info, to_info):
         self.hdfs_client.makedirs(to_info.parent.path)
         self.hdfs_client.rename(from_info.path, to_info.path)
 

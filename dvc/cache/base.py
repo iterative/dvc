@@ -165,10 +165,16 @@ class CloudCache:
     def link(self, from_info, to_info):
         self._link(from_info, to_info, self.cache_types)
 
+    def move(self, from_info, to_info):
+        self.tree.move(from_info, to_info)
+
+    def makedirs(self, path_info):
+        self.tree.makedirs(path_info)
+
     def _link(self, from_info, to_info, link_types):
         assert self.tree.isfile(from_info)
 
-        self.tree.makedirs(to_info.parent)
+        self.makedirs(to_info.parent)
 
         self._try_links(from_info, to_info, link_types)
 
@@ -216,7 +222,9 @@ class CloudCache:
         cache_info = self.tree.hash_to_path_info(hash_info.value)
         if tree == self.tree:
             if self.changed_cache(hash_info):
-                self.tree.move(path_info, cache_info, mode=self.CACHE_MODE)
+                self.makedirs(cache_info.parent)
+                self.move(path_info, cache_info)
+                self.protect(cache_info)
                 self.link(cache_info, path_info)
             elif self.tree.iscopy(path_info) and self._cache_is_copy(
                 path_info
@@ -287,7 +295,7 @@ class CloudCache:
             )
 
         hash_info = stream_reader.hash_info
-        self.tree.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
+        self.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
         return hash_info
 
     def _transfer_file(self, from_tree, from_info):
@@ -391,9 +399,7 @@ class CloudCache:
 
         from_info = PathInfo(tmp)
         to_info = self.tree.path_info / tmp_fname("")
-        self.tree.upload(
-            from_info, to_info, no_progress_bar=True, file_mode=self.CACHE_MODE
-        )
+        self.tree.upload(from_info, to_info, no_progress_bar=True)
 
         hash_info = self.tree.get_file_hash(to_info)
         hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
@@ -414,8 +420,9 @@ class CloudCache:
         hi, tmp_info = self._get_dir_info_hash(dir_info)
         new_info = self.tree.hash_to_path_info(hi.value)
         if self.changed_cache_file(hi):
-            self.tree.makedirs(new_info.parent)
-            self.tree.move(tmp_info, new_info, mode=self.CACHE_MODE)
+            self.makedirs(new_info.parent)
+            self.move(tmp_info, new_info)
+            self.protect(new_info)
 
         self.tree.state.save(new_info, hi)
 
@@ -616,7 +623,7 @@ class CloudCache:
         # even if there are no files in it
         if not self.tree.exists(path_info):
             added = True
-            self.tree.makedirs(path_info)
+            self.makedirs(path_info)
 
         dir_info = self.get_dir_cache(hash_info)
 

@@ -4,7 +4,7 @@ import itertools
 import logging
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial, wraps
+from functools import wraps
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
@@ -309,24 +309,11 @@ class Remote:
         )
 
         if download:
-            # NOTE: don't set CACHE_MODE if we don't trust the remote, so that
-            # cache could verify these files by-hand later.
-            if self.tree.verify:
-                mode = self.tree.file_mode
-            else:
-                mode = cache.CACHE_MODE
-            func = partial(
-                _log_exceptions(self.tree.download, "download"),
-                dir_mode=cache.tree.dir_mode,
-                file_mode=mode,
-            )
+            func = _log_exceptions(self.tree.download, "download")
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = partial(
-                _log_exceptions(self.tree.upload, "upload"),
-                file_mode=self.cache.CACHE_MODE,
-            )
+            func = _log_exceptions(self.tree.upload, "upload")
             status = STATUS_NEW
             desc = "Uploading"
 
@@ -463,13 +450,26 @@ class Remote:
 
     @index_locked
     def push(self, cache, named_cache, jobs=None, show_checksums=False):
-        return self._process(
+        ret = self._process(
             cache,
             named_cache,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
+
+        if self.tree.scheme == "local":
+            with self.tree.state:
+                for checksum in named_cache.scheme_keys("local"):
+                    cache_file = self.tree.hash_to_path_info(checksum)
+                    if self.tree.exists(cache_file):
+                        hash_info = HashInfo(
+                            self.tree.PARAM_CHECKSUM, checksum
+                        )
+                        self.tree.state.save(cache_file, hash_info)
+                        self.cache.protect(cache_file)
+
+        return ret
 
     @index_locked
     def pull(self, cache, named_cache, jobs=None, show_checksums=False):
@@ -494,6 +494,7 @@ class Remote:
                             cache.tree.PARAM_CHECKSUM, checksum
                         )
                         cache.tree.state.save(cache_file, hash_info)
+                        cache.protect(cache_file)
 
         return ret
 
