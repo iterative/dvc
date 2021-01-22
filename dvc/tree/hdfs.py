@@ -235,6 +235,14 @@ class HDFSTree(BaseTree):
             size=self.getsize(path_info),
         )
 
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        with self.hdfs(to_info) as hdfs:
+            with Tqdm.wrapattr(
+                fobj, "read", disable=no_progress_bar, **pbar_args
+            ) as wrapped:
+                with hdfs.open_output_stream(to_info.path) as fdest:
+                    shutil.copyfileobj(wrapped, fdest, length=self.CHUNK_SIZE)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
@@ -252,14 +260,6 @@ class HDFSTree(BaseTree):
                     with hdfs.open_output_stream(tmp_file) as sobj:
                         sobj.write(wrapped.read())
             hdfs.move(tmp_file, to_info.path)
-
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        with self.hdfs(to_info) as hdfs:
-            with Tqdm.wrapattr(
-                fobj, "read", disable=no_progress_bar, **pbar_args
-            ) as wrapped:
-                with hdfs.open_output_stream(to_info.path) as sobj:
-                    shutil.copyfileobj(wrapped, sobj, length=self.CHUNK_SIZE)
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs

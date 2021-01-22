@@ -308,6 +308,7 @@ def test_tree_getsize(dvc, cloud):
         pytest.lazy_fixture("oss"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("ssh"),
+        pytest.lazy_fixture("webhdfs"),
     ],
 )
 def test_tree_upload_fobj(dvc, tmp_dir, cloud):
@@ -318,5 +319,5 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
     with open(tmp_dir / "foo", "rb") as stream:
         tree.upload_fobj(stream, path_info / "foo")
 
-    with tree.open(path_info / "foo") as stream:
-        assert stream.read() == "foo"
+    with tree.open(path_info / "foo", "rb") as stream:
+        assert stream.read() == b"foo"
