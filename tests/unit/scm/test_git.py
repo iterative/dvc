@@ -498,3 +498,9 @@ def test_reset(tmp_dir, scm, git):
     staged, unstaged, _ = scm.status()
     assert len(staged) == 1
     assert len(unstaged) == 1
+
+
+def test_remind_to_track(scm, caplog):
+    scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
+    scm.remind_to_track()
+    assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text
