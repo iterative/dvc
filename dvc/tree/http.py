@@ -74,6 +74,9 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
                 self.headers.update({self.custom_auth_header: self.password})
         return None
 
+    def _generate_download_url(self, path_info):
+        return path_info.url
+
     @wrap_prop(threading.Lock())
     @cached_property
     def _session(self):

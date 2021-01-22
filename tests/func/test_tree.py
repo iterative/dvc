@@ -323,6 +323,5 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
         tree.upload_fobj(stream, to_info)
 
     assert tree.exists(to_info)
-    tree.download(to_info, from_info)
-    with open(from_info) as stream:
-        assert stream.read() == "foo"
+    with tree.open(to_info, "rb") as stream:
+        assert stream.read() == b"foo"
