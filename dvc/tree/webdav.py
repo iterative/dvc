@@ -188,7 +188,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         self._client.mkdir(path_info.path)
 
     # Moves file/directory at remote
-    def move(self, from_info, to_info, mode=None):
+    def move(self, from_info, to_info):
         # Webdav client move
         self._client.move(from_info.path, to_info.path)
 

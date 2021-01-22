@@ -187,8 +187,7 @@ class SSHTree(BaseTree):
         with self.ssh(path_info) as ssh:
             ssh.makedirs(path_info.path)
 
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
+    def move(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 

@@ -174,6 +174,8 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
 
     dvc.cache = Cache(dvc)
 
+    assert not os.path.exists(dvc.cache.local.cache_dir)
+
     run_copy("foo", "bar", name="copy-foo-bar")
 
     parent_cache_dir = os.path.join(dvc.stage_cache.cache_dir, "88",)
@@ -198,7 +200,7 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         dir_mode = 0o777
         file_mode = 0o666
     else:
-        dir_mode = 0o775
+        dir_mode = 0o2775
         file_mode = 0o664
 
     assert _mode(dvc.cache.local.cache_dir) == dir_mode

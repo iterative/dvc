@@ -60,10 +60,6 @@ class StageCache:
     def cache_dir(self):
         return os.path.join(self.repo.cache.local.cache_dir, "runs")
 
-    @property
-    def tree(self):
-        return self.repo.cache.local.tree
-
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
 
@@ -170,12 +166,12 @@ class StageCache:
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
         path = PathInfo(self._get_cache_path(cache_key, cache_value))
-        self.tree.makedirs(path.parent)
+        self.repo.cache.local.makedirs(path.parent)
         tmp = tempfile.NamedTemporaryFile(delete=False, dir=path.parent).name
         assert os.path.exists(path.parent)
         assert os.path.isdir(path.parent)
         dump_yaml(tmp, cache)
-        self.tree.move(PathInfo(tmp), path)
+        self.repo.cache.local.move(PathInfo(tmp), path)
 
     def restore(self, stage, run_cache=True, pull=False):
         from .serialize import to_single_stage_lockfile

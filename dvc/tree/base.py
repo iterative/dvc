@@ -61,7 +61,6 @@ class BaseTree:
     CAN_TRAVERSE = True
     CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
-    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
 
     state = StateNoop()
@@ -71,9 +70,6 @@ class BaseTree:
         self.config = config
 
         self._check_requires()
-
-        shared = config.get("shared")
-        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
 
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.path_info = None
@@ -158,14 +154,6 @@ class BaseTree:
         return parsed.scheme == cls.scheme
 
     @property
-    def file_mode(self):
-        return self._file_mode
-
-    @property
-    def dir_mode(self):
-        return self._dir_mode
-
-    @property
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
@@ -231,8 +219,7 @@ class BaseTree:
         directories before copying/linking/moving data
         """
 
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
+    def move(self, from_info, to_info):
         self.copy(from_info, to_info)
         self.remove(from_info)
 
@@ -355,12 +342,7 @@ class BaseTree:
         return hash_info
 
     def upload(
-        self,
-        from_info,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        file_mode=None,
+        self, from_info, to_info, name=None, no_progress_bar=False,
     ):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
@@ -380,7 +362,6 @@ class BaseTree:
             to_info,
             name=name,
             no_progress_bar=no_progress_bar,
-            file_mode=file_mode,
         )
 
     def upload_fobj(self, fobj, to_info, no_progress_bar=False):
@@ -392,8 +373,6 @@ class BaseTree:
         to_info,
         name=None,
         no_progress_bar=False,
-        file_mode=None,
-        dir_mode=None,
         jobs=None,
         **kwargs,
     ):
@@ -412,29 +391,12 @@ class BaseTree:
 
         if self.isdir(from_info):
             return self._download_dir(
-                from_info,
-                to_info,
-                name,
-                no_progress_bar,
-                file_mode,
-                dir_mode,
-                jobs,
-                **kwargs,
+                from_info, to_info, name, no_progress_bar, jobs, **kwargs,
             )
-        return self._download_file(
-            from_info, to_info, name, no_progress_bar, file_mode, dir_mode,
-        )
+        return self._download_file(from_info, to_info, name, no_progress_bar,)
 
     def _download_dir(
-        self,
-        from_info,
-        to_info,
-        name,
-        no_progress_bar,
-        file_mode,
-        dir_mode,
-        jobs,
-        **kwargs,
+        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
     ):
         from_infos = list(self.walk_files(from_info, **kwargs))
         to_infos = (
@@ -448,13 +410,7 @@ class BaseTree:
             disable=no_progress_bar,
         ) as pbar:
             download_files = pbar.wrap_fn(
-                partial(
-                    self._download_file,
-                    name=name,
-                    no_progress_bar=True,
-                    file_mode=file_mode,
-                    dir_mode=dir_mode,
-                )
+                partial(self._download_file, name=name, no_progress_bar=True,)
             )
             max_workers = jobs or self.jobs
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -479,9 +435,9 @@ class BaseTree:
                         raise exc
 
     def _download_file(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        self, from_info, to_info, name, no_progress_bar,
     ):
-        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
+        makedirs(to_info.parent, exist_ok=True)
 
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)
         name = name or to_info.name
@@ -492,4 +448,4 @@ class BaseTree:
             from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
 
-        move(tmp_file, to_info, mode=file_mode)
+        move(tmp_file, to_info)
