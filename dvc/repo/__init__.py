@@ -443,11 +443,6 @@ class Repo:
 
         return matched
 
-    def find_out_by_relpath(self, relpath):
-        path = os.path.join(self.root_dir, relpath)
-        (out,) = self.find_outs_by_path(path)
-        return out
-
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
