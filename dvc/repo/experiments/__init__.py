@@ -10,6 +10,7 @@ from typing import Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
+from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.run import CheckpointKilledError
@@ -210,7 +211,8 @@ class Experiments:
                                 )
 
                     # save additional repro command line arguments
-                    self._pack_args(*args, **kwargs)
+                    run_env = {DVCLIVE_RESUME: "1"} if resume_rev else {}
+                    self._pack_args(*args, run_env=run_env, **kwargs)
 
                     # save experiment as a stash commit
                     msg = self._stash_msg(

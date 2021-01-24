@@ -49,10 +49,12 @@ def _enforce_cmd_list(cmd):
     return cmd if isinstance(cmd, list) else cmd.splitlines()
 
 
-def prepare_kwargs(stage, checkpoint_func=None):
+def prepare_kwargs(stage, checkpoint_func=None, run_env=None):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
 
     kwargs["env"].update(stage.env(checkpoint_func=checkpoint_func))
+    if run_env:
+        kwargs["env"].update(run_env)
 
     # NOTE: when you specify `shell=True`, `Popen` [1] will default to
     # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
@@ -108,10 +110,12 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
         raise StageCmdFailedError(cmd, retcode)
 
 
-def cmd_run(stage, dry=False, checkpoint_func=None):
+def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
     logger.info("Running stage '%s':", stage.addressing)
     commands = _enforce_cmd_list(stage.cmd)
-    kwargs = prepare_kwargs(stage, checkpoint_func=checkpoint_func)
+    kwargs = prepare_kwargs(
+        stage, checkpoint_func=checkpoint_func, run_env=run_env
+    )
     executable = get_executable()
 
     if not dry:
@@ -125,7 +129,9 @@ def cmd_run(stage, dry=False, checkpoint_func=None):
         _run(stage, executable, cmd, checkpoint_func=checkpoint_func, **kwargs)
 
 
-def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
+def run_stage(
+    stage, dry=False, force=False, checkpoint_func=None, run_env=None, **kwargs
+):
     if not (dry or force or checkpoint_func):
         from .cache import RunCacheNotFoundError
 
@@ -136,7 +142,7 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
             stage.save_deps()
 
     run = cmd_run if dry else unlocked_repo(cmd_run)
-    run(stage, dry=dry, checkpoint_func=checkpoint_func)
+    run(stage, dry=dry, checkpoint_func=checkpoint_func, run_env=run_env)
 
 
 @contextmanager

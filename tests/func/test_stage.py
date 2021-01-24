@@ -309,4 +309,6 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
 
     with lock_repo(dvc):
         run_stage(stage, checkpoint_func=callback)
-    mock_cmd_run.assert_called_with(stage, checkpoint_func=callback, dry=False)
+    mock_cmd_run.assert_called_with(
+        stage, checkpoint_func=callback, dry=False, run_env=None
+    )

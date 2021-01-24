@@ -295,7 +295,9 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
 
     assert dvc.status([target]) == {target: ["changed command"]}
     assert dvc.reproduce(target)[0] == stage
-    m.assert_called_once_with(stage, checkpoint_func=None, dry=False)
+    m.assert_called_once_with(
+        stage, checkpoint_func=None, dry=False, run_env=None
+    )
 
 
 def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
