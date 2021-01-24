@@ -1,17 +1,16 @@
+from functools import wraps
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+
+
 def scm_context(method):
-    def run(repo, *args, **kw):
-        try:
-            result = method(repo, *args, **kw)
-            repo.scm.reset_ignores()
-            autostage = repo.config.get("core", {}).get("autostage", False)
-            if autostage:
-                repo.scm.track_changed_files()
-            else:
-                repo.scm.remind_to_track()
-            repo.scm.reset_tracked_files()
-            return result
-        except Exception:
-            repo.scm.cleanup_ignores()
-            raise
+    @wraps(method)
+    def run(repo: "Repo", *args, **kw):
+        scm = repo.scm
+
+        with scm.track_file_changes(config=repo.config):
+            return method(repo, *args, **kw)
 
     return run
