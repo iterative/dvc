@@ -181,22 +181,12 @@ class HDFSTree(BaseTree):
 
     def get_file_hash(self, path_info):
         # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
-        return HashInfo(
-            self.PARAM_CHECKSUM,
-            _hadoop_fs_checksum(path_info),
-            size=self.getsize(path_info),
-        )
-<<<<<<< HEAD
-        hash_info = HashInfo(
-            self.PARAM_CHECKSUM, self._group(regex, stdout, "checksum"),
-        )
-
         with self.hdfs(path_info) as hdfs:
-            hash_info.size = hdfs.info(path_info.path)["size"]
-
-        return hash_info
-=======
->>>>>>> d038bca05... tests: add basic [web]hdfs mockers (#5279)
+            return HashInfo(
+                self.PARAM_CHECKSUM,
+                _hadoop_fs_checksum(path_info),
+                size=hdfs.info(path_info.path)["size"],
+            )
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

@@ -1,10 +1,6 @@
 import logging
 import os
-<<<<<<< HEAD
-=======
 import posixpath
-import shutil
->>>>>>> d038bca05... tests: add basic [web]hdfs mockers (#5279)
 import threading
 from contextlib import contextmanager
 from urllib.parse import urlparse
