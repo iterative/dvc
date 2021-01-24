@@ -700,12 +700,13 @@ class CloudCache:
         elif self.changed_cache(
             hash_info, path_info=path_info, filter_info=filter_info
         ):
-            if not quiet:
-                logger.warning(
-                    "Cache '%s' not found. File '%s' won't be created.",
-                    hash_info,
-                    path_info,
-                )
+            msg = (
+                "Cache entry with hash '%s' not found. File '%s' won't be "
+                "created."
+            )
+            logger.debug(
+                msg, hash_info.value, path_info,
+            )
             self.safe_remove(path_info, force=force)
             failed = path_info
 

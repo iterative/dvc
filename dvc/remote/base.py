@@ -519,4 +519,4 @@ class Remote:
                 "Some of the cache files do not exist neither locally "
                 "nor on remote. Missing cache files:\n{}".format(missing_desc)
             )
-            logger.warning(msg)
+            logger.debug(msg)
