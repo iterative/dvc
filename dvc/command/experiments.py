@@ -1,7 +1,7 @@
 import argparse
 import io
 import logging
-from collections import OrderedDict
+from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
@@ -18,8 +18,44 @@ from dvc.utils.flatten import flatten
 logger = logging.getLogger(__name__)
 
 
+def _filter_name(names, label, filter_strs):
+    ret = defaultdict(dict)
+    path_filters = defaultdict(list)
+
+    for filter_s in filter_strs:
+        path, _, name = filter_s.rpartition(":")
+        path_filters[path].append(tuple(name.split(".")))
+
+    for path, filters in path_filters.items():
+        if path:
+            match_paths = [path]
+        else:
+            match_paths = names.keys()
+        for length, groups in groupby(filters, len):
+            for group in groups:
+                for match_path in match_paths:
+                    possible_names = [
+                        tuple(name.split(".")) for name in names[match_path]
+                    ]
+                    matches = [
+                        name
+                        for name in possible_names
+                        if name[:length] == group
+                    ]
+                    if not matches:
+                        name = ".".join(group)
+                        raise InvalidArgumentError(
+                            f"'{name}' does not match any known {label}"
+                        )
+                    ret[match_path].update(
+                        {".".join(match): None for match in matches}
+                    )
+
+    return ret
+
+
 def _filter_names(
-    names: Iterable,
+    names: Dict[str, Dict[str, None]],
     label: str,
     include: Optional[Iterable],
     exclude: Optional[Iterable],
@@ -33,48 +69,32 @@ def _filter_names(
                 f" --exclude-{label}"
             )
 
-    names = [tuple(name.split(".")) for name in names]
-
-    def _filter(filters, update_func):
-        filters = [tuple(name.split(".")) for name in filters]
-        for length, groups in groupby(filters, len):
-            for group in groups:
-                matches = [name for name in names if name[:length] == group]
-                if not matches:
-                    name = ".".join(group)
-                    raise InvalidArgumentError(
-                        f"'{name}' does not match any known {label}"
-                    )
-                update_func({match: None for match in matches})
-
     if include:
-        ret: OrderedDict = OrderedDict()
-        _filter(include, ret.update)
+        ret = _filter_name(names, label, include)
     else:
-        ret = OrderedDict({name: None for name in names})
+        ret = names
 
     if exclude:
-        to_remove: Dict[str, Optional[str]] = {}
-        _filter(exclude, to_remove.update)
-        for key in to_remove:
-            if key in ret:
-                del ret[key]
+        to_remove = _filter_name(names, label, exclude)
+        for path in to_remove:
+            if path in ret:
+                for key in to_remove[path]:
+                    if key in ret[path]:
+                        del ret[path][key]
 
-    return [".".join(name) for name in ret]
+    return ret
 
 
 def _update_names(names, items):
     for name, item in items:
         if isinstance(item, dict):
             item = flatten(item)
-            names.update(item.keys())
-        else:
-            names[name] = None
+            names[name].update({key: None for key in item})
 
 
 def _collect_names(all_experiments, **kwargs):
-    metric_names = set()
-    param_names = set()
+    metric_names = defaultdict(dict)
+    param_names = defaultdict(dict)
 
     for _, experiments in all_experiments.items():
         for exp in experiments.values():
@@ -82,13 +102,13 @@ def _collect_names(all_experiments, **kwargs):
             _update_names(param_names, exp.get("params", {}).items())
 
     metric_names = _filter_names(
-        sorted(metric_names),
+        metric_names,
         "metrics",
         kwargs.get("include_metrics"),
         kwargs.get("exclude_metrics"),
     )
     param_names = _filter_names(
-        sorted(param_names),
+        (param_names),
         "params",
         kwargs.get("include_params"),
         kwargs.get("exclude_params"),
@@ -231,7 +251,7 @@ def _extend_row(row, names, items, precision):
             item = flatten(item)
         else:
             item = {fname: item}
-        for name in names:
+        for name in names[fname]:
             if name in item:
                 value = item[name]
                 if value is None:
@@ -246,24 +266,24 @@ def _extend_row(row, names, items, precision):
                 row.append("-")
 
 
-def _parse_list(param_list):
+def _parse_filter_list(param_list):
     ret = []
     for param_str in param_list:
-        # we don't care about filename prefixes for show, silently
-        # ignore it if provided to keep usage consistent with other
-        # metric/param list command options
-        _, _, param_str = param_str.rpartition(":")
-        ret.extend(param_str.split(","))
+        path, _, param_str = param_str.rpartition(":")
+        if path:
+            ret.extend(f"{path}:{param}" for param in param_str.split(","))
+        else:
+            ret.extend(param_str.split(","))
     return ret
 
 
 def _show_experiments(all_experiments, console, **kwargs):
     from rich.table import Table
 
-    include_metrics = _parse_list(kwargs.pop("include_metrics", []))
-    exclude_metrics = _parse_list(kwargs.pop("exclude_metrics", []))
-    include_params = _parse_list(kwargs.pop("include_params", []))
-    exclude_params = _parse_list(kwargs.pop("exclude_params", []))
+    include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
+    exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
+    include_params = _parse_filter_list(kwargs.pop("include_params", []))
+    exclude_params = _parse_filter_list(kwargs.pop("exclude_params", []))
 
     metric_names, param_names = _collect_names(
         all_experiments,
@@ -277,10 +297,8 @@ def _show_experiments(all_experiments, console, **kwargs):
     table.add_column("Experiment", no_wrap=True)
     if not kwargs.get("no_timestamp", False):
         table.add_column("Created")
-    for name in metric_names:
-        table.add_column(name, justify="right", no_wrap=True)
-    for name in param_names:
-        table.add_column(name, justify="left")
+    _add_data_col(table, metric_names, justify="right", no_wrap=True)
+    _add_data_col(table, param_names, justify="left")
 
     for base_rev, experiments in all_experiments.items():
         for row, _, in _collect_rows(
@@ -289,6 +307,16 @@ def _show_experiments(all_experiments, console, **kwargs):
             table.add_row(*row)
 
     console.print(table)
+
+
+def _add_data_col(table, names, **kwargs):
+    count = Counter(
+        name for path in names for name in names[path] for path in names
+    )
+    for path in names:
+        for name in names[path]:
+            col_name = name if count[name] == 1 else f"{path}:{name}"
+            table.add_column(col_name, **kwargs)
 
 
 def _format_json(item):
