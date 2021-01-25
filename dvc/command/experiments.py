@@ -1,7 +1,7 @@
 import argparse
 import io
 import logging
-from collections import OrderedDict
+from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _filter_names(
-    names: Iterable,
+    names: Dict[str, Dict[str, None]],
     label: str,
     include: Optional[Iterable],
     exclude: Optional[Iterable],
@@ -67,32 +67,17 @@ def _update_names(names, items):
     for name, item in items:
         if isinstance(item, dict):
             item = flatten(item)
-            names.update(item.keys())
-        else:
-            names[name] = None
+            names[name].update({key: None for key in item})
 
 
 def _collect_names(all_experiments, **kwargs):
-    metric_names = set()
-    param_names = set()
+    metric_names = defaultdict(dict)
+    param_names = defaultdict(dict)
 
     for _, experiments in all_experiments.items():
         for exp in experiments.values():
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
-
-    metric_names = _filter_names(
-        sorted(metric_names),
-        "metrics",
-        kwargs.get("include_metrics"),
-        kwargs.get("exclude_metrics"),
-    )
-    param_names = _filter_names(
-        sorted(param_names),
-        "params",
-        kwargs.get("include_params"),
-        kwargs.get("exclude_params"),
-    )
 
     return metric_names, param_names
 
@@ -231,7 +216,7 @@ def _extend_row(row, names, items, precision):
             item = flatten(item)
         else:
             item = {fname: item}
-        for name in names:
+        for name in names[fname]:
             if name in item:
                 value = item[name]
                 if value is None:
@@ -277,10 +262,8 @@ def _show_experiments(all_experiments, console, **kwargs):
     table.add_column("Experiment", no_wrap=True)
     if not kwargs.get("no_timestamp", False):
         table.add_column("Created")
-    for name in metric_names:
-        table.add_column(name, justify="right", no_wrap=True)
-    for name in param_names:
-        table.add_column(name, justify="left")
+    _add_data_col(table, metric_names, justify="right", no_wrap=True)
+    _add_data_col(table, param_names, justify="left")
 
     for base_rev, experiments in all_experiments.items():
         for row, _, in _collect_rows(
@@ -289,6 +272,16 @@ def _show_experiments(all_experiments, console, **kwargs):
             table.add_row(*row)
 
     console.print(table)
+
+
+def _add_data_col(table, names, **kwargs):
+    count = Counter(
+        name for path in names for name in names[path] for path in names
+    )
+    for path in names:
+        for name in names[path]:
+            col_name = name if count[name] == 1 else f"{path}:{name}"
+            table.add_column(col_name, **kwargs)
 
 
 def _format_json(item):
