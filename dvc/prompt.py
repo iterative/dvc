@@ -54,3 +54,16 @@ def password(statement):
     """
     logger.info(f"{statement}: ")
     return getpass("")
+
+
+def username(statement):
+    """Ask the user for a username.
+
+    Args:
+        statement (str): string to prompt the user with.
+
+    Returns:
+        str: username entered by the user.
+    """
+    logger.info(f"{statement}: ")
+    return input("")

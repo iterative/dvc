@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 @wrap_with(threading.Lock())
 @memoize
+def ask_username(host):
+    return prompt.username(
+        "Username for `{host}`".format(host=host)
+    )
+
+
+@wrap_with(threading.Lock())
+@memoize
 def ask_password(host, user):
     return prompt.password(
         "Enter a password for "
@@ -56,6 +64,26 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
 
+    @memoize
+    def _get_user(self, host):
+        user = ask_username(host)
+        self.path_info.user = user
+        with self.repo.config.edit("local") as conf:
+            section = conf["remote"][self.config["remote_name"]]
+            section["user"] = user
+            self.repo.config["user"] = user
+        return user
+
+    @memoize
+    def _get_password(self, host, user):
+        import keyring
+        password = keyring.get_password(host, user)
+        if password is None or self.ask_password:
+            password = ask_password(host, user)
+            keyring.set_password(host, user, password)
+        return password
+
+    @wrap_prop(threading.Lock())
     def _auth_method(self, path_info=None):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
@@ -63,11 +91,13 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             path_info = self.path_info
 
         if self.auth:
-            if self.ask_password and self.password is None:
-                host, user = path_info.host, path_info.user
-                self.password = ask_password(host, user)
             if self.auth == "basic":
-                return HTTPBasicAuth(path_info.user, self.password)
+                host = path_info.host
+                user = path_info.user
+                if user is None:
+                    user = self._get_user(host)
+                password = self._get_password(user, host)
+                return HTTPBasicAuth(user, password)
             if self.auth == "digest":
                 return HTTPDigestAuth(path_info.user, self.password)
             if self.auth == "custom" and self.custom_auth_header:
@@ -99,6 +129,17 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         return session
 
     def request(self, method, url, **kwargs):
+        auth_method = self._auth_method()
+        res = self._request(method, url, auth_method, **kwargs)
+        if auth_method is None and res.status_code == 401:
+            res_auth_method = res.headers.get('WWW-Authenticate')
+            if res_auth_method is not None and res_auth_method.lower().startswith("basic "):
+                self.auth = "basic"
+            auth_method = self._auth_method()
+            res = self._request(method, url, auth_method, **kwargs)
+        return res
+
+    def _request(self, method, url, auth_method, **kwargs):
         import requests
 
         kwargs.setdefault("allow_redirects", True)
@@ -108,7 +149,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             res = self._session.request(
                 method,
                 url,
-                auth=self._auth_method(),
+                auth=auth_method,
                 headers=self.headers,
                 **kwargs,
             )
