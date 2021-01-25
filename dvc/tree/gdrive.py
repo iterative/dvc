@@ -89,7 +89,6 @@ class GDriveTree(BaseTree):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
     REQUIRES = {"pydrive2": "pydrive2"}
-    DEFAULT_VERIFY = True
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
     TRAVERSE_PREFIX_LEN = 2
