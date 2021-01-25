@@ -42,3 +42,13 @@ def test_get_file_hash(tmp_dir, azure):
     assert hash_
     assert isinstance(hash_, str)
     assert hash_.strip("'").strip('"') == hash_
+
+
+def test_azure_dir_gen(tmp_dir, azure):
+    azure.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
+    data_info = azure / "data"
+
+    assert (data_info / "foo").read_text() == "foo"
+
+    (data_info / "bar" / "baz").write_text("quux")
+    assert (data_info / "bar" / "baz").read_bytes() == b"quux"
