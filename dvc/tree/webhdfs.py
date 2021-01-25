@@ -143,12 +143,9 @@ class WebHDFSTree(BaseTree):
         self.hdfs_client.makedirs(to_info.parent.path)
         self.hdfs_client.rename(from_info.path, to_info.path)
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        with Tqdm.wrapattr(
-            fobj, "read", disable=no_progress_bar, **pbar_args
-        ) as wrapped:
-            with self.hdfs_client.write(to_info.path) as fdest:
-                shutil.copyfileobj(wrapped, fdest, length=self.CHUNK_SIZE)
+    def _upload_fobj(self, fobj, to_info):
+        with self.hdfs_client.write(to_info.path) as fdest:
+            shutil.copyfileobj(fobj, fdest, length=self.CHUNK_SIZE)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

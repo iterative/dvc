@@ -553,15 +553,11 @@ class GDriveTree(BaseTree):
         gdrive_file.FetchMetadata(fields="fileSize")
         return gdrive_file.get("fileSize")
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+    def _upload_fobj(self, fobj, to_info):
         dirname = to_info.parent
         assert dirname
         parent_id = self._get_item_id(dirname, create=True)
-
-        with Tqdm.wrapattr(
-            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
-        ) as wrapped:
-            self._gdrive_upload_fobj(wrapped, parent_id, to_info.name)
+        self._gdrive_upload_fobj(fobj, parent_id, to_info.name)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

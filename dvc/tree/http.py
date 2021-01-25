@@ -172,21 +172,13 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
 
         return HashInfo(self.PARAM_CHECKSUM, etag)
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+    def _upload_fobj(self, fobj, to_info):
         def chunks(fobj):
-            with Tqdm.wrapattr(
-                fobj,
-                "read",
-                bytes=True,
-                leave=False,
-                disable=no_progress_bar,
-                **pbar_args,
-            ) as wrapped:
-                while True:
-                    chunk = wrapped.read(self.CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    yield chunk
+            while True:
+                chunk = fobj.read(self.CHUNK_SIZE)
+                if not chunk:
+                    break
+                yield chunk
 
         response = self.request(self.method, to_info.url, data=chunks(fobj))
         if response.status_code not in (200, 201):

@@ -192,22 +192,11 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Webdav client move
         self._client.move(from_info.path, to_info.path)
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        # this is not exactly a chunked upload, since it doesn't quite work
-        # in the way. internally it uses requests, so in theory we should be
-        # able to pass a generator that yields chunks though it is not working
-        # for some reason.
+    def _upload_fobj(self, fobj, to_info):
+        # In contrast to other upload_fobj implementations, this one does not
+        # exactly do a chunked-upload but rather put everything in one request.
         self.makedirs(to_info.parent)
-
-        with Tqdm.wrapattr(
-            fobj,
-            "read",
-            bytes=True,
-            leave=False,
-            disable=no_progress_bar,
-            **pbar_args,
-        ) as wrapped:
-            self._client.upload_to(buff=wrapped, remote_path=to_info.path)
+        self._client.upload_to(buff=fobj, remote_path=to_info.path)
 
     # Downloads file from remote to file
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):

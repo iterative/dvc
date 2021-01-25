@@ -116,20 +116,17 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         logger.debug(f"Removing oss://{path_info}")
         self.oss_service.delete_object(path_info.path)
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        with Tqdm.wrapattr(
-            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
-        ) as wrapped:
-            cursor = 0
-            while True:
-                chunk = wrapped.read(self.CHUNK_SIZE)
-                if not chunk:
-                    break
+    def _upload_fobj(self, fobj, to_info):
+        cursor = 0
+        while True:
+            chunk = fobj.read(self.CHUNK_SIZE)
+            if not chunk:
+                break
 
-                result = self.oss_service.append_object(
-                    to_info.path, cursor, chunk
-                )
-                cursor = result.next_position
+            result = self.oss_service.append_object(
+                to_info.path, cursor, chunk
+            )
+            cursor = result.next_position
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

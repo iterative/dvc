@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 import stat
+from functools import partialmethod
 
 from funcy import cached_property
 
@@ -242,6 +243,8 @@ class LocalTree(BaseTree):
     def getsize(path_info):
         return os.path.getsize(path_info)
 
+    _upload_fobj = partialmethod(copy_fobj, chunk_size=BaseTree.CHUNK_SIZE)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,
     ):
@@ -252,13 +255,6 @@ class LocalTree(BaseTree):
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
         os.replace(tmp_file, to_info)
-
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        from dvc.progress import Tqdm
-
-        with Tqdm(bytes=True, disable=no_progress_bar, **pbar_args) as pbar:
-            with pbar.wrapattr(fobj, "read") as fobj:
-                self.copy_fobj(fobj, to_info, chunk_size=self.CHUNK_SIZE)
 
     @staticmethod
     def _download(
