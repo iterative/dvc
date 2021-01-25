@@ -122,10 +122,8 @@ class FileMixin:
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
         if not self.exists():
-            dvc_ignored = self.repo.tree.dvcignore.is_ignored_file(self.path)
-            raise StageFileDoesNotExistError(
-                self.path, dvc_ignored=dvc_ignored
-            )
+            is_ignored = self.repo.tree.exists(self.path, use_dvcignore=False)
+            raise StageFileDoesNotExistError(self.path, dvc_ignored=is_ignored)
 
         if self.verify:
             check_dvc_filename(self.path)

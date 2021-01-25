@@ -14,7 +14,7 @@ class StageFileFormatError(DvcException):
 
 
 class StageFileDoesNotExistError(DvcException):
-    DVC_IGNORED = "is dvc-ignored."
+    DVC_IGNORED = "is dvc-ignored"
     DOES_NOT_EXIST = "does not exist"
 
     def __init__(self, fname, dvc_ignored=False):
