@@ -211,7 +211,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
                 to_info,
                 no_progress_bar=no_progress_bar,
                 desc=name or to_info.url,
-                total=os.path.getsize(from_file),
+                total=None if no_progress_bar else os.path.getsize(from_file),
             )
 
     @staticmethod
