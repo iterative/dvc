@@ -202,9 +202,6 @@ class BaseTree:
         """
         raise NotImplementedError
 
-    def info(self, path_info):
-        raise RemoteActionNotImplemented("info", self.scheme)
-
     def is_empty(self, path_info):
         return False
 

@@ -227,24 +227,21 @@ class S3Tree(BaseTree):
 
             yield path_info.replace(path=fname)
 
-    def _dir_info(self, path_info):
+    def ls(self, path_info, recursive=False, detail=False):
         with self._get_bucket(path_info.bucket) as bucket:
             for obj_summary in bucket.objects.filter(Prefix=path_info.path):
-                if obj_summary.key.endswith("/"):
+                file_info = path_info.replace(path=obj_summary.key)
+                if not recursive and file_info.parent != path_info:
                     continue
 
-                file_info = path_info.replace(path=obj_summary.key)
-                yield file_info, {
-                    "size": obj_summary.size,
-                    "e_tag": obj_summary.e_tag.strip('"'),
-                    "last_modified": obj_summary.size,
-                }
-
-    def info(self, path_info):
-        if self.isfile(path_info):
-            _, details = next(self._dir_info(path_info))
-            return details
-        return self._dir_info(path_info / "")
+                if detail:
+                    yield file_info, {
+                        "size": obj_summary.size,
+                        "e_tag": obj_summary.e_tag.strip('"'),
+                        "last_modified": obj_summary.size,
+                    }
+                else:
+                    yield file_info
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
@@ -365,7 +362,9 @@ class S3Tree(BaseTree):
             raise ETagMismatchError(etag, cached_etag)
 
     def _iter_hashes(self, path_info, **kwargs):
-        for file_info, details in self.info(path_info):
+        for file_info, details in self.ls(
+            path_info, recursive=True, detail=True
+        ):
             self._check_ignored(file_info)
             yield file_info, HashInfo(
                 self.PARAM_CHECKSUM, details["e_tag"], size=details["size"],

@@ -151,24 +151,25 @@ class AzureTree(BaseTree):
 
             yield path_info.replace(path=fname)
 
-    def _dir_info(self, path_info):
+    def ls(self, path_info, recursive=False, detail=False):
         container_client = self.blob_service.get_container_client(
             path_info.bucket
         )
         for blob in container_client.list_blobs(
             name_starts_with=path_info.path
         ):
-            yield blob.name, {
-                "size": blob.size,
-                "e_tag": blob.etag.strip('"'),
-                "last_modified": blob.last_modified,
-            }
+            file_info = path_info.replace(path=blob.name)
+            if not recursive and file_info.parent != path_info:
+                continue
 
-    def info(self, path_info):
-        if self.isfile(path_info):
-            _, details = next(self._dir_info(path_info))
-            return details
-        return self._dir_info(path_info / "")
+            if detail:
+                yield file_info, {
+                    "size": blob.size,
+                    "e_tag": blob.etag.strip('"'),
+                    "last_modified": blob.last_modified,
+                }
+            else:
+                yield file_info
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -187,7 +188,9 @@ class AzureTree(BaseTree):
         return properties.size
 
     def _iter_hashes(self, path_info, **kwargs):
-        for file_info, details in self.info(path_info):
+        for file_info, details in self.ls(
+            path_info, recursive=True, detail=True
+        ):
             self._check_ignored(file_info)
             yield file_info, HashInfo(
                 self.PARAM_CHECKSUM, details["e_tag"], size=details["size"],
