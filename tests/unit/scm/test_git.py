@@ -3,10 +3,9 @@ import os
 import pytest
 
 from dvc.scm.base import SCMError
-from tests.basic_env import TestDvcGit
 
 
-# Behaves the same as SCM but will test against all suported Git backends.
+# Behaves the same as SCM but will test against all supported Git backends.
 # tmp_dir.scm will still contain a default SCM instance.
 @pytest.fixture(params=["gitpython", "dulwich", "pygit2"])
 def git(tmp_dir, scm, request):
@@ -18,18 +17,17 @@ def git(tmp_dir, scm, request):
     git_.close()
 
 
-class TestGit(TestDvcGit):
-    def test_belongs_to_scm_true_on_gitignore(self):
-        path = os.path.join("path", "to", ".gitignore")
-        self.assertTrue(self.dvc.scm.belongs_to_scm(path))
-
-    def test_belongs_to_scm_true_on_git_internal(self):
-        path = os.path.join("path", "to", ".git", "internal", "file")
-        self.assertTrue(self.dvc.scm.belongs_to_scm(path))
-
-    def test_belongs_to_scm_false(self):
-        path = os.path.join("some", "non-.git", "file")
-        self.assertFalse(self.dvc.scm.belongs_to_scm(path))
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        (os.path.join("path", "to", ".gitignore"), True),
+        (os.path.join("path", "to", ".git", "internal", "file"), True),
+        (os.path.join("some", "non-.git", "file"), False),
+    ],
+    ids=["gitignore_file", "git_internal_file", "non_git_file"],
+)
+def test_belongs_to_scm(scm, path, expected):
+    assert scm.belongs_to_scm(path) == expected
 
 
 def test_walk_with_submodules(tmp_dir, scm, git_dir):
