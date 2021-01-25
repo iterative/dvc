@@ -362,10 +362,8 @@ class S3Tree(BaseTree):
             max_concurrency=1,
             use_threads=False,
         )
-        with self._get_s3() as s3:
-            s3.meta.client.upload_fileobj(
-                fobj, to_info.bucket, to_info.path, Config=config
-            )
+        with self._get_obj(to_info) as obj:
+            obj.upload_fileobj(fobj, Config=config)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
