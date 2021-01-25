@@ -2,7 +2,6 @@ import errno
 import logging
 import os
 import stat
-from functools import partialmethod
 
 from funcy import cached_property
 
@@ -167,11 +166,11 @@ class LocalTree(BaseTree):
             self.remove(tmp_info)
             raise
 
-    def copy_fobj(self, fobj, to_info, chunk_size=None):
+    def _upload_fobj(self, fobj, to_info):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:
-            copy_fobj_to_file(fobj, tmp_info, chunk_size=chunk_size)
+            copy_fobj_to_file(fobj, tmp_info, chunk_size=self.CHUNK_SIZE)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -242,8 +241,6 @@ class LocalTree(BaseTree):
     @staticmethod
     def getsize(path_info):
         return os.path.getsize(path_info)
-
-    _upload_fobj = partialmethod(copy_fobj, chunk_size=BaseTree.CHUNK_SIZE)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,
