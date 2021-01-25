@@ -66,9 +66,6 @@ def external_repo(
         **kwargs,
     )
 
-    if "fetch" not in repo_kwargs:
-        repo_kwargs["fetch"] = True
-
     repo = Repo(**repo_kwargs)
 
     try:

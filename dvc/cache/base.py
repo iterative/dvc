@@ -246,12 +246,7 @@ class CloudCache:
         else:
             if self.changed_cache(hash_info):
                 with tree.open(path_info, mode="rb") as fobj:
-                    # if tree has fetch enabled, DVC out will be fetched on
-                    # open and we do not need to read/copy any data
-                    if not (
-                        tree.isdvc(path_info, strict=False) and tree.fetch
-                    ):
-                        self.tree.upload_fobj(fobj, cache_info)
+                    self.tree.upload_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)
@@ -444,7 +439,9 @@ class CloudCache:
             )
 
         if not hash_info:
-            hash_info = tree.get_hash(path_info, **kwargs)
+            kw = kwargs.copy()
+            kw.pop("download_callback", None)
+            hash_info = tree.get_hash(path_info, **kw)
             if not hash_info:
                 raise FileNotFoundError(
                     errno.ENOENT, os.strerror(errno.ENOENT), path_info

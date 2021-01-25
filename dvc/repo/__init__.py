@@ -130,8 +130,6 @@ class Repo:
         config=None,
         url=None,
         repo_factory=None,
-        fetch=None,
-        stream=None,
     ):
         from dvc.cache import Cache
         from dvc.config import Config
@@ -148,8 +146,6 @@ class Repo:
 
         self.url = url
         self._tree_conf = {
-            "stream": stream,
-            "fetch": fetch,
             "repo_factory": repo_factory,
         }
 
@@ -458,7 +454,7 @@ class Repo:
         """Opens a specified resource as a file descriptor"""
         from dvc.tree.repo import RepoTree
 
-        tree = RepoTree(self, stream=True, subrepos=True)
+        tree = RepoTree(self, subrepos=True)
         path = PathInfo(self.root_dir) / path
         try:
             with self.state:

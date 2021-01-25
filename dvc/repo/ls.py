@@ -30,9 +30,7 @@ def ls(
     """
     from dvc.external_repo import external_repo
 
-    # use our own RepoTree instance instead of repo.repo_tree since we want to
-    # fetch directory listings, but don't want to fetch file contents.
-    with external_repo(url, rev, fetch=False, stream=True) as repo:
+    with external_repo(url, rev) as repo:
         path_info = PathInfo(repo.root_dir)
         if path:
             path_info /= path

@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 import threading
@@ -121,6 +122,25 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             raise WebDAVConnectionError(hostname)
 
         return client
+
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
+        from webdav3.exceptions import RemoteResourceNotFound
+
+        assert mode in {"r", "rt", "rb"}
+
+        fobj = io.BytesIO()
+
+        try:
+            self._client.download_from(buff=fobj, remote_path=path_info.path)
+        except RemoteResourceNotFound as exc:
+            raise FileNotFoundError from exc
+
+        fobj.seek(0)
+
+        if "mode" == "rb":
+            return fobj
+
+        return io.TextIOWrapper(fobj, encoding=encoding)
 
     # Checks whether file/directory exists at remote
     def exists(self, path_info, use_dvcignore=True):

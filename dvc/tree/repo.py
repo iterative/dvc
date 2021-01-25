@@ -36,7 +36,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "md5"
 
     def __init__(
-        self, repo, subrepos=False, repo_factory: RepoFactory = None, **kwargs
+        self, repo, subrepos=False, repo_factory: RepoFactory = None,
     ):
         super().__init__(repo, {"url": repo.root_dir})
 
@@ -61,10 +61,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         self._dvctrees = {}
         """Keep a dvctree instance of each repo."""
 
-        self._dvctree_configs = kwargs
-
         if hasattr(repo, "dvc_dir"):
-            self._dvctrees[repo.root_dir] = DvcTree(repo, **kwargs)
+            self._dvctrees[repo.root_dir] = DvcTree(repo)
 
     def _get_repo(self, path) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
@@ -99,12 +97,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                     scm=self.repo.scm,
                     rev=self.repo.get_rev(),
                     repo_factory=self.repo_factory,
-                    fetch=self.fetch,
-                    stream=self.stream,
                 )
-                self._dvctrees[repo.root_dir] = DvcTree(
-                    repo, **self._dvctree_configs
-                )
+                self._dvctrees[repo.root_dir] = DvcTree(repo)
             self._subrepos_trie[d] = repo
 
     def _is_dvc_repo(self, dir_path):
@@ -130,14 +124,6 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
         dvc_tree = self._dvctrees.get(repo.root_dir)
         return repo.tree, dvc_tree
-
-    @property
-    def fetch(self):
-        return self._dvctree_configs.get("fetch")
-
-    @property
-    def stream(self):
-        return self._dvctree_configs.get("stream")
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs

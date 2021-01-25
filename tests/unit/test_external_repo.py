@@ -39,8 +39,6 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
                     path,
                     scm=repo.scm,
                     rev=repo.get_rev(),
-                    fetch=True,
-                    stream=None,
                     repo_factory=repo.repo_tree.repo_factory,
                 )
                 for path in paths
