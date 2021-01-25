@@ -249,9 +249,7 @@ class CloudCache:
                     if not (
                         tree.isdvc(path_info, strict=False) and tree.fetch
                     ):
-                        self.tree.upload_fobj(
-                            fobj, cache_info, no_progress_bar=True
-                        )
+                        self.tree.upload_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)
