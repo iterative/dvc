@@ -81,6 +81,8 @@ class BaseODB:
         from dvc.utils.serialize import modify_yaml
 
         logger.debug("Writing ODB config '%s'", self.config_path)
+        if not self.tree.exists(self.config_path.parent):
+            self.tree.makedirs(self.config_path.parent)
         with modify_yaml(self.config_path, tree=self.tree) as data:
             data.update(self.config)
 
