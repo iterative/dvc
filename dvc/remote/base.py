@@ -69,10 +69,12 @@ class Remote:
 
     def __init__(self, tree):
         from dvc.cache import get_cloud_cache
+        from dvc.odb.base import BaseODB
 
         self.tree = tree
         self.repo = tree.repo
         self.cache = get_cloud_cache(self.tree)
+        self.odb = BaseODB(self.tree)
 
         config = tree.config
         url = config.get("url")

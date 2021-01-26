@@ -49,8 +49,11 @@ class CloudCache:
     CACHE_MODE: Optional[int] = None
 
     def __init__(self, tree):
+        from dvc.odb.base import BaseODB
+
         self.tree = tree
         self.repo = tree.repo
+        self.odb = BaseODB(self.tree)
 
         self.cache_types = tree.config.get("type") or copy(
             self.DEFAULT_CACHE_TYPES
