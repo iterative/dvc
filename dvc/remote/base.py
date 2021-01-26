@@ -452,6 +452,7 @@ class Remote:
 
     @index_locked
     def push(self, cache, named_cache, jobs=None, show_checksums=False):
+        self.odb.migrate_config()
         ret = self._process(
             cache,
             named_cache,

@@ -36,18 +36,25 @@ class BaseODB:
     ):
         self.tree = tree
         if path:
-            self.path_info = PathInfo(path)
+            if isinstance(path, str):
+                self.path_info = PathInfo(path)
+            else:
+                self.path_info = path
         else:
             self.path_info = tree.path_info
         self.config = self._load_config()
-        self._migrate_config()
 
     @property
     def config_path(self):
-        return self.path_info / self.CONFIG_FILE
+        if self.path_info:
+            return self.path_info / self.CONFIG_FILE
+        return None
 
     def _load_config(self):
         from dvc.utils.serialize import load_yaml
+
+        if not self.config_path:
+            return self.latest_version_info
 
         if self.tree.exists(self.config_path):
             data = load_yaml(self.config_path, tree=self.tree)
@@ -80,13 +87,16 @@ class BaseODB:
     def _dump_config(self):
         from dvc.utils.serialize import modify_yaml
 
+        if not self.config_path:
+            return
+
         logger.debug("Writing ODB config '%s'", self.config_path)
         if not self.tree.exists(self.config_path.parent):
             self.tree.makedirs(self.config_path.parent)
         with modify_yaml(self.config_path, tree=self.tree) as data:
             data.update(self.config)
 
-    def _migrate_config(self):
+    def migrate_config(self):
         if self.version == ODB_VERSION.V1 and not self.tree.enable_dos2unix:
             logger.debug("Migrating ODB config '%s' to v2", self.config_path)
             self.config.update(self.latest_version_info)
