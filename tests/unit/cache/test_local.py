@@ -66,26 +66,23 @@ def test_is_protected(tmp_dir, dvc, link_name):
         assert cache.is_protected(foo)
 
 
-@pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES])
+@pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES, errno.EROFS])
 def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
-    foo = PathInfo("foo")
-
-    dvc.cache.local.protect(foo)
 
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(err, "something")
     )
-    dvc.cache.local.protect(foo)
+    dvc.cache.local.protect(PathInfo("foo"))
     assert mock_chmod.called
 
 
-def test_protect_ignore_erofs(tmp_dir, dvc, mocker):
+@pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES, errno.EROFS])
+def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
-    foo = PathInfo("foo")
 
     mock_chmod = mocker.patch(
-        "os.chmod", side_effect=OSError(errno.EROFS, "read-only fs")
+        "os.chmod", side_effect=OSError(err, "something")
     )
-    dvc.cache.local.protect(foo)
+    dvc.cache.local.set_exec(PathInfo("foo"))
     assert mock_chmod.called

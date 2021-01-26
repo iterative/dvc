@@ -503,6 +503,9 @@ class CloudCache:
     def unprotect(self, path_info):  # pylint: disable=unused-argument
         pass
 
+    def set_exec(self, path_info):  # pylint: disable=unused-argument
+        pass
+
     def changed_cache_file(self, hash_info):
         """Compare the given hash with the (corresponding) actual one.
 

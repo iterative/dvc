@@ -1,7 +1,5 @@
-import errno
 import logging
 import os
-import stat
 
 from funcy import cached_property
 
@@ -136,10 +134,6 @@ class LocalTree(BaseTree):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True)
 
-    def set_exec(self, path_info):
-        mode = self.stat(path_info).st_mode
-        self.chmod(path_info, mode | stat.S_IEXEC)
-
     def isexec(self, path_info):
         mode = self.stat(path_info).st_mode
         return is_exec(mode)
@@ -212,23 +206,6 @@ class LocalTree(BaseTree):
 
     def reflink(self, from_info, to_info):
         System.reflink(from_info, to_info)
-
-    def chmod(self, path_info, mode):
-        try:
-            os.chmod(path_info, mode)
-        except OSError as exc:
-            # There is nothing we need to do in case of a read-only file system
-            if exc.errno == errno.EROFS:
-                return
-
-            # In shared cache scenario, we might not own the cache file, so we
-            # need to check if cache file is already protected.
-            if exc.errno not in [errno.EPERM, errno.EACCES]:
-                raise
-
-            actual = stat.S_IMODE(os.stat(path_info).st_mode)
-            if actual != mode:
-                raise
 
     def get_file_hash(self, path_info):
         hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
