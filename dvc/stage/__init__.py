@@ -411,10 +411,12 @@ class Stage(params.StageParams):
 
         return self
 
-    def update(self, rev=None):
+    def update(self, rev=None, to_remote=False, remote=None, jobs=None):
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
-        update_import(self, rev=rev)
+        update_import(
+            self, rev=rev, to_remote=to_remote, remote=remote, jobs=jobs
+        )
 
     @property
     def can_be_skipped(self):

@@ -3,10 +3,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def update_import(stage, rev=None):
+def _update_import_on_remote(stage, remote, jobs):
+    url = stage.deps[0].path_info.url
+    stage.outs[0].hash_info = stage.repo.cloud.transfer(
+        url, jobs=jobs, remote=remote, command="update"
+    )
+
+
+def update_import(stage, rev=None, to_remote=False, remote=None, jobs=None):
     stage.deps[0].update(rev=rev)
     frozen = stage.frozen
     stage.frozen = False
+    if to_remote:
+        return _update_import_on_remote(stage, remote, jobs)
+
     try:
         stage.reproduce()
     finally:
