@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 
@@ -83,10 +84,25 @@ def test_fix_env_pyenv(path, orig):
     assert fix_env(env)["PATH"] == orig
 
 
-def test_file_md5(tmp_dir):
-    tmp_dir.gen("foo", "foo content")
+@pytest.mark.parametrize(
+    "content, dos2unix",
+    [
+        (b"foo content\r\n", True),
+        (b"foo content\r\n", False),
+        (b"\x00", True),
+        (b"\x00", False),
+    ],
+)
+def test_file_md5(tmp_dir, content, dos2unix):
+    tmp_dir.gen("foo", content)
+    if dos2unix:
+        content = content.replace(b"\r\n", b"\n")
+    md5 = hashlib.md5()
+    md5.update(content)
+    expected = (md5.hexdigest(), md5.digest())
 
-    assert file_md5("foo") == file_md5(PathInfo("foo"))
+    assert expected == file_md5("foo", enable_dos2unix=dos2unix)
+    assert expected == file_md5(PathInfo("foo"), enable_dos2unix=dos2unix)
 
 
 def test_tmp_fname():

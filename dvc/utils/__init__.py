@@ -65,7 +65,7 @@ def file_md5(
 
     if exists_func(fname):
         hash_md5 = hashlib.md5()
-        binary = enable_dos2unix and not istextfile(fname, tree=tree)
+        binary = not (enable_dos2unix and istextfile(fname, tree=tree))
         size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
