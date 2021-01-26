@@ -9,9 +9,13 @@ import re
 import stat
 import sys
 import time
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 
 import colorama
+
+if TYPE_CHECKING:
+    from dvc.path_info import PathInfo
+    from dvc.tree.base import BaseTree
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +45,19 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname, tree=None):
-    """ get the (md5 hexdigest, md5 digest) of a file """
+def file_md5(
+    fname: Union[str, "PathInfo"],
+    tree: Optional["BaseTree"] = None,
+    enable_dos2unix: bool = False,
+) -> Tuple[Optional[str], Optional[bytes]]:
+    """Get the (md5 hexdigest, md5 digest) of a file."""
     from dvc.istextfile import istextfile
     from dvc.progress import Tqdm
 
     if tree:
-        exists_func = tree.exists
-        stat_func = tree.stat
-        open_func = tree.open
+        exists_func: Callable = tree.exists
+        stat_func: Callable = tree.stat  # type: ignore[attr-defined]
+        open_func: Callable = tree.open
     else:
         exists_func = os.path.exists
         stat_func = os.stat
@@ -57,7 +65,7 @@ def file_md5(fname, tree=None):
 
     if exists_func(fname):
         hash_md5 = hashlib.md5()
-        binary = not istextfile(fname, tree=tree)
+        binary = enable_dos2unix and not istextfile(fname, tree=tree)
         size = stat_func(fname).st_size
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:

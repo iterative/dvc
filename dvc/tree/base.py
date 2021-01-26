@@ -90,6 +90,10 @@ class BaseTree:
             or self.HASH_JOBS
         )
 
+    @cached_property
+    def enable_dos2unix(self):
+        return self.repo and self.repo.config["core"].get("dos2unix")
+
     @classmethod
     def get_missing_deps(cls):
         import importlib

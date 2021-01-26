@@ -231,7 +231,10 @@ class LocalTree(BaseTree):
                 raise
 
     def get_file_hash(self, path_info):
-        hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
+        hash_info = HashInfo(
+            self.PARAM_CHECKSUM,
+            file_md5(path_info, enable_dos2unix=self.enable_dos2unix)[0],
+        )
 
         if hash_info:
             hash_info.size = os.path.getsize(path_info)

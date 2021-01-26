@@ -117,6 +117,7 @@ SCHEMA = {
         Optional("autostage", default=False): Bool,
         Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
+        Optional("dos2unix", default=False): Bool,
     },
     "cache": {
         "local": str,
