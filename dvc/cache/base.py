@@ -53,13 +53,17 @@ class CloudCache:
 
         self.tree = tree
         self.repo = tree.repo
-        self.odb = BaseODB(self.tree)
+        self.odb = BaseODB(self.tree, path=self.cache_path)
 
         self.cache_types = tree.config.get("type") or copy(
             self.DEFAULT_CACHE_TYPES
         )
         self.cache_type_confirmed = False
         self._dir_info = {}
+
+    @property
+    def cache_path(self):
+        return self.tree.path_info
 
     def get_dir_cache(self, hash_info):
         assert hash_info

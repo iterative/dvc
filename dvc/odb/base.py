@@ -1,10 +1,11 @@
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from voluptuous import MultipleInvalid
 
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import SCHEMA_KWD
+from dvc.path_info import PathInfo
 
 from .versions import ODB_VERSION
 
@@ -30,16 +31,26 @@ class BaseODB:
 
     CONFIG_FILE = "dvc.odb.yaml"
 
-    def __init__(self, tree: "BaseTree"):
+    def __init__(
+        self, tree: "BaseTree", path: Optional[Union[str, "PathInfo"]] = None
+    ):
         self.tree = tree
+        if path:
+            self.path_info = PathInfo(path)
+        else:
+            self.path_info = tree.path_info
         self.config = self._load_config()
         self._migrate_config()
+
+    @property
+    def config_path(self):
+        return self.path_info / self.CONFIG_FILE
 
     def _load_config(self):
         from dvc.utils.serialize import load_yaml
 
-        if self.tree.exists(self.CONFIG_FILE):
-            data = load_yaml(self.CONFIG_FILE, tree=self.tree)
+        if self.tree.exists(self.config_path):
+            data = load_yaml(self.config_path, tree=self.tree)
             try:
                 self._validate_version(data)
                 return data
@@ -69,12 +80,12 @@ class BaseODB:
     def _dump_config(self):
         from dvc.utils.serialize import modify_yaml
 
-        logger.debug("Writing ODB config '%s'", self.CONFIG_FILE)
-        with modify_yaml(self.CONFIG_FILE, tree=self.tree) as data:
+        logger.debug("Writing ODB config '%s'", self.config_path)
+        with modify_yaml(self.config_path, tree=self.tree) as data:
             data.update(self.config)
 
     def _migrate_config(self):
         if self.version == ODB_VERSION.V1 and not self.tree.enable_dos2unix:
-            logger.debug("Migrating ODB config '%s' to v2", self.CONFIG_FILE)
+            logger.debug("Migrating ODB config '%s' to v2", self.config_path)
             self.config.update(self.latest_version_info)
             self._dump_config()
