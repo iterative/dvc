@@ -32,9 +32,10 @@ class BaseODB:
 
     def __init__(self, tree: "BaseTree"):
         self.tree = tree
-        self.config = self.load_config()
+        self.config = self._load_config()
+        self._migrate_config()
 
-    def load_config(self):
+    def _load_config(self):
         from dvc.utils.serialize import load_yaml
 
         if self.tree.exists(self.CONFIG_FILE):
@@ -65,10 +66,15 @@ class BaseODB:
         version = ODB_VERSION.V2.value  # pylint:disable=no-member
         return {SCHEMA_KWD: version}
 
-    def dump_config(self):
+    def _dump_config(self):
         from dvc.utils.serialize import modify_yaml
 
-        if self.version == ODB_VERSION.V1:
-            logger.info("Migrating ODB config '%s' to v2", self.CONFIG_FILE)
-            with modify_yaml(self.CONFIG_FILE, tree=self.tree) as data:
-                data.update(self.latest_version_info)
+        logger.debug("Writing ODB config '%s'", self.CONFIG_FILE)
+        with modify_yaml(self.CONFIG_FILE, tree=self.tree) as data:
+            data.update(self.config)
+
+    def _migrate_config(self):
+        if self.version == ODB_VERSION.V1 and not self.tree.enable_dos2unix:
+            logger.debug("Migrating ODB config '%s' to v2", self.CONFIG_FILE)
+            self.config.update(self.latest_version_info)
+            self._dump_config()
