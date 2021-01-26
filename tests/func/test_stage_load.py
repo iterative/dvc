@@ -4,7 +4,7 @@ from operator import itemgetter
 import pytest
 from funcy import raiser
 
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PIPELINE_FILE, FileIsGitIgnored
 from dvc.exceptions import NoOutputOrStageError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -451,3 +451,45 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
     file_path, exc = mock.call_args[0]
     assert file_path == PIPELINE_FILE
     assert isinstance(exc, StageFileFormatError)
+
+
+def test_gitignored_collect_repo(tmp_dir, dvc, scm):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    assert dvc.stage.collect_repo() == [stage]
+
+    scm.ignore(stage.path)
+    scm._reset()
+
+    assert not dvc.stage.collect_repo()
+
+
+def test_gitignored_file_try_collect_granular_for_data_files(
+    tmp_dir, dvc, scm
+):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
+    path = PathInfo("data") / "foo"
+
+    assert dvc.stage.collect_granular(str(path)) == [
+        (stage, PathInfo(tmp_dir / path))
+    ]
+
+    scm.ignore(stage.path)
+    dvc._reset()
+
+    with pytest.raises(NoOutputOrStageError):
+        dvc.stage.collect_granular(str(path))
+
+
+def test_gitignored_file_try_collect_granular_for_dvc_yaml_files(
+    tmp_dir, dvc, scm, stages
+):
+    assert dvc.stage.collect_granular("bar") == [
+        (stages["copy-foo-bar"], PathInfo(tmp_dir / "bar"))
+    ]
+
+    scm.ignore(tmp_dir / "dvc.yaml")
+    scm._reset()
+
+    with pytest.raises(FileIsGitIgnored):
+        dvc.stage.collect_granular("bar")
