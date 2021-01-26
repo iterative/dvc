@@ -42,7 +42,7 @@ class BaseODB:
             data = load_yaml(self.CONFIG_FILE, tree=self.tree)
             try:
                 self._validate_version(data)
-                return ODB_VERSION.from_dict(data)
+                return data
             except MultipleInvalid:
                 pass
         return {}
