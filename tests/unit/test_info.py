@@ -53,7 +53,10 @@ def test_info_in_broken_git_repo(tmp_dir, dvc, scm, caplog):
     assert "Repo: dvc, git (broken)" in dvc_info
 
 
-def test_caches(tmp_dir, dvc, caplog):
+def test_caches(tmp_dir, dvc, caplog, mocker):
+    from dvc.tree.ssh import SSHTree
+
+    mocker.patch.object(SSHTree, "exists", return_value=False)
     tmp_dir.add_remote(
         name="sshcache", url="ssh://example.com/path", default=False
     )
