@@ -53,7 +53,6 @@ class BaseTree:
 
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
-    DEFAULT_VERIFY = False
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 5
     TRAVERSE_PREFIX_LEN = 3
@@ -71,7 +70,6 @@ class BaseTree:
 
         self._check_requires()
 
-        self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.path_info = None
 
     @cached_property

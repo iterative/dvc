@@ -45,6 +45,7 @@ def use_state(call):
 
 class CloudCache:
 
+    DEFAULT_VERIFY = False
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
@@ -52,6 +53,7 @@ class CloudCache:
         self.tree = tree
         self.repo = tree.repo
 
+        self.verify = tree.config.get("verify", self.DEFAULT_VERIFY)
         self.cache_types = tree.config.get("type") or copy(
             self.DEFAULT_CACHE_TYPES
         )

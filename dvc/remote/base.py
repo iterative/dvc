@@ -481,7 +481,7 @@ class Remote:
             download=True,
         )
 
-        if not self.tree.verify:
+        if not self.cache.verify:
             with cache.tree.state:
                 for checksum in named_cache.scheme_keys("local"):
                     cache_file = cache.tree.hash_to_path_info(checksum)
