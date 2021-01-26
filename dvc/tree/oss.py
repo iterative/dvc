@@ -38,6 +38,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
+    CHUNK_SIZE = 64 * 1024 * 1024
 
     def __init__(self, repo, config):
         super().__init__(repo, config)

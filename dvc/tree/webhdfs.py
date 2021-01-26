@@ -145,7 +145,7 @@ class WebHDFSTree(BaseTree):
 
     def _upload_fobj(self, fobj, to_info):
         with self.hdfs_client.write(to_info.path) as fdest:
-            shutil.copyfileobj(fobj, fdest, length=self.CHUNK_SIZE)
+            shutil.copyfileobj(fobj, fdest)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

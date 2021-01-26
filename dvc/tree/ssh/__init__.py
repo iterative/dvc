@@ -253,7 +253,7 @@ class SSHTree(BaseTree):
 
     def _upload_fobj(self, fobj, to_info):
         with self.open(to_info, mode="wb") as fdest:
-            shutil.copyfileobj(fobj, fdest, length=self.CHUNK_SIZE)
+            shutil.copyfileobj(fobj, fdest)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         with self.ssh(from_info) as ssh:

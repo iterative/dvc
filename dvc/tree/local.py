@@ -170,7 +170,7 @@ class LocalTree(BaseTree):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:
-            copy_fobj_to_file(fobj, tmp_info, chunk_size=self.CHUNK_SIZE)
+            copy_fobj_to_file(fobj, tmp_info)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)

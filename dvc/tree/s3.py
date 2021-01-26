@@ -356,12 +356,7 @@ class S3Tree(BaseTree):
     def _upload_fobj(self, fobj, to_info):
         from boto3.s3.transfer import TransferConfig
 
-        config = TransferConfig(
-            multipart_threshold=self.CHUNK_SIZE,
-            multipart_chunksize=self.CHUNK_SIZE,
-            max_concurrency=1,
-            use_threads=False,
-        )
+        config = TransferConfig(max_concurrency=1, use_threads=False)
         with self._get_obj(to_info) as obj:
             obj.upload_fileobj(fobj, Config=config)
 
