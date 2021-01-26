@@ -7,7 +7,7 @@ from funcy import cached_property, nullcontext, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -42,7 +42,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # Chunk size for buffered upload/download with progress bar
     CHUNK_SIZE = 2 ** 16
 
-    PARAM_CHECKSUM = "etag"
+    PARAM_CHECKSUM = HashType.ETAG.value
 
     # Constructor
     def __init__(self, repo, config):

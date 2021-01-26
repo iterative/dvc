@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property, wrap_prop
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -34,7 +34,7 @@ class WebHDFSTree(BaseTree):
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
-    PARAM_CHECKSUM = "checksum"
+    PARAM_CHECKSUM = HashType.HDFS_CHECKSUM.value
     TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):

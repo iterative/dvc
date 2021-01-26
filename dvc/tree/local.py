@@ -5,7 +5,7 @@ import stat
 
 from funcy import cached_property
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class LocalTree(BaseTree):
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
-    PARAM_CHECKSUM = "md5"
+    PARAM_CHECKSUM = HashType.MD5.value
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
 

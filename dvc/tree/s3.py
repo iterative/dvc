@@ -7,7 +7,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -22,7 +22,7 @@ class S3Tree(BaseTree):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
-    PARAM_CHECKSUM = "etag"
+    PARAM_CHECKSUM = HashType.ETAG.value
 
     def __init__(self, repo, config):
         super().__init__(repo, config)

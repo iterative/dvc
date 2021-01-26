@@ -7,7 +7,7 @@ from functools import wraps
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -70,7 +70,7 @@ class GSTree(BaseTree):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
-    PARAM_CHECKSUM = "md5"
+    PARAM_CHECKSUM = HashType.MD5.value
 
     def __init__(self, repo, config):
         super().__init__(repo, config)

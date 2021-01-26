@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.output.base import BaseOutput
 from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
@@ -15,10 +15,6 @@ from dvc.output.webhdfs import WebHDFSOutput
 from dvc.scheme import Schemes
 
 from ..tree import get_cloud_tree
-from ..tree.hdfs import HDFSTree
-from ..tree.local import LocalTree
-from ..tree.s3 import S3Tree
-from ..tree.webhdfs import WebHDFSTree
 
 OUTS = [
     HDFSOutput,
@@ -52,12 +48,7 @@ CHECKSUM_SCHEMA = Any(
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
-CHECKSUMS_SCHEMA = {
-    LocalTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3Tree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    HDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    WebHDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-}
+CHECKSUMS_SCHEMA = {typ: CHECKSUM_SCHEMA for typ in HashType.all_types()}
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
 SCHEMA[Required(BaseOutput.PARAM_PATH)] = str

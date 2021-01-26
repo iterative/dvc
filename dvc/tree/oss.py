@@ -4,6 +4,7 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
+from dvc.hash_info import HashType
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -35,7 +36,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
     scheme = Schemes.OSS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"oss2": "oss2"}
-    PARAM_CHECKSUM = "etag"
+    PARAM_CHECKSUM = HashType.ETAG.value
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
 

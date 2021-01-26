@@ -1,3 +1,4 @@
+import enum
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Dict, Optional
@@ -5,6 +6,17 @@ from typing import Dict, Optional
 HASH_DIR_SUFFIX = ".dir"
 
 DirInfo = Dict[str, str]
+
+
+class HashType(str, enum.Enum):
+
+    ETAG = "etag"
+    HDFS_CHECKSUM = "checksum"
+    MD5 = "md5"
+
+    @classmethod
+    def all_types(cls):
+        return [typ.value for typ in cls]
 
 
 @dataclass

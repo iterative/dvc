@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashType
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -22,7 +22,7 @@ class AzureTree(BaseTree):
         "azure-storage-blob": "azure.storage.blob",
         "knack": "knack",
     }
-    PARAM_CHECKSUM = "etag"
+    PARAM_CHECKSUM = HashType.ETAG.value
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
