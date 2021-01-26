@@ -65,28 +65,12 @@ def test_is_protected(tmp_dir, dvc, link_name):
         assert tree.is_protected(foo)
 
 
-@pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES])
-def test_protect_ignore_errors(tmp_dir, mocker, err):
+@pytest.mark.parametrize("err", [errno.EPERM, errno.EACCES, errno.EROFS])
+def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
     tmp_dir.gen("foo", "foo")
-    foo = PathInfo("foo")
-    tree = LocalTree(None, {})
-
-    tree.protect(foo)
 
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(err, "something")
     )
-    tree.protect(foo)
-    assert mock_chmod.called
-
-
-def test_protect_ignore_erofs(tmp_dir, mocker):
-    tmp_dir.gen("foo", "foo")
-    foo = PathInfo("foo")
-    tree = LocalTree(None, {})
-
-    mock_chmod = mocker.patch(
-        "os.chmod", side_effect=OSError(errno.EROFS, "read-only fs")
-    )
-    tree.protect(foo)
+    LocalTree(None, {}).protect(PathInfo("foo"))
     assert mock_chmod.called
