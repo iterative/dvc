@@ -295,3 +295,33 @@ def test_tree_getsize(dvc, cloud):
 
     assert tree.getsize(path_info / "baz") == 7
     assert tree.getsize(path_info / "data" / "foo") == 3
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("gdrive"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("http"),
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("oss"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("ssh"),
+        pytest.lazy_fixture("webhdfs"),
+    ],
+)
+def test_tree_upload_fobj(dvc, tmp_dir, cloud):
+    tmp_dir.gen("foo", "foo")
+    tree = get_cloud_tree(dvc, **cloud.config)
+
+    from_info = tmp_dir / "foo"
+    to_info = tree.path_info / "foo"
+
+    with open(from_info, "rb") as stream:
+        tree.upload_fobj(stream, to_info)
+
+    assert tree.exists(to_info)
+    with tree.open(to_info, "rb") as stream:
+        assert stream.read() == b"foo"

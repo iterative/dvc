@@ -251,33 +251,14 @@ class CloudCache:
                     if not (
                         tree.isdvc(path_info, strict=False) and tree.fetch
                     ):
-                        self.tree.copy_fobj(fobj, cache_info)
+                        self.tree.upload_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)
 
         self.tree.state.save(cache_info, hash_info)
 
-    def _transfer_file_as_whole(self, from_tree, from_info):
-        from dvc.utils import tmp_fname
-
-        # When we can't use the chunked upload, we have to first download
-        # and then calculate the hash as if it were a local file and then
-        # upload it.
-        local_tree = self.repo.cache.local.tree
-        local_info = local_tree.path_info / tmp_fname()
-
-        from_tree.download(from_info, local_info)
-        hash_info = local_tree.get_file_hash(local_info)
-
-        self.tree.upload(
-            local_info,
-            self.tree.hash_to_path_info(hash_info.value),
-            name=from_info.name,
-        )
-        return hash_info
-
-    def _transfer_file_as_chunked(self, from_tree, from_info):
+    def _transfer_file(self, from_tree, from_info):
         from dvc.utils import tmp_fname
         from dvc.utils.stream import HashedStreamReader
 
@@ -298,14 +279,6 @@ class CloudCache:
 
         hash_info = stream_reader.hash_info
         self.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
-        return hash_info
-
-    def _transfer_file(self, from_tree, from_info):
-        try:
-            hash_info = self._transfer_file_as_chunked(from_tree, from_info)
-        except RemoteActionNotImplemented:
-            hash_info = self._transfer_file_as_whole(from_tree, from_info)
-
         return hash_info
 
     def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):

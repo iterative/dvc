@@ -251,6 +251,10 @@ class SSHTree(BaseTree):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
 
+    def _upload_fobj(self, fobj, to_info):
+        with self.open(to_info, mode="wb") as fdest:
+            shutil.copyfileobj(fobj, fdest)
+
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         with self.ssh(from_info) as ssh:
             ssh.download(
@@ -259,14 +263,6 @@ class SSHTree(BaseTree):
                 progress_title=name,
                 no_progress_bar=no_progress_bar,
             )
-
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        from dvc.progress import Tqdm
-
-        with Tqdm(bytes=True, disable=no_progress_bar, **pbar_args) as pbar:
-            with pbar.wrapattr(fobj, "read") as fobj:
-                with self.open(to_info, mode="wb") as fdest:
-                    shutil.copyfileobj(fobj, fdest, length=self.CHUNK_SIZE)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

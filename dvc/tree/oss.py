@@ -116,6 +116,9 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         logger.debug(f"Removing oss://{path_info}")
         self.oss_service.delete_object(path_info.path)
 
+    def _upload_fobj(self, fobj, to_info):
+        self.oss_service.put_object(to_info.path, fobj)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):

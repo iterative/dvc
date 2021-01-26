@@ -192,6 +192,12 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Webdav client move
         self._client.move(from_info.path, to_info.path)
 
+    def _upload_fobj(self, fobj, to_info):
+        # In contrast to other upload_fobj implementations, this one does not
+        # exactly do a chunked-upload but rather put everything in one request.
+        self.makedirs(to_info.parent)
+        self._client.upload_to(buff=fobj, remote_path=to_info.path)
+
     # Downloads file from remote to file
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         # Progress from HTTPTree

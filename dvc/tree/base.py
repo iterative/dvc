@@ -58,6 +58,8 @@ class BaseTree:
     TRAVERSE_PREFIX_LEN = 3
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
+
+    # Needed for some providers, and http open()
     CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
@@ -221,9 +223,6 @@ class BaseTree:
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
-    def copy_fobj(self, fobj, to_info, chunk_size=None):
-        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
-
     def symlink(self, from_info, to_info):
         raise RemoteActionNotImplemented("symlink", self.scheme)
 
@@ -359,8 +358,14 @@ class BaseTree:
             no_progress_bar=no_progress_bar,
         )
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False):
-        raise RemoteActionNotImplemented("upload_fobj", self.scheme)
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        if not hasattr(self, "_upload_fobj"):
+            raise RemoteActionNotImplemented("upload_fobj", self.scheme)
+
+        with Tqdm.wrapattr(
+            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
+        ) as wrapped:
+            self._upload_fobj(wrapped, to_info)  # pylint: disable=no-member
 
     def download(
         self,
