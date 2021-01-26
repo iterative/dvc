@@ -1,10 +1,16 @@
+import pytest
+
 from dvc import utils
 
 
-def test_file_md5_crlf(tmp_dir):
+@pytest.mark.parametrize("dos2unix", [True, False])
+def test_file_md5_crlf(tmp_dir, dos2unix):
     tmp_dir.gen("cr", b"a\nb\nc")
     tmp_dir.gen("crlf", b"a\r\nb\r\nc")
-    assert utils.file_md5("cr")[0] == utils.file_md5("crlf")[0]
+    eq = utils.file_md5("cr", enable_dos2unix=dos2unix) == utils.file_md5(
+        "crlf", enable_dos2unix=dos2unix
+    )
+    assert eq == dos2unix
 
 
 def test_dict_md5():

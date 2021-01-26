@@ -1021,3 +1021,16 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
     with pytest.raises(InvalidArgumentError, match=invalid_opt):
         dvc.add(to_remote=True, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "dos2unix, expected",
+    [
+        (True, "d3b07384d113edec49eaa6238ad5ff00"),
+        (False, "2145971cf82058b108229a3a2e3bff35"),
+    ],
+)
+def test_add_dos2unix(tmp_dir, dvc, dos2unix, expected):
+    dvc.config["core"]["dos2unix"] = dos2unix
+    (stage,) = tmp_dir.dvc_gen({"foo": "foo\r\n"})
+    assert stage.outs[0].hash_info == HashInfo("md5", expected)
