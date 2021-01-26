@@ -118,16 +118,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         self.oss_service.delete_object(path_info.path)
 
     def _upload_fobj(self, fobj, to_info):
-        cursor = 0
-        while True:
-            chunk = fobj.read(self.CHUNK_SIZE)
-            if not chunk:
-                break
-
-            result = self.oss_service.append_object(
-                to_info.path, cursor, chunk
-            )
-            cursor = result.next_position
+        self.oss_service.put_object(to_info.path, fobj)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

@@ -174,7 +174,7 @@ class AzureTree(BaseTree):
         blob_client = self.blob_service.get_blob_client(
             to_info.bucket, to_info.path
         )
-        blob_client.upload_blob(fobj, overwrite=True, max_concurrency=1)
+        blob_client.upload_blob(fobj, overwrite=True)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
