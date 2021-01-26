@@ -181,9 +181,6 @@ class BaseTree:
         """
         return True
 
-    def set_exec(self, path_info):
-        raise RemoteActionNotImplemented("set_exec", self.scheme)
-
     def isexec(self, path_info):
         """Optional: Overwrite only if the remote has a way to distinguish
         between executable and non-executable file.

@@ -300,7 +300,7 @@ class BaseOutput:
 
     def set_exec(self):
         if self.isfile() and self.isexec:
-            self.tree.set_exec(self.path_info)
+            self.cache.set_exec(self.path_info)
 
     def commit(self, filter_info=None):
         if not self.exists:
