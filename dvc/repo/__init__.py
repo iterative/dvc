@@ -202,6 +202,18 @@ class Repo:
     def __str__(self):
         return self.url or self.root_dir
 
+    @staticmethod
+    @contextmanager
+    def open(url, *args, **kwargs):
+        if os.path.isdir(url):
+            yield Repo(url, *args, **kwargs)
+            return
+
+        from dvc.external_repo import external_repo
+
+        with external_repo(url, *args, **kwargs) as repo:
+            yield repo
+
     @cached_property
     def scm(self):
         from dvc.scm import SCM
