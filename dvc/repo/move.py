@@ -20,7 +20,7 @@ def move(self, from_path, to_path):
     to reflect the change on the pipeline.
 
     If the output has the same name as its stage, it would
-    also rename the corresponding DVC-file.
+    also rename the corresponding .dvc file.
 
     E.g.
           Having: (hello, hello.dvc)

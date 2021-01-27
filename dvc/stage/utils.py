@@ -177,10 +177,10 @@ def compute_md5(stage):
     d.pop(stage.PARAM_META, None)
     d.pop(stage.PARAM_DESC, None)
 
-    # Ignore the wdir default value. In this case DVC-file w/o
+    # Ignore the wdir default value. In this case DVC file w/o
     # wdir has the same md5 as a file with the default value specified.
     # It's important for backward compatibility with pipelines that
-    # didn't have WDIR in their DVC-files.
+    # didn't have WDIR in their DVC files.
     if d.get(stage.PARAM_WDIR) == ".":
         del d[stage.PARAM_WDIR]
 

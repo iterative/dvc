@@ -92,8 +92,8 @@ def add_arguments(repro_parser):
         "--pipeline",
         action="store_true",
         default=False,
-        help="Reproduce the whole pipeline that the specified stage file "
-        "belongs to.",
+        help="Reproduce the whole pipeline that the specified targets "
+        "belong to.",
     )
     repro_parser.add_argument(
         "-P",

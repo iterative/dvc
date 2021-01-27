@@ -31,7 +31,7 @@ class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
         from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
-        msg = f"'{fname}' is not a DVC-file"
+        msg = f"'{fname}' is not a .dvc file"
 
         sname = fname + DVC_FILE_SUFFIX
         if is_dvc_file(sname):
