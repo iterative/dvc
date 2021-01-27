@@ -205,7 +205,7 @@ class Repo:
     @staticmethod
     @contextmanager
     def open(url, *args, **kwargs):
-        if os.path.isdir(url):
+        if os.path.exists(url):
             yield Repo(url, *args, **kwargs)
             return
 

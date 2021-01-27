@@ -28,9 +28,9 @@ def ls(
             "isexec": bool,
         }
     """
-    from dvc.external_repo import external_repo
+    from . import Repo
 
-    with external_repo(url, rev) as repo:
+    with Repo.open(url, rev, subrepos=True, uninitialized=True) as repo:
         path_info = PathInfo(repo.root_dir)
         if path:
             path_info /= path
