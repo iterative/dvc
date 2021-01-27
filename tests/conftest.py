@@ -141,13 +141,15 @@ def pytest_configure(config):
 
 
 @pytest.fixture
-def dummy_stage(tmp_dir, dvc):
-    def make(path="dvc.yaml", name="dummy_stage", **kwargs):
-        from dvc.stage import PipelineStage, create_stage
+def make_stage(tmp_dir, dvc):
+    from dvc.dvcfile import PIPELINE_FILE
+    from dvc.stage import PipelineStage, create_stage
 
-        stage = create_stage(
-            PipelineStage, dvc, path, name=name, cmd="", **kwargs
-        )
+    def make(cls=PipelineStage, path=PIPELINE_FILE, cmd="command", **kwargs):
+        if cls == PipelineStage and "name" not in kwargs:
+            kwargs["name"] = "something"
+
+        stage = create_stage(cls, dvc, path, cmd=cmd, **kwargs)
         stage.dump()
         return stage
 

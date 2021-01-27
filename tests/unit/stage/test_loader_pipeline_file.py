@@ -6,7 +6,7 @@ import pytest
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.hash_info import HashInfo
-from dvc.stage import PipelineStage, create_stage
+from dvc.stage import PipelineStage
 from dvc.stage.loader import StageLoader
 from dvc.stage.serialize import split_params_deps
 
@@ -25,10 +25,8 @@ def lock_data():
     }
 
 
-def test_fill_from_lock_deps_outs(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
-    )
+def test_fill_from_lock_deps_outs(dvc, lock_data, make_stage):
+    stage = make_stage(deps=["foo"], outs=["bar"])
 
     for item in chain(stage.deps, stage.outs):
         assert not item.hash_info
@@ -39,8 +37,8 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
-def test_fill_from_lock_outs_isexec(dvc):
-    stage = create_stage(PipelineStage, dvc, PIPELINE_FILE, outs=["foo"])
+def test_fill_from_lock_outs_isexec(dvc, make_stage):
+    stage = make_stage(outs=["foo"])
 
     assert not stage.outs[0].isexec
 
@@ -57,11 +55,8 @@ def test_fill_from_lock_outs_isexec(dvc):
     assert stage.outs[0].isexec
 
 
-def test_fill_from_lock_params(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage,
-        dvc,
-        PIPELINE_FILE,
+def test_fill_from_lock_params(dvc, lock_data, make_stage):
+    stage = make_stage(
         deps=["foo"],
         outs=["bar"],
         params=[
@@ -70,6 +65,7 @@ def test_fill_from_lock_params(dvc, lock_data):
             {"myparams.yaml": ["ipsum", "foobar"]},
         ],
     )
+
     lock_data["params"] = {
         "params.yaml": {
             "lorem": "lorem",
@@ -93,11 +89,8 @@ def test_fill_from_lock_params(dvc, lock_data):
     )
 
 
-def test_fill_from_lock_missing_params_section(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage,
-        dvc,
-        PIPELINE_FILE,
+def test_fill_from_lock_missing_params_section(dvc, lock_data, make_stage):
+    stage = make_stage(
         deps=["foo"],
         outs=["bar"],
         params=["lorem", "lorem.ipsum", {"myparams.yaml": ["ipsum"]}],
@@ -107,14 +100,8 @@ def test_fill_from_lock_missing_params_section(dvc, lock_data):
     assert not params_deps[0].hash_info and not params_deps[1].hash_info
 
 
-def test_fill_from_lock_missing_checksums(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage,
-        dvc,
-        PIPELINE_FILE,
-        deps=["foo", "foo1"],
-        outs=["bar", "bar1"],
-    )
+def test_fill_from_lock_missing_checksums(dvc, lock_data, make_stage):
+    stage = make_stage(deps=["foo", "foo1"], outs=["bar", "bar1"],)
 
     StageLoader.fill_from_lock(stage, lock_data)
 
@@ -123,24 +110,16 @@ def test_fill_from_lock_missing_checksums(dvc, lock_data):
     assert not stage.deps[1].hash_info and not stage.outs[1].hash_info
 
 
-def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage,
-        dvc,
-        PIPELINE_FILE,
-        deps=["s3://dvc-temp/foo"],
-        outs=["bar"],
-    )
+def test_fill_from_lock_use_appropriate_checksum(dvc, lock_data, make_stage):
+    stage = make_stage(deps=["s3://dvc-temp/foo"], outs=["bar"])
     lock_data["deps"] = [{"path": "s3://dvc-temp/foo", "etag": "e-tag"}]
     StageLoader.fill_from_lock(stage, lock_data)
     assert stage.deps[0].hash_info == HashInfo("etag", "e-tag")
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
-def test_fill_from_lock_with_missing_sections(dvc, lock_data):
-    stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
-    )
+def test_fill_from_lock_with_missing_sections(dvc, lock_data, make_stage):
+    stage = make_stage(deps=["foo"], outs=["bar"])
     lock = deepcopy(lock_data)
     del lock["deps"]
     StageLoader.fill_from_lock(stage, lock)
@@ -154,10 +133,8 @@ def test_fill_from_lock_with_missing_sections(dvc, lock_data):
     assert not stage.outs[0].hash_info
 
 
-def test_fill_from_lock_empty_data(dvc):
-    stage = create_stage(
-        PipelineStage, dvc, PIPELINE_FILE, deps=["foo"], outs=["bar"]
-    )
+def test_fill_from_lock_empty_data(dvc, make_stage):
+    stage = make_stage(deps=["foo"], outs=["bar"])
     StageLoader.fill_from_lock(stage, None)
     assert not stage.deps[0].hash_info and not stage.outs[0].hash_info
     StageLoader.fill_from_lock(stage, {})

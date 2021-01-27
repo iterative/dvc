@@ -2,7 +2,7 @@ import json
 import os
 
 
-def test_metrics_order(tmp_dir, dvc, dummy_stage):
+def test_metrics_order(tmp_dir, dvc, make_stage):
     tmp_dir.gen(
         {
             "p.json": json.dumps({"p1": 1}),
@@ -14,8 +14,8 @@ def test_metrics_order(tmp_dir, dvc, dummy_stage):
         }
     )
 
-    dummy_stage(metrics=["p.json", str(tmp_dir / "sub" / "p4.json")])
-    dummy_stage(
+    make_stage(metrics=["p.json", str(tmp_dir / "sub" / "p4.json")])
+    make_stage(
         path=str(tmp_dir / "sub" / "dvc.yaml"),
         metrics=["p1.json", str(tmp_dir / "sub" / "p3.json")],
     )

@@ -220,12 +220,11 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         {"always_changed": True},
     ],
 )
-def test_unhashable(tmp_dir, dvc, mocker, kwargs):
-    from dvc.stage import Stage, create_stage
+def test_unhashable(tmp_dir, dvc, make_stage, mocker, kwargs):
     from dvc.stage.cache import RunCacheNotFoundError, StageCache
 
     cache = StageCache(dvc)
-    stage = create_stage(Stage, path="stage.dvc", repo=dvc, **kwargs)
+    stage = make_stage(**kwargs)
     get_stage_hash = mocker.patch("dvc.stage.cache._get_stage_hash")
     assert cache.save(stage) is None
     assert get_stage_hash.not_called
