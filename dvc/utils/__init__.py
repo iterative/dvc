@@ -248,6 +248,7 @@ def colorize(message, color=None, style=None):
         "blue": colorama.Fore.BLUE,
         "red": colorama.Fore.RED,
         "magenta": colorama.Fore.MAGENTA,
+        "cyan": colorama.Fore.CYAN,
     }
 
     return "{style}{color}{message}{reset}".format(
