@@ -88,6 +88,7 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         host = path_info.host
         return keyring.get_password(host, user)
 
+    @wrap_with(threading.Lock())
     def _get_basic_auth(self, path_info):
         from requests.auth import HTTPBasicAuth
 
@@ -115,7 +116,6 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         if not self.ask_password:
             keyring.set_password(host, user, password)
 
-    @wrap_with(threading.Lock())
     def _auth_method(self, path_info=None):
         from requests.auth import HTTPDigestAuth
 
