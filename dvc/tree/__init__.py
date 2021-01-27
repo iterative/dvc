@@ -43,7 +43,6 @@ def get_tree_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
         remote_conf = config["remote"][name.lower()]
-        remote_conf["remote_name"] = name
     else:
         remote_conf = kwargs
     return _resolve_remote_refs(config, remote_conf)

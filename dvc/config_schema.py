@@ -75,7 +75,6 @@ class RelPath(str):
 
 
 REMOTE_COMMON = {
-    "remote_name": str,
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
