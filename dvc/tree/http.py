@@ -5,7 +5,6 @@ import threading
 from funcy import cached_property, wrap_prop, wrap_with
 
 import dvc.prompt as prompt
-from dvc.config import merge
 from dvc.exceptions import DvcException, HTTPError
 from dvc.hash_info import HashInfo
 from dvc.path_info import HTTPURLInfo
@@ -28,18 +27,6 @@ def ask_password(host, user):
         "Enter a password for "
         "host '{host}' user '{user}'".format(host=host, user=user)
     )
-
-
-@wrap_with(threading.Lock())
-def save_user(config, level, remote_name, user):
-    with config.edit(level) as conf:
-        merged = config.load_config_to_level(level)
-        merge(merged, conf)
-        if remote_name not in conf["remote"]:
-            conf["remote"][remote_name] = {}
-        section = conf["remote"][remote_name]
-        section["user"] = user
-        config["user"] = user
 
 
 class HTTPTree(BaseTree):  # pylint:disable=abstract-method
