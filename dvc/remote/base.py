@@ -4,7 +4,7 @@ import itertools
 import logging
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
+from functools import partial, wraps
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
@@ -339,63 +339,74 @@ class Remote:
 
         with Tqdm(total=total, unit="file", desc=desc) as pbar:
             func = pbar.wrap_fn(func)
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
-                if download:
-                    from_infos, to_infos, names, _ = (
-                        d + f for d, f in zip(dir_plans, file_plans)
-                    )
-                    fails = sum(
-                        executor.map(func, from_infos, to_infos, names)
-                    )
-                    if fails:
-                        self.index.clear()
-                        raise DownloadError(fails)
-                else:
-                    self._upload_plans(
-                        dir_plans,
-                        file_plans,
-                        dir_contents,
-                        missing_files,
-                        executor,
-                        jobs,
-                        func,
-                    )
+            self._process_plans(
+                download,
+                dir_plans,
+                file_plans,
+                dir_contents,
+                missing_files,
+                jobs,
+                func,
+            )
 
         return total
 
-    def _upload_plans(
+    def _process_plans(
         self,
+        download,
         dir_plans,
         file_plans,
         dir_contents,
         missing_files,
-        executor,
         jobs,
         func,
     ):
-        total_fails = 0
-
-        def insert_batched(file_plans):
-            fails = 0
-            file_plan_iterator = iter(file_plans)
-
-            def create_taskset(amount):
-                return {
-                    executor.submit(func, from_info, to_info, name)
-                    for from_info, to_info, name, _ in itertools.islice(
-                        file_plan_iterator, amount
-                    )
-                }
-
-            tasks = create_taskset(jobs * 5)
-            while tasks:
-                done, tasks = futures.wait(
-                    tasks, return_when=futures.FIRST_COMPLETED
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            processor = partial(self._create_tasks, executor, jobs, func)
+            processor.transfer_func = func
+            if download:
+                self._download_plans(dir_plans, file_plans, processor)
+            else:
+                self._upload_plans(
+                    dir_plans,
+                    file_plans,
+                    dir_contents,
+                    missing_files,
+                    processor,
                 )
-                fails += sum(task.result() for task in done)
-                tasks.update(create_taskset(len(done)))
-            return fails
 
+    def _create_tasks(self, executor, jobs, func, file_plans):
+        fails = 0
+        file_plan_iterator = iter(file_plans)
+
+        def create_taskset(amount):
+            return {
+                executor.submit(func, from_info, to_info, name)
+                for from_info, to_info, name, _ in itertools.islice(
+                    file_plan_iterator, amount
+                )
+            }
+
+        tasks = create_taskset(jobs * 5)
+        while tasks:
+            done, tasks = futures.wait(
+                tasks, return_when=futures.FIRST_COMPLETED
+            )
+            fails += sum(task.result() for task in done)
+            tasks.update(create_taskset(len(done)))
+        return fails
+
+    def _download_plans(self, dir_plans, file_plans, processor):
+        plans = [*zip(*dir_plans), *zip(*file_plans)]
+        fails = processor(plans)
+        if fails:
+            self.index.clear()
+            raise DownloadError(fails)
+
+    def _upload_plans(
+        self, dir_plans, file_plans, dir_contents, missing_files, processor
+    ):
+        total_fails = 0
         succeeded_dir_hashes = []
         all_file_plans = list(zip(*file_plans))
         for dir_from_info, dir_to_info, dir_name, dir_hash in zip(*dir_plans):
@@ -407,7 +418,7 @@ class Remote:
                     bound_file_plans.append(file_plan)
                     all_file_plans.remove(file_plan)
 
-            dir_fails = insert_batched(bound_file_plans)
+            dir_fails = processor(bound_file_plans)
             if dir_fails:
                 logger.debug(
                     "failed to upload full contents of '{}', "
@@ -429,13 +440,15 @@ class Remote:
                     dir_name,
                 )
             else:
-                is_dir_failed = func(dir_from_info, dir_to_info, dir_name)
+                is_dir_failed = processor.transfer_func(
+                    dir_from_info, dir_to_info, dir_name
+                )
                 total_fails += is_dir_failed
                 if not is_dir_failed:
                     succeeded_dir_hashes.append(dir_hash)
 
         # insert the rest
-        total_fails += insert_batched(all_file_plans)
+        total_fails += processor(all_file_plans)
         if total_fails:
             raise UploadError(total_fails)
 
