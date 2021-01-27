@@ -2,7 +2,7 @@ import logging
 import os.path
 import threading
 
-from funcy import cached_property, memoize, wrap_prop, wrap_with
+from funcy import cached_property, wrap_prop, wrap_with
 
 import dvc.prompt as prompt
 from dvc.config import merge
@@ -18,18 +18,28 @@ logger = logging.getLogger(__name__)
 
 
 @wrap_with(threading.Lock())
-@memoize
 def ask_username(host):
     return prompt.username("Username for `{host}`".format(host=host))
 
 
 @wrap_with(threading.Lock())
-@memoize
 def ask_password(host, user):
     return prompt.password(
         "Enter a password for "
         "host '{host}' user '{user}'".format(host=host, user=user)
     )
+
+
+@wrap_with(threading.Lock())
+def save_user(config, level, remote_name, user):
+    with config.edit(level) as conf:
+        merged = config.load_config_to_level(level)
+        merge(merged, conf)
+        if remote_name not in conf["remote"]:
+            conf["remote"][remote_name] = {}
+        section = conf["remote"][remote_name]
+        section["user"] = user
+        config["user"] = user
 
 
 class HTTPTree(BaseTree):  # pylint:disable=abstract-method
@@ -40,70 +50,94 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
 
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
+    AUTHENTICATION_RETRIES = 3
     REQUEST_TIMEOUT = 60
     CHUNK_SIZE = 2 ** 16
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
+        self.path_info = None
         url = config.get("url")
         if url:
             self.path_info = self.PATH_CLS(url)
-            user = config.get("user", None)
-            if user:
-                self.path_info.user = user
-        else:
-            self.path_info = None
 
+        self.user = self._get_user()
+        self.password = self._get_password(self.user)
         self.auth = config.get("auth", None)
         self.custom_auth_header = config.get("custom_auth_header", None)
-        self.password = config.get("password", None)
         self.ask_password = config.get("ask_password", False)
         self.headers = {}
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
 
-    @memoize
-    def _get_user(self, host):
-        user = ask_username(host)
-        self.path_info.user = user
-        config_level = "local"
-        with self.repo.config.edit(config_level) as conf:
-            merged = self.repo.config.load_config_to_level(config_level)
-            merge(merged, conf)
-            remote_name = self.config["remote_name"]
-            if remote_name not in conf["remote"]:
-                conf["remote"][remote_name] = {}
-            section = conf["remote"][self.config["remote_name"]]
-            section["user"] = user
-            self.repo.config["user"] = user
-        return user
+    def _get_user(self):
+        user = self.config.get("user")
+        if user is not None:
+            return user
 
-    @memoize
-    def _get_password(self, host, user):
+        path_info = self.path_info
+        if path_info is None:
+            return None
+
         import keyring
 
-        password = keyring.get_password(host, user)
+        host = path_info.host
+        return keyring.get_password(host, "user")
+
+    def _get_password(self, user):
+        if user is None:
+            return None
+
+        password = self.config.get("password")
+        if password is not None:
+            return password
+
+        import keyring
+
+        path_info = self.path_info
+        if path_info is None:
+            return None
+        host = path_info.host
+        return keyring.get_password(host, user)
+
+    def _get_basic_auth(self, path_info):
+        from requests.auth import HTTPBasicAuth
+
+        host = path_info.host
+        user = self.user
+        password = self.password
+
+        if user is None:
+            user = ask_username(host)
+            self.user = user
         if password is None or self.ask_password:
             password = ask_password(host, user)
-            keyring.set_password(host, user, password)
-        return password
+            self.password = password
+        return HTTPBasicAuth(user, password)
 
-    @wrap_prop(threading.Lock())
+    @wrap_with(threading.Lock())
+    def _save_basic_auth(self, auth):
+        import keyring
+
+        user, password = auth.username, auth.password
+        host = self.path_info.host if self.path_info else None
+        self.user = user
+        keyring.set_password(host, "user", user)
+        self.password = password
+        if not self.ask_password:
+            keyring.set_password(host, user, password)
+
+    @wrap_with(threading.Lock())
     def _auth_method(self, path_info=None):
-        from requests.auth import HTTPBasicAuth, HTTPDigestAuth
+        from requests.auth import HTTPDigestAuth
 
         if path_info is None:
             path_info = self.path_info
 
         if self.auth:
             if self.auth == "basic":
-                host = path_info.host
-                user = path_info.user
-                if user is None:
-                    user = self._get_user(host)
-                password = self._get_password(host, user)
-                return HTTPBasicAuth(user, password)
+                return self._get_basic_auth(path_info)
             if self.auth == "digest":
                 return HTTPDigestAuth(path_info.user, self.password)
             if self.auth == "custom" and self.custom_auth_header:
@@ -134,17 +168,29 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
 
         return session
 
+    @staticmethod
+    def requires_basic_auth(res):
+        if res.status_code != 401:
+            return False
+        auth_header = res.headers.get("WWW-Authenticate")
+        if auth_header is None:
+            return False
+        return auth_header.lower().startswith("basic ")
+
     def request(self, method, url, **kwargs):
         auth_method = self._auth_method()
         res = self._request(method, url, auth_method, **kwargs)
-        if auth_method is None and res.status_code == 401:
-            auth_header = res.headers.get("WWW-Authenticate")
-            if auth_header is not None and auth_header.lower().startswith(
-                "basic "
-            ):
-                self.auth = "basic"
-            auth_method = self._auth_method()
-            res = self._request(method, url, auth_method, **kwargs)
+        if self.requires_basic_auth(res):
+            self.auth = "basic"
+            for _ in range(self.AUTHENTICATION_RETRIES):
+                auth_method = self._auth_method()
+                res = self._request(method, url, auth_method, **kwargs)
+                if res.status_code == 200:
+                    self._save_basic_auth(auth_method)
+                    break
+                else:
+                    self.password = None
+                    self.user = None
         return res
 
     def _request(self, method, url, auth_method, **kwargs):
