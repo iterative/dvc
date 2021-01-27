@@ -37,7 +37,7 @@ def repo_tree(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(fs_structure, commit="repo init")
     tmp_dir.dvc_gen(dvc_structure, commit="use dvc")
 
-    yield RepoTree(dvc, fetch=True, subrepos=True)
+    yield RepoTree(dvc, subrepos=True)
 
 
 def test_metadata_not_existing(repo_tree):

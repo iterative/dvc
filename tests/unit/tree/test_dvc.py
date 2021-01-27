@@ -133,25 +133,7 @@ def test_walk(tmp_dir, dvc):
     assert len(actual) == len(expected)
 
 
-@pytest.mark.parametrize(
-    "fetch,expected",
-    [
-        (False, []),
-        (
-            True,
-            [
-                PathInfo("dir") / "subdir1",
-                PathInfo("dir") / "subdir2",
-                PathInfo("dir") / "subdir1" / "foo1",
-                PathInfo("dir") / "subdir1" / "bar1",
-                PathInfo("dir") / "subdir2" / "foo2",
-                PathInfo("dir") / "foo",
-                PathInfo("dir") / "bar",
-            ],
-        ),
-    ],
-)
-def test_walk_dir(tmp_dir, dvc, fetch, expected):
+def test_walk_dir(tmp_dir, dvc):
     tmp_dir.gen(
         {
             "dir": {
@@ -164,9 +146,17 @@ def test_walk_dir(tmp_dir, dvc, fetch, expected):
     )
 
     dvc.add("dir")
-    tree = DvcTree(dvc, fetch=fetch)
+    tree = DvcTree(dvc)
 
-    expected = [str(tmp_dir / path) for path in expected]
+    expected = [
+        str(tmp_dir / "dir" / "subdir1"),
+        str(tmp_dir / "dir" / "subdir2"),
+        str(tmp_dir / "dir" / "subdir1" / "foo1"),
+        str(tmp_dir / "dir" / "subdir1" / "bar1"),
+        str(tmp_dir / "dir" / "subdir2" / "foo2"),
+        str(tmp_dir / "dir" / "foo"),
+        str(tmp_dir / "dir" / "bar"),
+    ]
 
     actual = []
     for root, dirs, files in tree.walk("dir"):
@@ -231,7 +221,7 @@ def test_get_hash_granular(tmp_dir, dvc):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    tree = DvcTree(dvc, fetch=True)
+    tree = DvcTree(dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert tree.get_hash(subdir) == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",

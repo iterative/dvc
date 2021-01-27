@@ -9,7 +9,7 @@ import dvc.data_cloud as cloud
 from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import CollectCacheError, DownloadError
+from dvc.exceptions import DownloadError
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
@@ -289,7 +289,7 @@ def test_push_wildcard_from_bare_git_repo(
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
-        with pytest.raises(CollectCacheError):
+        with pytest.raises(FileNotFoundError):
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
