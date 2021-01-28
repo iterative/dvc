@@ -256,7 +256,7 @@ def test_push_pull_cache(
     ref_info = first(exp_refs_by_rev(scm, exp))
 
     dvc.experiments.push(remote, ref_info.name, push_cache=True)
-    for x in range(2, 6):
+    for x in range(2, checkpoint_stage.iterations + 1):
         hash_ = digest(str(x))
         path = os.path.join(local_remote.url, hash_[:2], hash_[2:])
         assert os.path.exists(path)
@@ -265,7 +265,7 @@ def test_push_pull_cache(
     remove(dvc.cache.local.cache_dir)
 
     dvc.experiments.pull(remote, ref_info.name, pull_cache=True)
-    for x in range(2, 6):
+    for x in range(2, checkpoint_stage.iterations + 1):
         hash_ = digest(str(x))
         path = os.path.join(dvc.cache.local.cache_dir, hash_[:2], hash_[2:])
         assert os.path.exists(path)

@@ -92,7 +92,7 @@ def test_show_checkpoint(
     exp_rev = first(results)
 
     results = dvc.experiments.show()[baseline_rev]
-    assert len(results) == 6
+    assert len(results) == checkpoint_stage.iterations + 1
 
     checkpoints = []
     for rev, exp in results.items():

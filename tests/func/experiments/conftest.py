@@ -4,6 +4,7 @@ import pytest
 
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
+DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
     """\
     import os
@@ -70,7 +71,10 @@ def checkpoint_stage(tmp_dir, scm, dvc):
     tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
-        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
+        cmd=(
+            f"python checkpoint.py foo {DEFAULT_ITERATIONS} "
+            "params.yaml metrics.yaml"
+        ),
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         checkpoints=["foo"],
@@ -80,4 +84,5 @@ def checkpoint_stage(tmp_dir, scm, dvc):
     )
     scm.add(["dvc.yaml", "checkpoint.py", "params.yaml", ".gitignore"])
     scm.commit("init")
+    stage.iterations = DEFAULT_ITERATIONS
     return stage
