@@ -26,6 +26,7 @@ from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
+from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
@@ -1021,3 +1022,118 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
     with pytest.raises(InvalidArgumentError, match=invalid_opt):
         dvc.add(to_remote=True, **kwargs)
+
+
+def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
+    local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    (stage,) = dvc.add(str(local_cloud / "data"), out="data")
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    data = tmp_dir / "data"
+    assert data.read_text() == {"foo": "foo", "bar": "bar"}
+    assert (tmp_dir / "data.dvc").exists()
+
+    shutil.rmtree(data)
+    status = dvc.checkout(str(data))
+    assert status["added"] == ["data" + os.sep]
+    assert data.read_text() == {"foo": "foo", "bar": "bar"}
+
+
+def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
+    local_cloud.gen("foo", "foo")
+
+    (stage,) = dvc.add(str(local_cloud / "foo"), out="foo")
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    foo = tmp_dir / "foo"
+    assert foo.read_text() == "foo"
+    assert (tmp_dir / "foo.dvc").exists()
+
+    foo.unlink()
+    status = dvc.checkout(str(foo))
+    assert status["added"] == ["foo"]
+    assert foo.read_text() == "foo"
+
+
+def test_add_to_cache_different_name(tmp_dir, dvc, local_cloud):
+    local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    dvc.add(str(local_cloud / "data"), out="not_data")
+
+    not_data = tmp_dir / "not_data"
+    assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
+    assert (tmp_dir / "not_data.dvc").exists()
+
+    assert not (tmp_dir / "data").exists()
+    assert not (tmp_dir / "data.dvc").exists()
+
+    shutil.rmtree(not_data)
+    dvc.checkout(str(not_data))
+    assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
+    assert not (tmp_dir / "data").exists()
+
+
+def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
+    local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    dest_dir = tmp_dir / "dir" / "that" / "does" / "not" / "exist"
+    with pytest.raises(StagePathNotFoundError):
+        dvc.add(str(local_cloud / "data"), out=str(dest_dir))
+
+    dest_dir.parent.mkdir(parents=True)
+    dvc.add(str(local_cloud / "data"), out=str(dest_dir))
+
+    assert dest_dir.read_text() == {"foo": "foo", "bar": "bar"}
+    assert dest_dir.with_suffix(".dvc").exists()
+
+
+@pytest.mark.parametrize(
+    "invalid_opt, kwargs",
+    [
+        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
+        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
+        ("--recursive", {"targets": ["foo"], "recursive": True},),
+    ],
+)
+def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
+    with pytest.raises(InvalidArgumentError, match=invalid_opt):
+        dvc.add(out="bar", **kwargs)
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        pytest.lazy_fixture("http"),
+    ],
+    indirect=True,
+)
+def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
+    workspace.gen("foo", "foo")
+
+    url = "remote://workspace/foo"
+    dvc.add(url, out="foo")
+
+    foo = tmp_dir / "foo"
+    assert foo.read_text() == "foo"
+    assert (tmp_dir / "foo.dvc").exists()
+
+    # Change the contents of the remote location, in order to
+    # ensure it retrieves file from the cache and not re-fetches it
+    (workspace / "foo").write_text("bar")
+
+    foo.unlink()
+    dvc.checkout(str(foo))
+    assert foo.read_text() == "foo"

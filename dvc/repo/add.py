@@ -41,9 +41,11 @@ def add(  # noqa: C901
 
     targets = ensure_list(targets)
 
+    to_cache = kwargs.get("out") and not to_remote
     invalid_opt = None
-    if to_remote:
-        message = "{option} can't be used with --to-remote"
+    if to_remote or to_cache:
+        message = "{option} can't be used with "
+        message += "--to-remote" if to_remote else "-o"
         if len(targets) != 1:
             invalid_opt = "multiple targets"
         elif no_commit:
@@ -52,9 +54,7 @@ def add(  # noqa: C901
             invalid_opt = "--recursive option"
     else:
         message = "{option} can't be used without --to-remote"
-        if kwargs.get("out"):
-            invalid_opt = "--out"
-        elif kwargs.get("remote"):
+        if kwargs.get("remote"):
             invalid_opt = "--remote"
         elif kwargs.get("jobs"):
             invalid_opt = "--jobs"
@@ -88,12 +88,7 @@ def add(  # noqa: C901
                 )
 
             stages = _create_stages(
-                repo,
-                sub_targets,
-                fname,
-                pbar=pbar,
-                to_remote=to_remote,
-                **kwargs,
+                repo, sub_targets, fname, pbar=pbar, **kwargs,
             )
 
             try:
@@ -125,6 +120,7 @@ def add(  # noqa: C901
                     no_commit,
                     pbar,
                     to_remote,
+                    to_cache,
                     **kwargs,
                 )
             )
@@ -148,25 +144,35 @@ def add(  # noqa: C901
 
 
 def _process_stages(
-    repo, sub_targets, stages, no_commit, pbar, to_remote, **kwargs
+    repo, sub_targets, stages, no_commit, pbar, to_remote, to_cache, **kwargs
 ):
     link_failures = []
     from dvc.dvcfile import Dvcfile
 
     from ..output.base import OutputDoesNotExistError
 
-    if to_remote:
+    if to_remote or to_cache:
         # Already verified in the add()
-        assert len(stages) == 1
-        assert len(sub_targets) == 1
+        (stage,) = stages
+        (target,) = sub_targets
+        (out,) = stage.outs
 
-        [stage] = stages
-        stage.outs[0].hash_info = repo.cloud.transfer(
-            sub_targets[0],
-            jobs=kwargs.get("jobs"),
-            remote=kwargs.get("remote"),
-            command="add",
-        )
+        if to_remote:
+            out.hash_info = repo.cloud.transfer(
+                target,
+                jobs=kwargs.get("jobs"),
+                remote=kwargs.get("remote"),
+                command="add",
+            )
+        else:
+            from dvc.tree import get_cloud_tree
+
+            from_tree = get_cloud_tree(repo, url=target)
+            out.hash_info = out.cache.transfer(
+                from_tree, from_tree.path_info, jobs=kwargs.get("jobs"),
+            )
+            out.checkout()
+
         Dvcfile(repo, stage.path).dump(stage)
         return link_failures
 
@@ -219,7 +225,6 @@ def _create_stages(
     repo,
     targets,
     fname,
-    to_remote=False,
     pbar=None,
     external=False,
     glob=False,
@@ -238,8 +243,8 @@ def _create_stages(
         disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
-        if to_remote:
-            out = resolve_output(out, kwargs.get("out"))
+        if kwargs.get("out"):
+            out = resolve_output(out, kwargs["out"])
         path, wdir, out = resolve_paths(repo, out)
         stage = create_stage(
             Stage,

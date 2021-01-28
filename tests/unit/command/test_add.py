@@ -87,11 +87,7 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
         expected_msg = "multiple targets can't be used with --to-remote"
         assert expected_msg in caplog.text
 
-    for option, value in (
-        ("--remote", "remote"),
-        ("--out", "bar"),
-        ("--jobs", "4"),
-    ):
+    for option, value in (("--remote", "remote"), ("--jobs", "4")):
         cli_args = parse_args(["add", "foo", option, value])
 
         cmd = cli_args.func(cli_args)
@@ -99,3 +95,16 @@ def test_add_to_remote_invalid_combinations(mocker, caplog):
             assert cmd.run() == 1
             expected_msg = f"{option} can't be used without --to-remote"
             assert expected_msg in caplog.text
+
+
+def test_add_to_cache_invalid_combinations(mocker, caplog):
+    cli_args = parse_args(
+        ["add", "s3://bucket/foo", "s3://bucket/bar", "-o", "foo"]
+    )
+    assert cli_args.func == CmdAdd
+
+    cmd = cli_args.func(cli_args)
+    with caplog.at_level(logging.ERROR, logger="dvc"):
+        assert cmd.run() == 1
+        expected_msg = "multiple targets can't be used with -o"
+        assert expected_msg in caplog.text
