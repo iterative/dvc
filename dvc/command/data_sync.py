@@ -37,6 +37,7 @@ class CmdDataPull(CmdDataBase):
                 force=self.args.force,
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
+                glob=self.args.glob,
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
