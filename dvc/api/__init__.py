@@ -139,4 +139,4 @@ def make_checkpoint():
         fobj.flush()
         os.fsync(fobj.fileno())
     while os.path.exists(signal_file):
-        sleep(1)
+        sleep(0.1)
