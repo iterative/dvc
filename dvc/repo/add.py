@@ -153,12 +153,9 @@ def _process_stages(
 
     if to_remote or to_cache:
         # Already verified in the add()
-        assert len(stages) == 1
-        assert len(sub_targets) == 1
-        [stage], [target] = stages, sub_targets
-
-        assert len(stage.outs) == 1
-        [out] = stage.outs
+        (stage,) = stages
+        (target,) = sub_targets
+        (out,) = stage.outs
 
         if to_remote:
             out.hash_info = repo.cloud.transfer(
@@ -171,13 +168,10 @@ def _process_stages(
             from dvc.tree import get_cloud_tree
 
             from_tree = get_cloud_tree(repo, url=target)
-            out.hash_info = repo.cache.local.transfer(
-                from_tree,
-                from_tree.path_info,
-                out_info=out.path_info,
-                jobs=kwargs.get("jobs"),
+            out.hash_info = out.cache.transfer(
+                from_tree, from_tree.path_info, jobs=kwargs.get("jobs"),
             )
-            repo.cache.local.checkout(out.path_info, out.hash_info)
+            out.checkout()
 
         Dvcfile(repo, stage.path).dump(stage)
         return link_failures

@@ -302,22 +302,15 @@ class CloudCache:
                     yield rel_path_infos.pop(task), task.result()
 
     def _transfer_directory(
-        self, from_tree, from_info, out_info, jobs, no_progress_bar=False
+        self, from_tree, from_info, jobs, no_progress_bar=False
     ):
-        if out_info:
-            initials = out_info.parts[-1:]
-        else:
-            initials = ()
-
-        strip_first = bool(initials)
         dir_info = DirInfo()
+
         with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
             for entry_info, entry_hash in self._transfer_directory_contents(
                 from_tree, from_info, jobs, pbar
             ):
-                dir_info.trie[
-                    initials + entry_info.parts[strip_first:]
-                ] = entry_hash
+                dir_info.trie[entry_info.parts] = entry_hash
 
         local_cache = self.repo.cache.local
         (
@@ -330,21 +323,13 @@ class CloudCache:
         self.tree.upload(to_info, self.tree.hash_to_path_info(hash_info.value))
         return hash_info
 
-    def transfer(
-        self,
-        from_tree,
-        from_info,
-        out_info=None,
-        jobs=None,
-        no_progress_bar=False,
-    ):
+    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
         jobs = jobs or min((from_tree.jobs, self.tree.jobs))
 
         if from_tree.isdir(from_info):
             return self._transfer_directory(
                 from_tree,
                 from_info,
-                out_info=out_info,
                 jobs=jobs,
                 no_progress_bar=no_progress_bar,
             )

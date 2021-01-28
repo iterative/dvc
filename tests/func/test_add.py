@@ -1027,18 +1027,18 @@ def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
 def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
     local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
 
-    [stage] = dvc.add(local_cloud.url, out="data")
+    [stage] = dvc.add(local_cloud.url + "/data", out="data")
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
     data = tmp_dir / "data"
-    assert data.read_text() == {"data": {"foo": "foo", "bar": "bar"}}
+    assert data.read_text() == {"foo": "foo", "bar": "bar"}
     assert (tmp_dir / "data.dvc").exists()
 
     shutil.rmtree(data)
     status = dvc.checkout(str(data))
     assert status["added"] == ["data" + os.sep]
-    assert data.read_text() == {"data": {"foo": "foo", "bar": "bar"}}
+    assert data.read_text() == {"foo": "foo", "bar": "bar"}
 
 
 def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
@@ -1061,10 +1061,10 @@ def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
 def test_add_to_cache_different_name(tmp_dir, dvc, local_cloud):
     local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
 
-    dvc.add(local_cloud.url, out="not_data")
+    dvc.add(local_cloud.url + "/data", out="not_data")
 
     not_data = tmp_dir / "not_data"
-    assert not_data.read_text() == {"not_data": {"foo": "foo", "bar": "bar"}}
+    assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
     assert (tmp_dir / "not_data.dvc").exists()
 
     assert not (tmp_dir / "data").exists()
@@ -1072,7 +1072,7 @@ def test_add_to_cache_different_name(tmp_dir, dvc, local_cloud):
 
     shutil.rmtree(not_data)
     dvc.checkout(str(not_data))
-    assert not_data.read_text() == {"not_data": {"foo": "foo", "bar": "bar"}}
+    assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
     assert not (tmp_dir / "data").exists()
 
 
@@ -1081,12 +1081,12 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
 
     dest_dir = tmp_dir / "dir" / "that" / "does" / "not" / "exist"
     with pytest.raises(StagePathNotFoundError):
-        dvc.add(local_cloud.url, out=str(dest_dir))
+        dvc.add(local_cloud.url + "/data", out=str(dest_dir))
 
     dest_dir.parent.mkdir(parents=True)
-    dvc.add(local_cloud.url, out=str(dest_dir))
+    dvc.add(local_cloud.url + "/data", out=str(dest_dir))
 
-    assert dest_dir.read_text() == {"exist": {"foo": "foo", "bar": "bar"}}
+    assert dest_dir.read_text() == {"foo": "foo", "bar": "bar"}
     assert dest_dir.with_suffix(".dvc").exists()
 
 
