@@ -869,6 +869,14 @@ def add_parser(subparsers, parent_parser):
         help=EXPERIMENTS_RESET_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    experiments_reset_parser.add_argument(
+        "-r",
+        "--rev",
+        type=str,
+        default=None,
+        dest="checkpoint_resume",
+        help=argparse.SUPPRESS,
+    )
     _add_run_common(experiments_reset_parser)
     experiments_reset_parser.add_argument(
         "--reset",
