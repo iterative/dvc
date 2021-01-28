@@ -482,6 +482,10 @@ class Experiments:
             self.scm.remove_ref(EXEC_APPLY)
         return None
 
+    def reset_checkpoints(self):
+        self.scm.remove_ref(EXEC_CHECKPOINT)
+        self.scm.remove_ref(EXEC_APPLY)
+
     @scm_locked
     def _reproduce_revs(
         self,
