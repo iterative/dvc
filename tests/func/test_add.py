@@ -1027,7 +1027,7 @@ def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
 def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
     local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
 
-    [stage] = dvc.add(local_cloud.url + "/data", out="data")
+    (stage,) = dvc.add(str(local_cloud / "data"), out="data")
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
@@ -1044,7 +1044,7 @@ def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
 def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
     local_cloud.gen("foo", "foo")
 
-    [stage] = dvc.add(local_cloud.url + "/foo", out="foo")
+    (stage,) = dvc.add(str(local_cloud / "foo"), out="foo")
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
@@ -1061,7 +1061,7 @@ def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
 def test_add_to_cache_different_name(tmp_dir, dvc, local_cloud):
     local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
 
-    dvc.add(local_cloud.url + "/data", out="not_data")
+    dvc.add(str(local_cloud / "data"), out="not_data")
 
     not_data = tmp_dir / "not_data"
     assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
@@ -1081,10 +1081,10 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
 
     dest_dir = tmp_dir / "dir" / "that" / "does" / "not" / "exist"
     with pytest.raises(StagePathNotFoundError):
-        dvc.add(local_cloud.url + "/data", out=str(dest_dir))
+        dvc.add(str(local_cloud / "data"), out=str(dest_dir))
 
     dest_dir.parent.mkdir(parents=True)
-    dvc.add(local_cloud.url + "/data", out=str(dest_dir))
+    dvc.add(str(local_cloud / "data"), out=str(dest_dir))
 
     assert dest_dir.read_text() == {"foo": "foo", "bar": "bar"}
     assert dest_dir.with_suffix(".dvc").exists()
