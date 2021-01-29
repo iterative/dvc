@@ -229,12 +229,11 @@ class S3Tree(BaseTree):
             yield path_info.replace(path=fname)
 
     def ls(self, path_info, recursive=False, detail=False):
+        assert recursive
+
         with self._get_bucket(path_info.bucket) as bucket:
             for obj_summary in bucket.objects.filter(Prefix=path_info.path):
                 file_info = path_info.replace(path=obj_summary.key)
-                if not recursive and file_info.parent != path_info:
-                    continue
-
                 if detail:
                     yield file_info, {
                         "size": obj_summary.size,

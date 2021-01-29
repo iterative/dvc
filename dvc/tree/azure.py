@@ -154,6 +154,8 @@ class AzureTree(BaseTree):
             yield path_info.replace(path=fname)
 
     def ls(self, path_info, recursive=False, detail=False):
+        assert recursive
+
         container_client = self.blob_service.get_container_client(
             path_info.bucket
         )
@@ -161,13 +163,10 @@ class AzureTree(BaseTree):
             name_starts_with=path_info.path
         ):
             file_info = path_info.replace(path=blob.name)
-            if not recursive and file_info.parent != path_info:
-                continue
-
             if detail:
                 yield file_info, {
                     "size": blob.size,
-                    "e_tag": blob.etag.strip('"'),
+                    "etag": blob.etag,
                 }
             else:
                 yield file_info
