@@ -213,7 +213,7 @@ def _add_common_args(parser):
         help="Signal dvclive logger to not dump latest metrics file.",
     )
     parser.add_argument(
-        "--live-no-report",
+        "--live-no-html",
         action="store_true",
         default=False,
         help="Signal dvclive logger to not produce training report.",

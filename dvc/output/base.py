@@ -79,7 +79,7 @@ class BaseOutput:
     PARAM_ISEXEC = "isexec"
     PARAM_LIVE = "live"
     PARAM_LIVE_SUMMARY = "summary"
-    PARAM_LIVE_REPORT = "report"
+    PARAM_LIVE_HTML = "html"
 
     METRIC_SCHEMA = Any(
         None,

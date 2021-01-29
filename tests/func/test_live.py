@@ -24,7 +24,7 @@ def live_stage(tmp_dir, scm, dvc):
 
     pytest.skip("dvclive does not exist yet")
 
-    def make(summary=True, report=True):
+    def make(summary=True, html=True):
         tmp_dir.gen("train.py", LIVE_SCRITP)
         tmp_dir.gen("params.yaml", "foo: 1")
         stage = dvc.run(
@@ -34,7 +34,7 @@ def live_stage(tmp_dir, scm, dvc):
             name="live_stage",
             live="logs",
             live_no_summary=not summary,
-            live_no_report=not report,
+            live_no_html=not html,
         )
 
         scm.add(["dvc.yaml", "dvc.lock", "train.py", "params.yaml"])
@@ -55,7 +55,7 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
         name="run_logger",
         live="logs",
         live_no_summary=not summary,
-        live_no_report=not report,
+        live_no_html=not report,
     )
 
     assert run_spy.call_count == 1
@@ -67,8 +67,8 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
     assert "DVCLIVE_SUMMARY" in kwargs["env"]
     assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
 
-    assert "DVCLIVE_REPORT" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_REPORT"] == str(int(report))
+    assert "DVCLIVE_HTML" in kwargs["env"]
+    assert kwargs["env"]["DVCLIVE_HTML"] == str(int(report))
 
 
 @pytest.mark.parametrize("summary", (True, False))
@@ -125,11 +125,11 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage):
     assert "logs.json" in res[baseline_rev][exp_rev]["metrics"].keys()
 
 
-@pytest.mark.parametrize("report", [True, False])
-def test_live_report(tmp_dir, dvc, live_stage, report):
-    live_stage(report=report)
+@pytest.mark.parametrize("html", [True, False])
+def test_live_html(tmp_dir, dvc, live_stage, html):
+    live_stage(html=html)
 
-    assert (tmp_dir / "logs.html").is_file() == report
+    assert (tmp_dir / "logs.html").is_file() == html
 
 
 @pytest.fixture
