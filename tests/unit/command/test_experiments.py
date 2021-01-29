@@ -65,6 +65,8 @@ def test_experiments_show(dvc, scm, mocker):
             "--all-branches",
             "--all-commits",
             "--sha",
+            "-n",
+            "1",
         ]
     )
     assert cli_args.func == CmdExperimentsShow
@@ -80,6 +82,7 @@ def test_experiments_show(dvc, scm, mocker):
         all_branches=True,
         all_commits=True,
         sha_only=True,
+        num=1,
     )
 
 

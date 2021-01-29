@@ -337,6 +337,7 @@ class CmdExperimentsShow(CmdBase):
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
                 sha_only=self.args.sha,
+                num=self.args.num,
             )
 
             if self.args.show_json:
@@ -674,10 +675,20 @@ def add_parser(subparsers, parent_parser):
         help="Show experiments derived from all Git tags.",
     )
     experiments_show_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
         help="Show experiments derived from all Git commits.",
+    )
+    experiments_show_parser.add_argument(
+        "-n",
+        "--num",
+        type=int,
+        default=1,
+        dest="num",
+        metavar="<num>",
+        help="Show the last `num` commits from HEAD.",
     )
     experiments_show_parser.add_argument(
         "--no-pager",
