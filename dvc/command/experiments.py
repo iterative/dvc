@@ -764,10 +764,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_apply_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        help="Overwrite any conflicting changes.",
+        "--no-force",
+        action="store_false",
+        dest="force",
+        help="Fail if this command would overwrite conflicting changes.",
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied.",
