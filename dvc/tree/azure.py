@@ -23,6 +23,8 @@ class AzureTree(BaseTree):
         "knack": "knack",
     }
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
+
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
@@ -166,7 +168,6 @@ class AzureTree(BaseTree):
                 yield file_info, {
                     "size": blob.size,
                     "e_tag": blob.etag.strip('"'),
-                    "last_modified": blob.last_modified,
                 }
             else:
                 yield file_info
@@ -186,15 +187,6 @@ class AzureTree(BaseTree):
         )
         properties = blob_client.get_blob_properties()
         return properties.size
-
-    def _iter_hashes(self, path_info, **kwargs):
-        for file_info, details in self.ls(
-            path_info, recursive=True, detail=True
-        ):
-            self._check_ignored(file_info)
-            yield file_info, HashInfo(
-                self.PARAM_CHECKSUM, details["e_tag"], size=details["size"],
-            )
 
     def get_file_hash(self, path_info):
         return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))

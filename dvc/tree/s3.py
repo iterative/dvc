@@ -23,6 +23,7 @@ class S3Tree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -237,8 +238,7 @@ class S3Tree(BaseTree):
                 if detail:
                     yield file_info, {
                         "size": obj_summary.size,
-                        "e_tag": obj_summary.e_tag.strip('"'),
-                        "last_modified": obj_summary.size,
+                        "etag": obj_summary.e_tag.strip('"'),
                     }
                 else:
                     yield file_info
@@ -360,15 +360,6 @@ class S3Tree(BaseTree):
         ].strip('"')
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
-
-    def _iter_hashes(self, path_info, **kwargs):
-        for file_info, details in self.ls(
-            path_info, recursive=True, detail=True
-        ):
-            self._check_ignored(file_info)
-            yield file_info, HashInfo(
-                self.PARAM_CHECKSUM, details["e_tag"], size=details["size"],
-            )
 
     def get_file_hash(self, path_info):
         with self._get_obj(path_info) as obj:
