@@ -471,6 +471,9 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
+        if self.args.reset:
+            logger.info("Any existing checkpoints will be reset and re-run.")
+
         self.repo.experiments.run(
             name=self.args.name,
             queue=self.args.queue,
@@ -478,6 +481,7 @@ class CmdExperimentsRun(CmdRepro):
             jobs=self.args.jobs,
             params=self.args.params,
             checkpoint_resume=self.args.checkpoint_resume,
+            reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
             **self._repro_kwargs,
         )
@@ -629,7 +633,6 @@ class CmdExperimentsPull(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to run and compare experiments."
-    LAST_CHECKPOINT = ":last"
 
     experiments_parser = subparsers.add_parser(
         "experiments",
@@ -842,34 +845,47 @@ def add_parser(subparsers, parent_parser):
     )
     _add_run_common(experiments_run_parser)
     experiments_run_parser.add_argument(
-        "--checkpoint-resume", type=str, default=None, help=argparse.SUPPRESS,
-    )
-    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
-
-    EXPERIMENTS_RESUME_HELP = "Resume checkpoint experiments."
-    experiments_resume_parser = experiments_subparsers.add_parser(
-        "resume",
-        parents=[parent_parser],
-        aliases=["res"],
-        description=append_doc_link(EXPERIMENTS_RESUME_HELP, "exp/resume"),
-        help=EXPERIMENTS_RESUME_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    _add_run_common(experiments_resume_parser)
-    experiments_resume_parser.add_argument(
         "-r",
         "--rev",
         type=str,
-        default=LAST_CHECKPOINT,
         dest="checkpoint_resume",
         help=(
             "Continue the specified checkpoint experiment. "
-            "If no experiment revision is provided, "
-            "the most recently run checkpoint experiment will be used."
+            "(Only required for explicitly resuming checkpoints in queued "
+            "or temp dir runs.)"
         ),
         metavar="<experiment_rev>",
     )
-    experiments_resume_parser.set_defaults(func=CmdExperimentsRun)
+    experiments_run_parser.add_argument(
+        "--reset", action="store_true", help=argparse.SUPPRESS,
+    )
+    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
+
+    EXPERIMENTS_RESET_HELP = "Reset and restart checkpoint experiments."
+    experiments_reset_parser = experiments_subparsers.add_parser(
+        "reset",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_RESET_HELP, "exp/reset"),
+        help=EXPERIMENTS_RESET_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_reset_parser.add_argument(
+        "-r",
+        "--rev",
+        type=str,
+        default=None,
+        dest="checkpoint_resume",
+        help=argparse.SUPPRESS,
+    )
+    _add_run_common(experiments_reset_parser)
+    experiments_reset_parser.add_argument(
+        "--reset",
+        action="store_const",
+        const=True,
+        default=True,
+        help=argparse.SUPPRESS,
+    )
+    experiments_reset_parser.set_defaults(func=CmdExperimentsRun)
 
     EXPERIMENTS_GC_HELP = "Garbage collect unneeded experiments."
     EXPERIMENTS_GC_DESCRIPTION = (

@@ -9,7 +9,6 @@ CHECKPOINT_SCRIPT_FORMAT = dedent(
     import os
     import sys
     import shutil
-    from time import sleep
 
     from dvc.api import make_checkpoint
 

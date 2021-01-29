@@ -1,10 +1,8 @@
-import logging
-
 import pytest
 from funcy import first
 
 from dvc.exceptions import DvcException
-from dvc.repo.experiments import Experiments, MultipleBranchError
+from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
 
 
@@ -38,23 +36,11 @@ def test_new_checkpoint(
 
 @pytest.mark.parametrize(
     "checkpoint_resume, workspace",
-    [
-        (Experiments.LAST_CHECKPOINT, True),
-        (Experiments.LAST_CHECKPOINT, False),
-        ("foo", True),
-        ("foo", False),
-    ],
+    [(None, True), (None, False), ("foo", True), ("foo", False)],
 )
 def test_resume_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, checkpoint_resume, workspace
 ):
-    with pytest.raises(DvcException):
-        dvc.experiments.run(
-            checkpoint_stage=checkpoint_stage.addressing,
-            checkpoint_resume=checkpoint_resume,
-            tmp_dir=not workspace,
-        )
-
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
@@ -66,7 +52,7 @@ def test_resume_checkpoint(
             tmp_dir=not workspace,
         )
 
-    if checkpoint_resume != Experiments.LAST_CHECKPOINT:
+    if checkpoint_resume:
         checkpoint_resume = first(results)
 
     if not workspace:
@@ -96,8 +82,6 @@ def test_resume_checkpoint(
 def test_reset_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
 ):
-    from dvc.repo.experiments.base import CheckpointExistsError
-
     dvc.experiments.run(
         checkpoint_stage.addressing, name="foo", tmp_dir=not workspace,
     )
@@ -106,33 +90,12 @@ def test_reset_checkpoint(
         scm.reset(hard=True)
         scm.gitpython.repo.git.clean(force=True)
 
-    if workspace:
-        with caplog.at_level(logging.ERROR):
-            dvc.experiments.run(
-                checkpoint_stage.addressing,
-                name="foo",
-                params=["foo=2"],
-                tmp_dir=not workspace,
-            )
-        assert "checkpoint experiment conflicts with existing" in caplog.text
-
-        scm.reset(hard=True)
-        scm.gitpython.repo.git.clean(force=True)
-    else:
-        with pytest.raises(CheckpointExistsError):
-            dvc.experiments.run(
-                checkpoint_stage.addressing,
-                name="foo",
-                params=["foo=2"],
-                tmp_dir=not workspace,
-            )
-
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         params=["foo=2"],
         name="foo",
-        force=True,
         tmp_dir=not workspace,
+        reset=True,
     )
     exp = first(results)
 
@@ -165,16 +128,6 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
         tmp_dir=not workspace,
     )
     checkpoint_a = first(results)
-    if not workspace:
-        dvc.experiments.apply(checkpoint_a, force=True)
-
-    with pytest.raises(DvcException):
-        results = dvc.experiments.run(
-            checkpoint_stage.addressing,
-            checkpoint_resume=branch_rev,
-            params=["foo=100"],
-            tmp_dir=not workspace,
-        )
 
     dvc.experiments.apply(branch_rev, force=True)
     results = dvc.experiments.run(

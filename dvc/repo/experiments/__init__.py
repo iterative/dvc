@@ -82,7 +82,6 @@ class Experiments:
         r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
         r"(?P<checkpoint>-checkpoint)?$"
     )
-    LAST_CHECKPOINT = ":last"
     EXEC_TMP_DIR = "exps"
 
     StashEntry = namedtuple(
@@ -192,23 +191,30 @@ class Experiments:
                         self._update_params(params)
 
                     if resume_rev:
+                        if branch:
+                            branch_name = ExpRefInfo.from_ref(branch).name
+                        else:
+                            branch_name = ""
                         if self.scm.is_dirty():
-                            logger.debug(
-                                "Resume new checkpoint branch with "
-                                "modifications"
+                            logger.info(
+                                "Modified checkpoint experiment based on "
+                                "'%s' will be created",
+                                branch_name,
                             )
                             branch = None
                         else:
-                            logger.debug(
-                                "Resuming from tip of existing branch '%s'",
-                                branch,
+                            logger.info(
+                                "Existing checkpoint experiment '%s' will be "
+                                "resumed",
+                                branch_name,
                             )
-                            if name:
-                                logger.warning(
-                                    "Ignoring option '--name %s' for resumed "
-                                    "experiment. Existing experiment name will"
-                                    "be preserved instead."
-                                )
+                        if name:
+                            logger.warning(
+                                "Ignoring option '--name %s' for resumed "
+                                "experiment. Existing experiment name will"
+                                "be preserved instead.",
+                                name,
+                            )
 
                     # save additional repro command line arguments
                     run_env = {DVCLIVE_RESUME: "1"} if resume_rev else {}
@@ -323,7 +329,13 @@ class Experiments:
         # whether the file is dirty
         self.scm.add(list(params.keys()))
 
-    def reproduce_one(self, queue=False, tmp_dir=False, **kwargs):
+    def reproduce_one(
+        self,
+        queue: bool = False,
+        tmp_dir: bool = False,
+        checkpoint_resume: Optional[str] = None,
+        **kwargs,
+    ):
         """Reproduce and checkout a single experiment."""
         if not (queue or tmp_dir):
             staged, _, _ = self.scm.status()
@@ -334,7 +346,20 @@ class Experiments:
                 )
                 self.scm.reset()
 
-        stash_rev = self.new(**kwargs)
+        if checkpoint_resume:
+            resume_rev = self.scm.resolve_rev(checkpoint_resume)
+            try:
+                self.check_baseline(resume_rev)
+                checkpoint_resume = resume_rev
+            except BaselineMismatchError as exc:
+                raise DvcException(
+                    f"Cannot resume from '{checkpoint_resume}' as it is not "
+                    "derived from your current workspace."
+                ) from exc
+        else:
+            checkpoint_resume = self._workspace_resume_rev()
+
+        stash_rev = self.new(checkpoint_resume=checkpoint_resume, **kwargs)
         if queue:
             logger.info(
                 "Queued experiment '%s' for future execution.", stash_rev[:7],
@@ -348,6 +373,13 @@ class Experiments:
         if exp_rev is not None:
             self._log_reproduced(results, tmp_dir=tmp_dir)
         return results
+
+    def _workspace_resume_rev(self) -> Optional[str]:
+        last_checkpoint = self._get_last_checkpoint()
+        last_applied = self._get_last_applied()
+        if last_checkpoint and last_applied:
+            return last_applied
+        return None
 
     def reproduce_queued(self, **kwargs):
         results = self._reproduce_revs(**kwargs)
@@ -387,26 +419,20 @@ class Experiments:
         """
         if checkpoint_resume is not None:
             return self._resume_checkpoint(
-                *args, checkpoint_resume=checkpoint_resume, **kwargs
+                *args, resume_rev=checkpoint_resume, **kwargs
             )
 
         return self._stash_exp(*args, **kwargs)
 
     def _resume_checkpoint(
-        self, *args, checkpoint_resume: Optional[str] = None, **kwargs,
+        self, *args, resume_rev: Optional[str] = None, **kwargs,
     ):
         """Resume an existing (checkpoint) experiment.
 
         Experiment will be reproduced and checked out into the user's
         workspace.
         """
-        assert checkpoint_resume
-
-        if checkpoint_resume == self.LAST_CHECKPOINT:
-            # Continue from most recently committed checkpoint
-            resume_rev = self._get_last_checkpoint()
-        else:
-            resume_rev = self.scm.resolve_rev(checkpoint_resume)
+        assert resume_rev
 
         allow_multiple = "params" in kwargs
         branch: Optional[str] = self.get_branch_by_rev(
@@ -414,54 +440,13 @@ class Experiments:
         )
         if not branch:
             raise DvcException(
-                "Could not find checkpoint experiment "
-                f"'{checkpoint_resume}'"
+                "Could not find checkpoint experiment " f"'{resume_rev[:7]}'"
             )
-
-        last_applied = self.scm.get_ref(EXEC_APPLY)
-        try:
-            if last_applied:
-                self.check_baseline(last_applied)
-            self.check_baseline(resume_rev)
-        except BaselineMismatchError:
-            # If HEAD has moved since the the last applied checkpoint,
-            # the applied checkpoint is no longer valid
-            self.scm.remove_ref(EXEC_APPLY)
-            last_applied = None
-            checkpoint_resume = None
-        if resume_rev != last_applied:
-            if checkpoint_resume == self.LAST_CHECKPOINT:
-                display_rev: Optional[str] = resume_rev[:7]
-            else:
-                display_rev = checkpoint_resume
-
-            if display_rev:
-                if last_applied is None:
-                    msg = (
-                        f"Checkpoint '{display_rev}' cannot be resumed until "
-                        "it is applied to your workspace."
-                    )
-                else:
-                    msg = (
-                        f"Checkpoint '{display_rev}' does not match the "
-                        "most recently applied experiment in your workspace "
-                        f"('{last_applied[:7]}')."
-                    )
-                msg = (
-                    f"{msg}\n"
-                    "To resume this experiment run:\n\n"
-                    f"\tdvc exp apply {display_rev}\n\n"
-                    "And then retry this 'dvc exp res' command."
-                )
-            else:
-                msg = "No existing checkpoint to resume in your workspace."
-
-            raise DvcException(msg)
 
         baseline_rev = self._get_baseline(branch)
         logger.debug(
             "Resume from checkpoint '%s' with baseline '%s'",
-            checkpoint_resume,
+            resume_rev,
             baseline_rev,
         )
 
@@ -473,11 +458,33 @@ class Experiments:
             **kwargs,
         )
 
-    def _get_last_checkpoint(self) -> str:
-        rev = self.scm.get_ref(EXEC_CHECKPOINT)
-        if rev:
-            return rev
-        raise DvcException("No existing checkpoint experiment to continue")
+    def _get_last_checkpoint(self) -> Optional[str]:
+        try:
+            last_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
+            if last_checkpoint:
+                self.check_baseline(last_checkpoint)
+            return last_checkpoint
+        except BaselineMismatchError:
+            # If HEAD has moved since the the last checkpoint run,
+            # the specified checkpoint is no longer relevant
+            self.scm.remove_ref(EXEC_CHECKPOINT)
+        return None
+
+    def _get_last_applied(self) -> Optional[str]:
+        try:
+            last_applied = self.scm.get_ref(EXEC_APPLY)
+            if last_applied:
+                self.check_baseline(last_applied)
+            return last_applied
+        except BaselineMismatchError:
+            # If HEAD has moved since the the last applied experiment,
+            # the applied experiment is no longer relevant
+            self.scm.remove_ref(EXEC_APPLY)
+        return None
+
+    def reset_checkpoints(self):
+        self.scm.remove_ref(EXEC_CHECKPOINT)
+        self.scm.remove_ref(EXEC_APPLY)
 
     @scm_locked
     def _reproduce_revs(
