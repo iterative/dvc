@@ -276,7 +276,7 @@ class PipelineFile(FileMixin):
         if not self.exists():
             return
 
-        with open(self.path, "r") as f:
+        with open(self.path, "r", encoding="utf-8") as f:
             d = parse_yaml_for_update(f.read(), self.path)
 
         self.validate(d, self.path)
@@ -380,7 +380,7 @@ class Lockfile(FileMixin):
         if not self.exists():
             return
 
-        with open(self.path) as f:
+        with open(self.path, encoding="utf-8") as f:
             d = parse_yaml_for_update(f.read(), self.path)
         self.validate(d, self.path)
 
