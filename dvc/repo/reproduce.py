@@ -70,6 +70,7 @@ def _track_stage(stage):
                 from dvc.repo.live import summary_path_info
 
                 summary = summary_path_info(out)
+                # TODO mark tracking live
                 if summary:
                     stage.repo.scm.track_file(relpath(summary))
     stage.repo.scm.track_changed_files()

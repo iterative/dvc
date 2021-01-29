@@ -81,16 +81,24 @@ def fill_stage_outputs(stage, **kwargs):
 
 
 def _load_live_output(
-    stage, live=None, live_summary=False, live_html=False, **kwargs
+    stage,
+    live=None,
+    live_no_cache=None,
+    live_summary=False,
+    live_html=False,
+    **kwargs,
 ):
     from dvc.output import BaseOutput, loads_from
 
     outs = []
-    if live:
+    if live or live_no_cache:
+        assert bool(live) != bool(live_no_cache)
+
+        path = live or live_no_cache
         outs += loads_from(
             stage,
-            [live],
-            use_cache=False,
+            [path],
+            use_cache=bool(live_no_cache),
             live={
                 BaseOutput.PARAM_LIVE_SUMMARY: live_summary,
                 BaseOutput.PARAM_LIVE_HTML: live_html,
@@ -365,6 +373,13 @@ def create_stage_from_cli(
     kwargs["cmd"] = cmd[0] if isinstance(cmd, list) and len(cmd) == 1 else cmd
     kwargs["live_summary"] = not kwargs.pop("live_no_summary", False)
     kwargs["live_html"] = not kwargs.pop("live_no_html", False)
+
+    live = kwargs.get("live", False)
+    live_no_cache = kwargs.get("live_no_cache", False)
+    if live and live_no_cache:
+        raise InvalidArgumentError(
+            "cannot specify both `--live` and `--live-no-cache`"
+        )
 
     params = chunk_dict(parse_params(kwargs.pop("params", [])))
     stage = create_stage(
