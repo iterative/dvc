@@ -131,7 +131,7 @@ class FileMixin:
             raise StageFileIsNotDvcFileError(self.path)
         if self._is_git_ignored():
             raise FileIsGitIgnored(self.path)
-        with self.repo.tree.open(self.path) as fd:
+        with self.repo.tree.open(self.path, encoding="utf-8") as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
         return self.validate(d, self.relpath), stage_text
