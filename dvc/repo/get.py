@@ -17,7 +17,7 @@ class GetDVCFileError(DvcException):
         )
 
 
-def get(url, path, out=None, rev=None):
+def get(url, path, out=None, rev=None, jobs=None):
     import shortuuid
 
     from dvc.dvcfile import is_valid_filename
@@ -52,6 +52,8 @@ def get(url, path, out=None, rev=None):
         ) as repo:
             from_info = PathInfo(repo.root_dir) / path
             to_info = PathInfo(out)
-            repo.repo_tree.download(from_info, to_info, follow_subrepos=False)
+            repo.repo_tree.download(
+                from_info, to_info, jobs=jobs, follow_subrepos=False
+            )
     finally:
         remove(tmp_dir)

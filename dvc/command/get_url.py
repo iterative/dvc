@@ -14,7 +14,7 @@ class CmdGetUrl(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            Repo.get_url(self.args.url, out=self.args.out)
+            Repo.get_url(self.args.url, out=self.args.out, jobs=self.args.jobs)
             return 0
         except DvcException:
             logger.exception(f"failed to get '{self.args.url}'")
@@ -36,4 +36,15 @@ def add_parser(subparsers, parent_parser):
     get_parser.add_argument(
         "out", nargs="?", help="Destination path to put data to.",
     ).complete = completion.DIR
+    get_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
+    )
     get_parser.set_defaults(func=CmdGetUrl)
