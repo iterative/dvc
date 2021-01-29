@@ -22,7 +22,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
 
     from dvc.tree.repo import RepoTree
 
-    repo_tree = RepoTree(self, stream=True)
+    repo_tree = RepoTree(self)
 
     b_rev = b_rev if b_rev else "workspace"
     results = {}

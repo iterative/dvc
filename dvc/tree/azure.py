@@ -170,19 +170,24 @@ class AzureTree(BaseTree):
     def get_file_hash(self, path_info):
         return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-
+    def _upload_fobj(self, fobj, to_info):
         blob_client = self.blob_service.get_blob_client(
             to_info.bucket, to_info.path
         )
+        blob_client.upload_blob(fobj, overwrite=True)
+
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    ):
         total = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
-            with Tqdm.wrapattr(
-                fobj, "read", desc=name, total=total, disable=no_progress_bar
-            ) as wrapped:
-                blob_client.upload_blob(wrapped, overwrite=True)
+            self.upload_fobj(
+                fobj,
+                to_info,
+                desc=name,
+                total=total,
+                no_progress_bar=no_progress_bar,
+            )
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs

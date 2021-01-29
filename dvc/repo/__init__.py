@@ -130,8 +130,6 @@ class Repo:
         config=None,
         url=None,
         repo_factory=None,
-        fetch=None,
-        stream=None,
     ):
         from dvc.cache import Cache
         from dvc.config import Config
@@ -148,8 +146,6 @@ class Repo:
 
         self.url = url
         self._tree_conf = {
-            "stream": stream,
-            "fetch": fetch,
             "repo_factory": repo_factory,
         }
 
@@ -205,6 +201,18 @@ class Repo:
 
     def __str__(self):
         return self.url or self.root_dir
+
+    @staticmethod
+    @contextmanager
+    def open(url, *args, **kwargs):
+        if os.path.exists(url):
+            yield Repo(url, *args, **kwargs)
+            return
+
+        from dvc.external_repo import external_repo
+
+        with external_repo(url, *args, **kwargs) as repo:
+            yield repo
 
     @cached_property
     def scm(self):
@@ -443,11 +451,6 @@ class Repo:
 
         return matched
 
-    def find_out_by_relpath(self, relpath):
-        path = os.path.join(self.root_dir, relpath)
-        (out,) = self.find_outs_by_path(path)
-        return out
-
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
@@ -463,7 +466,7 @@ class Repo:
         """Opens a specified resource as a file descriptor"""
         from dvc.tree.repo import RepoTree
 
-        tree = RepoTree(self, stream=True, subrepos=True)
+        tree = RepoTree(self, subrepos=True)
         path = PathInfo(self.root_dir) / path
         try:
             with self.state:

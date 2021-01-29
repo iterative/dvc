@@ -45,6 +45,7 @@ def use_state(call):
 
 class CloudCache:
 
+    DEFAULT_VERIFY = False
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
@@ -52,6 +53,7 @@ class CloudCache:
         self.tree = tree
         self.repo = tree.repo
 
+        self.verify = tree.config.get("verify", self.DEFAULT_VERIFY)
         self.cache_types = tree.config.get("type") or copy(
             self.DEFAULT_CACHE_TYPES
         )
@@ -244,38 +246,14 @@ class CloudCache:
         else:
             if self.changed_cache(hash_info):
                 with tree.open(path_info, mode="rb") as fobj:
-                    # if tree has fetch enabled, DVC out will be fetched on
-                    # open and we do not need to read/copy any data
-                    if not (
-                        tree.isdvc(path_info, strict=False) and tree.fetch
-                    ):
-                        self.tree.copy_fobj(fobj, cache_info)
+                    self.tree.upload_fobj(fobj, cache_info)
                 callback = kwargs.get("download_callback")
                 if callback:
                     callback(1)
 
         self.tree.state.save(cache_info, hash_info)
 
-    def _transfer_file_as_whole(self, from_tree, from_info):
-        from dvc.utils import tmp_fname
-
-        # When we can't use the chunked upload, we have to first download
-        # and then calculate the hash as if it were a local file and then
-        # upload it.
-        local_tree = self.repo.cache.local.tree
-        local_info = local_tree.path_info / tmp_fname()
-
-        from_tree.download(from_info, local_info)
-        hash_info = local_tree.get_file_hash(local_info)
-
-        self.tree.upload(
-            local_info,
-            self.tree.hash_to_path_info(hash_info.value),
-            name=from_info.name,
-        )
-        return hash_info
-
-    def _transfer_file_as_chunked(self, from_tree, from_info):
+    def _transfer_file(self, from_tree, from_info):
         from dvc.utils import tmp_fname
         from dvc.utils.stream import HashedStreamReader
 
@@ -296,14 +274,6 @@ class CloudCache:
 
         hash_info = stream_reader.hash_info
         self.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
-        return hash_info
-
-    def _transfer_file(self, from_tree, from_info):
-        try:
-            hash_info = self._transfer_file_as_chunked(from_tree, from_info)
-        except RemoteActionNotImplemented:
-            hash_info = self._transfer_file_as_whole(from_tree, from_info)
-
         return hash_info
 
     def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):
@@ -469,7 +439,9 @@ class CloudCache:
             )
 
         if not hash_info:
-            hash_info = tree.get_hash(path_info, **kwargs)
+            kw = kwargs.copy()
+            kw.pop("download_callback", None)
+            hash_info = tree.get_hash(path_info, **kw)
             if not hash_info:
                 raise FileNotFoundError(
                     errno.ENOENT, os.strerror(errno.ENOENT), path_info
@@ -499,6 +471,9 @@ class CloudCache:
         return False
 
     def unprotect(self, path_info):  # pylint: disable=unused-argument
+        pass
+
+    def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
     def changed_cache_file(self, hash_info):

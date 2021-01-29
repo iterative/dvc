@@ -3,6 +3,7 @@ import logging
 import os
 import typing
 from contextlib import suppress
+from functools import partial
 from typing import (
     Callable,
     Iterable,
@@ -371,13 +372,33 @@ class StageLoad:
                 the collection.
         """
         from dvc.dvcfile import is_valid_filename
+        from dvc.tree.local import LocalTree
+
+        scm = self.repo.scm
+        sep = os.sep
+        outs: Set[str] = set()
+
+        is_local_tree = isinstance(self.tree, LocalTree)
+
+        def is_ignored(path):
+            # apply only for the local tree
+            return is_local_tree and scm.is_ignored(path)
+
+        def is_dvcfile_and_not_ignored(root, file):
+            return is_valid_filename(file) and not is_ignored(
+                f"{root}{sep}{file}"
+            )
+
+        def is_out_or_ignored(root, directory):
+            dir_path = f"{root}{sep}{directory}"
+            return dir_path in outs or is_ignored(dir_path)
 
         stages = []
-        outs: Set[str] = set()
         for root, dirs, files in self.tree.walk(self.repo.root_dir):
-            for file_name in filter(is_valid_filename, files):
-                file_path = os.path.join(root, file_name)
+            dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
 
+            for file in filter(dvcfile_filter, files):
+                file_path = os.path.join(root, file)
                 try:
                     new_stages = self.load_file(file_path)
                 except DvcException as exc:
@@ -393,5 +414,5 @@ class StageLoad:
                     for out in stage.outs
                     if out.scheme == "local"
                 )
-            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
+            dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
         return stages

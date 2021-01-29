@@ -1,5 +1,6 @@
 import logging
 import os
+import stat
 
 from funcy import cached_property
 from shortuuid import uuid
@@ -154,14 +155,30 @@ class LocalCache(CloudCache):
             self._unprotect_file(path_info)
 
     def protect(self, path_info):
-        self.tree.chmod(path_info, self.CACHE_MODE)
+        try:
+            os.chmod(path_info, self.CACHE_MODE)
+        except OSError:
+            # NOTE: not being able to protect cache file is not fatal, it
+            # might happen on funky filesystems (e.g. Samba, see #5255),
+            # read-only filesystems or in a shared cache scenario.
+            logger.trace("failed to protect '%s'", path_info, exc_info=True)
 
     def is_protected(self, path_info):
-        import stat
-
         try:
             mode = os.stat(path_info).st_mode
         except FileNotFoundError:
             return False
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
+
+    def set_exec(self, path_info):
+        mode = os.stat(path_info).st_mode | stat.S_IEXEC
+        try:
+            os.chmod(path_info, mode)
+        except OSError:
+            logger.trace(
+                "failed to chmod '%s' '%s'",
+                oct(mode),
+                path_info,
+                exc_info=True,
+            )

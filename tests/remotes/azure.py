@@ -1,8 +1,10 @@
 # pylint:disable=abstract-method
 
+import locale
 import uuid
 
 import pytest
+from funcy import cached_property
 
 from dvc.path_info import CloudURLInfo
 
@@ -19,7 +21,54 @@ TEST_AZURE_CONNECTION_STRING = (
 
 
 class Azure(Base, CloudURLInfo):
-    pass
+
+    CONNECTION_STRING = None
+
+    @cached_property
+    def service_client(self):
+        # pylint: disable=no-name-in-module
+        from azure.core.exceptions import ResourceNotFoundError
+        from azure.storage.blob import BlobServiceClient
+
+        service_client = BlobServiceClient.from_connection_string(
+            self.CONNECTION_STRING
+        )
+
+        container_client = service_client.get_container_client(self.bucket)
+        try:  # verify that container exists
+            container_client.get_container_properties()
+        except ResourceNotFoundError:
+            container_client.create_container()
+
+        return service_client
+
+    @property
+    def blob_client(self):
+        return self.service_client.get_blob_client(self.bucket, self.path)
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
+        assert not exist_ok
+
+    def write_bytes(self, contents):
+        self.blob_client.upload_blob(contents, overwrite=True)
+
+    def write_text(self, contents, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        self.write_bytes(contents.encode(encoding))
+
+    def read_bytes(self):
+        stream = self.blob_client.download_blob()
+        return stream.readall()
+
+    def read_text(self, encoding=None, errors=None):
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        return self.read_bytes().decode(encoding)
 
 
 @pytest.fixture(scope="session")
@@ -49,6 +98,7 @@ def azure_server(test_config, docker_compose, docker_services):
         timeout=60.0, pause=0.1, check=_check
     )
 
+    Azure.CONNECTION_STRING = connection_string
     return connection_string
 
 

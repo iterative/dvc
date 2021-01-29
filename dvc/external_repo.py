@@ -59,15 +59,16 @@ def external_repo(
         url=url,
         scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
-        subrepos=not for_write,
-        uninitialized=True,
         config=config,
         repo_factory=make_repo,
         **kwargs,
     )
 
-    if "fetch" not in repo_kwargs:
-        repo_kwargs["fetch"] = True
+    if "subrepos" not in repo_kwargs:
+        repo_kwargs["subrepos"] = True
+
+    if "uninitialized" not in repo_kwargs:
+        repo_kwargs["uninitialized"] = True
 
     repo = Repo(**repo_kwargs)
 

@@ -94,7 +94,7 @@ def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
         {"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}}
     )
 
-    tree = RepoTree(dvc, stream=True)
+    tree = RepoTree(dvc)
     shutil.rmtree(tmp_dir / "datadir")
     (tmp_dir / "datafile").unlink()
 
@@ -324,7 +324,7 @@ def test_subrepos(tmp_dir, scm, dvc):
     )
 
     dvc.tree._reset()
-    tree = RepoTree(dvc, subrepos=True, fetch=True)
+    tree = RepoTree(dvc, subrepos=True)
 
     def assert_tree_belongs_to_repo(ret_val):
         method = tree._get_repo
@@ -406,7 +406,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
 
     # using tree that does not have dvcignore
     dvc.tree._reset()
-    tree = RepoTree(dvc, subrepos=True, fetch=True)
+    tree = RepoTree(dvc, subrepos=True)
     expected = [
         PathInfo("dir") / "repo",
         PathInfo("dir") / "repo.txt",
@@ -449,7 +449,7 @@ def test_repo_tree_no_subrepos(tmp_dir, dvc, scm):
 
     # using tree that does not have dvcignore
     dvc.tree._reset()
-    tree = RepoTree(dvc, subrepos=False, fetch=True)
+    tree = RepoTree(dvc, subrepos=False)
     expected = [
         tmp_dir / ".dvcignore",
         tmp_dir / ".gitignore",
@@ -516,7 +516,7 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    tree = RepoTree(dvc, fetch=True)
+    tree = RepoTree(dvc)
     dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_file_hash")
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert tree.get_hash(subdir) == HashInfo(
@@ -612,7 +612,7 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
         expected[str(tmp_dir / "subrepo1")].add("subrepo3")
 
     actual = {}
-    tree = RepoTree(dvc, subrepos=traverse_subrepos, fetch=True)
+    tree = RepoTree(dvc, subrepos=traverse_subrepos)
     for root, dirs, files in tree.walk(str(tmp_dir)):
         actual[root] = set(dirs + files)
     assert expected == actual

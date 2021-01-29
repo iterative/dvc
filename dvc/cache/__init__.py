@@ -6,6 +6,7 @@ from ..scheme import Schemes
 
 def get_cloud_cache(tree):
     from .base import CloudCache
+    from .gdrive import GDriveCache
     from .local import LocalCache
     from .ssh import SSHCache
 
@@ -14,6 +15,9 @@ def get_cloud_cache(tree):
 
     if tree.scheme == Schemes.SSH:
         return SSHCache(tree)
+
+    if tree.scheme == Schemes.GDRIVE:
+        return GDriveCache(tree)
 
     return CloudCache(tree)
 

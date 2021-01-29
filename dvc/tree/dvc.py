@@ -7,7 +7,7 @@ from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
 from ._metadata import Metadata
-from .base import BaseTree, RemoteActionNotImplemented
+from .base import BaseTree
 
 if typing.TYPE_CHECKING:
     from dvc.output.base import BaseOutput
@@ -21,22 +21,13 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
     Args:
         repo: DVC repo.
-        fetch: if True, uncached DVC outs will be fetched on `open()`.
-        stream: if True, uncached DVC outs will be streamed directly from
-            remote on `open()`.
-
-    `stream` takes precedence over `fetch`. If `stream` is enabled and
-    a remote does not support streaming, uncached DVC outs will be fetched
-    as a fallback.
     """
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
-    def __init__(self, repo, fetch=False, stream=False):
+    def __init__(self, repo):
         super().__init__(repo, {"url": repo.root_dir})
-        self.fetch = fetch
-        self.stream = stream
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
@@ -54,9 +45,6 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         self, path_info: PathInfo, out: "BaseOutput", remote=None
     ):
         assert isinstance(path_info, PathInfo)
-        if not self.fetch and not self.stream:
-            raise FileNotFoundError
-
         # NOTE: use string paths here for performance reasons
         key = tuple(relpath(path_info, out.path_info).split(os.sep))
         out.get_dir_cache(remote=remote)
@@ -80,24 +68,20 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         out = outs[0]
         if out.changed_cache(filter_info=path):
-            if not self.fetch and not self.stream:
-                raise FileNotFoundError
+            from dvc.config import NoRemoteError
 
-            remote_obj = self.repo.cloud.get_remote(remote)
-            if self.stream:
-                if out.is_dir_checksum:
-                    checksum = self._get_granular_hash(path, out).value
-                else:
-                    checksum = out.hash_info.value
-                try:
-                    remote_info = remote_obj.tree.hash_to_path_info(checksum)
-                    return remote_obj.tree.open(
-                        remote_info, mode=mode, encoding=encoding
-                    )
-                except RemoteActionNotImplemented:
-                    pass
-            cache_info = out.get_used_cache(filter_info=path, remote=remote)
-            self.repo.cloud.pull(cache_info, remote=remote)
+            try:
+                remote_obj = self.repo.cloud.get_remote(remote)
+            except NoRemoteError:
+                raise FileNotFoundError
+            if out.is_dir_checksum:
+                checksum = self._get_granular_hash(path, out).value
+            else:
+                checksum = out.hash_info.value
+            remote_info = remote_obj.tree.hash_to_path_info(checksum)
+            return remote_obj.tree.open(
+                remote_info, mode=mode, encoding=encoding
+            )
 
         if out.is_dir_checksum:
             checksum = self._get_granular_hash(path, out).value
@@ -143,24 +127,17 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-    def _fetch_dir(
-        self, out, filter_info=None, download_callback=None, **kwargs
-    ):
+    def _fetch_dir(self, out, **kwargs):
         # pull dir cache if needed
         out.get_dir_cache(**kwargs)
 
-        # pull dir contents if needed
-        if self.fetch and out.changed_cache(filter_info=filter_info):
-            used_cache = out.get_used_cache(filter_info=filter_info)
-            downloaded = self.repo.cloud.pull(used_cache, **kwargs)
-            if download_callback:
-                download_callback(downloaded)
+        dir_cache = out.dir_cache
+        hash_info = out.cache.save_dir_info(dir_cache)
+        if hash_info != out.hash_info:
+            raise FileNotFoundError
 
-    def _add_dir(self, top, trie, out, **kwargs):
-        if not self.fetch and not self.stream:
-            return
-
-        self._fetch_dir(out, filter_info=top, **kwargs)
+    def _add_dir(self, trie, out, **kwargs):
+        self._fetch_dir(out, **kwargs)
 
         base = out.path_info.parts
         for key in out.dir_cache.trie.iterkeys():  # noqa: B301
@@ -172,7 +149,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
 
         out = trie.get(root.parts)
         if out and out.is_dir_checksum:
-            self._add_dir(root, trie, out, **kwargs)
+            self._add_dir(trie, out, **kwargs)
 
         root_len = len(root.parts)
         for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
@@ -215,7 +192,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             trie[out.path_info.parts] = out
 
             if out.is_dir_checksum and root.isin_or_eq(out.path_info):
-                self._add_dir(top, trie, out, **kwargs)
+                self._add_dir(trie, out, **kwargs)
 
         yield from self._walk(root, trie, topdown=topdown, **kwargs)
 

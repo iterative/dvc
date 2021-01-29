@@ -101,7 +101,7 @@ class DataCloud:
             remote (dvc.remote.base.BaseRemote): optional remote to compare
                 cache to. By default remote from core.remote config option
                 is used.
-            command (bool): the command which is benefitting from this function
+            command (str): the command which is benefitting from this function
                 (to be used for reporting better error messages).
         """
         from dvc.tree import get_cloud_tree

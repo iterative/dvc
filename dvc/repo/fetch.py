@@ -1,7 +1,8 @@
 import logging
+import os
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, NoOutputOrStageError
 
 from . import locked
 
@@ -98,6 +99,16 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
             root = PathInfo(repo.root_dir)
             for path in files:
                 path_info = root / path
+                try:
+                    used = repo.used_cache(
+                        [os.fspath(path_info)],
+                        force=True,
+                        jobs=jobs,
+                        recursive=True,
+                    )
+                    cb(repo.cloud.pull(used, jobs))
+                except (NoOutputOrStageError, NoRemoteError):
+                    pass
                 self.cache.local.save(
                     path_info,
                     repo.repo_tree,

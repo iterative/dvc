@@ -1,7 +1,5 @@
-import errno
 import logging
 import os
-import stat
 
 from funcy import cached_property
 
@@ -136,10 +134,6 @@ class LocalTree(BaseTree):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True)
 
-    def set_exec(self, path_info):
-        mode = self.stat(path_info).st_mode
-        self.chmod(path_info, mode | stat.S_IEXEC)
-
     def isexec(self, path_info):
         mode = self.stat(path_info).st_mode
         return is_exec(mode)
@@ -166,11 +160,11 @@ class LocalTree(BaseTree):
             self.remove(tmp_info)
             raise
 
-    def copy_fobj(self, fobj, to_info, chunk_size=None):
+    def _upload_fobj(self, fobj, to_info):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:
-            copy_fobj_to_file(fobj, tmp_info, chunk_size=chunk_size)
+            copy_fobj_to_file(fobj, tmp_info)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -213,23 +207,6 @@ class LocalTree(BaseTree):
     def reflink(self, from_info, to_info):
         System.reflink(from_info, to_info)
 
-    def chmod(self, path_info, mode):
-        try:
-            os.chmod(path_info, mode)
-        except OSError as exc:
-            # There is nothing we need to do in case of a read-only file system
-            if exc.errno == errno.EROFS:
-                return
-
-            # In shared cache scenario, we might not own the cache file, so we
-            # need to check if cache file is already protected.
-            if exc.errno not in [errno.EPERM, errno.EACCES]:
-                raise
-
-            actual = stat.S_IMODE(os.stat(path_info).st_mode)
-            if actual != mode:
-                raise
-
     def get_file_hash(self, path_info):
         hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
 
@@ -252,13 +229,6 @@ class LocalTree(BaseTree):
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
         os.replace(tmp_file, to_info)
-
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
-        from dvc.progress import Tqdm
-
-        with Tqdm(bytes=True, disable=no_progress_bar, **pbar_args) as pbar:
-            with pbar.wrapattr(fobj, "read") as fobj:
-                self.copy_fobj(fobj, to_info, chunk_size=self.CHUNK_SIZE)
 
     @staticmethod
     def _download(

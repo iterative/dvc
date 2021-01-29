@@ -1,6 +1,8 @@
+from copy import deepcopy
 from textwrap import dedent
 
 import pytest
+from funcy import first
 
 from dvc import stage as stage_module
 from dvc.exceptions import MetricsError
@@ -128,3 +130,110 @@ def test_live_report(tmp_dir, dvc, live_stage, report):
     live_stage(report=report)
 
     assert (tmp_dir / "logs.html").is_file() == report
+
+
+@pytest.fixture
+def live_checkpoint_stage(tmp_dir, scm, dvc):
+
+    pytest.skip("dvclive does not exist yet")
+
+    SCRIPT = dedent(
+        """
+            import os
+            import dvclive
+
+            def read(path):
+                value=0
+                if os.path.exists(path):
+                    with open(path, 'r') as fobj:
+                        try:
+                            value = int(fobj.read())
+                        except ValueError:
+                            pass
+                return value
+
+            def dump(value, path):
+                with open(path, "w") as fobj:
+                    fobj.write(str(value))
+
+            r = 3
+            checkpoint_file = "checkpoint"
+
+            value = read(checkpoint_file)
+            for i in range(1,r):
+                m = i + value
+                dump(m, checkpoint_file)
+
+                dvclive.log("metric1", m)
+                dvclive.log("metric2", m * 2)
+                dvclive.next_step()"""
+    )
+
+    tmp_dir.gen("train.py", SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.run(
+        cmd="python train.py",
+        params=["foo"],
+        deps=["train.py"],
+        name="live_stage",
+        live="logs",
+        checkpoints=["checkpoint"],
+        no_exec=True,
+    )
+
+    scm.add(["dvc.yaml", "train.py", "params.yaml", ".gitignore"])
+    scm.commit("initial: live_stage")
+    yield stage
+
+
+def checkpoints_metric(show_results, metric_file, metric_name):
+    tmp = deepcopy(show_results)
+    tmp.pop("workspace")
+    tmp = first(tmp.values())
+    tmp.pop("baseline")
+    return list(
+        map(
+            lambda exp: exp["metrics"][metric_file][metric_name],
+            list(tmp.values()),
+        )
+    )
+
+
+def test_live_checkpoints_resume(tmp_dir, scm, dvc, live_checkpoint_stage):
+    results = dvc.experiments.run(
+        live_checkpoint_stage.addressing, params=["foo=2"], tmp_dir=False
+    )
+
+    checkpoint_resume = first(results)
+
+    dvc.experiments.run(
+        live_checkpoint_stage.addressing,
+        checkpoint_resume=checkpoint_resume,
+        tmp_dir=False,
+    )
+
+    results = dvc.experiments.show()
+    assert checkpoints_metric(results, "logs.json", "step") == [
+        3,
+        3,
+        2,
+        1,
+        1,
+        0,
+    ]
+    assert checkpoints_metric(results, "logs.json", "metric1") == [
+        4,
+        4,
+        3,
+        2,
+        2,
+        1,
+    ]
+    assert checkpoints_metric(results, "logs.json", "metric2") == [
+        8,
+        8,
+        6,
+        4,
+        4,
+        2,
+    ]

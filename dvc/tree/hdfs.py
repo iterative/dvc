@@ -235,6 +235,11 @@ class HDFSTree(BaseTree):
             size=self.getsize(path_info),
         )
 
+    def _upload_fobj(self, fobj, to_info):
+        with self.hdfs(to_info) as hdfs:
+            with hdfs.open_output_stream(to_info.path) as fdest:
+                shutil.copyfileobj(fobj, fdest)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):

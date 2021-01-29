@@ -1,6 +1,9 @@
 """Manages source control systems (e.g. Git) in DVC."""
 
 import os
+from contextlib import contextmanager
+
+from funcy import get_in
 
 from dvc.exceptions import DvcException
 
@@ -172,6 +175,23 @@ class Base:
         Method to add file to mechanism that will remind user
         to track new files
         """
+
+    @contextmanager
+    def track_file_changes(self, config=None):
+        autostage = get_in(config or {}, ["core", "autostage"])
+
+        try:
+            yield
+        except Exception:
+            self.cleanup_ignores()
+            raise
+
+        self.reset_ignores()
+        if autostage:
+            self.track_changed_files()
+        else:
+            self.remind_to_track()
+        self.reset_tracked_files()
 
     def belongs_to_scm(self, path):
         """Return boolean whether file belongs to scm"""
