@@ -6,7 +6,7 @@ from dvc.cli import parse_args
 from dvc.command.status import CmdDataStatus
 
 
-def test_cloud_status(mocker):
+def test_cloud_status(tmp_dir, dvc, mocker):
     cli_args = parse_args(
         [
             "status",

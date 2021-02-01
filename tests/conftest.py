@@ -145,8 +145,9 @@ def dummy_stage(tmp_dir, dvc):
     def make(path="dvc.yaml", name="dummy_stage", **kwargs):
         from dvc.stage import PipelineStage, create_stage
 
+        cmd = kwargs.get("cmd", "command")
         stage = create_stage(
-            PipelineStage, dvc, path, name=name, cmd="", **kwargs
+            PipelineStage, dvc, path, name=name, cmd=cmd, **kwargs
         )
         stage.dump()
         return stage
