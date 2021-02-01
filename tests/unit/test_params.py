@@ -20,3 +20,15 @@ def test_params_order(tmp_dir, dvc, dummy_stage):
 
     # params are sorted during dumping, therefore p1 is first
     assert list(dvc.params.show()[""]) == ["p1.yaml", p2_path, "params.yaml"]
+
+
+def test_repro_unicode(tmp_dir, dvc, dummy_stage):
+    tmp_dir.gen({"settings.json": '{"Ω_value": 1}'})
+    dummy_stage(params=[{"settings.json": ["Ω_value"]}])
+    (stage,) = dvc.reproduce(dry=True)
+    stage.cmd = "foo"
+    stage.dvcfile._lockfile.dump(stage)
+
+    dvc.remove(stage.name)
+    assert not (tmp_dir / "dvc.yaml").exists()
+    assert not (tmp_dir / "dvc.lock").exists()
