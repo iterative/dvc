@@ -1,4 +1,4 @@
-from voluptuous import Any, Exclusive, Optional, Required, Schema
+from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
@@ -100,7 +100,7 @@ FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
 }
-SINGLE_PIPELINE_STAGE_SCHEMA = {str: Exclusive(FOREACH_IN, STAGE_DEFINITION)}
+SINGLE_PIPELINE_STAGE_SCHEMA = {str: Any(FOREACH_IN, STAGE_DEFINITION)}
 MULTI_STAGE_SCHEMA = {
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     VARS_KWD: VARS_SCHEMA,

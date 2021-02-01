@@ -129,6 +129,12 @@ def to_pipeline_file(stage: "PipelineStage"):
     params = _serialize_params_keys(params)
 
     outs, metrics, plots, live = _serialize_outs(stage.outs)
+
+    cmd = stage.cmd
+    assert cmd, (
+        f"'{stage.PARAM_CMD}' cannot be empty for stage '{stage.name}', "
+        f"got: '{cmd}'(type: '{type(cmd).__name__}')"
+    )
     res = [
         (stage.PARAM_DESC, stage.desc),
         (stage.PARAM_CMD, stage.cmd),
