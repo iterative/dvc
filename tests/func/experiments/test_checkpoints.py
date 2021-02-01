@@ -22,7 +22,7 @@ def test_new_checkpoint(
             continue
         tree = dvc.repo_tree
         with tree.open(tmp_dir / "foo") as fobj:
-            assert fobj.read().strip() == "5"
+            assert fobj.read().strip() == str(checkpoint_stage.iterations)
         with tree.open(tmp_dir / "metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
@@ -30,7 +30,9 @@ def test_new_checkpoint(
         assert scm.get_ref(EXEC_APPLY) == exp
     assert scm.get_ref(EXEC_CHECKPOINT) == exp
     if workspace:
-        assert (tmp_dir / "foo").read_text().strip() == "5"
+        assert (tmp_dir / "foo").read_text().strip() == str(
+            checkpoint_stage.iterations
+        )
         assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
 
@@ -69,7 +71,7 @@ def test_resume_checkpoint(
             continue
         tree = dvc.repo_tree
         with tree.open(tmp_dir / "foo") as fobj:
-            assert fobj.read().strip() == "10"
+            assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with tree.open(tmp_dir / "metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
@@ -104,7 +106,7 @@ def test_reset_checkpoint(
             continue
         tree = dvc.repo_tree
         with tree.open(tmp_dir / "foo") as fobj:
-            assert fobj.read().strip() == "5"
+            assert fobj.read().strip() == str(checkpoint_stage.iterations)
         with tree.open(tmp_dir / "metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
@@ -143,7 +145,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
             continue
         tree = dvc.repo_tree
         with tree.open(tmp_dir / "foo") as fobj:
-            assert fobj.read().strip() == "10"
+            assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with tree.open(tmp_dir / "metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
@@ -152,7 +154,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
             continue
         tree = dvc.repo_tree
         with tree.open(tmp_dir / "foo") as fobj:
-            assert fobj.read().strip() == "10"
+            assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with tree.open(tmp_dir / "metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 100"
 
