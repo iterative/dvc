@@ -5,17 +5,19 @@ from dvc.command.stage import CmdStageAdd
 
 
 @pytest.mark.parametrize(
-    "extra_args, expected_extra",
+    "command, parsed_command",
     [
-        (["-c", "cmd1", "-c", "cmd2"], {"cmd": ["cmd1", "cmd2"]}),
-        (["-c", "cmd1"], {"cmd": ["cmd1"]}),
+        (["echo", "foo", "bar"], "echo foo bar"),
+        (["echo", '"foo bar"'], 'echo "foo bar"'),
+        (["echo", "foo bar"], 'echo "foo bar"'),
     ],
 )
-def test_stage_add(mocker, dvc, extra_args, expected_extra):
+def test_stage_add(mocker, dvc, command, parsed_command):
     cli_args = parse_args(
         [
             "stage",
             "add",
+            "--name",
             "name",
             "--deps",
             "deps",
@@ -53,7 +55,7 @@ def test_stage_add(mocker, dvc, extra_args, expected_extra):
             "--desc",
             "description",
             "--force",
-            *extra_args,
+            *command,
         ]
     )
     assert cli_args.func == CmdStageAdd
@@ -62,27 +64,32 @@ def test_stage_add(mocker, dvc, extra_args, expected_extra):
     m = mocker.patch.object(cmd.repo.stage, "create_from_cli")
 
     assert cmd.run() == 0
-    expected = dict(
-        name="name",
-        deps=["deps"],
-        outs=["outs"],
-        outs_no_cache=["outs-no-cache"],
-        params=["file:param1,param2", "param3"],
-        metrics=["metrics"],
-        metrics_no_cache=["metrics-no-cache"],
-        plots=["plots"],
-        plots_no_cache=["plots-no-cache"],
-        live="live",
-        live_no_summary=True,
-        live_no_report=True,
-        wdir="wdir",
-        outs_persist=["outs-persist"],
-        outs_persist_no_cache=["outs-persist-no-cache"],
-        checkpoints=["checkpoints"],
-        always_changed=True,
-        external=True,
-        desc="description",
-        **expected_extra
-    )
-    # expected values should be a subset of what's in the call args list
-    assert expected.items() <= m.call_args[1].items()
+    expected = {
+        "name": "name",
+        "deps": ["deps"],
+        "outs": ["outs"],
+        "outs_no_cache": ["outs-no-cache"],
+        "params": ["file:param1,param2", "param3"],
+        "metrics": ["metrics"],
+        "metrics_no_cache": ["metrics-no-cache"],
+        "plots": ["plots"],
+        "plots_no_cache": ["plots-no-cache"],
+        "live": "live",
+        "live_no_summary": True,
+        "live_no_report": True,
+        "wdir": "wdir",
+        "outs_persist": ["outs-persist"],
+        "outs_persist_no_cache": ["outs-persist-no-cache"],
+        "checkpoints": ["checkpoints"],
+        "always_changed": True,
+        "external": True,
+        "desc": "description",
+        "cmd": parsed_command,
+    }
+    args, kwargs = m.call_args
+    assert not args
+
+    for key, val in expected.items():
+        # expected values should be a subset of what's in the call args list
+        assert key in kwargs
+        assert kwargs[key] == val

@@ -105,10 +105,32 @@ class CmdStageList(CmdBase):
         return 0
 
 
+def parse_cmd(commands: List[str]) -> str:
+    """
+    We need to take into account two cases:
+
+    - ['python code.py foo bar']: Used mainly with dvc as a library
+    - ['echo', 'foo bar']: List of arguments received from the CLI
+
+    The second case would need quoting, as it was passed through:
+            dvc run echo "foo bar"
+    """
+
+    def quote_argument(arg: str):
+        should_quote = " " in arg and '"' not in arg
+        return f'"{arg}"' if should_quote else arg
+
+    if len(commands) < 2:
+        return " ".join(commands)
+    return " ".join(map(quote_argument, commands))
+
+
 class CmdStageAdd(CmdBase):
     def run(self):
         repo = self.repo
         kwargs = vars(self.args)
+        kwargs["cmd"] = parse_cmd(kwargs.pop("cmd"))
+
         stage = repo.stage.create_from_cli(validate=True, **kwargs)
 
         with repo.scm.track_file_changes(config=repo.config):
@@ -226,7 +248,7 @@ def _add_common_args(parser):
         metavar="<filename>",
     )
     parser.add_argument(
-        "-C",
+        "-c",
         "--checkpoints",
         action="append",
         default=[],
@@ -253,6 +275,12 @@ def _add_common_args(parser):
             "User description of the stage (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    parser.add_argument(
+        "cmd",
+        nargs=argparse.REMAINDER,
+        help="Command to execute.",
+        metavar="command",
     )
 
 
@@ -282,15 +310,8 @@ def add_parser(subparsers, parent_parser):
         help=STAGE_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    stage_add_parser.add_argument("name", help="Name of the stage to add")
     stage_add_parser.add_argument(
-        "-c",
-        "--command",
-        action="append",
-        default=[],
-        dest="cmd",
-        help="Command to execute.",
-        required=True,
+        "-n", "--name", help="Name of the stage to add", required=True
     )
     _add_common_args(stage_add_parser)
     stage_add_parser.set_defaults(func=CmdStageAdd)

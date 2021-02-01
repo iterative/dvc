@@ -2,6 +2,7 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.stage import parse_cmd
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class CmdRun(CmdBase):
                 self.args.outs_persist_no_cache,
                 self.args.checkpoints,
                 self.args.params,
-                self.args.command,
+                self.args.cmd,
             ]
         ):  # pragma: no cover
             logger.error(
@@ -34,7 +35,7 @@ class CmdRun(CmdBase):
 
         try:
             self.repo.run(
-                cmd=self._parsed_cmd(),
+                cmd=parse_cmd(self.args.cmd),
                 outs=self.args.outs,
                 outs_no_cache=self.args.outs_no_cache,
                 metrics=self.args.metrics,
@@ -67,27 +68,6 @@ class CmdRun(CmdBase):
 
         return 0
 
-    def _parsed_cmd(self):
-        """
-        We need to take into account two cases:
-
-        - ['python code.py foo bar']: Used mainly with dvc as a library
-        - ['echo', 'foo bar']: List of arguments received from the CLI
-
-        The second case would need quoting, as it was passed through:
-                dvc run echo "foo bar"
-        """
-        if len(self.args.command) < 2:
-            return " ".join(self.args.command)
-
-        return " ".join(self._quote_argument(arg) for arg in self.args.command)
-
-    def _quote_argument(self, argument):
-        if " " not in argument or '"' in argument:
-            return argument
-
-        return f'"{argument}"'
-
 
 def add_parser(subparsers, parent_parser):
     from dvc.command.stage import _add_common_args
@@ -103,7 +83,6 @@ def add_parser(subparsers, parent_parser):
     run_parser.add_argument(
         "-n", "--name", help="Stage name.",
     )
-    _add_common_args(run_parser)
     run_parser.add_argument(
         "--file", metavar="<filename>", help=argparse.SUPPRESS,
     )
@@ -134,7 +113,5 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help=argparse.SUPPRESS,
     )
-    run_parser.add_argument(
-        "command", nargs=argparse.REMAINDER, help="Command to execute."
-    )
+    _add_common_args(run_parser)
     run_parser.set_defaults(func=CmdRun)
