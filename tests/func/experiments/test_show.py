@@ -195,9 +195,14 @@ def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
+    from dvc.exceptions import InvalidArgumentError
+
     init_rev = scm.get_rev()
     tmp_dir.scm_gen("file", "file", "commit")
     next_rev = scm.get_rev()
+
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.show(num=-1)
 
     expected = {"workspace", init_rev, next_rev}
     results = dvc.experiments.show(num=2)
@@ -205,4 +210,7 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
 
     expected = {"workspace"} | set(scm.branch_revs("master"))
     results = dvc.experiments.show(all_commits=True)
+    assert set(results.keys()) == expected
+
+    results = dvc.experiments.show(num=100)
     assert set(results.keys()) == expected

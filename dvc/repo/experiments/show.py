@@ -7,6 +7,7 @@ from dvc.repo import locked
 from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
+from dvc.scm.base import SCMError
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,12 @@ def show(
         raise InvalidArgumentError(f"Invalid number of commits '{num}'")
 
     if revs is None:
-        revs = [repo.scm.resolve_rev(f"HEAD~{n}") for n in range(0, num)]
+        revs = []
+        for n in range(num):
+            try:
+                revs.append(repo.scm.resolve_rev(f"HEAD~{n}"))
+            except SCMError:
+                break
 
     revs = OrderedDict(
         (rev, None)
