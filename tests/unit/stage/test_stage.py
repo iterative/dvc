@@ -60,17 +60,34 @@ def test_stage_update(mocker):
     dep = RepoDependency({"url": "example.com"}, None, "dep_path")
     mocker.patch.object(dep, "update", return_value=None)
 
-    stage = Stage(None, "path", deps=[dep])
+    class Out:
+        class Tree:
+            PARAM_CHECKSUM = "md5"
+
+        tree = Tree()
+
+    class DepTree:
+        def isdir(self, *args, **kwargs):
+            return False
+
+    mocker.patch.object(dep, "tree", new=DepTree())
+
+    stage = Stage(None, "path", deps=[dep], outs=[Out()])
     reproduce = mocker.patch.object(stage, "reproduce")
     is_repo_import = mocker.patch(
         __name__ + ".Stage.is_repo_import", new_callable=mocker.PropertyMock
     )
+    is_import = mocker.patch(
+        __name__ + ".Stage.is_import", new_callable=mocker.PropertyMock
+    )
 
     is_repo_import.return_value = True
+    is_import.return_value = True
     stage.update()
     assert reproduce.called_once_with()
 
     is_repo_import.return_value = False
+    is_import.return_value = False
     with pytest.raises(StageUpdateError):
         stage.update()
 
