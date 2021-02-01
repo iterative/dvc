@@ -98,9 +98,11 @@ class S3Tree(BaseTree):
         from boto3.s3.transfer import TransferConfig
         from botocore.configloader import load_config
 
-        config = load_config(
-            os.environ.get("AWS_CONFIG_FILE", _AWS_CONFIG_PATH)
-        )
+        config_path = os.environ.get("AWS_CONFIG_FILE", _AWS_CONFIG_PATH)
+        if not os.path.exists(config_path):
+            return None
+
+        config = load_config(config_path)
         profile = config["profiles"].get(self.profile or "default")
         if not profile:
             return None
