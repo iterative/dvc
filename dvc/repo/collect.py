@@ -47,9 +47,14 @@ def _collect_paths(
 
         if not tree.exists(path_info):
             if not recursive:
-                logger.warning(
-                    "'%s' was not found at: '%s'.", path_info, rev,
-                )
+                if rev == "workspace" or rev == "":
+                    logger.warning(
+                        "'%s' was not found in current workspace.", path_info,
+                    )
+                else:
+                    logger.warning(
+                        "'%s' was not found at: '%s'.", path_info, rev,
+                    )
             continue
         target_infos.append(path_info)
     return target_infos
