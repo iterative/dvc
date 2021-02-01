@@ -210,7 +210,7 @@ class S3Tree(BaseTree):
 
     def _list_paths(self, path_info, max_items=None):
         with self._get_bucket(path_info.bucket) as bucket:
-            obj_summaries = bucket.objects.filter(Prefix=path_info.path)
+            obj_summaries = bucket.objects.filter(Prefix=(path_info / "/").path)
             if max_items is not None:
                 obj_summaries = obj_summaries.page_size(max_items).limit(
                     max_items
