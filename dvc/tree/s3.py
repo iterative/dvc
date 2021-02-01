@@ -11,11 +11,13 @@ from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
-from dvc.utils import error_link
+from dvc.utils import conversions, error_link
 
 from .base import BaseTree
 
 logger = logging.getLogger(__name__)
+
+_AWS_CONFIG_PATH = os.path.expanduser("~/.aws/config")
 
 
 class S3Tree(BaseTree):
@@ -60,6 +62,54 @@ class S3Tree(BaseTree):
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
 
+        config_path = config.get("configpath")
+        if config_path:
+            os.environ.setdefault("AWS_CONFIG_FILE", config_path)
+        self._transfer_config = None
+
+    # https://github.com/aws/aws-cli/blob/0376c6262d6b15dc36c82e6da6e1aad10249cc8c/awscli/customizations/s3/transferconfig.py#L107-L113
+    _TRANSFER_CONFIG_ALIASES = {
+        "max_queue_size": "max_io_queue",
+        "max_concurrent_requests": "max_concurrency",
+        "multipart_threshold": "multipart_threshold",
+        "multipart_chunksize": "multipart_chunksize",
+    }
+
+    def _transform_config(self, s3_config):
+        """Splits the general s3 config into 2 different config
+        objects, one for transfer.TransferConfig and other is the
+        general session config"""
+
+        config, transfer_config = {}, {}
+        for key, value in s3_config.items():
+            if key in self._TRANSFER_CONFIG_ALIASES:
+                if key in {"multipart_chunksize", "multipart_threshold"}:
+                    # cast human readable sizes (like 24MiB) to integers
+                    value = conversions.human_readable_to_bytes(value)
+                else:
+                    value = int(value)
+                transfer_config[self._TRANSFER_CONFIG_ALIASES[key]] = value
+            else:
+                config[key] = value
+
+        return config, transfer_config
+
+    def _process_config(self):
+        from boto3.s3.transfer import TransferConfig
+        from botocore.configloader import load_config
+
+        config = load_config(
+            os.environ.get("AWS_CONFIG_FILE", _AWS_CONFIG_PATH)
+        )
+        profile = config["profiles"].get(self.profile or "default")
+        if not profile:
+            return None
+
+        s3_config = profile.get("s3", {})
+        s3_config, transfer_config = self._transform_config(s3_config)
+        self._transfer_config = TransferConfig(**transfer_config)
+        return s3_config
+
     @wrap_prop(threading.Lock())
     @cached_property
     def s3(self):
@@ -78,12 +128,15 @@ class S3Tree(BaseTree):
             session_opts["aws_session_token"] = self.session_token
 
         session = boto3.session.Session(**session_opts)
+        s3_config = self._process_config()
 
         return session.resource(
             "s3",
             endpoint_url=self.endpoint_url,
             use_ssl=self.use_ssl,
-            config=boto3.session.Config(signature_version="s3v4"),
+            config=boto3.session.Config(
+                signature_version="s3v4", s3=s3_config
+            ),
         )
 
     @contextmanager
@@ -355,7 +408,7 @@ class S3Tree(BaseTree):
 
     def _upload_fobj(self, fobj, to_info):
         with self._get_obj(to_info) as obj:
-            obj.upload_fileobj(fobj)
+            obj.upload_fileobj(fobj, Config=self._transfer_config)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
@@ -366,7 +419,10 @@ class S3Tree(BaseTree):
                 disable=no_progress_bar, total=total, bytes=True, desc=name
             ) as pbar:
                 obj.upload_file(
-                    from_file, Callback=pbar.update, ExtraArgs=self.extra_args,
+                    from_file,
+                    Callback=pbar.update,
+                    ExtraArgs=self.extra_args,
+                    Config=self._transfer_config,
                 )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
@@ -377,4 +433,6 @@ class S3Tree(BaseTree):
                 bytes=True,
                 desc=name,
             ) as pbar:
-                obj.download_file(to_file, Callback=pbar.update)
+                obj.download_file(
+                    to_file, Callback=pbar.update, Config=self._transfer_config
+                )
