@@ -310,7 +310,9 @@ def add_parser(subparsers, parent_parser):
         help=STAGE_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    stage_add_parser.add_argument("name", help="Name of the stage to add")
+    stage_add_parser.add_argument(
+        "-n", "--name", help="Name of the stage to add", required=True
+    )
     _add_common_args(stage_add_parser)
     stage_add_parser.set_defaults(func=CmdStageAdd)
 
