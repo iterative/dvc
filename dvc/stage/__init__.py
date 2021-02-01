@@ -20,7 +20,7 @@ from dvc.utils import relpath
 from . import params
 from .decorators import rwlocked
 from .exceptions import StageUpdateError
-from .imports import sync_import, update_import
+from .imports import sync_import, update_import, update_import_dir
 from .run import run_stage
 from .utils import (
     check_circular_dependency,
@@ -413,9 +413,16 @@ class Stage(params.StageParams):
     def update(self, rev=None, to_remote=False, remote=None, jobs=None):
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
-        update_import(
-            self, rev=rev, to_remote=to_remote, remote=remote, jobs=jobs
-        )
+        if (
+            self.deps[0].tree.isdir(self.deps[0].path_info)
+            and self.deps[0].tree.PARAM_CHECKSUM
+            == self.outs[0].tree.PARAM_CHECKSUM
+        ):
+            update_import_dir(self, rev=rev)
+        else:
+            update_import(
+                self, rev=rev, to_remote=to_remote, remote=remote, jobs=jobs
+            )
 
     def reload(self):
         return self.dvcfile.stage
