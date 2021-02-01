@@ -192,3 +192,17 @@ def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
     cap = capsys.readouterr()
 
     assert f"{div} foo {div}" not in cap.out
+
+
+def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
+    init_rev = scm.get_rev()
+    tmp_dir.scm_gen("file", "file", "commit")
+    next_rev = scm.get_rev()
+
+    expected = {"workspace", init_rev, next_rev}
+    results = dvc.experiments.show(num=2)
+    assert set(results.keys()) == {"workspace", init_rev, next_rev}
+
+    expected = {"workspace"} | set(scm.branch_revs("master"))
+    results = dvc.experiments.show(all_commits=True)
+    assert set(results.keys()) == expected
