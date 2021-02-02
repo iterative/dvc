@@ -114,7 +114,7 @@ def run(self, fname=None, no_exec=False, single_stage=False, **kwargs):
         stage_cls, repo=self, path=path, params=params, **kwargs
     )
     restore_meta(stage)
-    if kwargs.get("run_cache", True) and stage.can_be_skipped:
+    if not no_exec and kwargs.get("run_cache", True) and stage.can_be_skipped:
         return None
 
     dvcfile = Dvcfile(self, stage.path)
