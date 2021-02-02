@@ -10,7 +10,6 @@ from tempfile import TemporaryDirectory
 import pytest
 
 from dvc.path_info import URLInfo
-from tests import PY39, PYARROW_NOT_AVAILABLE
 
 from .base import Base
 
@@ -84,9 +83,6 @@ def hadoop(test_config):
 
     if platform.system() != "Linux":
         pytest.skip("only supported on Linux")
-
-    if PY39:
-        pytest.skip(PYARROW_NOT_AVAILABLE)
 
     import wget
     from appdirs import user_cache_dir
@@ -252,9 +248,6 @@ class FakeHadoopFileSystem:
 
 @pytest.fixture
 def hdfs(mocker):
-    if PY39:
-        pytest.skip(PYARROW_NOT_AVAILABLE)
-
     # Windows might not have Visual C++ Redistributable for Visual Studio
     # 2015 installed, which will result in the following error:
     # "The pyarrow installation is not built with support for

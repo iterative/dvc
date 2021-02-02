@@ -2,13 +2,8 @@ import pytest
 
 from dvc.output import OUTS_MAP, _get
 from dvc.stage import Stage
-from tests import PY39, PYARROW_NOT_AVAILABLE
 
-MARKERS = [
-    pytest.mark.skipif(PY39, reason=PYARROW_NOT_AVAILABLE),
-    pytest.mark.hdfs,
-]
-
+MARKERS = [pytest.mark.hdfs]
 TESTS = [
     ("s3://bucket/path", "s3"),
     ("gs://bucket/path", "gs"),
