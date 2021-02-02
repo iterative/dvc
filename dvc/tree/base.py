@@ -304,9 +304,8 @@ class BaseTree:
 
     def _iter_hashes(self, path_info, **kwargs):
         if self.PARAM_CHECKSUM in self.DETAIL_FIELDS:
-            for file_info, details in self.ls(
-                path_info, recursive=True, detail=True
-            ):
+            for details in self.ls(path_info, recursive=True, detail=True):
+                file_info = path_info.replace(path=details["name"])
                 hash_info = HashInfo(
                     self.PARAM_CHECKSUM,
                     details[self.PARAM_CHECKSUM],

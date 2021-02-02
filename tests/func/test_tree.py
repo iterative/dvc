@@ -336,8 +336,8 @@ def test_tree_ls(dvc, cloud):
     path_info = tree.path_info
 
     assert {
-        file_info.name
-        for file_info in tree.ls(path_info / "data", recursive=True)
+        os.path.basename(file_key)
+        for file_key in tree.ls(path_info / "data", recursive=True)
     } == {"foo", "baz", "quux"}
 
 
@@ -349,7 +349,8 @@ def test_tree_ls_with_etag(dvc, cloud):
     tree = get_cloud_tree(dvc, **cloud.config)
     path_info = tree.path_info
 
-    for file_info, details in tree.ls(
-        path_info / "data", recursive=True, detail=True
-    ):
-        assert tree.get_file_hash(file_info).value == details["etag"]
+    for details in tree.ls(path_info / "data", recursive=True, detail=True):
+        assert (
+            tree.get_file_hash(path_info.replace(path=details["name"])).value
+            == details["etag"]
+        )

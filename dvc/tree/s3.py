@@ -233,14 +233,14 @@ class S3Tree(BaseTree):
 
         with self._get_bucket(path_info.bucket) as bucket:
             for obj_summary in bucket.objects.filter(Prefix=path_info.path):
-                file_info = path_info.replace(path=obj_summary.key)
                 if detail:
-                    yield file_info, {
+                    yield {
+                        "name": obj_summary.key,
                         "size": obj_summary.size,
                         "etag": obj_summary.e_tag.strip('"'),
                     }
                 else:
-                    yield file_info
+                    yield obj_summary.key
 
     def remove(self, path_info):
         if path_info.scheme != "s3":

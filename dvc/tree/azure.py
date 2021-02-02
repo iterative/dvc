@@ -162,14 +162,14 @@ class AzureTree(BaseTree):
         for blob in container_client.list_blobs(
             name_starts_with=path_info.path
         ):
-            file_info = path_info.replace(path=blob.name)
             if detail:
-                yield file_info, {
+                yield {
+                    "name": blob.name,
                     "size": blob.size,
                     "etag": blob.etag,
                 }
             else:
-                yield file_info
+                yield blob.name
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
