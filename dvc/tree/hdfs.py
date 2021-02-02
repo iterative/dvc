@@ -87,7 +87,7 @@ class HDFSTree(BaseTree):
         root = path_info.path
         dirs = deque([root])
 
-        with self.hdfs(self.path_info) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             if not hdfs.exists(root):
                 return
             while dirs:
