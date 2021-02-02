@@ -255,12 +255,9 @@ def _create_stages(
             external=external,
         )
         restore_meta(stage)
-        if stage.can_be_skipped:
-            stage = None
-        else:
-            Dvcfile(repo, stage.path).remove()
-            if desc:
-                stage.outs[0].desc = desc
+        Dvcfile(repo, stage.path).remove()
+        if desc:
+            stage.outs[0].desc = desc
 
         repo._reset()  # pylint: disable=protected-access
 

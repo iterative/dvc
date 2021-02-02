@@ -73,13 +73,15 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     }
 
 
-def test_multi_stage_run_cached(tmp_dir, dvc, run_copy):
+def test_multi_stage_run_cached(tmp_dir, dvc, run_copy, mocker):
+    from dvc.stage.run import subprocess
+
     tmp_dir.dvc_gen("foo", "foo")
 
     run_copy("foo", "foo2", name="copy-foo1-foo2")
-    stage2 = run_copy("foo", "foo2", name="copy-foo1-foo2")
-
-    assert stage2 is None
+    spy = mocker.spy(subprocess, "Popen")
+    run_copy("foo", "foo2", name="copy-foo1-foo2")
+    assert not spy.called
 
 
 def test_multistage_dump_on_non_cached_outputs(tmp_dir, dvc):

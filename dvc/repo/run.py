@@ -22,8 +22,6 @@ def run(
     from dvc.stage.utils import validate_state
 
     stage = self.stage.create_from_cli(**kwargs)
-    if run_cache and stage.can_be_skipped:
-        return None
 
     validate_state(self, stage, force=force)
 
