@@ -101,7 +101,7 @@ oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
-hdfs = ["pyarrow>=2.0.0;  python_version < '3.9'"]
+hdfs = ["pyarrow>=2.0.0"]
 webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
