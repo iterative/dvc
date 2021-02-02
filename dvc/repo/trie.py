@@ -7,7 +7,7 @@ from dvc.exceptions import OutputDuplicationError, OverlappingOutputPathsError
 def build_outs_trie(stages):
     outs = Trie()
 
-    for stage in filter(bool, stages):  # bug? not using it later
+    for stage in stages:
         for out in stage.outs:
             out_key = out.path_info.parts
 
