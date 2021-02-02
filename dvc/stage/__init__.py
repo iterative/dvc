@@ -267,7 +267,7 @@ class Stage(params.StageParams):
     def _read_env(self, out, checkpoint_func=None) -> Env:
         env: Env = {}
         if out.live:
-            from dvc.env import DVCLIVE_PATH, DVCLIVE_REPORT, DVCLIVE_SUMMARY
+            from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
             from dvc.output import BaseOutput
             from dvc.schema import LIVE_PROPS
 
@@ -278,8 +278,8 @@ class Stage(params.StageParams):
                 env[DVCLIVE_SUMMARY] = str(
                     int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
                 )
-                env[DVCLIVE_REPORT] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_REPORT, True))
+                env[DVCLIVE_HTML] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_HTML, True))
                 )
         elif out.checkpoint and checkpoint_func:
             from dvc.env import DVC_CHECKPOINT

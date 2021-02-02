@@ -81,7 +81,7 @@ def fill_stage_outputs(stage, **kwargs):
 
 
 def _load_live_output(
-    stage, live=None, live_summary=False, live_report=False, **kwargs
+    stage, live=None, live_summary=False, live_html=False, **kwargs
 ):
     from dvc.output import BaseOutput, loads_from
 
@@ -93,7 +93,7 @@ def _load_live_output(
             use_cache=False,
             live={
                 BaseOutput.PARAM_LIVE_SUMMARY: live_summary,
-                BaseOutput.PARAM_LIVE_REPORT: live_report,
+                BaseOutput.PARAM_LIVE_HTML: live_html,
             },
         )
 
@@ -364,7 +364,7 @@ def create_stage_from_cli(
 
     kwargs["cmd"] = cmd[0] if isinstance(cmd, list) and len(cmd) == 1 else cmd
     kwargs["live_summary"] = not kwargs.pop("live_no_summary", False)
-    kwargs["live_report"] = not kwargs.pop("live_no_report", False)
+    kwargs["live_html"] = not kwargs.pop("live_no_html", False)
 
     params = chunk_dict(parse_params(kwargs.pop("params", [])))
     stage = create_stage(
