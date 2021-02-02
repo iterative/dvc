@@ -318,11 +318,21 @@ def _experiments_table(all_experiments, **kwargs):
     )
 
     table = Table()
-    table.add_column("Experiment", no_wrap=True)
+    table.add_column(
+        "Experiment", no_wrap=True, header_style="black on grey93"
+    )
     if not kwargs.get("no_timestamp", False):
-        table.add_column("Created")
-    _add_data_col(table, metric_names, justify="right", no_wrap=True)
-    _add_data_col(table, param_names, justify="left")
+        table.add_column("Created", header_style="black on grey93")
+    _add_data_columns(
+        table,
+        metric_names,
+        justify="right",
+        no_wrap=True,
+        header_style="black on cornsilk1",
+    )
+    _add_data_columns(
+        table, param_names, justify="left", header_style="black on light_cyan1"
+    )
 
     for base_rev, experiments in all_experiments.items():
         for row, _, in _collect_rows(
@@ -333,7 +343,7 @@ def _experiments_table(all_experiments, **kwargs):
     return table
 
 
-def _add_data_col(table, names, **kwargs):
+def _add_data_columns(table, names, **kwargs):
     count = Counter(
         name for path in names for name in names[path] for path in names
     )
