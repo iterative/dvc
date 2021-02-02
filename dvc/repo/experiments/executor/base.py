@@ -379,7 +379,7 @@ class BaseExecutor(ABC):
     ):
         """Commit stages as an experiment and return the commit SHA."""
         rev = scm.get_rev()
-        if not scm.is_dirty(untracked_files=True):
+        if not scm.is_dirty():
             logger.debug("No changes to commit")
             raise UnchangedExperimentError(rev)
 

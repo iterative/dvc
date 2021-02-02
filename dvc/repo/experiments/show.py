@@ -2,10 +2,12 @@ import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 
+from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
+from dvc.scm.base import SCMError
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +81,20 @@ def show(
     revs=None,
     all_commits=False,
     sha_only=False,
+    num=1,
 ):
     res = defaultdict(OrderedDict)
 
+    if num < 1:
+        raise InvalidArgumentError(f"Invalid number of commits '{num}'")
+
     if revs is None:
-        revs = [repo.scm.get_rev()]
+        revs = []
+        for n in range(num):
+            try:
+                revs.append(repo.scm.resolve_rev(f"HEAD~{n}"))
+            except SCMError:
+                break
 
     revs = OrderedDict(
         (rev, None)
