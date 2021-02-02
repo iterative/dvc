@@ -32,7 +32,6 @@ from .utils import (
     fill_stage_dependencies,
     fill_stage_outputs,
     get_dump,
-    stage_dump_eq,
 )
 
 if TYPE_CHECKING:
@@ -416,50 +415,8 @@ class Stage(params.StageParams):
             raise StageUpdateError(self.relpath)
         update_import(self, rev=rev)
 
-    @property
-    def can_be_skipped(self):
-        if not self.dvcfile.exists():
-            return False
-
-        has_persist_outs = any(out.persist for out in self.outs)
-        if has_persist_outs:
-            logger.warning("Build cache is ignored when persisting outputs.")
-            return False
-
-        if self.is_cached and not self.is_callback and not self.always_changed:
-            logger.info("Stage is cached, skipping")
-            return True
-
-        return False
-
     def reload(self):
         return self.dvcfile.stage
-
-    @property
-    def is_cached(self):
-        """Checks if this stage has been already ran and stored"""
-        old = self.reload()
-        if old.changed_outs():
-            return False
-
-        # NOTE: need to save checksums for deps in order to compare them
-        # with what is written in the old stage.
-        self.save_deps()
-        if not stage_dump_eq(Stage, old.dumpd(), self.dumpd()):
-            return False
-
-        # NOTE: committing to prevent potential data duplication. For example
-        #
-        #    $ dvc config cache.type hardlink
-        #    $ echo foo > foo
-        #    $ dvc add foo
-        #    $ rm -f foo
-        #    $ echo foo > foo
-        #    $ dvc add foo # should replace foo with a link to cache
-        #
-        old.commit()
-
-        return True
 
     def dumpd(self):
         return get_dump(self)
@@ -728,10 +685,6 @@ class PipelineStage(Stage):
 
     def reload(self):
         return self.dvcfile.stages[self.name]
-
-    @property
-    def is_cached(self):
-        return self.name in self.dvcfile.stages and super().is_cached
 
     def _status_stage(self, ret):
         if self.cmd_changed:

@@ -1,7 +1,6 @@
 import os
 import pathlib
 from contextlib import suppress
-from itertools import product
 from typing import TYPE_CHECKING, Any, Union
 
 from funcy import concat, first, lsplit, rpartial, without
@@ -164,32 +163,6 @@ def check_missing_outputs(stage):
     paths = [str(out) for out in stage.outs if not out.exists]
     if paths:
         raise MissingDataSource(paths)
-
-
-def stage_dump_eq(stage_cls, old_d, new_d):
-    # NOTE: need to remove checksums from old dict in order to compare
-    # it to the new one, since the new one doesn't have checksums yet.
-    from ..tree.local import LocalTree
-    from ..tree.s3 import S3Tree
-
-    old_d.pop(stage_cls.PARAM_MD5, None)
-    new_d.pop(stage_cls.PARAM_MD5, None)
-    outs = old_d.get(stage_cls.PARAM_OUTS, [])
-    for out in outs:
-        out.pop(LocalTree.PARAM_CHECKSUM, None)
-        out.pop(S3Tree.PARAM_CHECKSUM, None)
-        out.pop(HashInfo.PARAM_SIZE, None)
-        out.pop(HashInfo.PARAM_NFILES, None)
-
-    # outs and deps are lists of dicts. To check equality, we need to make
-    # them independent of the order, so, we convert them to dicts.
-    combination = product(
-        [old_d, new_d], [stage_cls.PARAM_DEPS, stage_cls.PARAM_OUTS]
-    )
-    for coll, key in combination:
-        if coll.get(key):
-            coll[key] = {item["path"]: item for item in coll[key]}
-    return old_d == new_d
 
 
 def compute_md5(stage):
