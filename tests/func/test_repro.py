@@ -66,6 +66,36 @@ class TestReproByOuts(TestRepro):
         self.assertIn(self.dvc.stage.get_target(self.file1_stage), res)
 
 
+def test_repro_glob(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("input", "file content")
+    run_copy("input", "copy_output", name="copy_stage")
+    os.remove("copy_output")
+
+    print(dvc.stage.collect())
+    print(type(dvc.stage.collect()))
+    print(dvc.stage.collect_granular())
+    print(type(dvc.stage.collect_granular()))
+
+    res = dvc.reproduce(targets=["copy_*"], glob=True)
+    assert dvc.stage.from_target("copy_stage")[0] in res
+
+
+def test_repro_by_outs(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("input", "file content")
+    run_copy("input", "copy_output", name="copy_stage")
+    os.remove("copy_output")
+    res = dvc.reproduce(targets=["copy_output"])
+    assert dvc.stage.from_target("copy_stage")[0] in res
+
+
+def test_repro_glob_by_outs(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("input", "file content")
+    run_copy("input", "copy_output", name="copy_stage")
+    os.remove("copy_output")
+    res = dvc.reproduce(targets=["copy_o*"], glob=True)
+    assert dvc.stage.from_target("copy_stage")[0] in res
+
+
 class TestReproFail(TestRepro):
     def test(self):
         os.unlink(self.CODE)
