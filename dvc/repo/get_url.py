@@ -1,7 +1,7 @@
 import os
 
 
-def get_url(url, out=None):
+def get_url(url, out=None, jobs=None):
     import dvc.dependency as dependency
     import dvc.output as output
     from dvc.utils import resolve_output
@@ -17,4 +17,4 @@ def get_url(url, out=None):
     (out,) = output.loads_from(None, [out], use_cache=False)
     if not dep.exists:
         raise dep.DoesNotExistError(dep)
-    dep.download(out)
+    dep.download(out, jobs=jobs)
