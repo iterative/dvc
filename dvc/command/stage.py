@@ -135,7 +135,7 @@ class CmdStageAdd(CmdBase):
 
         with repo.scm.track_file_changes(config=repo.config):
             stage.ignore_outs()
-            stage.dump()
+            stage.dump(update_lock=False)
         return 0
 
 

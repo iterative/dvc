@@ -27,7 +27,7 @@ def test_repro_unicode(tmp_dir, dvc, dummy_stage):
     dummy_stage(params=[{"settings.json": ["Ω_value"]}])
     (stage,) = dvc.reproduce(dry=True)
     stage.cmd = "foo"
-    stage.dvcfile._lockfile.dump(stage)
+    stage.dump()
 
     dvc.remove(stage.name)
     assert not (tmp_dir / "dvc.yaml").exists()
