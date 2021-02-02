@@ -206,7 +206,7 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
 
     expected = {"workspace", init_rev, next_rev}
     results = dvc.experiments.show(num=2)
-    assert set(results.keys()) == {"workspace", init_rev, next_rev}
+    assert set(results.keys()) == expected
 
     expected = {"workspace"} | set(scm.branch_revs("master"))
     results = dvc.experiments.show(all_commits=True)
