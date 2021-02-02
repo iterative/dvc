@@ -1,5 +1,4 @@
 import argparse
-import io
 import logging
 from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
@@ -16,6 +15,9 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
+
+
+SHOW_MAX_WIDTH = 1024
 
 
 def _filter_name(names, label, filter_strs):
@@ -299,7 +301,7 @@ def _parse_filter_list(param_list):
     return ret
 
 
-def _show_experiments(all_experiments, console, **kwargs):
+def _experiments_table(all_experiments, **kwargs):
     from rich.table import Table
 
     include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
@@ -328,7 +330,7 @@ def _show_experiments(all_experiments, console, **kwargs):
         ):
             table.add_row(*row)
 
-    console.print(table)
+    return table
 
 
 def _add_data_col(table, names, **kwargs):
@@ -351,8 +353,6 @@ class CmdExperimentsShow(CmdBase):
     def run(self):
         from rich.console import Console
 
-        from dvc.utils.pager import pager
-
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -368,23 +368,13 @@ class CmdExperimentsShow(CmdBase):
                 logger.info(json.dumps(all_experiments, default=_format_json))
                 return 0
 
-            if self.args.no_pager:
-                console = Console()
-            else:
-                # Note: rich does not currently include a native way to force
-                # infinite width for use with a pager
-                console = Console(
-                    file=io.StringIO(), force_terminal=True, width=9999
-                )
-
             if self.args.precision is None:
                 precision = DEFAULT_PRECISION
             else:
                 precision = self.args.precision
 
-            _show_experiments(
+            table = _experiments_table(
                 all_experiments,
-                console,
                 include_metrics=self.args.include_metrics,
                 exclude_metrics=self.args.exclude_metrics,
                 include_params=self.args.include_params,
@@ -395,8 +385,22 @@ class CmdExperimentsShow(CmdBase):
                 precision=precision,
             )
 
-            if not self.args.no_pager:
-                pager(console.file.getvalue())
+            console = Console()
+            if self.args.no_pager:
+                console.print(table)
+            else:
+                from dvc.utils.pager import DvcPager
+
+                # NOTE: rich does not have native support for unlimited width
+                # via pager. we override rich table compression by setting
+                # console width to the full width of the table
+                measurement = table.__rich_measure__(console, SHOW_MAX_WIDTH)
+                console._width = (  # pylint: disable=protected-access
+                    measurement.maximum
+                )
+                with console.pager(pager=DvcPager(), styles=True):
+                    console.print(table)
+
         except DvcException:
             logger.exception("failed to show experiments")
             return 1
