@@ -262,7 +262,7 @@ class Config(dict):
         return self.load_one(level)
 
     @contextmanager
-    def edit(self, level=None):
+    def edit(self, level=None, validate=True):
         # NOTE: we write to repo config by default, same as git config
         level = level or "repo"
         if level in {"repo", "local"} and self.dvc_dir is None:
@@ -275,10 +275,12 @@ class Config(dict):
 
         merged_conf = self.load_config_to_level(level)
         merge(merged_conf, conf)
-        self.validate(merged_conf)
+
+        if validate:
+            self.validate(merged_conf)
 
         self._save_config(level, conf)
-        self.load()
+        self.load(validate=validate)
 
     @staticmethod
     def validate(data):

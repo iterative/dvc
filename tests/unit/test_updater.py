@@ -10,14 +10,23 @@ from dvc import __version__
 from dvc.updater import Updater
 
 
+@pytest.fixture
+def tmp_global_dir(tmp_path):
+    """
+    Fixture to prevent modifying the actual global config
+    """
+    with mock.patch("dvc.config.Config.get_dir", return_value=str(tmp_path)):
+        yield
+
+
 @pytest.fixture(autouse=True)
 def mock_env(monkeypatch):
-    monkeypatch.delenv("CI", None)
+    monkeypatch.delenv("CI", raising=False)
     monkeypatch.setenv("DVC_TEST", "False")
 
 
 @pytest.fixture
-def updater(tmp_path):
+def updater(tmp_path, tmp_global_dir):
     return Updater(tmp_path)
 
 
@@ -45,16 +54,17 @@ def test_fetch(mock_get, updater):
 
 
 @pytest.mark.parametrize(
-    "core, result",
+    "config, result",
     [
         ({}, True),
         ({"check_update": "true"}, True),
         ({"check_update": "false"}, False),
     ],
 )
-def test_is_enabled(dvc, updater, core, result):
-    with dvc.config.edit("local") as conf:
-        conf["core"] = core
+def test_is_enabled(dvc, updater, config, result):
+    with dvc.config.edit(validate=False) as conf:
+        conf["core"] = config
+
     assert result == updater.is_enabled()
 
 
