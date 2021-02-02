@@ -701,8 +701,8 @@ class Stage(params.StageParams):
 
         self.outs[0].merge(ancestor_out, other.outs[0])
 
-    def dump(self, update_lock: bool = False):
-        self.dvcfile.dump(self, update_lock=update_lock)
+    def dump(self, **kwargs):
+        self.dvcfile.dump(self, **kwargs)
 
 
 class PipelineStage(Stage):
