@@ -175,7 +175,7 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     )
 
     with pytest.raises(ApplyConflictError):
-        dvc.experiments.apply(exp_b)
+        dvc.experiments.apply(exp_b, force=False)
         # failed apply should revert everything to prior state
         assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
         assert (
@@ -184,7 +184,7 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
             else "foo: 2"
         )
 
-    dvc.experiments.apply(exp_b, force=True)
+    dvc.experiments.apply(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
     assert (
         (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original

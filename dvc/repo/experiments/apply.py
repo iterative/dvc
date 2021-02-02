@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def apply(repo, rev, force=False, **kwargs):
+def apply(repo, rev, force=True, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
     from dvc.scm.base import MergeConflictError, SCMError
 
