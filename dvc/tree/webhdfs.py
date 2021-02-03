@@ -45,16 +45,13 @@ class WebHDFSTree(BaseTree):
         if not url:
             return
 
-        parsed = urlparse(url)
-        user = parsed.username or config.get("user")
+        self.path_info = self.PATH_CLS(url)
 
-        self.path_info = self.PATH_CLS.from_parts(
-            scheme="webhdfs",
-            host=parsed.hostname,
-            user=user,
-            port=parsed.port,
-            path=parsed.path,
-        )
+        parsed = urlparse(url)
+
+        self.host = parsed.hostname
+        self.user = parsed.username or config.get("user")
+        self.port = parsed.port
 
         self.hdfscli_config = config.get("hdfscli_config")
         self.token = config.get("webhdfs_token")
@@ -65,7 +62,6 @@ class WebHDFSTree(BaseTree):
     def hdfs_client(self):
         import hdfs
 
-        logger.debug("URL: %s", self.path_info)
         logger.debug("HDFSConfig: %s", self.hdfscli_config)
 
         try:
@@ -82,13 +78,14 @@ class WebHDFSTree(BaseTree):
             if not any(err in exc_msg for err in errors):
                 raise
 
-            http_url = f"http://{self.path_info.host}:{self.path_info.port}"
+            http_url = f"http://{self.host}:{self.port}"
+            logger.debug("URL: %s", http_url)
 
             if self.token is not None:
                 client = hdfs.TokenClient(http_url, token=self.token, root="/")
             else:
                 client = hdfs.InsecureClient(
-                    http_url, user=self.path_info.user, root="/"
+                    http_url, user=self.user, root="/"
                 )
 
         return client
