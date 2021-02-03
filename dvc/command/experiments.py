@@ -302,7 +302,7 @@ def _parse_filter_list(param_list):
 
 
 def _experiments_table(all_experiments, **kwargs):
-    from rich.table import Table
+    from dvc.utils.table import Table
 
     include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
     exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
@@ -347,10 +347,13 @@ def _add_data_columns(table, names, **kwargs):
     count = Counter(
         name for path in names for name in names[path] for path in names
     )
+    first = True
     for path in names:
         for name in names[path]:
             col_name = name if count[name] == 1 else f"{path}:{name}"
+            kwargs["collapse"] = False if first else True
             table.add_column(col_name, **kwargs)
+            first = False
 
 
 def _format_json(item):
