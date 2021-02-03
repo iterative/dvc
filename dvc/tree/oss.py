@@ -45,6 +45,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
 
+        self.bucket = self.path_info.bucket
         self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
 
         self.key_id = (
@@ -64,12 +65,11 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
     def oss_service(self):
         import oss2
 
-        logger.debug(f"URL: {self.path_info}")
         logger.debug(f"key id: {self.key_id}")
         logger.debug(f"key secret: {self.key_secret}")
 
         auth = oss2.Auth(self.key_id, self.key_secret)
-        bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)
+        bucket = oss2.Bucket(auth, self.endpoint, self.bucket)
 
         # Ensure bucket exists
         try:
@@ -84,7 +84,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         return bucket
 
     def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.path_info.bucket
+        assert path_info.bucket == self.bucket
 
         return self.oss_service.sign_url("GET", path_info.path, expires)
 

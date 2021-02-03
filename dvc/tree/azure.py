@@ -31,10 +31,12 @@ class AzureTree(BaseTree):
 
         url = config.get("url", "azure://")
         self.path_info = self.PATH_CLS(url)
+        self.bucket = self.path_info.bucket
 
-        if not self.path_info.bucket:
+        if not self.bucket:
             container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
+            self.bucket = self.path_info.bucket
 
         self._conn_str = config.get(
             "connection_string"
@@ -73,8 +75,6 @@ class AzureTree(BaseTree):
         )
         from azure.storage.blob import BlobServiceClient
 
-        logger.debug(f"URL {self.path_info}")
-
         if self._conn_str:
             logger.debug(f"Using connection string '{self._conn_str}'")
             blob_service = BlobServiceClient.from_connection_string(
@@ -86,10 +86,8 @@ class AzureTree(BaseTree):
                 self._account_url, credential=self._credential
             )
 
-        logger.debug(f"Container name {self.path_info.bucket}")
-        container_client = blob_service.get_container_client(
-            self.path_info.bucket
-        )
+        logger.debug(f"Container name {self.bucket}")
+        container_client = blob_service.get_container_client(self.bucket)
 
         try:  # verify that container exists
             container_client.get_container_properties()
