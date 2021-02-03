@@ -30,8 +30,7 @@ jobs:
       run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
     - name: Check README
       run: python setup.py checkdocs
-    - name: Check formatting
-      run: pre-commit run --all-files
+    - uses: pre-commit/action@v2.0.0
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
