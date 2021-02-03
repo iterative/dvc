@@ -43,6 +43,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     CHUNK_SIZE = 2 ** 16
 
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     # Constructor
     def __init__(self, repo, config):
@@ -169,6 +170,34 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 else:
                     # Yield path info to non directory
                     yield info
+
+    def ls(self, path_info, recursive=False, detail=False):
+        dirs = deque([path_info.path])
+
+        while dirs:
+            for entry in self._client.list(dirs.pop(), get_info=True):
+                path = entry["path"]
+                if entry["isdir"]:
+                    dirs.append(path)
+                    continue
+
+                if detail:
+                    yield {
+                        "type": "file",
+                        "name": path,
+                        "size": entry["size"],
+                        "etag": entry["etag"],
+                    }
+                else:
+                    yield path
+
+            if not recursive:
+                for entry in dirs:
+                    if detail:
+                        yield {"type": "directory", "name": entry}
+                    else:
+                        yield entry
+                return None
 
     # Removes file/directory
     def remove(self, path_info):

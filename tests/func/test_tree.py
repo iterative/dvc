@@ -333,6 +333,7 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("webdav"),
     ],
 )
 def test_tree_ls(dvc, cloud):
@@ -352,6 +353,7 @@ def test_tree_ls(dvc, cloud):
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("webdav"),
     ],
 )
 def test_tree_ls_with_etag(dvc, cloud):
