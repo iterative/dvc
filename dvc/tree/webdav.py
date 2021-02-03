@@ -82,24 +82,23 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             if self.user is None and self.path_info.user is not None:
                 self.user = self.path_info.user
 
+            # Construct hostname from path_info by stripping path
+            http_info = HTTPURLInfo(self.path_info.url)
+            self.hostname = http_info.replace(path="").url
+
     # Webdav client
     @wrap_prop(threading.Lock())
     @cached_property
     def _client(self):
         from webdav3.client import Client
 
-        # Construct hostname from path_info by stripping path
-        http_info = HTTPURLInfo(self.path_info.url)
-        hostname = http_info.replace(path="").url
-
         # Set password or ask for it
         if self.ask_password and self.password is None and self.token is None:
-            host, user = self.path_info.host, self.path_info.user
-            self.password = ask_password(host, user)
+            self.password = ask_password(self.hostname, self.user)
 
         # Setup webdav client options dictionary
         options = {
-            "webdav_hostname": hostname,
+            "webdav_hostname": self.hostname,
             "webdav_login": self.user,
             "webdav_password": self.password,
             "webdav_token": self.token,
@@ -114,12 +113,12 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Check whether client options are valid
         if not client.valid():
             raise ConfigError(
-                f"Configuration for WebDAV {hostname} is invalid."
+                f"Configuration for WebDAV {self.hostname} is invalid."
             )
 
         # Check whether connection is valid (root should always exist)
-        if not client.check(self.path_info.path):
-            raise WebDAVConnectionError(hostname)
+        if not client.check("/"):
+            raise WebDAVConnectionError(self.hostname)
 
         return client
 
@@ -198,7 +197,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # Creates directories
     def makedirs(self, path_info):
         # Terminate recursion
-        if path_info.path == self.path_info.path or self.exists(path_info):
+        if path_info.path == "/" or self.exists(path_info):
             return
 
         # Recursively descent to root
