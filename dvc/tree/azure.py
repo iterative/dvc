@@ -153,7 +153,9 @@ class AzureTree(BaseTree):
 
             yield path_info.replace(path=fname)
 
-    def ls(self, path_info, recursive=False, detail=False):
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
         assert recursive
 
         container_client = self.blob_service.get_container_client(

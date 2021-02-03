@@ -171,7 +171,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                     # Yield path info to non directory
                     yield info
 
-    def ls(self, path_info, recursive=False, detail=False):
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
         dirs = deque([path_info.path])
 
         while dirs:

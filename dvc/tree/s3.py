@@ -228,7 +228,9 @@ class S3Tree(BaseTree):
 
             yield path_info.replace(path=fname)
 
-    def ls(self, path_info, recursive=False, detail=False):
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
         assert recursive
 
         with self._get_bucket(path_info.bucket) as bucket:

@@ -144,7 +144,9 @@ class GSTree(BaseTree):
                 continue
             yield path_info.replace(fname)
 
-    def ls(self, path_info, recursive=False, detail=False):
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
         assert recursive
 
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
