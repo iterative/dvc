@@ -315,3 +315,51 @@ def test_update_from_subrepos(tmp_dir, dvc, erepo_dir, is_dvc):
         "url": repo_path,
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+    ],
+    indirect=True,
+)
+def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
+    workspace.gen("foo", "foo")
+    stage = dvc.imp_url("remote://workspace/foo", to_remote=True)
+
+    workspace.gen("foo", "bar")
+    stage = dvc.update(stage.path, to_remote=True)
+
+    dvc.pull("foo")
+    assert (tmp_dir / "foo").read_text() == "bar"
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+    ],
+    indirect=True,
+)
+def test_update_import_url_to_remote_directory(
+    tmp_dir, dvc, workspace, local_remote
+):
+    workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
+    stage = dvc.imp_url("remote://workspace/data", to_remote=True)
+
+    workspace.gen({"data": {"foo2": "foo2", "bar": {"baz2": "baz2"}}})
+    stage = dvc.update(stage.path, to_remote=True)
+
+    dvc.pull("data")
+    assert (tmp_dir / "data").read_text() == {
+        "foo": "foo",
+        "foo2": "foo2",
+        "bar": {"baz": "baz", "baz2": "baz2"},
+    }
