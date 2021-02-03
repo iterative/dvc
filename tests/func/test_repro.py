@@ -96,6 +96,17 @@ def test_repro_glob_by_outs(tmp_dir, dvc, run_copy):
     assert dvc.stage.from_target("copy_stage")[0] in res
 
 
+def test_repro_glob_by_outs_multiple_match(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("input", "file content")
+    run_copy("input", "copy_output", name="copy_stage")
+    run_copy("input", "copy_output2", name="copy_stage2")
+    os.remove("copy_output")
+    os.remove("copy_output2")
+    res = dvc.reproduce(targets=["copy_o*"], glob=True)
+    assert dvc.stage.from_target("copy_stage")[0] in res
+    assert dvc.stage.from_target("copy_stage2")[0] in res
+
+
 class TestReproFail(TestRepro):
     def test(self):
         os.unlink(self.CODE)
