@@ -42,9 +42,8 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         url = config.get("url")
         if url:
             self.path_info = self.PATH_CLS(url)
-            user = config.get("user", None)
-            if user:
-                self.path_info.user = user
+            self.user = config.get("user", None)
+            self.host = self.path_info.host
         else:
             self.path_info = None
 
@@ -56,20 +55,16 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
 
-    def _auth_method(self, path_info=None):
+    def _auth_method(self):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
-
-        if path_info is None:
-            path_info = self.path_info
 
         if self.auth:
             if self.ask_password and self.password is None:
-                host, user = path_info.host, path_info.user
-                self.password = ask_password(host, user)
+                self.password = ask_password(self.host, self.user)
             if self.auth == "basic":
-                return HTTPBasicAuth(path_info.user, self.password)
+                return HTTPBasicAuth(self.user, self.password)
             if self.auth == "digest":
-                return HTTPDigestAuth(path_info.user, self.password)
+                return HTTPDigestAuth(self.user, self.password)
             if self.auth == "custom" and self.custom_auth_header:
                 self.headers.update({self.custom_auth_header: self.password})
         return None
