@@ -113,6 +113,7 @@ class GDriveTree(BaseTree):
             )
 
         self._bucket = self.path_info.bucket
+        self._path = self.path_info.path
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
         self._service_account_email = config.get(
@@ -284,7 +285,7 @@ class GDriveTree(BaseTree):
             ),
         }
 
-        self._cache_path_id(self.path_info.path, cache["root_id"], cache)
+        self._cache_path_id(self._path, cache["root_id"], cache)
 
         for item in self._gdrive_list(
             "'{}' in parents and trashed=false".format(cache["root_id"])
