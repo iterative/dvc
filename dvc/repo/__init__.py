@@ -205,9 +205,15 @@ class Repo:
     @staticmethod
     @contextmanager
     def open(url, *args, **kwargs):
+        if url is None:
+            url = os.getcwd()
+
         if os.path.exists(url):
-            yield Repo(url, *args, **kwargs)
-            return
+            try:
+                yield Repo(url, *args, **kwargs)
+                return
+            except NotDvcRepoError:
+                pass  # fallthrough to external_repo
 
         from dvc.external_repo import external_repo
 

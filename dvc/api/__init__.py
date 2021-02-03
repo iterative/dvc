@@ -1,15 +1,9 @@
 import os
 from contextlib import _GeneratorContextManager as GCM
-from contextlib import contextmanager
 
 from funcy import reraise
 
-from dvc.exceptions import (
-    NotDvcRepoError,
-    OutputNotFoundError,
-    PathMissingError,
-)
-from dvc.external_repo import external_repo
+from dvc.exceptions import OutputNotFoundError, PathMissingError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 
@@ -25,7 +19,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
-    with _make_repo(repo, rev=rev) as _repo:
+    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
         path_info = PathInfo(_repo.root_dir) / path
         with reraise(FileNotFoundError, PathMissingError(path, repo)):
             metadata = _repo.repo_tree.metadata(path_info)
@@ -78,7 +72,7 @@ class _OpenContextManager(GCM):
 
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    with _make_repo(repo, rev=rev) as _repo:
+    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
         with _repo.open_by_relpath(
             path, remote=remote, mode=mode, encoding=encoding
         ) as fd:
@@ -95,19 +89,6 @@ def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
         path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
     ) as fd:
         return fd.read()
-
-
-@contextmanager
-def _make_repo(repo_url=None, rev=None):
-    repo_url = repo_url or os.getcwd()
-    if rev is None and os.path.exists(repo_url):
-        try:
-            yield Repo(repo_url, subrepos=True)
-            return
-        except NotDvcRepoError:
-            pass  # fallthrough to external_repo
-    with external_repo(url=repo_url, rev=rev) as repo:
-        yield repo
 
 
 def make_checkpoint():
