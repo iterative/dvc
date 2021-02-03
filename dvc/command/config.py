@@ -173,11 +173,11 @@ level_group.add_argument(
     help="Use system config.",
 )
 level_group.add_argument(
-    "--repo",
+    "--project",
     dest="level",
     action="store_const",
     const="repo",
-    help="Use repo config (.dvc/config).",
+    help="Use project config (.dvc/config).",
 )
 level_group.add_argument(
     "--local",

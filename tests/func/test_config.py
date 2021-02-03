@@ -85,13 +85,17 @@ def test_config_set_local(tmp_dir, dvc):
         (["remote.myremote.profile"], 0, "iterative"),
         (["remote.myremote.profile", "--local"], 0, "iterative"),
         (
-            ["remote.myremote.profile", "--repo"],
+            ["remote.myremote.profile", "--project"],
             251,
             "option 'profile' doesn't exist",
         ),
         (["remote.other.url"], 0, "gs://bucket/path"),
         (["remote.other.url", "--local"], 0, "gs://bucket/path"),
-        (["remote.other.url", "--repo"], 251, "remote 'other' doesn't exist"),
+        (
+            ["remote.other.url", "--project"],
+            251,
+            "remote 'other' doesn't exist",
+        ),
     ],
 )
 def test_config_get(tmp_dir, dvc, caplog, args, ret, msg):
@@ -262,7 +266,8 @@ def test_config_show_origin_single(tmp_dir, dvc, caplog):
 
     caplog.clear()
     assert (
-        main(["config", "--show-origin", "--repo", "remote.myremote.url"]) == 0
+        main(["config", "--show-origin", "--project", "remote.myremote.url"])
+        == 0
     )
     assert (
         "{}\t{}\n".format(os.path.join(".dvc", "config"), "s3://bucket/path")
@@ -276,7 +281,7 @@ def test_config_show_origin_single(tmp_dir, dvc, caplog):
     )
 
     caplog.clear()
-    assert main(["config", "--list", "--repo", "--show-origin"]) == 0
+    assert main(["config", "--list", "--project", "--show-origin"]) == 0
     assert (
         "{}\t{}\n".format(
             os.path.join(".dvc", "config"),
