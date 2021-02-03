@@ -143,6 +143,22 @@ class GSTree(BaseTree):
                 continue
             yield path_info.replace(fname)
 
+    def ls(self, path_info, recursive=False, detail=False):
+        assert recursive
+
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path
+        ):
+            if detail:
+                yield {
+                    "type": "file",
+                    "name": blob.name,
+                    "md5": blob.md5_hash.encode().hex(),
+                    "size": blob.size,
+                }
+            else:
+                yield blob.name
+
     def remove(self, path_info):
         if path_info.scheme != "gs":
             raise NotImplementedError

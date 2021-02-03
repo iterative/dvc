@@ -164,6 +164,7 @@ class AzureTree(BaseTree):
         ):
             if detail:
                 yield {
+                    "type": "file",
                     "name": blob.name,
                     "size": blob.size,
                     "etag": blob.etag,

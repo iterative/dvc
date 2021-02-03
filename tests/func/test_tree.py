@@ -328,7 +328,12 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
 
 
 @pytest.mark.parametrize(
-    "cloud", [pytest.lazy_fixture("s3"), pytest.lazy_fixture("azure")],
+    "cloud",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+    ],
 )
 def test_tree_ls(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
@@ -342,7 +347,12 @@ def test_tree_ls(dvc, cloud):
 
 
 @pytest.mark.parametrize(
-    "cloud", [pytest.lazy_fixture("s3"), pytest.lazy_fixture("azure")],
+    "cloud",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+    ],
 )
 def test_tree_ls_with_etag(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
@@ -352,5 +362,5 @@ def test_tree_ls_with_etag(dvc, cloud):
     for details in tree.ls(path_info / "data", recursive=True, detail=True):
         assert (
             tree.get_file_hash(path_info.replace(path=details["name"])).value
-            == details["etag"]
+            == details[tree.PARAM_CHECKSUM]
         )

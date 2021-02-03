@@ -235,6 +235,7 @@ class S3Tree(BaseTree):
             for obj_summary in bucket.objects.filter(Prefix=path_info.path):
                 if detail:
                     yield {
+                        "type": "file",
                         "name": obj_summary.key,
                         "size": obj_summary.size,
                         "etag": obj_summary.e_tag.strip('"'),
