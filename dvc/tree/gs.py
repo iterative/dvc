@@ -56,6 +56,7 @@ class GSTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
     PARAM_CHECKSUM = "md5"
+    DETAIL_FIELDS = frozenset(("md5", "size"))
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
