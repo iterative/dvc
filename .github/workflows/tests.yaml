@@ -18,9 +18,13 @@ env:
   GS_CREDS_JSON: ${{ secrets.GS_CREDS_JSON }}
 
 jobs:
-  lint:
+  pretest:
     runs-on: ubuntu-latest
     steps:
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.7.0
+      with:
+        access_token: ${{ github.token }}
     - uses: actions/checkout@v2.3.2
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.1.4
