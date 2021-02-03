@@ -124,7 +124,10 @@ def reproduce(
     else:
         for target in targets:
             granular_stages = self.stage.collect_granular(
-                target, recursive=recursive, accept_group=accept_group
+                target,
+                recursive=recursive,
+                accept_group=accept_group,
+                glob=glob,
             )
             stages.update([stage_info.stage for stage_info in granular_stages])
 

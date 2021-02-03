@@ -74,11 +74,12 @@ def _collect_specific_target(
     with_deps: bool,
     recursive: bool,
     accept_group: bool,
+    glob: bool = False,
 ) -> Tuple[StageIter, "OptStr", "OptStr"]:
     from dvc.dvcfile import is_valid_filename
 
     # Optimization: do not collect the graph for a specific target
-    file, name = parse_target(target)
+    file, name = parse_target(target, isa_glob=glob)
 
     # if the target has a file, we can load directly from it.
     if not file:
@@ -90,12 +91,14 @@ def _collect_specific_target(
         logger.debug(msg, target, PIPELINE_FILE)
         if not (recursive and loader.fs.isdir(target)):
             stages = _maybe_collect_from_dvc_yaml(
-                loader, target, with_deps, accept_group=accept_group,
+                loader, target, with_deps, accept_group=accept_group, glob=glob
             )
             if stages:
                 return stages, file, name
     elif not with_deps and is_valid_filename(file):
-        stages = loader.load_all(file, name, accept_group=accept_group)
+        stages = loader.load_all(
+            file, name, accept_group=accept_group, glob=glob
+        )
         return stages, file, name
     return [], file, name
 
@@ -372,6 +375,7 @@ class StageLoad:
         recursive: bool = False,
         graph: "DiGraph" = None,
         accept_group: bool = False,
+        glob: bool = False,
     ) -> List[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 
@@ -395,7 +399,7 @@ class StageLoad:
             return [StageInfo(stage) for stage in self.repo.stages]
 
         stages, file, _ = _collect_specific_target(
-            self, target, with_deps, recursive, accept_group
+            self, target, with_deps, recursive, accept_group, glob=glob
         )
         if not stages:
             if not (recursive and self.fs.isdir(target)):
