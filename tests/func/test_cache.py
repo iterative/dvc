@@ -258,5 +258,5 @@ def test_cache_dir_local(tmp_dir, dvc, caplog):
     assert path in caplog.text
 
     caplog.clear()
-    assert main(["cache", "dir", "--repo"]) == 251
+    assert main(["cache", "dir", "--project"]) == 251
     assert "option 'dir' doesn't exist in section 'cache'" in caplog.text
