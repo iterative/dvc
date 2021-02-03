@@ -204,7 +204,7 @@ class BaseTree:
         """
         raise NotImplementedError
 
-    def ls(self, path_info, recursive=False, detail=False):
+    def ls(self, path_info, detail=False, **kwargs):
         raise RemoteActionNotImplemented("ls", self.scheme)
 
     def is_empty(self, path_info):

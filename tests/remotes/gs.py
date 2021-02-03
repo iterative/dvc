@@ -79,7 +79,6 @@ class GCP(Base, CloudURLInfo):
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         assert parents
-        assert not exist_ok
 
     def write_bytes(self, contents):
         assert isinstance(contents, bytes)
