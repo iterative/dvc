@@ -81,10 +81,10 @@ class LocalCache(CloudCache):
             )
         ]
 
-    def already_cached(self, path_info):
+    def already_cached(self, path_info, tree):
         assert path_info.scheme in ["", "local"]
 
-        return super().already_cached(path_info)
+        return super().already_cached(path_info, tree)
 
     def _verify_link(self, path_info, link_type):
         if link_type == "hardlink" and self.tree.getsize(path_info) == 0:

@@ -252,6 +252,7 @@ class SSHTree(BaseTree):
             return ssh.getsize(path_info.path)
 
     def _upload_fobj(self, fobj, to_info):
+        self.makedirs(to_info.parent)
         with self.open(to_info, mode="wb") as fdest:
             shutil.copyfileobj(fobj, fdest)
 

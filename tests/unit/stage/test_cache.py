@@ -47,7 +47,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 2
+    assert checkout_spy.call_count == 4
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -100,7 +100,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 2
+    assert checkout_spy.call_count == 4
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -154,7 +154,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 2
+    assert checkout_spy.call_count == 4
 
     assert (tmp_dir / "wdir" / "out").exists()
     assert (tmp_dir / "wdir" / "out_no_cache").exists()
