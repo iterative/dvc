@@ -36,11 +36,11 @@ class Base(URLInfo):
 
             if isinstance(contents, dict):
                 if not contents:
-                    path.mkdir(parents=True)
+                    path.mkdir(parents=True, exist_ok=True)
                 else:
                     self._gen(contents, prefix=path)
             else:
-                path.parent.mkdir(parents=True)
+                path.parent.mkdir(parents=True, exist_ok=True)
                 if isinstance(contents, bytes):
                     path.write_bytes(contents)
                 else:

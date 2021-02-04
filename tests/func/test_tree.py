@@ -279,3 +279,44 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
     assert tree.exists(to_info)
     with tree.open(to_info, "rb") as stream:
         assert stream.read() == b"foo"
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("webdav"),
+    ],
+)
+def test_tree_ls(dvc, cloud):
+    cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
+    tree = get_cloud_tree(dvc, **cloud.config)
+    path_info = tree.path_info
+
+    assert {
+        os.path.basename(file_key)
+        for file_key in tree.ls(path_info / "data", recursive=True)
+    } == {"foo", "baz", "quux"}
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("webdav"),
+    ],
+)
+def test_tree_ls_with_etag(dvc, cloud):
+    cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
+    tree = get_cloud_tree(dvc, **cloud.config)
+    path_info = tree.path_info
+
+    for details in tree.ls(path_info / "data", recursive=True, detail=True):
+        assert (
+            tree.get_file_hash(path_info.replace(path=details["name"])).value
+            == details[tree.PARAM_CHECKSUM]
+        )

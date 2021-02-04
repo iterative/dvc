@@ -56,6 +56,7 @@ class GSTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
     PARAM_CHECKSUM = "md5"
+    DETAIL_FIELDS = frozenset(("md5", "size"))
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -142,6 +143,24 @@ class GSTree(BaseTree):
             if fname.endswith("/"):
                 continue
             yield path_info.replace(fname)
+
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        assert recursive
+
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path
+        ):
+            if detail:
+                yield {
+                    "type": "file",
+                    "name": blob.name,
+                    "md5": blob.md5_hash.encode().hex(),
+                    "size": blob.size,
+                }
+            else:
+                yield blob.name
 
     def remove(self, path_info):
         if path_info.scheme != "gs":

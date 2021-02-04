@@ -23,6 +23,8 @@ class AzureTree(BaseTree):
         "knack": "knack",
     }
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
+
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
@@ -148,6 +150,27 @@ class AzureTree(BaseTree):
                 continue
 
             yield path_info.replace(path=fname)
+
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        assert recursive
+
+        container_client = self.blob_service.get_container_client(
+            path_info.bucket
+        )
+        for blob in container_client.list_blobs(
+            name_starts_with=path_info.path
+        ):
+            if detail:
+                yield {
+                    "type": "file",
+                    "name": blob.name,
+                    "size": blob.size,
+                    "etag": blob.etag,
+                }
+            else:
+                yield blob.name
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:

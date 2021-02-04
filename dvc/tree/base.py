@@ -2,13 +2,14 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, FrozenSet, Optional
 from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
 
 from dvc.dir_info import DirInfo
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
+from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
@@ -63,6 +64,7 @@ class BaseTree:
     CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
+    DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
     state = StateNoop()
 
@@ -202,6 +204,9 @@ class BaseTree:
         """
         raise NotImplementedError
 
+    def ls(self, path_info, detail=False, **kwargs):
+        raise RemoteActionNotImplemented("ls", self.scheme)
+
     def is_empty(self, path_info):
         return False
 
@@ -287,7 +292,6 @@ class BaseTree:
         return self.path_info / hash_[0:2] / hash_[2:]
 
     def _calculate_hashes(self, file_infos):
-        file_infos = list(file_infos)
         with Tqdm(
             total=len(file_infos),
             unit="md5",
@@ -298,24 +302,37 @@ class BaseTree:
                 hash_infos = executor.map(worker, file_infos)
                 return dict(zip(file_infos, hash_infos))
 
+    def _iter_hashes(self, path_info, **kwargs):
+        if self.PARAM_CHECKSUM in self.DETAIL_FIELDS:
+            for details in self.ls(path_info, recursive=True, detail=True):
+                file_info = path_info.replace(path=details["name"])
+                hash_info = HashInfo(
+                    self.PARAM_CHECKSUM,
+                    details[self.PARAM_CHECKSUM],
+                    size=details.get("size"),
+                )
+                yield file_info, hash_info
+
+            return None
+
+        file_infos = []
+        for file_info in self.walk_files(path_info, **kwargs):
+            hash_info = self.state.get(  # pylint: disable=assignment-from-none
+                file_info
+            )
+            if not hash_info:
+                file_infos.append(file_info)
+                continue
+            yield file_info, hash_info
+
+        yield from self._calculate_hashes(file_infos).items()
+
     def _collect_dir(self, path_info, **kwargs):
-
-        file_infos = set()
-
-        for fname in self.walk_files(path_info, **kwargs):
-            if DvcIgnore.DVCIGNORE_FILE == fname.name:
-                raise DvcIgnoreInCollectedDirError(fname.parent)
-
-            file_infos.add(fname)
-
-        hash_infos = {fi: self.state.get(fi) for fi in file_infos}
-        not_in_state = {fi for fi, hi in hash_infos.items() if hi is None}
-
-        new_hash_infos = self._calculate_hashes(not_in_state)
-        hash_infos.update(new_hash_infos)
-
         dir_info = DirInfo()
-        for fi, hi in hash_infos.items():
+        for fi, hi in self._iter_hashes(path_info, **kwargs):
+            if DvcIgnore.DVCIGNORE_FILE == fi.name:
+                raise DvcIgnoreInCollectedDirError(fi.parent)
+
             # NOTE: this is lossy transformation:
             #   "hey\there" -> "hey/there"
             #   "hey/there" -> "hey/there"

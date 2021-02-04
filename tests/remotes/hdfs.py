@@ -48,7 +48,6 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         assert parents
-        assert not exist_ok
 
         with self._hdfs() as _hdfs:
             # NOTE: fs.create_dir creates parents by default

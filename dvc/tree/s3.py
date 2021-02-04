@@ -23,6 +23,7 @@ class S3Tree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -226,6 +227,23 @@ class S3Tree(BaseTree):
                 continue
 
             yield path_info.replace(path=fname)
+
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        assert recursive
+
+        with self._get_bucket(path_info.bucket) as bucket:
+            for obj_summary in bucket.objects.filter(Prefix=path_info.path):
+                if detail:
+                    yield {
+                        "type": "file",
+                        "name": obj_summary.key,
+                        "size": obj_summary.size,
+                        "etag": obj_summary.e_tag.strip('"'),
+                    }
+                else:
+                    yield obj_summary.key
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
