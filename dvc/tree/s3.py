@@ -17,7 +17,7 @@ from .base import BaseTree
 
 logger = logging.getLogger(__name__)
 
-_AWS_CONFIG_PATH = os.path.expanduser("~/.aws/config")
+_AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
 class S3Tree(BaseTree):

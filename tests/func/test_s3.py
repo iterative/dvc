@@ -1,3 +1,5 @@
+import importlib
+import sys
 import textwrap
 from functools import wraps
 
@@ -139,8 +141,9 @@ GB = KB ** 3
 
 
 def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
-    config_file = tmp_dir / "aws_config.ini"
-    config_file.write_text(
+    config_directory = tmp_dir / ".aws"
+    config_directory.mkdir()
+    (config_directory / "config").write_text(
         textwrap.dedent(
             """\
     [default]
@@ -154,9 +157,16 @@ def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
     """
         )
     )
-    monkeypatch.setenv("AWS_CONFIG_FILE", config_file)
 
-    tree = S3Tree(dvc, s3.config)
+    if sys.platform == "win32":
+        var = "USERPROFILE"
+    else:
+        var = "HOME"
+    monkeypatch.setenv(var, str(tmp_dir))
+
+    # Fresh import to see the effects of changing HOME variable
+    s3_mod = importlib.reload(sys.modules[S3Tree.__module__])
+    tree = s3_mod.S3Tree(dvc, s3.config)
     assert tree._transfer_config is None
 
     with tree._get_s3() as s3:
