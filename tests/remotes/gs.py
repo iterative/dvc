@@ -84,12 +84,6 @@ class GCP(Base, CloudURLInfo):
         assert isinstance(contents, bytes)
         self._blob.upload_from_string(contents)
 
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
-
     def read_bytes(self):
         return self._blob.download_as_string()
 

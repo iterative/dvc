@@ -1,5 +1,4 @@
 # pylint:disable=abstract-method
-import locale
 import os
 import uuid
 
@@ -25,12 +24,6 @@ class HTTP(Base, HTTPURLInfo):
         assert isinstance(contents, bytes)
         response = requests.post(self.url, data=contents)
         assert response.status_code == 200
-
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
 
 
 @pytest.fixture(scope="session")

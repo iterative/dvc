@@ -58,12 +58,6 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
             with _hdfs.open_output_stream(self.path) as fobj:
                 fobj.write(contents)
 
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
-
     def read_bytes(self):
         with self._hdfs() as _hdfs:
             with _hdfs.open_input_stream(self.path) as fobj:
