@@ -472,10 +472,12 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
+        from dvc.command.metrics import _show_metrics
+
         if self.args.reset:
             logger.info("Any existing checkpoints will be reset and re-run.")
 
-        self.repo.experiments.run(
+        results = self.repo.experiments.run(
             name=self.args.name,
             queue=self.args.queue,
             run_all=self.args.run_all,
@@ -486,6 +488,11 @@ class CmdExperimentsRun(CmdRepro):
             tmp_dir=self.args.tmp_dir,
             **self._repro_kwargs,
         )
+
+        if self.args.metrics and results:
+            metrics = self.repo.metrics.show(revs=list(results))
+            metrics.pop("workspace", None)
+            logger.info(_show_metrics(metrics))
 
         return 0
 
