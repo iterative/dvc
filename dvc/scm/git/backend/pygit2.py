@@ -287,7 +287,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             tree = self.repo.revparse_single("HEAD").tree
             for path in paths:
                 rel = relpath(path, self.root_dir)
-                obj = tree[relpath(rel, self.root_dir)]
+                obj = tree[rel]
                 self.repo.index.add(IndexEntry(rel, obj.oid, obj.filemode))
             self.repo.index.write()
         elif hard:
