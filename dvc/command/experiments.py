@@ -130,14 +130,13 @@ def _collect_rows(
     from dvc.scm.git import Git
 
     if sort_by:
-        if sort_by in metric_names:
-            sort_type = "metrics"
-        elif sort_by in param_names:
-            sort_type = "params"
-        else:
-            raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
+        sort_path, sort_name, sort_type = _sort_column(
+            sort_by, metric_names, param_names
+        )
         reverse = sort_order == "desc"
-        experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
+        experiments = _sort_exp(
+            experiments, sort_path, sort_name, sort_type, reverse
+        )
 
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
@@ -193,22 +192,45 @@ def _collect_rows(
         yield row, style
 
 
-def _sort_exp(experiments, sort_by, typ, reverse):
+def _sort_column(sort_by, metric_names, param_names):
+    path, _, sort_name = sort_by.rpartition(":")
+    matches = set()
+
+    if path:
+        if path in metric_names and sort_name in metric_names[path]:
+            matches.add((path, sort_name, "metrics"))
+        if path in param_names and sort_name in param_names[path]:
+            matches.add((path, sort_name, "params"))
+    else:
+        for path in metric_names:
+            if sort_name in metric_names[path]:
+                matches.add((path, sort_name, "metrics"))
+        for path in param_names:
+            if sort_name in param_names[path]:
+                matches.add((path, sort_name, "params"))
+
+    if len(matches) == 1:
+        return matches.pop()
+    if len(matches) > 1:
+        raise InvalidArgumentError(
+            "Ambiguous sort column '{}' matched '{}'".format(
+                sort_by,
+                ", ".join([f"{path}:{name}" for path, name, _ in matches]),
+            )
+        )
+    raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
+
+
+def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     def _sort(item):
         rev, exp = item
         tip = exp.get("checkpoint_tip")
         if tip and tip != rev:
             # Sort checkpoint experiments by tip commit
             return _sort((tip, experiments[tip]))
-        for fname, item in exp.get(typ, {}).items():
-            if isinstance(item, dict):
-                item = flatten(item)
-            else:
-                item = {fname: item}
-            if sort_by in item:
-                val = item[sort_by]
-                return (val is None, val)
-        return (True, None)
+        data = exp.get(typ, {}).get(sort_path, {})
+        val = flatten(data).get(sort_name)
+        return (val is None, val)
 
     ret = OrderedDict()
     if "baseline" in experiments:

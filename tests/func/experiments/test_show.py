@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -214,3 +215,21 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
 
     results = dvc.experiments.show(num=100)
     assert set(results.keys()) == expected
+
+
+def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
+    with caplog.at_level(logging.ERROR):
+        assert main(["exp", "show", "--no-pager", "--sort-by=bar"]) != 0
+        assert "Unknown sort column" in caplog.text
+
+    with caplog.at_level(logging.ERROR):
+        assert main(["exp", "show", "--no-pager", "--sort-by=foo"]) != 0
+        assert "Ambiguous sort column" in caplog.text
+
+    assert (
+        main(["exp", "show", "--no-pager", "--sort-by=params.yaml:foo"]) == 0
+    )
+
+    assert (
+        main(["exp", "show", "--no-pager", "--sort-by=metrics.yaml:foo"]) == 0
+    )
