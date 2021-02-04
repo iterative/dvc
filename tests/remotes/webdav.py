@@ -1,12 +1,9 @@
 # pylint:disable=abstract-method
 import os
-import uuid
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from wsgiref.simple_server import make_server
 
 import pytest
-from funcy import first
+from funcy import cached_property, first
 from wsgidav.wsgidav_app import WsgiDAVApp
 
 from dvc.path_info import WebDAVURLInfo
@@ -15,27 +12,34 @@ from tests.utils.httpd import run_server_on_thread
 from .base import Base
 
 AUTH = {"user1": {"password": "password1"}}
-_WEBDAV_ROOT = TemporaryDirectory()
-_WEBDAV_DIR = Path(_WEBDAV_ROOT.name)
 
 
 class Webdav(Base, WebDAVURLInfo):
     @staticmethod
-    def get_url(port, root_id):  # pylint: disable=arguments-differ
-        return f"webdav://localhost:{port}/{root_id}/"
+    def get_url(port):  # pylint: disable=arguments-differ
+        return f"webdav://localhost:{port}"
+
+    @cached_property
+    def client(self):
+        from webdav3.client import Client
+
+        user, secrets = first(AUTH.items())
+        return Client(
+            {
+                "webdav_hostname": self.replace(path="").url,
+                "webdav_login": user,
+                "webdav_password": secrets["password"],
+            }
+        )
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
-        self.dir_path.mkdir(parents=parents, exist_ok=True)
+        assert mode == 0o777
+        parent_dirs = list(reversed(self.parents))[1:] if parents else []
+        for d in parent_dirs + [self]:
+            self.client.mkdir(d.path)  # pylint: disable=no-member
 
     def write_bytes(self, contents):
-        self.dir_path.write_bytes(contents)
-
-    def write_text(self, contents, encoding=None, errors=None):
-        self.dir_path.write_text(contents, encoding=encoding, errors=errors)
-
-    @property
-    def dir_path(self):
-        return _WEBDAV_DIR / self.path[1:]
+        self.client.upload_to(contents, self.path)
 
 
 @pytest.fixture
@@ -43,10 +47,8 @@ def webdav_server(test_config, tmp_path_factory):
     test_config.requires("webdav")
 
     host, port = "localhost", 0
-    root_id = str(uuid.uuid4())
-    root_dir = _WEBDAV_DIR / root_id
-    root_dir.mkdir()
-    dirmap = {f"/{root_id}": os.fspath(_WEBDAV_DIR / root_id)}
+    directory = os.fspath(tmp_path_factory.mktemp("http"))
+    dirmap = {"/": directory}
 
     app = WsgiDAVApp(
         {
@@ -57,14 +59,13 @@ def webdav_server(test_config, tmp_path_factory):
         }
     )
     server = make_server(host, port, app)
-    server.root_id = root_id
     with run_server_on_thread(server) as httpd:
         yield httpd
 
 
 @pytest.fixture
 def webdav(webdav_server):
-    url = Webdav.get_url(webdav_server.server_port, webdav_server.root_id)
+    url = Webdav.get_url(webdav_server.server_port)
     ret = Webdav(url)
     user, secrets = first(AUTH.items())
     ret.config = {"url": url, "user": user, **secrets}

@@ -1,3 +1,4 @@
+import locale
 import pathlib
 
 from funcy import cached_property
@@ -19,7 +20,10 @@ class Base(URLInfo):
         raise NotImplementedError
 
     def write_text(self, contents, encoding=None, errors=None):
-        raise NotImplementedError
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        self.write_bytes(contents.encode(encoding))
 
     def write_bytes(self, contents):
         raise NotImplementedError

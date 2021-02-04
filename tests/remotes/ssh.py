@@ -92,12 +92,6 @@ class SSHMocked(Base, URLInfo):
                 # NOTE: accepts both str and bytes
                 fobj.write(contents)
 
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
-
     def read_bytes(self):
         with self._ssh() as _ssh:
             # NOTE: sftp always reads in binary format

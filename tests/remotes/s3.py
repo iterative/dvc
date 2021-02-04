@@ -80,12 +80,6 @@ class S3(Base, CloudURLInfo):
             Bucket=self.bucket, Key=self.path, Body=contents,
         )
 
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
-
     def read_bytes(self):
         data = self._s3.get_object(Bucket=self.bucket, Key=self.path)
         return data["Body"].read()

@@ -53,12 +53,6 @@ class Azure(Base, CloudURLInfo):
     def write_bytes(self, contents):
         self.blob_client.upload_blob(contents, overwrite=True)
 
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
-
     def read_bytes(self):
         stream = self.blob_client.download_blob()
         return stream.readall()
