@@ -581,3 +581,15 @@ def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
         with tree.open(tmp_dir / "metrics.yaml") as fobj:
             metrics.add(fobj.read().strip())
     assert expected == metrics
+
+
+def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
+    from dvc.main import main
+
+    mocker.patch.object(
+        dvc.experiments, "run", return_value={"abc123": "abc123"}
+    )
+    show_mock = mocker.patch.object(dvc.metrics, "show", return_value={})
+
+    main(["exp", "run", "-m"])
+    assert show_mock.called_once()
