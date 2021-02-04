@@ -311,8 +311,15 @@ class BaseOutput:
         if self.use_cache:
             self.cache.save(
                 self.path_info,
-                self.cache.tree,
+                self.tree,
                 self.hash_info,
+                filter_info=filter_info,
+            )
+            self.cache.checkout(
+                self.path_info,
+                self.tree,
+                self.hash_info,
+                relink=True,
                 filter_info=filter_info,
             )
             self.set_exec()
@@ -382,6 +389,7 @@ class BaseOutput:
         try:
             res = self.cache.checkout(
                 self.path_info,
+                self.tree,
                 self.hash_info,
                 force=force,
                 progress_callback=progress_callback,

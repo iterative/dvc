@@ -84,7 +84,7 @@ class RepoDependency(LocalDependency):
                 follow_subrepos=False,
             )
 
-        cache.checkout(to.path_info, hash_info)
+        cache.checkout(to.path_info, to.tree, hash_info)
 
     def update(self, rev=None):
         if rev:

@@ -168,6 +168,6 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
 
     mock_restore.assert_called_once_with(stage, pull=True)
     mock_run.assert_not_called()
-    mock_checkout.assert_called_once()
+    assert mock_checkout.call_count == 2
     assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
     assert (tmp_dir / PIPELINE_LOCK).exists()
