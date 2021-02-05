@@ -183,7 +183,10 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def is_ignored(self, path: str) -> bool:
-        return self.repo.path_is_ignored(relpath(path, self.root_dir))
+        rel = relpath(path, self.root_dir)
+        if os.name == "nt":
+            rel.replace("\\", "/")
+        return self.repo.path_is_ignored(rel)
 
     def set_ref(
         self,
@@ -287,7 +290,9 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             tree = self.repo.revparse_single("HEAD").tree
             for path in paths:
                 rel = relpath(path, self.root_dir)
-                obj = tree[relpath(rel, self.root_dir)]
+                if os.name == "nt":
+                    rel = rel.replace("\\", "/")
+                obj = tree[rel]
                 self.repo.index.add(IndexEntry(rel, obj.oid, obj.filemode))
             self.repo.index.write()
         elif hard:
@@ -324,6 +329,11 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             path_list: Optional[List[str]] = [
                 relpath(path, self.root_dir) for path in paths
             ]
+            if os.name == "nt":
+                path_list = [
+                    path.replace("\\", "/")
+                    for path in path_list  # type: ignore[union-attr]
+                ]
         else:
             path_list = None
         self.repo.checkout_index(

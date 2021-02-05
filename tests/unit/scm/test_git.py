@@ -363,16 +363,21 @@ def test_checkout_index(tmp_dir, scm, git):
     if git.test_backend == "dulwich":
         pytest.skip()
 
-    tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="init")
-    tmp_dir.gen("foo", "baz")
+    tmp_dir.scm_gen(
+        {"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}}, commit="init"
+    )
+    tmp_dir.gen({"foo": "baz", "dir": {"baz": "foo"}})
 
-    git.checkout_index(["foo"], force=True)
+    with (tmp_dir / "dir").chdir():
+        git.checkout_index([os.path.join("..", "foo"), "baz"], force=True)
     assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "dir" / "baz").read_text() == "baz"
 
-    tmp_dir.gen({"foo": "baz", "bar": "baz"})
+    tmp_dir.gen({"foo": "baz", "bar": "baz", "dir": {"baz": "foo"}})
     git.checkout_index(force=True)
     assert (tmp_dir / "foo").read_text() == "foo"
     assert (tmp_dir / "bar").read_text() == "bar"
+    assert (tmp_dir / "dir" / "baz").read_text() == "baz"
 
 
 @pytest.mark.parametrize(
@@ -471,31 +476,37 @@ def test_reset(tmp_dir, scm, git):
     if git.test_backend == "dulwich":
         pytest.skip()
 
-    tmp_dir.scm_gen({"foo": "foo"}, commit="init")
+    tmp_dir.scm_gen(
+        {"foo": "foo", "dir": {"baz": "baz"}}, commit="init",
+    )
 
-    tmp_dir.gen("foo", "bar")
-    scm.add(["foo"])
+    tmp_dir.gen({"foo": "bar", "dir": {"baz": "bar"}})
+    scm.add(["foo", os.path.join("dir", "baz")])
     git.reset()
     assert (tmp_dir / "foo").read_text() == "bar"
+    assert (tmp_dir / "dir" / "baz").read_text() == "bar"
     staged, unstaged, _ = scm.status()
     assert len(staged) == 0
-    assert list(unstaged) == ["foo"]
+    assert set(unstaged) == {"foo", "dir/baz"}
 
-    scm.add(["foo"])
+    scm.add(["foo", os.path.join("dir", "baz")])
     git.reset(hard=True)
     assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "dir" / "baz").read_text() == "baz"
     staged, unstaged, _ = scm.status()
     assert len(staged) == 0
     assert len(unstaged) == 0
 
-    tmp_dir.gen({"foo": "bar", "bar": "bar"})
-    scm.add(["foo", "bar"])
-    git.reset(paths=["foo"])
+    tmp_dir.gen({"foo": "bar", "bar": "bar", "dir": {"baz": "bar"}})
+    scm.add(["foo", "bar", os.path.join("dir", "baz")])
+    with (tmp_dir / "dir").chdir():
+        git.reset(paths=[os.path.join("..", "foo"), os.path.join("baz")])
     assert (tmp_dir / "foo").read_text() == "bar"
     assert (tmp_dir / "bar").read_text() == "bar"
+    assert (tmp_dir / "dir" / "baz").read_text() == "bar"
     staged, unstaged, _ = scm.status()
     assert len(staged) == 1
-    assert len(unstaged) == 1
+    assert len(unstaged) == 2
 
 
 def test_remind_to_track(scm, caplog):

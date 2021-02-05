@@ -3,13 +3,13 @@ import locale
 import logging
 import os
 from functools import partial
-from typing import Callable, Iterable, Mapping, Optional, Tuple
+from typing import Callable, Iterable, List, Mapping, Optional, Tuple
 
 from funcy import first, ignore
 
 from dvc.progress import Tqdm
 from dvc.scm.base import CloneError, MergeConflictError, RevError, SCMError
-from dvc.utils import fix_env, is_binary
+from dvc.utils import fix_env, is_binary, relpath
 
 from ..objects import GitObject
 from .base import BaseGitBackend
@@ -526,7 +526,18 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
-        self.repo.head.reset(index=True, working_tree=hard, paths=paths)
+        if paths:
+            paths_list: Optional[List[str]] = [
+                relpath(path, self.root_dir) for path in paths
+            ]
+            if os.name == "nt":
+                paths_list = [
+                    path.replace("\\", "/")
+                    for path in paths_list  # type: ignore[union-attr]
+                ]
+        else:
+            paths_list = None
+        self.repo.head.reset(index=True, working_tree=hard, paths=paths_list)
 
     def checkout_index(
         self,
@@ -548,7 +559,18 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 args.append(".")
             self.repo.git.checkout(*args)
         else:
-            self.repo.index.checkout(paths=paths, force=force)
+            if paths:
+                paths_list: Optional[List[str]] = [
+                    relpath(path, self.root_dir) for path in paths
+                ]
+                if os.name == "nt":
+                    paths_list = [
+                        path.replace("\\", "/")
+                        for path in paths_list  # type: ignore[union-attr]
+                    ]
+            else:
+                paths_list = None
+            self.repo.index.checkout(paths=paths_list, force=force)
 
     def status(
         self, ignored: bool = False
