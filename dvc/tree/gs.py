@@ -147,16 +147,19 @@ class GSTree(BaseTree):
     def ls(
         self, path_info, detail=False, recursive=False
     ):  # pylint: disable=arguments-differ
+        import base64
+
         assert recursive
 
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
             prefix=path_info.path
         ):
             if detail:
+                md5_hash = base64.b64decode(blob.md5_hash)
                 yield {
                     "type": "file",
                     "name": blob.name,
-                    "md5": blob.md5_hash.encode().hex(),
+                    "md5": md5_hash.hex(),
                     "size": blob.size,
                 }
             else:
