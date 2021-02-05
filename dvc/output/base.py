@@ -8,6 +8,7 @@ from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
+from dvc.checkout import checkout
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -315,10 +316,12 @@ class BaseOutput:
                 self.hash_info,
                 filter_info=filter_info,
             )
-            self.cache.checkout(
+
+            checkout(
                 self.path_info,
                 self.tree,
                 self.hash_info,
+                self.cache,
                 relink=True,
                 filter_info=filter_info,
             )
@@ -387,10 +390,11 @@ class BaseOutput:
             return None
 
         try:
-            res = self.cache.checkout(
+            res = checkout(
                 self.path_info,
                 self.tree,
                 self.hash_info,
+                self.cache,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,

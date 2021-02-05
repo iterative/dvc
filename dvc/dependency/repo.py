@@ -70,6 +70,8 @@ class RepoDependency(LocalDependency):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to, jobs=None):
+        from dvc.checkout import checkout
+
         cache = self.repo.cache.local
 
         with self._make_repo(cache_dir=cache.cache_dir) as repo:
@@ -84,7 +86,7 @@ class RepoDependency(LocalDependency):
                 follow_subrepos=False,
             )
 
-        cache.checkout(to.path_info, to.tree, hash_info)
+        checkout(to.path_info, to.tree, hash_info, cache)
 
     def update(self, rev=None):
         if rev:
