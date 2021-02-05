@@ -1,3 +1,4 @@
+import fnmatch
 import logging
 import os
 from contextlib import contextmanager
@@ -436,7 +437,9 @@ class Repo:
         error_handler = self.stage_collection_error_handler
         return self.stage.collect_repo(onerror=error_handler)
 
-    def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
+    def find_outs_by_path(
+        self, path, outs=None, recursive=False, strict=True, glob=False
+    ):
         # using `outs_graph` to ensure graph checks are run
         outs = outs or self.outs_graph
 
@@ -450,6 +453,9 @@ class Repo:
 
             if recursive and out.path_info.isin(path_info):
                 return True
+
+            if glob:
+                return fnmatch.fnmatch(out.path_info.name, path)
 
             return False
 

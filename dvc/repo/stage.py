@@ -404,9 +404,11 @@ class StageLoad:
         if not stages:
             if not (recursive and self.fs.isdir(target)):
                 try:
-                    (out,) = self.repo.find_outs_by_path(target, strict=False)
+                    outs = self.repo.find_outs_by_path(
+                        target, strict=False, glob=glob
+                    )
                     filter_info = PathInfo(os.path.abspath(target))
-                    return [StageInfo(out.stage, filter_info)]
+                    return [StageInfo(out.stage, filter_info) for out in outs]
                 except OutputNotFoundError:
                     pass
 
