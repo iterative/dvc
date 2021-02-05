@@ -487,7 +487,7 @@ def test_reset(tmp_dir, scm, git):
     assert (tmp_dir / "dir" / "baz").read_text() == "bar"
     staged, unstaged, _ = scm.status()
     assert len(staged) == 0
-    assert set(unstaged) == {"foo", os.path.join("dir", "baz")}
+    assert set(unstaged) == {"foo", "dir/baz"}
 
     scm.add(["foo", os.path.join("dir", "baz")])
     git.reset(hard=True)

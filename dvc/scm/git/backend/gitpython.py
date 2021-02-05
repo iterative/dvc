@@ -530,6 +530,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             paths_list: Optional[List[str]] = [
                 relpath(path, self.root_dir) for path in paths
             ]
+            if os.name == "nt":
+                paths_list = [
+                    path.replace("\\", "/")
+                    for path in paths_list  # type: ignore[union-attr]
+                ]
         else:
             paths_list = None
         self.repo.head.reset(index=True, working_tree=hard, paths=paths_list)
@@ -558,6 +563,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 paths_list: Optional[List[str]] = [
                     relpath(path, self.root_dir) for path in paths
                 ]
+                if os.name == "nt":
+                    paths_list = [
+                        path.replace("\\", "/")
+                        for path in paths_list  # type: ignore[union-attr]
+                    ]
             else:
                 paths_list = None
             self.repo.index.checkout(paths=paths_list, force=force)
