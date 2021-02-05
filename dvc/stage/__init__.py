@@ -222,7 +222,7 @@ class Stage(params.StageParams):
 
     @property
     def is_data_source(self):
-        """Whether the DVC-file was created with `dvc add` or `dvc import`"""
+        """Whether the DVC file was created with `dvc add` or `dvc import`"""
         return self.cmd is None
 
     @property
@@ -235,7 +235,7 @@ class Stage(params.StageParams):
 
     @property
     def is_import(self):
-        """Whether the DVC-file was created with `dvc import`."""
+        """Whether the DVC file was created with `dvc import`."""
         return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
 
     @property
@@ -629,13 +629,13 @@ class Stage(params.StageParams):
 
         if not stage.is_data_source or stage.deps or len(stage.outs) > 1:
             raise MergeError(
-                "unable to auto-merge DVC-files that weren't "
+                "unable to auto-merge DVC files that weren't "
                 "created by `dvc add`"
             )
 
         if ancestor_out and not stage.outs:
             raise MergeError(
-                "unable to auto-merge DVC-files with deleted outputs"
+                "unable to auto-merge DVC files with deleted outputs"
             )
 
     def merge(self, ancestor, other):

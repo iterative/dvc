@@ -62,14 +62,14 @@ def add_parser(subparsers, parent_parser):
     ).complete = completion.DIR
     import_parser.add_argument(
         "--file",
-        help="Specify name of the DVC-file this command will generate.",
+        help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
     ).complete = completion.DIR
     import_parser.add_argument(
         "--no-exec",
         action="store_true",
         default=False,
-        help="Only create DVC-file without actually downloading it.",
+        help="Only create .dvc file without actually downloading it.",
     )
     import_parser.add_argument(
         "--to-remote",

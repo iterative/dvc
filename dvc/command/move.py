@@ -25,7 +25,7 @@ def add_parser(subparsers, parent_parser):
     MOVE_HELP = "Rename or move a DVC controlled data file or a directory."
     MOVE_DESCRIPTION = (
         "Rename or move a DVC controlled data file or a directory.\n"
-        "It renames and modifies the corresponding DVC-file to reflect the"
+        "It renames and modifies the corresponding .dvc file to reflect the"
         " changes."
     )
 

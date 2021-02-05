@@ -124,7 +124,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
         warning = (
             "You are adding a large directory 'large-dir' recursively,"
             " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated DVC-file and then"
+            "{purple}HINT:{nc} Remove the generated DVC file and then"
             " run `{cyan}dvc add large-dir{nc}`".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,

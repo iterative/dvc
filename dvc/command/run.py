@@ -72,7 +72,9 @@ class CmdRun(CmdBase):
 def add_parser(subparsers, parent_parser):
     from dvc.command.stage import _add_common_args
 
-    RUN_HELP = "Generate a stage file from a command and execute the command."
+    RUN_HELP = (
+        "Generate a dvc.yaml file from a command and execute the command."
+    )
     run_parser = subparsers.add_parser(
         "run",
         parents=[parent_parser],
@@ -90,7 +92,7 @@ def add_parser(subparsers, parent_parser):
         "--no-exec",
         action="store_true",
         default=False,
-        help="Only create stage file without actually running it.",
+        help="Only create dvc.yaml without actually running it.",
     )
     run_parser.add_argument(
         "--no-run-cache",

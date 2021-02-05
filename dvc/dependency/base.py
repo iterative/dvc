@@ -17,7 +17,7 @@ class DependencyIsNotFileOrDirError(DvcException):
 
 class DependencyIsStageFileError(DvcException):
     def __init__(self, path):
-        super().__init__(f"Stage file '{path}' cannot be a dependency.")
+        super().__init__(f"DVC file '{path}' cannot be a dependency.")
 
 
 class BaseDependency:

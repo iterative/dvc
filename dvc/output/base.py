@@ -47,7 +47,7 @@ class OutputAlreadyTrackedError(DvcException):
 
 class OutputIsStageFileError(DvcException):
     def __init__(self, path):
-        super().__init__(f"Stage file '{path}' cannot be an output.")
+        super().__init__(f"DVC file '{path}' cannot be an output.")
 
 
 class OutputIsIgnoredError(DvcException):
@@ -117,7 +117,7 @@ class BaseOutput:
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
         #
-        #   .def_path - path from definition in stage file
+        #   .def_path - path from definition in DVC file
         #   .path_info - PathInfo/URLInfo structured resolved path
         #   .fspath - local only, resolved
         #   .__str__ - for presentation purposes, def_path/relpath

@@ -70,9 +70,9 @@ def is_lock_file(path):
 def check_dvc_filename(path):
     if not is_valid_filename(path):
         raise StageFileBadNameError(
-            "bad DVC-file name '{}'. DVC-files should be named "
-            "'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                relpath(path), os.path.basename(path)
+            "bad DVC file name '{}'. DVC files should be named "
+            "'{}' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
+                relpath(path), PIPELINE_FILE, os.path.basename(path)
             )
         )
 
@@ -118,7 +118,7 @@ class FileMixin:
     def _load(self):
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
-        # 2. filename is not a DVC-file
+        # 2. filename is not a DVC file
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
         if not self.exists():

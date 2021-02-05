@@ -78,7 +78,7 @@ def add(  # noqa: C901
                 logger.warning(
                     "You are adding a large directory '{target}' recursively,"
                     " consider tracking it as a whole instead.\n"
-                    "{purple}HINT:{nc} Remove the generated DVC-file and then"
+                    "{purple}HINT:{nc} Remove the generated DVC file and then"
                     " run `{cyan}dvc add {target}{nc}`".format(
                         purple=colorama.Fore.MAGENTA,
                         cyan=colorama.Fore.CYAN,
@@ -239,7 +239,7 @@ def _create_stages(
     stages = []
     for out in Tqdm(
         expanded_targets,
-        desc="Creating DVC-files",
+        desc="Creating DVC files",
         disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
