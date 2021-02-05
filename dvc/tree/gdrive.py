@@ -4,7 +4,7 @@ import os
 import posixpath
 import re
 import threading
-from collections import defaultdict
+from collections import defaultdict, deque
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
@@ -88,6 +88,7 @@ class GDriveURLInfo(CloudURLInfo):
 class GDriveTree(BaseTree):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
+    PARAM_CHECKSUM = "checksum"
     REQUIRES = {"pydrive2": "pydrive2"}
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
@@ -477,7 +478,7 @@ class GDriveTree(BaseTree):
             return self._ids_cache["dirs"].get(path, [])
         return []
 
-    def _path_to_item_ids(self, path, create, use_cache):
+    def _path_to_item_ids(self, path, create=False, use_cache=True):
         item_ids = self._get_cached_item_ids(path, use_cache)
         if item_ids:
             return item_ids
@@ -510,35 +511,68 @@ class GDriveTree(BaseTree):
         else:
             return True
 
-    def _list_paths(self, prefix=None):
-        if not self._ids_cache["ids"]:
-            return
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        if recursive:
+            for entry in self.walk_files(path_info, detail=detail):
+                if detail:
+                    yield entry
+                else:
+                    yield str(entry)
+            return None
 
-        if prefix:
-            dir_ids = self._ids_cache["dirs"].get(prefix[:2])
-            if not dir_ids:
-                return
-        else:
-            dir_ids = self._ids_cache["ids"]
+        parent_ids = self._path_to_item_ids(path_info.path)
+        if not parent_ids:
+            return None
+
         parents_query = " or ".join(
-            f"'{dir_id}' in parents" for dir_id in dir_ids
+            f"'{dir_id}' in parents" for dir_id in parent_ids
         )
         query = f"({parents_query}) and trashed=false"
 
+        parent_path = path_info.path
         for item in self._gdrive_list(query):
-            parent_id = item["parents"][0]["id"]
-            yield posixpath.join(
-                self._ids_cache["ids"][parent_id], item["title"]
-            )
+            item_path = posixpath.join(parent_path, item["title"])
+            if detail:
+                if item["mimeType"] == FOLDER_MIME_TYPE:
+                    yield {"type": "directory", "name": item_path}
+                else:
+                    yield {
+                        "type": "file",
+                        "name": item_path,
+                        "size": item["fileSize"],
+                        "checksum": item["md5Checksum"],
+                    }
+            else:
+                yield item_path
+
+        if parent_ids:
+            self._cache_path_id(path_info.path, min(parent_ids))
+
+    def walk(self, path_info, detail=False):
+        stack = deque([path_info])
+        while stack:
+            path_info = stack.pop()
+            files, directories = [], []
+            for entry in self.ls(path_info, detail=True):
+                path = path_info.replace(path=entry["name"])
+                if entry["type"] == "file":
+                    if detail:
+                        files.append(entry)
+                    else:
+                        files.append(path)
+                else:
+                    directories.append(path)
+
+            yield path_info, directories, files
+            stack.extendleft(directories)
 
     def walk_files(self, path_info, **kwargs):
-        use_prefix = kwargs.pop("prefix", False)
-        if path_info == self.path_info or not use_prefix:
-            prefix = None
-        else:
-            prefix = path_info.path
-        for fname in self._list_paths(prefix=prefix, **kwargs):
-            yield path_info.replace(fname)
+        if kwargs.pop("prefix", False):
+            path_info = path_info / ""
+        for _, _, file_infos in self.walk(path_info, **kwargs):
+            yield from file_infos
 
     def remove(self, path_info):
         item_id = self._get_item_id(path_info)

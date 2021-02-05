@@ -1,6 +1,7 @@
 # pylint:disable=abstract-method
 import os
 import uuid
+from functools import partialmethod
 
 import pytest
 from funcy import cached_property
@@ -11,12 +12,20 @@ from dvc.tree.gdrive import GDriveTree
 from .base import Base
 
 TEST_GDRIVE_REPO_BUCKET = "root"
+CREDENTIALS_DIR = os.path.join(os.path.expanduser("~"), ".config", "pydata")
+CREDENTIALS_FILE = os.path.join(
+    CREDENTIALS_DIR, "pydata_google_credentials.json"
+)
+GDRIVE_TEST_CREDENTIALS_DATA = "GDRIVE_TEST_CREDENTIALS_DATA"
 
 
 class GDrive(Base, CloudURLInfo):
     @staticmethod
     def should_test():
-        return bool(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
+        return bool(
+            os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
+            and os.getenv(GDRIVE_TEST_CREDENTIALS_DATA)
+        )
 
     @cached_property
     def config(self):
@@ -35,6 +44,31 @@ class GDrive(Base, CloudURLInfo):
     def get_url():
         # NOTE: `get_url` should always return new random url
         return "gdrive://" + GDrive._get_storagepath()
+
+    @cached_property
+    def client(self):
+        from gdrivefs import GoogleDriveFileSystem
+
+        os.makedirs(CREDENTIALS_DIR, exist_ok=True)
+        with open(CREDENTIALS_FILE, "w") as stream:
+            stream.write(os.getenv(GDRIVE_TEST_CREDENTIALS_DATA))
+
+        return GoogleDriveFileSystem(token="cache")
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        if not self.client.exists(self.path):
+            self.client.mkdir(self.path)
+
+    def write_bytes(self, contents):
+        with self.client.open(self.path, mode="wb") as stream:
+            stream.write(contents)
+
+    def _read(self, mode):
+        with self.client.open(self.path, mode=mode) as stream:
+            return stream.read()
+
+    read_text = partialmethod(_read, mode="r")
+    read_bytes = partialmethod(_read, mode="rb")
 
 
 @pytest.fixture

@@ -151,6 +151,9 @@ tests_requirements = [
     "mypy",
     "wsgidav",
     "crc32c",
+    # Temporary requirement until the bug solved on the upstream
+    "gdrivefs @ git+https://github.com/"
+    "isidentical/gdrivefs.git@multiple-parents",
 ]
 
 setup(
