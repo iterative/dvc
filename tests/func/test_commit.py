@@ -148,6 +148,7 @@ def test_commit_granular_dir(tmp_dir, dvc):
     dvc.commit(os.path.join("data", "subdir"))
     assert set(cache.glob("*/*")) == {
         cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
+        cache / "26" / "d6b64d96a660707412f523e8184b5f.dir",
         cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
         cache / "4c" / "e8d2a2cf314a52fa7f315ca37ca445",
         cache / "68" / "dde2c3c4e7953c2290f176bbdc9a54",

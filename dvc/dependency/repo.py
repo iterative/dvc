@@ -71,6 +71,7 @@ class RepoDependency(LocalDependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
+        from dvc.objects import stage
 
         cache = self.repo.cache.local
 
@@ -78,15 +79,16 @@ class RepoDependency(LocalDependency):
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
             path_info = PathInfo(repo.root_dir) / self.def_path
-            hash_info = cache.save(
+            obj = stage(
+                cache,
                 path_info,
                 repo.repo_tree,
-                None,
                 jobs=jobs,
                 follow_subrepos=False,
             )
+            cache.save(obj, jobs=jobs)
 
-        checkout(to.path_info, to.tree, hash_info, cache)
+        checkout(to.path_info, to.tree, obj, cache)
 
     def update(self, rev=None):
         if rev:

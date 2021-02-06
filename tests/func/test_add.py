@@ -96,6 +96,8 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
+    from dvc.objects import load
+
     (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
     assert stage is not None
@@ -104,7 +106,7 @@ def test_add_directory(tmp_dir, dvc):
 
     hash_info = stage.outs[0].hash_info
 
-    dir_info = dvc.cache.local.load_dir_cache(hash_info)
+    dir_info = load(dvc.cache.local, hash_info).hash_info.dir_info
     for path, _ in dir_info.trie.items():
         assert "\\" not in path
 

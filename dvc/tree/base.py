@@ -1,4 +1,6 @@
+import errno
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
@@ -252,7 +254,9 @@ class BaseTree:
         )
 
         if not self.exists(path_info):
-            return None
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path_info
+            )
 
         # pylint: disable=assignment-from-none
         hash_info = self.state.get(path_info)
@@ -272,7 +276,10 @@ class BaseTree:
         if hash_info:
             assert hash_info.name == self.PARAM_CHECKSUM
             if hash_info.isdir:
-                self.cache.set_dir_info(hash_info)
+                from dvc.objects import Tree
+
+                # NOTE: loading the tree will restore hash_info.dir_info
+                Tree.load(self.cache, hash_info)
             return hash_info
 
         if self.isdir(path_info):
@@ -347,9 +354,12 @@ class BaseTree:
 
     @use_state
     def get_dir_hash(self, path_info, **kwargs):
+        from dvc.objects import Tree
+
         dir_info = self._collect_dir(path_info, **kwargs)
-        hash_info = self.repo.cache.local.save_dir_info(dir_info)
+        hash_info = Tree.save_dir_info(self.repo.cache.local, dir_info)
         hash_info.size = dir_info.size
+        hash_info.dir_info = dir_info
         return hash_info
 
     def upload(

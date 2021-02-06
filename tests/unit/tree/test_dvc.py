@@ -23,7 +23,7 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = DvcTree(dvc)
-    with tree.open("foo", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
         assert fobj.read() == "foo"
 
 
@@ -32,7 +32,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     tree = DvcTree(dvc)
-    with tree.open("file", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "file", "r") as fobj:
         # NOTE: Unlike RepoTree, DvcTree should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
@@ -46,7 +46,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     # NOTE: Unlike RepoTree, DvcTree should not
     # be affected by a dirty workspace.
     with pytest.raises(FileNotFoundError):
-        with tree.open("file", "r"):
+        with tree.open(PathInfo(tmp_dir) / "file", "r"):
             pass
 
 
@@ -66,7 +66,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
             continue
 
         tree = DvcTree(dvc)
-        with tree.open("foo", "r") as fobj:
+        with tree.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
             assert fobj.read() == "foo"
 
 
