@@ -64,7 +64,7 @@ class TestInstall:
             conf["core"]["remote"] = "store"
         tmp_dir.dvc_gen("file", "file_content", "commit message")
 
-        file_checksum = file_md5("file")[0]
+        file_checksum = file_md5("file")
         expected_storage_path = (
             storage_path / file_checksum[:2] / file_checksum[2:]
         )

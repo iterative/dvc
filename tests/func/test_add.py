@@ -38,7 +38,7 @@ from tests.utils import get_gitignore_content
 
 def test_add(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
-    md5, _ = file_md5("foo")
+    md5 = file_md5("foo")
 
     assert stage is not None
 

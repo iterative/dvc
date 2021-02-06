@@ -399,7 +399,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                 return dvc_tree.get_file_hash(path_info)
             except FileNotFoundError:
                 pass
-        return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self)[0])
+        return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self))
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **kwargs

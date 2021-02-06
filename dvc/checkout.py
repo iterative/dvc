@@ -51,10 +51,6 @@ def _changed(path_info, tree, hash_info, cache, filter_info=None):
     path = filter_info or path_info
     logger.trace("checking if '%s'('%s') has changed.", path_info, hash_info)
 
-    if not tree.exists(path):
-        logger.debug("'%s' doesn't exist.", path)
-        return True
-
     hi = _filter_hash_info(cache, hash_info, path_info, filter_info)
     if not hi:
         logger.debug("hash value for '%s' is missing.", path)
@@ -64,7 +60,12 @@ def _changed(path_info, tree, hash_info, cache, filter_info=None):
         logger.debug("cache for '%s'('%s') has changed.", path, hi)
         return True
 
-    actual = tree.get_hash(path)
+    try:
+        actual = tree.get_hash(path)
+    except FileNotFoundError:
+        logger.debug("'%s' doesn't exist.", path)
+        return True
+
     if hi != actual:
         logger.debug(
             "hash value '%s' for '%s' has changed (actual '%s').",
