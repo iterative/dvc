@@ -64,7 +64,10 @@ def _changed(path_info, tree, hash_info, cache, filter_info=None):
         logger.debug("cache for '%s'('%s') has changed.", path, hi)
         return True
 
-    actual = tree.get_hash(path)
+    try:
+        actual = tree.get_hash(path)
+    except FileNotFoundError:
+        actual = None
     if hi != actual:
         logger.debug(
             "hash value '%s' for '%s' has changed (actual '%s').",

@@ -47,40 +47,33 @@ def file_md5(fname, tree=None):
     from dvc.progress import Tqdm
 
     if tree:
-        exists_func = tree.exists
         stat_func = tree.stat
         open_func = tree.open
     else:
-        exists_func = os.path.exists
         stat_func = os.stat
         open_func = open
 
-    if exists_func(fname):
-        hash_md5 = hashlib.md5()
-        binary = not istextfile(fname, tree=tree)
-        size = stat_func(fname).st_size
-        no_progress_bar = True
-        if size >= LARGE_FILE_SIZE:
-            no_progress_bar = False
-            msg = (
-                "Computing md5 for a large file '{}'. This is only done once."
-            )
-            logger.info(msg.format(relpath(fname)))
-        name = relpath(fname)
+    hash_md5 = hashlib.md5()
+    binary = not istextfile(fname, tree=tree)
+    size = stat_func(fname).st_size
+    no_progress_bar = True
+    if size >= LARGE_FILE_SIZE:
+        no_progress_bar = False
+        msg = "Computing md5 for a large file '{}'. This is only done once."
+        logger.info(msg.format(relpath(fname)))
+    name = relpath(fname)
 
-        with Tqdm(
-            desc=name,
-            disable=no_progress_bar,
-            total=size,
-            bytes=True,
-            leave=False,
-        ) as pbar:
-            with open_func(fname, "rb") as fobj:
-                _fobj_md5(fobj, hash_md5, binary, pbar.update)
+    with Tqdm(
+        desc=name,
+        disable=no_progress_bar,
+        total=size,
+        bytes=True,
+        leave=False,
+    ) as pbar:
+        with open_func(fname, "rb") as fobj:
+            _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
-        return hash_md5.hexdigest()
-
-    return None
+    return hash_md5.hexdigest()
 
 
 def bytes_hash(byts, typ):
