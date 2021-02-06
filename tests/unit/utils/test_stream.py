@@ -10,7 +10,7 @@ def test_hashed_stream_reader(tmp_dir):
         stream_reader = HashedStreamReader(fobj)
         assert stream_reader.read(3) == b"foo"
 
-    hex_digest, _ = file_md5(foo)
+    hex_digest = file_md5(foo)
     assert stream_reader.is_text_file
     assert hex_digest == stream_reader.hash_info.value
 
@@ -26,6 +26,6 @@ def test_hashed_stream_reader_as_chunks(tmp_dir):
             if not chunk:
                 break
 
-    hex_digest, _ = file_md5(foo)
+    hex_digest = file_md5(foo)
     assert not stream_reader.is_text_file
     assert hex_digest == stream_reader.hash_info.value

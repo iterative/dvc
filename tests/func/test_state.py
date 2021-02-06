@@ -12,7 +12,7 @@ def test_state(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo content")
     path = tmp_dir / "foo"
     path_info = PathInfo(path)
-    hash_info = HashInfo("md5", file_md5(path)[0])
+    hash_info = HashInfo("md5", file_md5(path))
 
     state = State(dvc)
 
@@ -25,7 +25,7 @@ def test_state(tmp_dir, dvc):
 
         assert state.get(path_info) is None
 
-        hash_info = HashInfo("md5", file_md5(path)[0])
+        hash_info = HashInfo("md5", file_md5(path))
         state.save(path_info, hash_info)
 
         assert state.get(path_info) == hash_info
@@ -60,7 +60,7 @@ def test_get_state_record_for_inode(get_inode_mock, tmp_dir, dvc):
     assert inode != state._to_sqlite(inode)
 
     foo = tmp_dir / "foo"
-    md5 = file_md5(foo)[0]
+    md5 = file_md5(foo)
     get_inode_mock.side_effect = mock_get_inode(inode)
 
     with state:

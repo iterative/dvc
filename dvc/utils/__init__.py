@@ -78,9 +78,9 @@ def file_md5(fname, tree=None):
             with open_func(fname, "rb") as fobj:
                 _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
-        return (hash_md5.hexdigest(), hash_md5.digest())
+        return hash_md5.hexdigest()
 
-    return (None, None)
+    return None
 
 
 def bytes_hash(byts, typ):
