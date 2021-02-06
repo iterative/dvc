@@ -141,25 +141,30 @@ class CloudCache:
             "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
+    def add(self, path_info, tree, hash_info, **kwargs):
+        if not self.changed_cache_file(hash_info):
+            return
+
+        cache_info = self.tree.hash_to_path_info(hash_info.value)
+        # using our makedirs to create dirs with proper permissions
+        self.makedirs(cache_info.parent)
+        if isinstance(tree, type(self.tree)):
+            self.tree.move(path_info, cache_info)
+        else:
+            with tree.open(path_info, mode="rb") as fobj:
+                self.tree.upload_fobj(fobj, cache_info)
+            tree.state.save(path_info, hash_info)
+        self.protect(cache_info)
+        self.tree.state.save(cache_info, hash_info)
+
+        callback = kwargs.get("download_callback")
+        if callback:
+            callback(1)
+
     def _save_file(self, path_info, tree, hash_info, **kwargs):
         assert hash_info
 
-        cache_info = self.tree.hash_to_path_info(hash_info.value)
-        if self.changed_cache(hash_info):
-            # using our makedirs to create dirs with proper permissions
-            self.makedirs(cache_info.parent)
-            if isinstance(tree, type(self.tree)):
-                self.tree.move(path_info, cache_info)
-            else:
-                with tree.open(path_info, mode="rb") as fobj:
-                    self.tree.upload_fobj(fobj, cache_info)
-                tree.state.save(path_info, hash_info)
-            self.protect(cache_info)
-            self.tree.state.save(cache_info, hash_info)
-
-            callback = kwargs.get("download_callback")
-            if callback:
-                callback(1)
+        self.add(path_info, tree, hash_info, **kwargs)
 
     def _transfer_file(self, from_tree, from_info):
         from dvc.utils import tmp_fname
@@ -181,8 +186,7 @@ class CloudCache:
             )
 
         hash_info = stream_reader.hash_info
-        self.move(tmp_info, self.tree.hash_to_path_info(hash_info.value))
-        return hash_info
+        return tmp_info, hash_info
 
     def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):
         rel_path_infos = {}
@@ -215,9 +219,13 @@ class CloudCache:
         dir_info = DirInfo()
 
         with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
-            for entry_info, entry_hash in self._transfer_directory_contents(
+            for (
+                entry_info,
+                (entry_tmp_info, entry_hash),
+            ) in self._transfer_directory_contents(
                 from_tree, from_info, jobs, pbar
             ):
+                self.add(entry_tmp_info, self.tree, entry_hash)
                 dir_info.trie[entry_info.parts] = entry_hash
 
         local_cache = self.repo.cache.local
@@ -228,7 +236,7 @@ class CloudCache:
             dir_info
         )
 
-        self.tree.upload(to_info, self.tree.hash_to_path_info(hash_info.value))
+        self.add(to_info, self.repo.cache.local.tree, hash_info)
         return hash_info
 
     def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
@@ -241,7 +249,9 @@ class CloudCache:
                 jobs=jobs,
                 no_progress_bar=no_progress_bar,
             )
-        return self._transfer_file(from_tree, from_info)
+        tmp_info, hash_info = self._transfer_file(from_tree, from_info)
+        self.add(tmp_info, self.tree, hash_info)
+        return hash_info
 
     def cache_is_copy(self, path_info):
         """Checks whether cache uses copies."""
@@ -296,13 +306,7 @@ class CloudCache:
             return hash_info
 
         hi, tmp_info = self.get_dir_info_hash(dir_info)
-        new_info = self.tree.hash_to_path_info(hi.value)
-        if self.changed_cache_file(hi):
-            self.makedirs(new_info.parent)
-            self.move(tmp_info, new_info)
-            self.protect(new_info)
-
-        self.tree.state.save(new_info, hi)
+        self.add(tmp_info, self.tree, hi)
 
         return hi
 
