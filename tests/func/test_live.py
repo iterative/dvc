@@ -18,13 +18,46 @@ LIVE_SCRITP = dedent(
            dvclive.next_step()"""
 )
 
+LIVE_CHECKPOINT_SCRIPT = dedent(
+    """
+            import os
+            import dvclive
+
+            def read(path):
+                value=0
+                if os.path.exists(path):
+                    with open(path, 'r') as fobj:
+                        try:
+                            value = int(fobj.read())
+                        except ValueError:
+                            pass
+                return value
+
+            def dump(value, path):
+                with open(path, "w") as fobj:
+                    fobj.write(str(value))
+
+            r = 3
+            checkpoint_file = "checkpoint"
+
+            value = read(checkpoint_file)
+            for i in range(1,r):
+                m = i + value
+                dump(m, checkpoint_file)
+
+                dvclive.log("metric1", m)
+                dvclive.log("metric2", m * 2)
+                dvclive.next_step()"""
+)
+
 
 @pytest.fixture
 def live_stage(tmp_dir, scm, dvc):
 
     pytest.skip("dvclive does not exist yet")
 
-    def make(summary=True, html=True):
+    def make(summary=True, html=True, live=None, live_no_cache=None):
+        assert bool(live) != bool(live_no_cache)
         tmp_dir.gen("train.py", LIVE_SCRITP)
         tmp_dir.gen("params.yaml", "foo: 1")
         stage = dvc.run(
@@ -32,7 +65,8 @@ def live_stage(tmp_dir, scm, dvc):
             params=["foo"],
             deps=["train.py"],
             name="live_stage",
-            live="logs",
+            live=live,
+            live_no_cache=live_no_cache,
             live_no_summary=not summary,
             live_no_html=not html,
         )
@@ -74,7 +108,7 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
 @pytest.mark.parametrize("summary", (True, False))
 def test_export_config(tmp_dir, dvc, mocker, summary, live_stage):
     run_spy = mocker.spy(stage_module.run, "_run")
-    live_stage(summary=summary)
+    live_stage(summary=summary, live="logs")
 
     assert run_spy.call_count == 1
     _, kwargs = run_spy.call_args
@@ -87,7 +121,7 @@ def test_export_config(tmp_dir, dvc, mocker, summary, live_stage):
 
 
 def test_live_provides_metrics(tmp_dir, dvc, live_stage):
-    live_stage(summary=True)
+    live_stage(summary=True, live="logs")
 
     assert (tmp_dir / "logs.json").is_file()
     assert dvc.metrics.show() == {
@@ -101,7 +135,7 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
-    live_stage(summary=False)
+    live_stage(summary=False, live="logs")
 
     assert not (tmp_dir / "logs.json").is_file()
     with pytest.raises(MetricsError):
@@ -113,8 +147,9 @@ def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
     assert "logs/loss.tsv" in plots
 
 
-def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage):
-    live_stage(summary=True)
+@pytest.mark.parametrize("typ", ("live", "live_no_cache"))
+def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
+    live_stage(summary=True, **{typ: "logs"})
     baseline_rev = scm.get_rev()
 
     experiments = dvc.experiments.run(targets=["live_stage"], params=["foo=2"])
@@ -127,7 +162,7 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage):
 
 @pytest.mark.parametrize("html", [True, False])
 def test_live_html(tmp_dir, dvc, live_stage, html):
-    live_stage(html=html)
+    live_stage(html=html, live="logs")
 
     assert (tmp_dir / "logs.html").is_file() == html
 
@@ -137,53 +172,27 @@ def live_checkpoint_stage(tmp_dir, scm, dvc):
 
     pytest.skip("dvclive does not exist yet")
 
-    SCRIPT = dedent(
-        """
-            import os
-            import dvclive
+    def make(live=None, live_no_cache=None):
+        assert bool(live) != bool(live_no_cache)
 
-            def read(path):
-                value=0
-                if os.path.exists(path):
-                    with open(path, 'r') as fobj:
-                        try:
-                            value = int(fobj.read())
-                        except ValueError:
-                            pass
-                return value
+        tmp_dir.gen("train.py", LIVE_CHECKPOINT_SCRIPT)
+        tmp_dir.gen("params.yaml", "foo: 1")
+        stage = dvc.run(
+            cmd="python train.py",
+            params=["foo"],
+            deps=["train.py"],
+            name="live_stage",
+            live=live,
+            live_no_cache=live_no_cache,
+            checkpoints=["checkpoint"],
+            no_exec=True,
+        )
 
-            def dump(value, path):
-                with open(path, "w") as fobj:
-                    fobj.write(str(value))
+        scm.add(["dvc.yaml", "train.py", "params.yaml", ".gitignore"])
+        scm.commit("initial: live_stage")
+        return stage
 
-            r = 3
-            checkpoint_file = "checkpoint"
-
-            value = read(checkpoint_file)
-            for i in range(1,r):
-                m = i + value
-                dump(m, checkpoint_file)
-
-                dvclive.log("metric1", m)
-                dvclive.log("metric2", m * 2)
-                dvclive.next_step()"""
-    )
-
-    tmp_dir.gen("train.py", SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
-    stage = dvc.run(
-        cmd="python train.py",
-        params=["foo"],
-        deps=["train.py"],
-        name="live_stage",
-        live="logs",
-        checkpoints=["checkpoint"],
-        no_exec=True,
-    )
-
-    scm.add(["dvc.yaml", "train.py", "params.yaml", ".gitignore"])
-    scm.commit("initial: live_stage")
-    yield stage
+    yield make
 
 
 def checkpoints_metric(show_results, metric_file, metric_name):
@@ -199,41 +208,37 @@ def checkpoints_metric(show_results, metric_file, metric_name):
     )
 
 
-def test_live_checkpoints_resume(tmp_dir, scm, dvc, live_checkpoint_stage):
+@pytest.mark.parametrize("typ", ("live", "live_no_cache"))
+def test_live_checkpoints_resume(
+    tmp_dir, scm, dvc, live_checkpoint_stage, typ
+):
+    stage = live_checkpoint_stage(**{typ: "logs"})
     results = dvc.experiments.run(
-        live_checkpoint_stage.addressing, params=["foo=2"], tmp_dir=False
+        stage.addressing, params=["foo=2"], tmp_dir=False
     )
 
     checkpoint_resume = first(results)
 
     dvc.experiments.run(
-        live_checkpoint_stage.addressing,
-        checkpoint_resume=checkpoint_resume,
-        tmp_dir=False,
+        stage.addressing, checkpoint_resume=checkpoint_resume, tmp_dir=False,
     )
 
     results = dvc.experiments.show()
     assert checkpoints_metric(results, "logs.json", "step") == [
         3,
-        3,
         2,
-        1,
         1,
         0,
     ]
     assert checkpoints_metric(results, "logs.json", "metric1") == [
         4,
-        4,
         3,
-        2,
         2,
         1,
     ]
     assert checkpoints_metric(results, "logs.json", "metric2") == [
         8,
-        8,
         6,
-        4,
         4,
         2,
     ]

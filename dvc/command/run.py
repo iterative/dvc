@@ -43,6 +43,7 @@ class CmdRun(CmdBase):
                 plots=self.args.plots,
                 plots_no_cache=self.args.plots_no_cache,
                 live=self.args.live,
+                live_no_cache=self.args.live_no_cache,
                 live_no_summary=self.args.live_no_summary,
                 live_no_html=self.args.live_no_html,
                 deps=self.args.deps,
