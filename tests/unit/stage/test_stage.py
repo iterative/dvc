@@ -92,6 +92,38 @@ def test_stage_update(mocker):
         stage.update()
 
 
+@mock.patch("dvc.stage.update_import_dir")
+def test_stage_update_dir(patched, mocker):
+    dep = RepoDependency({"url": "example.com"}, None, "dep_path")
+
+    class Out:
+        class Tree:
+            PARAM_CHECKSUM = "md5"
+
+        tree = Tree()
+
+    class DepTree:
+        PARAM_CHECKSUM = "md5"
+
+        def isdir(self, *args, **kwargs):
+            return True
+
+    mocker.patch.object(dep, "tree", new=DepTree())
+
+    stage = Stage(None, "path", deps=[dep], outs=[Out()])
+    is_repo_import = mocker.patch(
+        __name__ + ".Stage.is_repo_import", new_callable=mocker.PropertyMock
+    )
+    is_import = mocker.patch(
+        __name__ + ".Stage.is_import", new_callable=mocker.PropertyMock
+    )
+
+    is_repo_import.return_value = True
+    is_import.return_value = True
+    stage.update()
+    assert patched.called_once_with()
+
+
 @pytest.mark.skipif(
     not isinstance(
         threading.current_thread(),
