@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.utils.cli_parse import parse_params
 
 if TYPE_CHECKING:
     from dvc.output.base import BaseOutput
@@ -127,15 +128,14 @@ def parse_cmd(commands: List[str]) -> str:
 
 class CmdStageAdd(CmdBase):
     def run(self):
-        repo = self.repo
         kwargs = vars(self.args)
-        kwargs["cmd"] = parse_cmd(kwargs.pop("cmd"))
-
-        stage = repo.stage.create_from_cli(validate=True, **kwargs)
-
-        with repo.scm.track_file_changes(config=repo.config):
-            stage.ignore_outs()
-            stage.dump(update_lock=False)
+        kwargs.update(
+            {
+                "cmd": parse_cmd(kwargs.pop("cmd")),
+                "params": parse_params(self.args.params),
+            }
+        )
+        self.repo.stage.add(**kwargs)
         return 0
 
 

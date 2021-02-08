@@ -12,9 +12,9 @@ def test_parse_params():
             "param3,",
             "file3:",
         ]
-    ) == {
-        "params.yaml": ["param1", "param2", "param10", "param3"],
-        "file1": ["param1", "param2", "param3", "param4"],
-        "file2": ["param2"],
-        "file3": [],
-    }
+    ) == [
+        {"params.yaml": ["param1", "param2", "param10", "param3"]},
+        {"file1": ["param1", "param2", "param3", "param4"]},
+        {"file2": ["param2"]},
+        {"file3": []},
+    ]

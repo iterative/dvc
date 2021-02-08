@@ -1,17 +1,14 @@
 import os
 import pathlib
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.utils.cli_parse import parse_params
-from dvc.utils.collections import chunk_dict
 
 from ..hash_info import HashInfo
 from .exceptions import (
-    InvalidStageName,
     MissingDataSource,
     StageExternalOutputsError,
     StagePathNotDirectoryError,
@@ -252,7 +249,7 @@ def is_valid_name(name: str):
     return not INVALID_STAGENAME_CHARS & set(name)
 
 
-def _get_file_path(kwargs):
+def prepare_file_path(kwargs):
     """Determine file path from the first output name.
 
     Used in creating .dvc files.
@@ -330,19 +327,8 @@ def validate_state(
     repo.check_modified_graph(new_stages=[new], old_stages=stages)
 
 
-def create_stage_from_cli(
-    repo: "Repo",
-    single_stage: bool = False,
-    fname: str = None,
-    validate: bool = False,
-    force: bool = False,
-    **kwargs: Any,
-) -> Union["Stage", "PipelineStage"]:
-
-    from dvc.dvcfile import PIPELINE_FILE
-
-    from . import PipelineStage, Stage, create_stage, restore_meta
-
+def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
+    """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
     if not cmd:
         raise InvalidArgumentError("command is not specified")
@@ -362,32 +348,16 @@ def create_stage_from_cli(
 
     if single_stage:
         kwargs.pop("name", None)
-        stage_cls = Stage
-        path = fname or _get_file_path(kwargs)
-    else:
-        path = PIPELINE_FILE
-        stage_cls = PipelineStage
-        if not (stage_name and is_valid_name(stage_name)):
-            raise InvalidStageName
 
-    kwargs["cmd"] = cmd[0] if isinstance(cmd, list) and len(cmd) == 1 else cmd
-    kwargs["live_summary"] = not kwargs.pop("live_no_summary", False)
-    kwargs["live_html"] = not kwargs.pop("live_no_html", False)
-
-    live = kwargs.get("live", False)
-    live_no_cache = kwargs.get("live_no_cache", False)
-    if live and live_no_cache:
+    if kwargs.get("live") and kwargs.get("live_no_cache"):
         raise InvalidArgumentError(
             "cannot specify both `--live` and `--live-no-cache`"
         )
 
-    params = chunk_dict(parse_params(kwargs.pop("params", [])))
-    stage = create_stage(
-        stage_cls, repo=repo, path=path, params=params, **kwargs
+    kwargs.update(
+        {
+            "live_summary": not kwargs.pop("live_no_summary", False),
+            "live_html": not kwargs.pop("live_no_html", False),
+        }
     )
-
-    if validate:
-        validate_state(repo, stage, force=force)
-
-    restore_meta(stage)
-    return stage
+    return kwargs
