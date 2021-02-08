@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Union
 
 from dvc.utils.cli_parse import parse_params
 
@@ -19,16 +19,11 @@ def run(
     no_commit: bool = False,
     run_cache: bool = True,
     force: bool = True,
-    params: List[str] = None,
     **kwargs
 ) -> Union["Stage", "PipelineStage"]:
 
     kwargs.update(
-        {
-            "from_cli": True,
-            "force": force,
-            "params": parse_params(params or []),
-        }
+        {"force": force, "params": parse_params(kwargs.get("params", []))}
     )
     stage = self.stage.create(**kwargs)
 

@@ -88,7 +88,6 @@ def test_stage_add(mocker, dvc, command, parsed_command):
         "external": True,
         "desc": "description",
         "cmd": parsed_command,
-        "from_cli": True,
         "force": True,
     }
     args, kwargs = m.call_args

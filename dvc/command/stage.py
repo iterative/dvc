@@ -129,12 +129,10 @@ def parse_cmd(commands: List[str]) -> str:
 class CmdStageAdd(CmdBase):
     def run(self):
         kwargs = vars(self.args)
-        params = self.args.params
         kwargs.update(
             {
                 "cmd": parse_cmd(kwargs.pop("cmd")),
-                "from_cli": True,
-                "params": parse_params(params),
+                "params": parse_params(self.args.params),
             }
         )
         self.repo.stage.add(**kwargs)
