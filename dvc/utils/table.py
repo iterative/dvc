@@ -65,18 +65,27 @@ class Table(RichTable):
         truncated column remaining.
         """
         widths = super()._calculate_column_widths(console, max_width)
-        collapsed = False
+        last_collapsed = -1
         for i in range(len(self.columns) - 1, -1, -1):
             if widths[i] == 1 and self.columns[i].collapse:
-                if collapsed:
-                    del widths[i]
-                    del self.columns[i]
-                    for column in self.columns[i:]:
+                if last_collapsed >= 0:
+                    del widths[last_collapsed]
+                    del self.columns[last_collapsed]
+                    if self.box:
+                        max_width += 1
+                    for column in self.columns[last_collapsed:]:
                         column._index -= 1
-                    continue
-                collapsed = True
+                last_collapsed = i
+                padding = self._get_padding_width(i)
+                if (
+                    self.columns[i].overflow == "ellipsis"
+                    and (sum(widths) + padding) <= max_width
+                ):
+                    # Set content width to 1 (plus padding) if we can fit a
+                    # single unicode ellipsis in this column
+                    widths[i] = 1 + padding
             else:
-                collapsed = False
+                last_collapsed = -1
         return widths
 
     def _collapse_widths(
