@@ -3,7 +3,7 @@ import os
 from dvc.utils.serialize import dumps_yaml
 
 
-def test_params_order(tmp_dir, dvc, dummy_stage):
+def test_params_order(tmp_dir, dvc):
     tmp_dir.gen(
         {
             "params.yaml": dumps_yaml({"p1": 1}),
@@ -13,19 +13,25 @@ def test_params_order(tmp_dir, dvc, dummy_stage):
     )
 
     p2_path = os.path.join("sub", "p2.yaml")
-    sub_stage = os.path.join("sub", "dvc.yaml")
-
-    dummy_stage(params=[{p2_path: ["p3"]}, {"p1.yaml": ["p2"]}])
-    dummy_stage(path=sub_stage, params=["p1"])
+    dvc.stage.add(
+        params=[{p2_path: ["p3"]}, {"p1.yaml": ["p2"]}],
+        cmd="cmd1",
+        name="stage1",
+    )
+    with (tmp_dir / "sub").chdir():
+        dvc.stage.add(params=["p1"], cmd="cmd2", name="stage2")
 
     # params are sorted during dumping, therefore p1 is first
     assert list(dvc.params.show()[""]) == ["p1.yaml", p2_path, "params.yaml"]
 
 
-def test_repro_unicode(tmp_dir, dvc, dummy_stage):
+def test_repro_unicode(tmp_dir, dvc):
     tmp_dir.gen({"settings.json": '{"Ω_value": 1}'})
-    dummy_stage(params=[{"settings.json": ["Ω_value"]}])
-    (stage,) = dvc.reproduce(dry=True)
+    stage = dvc.stage.add(
+        params=[{"settings.json": ["Ω_value"]}], cmd="cmd", name="stage1"
+    )
+    assert dvc.reproduce(dry=True) == [stage]
+
     stage.cmd = "foo"
     stage.dump()
 

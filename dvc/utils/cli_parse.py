@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, List
 
 
-def parse_params(path_params: Iterable[str]) -> Dict[str, List[str]]:
+def parse_params(path_params: Iterable[str]) -> List[Dict[str, List[str]]]:
     """Normalizes the shape of params from the CLI to dict."""
     from dvc.dependency.param import ParamsDependency
 
@@ -14,7 +14,7 @@ def parse_params(path_params: Iterable[str]) -> Dict[str, List[str]]:
         if not path:
             path = ParamsDependency.DEFAULT_PARAMS_FILE
         ret[path].extend(params)
-    return ret
+    return [{path: params} for path, params in ret.items()]
 
 
 def loads_params(path_params: Iterable[str],) -> Dict[str, Dict[str, Any]]:
@@ -29,7 +29,11 @@ def loads_params(path_params: Iterable[str],) -> Dict[str, Dict[str, Any]]:
     normalized_params = parse_params(path_params)
     ret: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
-    for path, param_keys in normalized_params.items():
+    for part in normalized_params:
+        assert part
+        (item,) = part.items()
+        path, param_keys = item
+
         for param_str in param_keys:
             try:
                 key, _, value = param_str.partition("=")

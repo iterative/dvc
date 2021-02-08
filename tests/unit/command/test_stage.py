@@ -61,7 +61,7 @@ def test_stage_add(mocker, dvc, command, parsed_command):
     assert cli_args.func == CmdStageAdd
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(cmd.repo.stage, "create_from_cli")
+    m = mocker.patch.object(cmd.repo.stage, "add")
 
     assert cmd.run() == 0
     expected = {
@@ -69,7 +69,10 @@ def test_stage_add(mocker, dvc, command, parsed_command):
         "deps": ["deps"],
         "outs": ["outs"],
         "outs_no_cache": ["outs-no-cache"],
-        "params": ["file:param1,param2", "param3"],
+        "params": [
+            {"file": ["param1", "param2"]},
+            {"params.yaml": ["param3"]},
+        ],
         "metrics": ["metrics"],
         "metrics_no_cache": ["metrics-no-cache"],
         "plots": ["plots"],
@@ -85,6 +88,8 @@ def test_stage_add(mocker, dvc, command, parsed_command):
         "external": True,
         "desc": "description",
         "cmd": parsed_command,
+        "from_cli": True,
+        "force": True,
     }
     args, kwargs = m.call_args
     assert not args
@@ -92,4 +97,4 @@ def test_stage_add(mocker, dvc, command, parsed_command):
     for key, val in expected.items():
         # expected values should be a subset of what's in the call args list
         assert key in kwargs
-        assert kwargs[key] == val
+        assert kwargs[key] == val, f"in key '{key}'"

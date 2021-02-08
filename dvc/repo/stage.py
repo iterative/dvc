@@ -3,7 +3,7 @@ import logging
 import os
 import typing
 from contextlib import suppress
-from functools import partial
+from functools import partial, wraps
 from typing import (
     Callable,
     Iterable,
@@ -21,6 +21,7 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.path_info import PathInfo
+from dvc.repo import lock_repo
 from dvc.utils import parse_target, relpath
 
 logger = logging.getLogger(__name__)
@@ -99,24 +100,94 @@ def _collect_specific_target(
     return [], file, name
 
 
+def locked(f):
+    @wraps(f)
+    def wrapper(loader: "StageLoad", *args, **kwargs):
+        with lock_repo(loader.repo):
+            return f(loader, *args, **kwargs)
+
+    return wrapper
+
+
 class StageLoad:
     def __init__(self, repo: "Repo") -> None:
-        self.repo = repo
+        self.repo: "Repo" = repo
 
-    def create_from_cli(
-        self, validate: bool = False, **kwargs
+    @locked
+    def add(
+        self,
+        single_stage: bool = False,
+        fname: str = None,
+        validate: bool = True,
+        force: bool = False,
+        update_lock: bool = False,
+        **stage_data,
+    ):
+        stage = self.create(
+            single_stage=single_stage,
+            fname=fname,
+            validate=validate,
+            force=force,
+            **stage_data,
+        )
+        scm = self.repo.scm
+        with scm.track_file_changes(config=self.repo.config):
+            stage.dump(update_lock=update_lock)
+            stage.ignore_outs()
+
+        return stage
+
+    def create(
+        self,
+        single_stage: bool = False,
+        validate: bool = True,
+        fname: str = None,
+        force: bool = False,
+        **stage_data,
     ) -> Union["Stage", "PipelineStage"]:
-        """Creates a stage from CLI args passed as kwargs.
+        """Creates a stage.
 
         Args:
+            single_stage: if true, the .dvc file based stage is created,
+                fname is required in that case
+            fname: name of the file to use, not used for dvc.yaml files
             validate: if true, the new created stage is checked against the
                 stages in the repo. Eg: graph correctness,
                 potential overwrites in dvc.yaml file (unless `force=True`).
+            force: ignores overwrites in dvc.yaml file
+            stage_data: Stage data to create from
+                (see create_stage and loads_from for more information)
         """
-        from dvc.stage.utils import create_stage_from_cli
+        from dvc.stage import PipelineStage, Stage, create_stage, restore_meta
+        from dvc.stage.exceptions import InvalidStageName
+        from dvc.stage.utils import (
+            is_valid_name,
+            prepare_file_path,
+            validate_kwargs,
+            validate_state,
+        )
 
-        kwargs.update(validate=validate)
-        return create_stage_from_cli(self.repo, **kwargs)
+        stage_data = validate_kwargs(
+            single_stage=single_stage, fname=fname, **stage_data
+        )
+        if single_stage:
+            stage_cls = Stage
+            path = fname or prepare_file_path(stage_data)
+        else:
+            path = PIPELINE_FILE
+            stage_cls = PipelineStage
+            stage_name = stage_data["name"]
+            if not (stage_name and is_valid_name(stage_name)):
+                raise InvalidStageName
+
+        stage = create_stage(
+            stage_cls, repo=self.repo, path=path, **stage_data
+        )
+        if validate:
+            validate_state(self.repo, stage, force=force)
+
+        restore_meta(stage)
+        return stage
 
     def from_target(
         self, target: str, accept_group: bool = False, glob: bool = False,

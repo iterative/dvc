@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Union
+
+from dvc.utils.cli_parse import parse_params
 
 from . import locked
 from .scm_context import scm_context
@@ -17,13 +19,18 @@ def run(
     no_commit: bool = False,
     run_cache: bool = True,
     force: bool = True,
+    params: List[str] = None,
     **kwargs
-) -> Union["Stage", "PipelineStage", None]:
-    from dvc.stage.utils import validate_state
+) -> Union["Stage", "PipelineStage"]:
 
-    stage = self.stage.create_from_cli(**kwargs)
-
-    validate_state(self, stage, force=force)
+    kwargs.update(
+        {
+            "from_cli": True,
+            "force": force,
+            "params": parse_params(params or []),
+        }
+    )
+    stage = self.stage.create(**kwargs)
 
     if no_exec:
         stage.ignore_outs()
