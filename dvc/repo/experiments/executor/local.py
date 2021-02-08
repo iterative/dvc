@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from tempfile import TemporaryDirectory
 from typing import Optional
 
@@ -56,11 +55,4 @@ class TempDirExecutor(BaseLocalExecutor):
     def cleanup(self):
         super().cleanup()
         logger.debug("Removing tmpdir '%s'", self._tmp_dir)
-        try:
-            self._tmp_dir.cleanup()
-        except PermissionError:
-            if os.name == "nt" and sys.version_info < (3, 8):
-                # see https://bugs.python.org/issue26660
-                remove(self._tmp_dir.name)
-                return
-            raise
+        remove(self._tmp_dir.name)
