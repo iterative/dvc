@@ -418,7 +418,7 @@ class Stage(params.StageParams):
             and self.deps[0].tree.PARAM_CHECKSUM
             == self.outs[0].tree.PARAM_CHECKSUM
         ):
-            update_import_dir(self, rev=rev)
+            update_import_dir(self, rev=rev, jobs=jobs)
         else:
             update_import(
                 self, rev=rev, to_remote=to_remote, remote=remote, jobs=jobs
