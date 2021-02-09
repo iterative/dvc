@@ -250,7 +250,9 @@ class BaseExecutor(ABC):
             args, kwargs = cls._repro_args(dvc)
 
             repro_force = kwargs.get("force", False)
-            logger.debug("force = %s", str(repro_force))
+            logger.trace(  # type: ignore[attr-defined]
+                "Executor repro with force = '%s'", str(repro_force)
+            )
 
             # NOTE: for checkpoint experiments we handle persist outs slightly
             # differently than normal:
