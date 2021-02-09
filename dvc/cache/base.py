@@ -15,7 +15,7 @@ from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
 
-from ..objects import File, HashFile, ObjectFormatError, Tree
+from ..objects import HashFile, ObjectFormatError, Tree
 
 logger = logging.getLogger(__name__)
 
@@ -107,24 +107,23 @@ class CloudCache:
         )
 
     @use_state
-    def add(self, obj, **kwargs):
+    def add(self, path_info, tree, hash_info, **kwargs):
         try:
-            self.check(obj.hash_info)
+            self.check(hash_info)
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
 
-        cache_info = self.tree.hash_to_path_info(obj.hash_info.value)
+        cache_info = self.tree.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
-        if isinstance(obj.tree, type(self.tree)):
-            self.tree.move(obj.path_info, cache_info)
+        if isinstance(tree, type(self.tree)):
+            self.tree.move(path_info, cache_info)
         else:
-            with obj.tree.open(obj.path_info, mode="rb") as fobj:
+            with tree.open(path_info, mode="rb") as fobj:
                 self.tree.upload_fobj(fobj, cache_info)
-            obj.tree.state.save(obj.path_info, obj.hash_info)
         self.protect(cache_info)
-        self.tree.state.save(cache_info, obj.hash_info)
+        self.tree.state.save(cache_info, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:
@@ -189,8 +188,7 @@ class CloudCache:
             ) in self._transfer_directory_contents(
                 from_tree, from_info, jobs, pbar
             ):
-                obj = File(entry_tmp_info, self.tree, entry_hash)
-                self.add(obj)
+                self.add(entry_tmp_info, self.tree, entry_hash)
                 dir_info.trie[entry_info.parts] = entry_hash
 
         return Tree.save_dir_info(self, dir_info)
@@ -206,8 +204,7 @@ class CloudCache:
                 no_progress_bar=no_progress_bar,
             )
         tmp_info, hash_info = self._transfer_file(from_tree, from_info)
-        obj = File(tmp_info, self.tree, hash_info)
-        self.add(obj)
+        self.add(tmp_info, self.tree, hash_info)
         return hash_info
 
     def cache_is_copy(self, path_info):
