@@ -414,7 +414,8 @@ class Stage(params.StageParams):
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
         if (
-            self.deps[0].tree.isdir(self.deps[0].path_info)
+            self.deps[0].path_info
+            and self.deps[0].tree.isdir(self.deps[0].path_info)
             and self.deps[0].tree.PARAM_CHECKSUM
             == self.outs[0].tree.PARAM_CHECKSUM
         ):
