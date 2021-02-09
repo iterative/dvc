@@ -156,16 +156,7 @@ class OSFTree(BaseTree):
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
         file = self._get_file_obj(from_info)
-        # hack to get size of file
-        # This will be no longer needed after the
-        # pull-request https://github.com/osfclient/osfclient/pull/185 merge
-        total = None
-        if not no_progress_bar:
-            # pylint: disable=W0212
-            resp = self.osf._get(file._endpoint)
-            json = self.osf._json(resp, 200)
-            total = self.osf._get_attribute(json, "data", "attributes", "size")
-            # pylint: enable=W0212
+        total = file.size
 
         with open(to_file, "wb") as fobj:
             with Tqdm.wrapattr(
@@ -201,5 +192,5 @@ class OSFTree(BaseTree):
                     )
                     raise DvcException(message) from e
 
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding: str = None, **kwargs):
         raise RemoteActionNotImplemented("open", self.scheme)

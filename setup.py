@@ -104,7 +104,7 @@ ssh = ["paramiko[invoke]>=2.7.0"]
 hdfs = ["pyarrow>=2.0.0"]
 webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdavclient3>=3.14.5"]
-osf = ["osfclient==0.0.4"]
+osf = ["osfclient==0.0.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
@@ -155,7 +155,7 @@ tests_requirements = [
     "mypy",
     "wsgidav",
     "crc32c",
-    "osfclient==0.0.4",
+    "osfclient==0.0.5",
 ]
 
 setup(
