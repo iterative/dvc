@@ -1,3 +1,5 @@
+from dvc.exceptions import InvalidArgumentError
+
 from . import locked
 
 
@@ -18,6 +20,11 @@ def update(
 
     if isinstance(targets, str):
         targets = [targets]
+
+    if not to_remote and remote:
+        raise InvalidArgumentError(
+            "--remote can't be used without --to-remote"
+        )
 
     stages = set()
     for target in targets:

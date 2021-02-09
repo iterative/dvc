@@ -18,7 +18,7 @@ def update_import(stage, rev=None, to_remote=False, remote=None, jobs=None):
         if to_remote:
             _update_import_on_remote(stage, remote, jobs)
         else:
-            stage.reproduce()
+            stage.reproduce(jobs=jobs)
     finally:
         stage.frozen = frozen
 

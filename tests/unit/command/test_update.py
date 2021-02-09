@@ -4,7 +4,16 @@ from dvc.command.update import CmdUpdate
 
 def test_update(dvc, mocker):
     cli_args = parse_args(
-        ["update", "target1", "target2", "--rev", "REV", "--recursive"]
+        [
+            "update",
+            "target1",
+            "target2",
+            "--rev",
+            "REV",
+            "--recursive",
+            "-j",
+            "8",
+        ]
     )
     assert cli_args.func == CmdUpdate
     cmd = cli_args.func(cli_args)
@@ -18,7 +27,7 @@ def test_update(dvc, mocker):
         recursive=True,
         to_remote=False,
         remote=None,
-        jobs=None,
+        jobs=8,
     )
 
 
