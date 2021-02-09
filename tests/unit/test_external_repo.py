@@ -4,6 +4,7 @@ from unittest.mock import call
 import pytest
 
 from dvc.external_repo import external_repo
+from dvc.objects import stage
 from dvc.path_info import PathInfo
 from tests.unit.tree.test_repo import make_subrepo
 
@@ -109,12 +110,16 @@ def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
     with external_repo(str(tmp_dir)) as repo:
         spy = mocker.spy(repo.cloud, "pull")
 
-        dvc.cache.local.save(
+        obj = stage(
+            dvc.cache.local,
             PathInfo(repo.root_dir) / "dir1",
             repo.repo_tree,
-            None,
             follow_subrepos=False,
             jobs=3,
         )
+        dvc.cache.local.save(
+            obj, jobs=3,
+        )
+
         run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
         assert run_jobs == 3

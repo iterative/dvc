@@ -132,7 +132,12 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         out.get_dir_cache(**kwargs)
 
         dir_cache = out.dir_cache
-        hash_info = out.cache.save_dir_info(dir_cache)
+        if not dir_cache:
+            raise FileNotFoundError
+
+        from dvc.objects import Tree
+
+        hash_info = Tree.save_dir_info(out.cache, dir_cache)
         if hash_info != out.hash_info:
             raise FileNotFoundError
 

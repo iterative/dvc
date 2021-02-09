@@ -6,6 +6,7 @@ from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.hash_info import HashInfo
+from dvc.objects import ObjectFormatError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 
@@ -68,18 +69,21 @@ class LocalCache(CloudCache):
     def hashes_exist(
         self, hashes, jobs=None, name=None
     ):  # pylint: disable=unused-argument
-        return [
-            hash_
-            for hash_ in Tqdm(
-                hashes,
-                unit="file",
-                desc="Querying "
-                + ("cache in " + name if name else "local cache"),
-            )
-            if not self.changed_cache_file(
-                HashInfo(self.tree.PARAM_CHECKSUM, hash_)
-            )
-        ]
+        ret = []
+
+        for hash_ in Tqdm(
+            hashes,
+            unit="file",
+            desc="Querying " + ("cache in " + name if name else "local cache"),
+        ):
+            hash_info = HashInfo(self.tree.PARAM_CHECKSUM, hash_)
+            try:
+                self.check(hash_info)
+                ret.append(hash_)
+            except (FileNotFoundError, ObjectFormatError):
+                pass
+
+        return ret
 
     def _verify_link(self, path_info, link_type):
         if link_type == "hardlink" and self.tree.getsize(path_info) == 0:

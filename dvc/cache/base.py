@@ -1,8 +1,5 @@
-import errno
 import itertools
-import json
 import logging
-import os
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
@@ -18,16 +15,9 @@ from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
 
-from ..tree.base import RemoteActionNotImplemented
+from ..objects import File, HashFile, ObjectFormatError, Tree
 
 logger = logging.getLogger(__name__)
-
-
-class DirCacheError(DvcException):
-    def __init__(self, hash_):
-        super().__init__(
-            f"Failed to load dir cache for hash value: '{hash_}'."
-        )
 
 
 @decorator
@@ -52,40 +42,6 @@ class CloudCache:
             self.DEFAULT_CACHE_TYPES
         )
         self.cache_type_confirmed = False
-        self._dir_info = {}
-
-    def get_dir_cache(self, hash_info):
-        assert hash_info
-
-        dir_info = self._dir_info.get(hash_info.value)
-        if dir_info:
-            return dir_info
-
-        try:
-            dir_info = self.load_dir_cache(hash_info)
-        except DirCacheError:
-            dir_info = DirInfo()
-
-        self._dir_info[hash_info.value] = dir_info
-        return dir_info
-
-    def load_dir_cache(self, hash_info):
-        path_info = self.tree.hash_to_path_info(hash_info.value)
-
-        try:
-            with self.tree.open(path_info, "r") as fobj:
-                d = json.load(fobj)
-        except (ValueError, FileNotFoundError) as exc:
-            raise DirCacheError(hash_info) from exc
-
-        if not isinstance(d, list):
-            logger.error(
-                "dir cache file format error '%s' [skipping the file]",
-                path_info,
-            )
-            d = []
-
-        return DirInfo.from_list(d)
 
     def link(self, from_info, to_info):
         self._link(from_info, to_info, self.cache_types)
@@ -141,30 +97,38 @@ class CloudCache:
             "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
         )
 
-    def add(self, path_info, tree, hash_info, **kwargs):
-        if not self.changed_cache_file(hash_info):
-            return
+    def get(self, hash_info):
+        """ get raw object """
+        return HashFile(
+            # Prefer string path over PathInfo when possible due to performance
+            self.hash_to_path(hash_info.value),
+            self.tree,
+            hash_info,
+        )
 
-        cache_info = self.tree.hash_to_path_info(hash_info.value)
+    @use_state
+    def add(self, obj, **kwargs):
+        try:
+            self.check(obj.hash_info)
+            return
+        except (ObjectFormatError, FileNotFoundError):
+            pass
+
+        cache_info = self.tree.hash_to_path_info(obj.hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
-        if isinstance(tree, type(self.tree)):
-            self.tree.move(path_info, cache_info)
+        if isinstance(obj.tree, type(self.tree)):
+            self.tree.move(obj.path_info, cache_info)
         else:
-            with tree.open(path_info, mode="rb") as fobj:
+            with obj.tree.open(obj.path_info, mode="rb") as fobj:
                 self.tree.upload_fobj(fobj, cache_info)
-            tree.state.save(path_info, hash_info)
+            obj.tree.state.save(obj.path_info, obj.hash_info)
         self.protect(cache_info)
-        self.tree.state.save(cache_info, hash_info)
+        self.tree.state.save(cache_info, obj.hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:
             callback(1)
-
-    def _save_file(self, path_info, tree, hash_info, **kwargs):
-        assert hash_info
-
-        self.add(path_info, tree, hash_info, **kwargs)
 
     def _transfer_file(self, from_tree, from_info):
         from dvc.utils import tmp_fname
@@ -225,19 +189,11 @@ class CloudCache:
             ) in self._transfer_directory_contents(
                 from_tree, from_info, jobs, pbar
             ):
-                self.add(entry_tmp_info, self.tree, entry_hash)
+                obj = File(entry_tmp_info, self.tree, entry_hash)
+                self.add(obj)
                 dir_info.trie[entry_info.parts] = entry_hash
 
-        local_cache = self.repo.cache.local
-        (
-            hash_info,
-            to_info,
-        ) = local_cache.get_dir_info_hash(  # pylint: disable=protected-access
-            dir_info
-        )
-
-        self.add(to_info, self.repo.cache.local.tree, hash_info)
-        return hash_info
+        return Tree.save_dir_info(self, dir_info)
 
     def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
         jobs = jobs or min((from_tree.jobs, self.tree.jobs))
@@ -250,7 +206,8 @@ class CloudCache:
                 no_progress_bar=no_progress_bar,
             )
         tmp_info, hash_info = self._transfer_file(from_tree, from_info)
-        self.add(tmp_info, self.tree, hash_info)
+        obj = File(tmp_info, self.tree, hash_info)
+        self.add(obj)
         return hash_info
 
     def cache_is_copy(self, path_info):
@@ -264,6 +221,7 @@ class CloudCache:
         workspace_file = path_info.with_name("." + uuid())
         test_cache_file = self.tree.path_info / ".cache_type_test_file"
         if not self.tree.exists(test_cache_file):
+            self.makedirs(test_cache_file.parent)
             with self.tree.open(test_cache_file, "wb") as fobj:
                 fobj.write(bytes(1))
         try:
@@ -275,89 +233,9 @@ class CloudCache:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    def get_dir_info_hash(self, dir_info):
-        import tempfile
-
-        from dvc.path_info import PathInfo
-        from dvc.utils import tmp_fname
-
-        tmp = tempfile.NamedTemporaryFile(delete=False).name
-        with open(tmp, "w+") as fobj:
-            json.dump(dir_info.to_list(), fobj, sort_keys=True)
-
-        from_info = PathInfo(tmp)
-        to_info = self.tree.path_info / tmp_fname("")
-        self.tree.upload(from_info, to_info, no_progress_bar=True)
-
-        hash_info = self.tree.get_file_hash(to_info)
-        hash_info.value += self.tree.CHECKSUM_DIR_SUFFIX
-        hash_info.dir_info = dir_info
-        hash_info.nfiles = dir_info.nfiles
-
-        return hash_info, to_info
-
     @use_state
-    def save_dir_info(self, dir_info, hash_info=None):
-        if (
-            hash_info
-            and hash_info.name == self.tree.PARAM_CHECKSUM
-            and not self.changed_cache_file(hash_info)
-        ):
-            return hash_info
-
-        hi, tmp_info = self.get_dir_info_hash(dir_info)
-        self.add(tmp_info, self.tree, hi)
-
-        return hi
-
-    def _save_dir(
-        self, path_info, tree, hash_info, filter_info=None, **kwargs,
-    ):
-        if not hash_info.dir_info:
-            hash_info.dir_info = tree.cache.get_dir_cache(hash_info)
-        hi = self.save_dir_info(hash_info.dir_info, hash_info)
-        for entry_info, entry_hash in Tqdm(
-            hi.dir_info.items(path_info),
-            desc="Saving " + path_info.name,
-            unit="file",
-        ):
-            if filter_info and not entry_info.isin_or_eq(filter_info):
-                continue
-
-            self._save_file(entry_info, tree, entry_hash, **kwargs)
-
-        cache_info = self.tree.hash_to_path_info(hi.value)
-        self.tree.state.save(cache_info, hi)
-        tree.state.save(path_info, hi)
-
-    @use_state
-    def save(self, path_info, tree, hash_info, **kwargs):
-        if path_info.scheme != self.tree.scheme:
-            raise RemoteActionNotImplemented(
-                f"save {path_info.scheme} -> {self.tree.scheme}",
-                self.tree.scheme,
-            )
-
-        if not hash_info:
-            kw = kwargs.copy()
-            kw.pop("download_callback", None)
-            hash_info = tree.get_hash(path_info, **kw)
-            if not hash_info:
-                raise FileNotFoundError(
-                    errno.ENOENT, os.strerror(errno.ENOENT), path_info
-                )
-
-        self._save(path_info, tree, hash_info, **kwargs)
-        return hash_info
-
-    def _save(self, path_info, tree, hash_info, **kwargs):
-        to_info = self.tree.hash_to_path_info(hash_info.value)
-        logger.debug("Saving '%s' to '%s'.", path_info, to_info)
-
-        if tree.isdir(path_info):
-            self._save_dir(path_info, tree, hash_info, **kwargs)
-        else:
-            self._save_file(path_info, tree, hash_info, **kwargs)
+    def save(self, obj, **kwargs):
+        obj.save(self, **kwargs)
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
@@ -376,7 +254,7 @@ class CloudCache:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def changed_cache_file(self, hash_info):
+    def check(self, hash_info):
         """Compare the given hash with the (corresponding) actual one.
 
         - Use `State` as a cache for computed hashes
@@ -388,119 +266,25 @@ class CloudCache:
 
         - Remove the file from cache if it doesn't match the actual hash
         """
-        # Prefer string path over PathInfo when possible due to performance
-        cache_info = self.hash_to_path(hash_info.value)
-        if self.is_protected(cache_info):
+
+        obj = self.get(hash_info)
+        if self.is_protected(obj.path_info):
             logger.trace(
-                "Assuming '%s' is unchanged since it is read-only", cache_info
+                "Assuming '%s' is unchanged since it is read-only",
+                obj.path_info,
             )
-            return False
+            return
 
-        actual = self.tree.get_hash(cache_info)
-
-        logger.trace(
-            "cache '%s' expected '%s' actual '%s'",
-            cache_info,
-            hash_info,
-            actual,
-        )
-
-        if not hash_info or not actual:
-            return True
-
-        if actual.value.split(".")[0] == hash_info.value.split(".")[0]:
-            # making cache file read-only so we don't need to check it
-            # next time
-            self.protect(cache_info)
-            return False
-
-        if self.tree.exists(cache_info):
-            logger.warning("corrupted cache file '%s'.", cache_info)
-            self.tree.remove(cache_info)
-
-        return True
-
-    def _changed_dir_cache(self, hash_info, path_info=None, filter_info=None):
-        if self.changed_cache_file(hash_info):
-            return True
-
-        dir_info = self.get_dir_cache(hash_info)
-        for entry_info, entry_hash in dir_info.items(path_info):
-            if path_info and filter_info:
-                if not entry_info.isin_or_eq(filter_info):
-                    continue
-
-            if self.changed_cache_file(entry_hash):
-                return True
-
-        return False
-
-    def changed_cache(self, hash_info, path_info=None, filter_info=None):
-        if hash_info.isdir:
-            return self._changed_dir_cache(
-                hash_info, path_info=path_info, filter_info=filter_info
-            )
-        return self.changed_cache_file(hash_info)
-
-    def get_files_number(self, path_info, hash_info, filter_info):
-        from funcy.py3 import ilen
-
-        if not hash_info:
-            return 0
-
-        if not hash_info.isdir:
-            return 1
-
-        if not filter_info:
-            return self.get_dir_cache(hash_info).nfiles
-
-        return ilen(
-            filter_info.isin_or_eq(path_info / relpath)
-            for relpath, _ in self.get_dir_cache(hash_info).items()
-        )
-
-    def _get_dir_size(self, dir_info):
         try:
-            return sum(
-                self.tree.getsize(self.tree.hash_to_path_info(hi.value))
-                for _, hi in dir_info.items()
-            )
-        except FileNotFoundError:
-            return None
+            obj.check(self)
+        except ObjectFormatError:
+            logger.warning("corrupted cache file '%s'.", obj.path_info)
+            self.tree.remove(obj.path_info)
+            raise
 
-    def merge(self, ancestor_info, our_info, their_info):
-        assert our_info
-        assert their_info
-
-        if ancestor_info:
-            ancestor = self.get_dir_cache(ancestor_info)
-        else:
-            ancestor = DirInfo()
-
-        our = self.get_dir_cache(our_info)
-        their = self.get_dir_cache(their_info)
-
-        merged = our.merge(ancestor, their)
-        hash_info = self.save_dir_info(merged)
-        hash_info.size = self._get_dir_size(merged)
-        return hash_info
-
-    @use_state
-    def get_hash(self, tree, path_info):
-        hash_info = tree.get_hash(path_info)
-        if not hash_info.isdir:
-            assert hash_info.name == self.tree.PARAM_CHECKSUM
-            return hash_info
-
-        hi = self.save_dir_info(hash_info.dir_info, hash_info)
-        hi.size = hash_info.size
-        return hi
-
-    def set_dir_info(self, hash_info):
-        assert hash_info.isdir
-
-        hash_info.dir_info = self.get_dir_cache(hash_info)
-        hash_info.nfiles = hash_info.dir_info.nfiles
+        # making cache file read-only so we don't need to check it
+        # next time
+        self.protect(obj.path_info)
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:

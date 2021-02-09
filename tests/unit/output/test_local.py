@@ -2,7 +2,6 @@ import os
 
 from mock import patch
 
-from dvc.cache.local import LocalCache
 from dvc.dir_info import DirInfo
 from dvc.hash_info import HashInfo
 from dvc.output import LocalOutput
@@ -79,19 +78,19 @@ class TestGetFilesNumber(TestDvc):
         o.use_cache = False
         self.assertEqual(0, o.get_files_number())
 
-    @patch.object(
-        LocalCache,
-        "get_dir_cache",
-        return_value=DirInfo.from_list(
-            [
-                {"relpath": "foo", "md5": "asdf"},
-                {"relpath": "bar", "md5": "qwe"},
-            ]
-        ),
-    )
-    def test_return_multiple_for_dir(self, _mock_get_dir_cache):
+    def test_return_multiple_for_dir(self):
         o = self._get_output()
-        o.hash_info = HashInfo("md5", "12345678.dir")
+        o.hash_info = HashInfo(
+            "md5",
+            "12345678.dir",
+            nfiles=2,
+            dir_info=DirInfo.from_list(
+                [
+                    {"relpath": "foo", "md5": "asdf"},
+                    {"relpath": "bar", "md5": "qwe"},
+                ]
+            ),
+        )
         self.assertEqual(2, o.get_files_number())
 
     @patch.object(LocalOutput, "is_dir_checksum", False)

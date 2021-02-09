@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from voluptuous import Any
 
+import dvc.objects as objects
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
 from dvc.checkout import checkout
@@ -144,6 +145,7 @@ class BaseOutput:
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
 
+        self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
 
     def _parse_path(self, tree, path):
@@ -181,7 +183,7 @@ class BaseOutput:
 
     @property
     def dir_cache(self):
-        return self.cache.get_dir_cache(self.hash_info)
+        return self.hash_info.dir_info
 
     @classmethod
     def supported(cls, url):
@@ -194,7 +196,7 @@ class BaseOutput:
     def get_hash(self):
         if not self.use_cache:
             return self.tree.get_hash(self.path_info)
-        return self.cache.get_hash(self.tree, self.path_info)
+        return objects.stage(self.cache, self.path_info, self.tree).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -211,9 +213,15 @@ class BaseOutput:
         if not self.use_cache or not self.hash_info:
             return True
 
-        return self.cache.changed_cache(
-            self.hash_info, filter_info=filter_info
-        )
+        obj = self.get_obj(filter_info=filter_info)
+        if not obj:
+            return True
+
+        try:
+            objects.check(self.cache, obj)
+            return False
+        except (FileNotFoundError, objects.ObjectFormatError):
+            return True
 
     def workspace_status(self):
         if not self.exists:
@@ -296,7 +304,8 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.hash_info = self.get_hash()
+        self.obj = objects.stage(self.cache, self.path_info, self.tree)
+        self.hash_info = self.obj.hash_info
         self.isexec = self.isfile() and self.tree.isexec(self.path_info)
 
     def set_exec(self):
@@ -310,20 +319,16 @@ class BaseOutput:
         assert self.hash_info
 
         if self.use_cache:
-            self.cache.save(
-                self.path_info,
-                self.tree,
-                self.hash_info,
-                filter_info=filter_info,
+            obj = objects.stage(
+                self.cache, filter_info or self.path_info, self.tree
             )
-
+            self.cache.save(obj)
             checkout(
-                self.path_info,
+                filter_info or self.path_info,
                 self.tree,
-                self.hash_info,
+                obj,
                 self.cache,
                 relink=True,
-                filter_info=filter_info,
             )
             self.set_exec()
 
@@ -373,6 +378,23 @@ class BaseOutput:
     def download(self, to, jobs=None):
         self.tree.download(self.path_info, to.path_info, jobs=jobs)
 
+    def get_obj(self, filter_info=None):
+        if self.obj:
+            obj = self.obj
+        elif self.hash_info:
+            try:
+                obj = objects.load(self.cache, self.hash_info)
+            except FileNotFoundError:
+                return None
+        else:
+            return None
+
+        if filter_info and filter_info != self.path_info:
+            prefix = filter_info.relative_to(self.path_info).parts
+            obj = obj.filter(self.cache, prefix)
+
+        return obj
+
     def checkout(
         self,
         force=False,
@@ -389,16 +411,22 @@ class BaseOutput:
                 )
             return None
 
+        obj = self.get_obj(filter_info=filter_info)
+        if not obj and (filter_info and filter_info != self.path_info):
+            # backward compatibility
+            return None
+
+        added = not self.exists
+
         try:
-            res = checkout(
-                self.path_info,
+            modified = checkout(
+                filter_info or self.path_info,
                 self.tree,
-                self.hash_info,
+                obj,
                 self.cache,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
-                filter_info=filter_info,
                 **kwargs,
             )
         except CheckoutError:
@@ -406,7 +434,7 @@ class BaseOutput:
                 return None
             raise
         self.set_exec()
-        return res
+        return added, False if added else modified
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)
@@ -431,11 +459,23 @@ class BaseOutput:
             self.repo.scm.ignore(self.fspath)
 
     def get_files_number(self, filter_info=None):
-        if not self.use_cache:
+        from funcy import ilen
+
+        if not self.use_cache or not self.hash_info:
             return 0
 
-        return self.cache.get_files_number(
-            self.path_info, self.hash_info, filter_info
+        if not self.hash_info.isdir:
+            return 1
+
+        if not filter_info or filter_info == self.path_info:
+            return self.hash_info.nfiles
+
+        if not self.hash_info.dir_info:
+            return 0
+
+        return ilen(
+            filter_info.isin_or_eq(self.path_info / relpath)
+            for relpath, _ in self.hash_info.dir_info.items()
         )
 
     def unprotect(self):
@@ -443,17 +483,25 @@ class BaseOutput:
             self.cache.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
+
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
-        if self.cache.changed_cache_file(self.hash_info):
+
+        try:
+            objects.check(self.cache, self.cache.get(self.hash_info))
+        except (FileNotFoundError, objects.ObjectFormatError):
             self.repo.cloud.pull(
                 NamedCache.make("local", self.hash_info.value, str(self)),
                 show_checksums=False,
                 **kwargs,
             )
+
+        try:
+            objects.load(self.cache, self.hash_info)
+            assert self.hash_info.dir_info
+        except (objects.ObjectFormatError, FileNotFoundError):
             self.hash_info.dir_info = None
-        if not self.hash_info.dir_info:
-            self.cache.set_dir_info(self.hash_info)
+
         return self.dir_cache
 
     def collect_used_dir_cache(
@@ -485,7 +533,9 @@ class BaseOutput:
         except DvcException:
             logger.debug(f"failed to pull cache for '{self}'")
 
-        if self.cache.changed_cache_file(self.hash_info):
+        try:
+            objects.check(self.cache, self.cache.get(self.hash_info))
+        except (FileNotFoundError, objects.ObjectFormatError):
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
@@ -496,8 +546,7 @@ class BaseOutput:
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
-            else:
-                return cache
+            return cache
 
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
@@ -615,6 +664,6 @@ class BaseOutput:
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        self.hash_info = self.cache.merge(
-            ancestor_info, self.hash_info, other.hash_info
+        self.hash_info = objects.merge(
+            self.cache, ancestor_info, self.hash_info, other.hash_info
         )

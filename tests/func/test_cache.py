@@ -6,10 +6,9 @@ import configobj
 import pytest
 
 from dvc.cache import Cache
-from dvc.cache.base import DirCacheError
-from dvc.dir_info import DirInfo
 from dvc.hash_info import HashInfo
 from dvc.main import main
+from dvc.objects import ObjectFormatError
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc
 
@@ -49,24 +48,23 @@ class TestCacheLoadBadDirCache(TestDvc):
         self.assertEqual(len(ret), 0)
 
     def test(self):
+        from dvc.objects import load
+
         dir_hash = "123.dir"
         fname = os.fspath(
             self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
         )
         self.create(fname, "<clearly>not,json")
-        with pytest.raises(DirCacheError):
-            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
+        with pytest.raises(ObjectFormatError):
+            load(self.dvc.cache.local, HashInfo("md5", dir_hash))
 
         dir_hash = "234.dir"
         fname = os.fspath(
             self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
         )
         self.create(fname, '{"a": "b"}')
-        dir_info = self.dvc.cache.local.load_dir_cache(
-            HashInfo("md5", dir_hash)
-        )
-        self.assertTrue(isinstance(dir_info, DirInfo))
-        self.assertEqual(dir_info.nfiles, 0)
+        with pytest.raises(ObjectFormatError):
+            load(self.dvc.cache.local, HashInfo("md5", dir_hash))
 
 
 class TestExternalCacheDir(TestDvc):

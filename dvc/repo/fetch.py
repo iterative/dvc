@@ -81,6 +81,7 @@ def fetch(
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
+    from dvc.objects import stage
     from dvc.path_info import PathInfo
     from dvc.scm.base import CloneError
 
@@ -109,13 +110,15 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
                     cb(repo.cloud.pull(used, jobs))
                 except (NoOutputOrStageError, NoRemoteError):
                     pass
-                self.cache.local.save(
+                obj = stage(
+                    cache,
                     path_info,
                     repo.repo_tree,
-                    None,
                     jobs=jobs,
-                    download_callback=cb,
                     follow_subrepos=False,
+                )
+                cache.save(
+                    obj, jobs=jobs, download_callback=cb,
                 )
     except CloneError:
         failed += 1

@@ -85,6 +85,8 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
+        from dvc.objects import load
+
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
@@ -98,7 +100,9 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
         _, entry_hash = next(
-            self.dvc.cache.local.load_dir_cache(out.hash_info).items()
+            load(
+                self.dvc.cache.local, out.hash_info
+            ).hash_info.dir_info.items()
         )
         cache = os.fspath(
             self.dvc.cache.local.tree.hash_to_path_info(entry_hash.value)

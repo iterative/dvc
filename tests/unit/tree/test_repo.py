@@ -24,7 +24,7 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = RepoTree(dvc)
-    with tree.open("foo", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
         assert fobj.read() == "foo"
 
 
@@ -33,7 +33,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     tree = RepoTree(dvc)
-    with tree.open("file", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "file", "r") as fobj:
         assert fobj.read() == "something"
 
 
@@ -42,7 +42,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
     tree = RepoTree(dvc)
-    with tree.open("file", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "file", "r") as fobj:
         assert fobj.read() == "file"
 
 
@@ -62,7 +62,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
             continue
 
         tree = RepoTree(dvc)
-        with tree.open("foo", "r") as fobj:
+        with tree.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
             assert fobj.read() == "foo"
 
 

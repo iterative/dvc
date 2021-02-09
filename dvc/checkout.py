@@ -1,101 +1,58 @@
 import logging
 
 import dvc.prompt as prompt
-from dvc.dir_info import DirInfo
 from dvc.exceptions import CheckoutError, ConfirmRemoveError
+from dvc.objects import ObjectFormatError, check, load
 
 logger = logging.getLogger(__name__)
 
 
-def _filter_hash_info(cache, hash_info, path_info, filter_info):
-    if not filter_info or path_info == filter_info:
-        return hash_info
-
-    dir_info = cache.get_dir_cache(hash_info)
-    hash_key = filter_info.relative_to(path_info).parts
-
-    # Check whether it is a file that exists on the trie
-    hi = dir_info.trie.get(hash_key)
-    if hi:
-        return hi
-
-    depth = len(hash_key)
-    filtered_dir_info = DirInfo()
-    try:
-        for key, value in dir_info.trie.items(hash_key):
-            filtered_dir_info.trie[key[depth:]] = value
-    except KeyError:
-        return None
-
-    return cache.get_dir_info_hash(filtered_dir_info)[0]
-
-
-def _changed(path_info, tree, hash_info, cache, filter_info=None):
-    """Checks if data has changed.
-
-    A file is considered changed if:
-        - It doesn't exist on the working directory (was unlinked)
-        - Hash value is not computed (saving a new file)
-        - The hash value stored is different from the given one
-        - There's no file in the cache
-
-    Args:
-        path_info: dict with path information.
-        hash: expected hash value for this data.
-        filter_info: an optional argument to target a specific path.
-
-    Returns:
-        bool: True if data has changed, False otherwise.
-    """
-
-    path = filter_info or path_info
-    logger.trace("checking if '%s'('%s') has changed.", path_info, hash_info)
-
-    hi = _filter_hash_info(cache, hash_info, path_info, filter_info)
-    if not hi:
-        logger.debug("hash value for '%s' is missing.", path)
-        return True
-
-    if cache.changed_cache(hi):
-        logger.debug("cache for '%s'('%s') has changed.", path, hi)
-        return True
+def _changed(path_info, tree, obj, cache):
+    logger.trace("checking if '%s'('%s') has changed.", path_info, obj)
 
     try:
-        actual = tree.get_hash(path)
-    except FileNotFoundError:
-        logger.debug("'%s' doesn't exist.", path)
-        return True
-
-    if hi != actual:
+        check(cache, obj)
+    except (FileNotFoundError, ObjectFormatError):
         logger.debug(
-            "hash value '%s' for '%s' has changed (actual '%s').",
-            hi,
-            actual,
-            path,
+            "cache for '%s'('%s') has changed.", path_info, obj.hash_info
         )
         return True
 
-    logger.trace("'%s' hasn't changed.", path)
+    try:
+        actual = tree.get_hash(path_info)
+    except FileNotFoundError:
+        logger.debug("'%s' doesn't exist.", path_info)
+        return True
+
+    if obj.hash_info != actual:
+        logger.debug(
+            "hash value '%s' for '%s' has changed (actual '%s').",
+            obj.hash_info,
+            actual,
+            path_info,
+        )
+        return True
+
+    logger.trace("'%s' hasn't changed.", path_info)
     return False
-
-
-def _is_cached(cache, path_info, tree):
-    current = tree.get_hash(path_info)
-
-    if not current:
-        return False
-
-    return not cache.changed_cache(current)
 
 
 def _remove(path_info, tree, cache, force=False):
     if not tree.exists(path_info):
         return
 
-    if not force and not _is_cached(cache, path_info, tree):
+    if force:
+        tree.remove(path_info)
+        return
+
+    current = tree.get_hash(path_info)
+    try:
+        obj = load(cache, current)
+        check(cache, obj)
+    except (FileNotFoundError, ObjectFormatError):
         msg = (
-            "file '{}' is going to be removed."
-            " Are you sure you want to proceed?".format(str(path_info))
+            f"file/directory '{path_info}' is going to be removed. "
+            "Are you sure you want to proceed?"
         )
 
         if not prompt.confirm(msg):
@@ -105,26 +62,17 @@ def _remove(path_info, tree, cache, force=False):
 
 
 def _checkout_file(
-    path_info,
-    tree,
-    hash_info,
-    cache,
-    force,
-    progress_callback=None,
-    relink=False,
+    path_info, tree, obj, cache, force, progress_callback=None, relink=False,
 ):
     """The file is changed we need to checkout a new copy"""
-    cache_info = cache.tree.hash_to_path_info(hash_info.value)
+    modified = False
+    cache_info = cache.tree.hash_to_path_info(obj.hash_info.value)
     if tree.exists(path_info):
-        added = False
-
-        if not relink and _changed(path_info, tree, hash_info, cache):
+        if not relink and _changed(path_info, tree, obj, cache):
             modified = True
             _remove(path_info, tree, cache, force=force)
             cache.link(cache_info, path_info)
         else:
-            modified = False
-
             if tree.iscopy(path_info) and cache.cache_is_copy(path_info):
                 cache.unprotect(path_info)
             else:
@@ -132,13 +80,13 @@ def _checkout_file(
                 cache.link(cache_info, path_info)
     else:
         cache.link(cache_info, path_info)
-        added, modified = True, False
+        modified = True
 
-    tree.state.save(path_info, hash_info)
+    tree.state.save(path_info, obj.hash_info)
     if progress_callback:
         progress_callback(str(path_info))
 
-    return added, modified
+    return modified
 
 
 def _remove_redundant_files(path_info, tree, dir_info, cache, force):
@@ -153,77 +101,59 @@ def _remove_redundant_files(path_info, tree, dir_info, cache, force):
 
 
 def _checkout_dir(
-    path_info,
-    tree,
-    hash_info,
-    cache,
-    force,
-    progress_callback=None,
-    relink=False,
-    filter_info=None,
+    path_info, tree, obj, cache, force, progress_callback=None, relink=False,
 ):
-    added, modified = False, False
+    modified = False, False
     # Create dir separately so that dir is created
     # even if there are no files in it
     if not tree.exists(path_info):
-        added = True
+        modified = True
         tree.makedirs(path_info)
-
-    dir_info = cache.get_dir_cache(hash_info)
 
     logger.debug("Linking directory '%s'.", path_info)
 
-    for entry_info, entry_hash_info in dir_info.items(path_info):
-        if filter_info and not entry_info.isin_or_eq(filter_info):
-            continue
-
-        entry_added, entry_modified = _checkout_file(
+    for entry_info, entry_hash_info in obj.hash_info.dir_info.items(path_info):
+        entry_modified = _checkout_file(
             entry_info,
             tree,
-            entry_hash_info,
+            cache.get(entry_hash_info),
             cache,
             force,
             progress_callback,
             relink,
         )
-        if entry_added or entry_modified:
+        if entry_modified:
             modified = True
 
     modified = (
-        _remove_redundant_files(path_info, tree, dir_info, cache, force)
+        _remove_redundant_files(
+            path_info, tree, obj.hash_info.dir_info, cache, force
+        )
         or modified
     )
 
-    tree.state.save(path_info, hash_info)
+    tree.state.save(path_info, obj.hash_info)
 
     # relink is not modified, assume it as nochange
-    return added, not added and modified and not relink
+    return modified and not relink
 
 
 def _checkout(
     path_info,
     tree,
-    hash_info,
+    obj,
     cache,
     force=False,
     progress_callback=None,
     relink=False,
-    filter_info=None,
 ):
-    if not hash_info.isdir:
+    if not obj.hash_info.isdir:
         ret = _checkout_file(
-            path_info, tree, hash_info, cache, force, progress_callback, relink
+            path_info, tree, obj, cache, force, progress_callback, relink
         )
     else:
         ret = _checkout_dir(
-            path_info,
-            tree,
-            hash_info,
-            cache,
-            force,
-            progress_callback,
-            relink,
-            filter_info,
+            path_info, tree, obj, cache, force, progress_callback, relink,
         )
 
     tree.state.save_link(path_info)
@@ -234,12 +164,11 @@ def _checkout(
 def checkout(
     path_info,
     tree,
-    hash_info,
+    obj,
     cache,
     force=False,
     progress_callback=None,
     relink=False,
-    filter_info=None,
     quiet=False,
 ):
     if path_info.scheme not in ["local", cache.tree.scheme]:
@@ -247,7 +176,7 @@ def checkout(
 
     failed = None
     skip = False
-    if not hash_info:
+    if not obj:
         if not quiet:
             logger.warning(
                 "No file hash info found for '%s'. It won't be created.",
@@ -256,43 +185,33 @@ def checkout(
         _remove(path_info, tree, cache, force=force)
         failed = path_info
 
-    elif not relink and not _changed(
-        path_info, tree, hash_info, cache, filter_info=filter_info
-    ):
+    elif not relink and not _changed(path_info, tree, obj, cache):
         logger.trace("Data '%s' didn't change.", path_info)
         skip = True
-
-    elif cache.changed_cache(
-        hash_info, path_info=path_info, filter_info=filter_info
-    ):
-        if not quiet:
-            logger.warning(
-                "Cache '%s' not found. File '%s' won't be created.",
-                hash_info,
-                path_info,
-            )
-        _remove(path_info, tree, cache, force=force)
-        failed = path_info
+    else:
+        try:
+            check(cache, obj)
+        except (FileNotFoundError, ObjectFormatError):
+            if not quiet:
+                logger.warning(
+                    "Cache '%s' not found. File '%s' won't be created.",
+                    obj.hash_info,
+                    path_info,
+                )
+            _remove(path_info, tree, cache, force=force)
+            failed = path_info
 
     if failed or skip:
-        if progress_callback:
+        if progress_callback and obj:
             progress_callback(
-                str(path_info),
-                cache.get_files_number(path_info, hash_info, filter_info),
+                str(path_info), len(obj),
             )
         if failed:
             raise CheckoutError([failed])
         return
 
-    logger.debug("Checking out '%s' with cache '%s'.", path_info, hash_info)
+    logger.debug("Checking out '%s' with cache '%s'.", path_info, obj)
 
     return _checkout(
-        path_info,
-        tree,
-        hash_info,
-        cache,
-        force,
-        progress_callback,
-        relink,
-        filter_info,
+        path_info, tree, obj, cache, force, progress_callback, relink,
     )
