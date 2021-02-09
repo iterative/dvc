@@ -62,7 +62,7 @@ class HashFile:
         return odb.get(hash_info)
 
     def save(self, odb, **kwargs):
-        odb.add(self, **kwargs)
+        odb.add(self.path_info, self.tree, self.hash_info, **kwargs)
 
 
 class File(HashFile):
@@ -129,8 +129,7 @@ class Tree(HashFile):
         hash_info.dir_info = dir_info
         hash_info.nfiles = dir_info.nfiles
 
-        obj = HashFile(tmp_info, odb.tree, hash_info)
-        odb.add(obj)
+        odb.add(tmp_info, odb.tree, hash_info)
 
         return hash_info
 
