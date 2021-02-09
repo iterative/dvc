@@ -11,20 +11,12 @@ from dvc.tree.gdrive import GDriveTree
 from .base import Base
 
 TEST_GDRIVE_REPO_BUCKET = "root"
-CREDENTIALS_DIR = os.path.join(os.path.expanduser("~"), ".config", "pydata")
-CREDENTIALS_FILE = os.path.join(
-    CREDENTIALS_DIR, "pydata_google_credentials.json"
-)
-GDRIVE_TEST_CREDENTIALS_DATA = "GDRIVE_TEST_CREDENTIALS_DATA"
 
 
 class GDrive(Base, CloudURLInfo):
     @staticmethod
     def should_test():
-        return bool(
-            os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
-            and os.getenv(GDRIVE_TEST_CREDENTIALS_DATA)
-        )
+        return bool(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
 
     @cached_property
     def config(self):

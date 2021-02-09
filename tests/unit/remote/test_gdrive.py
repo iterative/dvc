@@ -1,3 +1,4 @@
+import io
 import os
 
 import pytest
@@ -35,3 +36,22 @@ class TestRemoteGDrive:
         ] = USER_CREDS_MISSED_KEY_ERROR
         with pytest.raises(GDriveAuthError):
             assert tree._drive
+
+
+def test_gdrive_ls(dvc, tmp_dir, local_remote):
+    drive = GDriveTree(dvc, {"url": "gdrive://root"})
+    files = {
+        "data/bar/baz/file0",
+        "data/bar/file1",
+        "data/file2",
+        "data/file3",
+    }
+
+    path_info = drive.path_info
+    for path in files:
+        fobj = io.BytesIO(path.encode())
+        drive.upload_fobj(fobj, path_info / path)
+
+    path_info = drive.path_info / "data"
+    assert set(drive.ls(path_info)) == {"data/bar", "data/file2", "data/file3"}
+    assert set(drive.ls(path_info, recursive=True)) == files

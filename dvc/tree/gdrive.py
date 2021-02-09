@@ -519,7 +519,7 @@ class GDriveTree(BaseTree):
                 if detail:
                     yield entry
                 else:
-                    yield str(entry)
+                    yield entry.path
             return None
 
         cached = path_info.path in self._ids_cache["dirs"]
@@ -551,7 +551,7 @@ class GDriveTree(BaseTree):
                 yield item_path
 
         if not cached:
-            self._cache_path_id(root_path.path, min(dir_ids))
+            self._cache_path_id(root_path, min(dir_ids))
 
     def walk(
         self, path_info, prefix=None, detail=False
