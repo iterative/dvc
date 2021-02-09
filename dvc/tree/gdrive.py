@@ -522,18 +522,21 @@ class GDriveTree(BaseTree):
                     yield str(entry)
             return None
 
-        parent_ids = self._path_to_item_ids(path_info.path)
-        if not parent_ids:
+        cached = path_info.path in self._ids_cache["dirs"]
+        if cached:
+            dir_ids = self._ids_cache["dirs"][path_info.path]
+        else:
+            dir_ids = self._path_to_item_ids(path_info.path)
+
+        if not dir_ids:
             return None
 
-        parents_query = " or ".join(
-            f"'{dir_id}' in parents" for dir_id in parent_ids
-        )
-        query = f"({parents_query}) and trashed=false"
+        query = " or ".join(f"'{dir_id}' in parents" for dir_id in dir_ids)
+        query = f"({query}) and trashed=false"
 
-        parent_path = path_info.path
+        root_path = path_info.path
         for item in self._gdrive_list(query):
-            item_path = posixpath.join(parent_path, item["title"])
+            item_path = posixpath.join(root_path, item["title"])
             if detail:
                 if item["mimeType"] == FOLDER_MIME_TYPE:
                     yield {"type": "directory", "name": item_path}
@@ -547,10 +550,12 @@ class GDriveTree(BaseTree):
             else:
                 yield item_path
 
-        if parent_ids:
-            self._cache_path_id(path_info.path, min(parent_ids))
+        if not cached:
+            self._cache_path_id(root_path.path, min(dir_ids))
 
-    def walk(self, path_info, detail=False):
+    def walk(
+        self, path_info, prefix=None, detail=False
+    ):  # pylint: disable=unused-argument
         stack = deque([path_info])
         while stack:
             path_info = stack.pop()
@@ -569,8 +574,6 @@ class GDriveTree(BaseTree):
             stack.extendleft(directories)
 
     def walk_files(self, path_info, **kwargs):
-        if kwargs.pop("prefix", False):
-            path_info = path_info / ""
         for _, _, file_infos in self.walk(path_info, **kwargs):
             yield from file_infos
 
