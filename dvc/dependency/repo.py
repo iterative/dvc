@@ -71,7 +71,7 @@ class RepoDependency(LocalDependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects import stage
+        from dvc.objects import save, stage
 
         cache = self.repo.cache.local
 
@@ -86,7 +86,7 @@ class RepoDependency(LocalDependency):
                 jobs=jobs,
                 follow_subrepos=False,
             )
-            cache.save(obj, jobs=jobs)
+            save(cache, obj, jobs=jobs)
 
         checkout(to.path_info, to.tree, obj, cache)
 

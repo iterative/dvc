@@ -233,10 +233,6 @@ class CloudCache:
         self.cache_type_confirmed = True
         return self.cache_types[0] == "copy"
 
-    @use_state
-    def save(self, obj, **kwargs):
-        obj.save(self, **kwargs)
-
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
     def hash_to_path(self, hash_):

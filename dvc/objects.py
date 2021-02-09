@@ -186,8 +186,6 @@ class Tree(HashFile):
         ):
             entry_obj = HashFile(entry_info, self.src_tree, entry_hash)
             entry_obj.save(odb, **kwargs)
-        cache_info = odb.tree.hash_to_path_info(hi.value)
-        odb.tree.state.save(cache_info, hi)
         self.src_tree.state.save(self.src_path_info, hi)
 
     def filter(self, odb, prefix):
@@ -210,6 +208,10 @@ def stage(odb, path_info, tree, **kwargs):
     if tree.isdir(path_info):
         return Tree.stage(odb, path_info, tree, **kwargs)
     return File.stage(odb, path_info, tree, **kwargs)
+
+
+def save(odb, obj, **kwargs):
+    obj.save(odb, **kwargs)
 
 
 def check(odb, obj):

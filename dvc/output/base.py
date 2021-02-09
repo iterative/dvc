@@ -322,7 +322,7 @@ class BaseOutput:
             obj = objects.stage(
                 self.cache, filter_info or self.path_info, self.tree
             )
-            self.cache.save(obj)
+            objects.save(self.cache, obj)
             checkout(
                 filter_info or self.path_info,
                 self.tree,

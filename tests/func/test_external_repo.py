@@ -3,7 +3,7 @@ import os
 from mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
-from dvc.objects import stage
+from dvc.objects import save, stage
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
@@ -206,7 +206,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             repo.repo_tree,
             follow_subrepos=False,
         )
-        repo.cache.local.save(obj)
+        save(repo.cache.local, obj)
         assert set(cache_dir.glob("*/*")) == {
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
