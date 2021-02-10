@@ -16,5 +16,5 @@ os.putenv("DVC_HOME", REPO_ROOT)
 
 params = " ".join(sys.argv[1:])
 
-cmd = "pytest -v -n=4 --cov=dvc --durations=0 {params}".format(params=params)
+cmd = f"pytest -v -n=auto --dist loadscope --cov=dvc --durations=0 {params}"
 check_call(cmd, shell=True)
