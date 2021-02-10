@@ -4,20 +4,11 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
-from funcy import decorator
-
 from dvc.progress import Tqdm
 
 from ..objects import HashFile, ObjectFormatError
 
 logger = logging.getLogger(__name__)
-
-
-@decorator
-def use_state(call):
-    tree = call._args[0].tree  # pylint: disable=protected-access
-    with tree.state:
-        return call()
 
 
 class CloudCache:
@@ -51,7 +42,6 @@ class CloudCache:
             hash_info,
         )
 
-    @use_state
     def add(self, path_info, tree, hash_info, **kwargs):
         try:
             self.check(hash_info)
@@ -68,7 +58,8 @@ class CloudCache:
             with tree.open(path_info, mode="rb") as fobj:
                 self.tree.upload_fobj(fobj, cache_info)
         self.protect(cache_info)
-        self.tree.state.save(cache_info, hash_info)
+        with self.tree.state:
+            self.tree.state.save(cache_info, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:
