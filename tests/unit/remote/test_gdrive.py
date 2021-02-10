@@ -1,5 +1,5 @@
 import io
-import os
+import posixpath
 
 import pytest
 
@@ -55,6 +55,6 @@ def test_gdrive_ls(dvc, gdrive, tmp_dir):
 
     for recursive, expected in [(True, files), (False, top_level_contents)]:
         assert {
-            os.path.relpath(filename, gdrive.path)
+            posixpath.relpath(filename, gdrive.path)
             for filename in tree.ls(gdrive, recursive=recursive)
         } == expected
