@@ -678,6 +678,16 @@ class CmdExperimentsPull(CmdBase):
         return 0
 
 
+class CmdExperimentsRemove(CmdBase):
+    def run(self):
+
+        self.repo.experiments.remove(
+            exp_names=self.args.experiment, queue=self.args.queue,
+        )
+
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to run and compare experiments."
 
@@ -1162,6 +1172,25 @@ def add_parser(subparsers, parent_parser):
         "experiment", help="Experiment to pull.", metavar="<experiment>",
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
+
+    EXPERIMENTS_REMOVE_HELP = "Remove local experiments."
+    experiments_remove_parser = experiments_subparsers.add_parser(
+        "remove",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_REMOVE_HELP, "exp/remove"),
+        help=EXPERIMENTS_REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_remove_parser.add_argument(
+        "--queue", action="store_true", help="Remove all queued experiments.",
+    )
+    experiments_remove_parser.add_argument(
+        "experiment",
+        nargs="*",
+        help="Experiments to remove.",
+        metavar="<experiment>",
+    )
+    experiments_remove_parser.set_defaults(func=CmdExperimentsRemove)
 
 
 def _add_run_common(parser):
