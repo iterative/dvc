@@ -9,6 +9,7 @@ from dvc.command.experiments import (
     CmdExperimentsList,
     CmdExperimentsPull,
     CmdExperimentsPush,
+    CmdExperimentsRemove,
     CmdExperimentsRun,
     CmdExperimentsShow,
 )
@@ -239,4 +240,18 @@ def test_experiments_pull(dvc, scm, mocker):
         dvc_remote="my-remote",
         jobs=1,
         run_cache=True,
+    )
+
+
+def test_experiments_remove(dvc, scm, mocker):
+    cli_args = parse_args(["experiments", "remove", "--queue"])
+    assert cli_args.func == CmdExperimentsRemove
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo, exp_names=[], queue=True,
     )
