@@ -191,7 +191,7 @@ class BaseOutput:
 
     @property
     def cache_path(self):
-        return self.cache.tree.hash_to_path_info(self.hash_info.value).url
+        return self.cache.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
         if not self.use_cache:

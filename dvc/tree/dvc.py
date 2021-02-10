@@ -78,14 +78,14 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
                 checksum = self._get_granular_hash(path, out).value
             else:
                 checksum = out.hash_info.value
-            remote_info = remote_obj.tree.hash_to_path_info(checksum)
+            remote_info = remote_obj.cache.hash_to_path_info(checksum)
             return remote_obj.tree.open(
                 remote_info, mode=mode, encoding=encoding
             )
 
         if out.is_dir_checksum:
             checksum = self._get_granular_hash(path, out).value
-            cache_path = out.cache.tree.hash_to_path_info(checksum).url
+            cache_path = out.cache.hash_to_path_info(checksum).url
         else:
             cache_path = out.cache_path
         return open(cache_path, mode=mode, encoding=encoding)

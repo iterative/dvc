@@ -232,7 +232,7 @@ def load(odb, hash_info):
 def _get_dir_size(odb, dir_info):
     try:
         return sum(
-            odb.tree.getsize(odb.tree.hash_to_path_info(hi.value))
+            odb.tree.getsize(odb.hash_to_path_info(hi.value))
             for _, hi in dir_info.items()
         )
     except FileNotFoundError:

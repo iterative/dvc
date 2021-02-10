@@ -277,8 +277,8 @@ class Remote:
             status_info.items(), desc="Analysing status", unit="file"
         ):
             if info["status"] == status:
-                cache.append(cache_obj.tree.hash_to_path_info(md5))
-                path_infos.append(self.tree.hash_to_path_info(md5))
+                cache.append(cache_obj.hash_to_path_info(md5))
+                path_infos.append(self.cache.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)
             elif info["status"] == STATUS_MISSING:
@@ -474,7 +474,7 @@ class Remote:
         if self.tree.scheme == "local":
             with self.tree.state:
                 for checksum in named_cache.scheme_keys("local"):
-                    cache_file = self.tree.hash_to_path_info(checksum)
+                    cache_file = self.cache.hash_to_path_info(checksum)
                     if self.tree.exists(cache_file):
                         hash_info = HashInfo(
                             self.tree.PARAM_CHECKSUM, checksum
@@ -497,7 +497,7 @@ class Remote:
         if not self.cache.verify:
             with cache.tree.state:
                 for checksum in named_cache.scheme_keys("local"):
-                    cache_file = cache.tree.hash_to_path_info(checksum)
+                    cache_file = cache.hash_to_path_info(checksum)
                     if cache.tree.exists(cache_file):
                         # We can safely save here, as existing corrupted files
                         # will be removed upon status, while files corrupted

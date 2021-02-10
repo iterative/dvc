@@ -142,4 +142,4 @@ class DataCloud:
 
     def get_url_for(self, remote, checksum):
         remote = self.get_remote(remote)
-        return str(remote.tree.hash_to_path_info(checksum))
+        return str(remote.cache.hash_to_path_info(checksum))

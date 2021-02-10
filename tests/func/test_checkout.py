@@ -105,7 +105,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
             ).hash_info.dir_info.items()
         )
         cache = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(entry_hash.value)
+            self.dvc.cache.local.hash_to_path_info(entry_hash.value)
         )
 
         os.chmod(cache, 0o644)

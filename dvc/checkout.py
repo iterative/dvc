@@ -150,7 +150,7 @@ def _checkout_file(
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
-    cache_info = cache.tree.hash_to_path_info(obj.hash_info.value)
+    cache_info = cache.hash_to_path_info(obj.hash_info.value)
     if tree.exists(path_info):
         if not relink and _changed(path_info, tree, obj, cache):
             modified = True

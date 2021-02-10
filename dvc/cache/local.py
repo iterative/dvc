@@ -98,7 +98,7 @@ class LocalCache(CloudCache):
             yield from walk_files(path_info)
 
     def _remove_unpacked_dir(self, hash_):
-        info = self.tree.hash_to_path_info(hash_)
+        info = self.hash_to_path_info(hash_)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
         self.tree.remove(path_info)
 

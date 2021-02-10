@@ -49,7 +49,7 @@ class CloudCache:
         except (ObjectFormatError, FileNotFoundError):
             pass
 
-        cache_info = self.tree.hash_to_path_info(hash_info.value)
+        cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
         if isinstance(tree, type(self.tree)):
@@ -65,10 +65,13 @@ class CloudCache:
         if callback:
             callback(1)
 
+    def hash_to_path_info(self, hash_):
+        return self.tree.path_info / hash_[0:2] / hash_[2:]
+
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
     def hash_to_path(self, hash_):
-        return self.tree.hash_to_path_info(hash_)
+        return self.hash_to_path_info(hash_)
 
     def protect(self, path_info):  # pylint: disable=unused-argument
         pass
@@ -301,7 +304,7 @@ class CloudCache:
         ):
             if hash_ in used:
                 continue
-            path_info = self.tree.hash_to_path_info(hash_)
+            path_info = self.hash_to_path_info(hash_)
             if self.tree.is_dir_hash(hash_):
                 # backward compatibility
                 # pylint: disable=protected-access
@@ -333,7 +336,7 @@ class CloudCache:
             with ThreadPoolExecutor(
                 max_workers=jobs or self.tree.JOBS
             ) as executor:
-                path_infos = map(self.tree.hash_to_path_info, hashes)
+                path_infos = map(self.hash_to_path_info, hashes)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(hashes, in_remote))
                 return ret
