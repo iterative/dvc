@@ -55,11 +55,6 @@ class LocalCache(CloudCache):
 
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
 
-    def link(self, from_info, to_info):
-        super().link(from_info, to_info)
-        if self.cache_types[0] not in ("symlink", "hardlink"):
-            os.chmod(to_info, self._file_mode)
-
     def hash_to_path(self, hash_):
         # NOTE: `self.cache_path` is already normalized so we can simply use
         # `os.sep` instead of `os.path.join`. This results in this helper
@@ -84,12 +79,6 @@ class LocalCache(CloudCache):
                 pass
 
         return ret
-
-    def _verify_link(self, path_info, link_type):
-        if link_type == "hardlink" and self.tree.getsize(path_info) == 0:
-            return
-
-        super()._verify_link(path_info, link_type)
 
     def _list_paths(self, prefix=None, progress_callback=None):
         assert self.tree.path_info is not None

@@ -195,9 +195,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
 
     try:
         System.reflink(src, dest)
-        # NOTE: reflink has a new inode, but has the same mode as the src,
-        # so we need to chmod it to look like a normal copy.
-        os.chmod(dest, 0o666 & ~umask)
     except DvcException:
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
             with Tqdm.wrapattr(

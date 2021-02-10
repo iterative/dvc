@@ -1,21 +1,14 @@
 import itertools
 import logging
-from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
 from funcy import decorator
-from shortuuid import uuid
 
-from dvc.dir_info import DirInfo
-from dvc.exceptions import CacheLinkError, DvcException
 from dvc.progress import Tqdm
-from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
-    slow_link_guard,
-)
 
-from ..objects import HashFile, ObjectFormatError, Tree
+from ..objects import HashFile, ObjectFormatError
 
 logger = logging.getLogger(__name__)
 
@@ -43,59 +36,11 @@ class CloudCache:
         )
         self.cache_type_confirmed = False
 
-    def link(self, from_info, to_info):
-        self._link(from_info, to_info, self.cache_types)
-
     def move(self, from_info, to_info):
         self.tree.move(from_info, to_info)
 
     def makedirs(self, path_info):
         self.tree.makedirs(path_info)
-
-    def _link(self, from_info, to_info, link_types):
-        assert self.tree.isfile(from_info)
-
-        self.makedirs(to_info.parent)
-
-        self._try_links(from_info, to_info, link_types)
-
-    def _verify_link(self, path_info, link_type):
-        if self.cache_type_confirmed:
-            return
-
-        is_link = getattr(self.tree, f"is_{link_type}", None)
-        if is_link and not is_link(path_info):
-            self.tree.remove(path_info)
-            raise DvcException(f"failed to verify {link_type}")
-
-        self.cache_type_confirmed = True
-
-    @slow_link_guard
-    def _try_links(self, from_info, to_info, link_types):
-        while link_types:
-            link_method = getattr(self.tree, link_types[0])
-            try:
-                self._do_link(from_info, to_info, link_method)
-                self._verify_link(to_info, link_types[0])
-                return
-
-            except DvcException as exc:
-                logger.debug(
-                    "Cache type '%s' is not supported: %s", link_types[0], exc
-                )
-                del link_types[0]
-
-        raise CacheLinkError([to_info])
-
-    def _do_link(self, from_info, to_info, link_method):
-        if self.tree.exists(to_info):
-            raise DvcException(f"Link '{to_info}' already exists!")
-
-        link_method(from_info, to_info)
-
-        logger.debug(
-            "Created '%s': %s -> %s", self.cache_types[0], from_info, to_info,
-        )
 
     def get(self, hash_info):
         """ get raw object """
@@ -128,107 +73,6 @@ class CloudCache:
         callback = kwargs.get("download_callback")
         if callback:
             callback(1)
-
-    def _transfer_file(self, from_tree, from_info):
-        from dvc.utils import tmp_fname
-        from dvc.utils.stream import HashedStreamReader
-
-        tmp_info = self.tree.path_info / tmp_fname()
-        with from_tree.open(
-            from_info, mode="rb", chunk_size=from_tree.CHUNK_SIZE
-        ) as stream:
-            stream_reader = HashedStreamReader(stream)
-            # Since we don't know the hash beforehand, we'll
-            # upload it to a temporary location and then move
-            # it.
-            self.tree.upload_fobj(
-                stream_reader,
-                tmp_info,
-                total=from_tree.getsize(from_info),
-                desc=from_info.name,
-            )
-
-        hash_info = stream_reader.hash_info
-        return tmp_info, hash_info
-
-    def _transfer_directory_contents(self, from_tree, from_info, jobs, pbar):
-        rel_path_infos = {}
-        from_infos = from_tree.walk_files(from_info)
-
-        def create_tasks(executor, amount):
-            for entry_info in itertools.islice(from_infos, amount):
-                pbar.total += 1
-                task = executor.submit(
-                    pbar.wrap_fn(self._transfer_file), from_tree, entry_info
-                )
-                rel_path_infos[task] = entry_info.relative_to(from_info)
-                yield task
-
-        pbar.total = 0
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            tasks = set(create_tasks(executor, jobs * 5))
-
-            while tasks:
-                done, tasks = futures.wait(
-                    tasks, return_when=futures.FIRST_COMPLETED
-                )
-                tasks.update(create_tasks(executor, len(done)))
-                for task in done:
-                    yield rel_path_infos.pop(task), task.result()
-
-    def _transfer_directory(
-        self, from_tree, from_info, jobs, no_progress_bar=False
-    ):
-        dir_info = DirInfo()
-
-        with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
-            for (
-                entry_info,
-                (entry_tmp_info, entry_hash),
-            ) in self._transfer_directory_contents(
-                from_tree, from_info, jobs, pbar
-            ):
-                self.add(entry_tmp_info, self.tree, entry_hash)
-                dir_info.trie[entry_info.parts] = entry_hash
-
-        return Tree.save_dir_info(self, dir_info)
-
-    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
-        jobs = jobs or min((from_tree.jobs, self.tree.jobs))
-
-        if from_tree.isdir(from_info):
-            return self._transfer_directory(
-                from_tree,
-                from_info,
-                jobs=jobs,
-                no_progress_bar=no_progress_bar,
-            )
-        tmp_info, hash_info = self._transfer_file(from_tree, from_info)
-        self.add(tmp_info, self.tree, hash_info)
-        return hash_info
-
-    def cache_is_copy(self, path_info):
-        """Checks whether cache uses copies."""
-        if self.cache_type_confirmed:
-            return self.cache_types[0] == "copy"
-
-        if set(self.cache_types) <= {"copy"}:
-            return True
-
-        workspace_file = path_info.with_name("." + uuid())
-        test_cache_file = self.tree.path_info / ".cache_type_test_file"
-        if not self.tree.exists(test_cache_file):
-            self.makedirs(test_cache_file.parent)
-            with self.tree.open(test_cache_file, "wb") as fobj:
-                fobj.write(bytes(1))
-        try:
-            self.link(test_cache_file, workspace_file)
-        finally:
-            self.tree.remove(workspace_file)
-            self.tree.remove(test_cache_file)
-
-        self.cache_type_confirmed = True
-        return self.cache_types[0] == "copy"
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)

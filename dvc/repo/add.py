@@ -165,11 +165,15 @@ def _process_stages(
                 command="add",
             )
         else:
+            from dvc.objects import transfer
             from dvc.tree import get_cloud_tree
 
             from_tree = get_cloud_tree(repo, url=target)
-            out.hash_info = out.cache.transfer(
-                from_tree, from_tree.path_info, jobs=kwargs.get("jobs"),
+            out.hash_info = transfer(
+                out.cache,
+                from_tree,
+                from_tree.path_info,
+                jobs=kwargs.get("jobs"),
             )
             out.checkout()
 

@@ -1,5 +1,9 @@
+import itertools
 import json
 import logging
+from concurrent import futures
+
+from dvc.progress import Tqdm
 
 from .dir_info import DirInfo
 from .exceptions import DvcException
@@ -172,8 +176,6 @@ class Tree(HashFile):
         return cls(obj.path_info, obj.tree, hash_info)
 
     def save(self, odb, **kwargs):
-        from dvc.progress import Tqdm
-
         assert self.src_hash_info.dir_info
         hi = self.save_dir_info(
             odb, self.src_hash_info.dir_info, self.hash_info
@@ -252,4 +254,87 @@ def merge(odb, ancestor_info, our_info, their_info):
     merged = our.merge(ancestor, their)
     hash_info = Tree.save_dir_info(odb, merged)
     hash_info.size = _get_dir_size(odb, merged)
+    return hash_info
+
+
+def _transfer_file(odb, from_tree, from_info):
+    from dvc.utils import tmp_fname
+    from dvc.utils.stream import HashedStreamReader
+
+    tmp_info = odb.tree.path_info / tmp_fname()
+    with from_tree.open(
+        from_info, mode="rb", chunk_size=from_tree.CHUNK_SIZE
+    ) as stream:
+        stream_reader = HashedStreamReader(stream)
+        # Since we don't know the hash beforehand, we'll
+        # upload it to a temporary location and then move
+        # it.
+        odb.tree.upload_fobj(
+            stream_reader,
+            tmp_info,
+            total=from_tree.getsize(from_info),
+            desc=from_info.name,
+        )
+
+    hash_info = stream_reader.hash_info
+    return tmp_info, hash_info
+
+
+def _transfer_directory_contents(odb, from_tree, from_info, jobs, pbar):
+    rel_path_infos = {}
+    from_infos = from_tree.walk_files(from_info)
+
+    def create_tasks(executor, amount):
+        for entry_info in itertools.islice(from_infos, amount):
+            pbar.total += 1
+            task = executor.submit(
+                pbar.wrap_fn(_transfer_file), odb, from_tree, entry_info
+            )
+            rel_path_infos[task] = entry_info.relative_to(from_info)
+            yield task
+
+    pbar.total = 0
+    with futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+        tasks = set(create_tasks(executor, jobs * 5))
+
+        while tasks:
+            done, tasks = futures.wait(
+                tasks, return_when=futures.FIRST_COMPLETED
+            )
+            tasks.update(create_tasks(executor, len(done)))
+            for task in done:
+                yield rel_path_infos.pop(task), task.result()
+
+
+def _transfer_directory(
+    odb, from_tree, from_info, jobs, no_progress_bar=False
+):
+    dir_info = DirInfo()
+
+    with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
+        for (
+            entry_info,
+            (entry_tmp_info, entry_hash),
+        ) in _transfer_directory_contents(
+            odb, from_tree, from_info, jobs, pbar
+        ):
+            odb.add(entry_tmp_info, odb.tree, entry_hash)
+            dir_info.trie[entry_info.parts] = entry_hash
+
+    return Tree.save_dir_info(odb, dir_info)
+
+
+def transfer(odb, from_tree, from_info, jobs=None, no_progress_bar=False):
+    jobs = jobs or min((from_tree.jobs, odb.tree.jobs))
+
+    if from_tree.isdir(from_info):
+        return _transfer_directory(
+            odb,
+            from_tree,
+            from_info,
+            jobs=jobs,
+            no_progress_bar=no_progress_bar,
+        )
+    tmp_info, hash_info = _transfer_file(odb, from_tree, from_info)
+    odb.add(tmp_info, odb.tree, hash_info)
     return hash_info

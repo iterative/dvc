@@ -937,8 +937,8 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
 def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
     tmp_dir.gen("foo", "foo")
 
-    mocker.patch.object(
-        dvc.cache.local, "_do_link", side_effect=DvcException("link failed")
+    mocker.patch(
+        "dvc.checkout._do_link", side_effect=DvcException("link failed")
     )
     with caplog.at_level(logging.WARNING, logger="dvc"):
         dvc.add("foo")
