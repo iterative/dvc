@@ -1,8 +1,18 @@
 import logging
 
+from shortuuid import uuid
+
 import dvc.prompt as prompt
-from dvc.exceptions import CheckoutError, ConfirmRemoveError
+from dvc.exceptions import (
+    CacheLinkError,
+    CheckoutError,
+    ConfirmRemoveError,
+    DvcException,
+)
 from dvc.objects import ObjectFormatError, check, load
+from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
+    slow_link_guard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +71,80 @@ def _remove(path_info, tree, cache, force=False):
     tree.remove(path_info)
 
 
+def _verify_link(cache, path_info, link_type):
+    if link_type == "hardlink" and cache.tree.getsize(path_info) == 0:
+        return
+
+    if cache.cache_type_confirmed:
+        return
+
+    is_link = getattr(cache.tree, f"is_{link_type}", None)
+    if is_link and not is_link(path_info):
+        cache.tree.remove(path_info)
+        raise DvcException(f"failed to verify {link_type}")
+
+    cache.cache_type_confirmed = True
+
+
+def _do_link(cache, from_info, to_info, link_method):
+    if cache.tree.exists(to_info):
+        raise DvcException(f"Link '{to_info}' already exists!")
+
+    link_method(from_info, to_info)
+
+    logger.debug(
+        "Created '%s': %s -> %s", cache.cache_types[0], from_info, to_info,
+    )
+
+
+@slow_link_guard
+def _try_links(cache, from_info, to_info, link_types):
+    while link_types:
+        link_method = getattr(cache.tree, link_types[0])
+        try:
+            _do_link(cache, from_info, to_info, link_method)
+            _verify_link(cache, to_info, link_types[0])
+            return
+
+        except DvcException as exc:
+            logger.debug(
+                "Cache type '%s' is not supported: %s", link_types[0], exc
+            )
+            del link_types[0]
+
+    raise CacheLinkError([to_info])
+
+
+def _link(cache, from_info, to_info):
+    assert cache.tree.isfile(from_info)
+    cache.makedirs(to_info.parent)
+    _try_links(cache, from_info, to_info, cache.cache_types)
+
+
+def _cache_is_copy(cache, path_info):
+    """Checks whether cache uses copies."""
+    if cache.cache_type_confirmed:
+        return cache.cache_types[0] == "copy"
+
+    if set(cache.cache_types) <= {"copy"}:
+        return True
+
+    workspace_file = path_info.with_name("." + uuid())
+    test_cache_file = cache.tree.path_info / ".cache_type_test_file"
+    if not cache.tree.exists(test_cache_file):
+        cache.makedirs(test_cache_file.parent)
+        with cache.tree.open(test_cache_file, "wb") as fobj:
+            fobj.write(bytes(1))
+    try:
+        _link(cache, test_cache_file, workspace_file)
+    finally:
+        cache.tree.remove(workspace_file)
+        cache.tree.remove(test_cache_file)
+
+    cache.cache_type_confirmed = True
+    return cache.cache_types[0] == "copy"
+
+
 def _checkout_file(
     path_info, tree, obj, cache, force, progress_callback=None, relink=False,
 ):
@@ -71,15 +155,15 @@ def _checkout_file(
         if not relink and _changed(path_info, tree, obj, cache):
             modified = True
             _remove(path_info, tree, cache, force=force)
-            cache.link(cache_info, path_info)
+            _link(cache, cache_info, path_info)
         else:
-            if tree.iscopy(path_info) and cache.cache_is_copy(path_info):
+            if tree.iscopy(path_info) and _cache_is_copy(cache, path_info):
                 cache.unprotect(path_info)
             else:
                 _remove(path_info, tree, cache, force=force)
-                cache.link(cache_info, path_info)
+                _link(cache, cache_info, path_info)
     else:
-        cache.link(cache_info, path_info)
+        _link(cache, cache_info, path_info)
         modified = True
 
     tree.state.save(path_info, obj.hash_info)

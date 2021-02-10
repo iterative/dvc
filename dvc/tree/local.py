@@ -154,7 +154,7 @@ class LocalTree(BaseTree):
     def copy(self, from_info, to_info):
         tmp_info = to_info.parent / tmp_fname("")
         try:
-            System.copy(from_info, tmp_info)
+            copyfile(from_info, tmp_info)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)

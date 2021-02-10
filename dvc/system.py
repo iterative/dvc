@@ -2,7 +2,6 @@ import errno
 import logging
 import os
 import platform
-import shutil
 import sys
 
 from dvc.exceptions import DvcException
@@ -26,10 +25,6 @@ class System:
     @staticmethod
     def is_unix():
         return os.name != "nt"
-
-    @staticmethod
-    def copy(src, dest):
-        return shutil.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
@@ -98,6 +93,8 @@ class System:
 
     @staticmethod
     def reflink(source, link_name):
+        from dvc.utils.fs import umask
+
         source, link_name = os.fspath(source), os.fspath(link_name)
 
         system = platform.system()
@@ -115,6 +112,10 @@ class System:
 
         if ret != 0:
             raise DvcException("reflink is not supported")
+
+        # NOTE: reflink has a new inode, but has the same mode as the src,
+        # so we need to chmod it to look like a normal copy.
+        os.chmod(link_name, 0o666 & ~umask)
 
     @staticmethod
     def _getdirinfo(path):
