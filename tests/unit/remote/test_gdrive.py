@@ -21,37 +21,40 @@ class TestRemoteGDrive:
         tree = GDriveTree(dvc, self.CONFIG)
         assert str(tree.path_info) == self.CONFIG["url"]
 
-    def test_drive(self, dvc):
+    def test_drive(self, dvc, monkeypatch):
         tree = GDriveTree(dvc, self.CONFIG)
-        os.environ[
-            GDriveTree.GDRIVE_CREDENTIALS_DATA
-        ] = USER_CREDS_TOKEN_REFRESH_ERROR
+        monkeypatch.setenv(
+            GDriveTree.GDRIVE_CREDENTIALS_DATA, USER_CREDS_TOKEN_REFRESH_ERROR
+        )
         with pytest.raises(GDriveAuthError):
             assert tree._drive
 
-        os.environ[GDriveTree.GDRIVE_CREDENTIALS_DATA] = ""
+        monkeypatch.setenv(GDriveTree.GDRIVE_CREDENTIALS_DATA, "")
         tree = GDriveTree(dvc, self.CONFIG)
-        os.environ[
-            GDriveTree.GDRIVE_CREDENTIALS_DATA
-        ] = USER_CREDS_MISSED_KEY_ERROR
+        monkeypatch.setenv(
+            GDriveTree.GDRIVE_CREDENTIALS_DATA, USER_CREDS_MISSED_KEY_ERROR
+        )
         with pytest.raises(GDriveAuthError):
             assert tree._drive
 
 
-def test_gdrive_ls(dvc, tmp_dir, local_remote):
-    drive = GDriveTree(dvc, {"url": "gdrive://root"})
+def test_gdrive_ls(dvc, gdrive, tmp_dir):
+    tree = GDriveTree(dvc, gdrive.config)
     files = {
-        "data/bar/baz/file0",
-        "data/bar/file1",
-        "data/file2",
-        "data/file3",
+        "bar/baz/file0",
+        "bar/file1",
+        "foo/file2",
+        "file3",
+        "file4",
     }
+    top_level_contents = {"bar", "foo", "file3", "file4"}
 
-    path_info = drive.path_info
     for path in files:
         fobj = io.BytesIO(path.encode())
-        drive.upload_fobj(fobj, path_info / path)
+        tree.upload_fobj(fobj, gdrive / path)
 
-    path_info = drive.path_info / "data"
-    assert set(drive.ls(path_info)) == {"data/bar", "data/file2", "data/file3"}
-    assert set(drive.ls(path_info, recursive=True)) == files
+    for recursive, expected in [(True, files), (False, top_level_contents)]:
+        assert {
+            os.path.relpath(filename, gdrive.path)
+            for filename in tree.ls(gdrive, recursive=recursive)
+        } == expected

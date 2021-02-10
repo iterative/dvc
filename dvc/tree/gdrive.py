@@ -4,7 +4,7 @@ import os
 import posixpath
 import re
 import threading
-from collections import defaultdict, deque
+from collections import defaultdict
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
@@ -286,20 +286,21 @@ class GDriveTree(BaseTree):
             ),
         }
 
-        self._cache_path_id(self._path, cache["root_id"], cache)
+        self._cache_path_id(self._path, cache["root_id"], cache=cache)
 
         for item in self._gdrive_list(
             "'{}' in parents and trashed=false".format(cache["root_id"])
         ):
             item_path = (self.path_info / item["title"]).path
-            self._cache_path_id(item_path, item["id"], cache)
+            self._cache_path_id(item_path, item["id"], cache=cache)
 
         return cache
 
-    def _cache_path_id(self, path, item_id, cache=None):
+    def _cache_path_id(self, path, *item_ids, cache=None):
         cache = cache or self._ids_cache
-        cache["dirs"][path].append(item_id)
-        cache["ids"][item_id] = path
+        for item_id in item_ids:
+            cache["dirs"][path].append(item_id)
+            cache["ids"][item_id] = path
 
     @cached_property
     def _list_params(self):
@@ -511,15 +512,55 @@ class GDriveTree(BaseTree):
         else:
             return True
 
+    def _gdrive_list_ids(self, query_ids):
+        query = " or ".join(
+            f"'{query_id}' in parents" for query_id in query_ids
+        )
+        query = f"({query}) and trashed=false"
+        return self._gdrive_list(query)
+
+    def _ls_recursive(self, path_info, detail=False):
+        root_path = path_info.path
+        seen_paths = set()
+
+        dir_ids = [self._ids_cache["ids"].copy()]
+        while dir_ids:
+            query_ids = {
+                dir_id: dir_name
+                for dir_id, dir_name in dir_ids.pop().items()
+                if posixpath.commonpath([root_path, dir_name])
+                if dir_name not in seen_paths
+            }
+            if not query_ids:
+                continue
+
+            seen_paths.update(query_ids.values())
+
+            new_query_ids = {}
+            dir_ids.append(new_query_ids)
+            for item in self._gdrive_list_ids(query_ids):
+                parent_id = item["parents"][0]["id"]
+                item_path = posixpath.join(query_ids[parent_id], item["title"])
+                if item["mimeType"] == FOLDER_MIME_TYPE:
+                    new_query_ids[item["id"]] = item_path
+                    self._cache_path_id(item_path, item["id"])
+                    continue
+
+                if detail:
+                    yield {
+                        "type": "file",
+                        "name": item_path,
+                        "size": item["fileSize"],
+                        "checksum": item["md5Checksum"],
+                    }
+                else:
+                    yield item_path
+
     def ls(
         self, path_info, detail=False, recursive=False
     ):  # pylint: disable=arguments-differ
         if recursive:
-            for entry in self.walk_files(path_info, detail=detail):
-                if detail:
-                    yield entry
-                else:
-                    yield entry.path
+            yield from self._ls_recursive(path_info, detail=detail)
             return None
 
         cached = path_info.path in self._ids_cache["dirs"]
@@ -531,11 +572,8 @@ class GDriveTree(BaseTree):
         if not dir_ids:
             return None
 
-        query = " or ".join(f"'{dir_id}' in parents" for dir_id in dir_ids)
-        query = f"({query}) and trashed=false"
-
         root_path = path_info.path
-        for item in self._gdrive_list(query):
+        for item in self._gdrive_list_ids(dir_ids):
             item_path = posixpath.join(root_path, item["title"])
             if detail:
                 if item["mimeType"] == FOLDER_MIME_TYPE:
@@ -551,31 +589,11 @@ class GDriveTree(BaseTree):
                 yield item_path
 
         if not cached:
-            self._cache_path_id(root_path, min(dir_ids))
-
-    def walk(
-        self, path_info, prefix=None, detail=False
-    ):  # pylint: disable=unused-argument
-        stack = deque([path_info])
-        while stack:
-            path_info = stack.pop()
-            files, directories = [], []
-            for entry in self.ls(path_info, detail=True):
-                path = path_info.replace(path=entry["name"])
-                if entry["type"] == "file":
-                    if detail:
-                        files.append(entry)
-                    else:
-                        files.append(path)
-                else:
-                    directories.append(path)
-
-            yield path_info, directories, files
-            stack.extendleft(directories)
+            self._cache_path_id(root_path, dir_ids)
 
     def walk_files(self, path_info, **kwargs):
-        for _, _, file_infos in self.walk(path_info, **kwargs):
-            yield from file_infos
+        for filename in self.ls(path_info, recursive=True):
+            yield path_info.replace(path=filename)
 
     def remove(self, path_info):
         item_id = self._get_item_id(path_info)
