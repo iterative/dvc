@@ -86,10 +86,7 @@ def test_experiments_show(dvc, scm, mocker):
     )
 
 
-@pytest.mark.parametrize(
-    "args, reset", [(["exp", "run"], False), (["exp", "reset"], True)],
-)
-def test_experiments_run(dvc, scm, mocker, args, reset):
+def test_experiments_run(dvc, scm, mocker, args):
     default_arguments = {
         "params": [],
         "name": None,
@@ -98,7 +95,7 @@ def test_experiments_run(dvc, scm, mocker, args, reset):
         "jobs": None,
         "tmp_dir": False,
         "checkpoint_resume": None,
-        "reset": reset,
+        "reset": False,
     }
     default_arguments.update(repro_arguments)
 
