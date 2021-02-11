@@ -4,20 +4,11 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
-from funcy import decorator
-
 from dvc.progress import Tqdm
 
 from ..objects import HashFile, ObjectFormatError
 
 logger = logging.getLogger(__name__)
-
-
-@decorator
-def use_state(call):
-    tree = call._args[0].tree  # pylint: disable=protected-access
-    with tree.state:
-        return call()
 
 
 class CloudCache:
@@ -51,7 +42,6 @@ class CloudCache:
             hash_info,
         )
 
-    @use_state
     def add(self, path_info, tree, hash_info, **kwargs):
         try:
             self.check(hash_info)
@@ -59,7 +49,7 @@ class CloudCache:
         except (ObjectFormatError, FileNotFoundError):
             pass
 
-        cache_info = self.tree.hash_to_path_info(hash_info.value)
+        cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
         if isinstance(tree, type(self.tree)):
@@ -68,16 +58,20 @@ class CloudCache:
             with tree.open(path_info, mode="rb") as fobj:
                 self.tree.upload_fobj(fobj, cache_info)
         self.protect(cache_info)
-        self.tree.state.save(cache_info, hash_info)
+        with self.tree.state:
+            self.tree.state.save(cache_info, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:
             callback(1)
 
+    def hash_to_path_info(self, hash_):
+        return self.tree.path_info / hash_[0:2] / hash_[2:]
+
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
     def hash_to_path(self, hash_):
-        return self.tree.hash_to_path_info(hash_)
+        return self.hash_to_path_info(hash_)
 
     def protect(self, path_info):  # pylint: disable=unused-argument
         pass
@@ -310,7 +304,7 @@ class CloudCache:
         ):
             if hash_ in used:
                 continue
-            path_info = self.tree.hash_to_path_info(hash_)
+            path_info = self.hash_to_path_info(hash_)
             if self.tree.is_dir_hash(hash_):
                 # backward compatibility
                 # pylint: disable=protected-access
@@ -342,7 +336,7 @@ class CloudCache:
             with ThreadPoolExecutor(
                 max_workers=jobs or self.tree.JOBS
             ) as executor:
-                path_infos = map(self.tree.hash_to_path_info, hashes)
+                path_infos = map(self.hash_to_path_info, hashes)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(hashes, in_remote))
                 return ret

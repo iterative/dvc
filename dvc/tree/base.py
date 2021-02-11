@@ -268,7 +268,7 @@ class BaseTree:
             hash_info
             and hash_info.isdir
             and not self.cache.tree.exists(
-                self.cache.tree.hash_to_path_info(hash_info.value)
+                self.cache.hash_to_path_info(hash_info.value)
             )
         ):
             hash_info = None
@@ -294,9 +294,6 @@ class BaseTree:
 
     def get_file_hash(self, path_info):
         raise NotImplementedError
-
-    def hash_to_path_info(self, hash_):
-        return self.path_info / hash_[0:2] / hash_[2:]
 
     def _calculate_hashes(self, file_infos):
         with Tqdm(

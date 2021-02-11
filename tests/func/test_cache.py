@@ -38,7 +38,7 @@ class TestCache(TestDvc):
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = Cache(self.dvc).local.tree.hash_to_path_info(self.cache1_md5)
+        cache = Cache(self.dvc).local.hash_to_path_info(self.cache1_md5)
         self.assertEqual(os.fspath(cache), self.cache1)
 
 
@@ -51,17 +51,13 @@ class TestCacheLoadBadDirCache(TestDvc):
         from dvc.objects import load
 
         dir_hash = "123.dir"
-        fname = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
-        )
+        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
         self.create(fname, "<clearly>not,json")
         with pytest.raises(ObjectFormatError):
             load(self.dvc.cache.local, HashInfo("md5", dir_hash))
 
         dir_hash = "234.dir"
-        fname = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
-        )
+        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
         self.create(fname, '{"a": "b"}')
         with pytest.raises(ObjectFormatError):
             load(self.dvc.cache.local, HashInfo("md5", dir_hash))
