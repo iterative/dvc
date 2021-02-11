@@ -41,13 +41,13 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname, fs):
-    """ get the (md5 hexdigest, md5 digest) of a file """
+def file_md5(fname, fs, enable_d2u=False):
+    """Get the md5 hexdigest of a file."""
     from dvc.istextfile import istextfile
     from dvc.progress import Tqdm
 
     hash_md5 = hashlib.md5()
-    binary = not istextfile(fname, fs=fs)
+    binary = not (enable_d2u and istextfile(fname, fs=fs))
     size = fs.getsize(fname) or 0
     no_progress_bar = True
     if size >= LARGE_FILE_SIZE:

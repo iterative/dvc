@@ -6,7 +6,7 @@ from contextlib import suppress
 from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
-from funcy import lfilter, wrap_with
+from funcy import cached_property, lfilter, wrap_with
 
 from dvc.path_info import PathInfo
 
