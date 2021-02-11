@@ -589,7 +589,7 @@ class GDriveTree(BaseTree):
                 yield item_path
 
         if not cached:
-            self._cache_path_id(root_path, dir_ids)
+            self._cache_path_id(root_path, *dir_ids)
 
     def walk_files(self, path_info, **kwargs):
         for filename in self.ls(path_info, recursive=True):

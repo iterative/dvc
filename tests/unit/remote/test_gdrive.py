@@ -1,6 +1,3 @@
-import io
-import posixpath
-
 import pytest
 
 from dvc.tree.gdrive import GDriveAuthError, GDriveTree
@@ -36,25 +33,3 @@ class TestRemoteGDrive:
         )
         with pytest.raises(GDriveAuthError):
             assert tree._drive
-
-
-def test_gdrive_ls(dvc, gdrive, tmp_dir):
-    tree = GDriveTree(dvc, gdrive.config)
-    files = {
-        "bar/baz/file0",
-        "bar/file1",
-        "foo/file2",
-        "file3",
-        "file4",
-    }
-    top_level_contents = {"bar", "foo", "file3", "file4"}
-
-    for path in files:
-        fobj = io.BytesIO(path.encode())
-        tree.upload_fobj(fobj, gdrive / path)
-
-    for recursive, expected in [(True, files), (False, top_level_contents)]:
-        assert {
-            posixpath.relpath(filename, gdrive.path)
-            for filename in tree.ls(gdrive, recursive=recursive)
-        } == expected
