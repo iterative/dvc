@@ -36,7 +36,8 @@ def test_cmd_error(dvc):
 
 @mock.patch.object(CloudCache, "list_hashes_traverse")
 @mock.patch.object(CloudCache, "list_hashes_exists")
-def test_hashes_exist(object_exists, traverse, dvc):
+def test_hashes_exist(object_exists, traverse, dvc, mocker):
+    mocker.patch.object(CloudCache, "_load_config")
     cache = CloudCache(BaseFileSystem(dvc, {}))
 
     # remote does not support traverse
@@ -95,9 +96,16 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(
     CloudCache, "_path_to_hash", side_effect=lambda x: x,
 )
+<<<<<<< HEAD
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     cache = CloudCache(BaseFileSystem(dvc, {}))
     cache.fs.path_info = PathInfo("foo")
+=======
+def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc, mocker):
+    mocker.patch.object(CloudCache, "_load_config")
+    cache = CloudCache(BaseTree(dvc, {}))
+    cache.tree.path_info = PathInfo("foo")
+>>>>>>> mock out config load calls for unit tests with no tree
 
     # parallel traverse
     size = 256 / cache.fs.JOBS * cache.fs.LIST_OBJECT_PAGE_SIZE
@@ -120,9 +128,16 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     )
 
 
+<<<<<<< HEAD
 def test_list_hashes(dvc):
     cache = CloudCache(BaseFileSystem(dvc, {}))
     cache.fs.path_info = PathInfo("foo")
+=======
+def test_list_hashes(dvc, mocker):
+    mocker.patch.object(CloudCache, "_load_config")
+    cache = CloudCache(BaseTree(dvc, {}))
+    cache.tree.path_info = PathInfo("foo")
+>>>>>>> mock out config load calls for unit tests with no tree
 
     with mock.patch.object(
         cache, "_list_paths", return_value=["12/3456", "bar"]
@@ -131,9 +146,16 @@ def test_list_hashes(dvc):
         assert hashes == ["123456"]
 
 
+<<<<<<< HEAD
 def test_list_paths(dvc):
     cache = CloudCache(BaseFileSystem(dvc, {}))
     cache.fs.path_info = PathInfo("foo")
+=======
+def test_list_paths(dvc, mocker):
+    mocker.patch.object(CloudCache, "_load_config")
+    cache = CloudCache(BaseTree(dvc, {}))
+    cache.tree.path_info = PathInfo("foo")
+>>>>>>> mock out config load calls for unit tests with no tree
 
     with mock.patch.object(
         cache.fs, "walk_files", return_value=[]
