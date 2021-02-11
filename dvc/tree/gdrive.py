@@ -528,13 +528,13 @@ class GDriveTree(BaseTree):
             query_ids = {
                 dir_id: dir_name
                 for dir_id, dir_name in dir_ids.pop().items()
-                if posixpath.commonpath([root_path, dir_name])
-                if dir_name not in seen_paths
+                if posixpath.commonpath([root_path, dir_name]) == root_path
+                if dir_id not in seen_paths
             }
             if not query_ids:
                 continue
 
-            seen_paths.update(query_ids.values())
+            seen_paths |= query_ids.keys()
 
             new_query_ids = {}
             dir_ids.append(new_query_ids)
