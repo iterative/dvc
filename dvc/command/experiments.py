@@ -924,35 +924,11 @@ def add_parser(subparsers, parent_parser):
         metavar="<experiment_rev>",
     )
     experiments_run_parser.add_argument(
-        "--reset", action="store_true", help=argparse.SUPPRESS,
+        "--reset",
+        action="store_true",
+        help="Reset existing checkpoints and restart the experiment.",
     )
     experiments_run_parser.set_defaults(func=CmdExperimentsRun)
-
-    EXPERIMENTS_RESET_HELP = "Reset and restart checkpoint experiments."
-    experiments_reset_parser = experiments_subparsers.add_parser(
-        "reset",
-        parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_RESET_HELP, "exp/reset"),
-        help=EXPERIMENTS_RESET_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    experiments_reset_parser.add_argument(
-        "-r",
-        "--rev",
-        type=str,
-        default=None,
-        dest="checkpoint_resume",
-        help=argparse.SUPPRESS,
-    )
-    _add_run_common(experiments_reset_parser)
-    experiments_reset_parser.add_argument(
-        "--reset",
-        action="store_const",
-        const=True,
-        default=True,
-        help=argparse.SUPPRESS,
-    )
-    experiments_reset_parser.set_defaults(func=CmdExperimentsRun)
 
     EXPERIMENTS_GC_HELP = "Garbage collect unneeded experiments."
     EXPERIMENTS_GC_DESCRIPTION = (

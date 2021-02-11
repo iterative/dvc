@@ -87,10 +87,7 @@ def test_experiments_show(dvc, scm, mocker):
     )
 
 
-@pytest.mark.parametrize(
-    "args, reset", [(["exp", "run"], False), (["exp", "reset"], True)],
-)
-def test_experiments_run(dvc, scm, mocker, args, reset):
+def test_experiments_run(dvc, scm, mocker):
     default_arguments = {
         "params": [],
         "name": None,
@@ -99,11 +96,11 @@ def test_experiments_run(dvc, scm, mocker, args, reset):
         "jobs": None,
         "tmp_dir": False,
         "checkpoint_resume": None,
-        "reset": reset,
+        "reset": False,
     }
     default_arguments.update(repro_arguments)
 
-    cmd = CmdExperimentsRun(parse_args(args))
+    cmd = CmdExperimentsRun(parse_args(["exp", "run"]))
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
