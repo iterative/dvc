@@ -593,3 +593,18 @@ def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
 
     main(["exp", "run", "-m"])
     assert show_mock.called_once()
+
+
+def test_remove(tmp_dir, scm, dvc, exp_stage):
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp = first(results)
+    ref_info = first(exp_refs_by_rev(scm, exp))
+    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
+
+    removed = dvc.experiments.remove([str(ref_info)])
+    assert removed == 1
+    assert scm.get_ref(str(ref_info)) is None
+
+    removed = dvc.experiments.remove(queue=True)
+    assert removed == 1
+    assert len(dvc.experiments.stash) == 0

@@ -851,3 +851,8 @@ class Experiments:
         from dvc.repo.experiments.ls import ls
 
         return ls(self.repo, *args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        from dvc.repo.experiments.remove import remove
+
+        return remove(self.repo, *args, **kwargs)
