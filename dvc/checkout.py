@@ -29,7 +29,7 @@ def _changed(path_info, tree, obj, cache):
         return True
 
     try:
-        actual = tree.get_hash(path_info)
+        actual = tree.get_hash(path_info, obj.hash_info.name)
     except FileNotFoundError:
         logger.debug("'%s' doesn't exist.", path_info)
         return True
@@ -55,7 +55,7 @@ def _remove(path_info, tree, cache, force=False):
         tree.remove(path_info)
         return
 
-    current = tree.get_hash(path_info)
+    current = tree.get_hash(path_info, tree.PARAM_CHECKSUM)
     try:
         obj = load(cache, current)
         check(cache, obj)

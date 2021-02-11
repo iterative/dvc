@@ -49,7 +49,9 @@ class RepoDependency(LocalDependency):
     def _get_hash(self, locked=True):
         with self._make_repo(locked=locked) as repo:
             path_info = PathInfo(repo.root_dir) / self.def_path
-            return repo.repo_tree.get_hash(path_info, follow_subrepos=False)
+            return repo.repo_tree.get_hash(
+                path_info, "md5", follow_subrepos=False
+            )
 
     def workspace_status(self):
         current = self._get_hash(locked=True)

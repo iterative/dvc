@@ -124,7 +124,9 @@ class WebHDFSTree(BaseTree):
     def getsize(self, path_info):
         return self.hdfs_client.status(path_info.path)["length"]
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
+
         checksum = self.hdfs_client.checksum(path_info.path)
         hash_info = HashInfo(self.PARAM_CHECKSUM, checksum["bytes"])
 

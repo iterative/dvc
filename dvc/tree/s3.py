@@ -418,7 +418,8 @@ class S3Tree(BaseTree):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
         with self._get_obj(path_info) as obj:
             return HashInfo(
                 self.PARAM_CHECKSUM,

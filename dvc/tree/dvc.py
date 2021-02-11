@@ -219,20 +219,22 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     def isexec(self, path_info):  # pylint: disable=unused-argument
         return False
 
-    def get_dir_hash(self, path_info, **kwargs):
+    def get_dir_hash(self, path_info, name, **kwargs):
         try:
             outs = self._find_outs(path_info, strict=True)
             if len(outs) == 1 and outs[0].is_dir_checksum:
                 out = outs[0]
                 # other code expects us to fetch the dir at this point
                 self._fetch_dir(out, **kwargs)
+                assert out.hash_info.name == name
                 return out.hash_info
         except OutputNotFoundError:
             pass
 
-        return super().get_dir_hash(path_info, **kwargs)
+        return super().get_dir_hash(path_info, name, **kwargs)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == "md5"
         outs = self._find_outs(path_info, strict=False)
         if len(outs) != 1:
             raise OutputNotFoundError

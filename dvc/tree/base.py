@@ -248,7 +248,7 @@ class BaseTree:
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     @use_state
-    def get_hash(self, path_info, **kwargs):
+    def get_hash(self, path_info, name, **kwargs):
         assert path_info and (
             isinstance(path_info, str) or path_info.scheme == self.scheme
         )
@@ -280,40 +280,42 @@ class BaseTree:
 
                 # NOTE: loading the tree will restore hash_info.dir_info
                 Tree.load(self.cache, hash_info)
+            assert hash_info.name == name
             return hash_info
 
         if self.isdir(path_info):
-            hash_info = self.get_dir_hash(path_info, **kwargs)
+            hash_info = self.get_dir_hash(path_info, name, **kwargs)
         else:
-            hash_info = self.get_file_hash(path_info)
+            hash_info = self.get_file_hash(path_info, name)
 
         if hash_info and self.exists(path_info):
             self.state.save(path_info, hash_info)
 
         return hash_info
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
         raise NotImplementedError
 
-    def _calculate_hashes(self, file_infos):
+    def _calculate_hashes(self, file_infos, name):
+        def _get_file_hash(path_info):
+            return self.get_file_hash(path_info, name)
+
         with Tqdm(
             total=len(file_infos),
             unit="md5",
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
-            worker = pbar.wrap_fn(self.get_file_hash)
+            worker = pbar.wrap_fn(_get_file_hash)
             with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
                 hash_infos = executor.map(worker, file_infos)
                 return dict(zip(file_infos, hash_infos))
 
-    def _iter_hashes(self, path_info, **kwargs):
-        if self.PARAM_CHECKSUM in self.DETAIL_FIELDS:
+    def _iter_hashes(self, path_info, name, **kwargs):
+        if name in self.DETAIL_FIELDS:
             for details in self.ls(path_info, recursive=True, detail=True):
                 file_info = path_info.replace(path=details["name"])
                 hash_info = HashInfo(
-                    self.PARAM_CHECKSUM,
-                    details[self.PARAM_CHECKSUM],
-                    size=details.get("size"),
+                    name, details[name], size=details.get("size"),
                 )
                 yield file_info, hash_info
 
@@ -327,13 +329,14 @@ class BaseTree:
             if not hash_info:
                 file_infos.append(file_info)
                 continue
+            assert hash_info.name == name
             yield file_info, hash_info
 
-        yield from self._calculate_hashes(file_infos).items()
+        yield from self._calculate_hashes(file_infos, name).items()
 
-    def _collect_dir(self, path_info, **kwargs):
+    def _collect_dir(self, path_info, name, **kwargs):
         dir_info = DirInfo()
-        for fi, hi in self._iter_hashes(path_info, **kwargs):
+        for fi, hi in self._iter_hashes(path_info, name, **kwargs):
             if DvcIgnore.DVCIGNORE_FILE == fi.name:
                 raise DvcIgnoreInCollectedDirError(fi.parent)
 
@@ -350,10 +353,10 @@ class BaseTree:
         return dir_info
 
     @use_state
-    def get_dir_hash(self, path_info, **kwargs):
+    def get_dir_hash(self, path_info, name, **kwargs):
         from dvc.objects import Tree
 
-        dir_info = self._collect_dir(path_info, **kwargs)
+        dir_info = self._collect_dir(path_info, name, **kwargs)
         hash_info = Tree.save_dir_info(self.repo.cache.local, dir_info)
         hash_info.size = dir_info.size
         hash_info.dir_info = dir_info

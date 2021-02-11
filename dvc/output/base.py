@@ -195,7 +195,7 @@ class BaseOutput:
 
     def get_hash(self):
         if not self.use_cache:
-            return self.tree.get_hash(self.path_info)
+            return self.tree.get_hash(self.path_info, self.tree.PARAM_CHECKSUM)
         return objects.stage(self.cache, self.path_info, self.tree).hash_info
 
     @property

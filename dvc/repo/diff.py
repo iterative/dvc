@@ -127,7 +127,9 @@ def _output_paths(repo, repo_tree, targets):
 
     def _to_checksum(output):
         if on_working_tree:
-            return repo.cache.local.tree.get_hash(output.path_info).value
+            return repo.cache.local.tree.get_hash(
+                output.path_info, "md5"
+            ).value
         return output.hash_info.value
 
     for stage in repo.stages:
@@ -155,7 +157,7 @@ def _dir_output_paths(repo_tree, output, targets=None):
             if targets is None or any(
                 fname.isin_or_eq(target) for target in targets
             ):
-                yield str(fname), repo_tree.get_file_hash(fname).value
+                yield str(fname), repo_tree.get_file_hash(fname, "md5").value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)
 
