@@ -22,9 +22,9 @@ class ODBConfigFormatError(DvcException):
 def load_config(path_info: "PathInfo", tree: "BaseTree",) -> dict:
     from dvc.utils.serialize import load_yaml
 
-    try:
+    if tree.exists(path_info):
         data = load_yaml(path_info, tree=tree)
-    except FileNotFoundError:
+    else:
         data = {}
 
     try:
@@ -68,10 +68,16 @@ def _validate_version(d):
 
 
 def _get_config_schema(d):
-    from dvc.schema import COMPILED_ODB_CONFIG_V2_SCHEMA
+    from dvc.schema import (
+        COMPILED_ODB_CONFIG_V1_SCHEMA,
+        COMPILED_ODB_CONFIG_V2_SCHEMA,
+    )
 
     from .versions import ODB_VERSION
 
-    schema = {ODB_VERSION.V2: COMPILED_ODB_CONFIG_V2_SCHEMA}
+    schema = {
+        ODB_VERSION.V1: COMPILED_ODB_CONFIG_V1_SCHEMA,
+        ODB_VERSION.V2: COMPILED_ODB_CONFIG_V2_SCHEMA,
+    }
     version = ODB_VERSION.from_dict(d)
     return schema[version]

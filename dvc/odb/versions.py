@@ -7,7 +7,10 @@ from dvc.parsing.versions import SCHEMA_KWD
 
 
 def odb_version_schema(value):
-    expected = [ODB_VERSION.V2.value]  # pylint: disable=no-member
+    expected = [
+        ODB_VERSION.V1.value,  # pylint: disable=no-member
+        ODB_VERSION.V2.value,  # pylint: disable=no-member
+    ]
     msg = "invalid schema version {}, expected one of {}".format(
         value, expected
     )
