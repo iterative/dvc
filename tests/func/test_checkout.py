@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import stat
+import textwrap
 
 import pytest
 from mock import patch
@@ -23,7 +24,7 @@ from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
-from dvc.utils.fs import walk_files
+from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
@@ -989,3 +990,20 @@ def test_checkout_file(tmp_dir, dvc):
     os.unlink("foo")
     stats = dvc.checkout("foo")
     assert stats["added"] == ["foo"]
+
+
+def test_checkout_dir_compat(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo"}})
+    tmp_dir.gen(
+        "data.dvc",
+        textwrap.dedent(
+            f"""\
+        outs:
+        - md5: {stage.outs[0].hash_info.value}
+          path: data
+        """
+        ),
+    )
+    remove("data")
+    dvc.checkout()
+    assert (tmp_dir / "data").read_text() == {"foo": "foo"}

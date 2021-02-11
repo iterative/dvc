@@ -468,7 +468,7 @@ class BaseOutput:
             return 1
 
         if not filter_info or filter_info == self.path_info:
-            return self.hash_info.nfiles
+            return self.hash_info.nfiles or 0
 
         if not self.hash_info.dir_info:
             return 0
