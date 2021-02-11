@@ -26,6 +26,15 @@ class CloudCache:
             self.DEFAULT_CACHE_TYPES
         )
         self.cache_type_confirmed = False
+        self._config_modified = False
+        self._load_config()
+
+    @property
+    def version(self):
+        from dvc.odb.versions import LATEST_VERSION
+        from dvc.parsing.versions import SCHEMA_KWD
+
+        return self._config.get(SCHEMA_KWD, LATEST_VERSION)
 
     def move(self, from_info, to_info):
         self.fs.move(from_info, to_info)
@@ -48,6 +57,9 @@ class CloudCache:
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
+
+        if self._config_modified:
+            self._dump_config()
 
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
@@ -411,3 +423,32 @@ class CloudCache:
             self.list_hashes_traverse(remote_size, remote_hashes, jobs, name)
         )
         return list(hashes & set(remote_hashes))
+
+    def _load_config(self):
+        from dvc.odb.config import CONFIG_FILENAME, load_config, migrate_config
+        from dvc.odb.versions import ODB_VERSION
+
+        config_path = self.tree.path_info / CONFIG_FILENAME
+        self._config = load_config(
+            self.tree.path_info / CONFIG_FILENAME, self.tree
+        )
+
+        dos2unix = self.repo.config["core"].get("dos2unix", False)
+        if dos2unix and self.version != ODB_VERSION.V1:
+            raise DvcException(
+                "dos2unix MD5 is incompatible with ODB version "
+                f"'{self.version}'"
+            )
+
+        if not dos2unix and self.version != ODB_VERSION.V2:
+            migrate_config(self._config)
+            self._config_modified = True
+        elif not self.tree.exists(config_path):
+            self._config_modified = True
+
+    def _dump_config(self):
+        from dvc.odb.config import CONFIG_FILENAME, dump_config
+
+        config_path = self.tree.path_info / CONFIG_FILENAME
+        dump_config(self._config, config_path, self.tree)
+        self._config_modified = False

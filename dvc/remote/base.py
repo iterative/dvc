@@ -6,7 +6,7 @@ from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 
-from dvc.exceptions import DownloadError, UploadError
+from dvc.exceptions import DownloadError, DvcException, UploadError
 from dvc.hash_info import HashInfo
 
 from ..progress import Tqdm
@@ -76,11 +76,13 @@ class Remote:
 
         config = fs.config
         url = config.get("url")
+        self._config_modified = False
         if url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
             self.index = self.INDEX_CLS(
                 self.repo, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
             )
+            self._load_config()
         else:
             self.index = RemoteIndexNoop()
 
@@ -89,6 +91,15 @@ class Remote:
             class_name=type(self).__name__,
             path_info=self.fs.path_info or "No path",
         )
+
+    @property
+    def version(self):
+        from dvc.odb.versions import LATEST_VERSION
+        from dvc.parsing.versions import SCHEMA_KWD
+
+        if self._config:
+            return self._config.get(SCHEMA_KWD, LATEST_VERSION)
+        return LATEST_VERSION
 
     @index_locked
     def gc(self, *args, **kwargs):
@@ -308,6 +319,19 @@ class Remote:
             )
         )
 
+        if self.version != cache.version:
+            if download:
+                msg = (
+                    "Cannot download from remote with incompatible version "
+                    f"'{self.version}' (expected '{cache.version}')"
+                )
+            else:
+                msg = (
+                    "Cannot upload to remote with incompatible version "
+                    f"'{self.version}' (expected '{cache.version}')"
+                )
+            raise DvcException(msg)
+
         if download:
             func = _log_exceptions(self.fs.download, "download")
             status = STATUS_DELETED
@@ -463,6 +487,9 @@ class Remote:
 
     @index_locked
     def push(self, cache, named_cache, jobs=None, show_checksums=False):
+        if self._config_modified:
+            self._dump_config()
+
         ret = self._process(
             cache,
             named_cache,
@@ -510,6 +537,9 @@ class Remote:
     def transfer(self, from_fs, from_info, jobs=None, no_progress_bar=False):
         from dvc.objects import transfer
 
+        if self._config_modified:
+            self._dump_config()
+
         return transfer(
             self.cache,
             from_fs,
@@ -535,3 +565,32 @@ class Remote:
                 "nor on remote. Missing cache files:\n{}".format(missing_desc)
             )
             logger.warning(msg)
+
+    def _load_config(self):
+        from dvc.odb.config import CONFIG_FILENAME, load_config, migrate_config
+        from dvc.odb.versions import ODB_VERSION
+
+        config_path = self.tree.path_info / CONFIG_FILENAME
+        self._config = load_config(
+            self.tree.path_info / CONFIG_FILENAME, self.tree
+        )
+
+        dos2unix = self.repo.config["core"].get("dos2unix", False)
+        if dos2unix and self.version != ODB_VERSION.V1:
+            raise DvcException(
+                "dos2unix MD5 is incompatible with ODB version "
+                f"'{self.version}'"
+            )
+
+        if not dos2unix and self.version != ODB_VERSION.V2:
+            migrate_config(self._config)
+            self._config_modified = True
+        elif not self.tree.exists(config_path):
+            self._config_modified = True
+
+    def _dump_config(self):
+        from dvc.odb.config import CONFIG_FILENAME, dump_config
+
+        config_path = self.tree.path_info / CONFIG_FILENAME
+        dump_config(self._config, config_path, self.tree)
+        self._config_modified = False

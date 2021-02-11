@@ -117,6 +117,7 @@ SCHEMA = {
         Optional("autostage", default=False): Bool,
         Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
+        Optional("dos2unix", default=False): Bool,
     },
     "cache": {
         "local": str,
@@ -138,7 +139,6 @@ SCHEMA = {
                     "region": str,
                     "profile": str,
                     "credentialpath": str,
-                    "configpath": str,
                     "endpointurl": str,
                     "access_key_id": str,
                     "secret_access_key": str,
