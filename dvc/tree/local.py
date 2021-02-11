@@ -207,8 +207,9 @@ class LocalTree(BaseTree):
     def reflink(self, from_info, to_info):
         System.reflink(from_info, to_info)
 
-    def get_file_hash(self, path_info):
-        hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info))
+    def get_file_hash(self, path_info, name):
+        assert name == "md5"
+        hash_info = HashInfo(name, file_md5(path_info))
 
         if hash_info:
             hash_info.size = os.path.getsize(path_info)

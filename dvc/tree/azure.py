@@ -188,7 +188,8 @@ class AzureTree(BaseTree):
         properties = blob_client.get_blob_properties()
         return properties.size
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
         return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))
 
     def _upload_fobj(self, fobj, to_info):

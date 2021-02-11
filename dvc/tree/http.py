@@ -152,7 +152,9 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             raise HTTPError(response.status_code, response.reason)
         return self._content_length(response)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
+
         url = path_info.url
 
         headers = self._head(url).headers

@@ -30,7 +30,8 @@ class MemoryTree(BaseTree):
 
         return os.stat_result((0, 0, 0, 0, 0, 0, info["size"], 0, 0, 0))
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
         return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self))
 
     def walk_files(self, path_info, **kwargs):

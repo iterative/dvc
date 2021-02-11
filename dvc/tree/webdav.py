@@ -148,7 +148,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         return self._client.check(path_info.path)
 
     # Gets file hash 'etag'
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
+
         # Use webdav client info method to get etag
         etag = self._client.info(path_info.path)["etag"].strip('"')
 

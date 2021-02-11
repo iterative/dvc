@@ -317,6 +317,8 @@ def test_tree_ls_with_etag(dvc, cloud):
 
     for details in tree.ls(path_info / "data", recursive=True, detail=True):
         assert (
-            tree.get_file_hash(path_info.replace(path=details["name"])).value
+            tree.get_file_hash(
+                path_info.replace(path=details["name"]), tree.PARAM_CHECKSUM
+            ).value
             == details[tree.PARAM_CHECKSUM]
         )
