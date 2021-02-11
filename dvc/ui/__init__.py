@@ -150,3 +150,17 @@ class Console:
             ret += "\n"
 
         self.write(ret)
+
+
+if __name__ == "__main__":
+    ui = Console()
+
+    ui.write("No default remote set")
+    ui.success("Everything is up to date.")
+    ui.warn("Run queued experiments will be removed.")
+    ui.error("too few arguments.")
+
+    ui.table("keys", {"Path": ["scores.json"], "auc": ["0.5674"]})
+    ui.table(
+        "keys", {"Path": ["scores.json"], "auc": ["0.5674"]}, markdown=True
+    )
