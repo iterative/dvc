@@ -1,13 +1,14 @@
 # pylint:disable=abstract-method
 import os
 import uuid
-from functools import partialmethod
+from functools import partial, partialmethod
 
 import pytest
 from funcy import cached_property
 
 from dvc.path_info import CloudURLInfo
 from dvc.tree.gdrive import GDriveTree
+from dvc.utils import tmp_fname
 
 from .base import Base
 
@@ -44,12 +45,16 @@ class GDrive(Base, CloudURLInfo):
 
     @cached_property
     def client(self):
+        import pydata_google_auth
         from gdrivefs import GoogleDriveFileSystem
 
-        os.makedirs(CREDENTIALS_DIR, exist_ok=True)
-        with open(CREDENTIALS_FILE, "w") as stream:
+        tmp_path = tmp_fname()
+        with open(tmp_path, "w") as stream:
             stream.write(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
 
+        GoogleDriveFileSystem._connect_cache = partial(
+            pydata_google_auth.load_user_credentials, tmp_path
+        )
         return GoogleDriveFileSystem(token="cache")
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
@@ -84,4 +89,3 @@ def gdrive(test_config, make_tmp_dir):
     tree = GDriveTree(tmp_dir.dvc, ret.config)
     tree._gdrive_create_dir("root", tree.path_info.path)
     yield ret
-    ret.cleanup()
