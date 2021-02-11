@@ -2,6 +2,7 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
+from dvc.odb.versions import odb_version_schema
 from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
@@ -111,3 +112,8 @@ COMPILED_MULTI_STAGE_SCHEMA = Schema(MULTI_STAGE_SCHEMA)
 COMPILED_LOCK_FILE_STAGE_SCHEMA = Schema(LOCK_FILE_STAGE_SCHEMA)
 COMPILED_LOCKFILE_V1_SCHEMA = Schema(LOCKFILE_V1_SCHEMA)
 COMPILED_LOCKFILE_V2_SCHEMA = Schema(LOCKFILE_V2_SCHEMA)
+
+ODB_VERSION_SCHEMA = {
+    Required(SCHEMA_KWD): odb_version_schema,
+}
+COMPILED_ODB_CONFIG_V2_SCHEMA = Schema(ODB_VERSION_SCHEMA)
