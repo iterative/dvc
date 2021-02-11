@@ -1,12 +1,18 @@
+import pytest
+
 from dvc import utils
 from dvc.fs.local import LocalFileSystem
 
 
-def test_file_md5_crlf(tmp_dir):
-    fs = LocalFileSystem(None, {})
+@pytest.mark.parametrize("dos2unix", [True, False])
+def test_file_md5_crlf(tmp_dir, dos2unix):
     tmp_dir.gen("cr", b"a\nb\nc")
     tmp_dir.gen("crlf", b"a\r\nb\r\nc")
-    assert utils.file_md5("cr", fs) == utils.file_md5("crlf", fs)
+    fs = LocalFileSystem(None, {})
+    eq = utils.file_md5("cr", fs, enable_d2u=dos2unix) == utils.file_md5(
+        "crlf", enable_d2u=dos2unix
+    )
+    assert eq == dos2unix
 
 
 def test_dict_md5():
