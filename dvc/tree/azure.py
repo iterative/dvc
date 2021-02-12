@@ -100,8 +100,6 @@ class AzureTree(BaseTree):
             )
         )
 
-        print("Hello")
-
     @cached_property
     def _az_config(self):
         # NOTE: ideally we would've used get_default_cli().config from
