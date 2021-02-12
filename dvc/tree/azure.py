@@ -1,24 +1,16 @@
 import logging
 import os
-import pdb
 import threading
 from datetime import datetime, timedelta
 
 from azure.identity import (
-    AzureCliCredential,
     ChainedTokenCredential,
     ClientSecretCredential,
     DefaultAzureCredential,
-    EnvironmentCredential,
-)
-from azure.identity._credentials import (
-    DefaultAzureCredential,
-    EnvironmentCredential,
 )
 from azure.identity._exceptions import CredentialUnavailableError
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
@@ -107,6 +99,8 @@ class AzureTree(BaseTree):
                 DefaultAzureCredential(),
             )
         )
+
+        print("Hello")
 
     @cached_property
     def _az_config(self):

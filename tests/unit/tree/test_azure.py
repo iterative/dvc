@@ -1,5 +1,5 @@
 import pytest
-from azure.identity import ChainedTokenCredential, ClientSecretCredential
+from azure.identity import ChainedTokenCredential
 
 from dvc.tree.azure import AzureTree
 
@@ -9,8 +9,13 @@ sas_token = "test_sas_token"
 client_id = "test_id"
 client_secret = "test_client_secret"
 tenant_id = "test_tenant_id"
+dummy_sas_token = "foo"
+dummy_storage_account_key = "bar"
 
 only_url_config = {"url": url}
+
+sas_token_config = {"sas_token": dummy_sas_token}
+account_key_config = {"sas_token": dummy_storage_account_key}
 
 config = {
     "url": url,
@@ -40,65 +45,46 @@ def test_init(dvc):
     assert tree.path_info == url
 
 
-def test_none_credential_if_not_all_svc_principle_details_in_config(dvc):
-    incomplete_config = config.copy()
-    incomplete_config.pop("tenant_id", None)
-    tree = AzureTree(dvc, incomplete_config)
+def test_if_sas_token_in_config_sas_token_is_credential(dvc):
+    tree = AzureTree(dvc, sas_token_config)
 
-    assert tree._credential is None
+    assert tree._credential == dummy_sas_token
 
 
-# ClientSecretCredentials do not have a tenant property
-# Enough to see exptected client id and secret percolated.
-def test_credential_is_client_secret_credential(dvc):
-    tree = AzureTree(dvc, config)
-    assert isinstance(tree._credential, ClientSecretCredential)
-    assert tree._credential._client_id == client_id
-    assert tree._credential._secret == client_secret
-
-
-def test_credential_is_client_secret_credential_from_env_vars(
+def test_if_sas_token_in_env_sas_token_is_credential(
     monkeypatch, dvc, configure_env
 ):
-    configure_env(monkeypatch, env_vars)
-
+    configure_env(monkeypatch, {"AZURE_STORAGE_SAS_TOKEN": dummy_sas_token})
     tree = AzureTree(dvc, only_url_config)
 
-    assert isinstance(tree._credential, ClientSecretCredential)
-    assert tree._credential._client_id == client_id
-    assert tree._credential._secret == client_secret
+    assert tree._credential == dummy_sas_token
 
 
-def test_none_credential_if_not_all_svc_principle_details_in_env(
+def test_if_account_key_in_config_account_key_is_credential(dvc):
+    tree = AzureTree(dvc, account_key_config)
+
+    assert tree._credential == dummy_storage_account_key
+
+
+def test_if_account_key_in_env_account_key_is_credential(
     monkeypatch, dvc, configure_env
 ):
-    incomplete_env = env_vars.copy()
-    incomplete_env.pop("AZURE_TENANT_ID", None)
-    configure_env(monkeypatch, incomplete_env)
+    configure_env(
+        monkeypatch, {"AZURE_STORAGE_KEY": dummy_storage_account_key}
+    )
     tree = AzureTree(dvc, only_url_config)
 
-    assert tree._credential is None
+    assert tree._credential == dummy_storage_account_key
 
 
-def test_credential_is_chained_token_credential(dvc):
-    default_credential_config = {"url": url, "azcli_credential": True}
-    tree = AzureTree(dvc, default_credential_config)
-    assert isinstance(tree._credential, ChainedTokenCredential)
+def test_credential_is_chained_token_credential_if_no_auth_string_tokens(dvc):
+    # Here auth string tokens are
+    # - storage account key
+    # - SAS token
 
-
-def test_credential_is_chained_token_credential_if_svc_in_config(dvc):
     svc_config = {
         "url": url,
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "tenant_id": tenant_id,
     }
     tree = AzureTree(dvc, svc_config)
     assert isinstance(tree._credential, ChainedTokenCredential)
     assert tree._conn_str is None
-
-
-def test_credential_is_sas_token(dvc):
-    default_credential_config = {"url": url, "sas_token": sas_token}
-    tree = AzureTree(dvc, default_credential_config)
-    assert tree._credential == sas_token
