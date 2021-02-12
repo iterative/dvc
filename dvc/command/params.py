@@ -101,7 +101,7 @@ def add_parser(subparsers, parent_parser):
         help=(
             "Specific params file(s) to compare "
             "(even if not found as `params` in `dvc.yaml`). "
-            "Shows all tracked params by default.",
+            "Shows all tracked params by default."
         ),
         metavar="<paths>",
     ).complete = completion.FILE
