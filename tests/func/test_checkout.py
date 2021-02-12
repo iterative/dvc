@@ -3,6 +3,8 @@ import filecmp
 import logging
 import os
 import shutil
+import stat
+import textwrap
 
 import pytest
 from mock import patch
@@ -22,7 +24,7 @@ from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
-from dvc.utils.fs import walk_files
+from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
@@ -84,6 +86,8 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
+        from dvc.objects import load
+
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
@@ -97,10 +101,12 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
         _, entry_hash = next(
-            self.dvc.cache.local.load_dir_cache(out.hash_info).items()
+            load(
+                self.dvc.cache.local, out.hash_info
+            ).hash_info.dir_info.items()
         )
         cache = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(entry_hash.value)
+            self.dvc.cache.local.hash_to_path_info(entry_hash.value)
         )
 
         os.chmod(cache, 0o644)
@@ -580,7 +586,7 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
 
     tmp_dir.gen({"lorem": "lorem", "bar": "new bar", "dir2": {"file": "file"}})
     (tmp_dir / "foo").unlink()
-    scm.repo.git.rm("foo.dvc")
+    scm.gitpython.repo.git.rm("foo.dvc")
     tmp_dir.dvc_add(["bar", "lorem", "dir2"], commit="second")
 
     scm.checkout("HEAD~")
@@ -862,3 +868,142 @@ def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
     dvc.checkout()
 
     assert (workspace / "foo").read_text() == "foo"
+
+
+def test_checkout_executable(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    contents = load_yaml("foo.dvc")
+    contents["outs"][0]["isexec"] = True
+    dump_yaml("foo.dvc", contents)
+
+    dvc.checkout("foo")
+
+    isexec = os.stat("foo").st_mode & stat.S_IEXEC
+    if os.name == "nt":
+        # NOTE: you can't set exec bits on Windows
+        assert not isexec
+    else:
+        assert isexec
+
+
+def test_checkout_partial(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"data": {"foo": "foo", "bar": "bar", "sub_dir": {"baz": "baz"}}}
+    )
+
+    data_dir = tmp_dir / "data"
+    shutil.rmtree(data_dir)
+
+    dvc.checkout(str(data_dir / "foo"))
+    assert data_dir.read_text() == {"foo": "foo"}
+
+    dvc.checkout(str(data_dir / "sub_dir" / "baz"))
+    assert data_dir.read_text() == {"foo": "foo", "sub_dir": {"baz": "baz"}}
+
+    dvc.checkout(str(data_dir / "bar"))
+    assert data_dir.read_text() == {
+        "foo": "foo",
+        "bar": "bar",
+        "sub_dir": {"baz": "baz"},
+    }
+
+
+def test_checkout_partial_unchanged(tmp_dir, dvc):
+    original_dir_shape = {
+        "foo": "foo",
+        "bar": "bar",
+        "sub_dir": {"baz": "baz"},
+        "empty_sub_dir": {},
+    }
+    tmp_dir.dvc_gen({"data": original_dir_shape})
+
+    data_dir = tmp_dir / "data"
+    sub_dir = data_dir / "sub_dir"
+    foo = data_dir / "foo"
+    bar = data_dir / "bar"
+    sub_dir_file = sub_dir / "baz"
+
+    # Nothing changed, nothing added/deleted/modified
+    stats = dvc.checkout(str(bar))
+    assert not any(stats.values())
+
+    # Irrelevant file changed, still nothing added/deleted/modified
+    foo.unlink()
+    stats = dvc.checkout(str(bar))
+    assert not any(stats.values())
+
+    # Relevant change, one modified
+    bar.unlink()
+    stats = dvc.checkout(str(bar))
+    assert len(stats["modified"]) == 1
+
+    # No changes inside data/sub
+    stats = dvc.checkout(str(sub_dir))
+    assert not any(stats.values())
+
+    # Relevant change, one modified
+    sub_dir_file.unlink()
+    stats = dvc.checkout(str(sub_dir))
+    assert len(stats["modified"]) == 1
+
+    stats = dvc.checkout(str(data_dir / "empty_sub_dir"))
+    assert not any(stats.values())
+
+    dvc.checkout(str(data_dir))
+
+    # Everything is in place, no action taken
+    stats = dvc.checkout(str(data_dir))
+    assert not any(stats.values())
+
+
+def test_checkout_partial_subdir(tmp_dir, dvc):
+    tmp_dir.dvc_gen(
+        {"data": {"foo": "foo", "sub_dir": {"bar": "bar", "baz": "baz"}}}
+    )
+
+    data_dir = tmp_dir / "data"
+    sub_dir = data_dir / "sub_dir"
+    sub_dir_bar = sub_dir / "baz"
+
+    shutil.rmtree(sub_dir)
+    dvc.checkout(str(sub_dir))
+    assert data_dir.read_text() == {
+        "foo": "foo",
+        "sub_dir": {"bar": "bar", "baz": "baz"},
+    }
+
+    sub_dir_bar.unlink()
+    dvc.checkout(str(sub_dir_bar))
+    assert data_dir.read_text() == {
+        "foo": "foo",
+        "sub_dir": {"bar": "bar", "baz": "baz"},
+    }
+
+
+def test_checkout_file(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    stats = dvc.checkout("foo")
+    assert not any(stats.values())
+
+    os.unlink("foo")
+    stats = dvc.checkout("foo")
+    assert stats["added"] == ["foo"]
+
+
+def test_checkout_dir_compat(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo"}})
+    tmp_dir.gen(
+        "data.dvc",
+        textwrap.dedent(
+            f"""\
+        outs:
+        - md5: {stage.outs[0].hash_info.value}
+          path: data
+        """
+        ),
+    )
+    remove("data")
+    dvc.checkout()
+    assert (tmp_dir / "data").read_text() == {"foo": "foo"}

@@ -3,6 +3,8 @@ from typing import Optional
 
 from dvc.repo import locked
 
+from .utils import exp_refs, remove_exp_refs
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,23 +31,20 @@ def gc(
     if not keep_revs:
         return 0
 
-    delete_branches = []
-    for exp_branch in repo.experiments.scm.list_branches():
-        m = repo.experiments.BRANCH_RE.match(exp_branch)
-        if m:
-            rev = repo.scm.resolve_rev(m.group("baseline_rev"))
-            if rev not in keep_revs:
-                delete_branches.append(exp_branch)
-    if delete_branches:
-        repo.experiments.scm.repo.delete_head(*delete_branches, force=True)
-    removed = len(delete_branches)
+    to_remove = [
+        ref_info
+        for ref_info in exp_refs(repo.scm)
+        if ref_info.baseline_sha not in keep_revs
+    ]
+    remove_exp_refs(repo.scm, to_remove)
+    removed = len(to_remove)
 
     delete_stashes = []
     for _, entry in repo.experiments.stash_revs.items():
         if not queued or entry.baseline_rev not in keep_revs:
             delete_stashes.append(entry.index)
     for index in sorted(delete_stashes, reverse=True):
-        repo.experiments.scm.repo.git.stash("drop", index)
+        repo.experiments.stash.drop(index)
     removed += len(delete_stashes)
 
     return removed

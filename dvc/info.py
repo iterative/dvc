@@ -4,6 +4,8 @@ import pathlib
 import platform
 import uuid
 
+import psutil
+
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
@@ -12,11 +14,6 @@ from dvc.tree import TREES, get_tree_cls, get_tree_config
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
-
-try:
-    import psutil
-except ImportError:
-    psutil = None
 
 if PKG is None:
     package = ""
@@ -44,9 +41,8 @@ def get_dvc_info():
             info.append(
                 "Cache types: {}".format(_get_linktype_support_info(repo))
             )
-            if psutil:
-                fs_type = get_fs_type(repo.cache.local.cache_dir)
-                info.append(f"Cache directory: {fs_type}")
+            fs_type = get_fs_type(repo.cache.local.cache_dir)
+            info.append(f"Cache directory: {fs_type}")
         else:
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
@@ -60,9 +56,8 @@ def get_dvc_info():
         info.append("Repo: dvc, git (broken)")
     else:
         root_directory = repo.root_dir
-        if psutil:
-            fs_root = get_fs_type(os.path.abspath(root_directory))
-            info.append(f"Workspace directory: {fs_root}")
+        fs_root = get_fs_type(os.path.abspath(root_directory))
+        info.append(f"Workspace directory: {fs_root}")
         info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
     return "\n".join(info)
 
@@ -142,7 +137,8 @@ def get_fs_type(path):
         for part in psutil.disk_partitions(all=True)
     }
 
-    path = pathlib.Path(path)
+    # need to follow the symlink: https://github.com/iterative/dvc/issues/5065
+    path = pathlib.Path(path).resolve()
 
     for parent in itertools.chain([path], path.parents):
         if parent in partition:

@@ -2,6 +2,7 @@ import getpass
 import io
 import logging
 import os
+import shutil
 import threading
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
@@ -147,7 +148,7 @@ class SSHTree(BaseTree):
         )
 
     @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb", "wb"}
 
         with self.ssh(path_info) as ssh, closing(
@@ -186,8 +187,7 @@ class SSHTree(BaseTree):
         with self.ssh(path_info) as ssh:
             ssh.makedirs(path_info.path)
 
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
+    def move(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
@@ -235,10 +235,11 @@ class SSHTree(BaseTree):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
+        assert name == self.PARAM_CHECKSUM
         with self.ssh(path_info) as ssh:
             hash_info = HashInfo(self.PARAM_CHECKSUM, ssh.md5(path_info.path),)
 
@@ -250,6 +251,11 @@ class SSHTree(BaseTree):
     def getsize(self, path_info):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
+
+    def _upload_fobj(self, fobj, to_info):
+        self.makedirs(to_info.parent)
+        with self.open(to_info, mode="wb") as fdest:
+            shutil.copyfileobj(fobj, fdest)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         with self.ssh(from_info) as ssh:

@@ -4,7 +4,17 @@ from dvc.command.get import CmdGet
 
 def test_get(mocker):
     cli_args = parse_args(
-        ["get", "repo_url", "src", "--out", "out", "--rev", "version"]
+        [
+            "get",
+            "repo_url",
+            "src",
+            "--out",
+            "out",
+            "--rev",
+            "version",
+            "--jobs",
+            "4",
+        ]
     )
     assert cli_args.func == CmdGet
 
@@ -13,7 +23,9 @@ def test_get(mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("repo_url", path="src", out="out", rev="version")
+    m.assert_called_once_with(
+        "repo_url", path="src", out="out", rev="version", jobs=4
+    )
 
 
 def test_get_url(mocker, caplog):

@@ -1,12 +1,14 @@
 import logging
+import typing
 from functools import partial
 
-from dvc.exceptions import InvalidArgumentError, ReproductionError
+from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.scm_context import scm_context
-from dvc.stage.run import CheckpointKilledError
 
 from . import locked
-from .graph import get_pipeline, get_pipelines
+
+if typing.TYPE_CHECKING:
+    from . import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,7 @@ logger = logging.getLogger(__name__)
 def _reproduce_stage(stage, **kwargs):
     def _run_callback(repro_callback):
         _dump_stage(stage)
+        _track_stage(stage)
         repro_callback([stage])
 
     checkpoint_func = kwargs.pop("checkpoint_func", None)
@@ -21,9 +24,9 @@ def _reproduce_stage(stage, **kwargs):
         if checkpoint_func:
             kwargs["checkpoint_func"] = partial(_run_callback, checkpoint_func)
         else:
-            logger.warning(
-                "Checkpoint stages are not fully supported in 'dvc repro'. "
-                "Checkpoint stages should be reproduced with 'dvc exp run' "
+            raise DvcException(
+                "Checkpoint stages are not supported in 'dvc repro'. "
+                "Checkpoint stages must be reproduced with 'dvc exp run' "
                 "or 'dvc exp resume'."
             )
 
@@ -38,7 +41,10 @@ def _reproduce_stage(stage, **kwargs):
         return []
 
     if not kwargs.get("dry", False):
+        track = checkpoint_func is not None
         _dump_stage(stage)
+        if track:
+            _track_stage(stage)
 
     return [stage]
 
@@ -50,70 +56,79 @@ def _dump_stage(stage):
     dvcfile.dump(stage, update_pipeline=False)
 
 
-def _get_active_graph(G):
-    import networkx as nx
+def _track_stage(stage):
+    from dvc.utils import relpath
 
-    active = G.copy()
-    for stage in G:
-        if not stage.frozen:
-            continue
-        active.remove_edges_from(G.out_edges(stage))
-        for edge in G.out_edges(stage):
-            _, to_stage = edge
-            for node in nx.dfs_preorder_nodes(G, to_stage):
-                # NOTE: `in_degree` will return InDegreeView({}) if stage
-                # no longer exists in the `active` DAG.
-                if not active.in_degree(node):
-                    # NOTE: if some edge no longer exists `remove_edges_from`
-                    # will ignore it without error.
-                    active.remove_edges_from(G.out_edges(node))
-                    active.remove_node(node)
+    stage.repo.scm.track_file(stage.dvcfile.relpath)
+    for dep in stage.deps:
+        if not dep.use_scm_ignore and dep.is_in_repo:
+            stage.repo.scm.track_file(relpath(dep.path_info))
+    for out in stage.outs:
+        if not out.use_scm_ignore and out.is_in_repo:
+            stage.repo.scm.track_file(relpath(out.path_info))
+        if out.live:
+            from dvc.repo.live import summary_path_info
 
-    return active
+            summary = summary_path_info(out)
+            if summary:
+                stage.repo.scm.track_file(relpath(summary))
+    stage.repo.scm.track_changed_files()
 
 
 @locked
 @scm_context
 def reproduce(
-    self,
-    target=None,
+    self: "Repo",
+    targets=None,
     recursive=False,
     pipeline=False,
     all_pipelines=False,
     **kwargs,
 ):
-    from dvc.utils import parse_target
+    from .graph import get_pipeline, get_pipelines
 
-    assert target is None or isinstance(target, str)
-    if not target and not all_pipelines:
-        raise InvalidArgumentError(
-            "Neither `target` nor `--all-pipelines` are specified."
-        )
+    glob = kwargs.pop("glob", False)
+    accept_group = not glob
+
+    if isinstance(targets, str):
+        targets = [targets]
+
+    if not all_pipelines and not targets:
+        from dvc.dvcfile import PIPELINE_FILE
+
+        targets = [PIPELINE_FILE]
 
     interactive = kwargs.get("interactive", False)
     if not interactive:
         kwargs["interactive"] = self.config["core"].get("interactive", False)
 
-    active_graph = _get_active_graph(self.graph)
-    active_pipelines = get_pipelines(active_graph)
-
-    path, name = parse_target(target)
+    stages = set()
     if pipeline or all_pipelines:
+        pipelines = get_pipelines(self.graph)
         if all_pipelines:
-            pipelines = active_pipelines
+            used_pipelines = pipelines
         else:
-            stage = self.get_stage(path, name)
-            pipelines = [get_pipeline(active_pipelines, stage)]
+            used_pipelines = []
+            for target in targets:
+                stage = self.stage.get_target(target)
+                used_pipelines.append(get_pipeline(pipelines, stage))
 
-        targets = []
-        for pipeline in pipelines:
-            for stage in pipeline:
-                if pipeline.in_degree(stage) == 0:
-                    targets.append(stage)
+        for pline in used_pipelines:
+            for stage in pline:
+                if pline.in_degree(stage) == 0:
+                    stages.add(stage)
     else:
-        targets = self.collect(target, recursive=recursive, graph=active_graph)
+        for target in targets:
+            stages.update(
+                self.stage.collect(
+                    target,
+                    recursive=recursive,
+                    accept_group=accept_group,
+                    glob=glob,
+                )
+            )
 
-    return _reproduce_stages(active_graph, targets, **kwargs)
+    return _reproduce_stages(self.graph, list(stages), **kwargs)
 
 
 def _reproduce_stages(
@@ -154,7 +169,7 @@ def _reproduce_stages(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-    pipeline = _get_pipeline(G, stages, downstream, single_item)
+    steps = _get_steps(G, stages, downstream, single_item)
 
     force_downstream = kwargs.pop("force_downstream", False)
     result = []
@@ -162,7 +177,7 @@ def _reproduce_stages(
     # `ret` is used to add a cosmetic newline.
     ret = []
     checkpoint_func = kwargs.pop("checkpoint_func", None)
-    for stage in pipeline:
+    for stage in steps:
         if ret:
             logger.info("")
 
@@ -170,6 +185,8 @@ def _reproduce_stages(
             kwargs["checkpoint_func"] = partial(
                 _repro_callback, checkpoint_func, unchanged
             )
+
+        from dvc.stage.run import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)
@@ -196,36 +213,43 @@ def _reproduce_stages(
     return result
 
 
-def _get_pipeline(G, stages, downstream, single_item):
+def _get_steps(G, stages, downstream, single_item):
     import networkx as nx
 
-    if single_item:
-        all_pipelines = stages
-    else:
-        all_pipelines = []
-        for stage in stages:
-            if downstream:
-                # NOTE (py3 only):
-                # Python's `deepcopy` defaults to pickle/unpickle the object.
-                # Stages are complex objects (with references to `repo`,
-                # `outs`, and `deps`) that cause struggles when you try
-                # to serialize them. We need to create a copy of the graph
-                # itself, and then reverse it, instead of using
-                # graph.reverse() directly because it calls `deepcopy`
-                # underneath -- unless copy=False is specified.
-                nodes = nx.dfs_postorder_nodes(
-                    G.copy().reverse(copy=False), stage
-                )
-                all_pipelines += reversed(list(nodes))
-            else:
-                all_pipelines += nx.dfs_postorder_nodes(G, stage)
+    active = G.copy()
+    if not single_item:
+        # NOTE: frozen stages don't matter for single_item
+        for stage in G:
+            if stage.frozen:
+                # NOTE: disconnect frozen stage from its dependencies
+                active.remove_edges_from(G.out_edges(stage))
 
-    pipeline = []
+    all_pipelines = []
+    for stage in stages:
+        if downstream:
+            # NOTE (py3 only):
+            # Python's `deepcopy` defaults to pickle/unpickle the object.
+            # Stages are complex objects (with references to `repo`,
+            # `outs`, and `deps`) that cause struggles when you try
+            # to serialize them. We need to create a copy of the graph
+            # itself, and then reverse it, instead of using
+            # graph.reverse() directly because it calls `deepcopy`
+            # underneath -- unless copy=False is specified.
+            nodes = nx.dfs_postorder_nodes(active.reverse(copy=False), stage)
+            all_pipelines += reversed(list(nodes))
+        else:
+            all_pipelines += nx.dfs_postorder_nodes(active, stage)
+
+    steps = []
     for stage in all_pipelines:
-        if stage not in pipeline:
-            pipeline.append(stage)
+        if stage not in steps:
+            # NOTE: order of steps still matters for single_item
+            if single_item and stage not in stages:
+                continue
 
-    return pipeline
+            steps.append(stage)
+
+    return steps
 
 
 def _repro_callback(experiments_callback, unchanged, stages):

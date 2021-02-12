@@ -42,9 +42,8 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         url = config.get("url")
         if url:
             self.path_info = self.PATH_CLS(url)
-            user = config.get("user", None)
-            if user:
-                self.path_info.user = user
+            self.user = config.get("user", None)
+            self.host = self.path_info.host
         else:
             self.path_info = None
 
@@ -56,23 +55,22 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
 
-    def _auth_method(self, path_info=None):
+    def _auth_method(self):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
-
-        if path_info is None:
-            path_info = self.path_info
 
         if self.auth:
             if self.ask_password and self.password is None:
-                host, user = path_info.host, path_info.user
-                self.password = ask_password(host, user)
+                self.password = ask_password(self.host, self.user)
             if self.auth == "basic":
-                return HTTPBasicAuth(path_info.user, self.password)
+                return HTTPBasicAuth(self.user, self.password)
             if self.auth == "digest":
-                return HTTPDigestAuth(path_info.user, self.password)
+                return HTTPDigestAuth(self.user, self.password)
             if self.auth == "custom" and self.custom_auth_header:
                 self.headers.update({self.custom_auth_header: self.password})
         return None
+
+    def _generate_download_url(self, path_info):
+        return path_info.url
 
     @wrap_prop(threading.Lock())
     @cached_property
@@ -148,7 +146,15 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             return True
         raise HTTPError(res.status_code, res.reason)
 
-    def get_file_hash(self, path_info):
+    def getsize(self, path_info):
+        response = self.request("GET", path_info.url, stream=True)
+        if response.status_code != 200:
+            raise HTTPError(response.status_code, response.reason)
+        return self._content_length(response)
+
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
+
         url = path_info.url
 
         headers = self._head(url).headers
@@ -162,6 +168,18 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             )
 
         return HashInfo(self.PARAM_CHECKSUM, etag)
+
+    def _upload_fobj(self, fobj, to_info):
+        def chunks(fobj):
+            while True:
+                chunk = fobj.read(self.CHUNK_SIZE)
+                if not chunk:
+                    break
+                yield chunk
+
+        response = self.request(self.method, to_info.url, data=chunks(fobj))
+        if response.status_code not in (200, 201):
+            raise HTTPError(response.status_code, response.reason)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)
@@ -184,27 +202,14 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        def chunks():
-            with open(from_file, "rb") as fd:
-                with Tqdm.wrapattr(
-                    fd,
-                    "read",
-                    total=None
-                    if no_progress_bar
-                    else os.path.getsize(from_file),
-                    leave=False,
-                    desc=to_info.url if name is None else name,
-                    disable=no_progress_bar,
-                ) as fd_wrapped:
-                    while True:
-                        chunk = fd_wrapped.read(self.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        yield chunk
-
-        response = self.request(self.method, to_info.url, data=chunks())
-        if response.status_code not in (200, 201):
-            raise HTTPError(response.status_code, response.reason)
+        with open(from_file, "rb") as fobj:
+            self.upload_fobj(
+                fobj,
+                to_info,
+                no_progress_bar=no_progress_bar,
+                desc=name or to_info.url,
+                total=None if no_progress_bar else os.path.getsize(from_file),
+            )
 
     @staticmethod
     def _content_length(response):

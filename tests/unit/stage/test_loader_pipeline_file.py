@@ -39,6 +39,24 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
 
 
+def test_fill_from_lock_outs_isexec(dvc):
+    stage = create_stage(PipelineStage, dvc, PIPELINE_FILE, outs=["foo"])
+
+    assert not stage.outs[0].isexec
+
+    StageLoader.fill_from_lock(
+        stage,
+        {
+            "cmd": "command",
+            "outs": [{"path": "foo", "md5": "foo_checksum", "isexec": True}],
+        },
+    )
+
+    assert stage.outs[0].def_path == "foo"
+    assert stage.outs[0].hash_info == HashInfo("md5", "foo_checksum")
+    assert stage.outs[0].isexec
+
+
 def test_fill_from_lock_params(dvc, lock_data):
     stage = create_stage(
         PipelineStage,
@@ -158,6 +176,13 @@ def test_load_stage(dvc, stage_data, lock_data):
     assert stage.deps[0].hash_info == HashInfo("md5", "foo_checksum")
     assert stage.outs[0].def_path == "bar"
     assert stage.outs[0].hash_info == HashInfo("md5", "bar_checksum")
+
+
+def test_load_stage_cmd_with_list(dvc, stage_data, lock_data):
+    stage_data["cmd"] = ["cmd-0", "cmd-1"]
+    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    stage = StageLoader.load_stage(dvcfile, "stage-1", stage_data, lock_data)
+    assert stage.cmd == ["cmd-0", "cmd-1"]
 
 
 def test_load_stage_outs_with_flags(dvc, stage_data, lock_data):

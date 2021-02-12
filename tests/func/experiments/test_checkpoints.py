@@ -1,116 +1,166 @@
-import logging
-
 import pytest
 from funcy import first
 
-import dvc as dvc_module
 from dvc.exceptions import DvcException
-from dvc.repo.experiments import Experiments, MultipleBranchError
+from dvc.repo.experiments import MultipleBranchError
+from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
 
 
-def test_new_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
-    from dvc.env import DVC_CHECKPOINT, DVC_ROOT
-
+@pytest.mark.parametrize("workspace", [True, False])
+def test_new_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace
+):
     new_mock = mocker.spy(dvc.experiments, "new")
-    env_mock = mocker.spy(dvc_module.stage.run, "_checkpoint_env")
-    dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
+    )
+    exp = first(results)
 
     new_mock.assert_called_once()
-    env_mock.assert_called_once()
-    assert set(env_mock.return_value.keys()) == {DVC_CHECKPOINT, DVC_ROOT}
-    assert (tmp_dir / "foo").read_text() == "5"
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text().strip() == "foo: 2"
+    for rev in dvc.brancher([exp]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == str(checkpoint_stage.iterations)
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
+
+    if workspace:
+        assert scm.get_ref(EXEC_APPLY) == exp
+    assert scm.get_ref(EXEC_CHECKPOINT) == exp
+    if workspace:
+        assert (tmp_dir / "foo").read_text().strip() == str(
+            checkpoint_stage.iterations
+        )
+        assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
 
 @pytest.mark.parametrize(
-    "checkpoint_resume", [Experiments.LAST_CHECKPOINT, "foo"]
+    "checkpoint_resume, workspace",
+    [(None, True), (None, False), ("foo", True), ("foo", False)],
 )
 def test_resume_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, checkpoint_resume
+    tmp_dir, scm, dvc, checkpoint_stage, checkpoint_resume, workspace
 ):
-    with pytest.raises(DvcException):
-        dvc.experiments.run(
-            checkpoint_stage=checkpoint_stage.addressing,
-            checkpoint_resume=checkpoint_resume,
-        )
-
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
 
     with pytest.raises(DvcException):
         dvc.experiments.run(
-            checkpoint_stage.addressing, checkpoint_resume="abc1234",
+            checkpoint_stage.addressing,
+            checkpoint_resume="abc1234",
+            tmp_dir=not workspace,
         )
 
-    if checkpoint_resume != Experiments.LAST_CHECKPOINT:
+    if checkpoint_resume:
         checkpoint_resume = first(results)
 
+    if not workspace:
+        dvc.experiments.apply(first(results))
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=checkpoint_resume,
+        tmp_dir=not workspace,
+    )
+    exp = first(results)
+
+    for rev in dvc.brancher([exp]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
+
+    if workspace:
+        assert scm.get_ref(EXEC_APPLY) == exp
+    assert scm.get_ref(EXEC_CHECKPOINT) == exp
+
+
+@pytest.mark.parametrize("workspace", [True, False])
+def test_reset_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
+):
     dvc.experiments.run(
-        checkpoint_stage.addressing, checkpoint_resume=checkpoint_resume
+        checkpoint_stage.addressing, name="foo", tmp_dir=not workspace,
     )
 
-    assert (tmp_dir / "foo").read_text() == "10"
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text().strip() == "foo: 2"
+    if workspace:
+        scm.reset(hard=True)
+        scm.gitpython.repo.git.clean(force=True)
 
-
-def test_reset_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, caplog):
-    dvc.experiments.run(checkpoint_stage.addressing)
-    scm.repo.git.reset(hard=True)
-    scm.repo.git.clean(force=True)
-
-    with caplog.at_level(logging.ERROR):
-        results = dvc.experiments.run(checkpoint_stage.addressing)
-        assert len(results) == 0
-        assert "already exists" in caplog.text
-
-    dvc.experiments.run(checkpoint_stage.addressing, force=True)
-
-    assert (tmp_dir / "foo").read_text() == "5"
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text().strip() == "foo: 1"
-
-
-def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage):
     results = dvc.experiments.run(
-        checkpoint_stage.addressing, params=["foo=2"]
+        checkpoint_stage.addressing,
+        params=["foo=2"],
+        name="foo",
+        tmp_dir=not workspace,
+        reset=True,
+    )
+    exp = first(results)
+
+    for rev in dvc.brancher([exp]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == str(checkpoint_stage.iterations)
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
+
+    if workspace:
+        assert scm.get_ref(EXEC_APPLY) == exp
+    assert scm.get_ref(EXEC_CHECKPOINT) == exp
+
+
+@pytest.mark.parametrize("workspace", [True, False])
+def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     branch_rev = first(results)
-
-    results = dvc.experiments.run(
-        checkpoint_stage.addressing, checkpoint_resume=branch_rev
-    )
-    checkpoint_a = first(results)
+    if not workspace:
+        dvc.experiments.apply(branch_rev)
 
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         checkpoint_resume=branch_rev,
+        tmp_dir=not workspace,
+    )
+    checkpoint_a = first(results)
+
+    dvc.experiments.apply(branch_rev)
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing,
+        checkpoint_resume=branch_rev,
         params=["foo=100"],
+        tmp_dir=not workspace,
     )
     checkpoint_b = first(results)
 
-    dvc.experiments.checkout(checkpoint_a)
-    assert (tmp_dir / "foo").read_text() == "10"
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text().strip() == "foo: 2"
+    for rev in dvc.brancher([checkpoint_a]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
 
-    dvc.experiments.checkout(checkpoint_b)
-    assert (tmp_dir / "foo").read_text() == "10"
-    assert (
-        tmp_dir / ".dvc" / "experiments" / "metrics.yaml"
-    ).read_text().strip() == "foo: 100"
+    for rev in dvc.brancher([checkpoint_b]):
+        if rev == "workspace":
+            continue
+        tree = dvc.repo_tree
+        with tree.open(tmp_dir / "foo") as fobj:
+            assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
+        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 100"
 
     with pytest.raises(MultipleBranchError):
-        dvc.experiments._get_branch_containing(branch_rev)
+        dvc.experiments.get_branch_by_rev(branch_rev)
 
-    branch_a = dvc.experiments._get_branch_containing(checkpoint_a)
-    branch_b = dvc.experiments._get_branch_containing(checkpoint_b)
-    assert branch_rev == dvc.experiments.scm.repo.git.merge_base(
-        branch_a, branch_b, fork_point=True
+    assert branch_rev == dvc.experiments.scm.gitpython.repo.git.merge_base(
+        checkpoint_a, checkpoint_b
     )

@@ -39,6 +39,7 @@ class CmdGet(CmdBaseNoRepo):
                 path=self.args.path,
                 out=self.args.out,
                 rev=self.args.rev,
+                jobs=self.args.jobs,
             )
             return 0
         except DvcException:
@@ -83,5 +84,16 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         help="Print the storage location (URL) the target data would be "
         "downloaded from, and exit.",
+    )
+    get_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     get_parser.set_defaults(func=CmdGet)

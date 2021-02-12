@@ -43,7 +43,7 @@ def test_all_commits(tmp_dir, scm, dvc, queued, expected):
     exp_rev = first(results)
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
 
-    dvc.experiments.checkout(exp_rev)
+    dvc.experiments.apply(exp_rev)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("v2")
 
@@ -72,7 +72,7 @@ def test_all_branches(tmp_dir, scm, dvc, queued, expected):
     exp_rev = first(results)
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
 
-    dvc.experiments.checkout(exp_rev)
+    dvc.experiments.apply(exp_rev)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("v2")
 
@@ -82,7 +82,7 @@ def test_all_branches(tmp_dir, scm, dvc, queued, expected):
     dvc.experiments.run(stage.addressing, params=["foo=5"], queue=True)
     exp_rev = first(results)
 
-    dvc.experiments.checkout(exp_rev)
+    dvc.experiments.apply(exp_rev)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("v3")
 
@@ -108,7 +108,7 @@ def test_all_tags(tmp_dir, scm, dvc, queued, expected):
     exp_rev = first(results)
     dvc.experiments.run(stage.addressing, params=["foo=3"], queue=True)
 
-    dvc.experiments.checkout(exp_rev)
+    dvc.experiments.apply(exp_rev)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("v2")
     scm.tag("tag-v2")

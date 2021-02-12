@@ -1,7 +1,10 @@
+import errno
 import filecmp
 import logging
 import os
 import shutil
+import stat
+import textwrap
 import time
 
 import colorama
@@ -13,6 +16,7 @@ from dvc.cache import Cache
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
@@ -22,6 +26,7 @@ from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
+from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
@@ -33,7 +38,7 @@ from tests.utils import get_gitignore_content
 
 def test_add(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
-    md5, _ = file_md5("foo")
+    md5 = file_md5("foo")
 
     assert stage is not None
 
@@ -56,6 +61,26 @@ def test_add(tmp_dir, dvc):
     }
 
 
+@pytest.mark.skipif(os.name == "nt", reason="can't set exec bit on Windows")
+def test_add_executable(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    st = os.stat("foo")
+    os.chmod("foo", st.st_mode | stat.S_IEXEC)
+    dvc.add("foo")
+
+    assert load_yaml("foo.dvc") == {
+        "outs": [
+            {
+                "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
+                "path": "foo",
+                "size": 3,
+                "isexec": True,
+            }
+        ],
+    }
+    assert os.stat("foo").st_mode & stat.S_IEXEC
+
+
 def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
         fd.write(b"something")
@@ -71,6 +96,8 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
+    from dvc.objects import load
+
     (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
     assert stage is not None
@@ -79,7 +106,7 @@ def test_add_directory(tmp_dir, dvc):
 
     hash_info = stage.outs[0].hash_info
 
-    dir_info = dvc.cache.local.load_dir_cache(hash_info)
+    dir_info = load(dvc.cache.local, hash_info).hash_info.dir_info
     for path, _ in dir_info.trie.items():
         assert "\\" not in path
 
@@ -99,7 +126,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
         warning = (
             "You are adding a large directory 'large-dir' recursively,"
             " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated DVC-file and then"
+            "{purple}HINT:{nc} Remove the generated DVC file and then"
             " run `{cyan}dvc add large-dir{nc}`".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,
@@ -691,7 +718,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(LocalTree, "unprotect")
+    unprotect_spy = mocker.spy(dvc.cache.local, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -910,8 +937,8 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
 def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
     tmp_dir.gen("foo", "foo")
 
-    mocker.patch.object(
-        dvc.cache.local, "_do_link", side_effect=DvcException("link failed")
+    mocker.patch(
+        "dvc.checkout._do_link", side_effect=DvcException("link failed")
     )
     with caplog.at_level(logging.WARNING, logger="dvc"):
         dvc.add("foo")
@@ -922,3 +949,193 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
     assert (tmp_dir / ".dvc" / "cache").read_text() == {
         "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
     }
+
+
+def test_add_preserve_meta(tmp_dir, dvc):
+    text = textwrap.dedent(
+        """\
+        # top comment
+        desc: top desc
+        outs:
+        - path: foo # out comment
+          desc: out desc
+        meta: some metadata
+    """
+    )
+    tmp_dir.gen("foo.dvc", text)
+
+    tmp_dir.dvc_gen("foo", "foo")
+    assert (tmp_dir / "foo.dvc").read_text() == textwrap.dedent(
+        """\
+        # top comment
+        desc: top desc
+        outs:
+        - path: foo # out comment
+          desc: out desc
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        meta: some metadata
+    """
+    )
+
+
+# NOTE: unless long paths are enabled on Windows, PATH_MAX and NAME_MAX
+# are the same 260 chars, which makes the test unnecessarily complex
+@pytest.mark.skipif(os.name == "nt", reason="unsupported on Windows")
+def test_add_long_fname(tmp_dir, dvc):
+    name_max = os.pathconf(tmp_dir, "PC_NAME_MAX")
+    name = "a" * name_max
+    tmp_dir.gen({"data": {name: "foo"}})
+
+    # nothing we can do in this case, as the resulting dvcfile
+    # will definitely exceed NAME_MAX
+    with pytest.raises(OSError) as info:
+        dvc.add(os.path.join("data", name))
+    assert info.value.errno == errno.ENAMETOOLONG
+
+    dvc.add("data")
+    assert (tmp_dir / "data").read_text() == {name: "foo"}
+
+
+def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
+    local_cloud.gen("foo", "foo")
+
+    url = "remote://upstream/foo"
+    [stage] = dvc.add(url, to_remote=True)
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+
+
+@pytest.mark.parametrize(
+    "invalid_opt, kwargs",
+    [
+        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
+        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
+        ("--recursive", {"targets": ["foo"], "recursive": True},),
+    ],
+)
+def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
+    with pytest.raises(InvalidArgumentError, match=invalid_opt):
+        dvc.add(to_remote=True, **kwargs)
+
+
+def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
+    local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    (stage,) = dvc.add(str(local_cloud / "data"), out="data")
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    data = tmp_dir / "data"
+    assert data.read_text() == {"foo": "foo", "bar": "bar"}
+    assert (tmp_dir / "data.dvc").exists()
+
+    shutil.rmtree(data)
+    status = dvc.checkout(str(data))
+    assert status["added"] == ["data" + os.sep]
+    assert data.read_text() == {"foo": "foo", "bar": "bar"}
+
+
+def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
+    local_cloud.gen("foo", "foo")
+
+    (stage,) = dvc.add(str(local_cloud / "foo"), out="foo")
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    foo = tmp_dir / "foo"
+    assert foo.read_text() == "foo"
+    assert (tmp_dir / "foo.dvc").exists()
+
+    foo.unlink()
+    status = dvc.checkout(str(foo))
+    assert status["added"] == ["foo"]
+    assert foo.read_text() == "foo"
+
+
+def test_add_to_cache_different_name(tmp_dir, dvc, local_cloud):
+    local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    dvc.add(str(local_cloud / "data"), out="not_data")
+
+    not_data = tmp_dir / "not_data"
+    assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
+    assert (tmp_dir / "not_data.dvc").exists()
+
+    assert not (tmp_dir / "data").exists()
+    assert not (tmp_dir / "data.dvc").exists()
+
+    shutil.rmtree(not_data)
+    dvc.checkout(str(not_data))
+    assert not_data.read_text() == {"foo": "foo", "bar": "bar"}
+    assert not (tmp_dir / "data").exists()
+
+
+def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
+    local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
+
+    dest_dir = tmp_dir / "dir" / "that" / "does" / "not" / "exist"
+    with pytest.raises(StagePathNotFoundError):
+        dvc.add(str(local_cloud / "data"), out=str(dest_dir))
+
+    dest_dir.parent.mkdir(parents=True)
+    dvc.add(str(local_cloud / "data"), out=str(dest_dir))
+
+    assert dest_dir.read_text() == {"foo": "foo", "bar": "bar"}
+    assert dest_dir.with_suffix(".dvc").exists()
+
+
+@pytest.mark.parametrize(
+    "invalid_opt, kwargs",
+    [
+        ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
+        ("--no-commit", {"targets": ["foo"], "no_commit": True}),
+        ("--recursive", {"targets": ["foo"], "recursive": True},),
+    ],
+)
+def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
+    with pytest.raises(InvalidArgumentError, match=invalid_opt):
+        dvc.add(out="bar", **kwargs)
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        pytest.lazy_fixture("http"),
+    ],
+    indirect=True,
+)
+def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
+    workspace.gen("foo", "foo")
+
+    url = "remote://workspace/foo"
+    dvc.add(url, out="foo")
+
+    foo = tmp_dir / "foo"
+    assert foo.read_text() == "foo"
+    assert (tmp_dir / "foo.dvc").exists()
+
+    # Change the contents of the remote location, in order to
+    # ensure it retrieves file from the cache and not re-fetches it
+    (workspace / "foo").write_text("bar")
+
+    foo.unlink()
+    dvc.checkout(str(foo))
+    assert foo.read_text() == "foo"

@@ -1,5 +1,7 @@
 from voluptuous import Required
 
+from dvc.path_info import PathInfo
+
 from .local import LocalDependency
 
 
@@ -45,10 +47,11 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_hash(self, locked=True):
-        # we want stream but not fetch, so DVC out directories are
-        # walked, but dir contents is not fetched
-        with self._make_repo(locked=locked, fetch=False, stream=True) as repo:
-            return repo.get_checksum(self.def_path)
+        with self._make_repo(locked=locked) as repo:
+            path_info = PathInfo(repo.root_dir) / self.def_path
+            return repo.repo_tree.get_hash(
+                path_info, "md5", follow_subrepos=False
+            )
 
     def workspace_status(self):
         current = self._get_hash(locked=True)
@@ -68,16 +71,26 @@ class RepoDependency(LocalDependency):
     def dumpd(self):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
-    def download(self, to):
+    def download(self, to, jobs=None):
+        from dvc.checkout import checkout
+        from dvc.objects import save, stage
+
         cache = self.repo.cache.local
 
         with self._make_repo(cache_dir=cache.cache_dir) as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
+            path_info = PathInfo(repo.root_dir) / self.def_path
+            obj = stage(
+                cache,
+                path_info,
+                repo.repo_tree,
+                jobs=jobs,
+                follow_subrepos=False,
+            )
+            save(cache, obj, jobs=jobs)
 
-            _, _, cache_infos = repo.fetch_external([self.def_path])
-
-        cache.checkout(to.path_info, cache_infos[0])
+        checkout(to.path_info, to.tree, obj, cache)
 
     def update(self, rev=None):
         if rev:

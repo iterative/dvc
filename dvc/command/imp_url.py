@@ -16,7 +16,10 @@ class CmdImportUrl(CmdBase):
                 out=self.args.out,
                 fname=self.args.file,
                 no_exec=self.args.no_exec,
+                remote=self.args.remote,
+                to_remote=self.args.to_remote,
                 desc=self.args.desc,
+                jobs=self.args.jobs,
             )
         except DvcException:
             logger.exception(
@@ -59,14 +62,37 @@ def add_parser(subparsers, parent_parser):
     ).complete = completion.DIR
     import_parser.add_argument(
         "--file",
-        help="Specify name of the DVC-file this command will generate.",
+        help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
     ).complete = completion.DIR
     import_parser.add_argument(
         "--no-exec",
         action="store_true",
         default=False,
-        help="Only create DVC-file without actually downloading it.",
+        help="Only create .dvc file without actually downloading it.",
+    )
+    import_parser.add_argument(
+        "--to-remote",
+        action="store_true",
+        default=False,
+        help="Download it directly to the remote",
+    )
+    import_parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to download to",
+        metavar="<name>",
+    )
+    import_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     import_parser.add_argument(
         "--desc",

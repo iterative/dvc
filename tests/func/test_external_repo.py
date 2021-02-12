@@ -3,7 +3,7 @@ import os
 from mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
-from dvc.hash_info import HashInfo
+from dvc.objects import save, stage
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.tree.local import LocalTree
@@ -92,10 +92,9 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
-        _, _, save_infos = repo.fetch_external(
-            [os.path.join("subdir", "file")]
+        repo.repo_tree.download(
+            PathInfo(repo.root_dir) / "subdir" / "file", PathInfo(dest),
         )
-        repo.cache.local.checkout(PathInfo(dest), save_infos[0])
 
     assert dest.is_file()
     assert dest.read_text() == "contents"
@@ -188,26 +187,32 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.get_external("dir", "out")
+        repo.repo_tree.download(
+            PathInfo(repo.root_dir) / "dir",
+            PathInfo(tmp_dir / "out"),
+            follow_subrepos=False,
+        )
         expected_files = {"foo": "foo", "bar": "bar", ".gitignore": "/foo\n"}
         assert (tmp_dir / "out").read_text() == expected_files
 
-        expected_hash = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
-        assert (
-            repo.get_checksum(os.path.join(repo.root_dir, "dir"))
-            == expected_hash
-        )
-
-        # clear cache to test `fetch_external` again
+        # clear cache to test saving to cache
         cache_dir = tmp_dir / repo.cache.local.cache_dir
         remove(cache_dir)
         makedirs(cache_dir)
 
-        assert repo.fetch_external(["dir"]) == (
-            len(expected_files),
-            0,
-            [expected_hash],
+        obj = stage(
+            repo.cache.local,
+            PathInfo(repo.root_dir) / "dir",
+            repo.repo_tree,
+            follow_subrepos=False,
         )
+        save(repo.cache.local, obj)
+        assert set(cache_dir.glob("*/*")) == {
+            cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
+            cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
+            cache_dir / "94" / "7d2b84e5aa88170e80dff467a5bfb6",
+            cache_dir / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
+        }
 
 
 def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
@@ -221,6 +226,10 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.get_external("dir", "out")
+        repo.repo_tree.download(
+            PathInfo(repo.root_dir) / "dir",
+            PathInfo(tmp_dir / "out"),
+            follow_subrepos=False,
+        )
         # subrepo files should not be here
         assert (tmp_dir / "out").read_text() == scm_files

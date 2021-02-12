@@ -237,5 +237,5 @@ def test_merge_non_dvc_add(tmp_dir, dvc, caplog):
         != 0
     )
 
-    error = "unable to auto-merge DVC-files that weren't created by `dvc add`"
+    error = "unable to auto-merge DVC files that weren't created by `dvc add`"
     assert error in caplog.text

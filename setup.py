@@ -50,7 +50,8 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
-    "dulwich>=0.20.11",
+    "dulwich>=0.20.18",
+    "pygit2>=1.4.0",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
@@ -71,7 +72,8 @@ install_requires = [
     "flufl.lock>=3.2,<4",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
-    "networkx>=2.1,<2.5",
+    "networkx>=2.1",
+    "psutil>=5.8.0",
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
     "dataclasses==0.7; python_version < '3.7'",
@@ -79,12 +81,13 @@ install_requires = [
     "tabulate>=0.8.7",
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
-    "shtab>=1.3.2,<2",
-    "rich>=3.0.5",
+    "shtab>=1.3.4,<2",
+    "rich>=9.0.0",
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
+    "fsspec>=0.8.5",
 ]
 
 
@@ -99,7 +102,7 @@ oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
-hdfs = ["pyarrow>=2.0.0;  python_version < '3.9'"]
+hdfs = ["pyarrow>=2.0.0"]
 webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdavclient3>=3.14.5"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
@@ -113,7 +116,7 @@ all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 tests_requirements = [
     "wheel>=0.31.1",
     # Test requirements:
-    "pytest>=6.0.1",
+    "pytest>=6.0.1,<6.2.2",
     "pytest-cov",
     "pytest-docker>=0.7.2",
     "pytest-timeout>=1.3.3",
@@ -125,7 +128,6 @@ tests_requirements = [
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
-    "awscli>=1.16.297",
     "google-compute-engine==2.8.13",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
@@ -149,6 +151,7 @@ tests_requirements = [
     "filelock",
     "mypy",
     "wsgidav",
+    "crc32c",
 ]
 
 setup(

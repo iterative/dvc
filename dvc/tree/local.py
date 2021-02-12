@@ -1,18 +1,13 @@
-import errno
 import logging
 import os
-import stat
-from typing import Any, Dict
 
 from funcy import cached_property
-from shortuuid import uuid
 
-from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
-from dvc.utils import file_md5, is_exec, relpath, tmp_fname
+from dvc.utils import file_md5, is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from .base import BaseTree
@@ -26,12 +21,6 @@ class LocalTree(BaseTree):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
-
-    CACHE_MODE = 0o444
-    SHARED_MODE_MAP: Dict[Any, Any] = {
-        None: (0o644, 0o755),
-        "group": (0o664, 0o775),
-    }
 
     def __init__(self, repo, config, use_dvcignore=False, dvcignore_root=None):
         super().__init__(repo, config)
@@ -59,7 +48,7 @@ class LocalTree(BaseTree):
         return cls(self, root)
 
     @staticmethod
-    def open(path_info, mode="r", encoding=None):
+    def open(path_info, mode="r", encoding=None, **kwargs):
         return open(path_info, mode=mode, encoding=encoding)
 
     def exists(self, path_info, use_dvcignore=True):
@@ -128,12 +117,10 @@ class LocalTree(BaseTree):
                 yield PathInfo(f"{root}{os.sep}{file}")
 
     def is_empty(self, path_info):
-        path = path_info.fspath
-
-        if self.isfile(path_info) and os.path.getsize(path) == 0:
+        if self.isfile(path_info) and os.path.getsize(path_info) == 0:
             return True
 
-        if self.isdir(path_info) and len(os.listdir(path)) == 0:
+        if self.isdir(path_info) and len(os.listdir(path_info)) == 0:
             return True
 
         return False
@@ -142,18 +129,13 @@ class LocalTree(BaseTree):
         if isinstance(path_info, PathInfo):
             if path_info.scheme != "local":
                 raise NotImplementedError
-            path = path_info.fspath
-        else:
-            path = path_info
-
-        if self.exists(path):
-            remove(path)
+        remove(path_info)
 
     def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True, mode=self.dir_mode)
+        makedirs(path_info, exist_ok=True)
 
-    def isexec(self, path):
-        mode = os.stat(path).st_mode
+    def isexec(self, path_info):
+        mode = self.stat(path_info).st_mode
         return is_exec(mode)
 
     def stat(self, path):
@@ -162,36 +144,27 @@ class LocalTree(BaseTree):
 
         return os.stat(path)
 
-    def move(self, from_info, to_info, mode=None):
+    def move(self, from_info, to_info):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
         self.makedirs(to_info.parent)
-
-        if mode is None:
-            if self.isfile(from_info):
-                mode = self.file_mode
-            else:
-                mode = self.dir_mode
-
-        move(from_info, to_info, mode=mode)
+        move(from_info, to_info)
 
     def copy(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        tmp_info = to_info.parent / tmp_fname("")
         try:
-            System.copy(from_info, tmp_info)
-            os.chmod(tmp_info, self.file_mode)
+            copyfile(from_info, tmp_info)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
             raise
 
-    def copy_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info):
         self.makedirs(to_info.parent)
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        tmp_info = to_info.parent / tmp_fname("")
         try:
             copy_fobj_to_file(fobj, tmp_info)
-            os.chmod(tmp_info, self.file_mode)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
@@ -222,11 +195,7 @@ class LocalTree(BaseTree):
         if self.getsize(from_info) == 0:
             self.open(to_info, "w").close()
 
-            logger.debug(
-                "Created empty file: {src} -> {dest}".format(
-                    src=str(from_info), dest=str(to_info)
-                )
-            )
+            logger.debug("Created empty file: %s -> %s", from_info, to_info)
             return
 
         System.hardlink(from_info, to_info)
@@ -236,80 +205,11 @@ class LocalTree(BaseTree):
         return System.is_hardlink(path_info)
 
     def reflink(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname(to_info.name)
-        System.reflink(from_info, tmp_info)
-        # NOTE: reflink has its own separate inode, so you can set permissions
-        # that are different from the source.
-        os.chmod(tmp_info, self.file_mode)
-        os.rename(tmp_info, to_info)
+        System.reflink(from_info, to_info)
 
-    def chmod(self, path_info, mode):
-        path = os.fspath(path_info)
-        try:
-            os.chmod(path, mode)
-        except OSError as exc:
-            # There is nothing we need to do in case of a read-only file system
-            if exc.errno == errno.EROFS:
-                return
-
-            # In shared cache scenario, we might not own the cache file, so we
-            # need to check if cache file is already protected.
-            if exc.errno not in [errno.EPERM, errno.EACCES]:
-                raise
-
-            actual = stat.S_IMODE(os.stat(path).st_mode)
-            if actual != mode:
-                raise
-
-    def _unprotect_file(self, path):
-        if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug(f"Unprotecting '{path}'")
-            tmp = os.path.join(os.path.dirname(path), "." + uuid())
-
-            # The operations order is important here - if some application
-            # would access the file during the process of copyfile then it
-            # would get only the part of file. So, at first, the file should be
-            # copied with the temporary name, and then original file should be
-            # replaced by new.
-            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
-            remove(path)
-            os.rename(tmp, path)
-
-        else:
-            logger.debug(
-                "Skipping copying for '{}', since it is not "
-                "a symlink or a hardlink.".format(path)
-            )
-
-        os.chmod(path, self.file_mode)
-
-    def _unprotect_dir(self, path):
-        for fname in self.walk_files(path):
-            self._unprotect_file(fname)
-
-    def unprotect(self, path_info):
-        path = path_info.fspath
-        if not os.path.exists(path):
-            raise DvcException(f"can't unprotect non-existing data '{path}'")
-
-        if os.path.isdir(path):
-            self._unprotect_dir(path)
-        else:
-            self._unprotect_file(path)
-
-    def protect(self, path_info):
-        self.chmod(path_info, self.CACHE_MODE)
-
-    def is_protected(self, path_info):
-        try:
-            mode = os.stat(path_info).st_mode
-        except FileNotFoundError:
-            return False
-
-        return stat.S_IMODE(mode) == self.CACHE_MODE
-
-    def get_file_hash(self, path_info):
-        hash_info = HashInfo(self.PARAM_CHECKSUM, file_md5(path_info)[0],)
+    def get_file_hash(self, path_info, name):
+        assert name == "md5"
+        hash_info = HashInfo(name, file_md5(path_info))
 
         if hash_info:
             hash_info.size = os.path.getsize(path_info)
@@ -321,13 +221,7 @@ class LocalTree(BaseTree):
         return os.path.getsize(path_info)
 
     def _upload(
-        self,
-        from_file,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        file_mode=None,
-        **_kwargs,
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,
     ):
         makedirs(to_info.parent, exist_ok=True)
 
@@ -335,11 +229,6 @@ class LocalTree(BaseTree):
         copyfile(
             from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
-
-        if file_mode is not None:
-            self.chmod(tmp_file, file_mode)
-        else:
-            self.protect(tmp_file)
         os.replace(tmp_file, to_info)
 
     @staticmethod

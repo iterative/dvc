@@ -1,12 +1,10 @@
 import argparse
-import io
 import logging
-import os
-from collections import OrderedDict
+from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime
 from itertools import groupby
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -14,15 +12,52 @@ from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
-from dvc.repo.experiments import Experiments
-from dvc.scm.git import Git
 from dvc.utils.flatten import flatten
 
 logger = logging.getLogger(__name__)
 
 
+SHOW_MAX_WIDTH = 1024
+
+
+def _filter_name(names, label, filter_strs):
+    ret = defaultdict(dict)
+    path_filters = defaultdict(list)
+
+    for filter_s in filter_strs:
+        path, _, name = filter_s.rpartition(":")
+        path_filters[path].append(tuple(name.split(".")))
+
+    for path, filters in path_filters.items():
+        if path:
+            match_paths = [path]
+        else:
+            match_paths = names.keys()
+        for length, groups in groupby(filters, len):
+            for group in groups:
+                for match_path in match_paths:
+                    possible_names = [
+                        tuple(name.split(".")) for name in names[match_path]
+                    ]
+                    matches = [
+                        name
+                        for name in possible_names
+                        if name[:length] == group
+                    ]
+                    if not matches:
+                        name = ".".join(group)
+                        raise InvalidArgumentError(
+                            f"'{name}' does not match any known {label}"
+                        )
+                    ret[match_path].update(
+                        {".".join(match): None for match in matches}
+                    )
+
+    return ret
+
+
 def _filter_names(
-    names: Iterable,
+    names: Dict[str, Dict[str, None]],
     label: str,
     include: Optional[Iterable],
     exclude: Optional[Iterable],
@@ -36,44 +71,32 @@ def _filter_names(
                 f" --exclude-{label}"
             )
 
-    names = [tuple(name.split(".")) for name in names]
-
-    def _filter(filters, update_func):
-        filters = [tuple(name.split(".")) for name in filters]
-        for length, groups in groupby(filters, len):
-            for group in groups:
-                matches = [name for name in names if name[:length] == group]
-                if not matches:
-                    name = ".".join(group)
-                    raise InvalidArgumentError(
-                        f"'{name}' does not match any known {label}"
-                    )
-                update_func({match: None for match in matches})
-
     if include:
-        ret: OrderedDict = OrderedDict()
-        _filter(include, ret.update)
+        ret = _filter_name(names, label, include)
     else:
-        ret = OrderedDict({name: None for name in names})
+        ret = names
 
     if exclude:
-        _filter(exclude, ret.difference_update)  # type: ignore[attr-defined]
+        to_remove = _filter_name(names, label, exclude)
+        for path in to_remove:
+            if path in ret:
+                for key in to_remove[path]:
+                    if key in ret[path]:
+                        del ret[path][key]
 
-    return [".".join(name) for name in ret]
+    return ret
 
 
 def _update_names(names, items):
     for name, item in items:
         if isinstance(item, dict):
             item = flatten(item)
-            names.update(item.keys())
-        else:
-            names[name] = None
+            names[name].update({key: None for key in item})
 
 
 def _collect_names(all_experiments, **kwargs):
-    metric_names = set()
-    param_names = set()
+    metric_names = defaultdict(dict)
+    param_names = defaultdict(dict)
 
     for _, experiments in all_experiments.items():
         for exp in experiments.values():
@@ -81,13 +104,13 @@ def _collect_names(all_experiments, **kwargs):
             _update_names(param_names, exp.get("params", {}).items())
 
     metric_names = _filter_names(
-        sorted(metric_names),
+        metric_names,
         "metrics",
         kwargs.get("include_metrics"),
         kwargs.get("exclude_metrics"),
     )
     param_names = _filter_names(
-        sorted(param_names),
+        (param_names),
         "params",
         kwargs.get("include_params"),
         kwargs.get("exclude_params"),
@@ -106,15 +129,16 @@ def _collect_rows(
     sort_by=None,
     sort_order=None,
 ):
+    from dvc.scm.git import Git
+
     if sort_by:
-        if sort_by in metric_names:
-            sort_type = "metrics"
-        elif sort_by in param_names:
-            sort_type = "params"
-        else:
-            raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
+        sort_path, sort_name, sort_type = _sort_column(
+            sort_by, metric_names, param_names
+        )
         reverse = sort_order == "desc"
-        experiments = _sort_exp(experiments, sort_by, sort_type, reverse)
+        experiments = _sort_exp(
+            experiments, sort_path, sort_name, sort_type, reverse
+        )
 
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
@@ -156,7 +180,8 @@ def _collect_rows(
                 else:
                     tree = "└──"
                 new_checkpoint = True
-            row.append(f"{tree} {queued}{rev[:7]}{parent}")
+            name = exp.get("name", rev[:7])
+            row.append(f"{tree} {queued}{name}{parent}")
 
         if not no_timestamp:
             row.append(_format_time(exp.get("timestamp")))
@@ -169,22 +194,45 @@ def _collect_rows(
         yield row, style
 
 
-def _sort_exp(experiments, sort_by, typ, reverse):
+def _sort_column(sort_by, metric_names, param_names):
+    path, _, sort_name = sort_by.rpartition(":")
+    matches = set()
+
+    if path:
+        if path in metric_names and sort_name in metric_names[path]:
+            matches.add((path, sort_name, "metrics"))
+        if path in param_names and sort_name in param_names[path]:
+            matches.add((path, sort_name, "params"))
+    else:
+        for path in metric_names:
+            if sort_name in metric_names[path]:
+                matches.add((path, sort_name, "metrics"))
+        for path in param_names:
+            if sort_name in param_names[path]:
+                matches.add((path, sort_name, "params"))
+
+    if len(matches) == 1:
+        return matches.pop()
+    if len(matches) > 1:
+        raise InvalidArgumentError(
+            "Ambiguous sort column '{}' matched '{}'".format(
+                sort_by,
+                ", ".join([f"{path}:{name}" for path, name, _ in matches]),
+            )
+        )
+    raise InvalidArgumentError(f"Unknown sort column '{sort_by}'")
+
+
+def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     def _sort(item):
         rev, exp = item
         tip = exp.get("checkpoint_tip")
         if tip and tip != rev:
             # Sort checkpoint experiments by tip commit
             return _sort((tip, experiments[tip]))
-        for fname, item in exp.get(typ, {}).items():
-            if isinstance(item, dict):
-                item = flatten(item)
-            else:
-                item = {fname: item}
-            if sort_by in item:
-                val = item[sort_by]
-                return (val is None, val)
-        return (True, None)
+        data = exp.get(typ, {}).get(sort_path, {})
+        val = flatten(data).get(sort_name)
+        return (val is None, val)
 
     ret = OrderedDict()
     if "baseline" in experiments:
@@ -208,9 +256,9 @@ def _format_field(val, precision=DEFAULT_PRECISION):
     if isinstance(val, float):
         fmt = f"{{:.{precision}g}}"
         return fmt.format(val)
-    elif isinstance(val, Mapping):
+    if isinstance(val, Mapping):
         return {k: _format_field(v) for k, v in val.items()}
-    elif isinstance(val, list):
+    if isinstance(val, list):
         return [_format_field(x) for x in val]
     return str(val)
 
@@ -227,7 +275,7 @@ def _extend_row(row, names, items, precision):
             item = flatten(item)
         else:
             item = {fname: item}
-        for name in names:
+        for name in names[fname]:
             if name in item:
                 value = item[name]
                 if value is None:
@@ -242,24 +290,24 @@ def _extend_row(row, names, items, precision):
                 row.append("-")
 
 
-def _parse_list(param_list):
+def _parse_filter_list(param_list):
     ret = []
     for param_str in param_list:
-        # we don't care about filename prefixes for show, silently
-        # ignore it if provided to keep usage consistent with other
-        # metric/param list command options
-        _, _, param_str = param_str.rpartition(":")
-        ret.extend(param_str.split(","))
+        path, _, param_str = param_str.rpartition(":")
+        if path:
+            ret.extend(f"{path}:{param}" for param in param_str.split(","))
+        else:
+            ret.extend(param_str.split(","))
     return ret
 
 
-def _show_experiments(all_experiments, console, **kwargs):
-    from rich.table import Table
+def _experiments_table(all_experiments, **kwargs):
+    from dvc.utils.table import Table
 
-    include_metrics = _parse_list(kwargs.pop("include_metrics", []))
-    exclude_metrics = _parse_list(kwargs.pop("exclude_metrics", []))
-    include_params = _parse_list(kwargs.pop("include_params", []))
-    exclude_params = _parse_list(kwargs.pop("exclude_params", []))
+    include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
+    exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
+    include_params = _parse_filter_list(kwargs.pop("include_params", []))
+    exclude_params = _parse_filter_list(kwargs.pop("exclude_params", []))
 
     metric_names, param_names = _collect_names(
         all_experiments,
@@ -270,13 +318,21 @@ def _show_experiments(all_experiments, console, **kwargs):
     )
 
     table = Table()
-    table.add_column("Experiment", no_wrap=True)
+    table.add_column(
+        "Experiment", no_wrap=True, header_style="black on grey93"
+    )
     if not kwargs.get("no_timestamp", False):
-        table.add_column("Created")
-    for name in metric_names:
-        table.add_column(name, justify="right", no_wrap=True)
-    for name in param_names:
-        table.add_column(name, justify="left")
+        table.add_column("Created", header_style="black on grey93")
+    _add_data_columns(
+        table,
+        metric_names,
+        justify="right",
+        no_wrap=True,
+        header_style="black on cornsilk1",
+    )
+    _add_data_columns(
+        table, param_names, justify="left", header_style="black on light_cyan1"
+    )
 
     for base_rev, experiments in all_experiments.items():
         for row, _, in _collect_rows(
@@ -284,7 +340,20 @@ def _show_experiments(all_experiments, console, **kwargs):
         ):
             table.add_row(*row)
 
-    console.print(table)
+    return table
+
+
+def _add_data_columns(table, names, **kwargs):
+    count = Counter(
+        name for path in names for name in names[path] for path in names
+    )
+    first = True
+    for path in names:
+        for name in names[path]:
+            col_name = name if count[name] == 1 else f"{path}:{name}"
+            kwargs["collapse"] = False if first else True
+            table.add_column(col_name, **kwargs)
+            first = False
 
 
 def _format_json(item):
@@ -297,17 +366,13 @@ class CmdExperimentsShow(CmdBase):
     def run(self):
         from rich.console import Console
 
-        from dvc.utils.pager import pager
-
-        if not self.repo.experiments:
-            return 0
-
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
                 sha_only=self.args.sha,
+                num=self.args.num,
             )
 
             if self.args.show_json:
@@ -316,23 +381,13 @@ class CmdExperimentsShow(CmdBase):
                 logger.info(json.dumps(all_experiments, default=_format_json))
                 return 0
 
-            if self.args.no_pager:
-                console = Console()
-            else:
-                # Note: rich does not currently include a native way to force
-                # infinite width for use with a pager
-                console = Console(
-                    file=io.StringIO(), force_terminal=True, width=9999
-                )
-
             if self.args.precision is None:
                 precision = DEFAULT_PRECISION
             else:
                 precision = self.args.precision
 
-            _show_experiments(
+            table = _experiments_table(
                 all_experiments,
-                console,
                 include_metrics=self.args.include_metrics,
                 exclude_metrics=self.args.exclude_metrics,
                 include_params=self.args.include_params,
@@ -343,8 +398,22 @@ class CmdExperimentsShow(CmdBase):
                 precision=precision,
             )
 
-            if not self.args.no_pager:
-                pager(console.file.getvalue())
+            console = Console()
+            if self.args.no_pager:
+                console.print(table)
+            else:
+                from dvc.utils.pager import DvcPager
+
+                # NOTE: rich does not have native support for unlimited width
+                # via pager. we override rich table compression by setting
+                # console width to the full width of the table
+                measurement = table.__rich_measure__(console, SHOW_MAX_WIDTH)
+                console._width = (  # pylint: disable=protected-access
+                    measurement.maximum
+                )
+                with console.pager(pager=DvcPager(), styles=True):
+                    console.print(table)
+
         except DvcException:
             logger.exception("failed to show experiments")
             return 1
@@ -352,12 +421,12 @@ class CmdExperimentsShow(CmdBase):
         return 0
 
 
-class CmdExperimentsCheckout(CmdBase):
+class CmdExperimentsApply(CmdBase):
     def run(self):
-        if not self.repo.experiments:
-            return 0
 
-        self.repo.experiments.checkout(self.args.experiment)
+        self.repo.experiments.apply(
+            self.args.experiment, force=self.args.force
+        )
 
         return 0
 
@@ -401,8 +470,6 @@ def _show_diff(
 
 class CmdExperimentsDiff(CmdBase):
     def run(self):
-        if not self.repo.experiments:
-            return 0
 
         try:
             diff = self.repo.experiments.diff(
@@ -444,46 +511,41 @@ class CmdExperimentsDiff(CmdBase):
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        if not self.repo.experiments:
-            return 0
+        from dvc.command.metrics import _show_metrics
 
-        saved_dir = os.path.realpath(os.curdir)
-        os.chdir(self.args.cwd)
+        if self.args.reset:
+            logger.info("Any existing checkpoints will be reset and re-run.")
 
-        # Dirty hack so the for loop below can at least enter once
-        if self.args.all_pipelines:
-            self.args.targets = [None]
-        elif not self.args.targets:
-            self.args.targets = self.default_targets
+        results = self.repo.experiments.run(
+            name=self.args.name,
+            queue=self.args.queue,
+            run_all=self.args.run_all,
+            jobs=self.args.jobs,
+            params=self.args.params,
+            checkpoint_resume=self.args.checkpoint_resume,
+            reset=self.args.reset,
+            tmp_dir=self.args.tmp_dir,
+            **self._repro_kwargs,
+        )
 
-        ret = 0
-        for target in self.args.targets:
-            try:
-                self.repo.experiments.run(
-                    target,
-                    queue=self.args.queue,
-                    run_all=self.args.run_all,
-                    jobs=self.args.jobs,
-                    params=self.args.params,
-                    checkpoint_resume=self.args.checkpoint_resume,
-                    **self._repro_kwargs,
-                )
-            except DvcException:
-                logger.exception("")
-                ret = 1
-                break
+        if self.args.metrics and results:
+            metrics = self.repo.metrics.show(revs=list(results))
+            metrics.pop("workspace", None)
+            logger.info(_show_metrics(metrics))
 
-        os.chdir(saved_dir)
-        return ret
+        return 0
+
+
+def _raise_error_if_all_disabled(**kwargs):
+    if not any(kwargs.values()):
+        raise InvalidArgumentError(
+            "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
+            "or `--all-commits` needs to be set."
+        )
 
 
 class CmdExperimentsGC(CmdRepro):
     def run(self):
-        from dvc.repo.gc import _raise_error_if_all_disabled
-
-        if not self.repo.experiments:
-            return 0
-
         _raise_error_if_all_disabled(
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
@@ -532,15 +594,110 @@ class CmdExperimentsGC(CmdRepro):
         return 0
 
 
+class CmdExperimentsBranch(CmdBase):
+    def run(self):
+
+        self.repo.experiments.branch(self.args.experiment, self.args.branch)
+
+        return 0
+
+
+class CmdExperimentsList(CmdBase):
+    def run(self):
+
+        exps = self.repo.experiments.ls(
+            rev=self.args.rev,
+            git_remote=self.args.git_remote,
+            all_=self.args.all,
+        )
+        for baseline in exps:
+            tag = self.repo.scm.describe(baseline)
+            if not tag:
+                branch = self.repo.scm.describe(baseline, base="refs/heads")
+                if branch:
+                    tag = branch.split("/")[-1]
+            name = tag if tag else baseline[:7]
+            logger.info(f"{name}:")
+            for exp_name in exps[baseline]:
+                logger.info(f"\t{exp_name}")
+
+        return 0
+
+
+class CmdExperimentsPush(CmdBase):
+    def run(self):
+
+        self.repo.experiments.push(
+            self.args.git_remote,
+            self.args.experiment,
+            force=self.args.force,
+            push_cache=self.args.push_cache,
+            dvc_remote=self.args.dvc_remote,
+            jobs=self.args.jobs,
+            run_cache=self.args.run_cache,
+        )
+
+        logger.info(
+            "Pushed experiment '%s' to Git remote '%s'.",
+            self.args.experiment,
+            self.args.git_remote,
+        )
+        if not self.args.push_cache:
+            logger.info(
+                "To push cached outputs for this experiment to DVC remote "
+                "storage, re-run this command without '--no-cache'."
+            )
+
+        return 0
+
+
+class CmdExperimentsPull(CmdBase):
+    def run(self):
+
+        self.repo.experiments.pull(
+            self.args.git_remote,
+            self.args.experiment,
+            force=self.args.force,
+            pull_cache=self.args.pull_cache,
+            dvc_remote=self.args.dvc_remote,
+            jobs=self.args.jobs,
+            run_cache=self.args.run_cache,
+        )
+
+        logger.info(
+            "Pulled experiment '%s' from Git remote '%s'. ",
+            self.args.experiment,
+            self.args.git_remote,
+        )
+        if not self.args.pull_cache:
+            logger.info(
+                "To pull cached outputs for this experiment from DVC remote "
+                "storage, re-run this command without '--no-cache'."
+            )
+
+        return 0
+
+
+class CmdExperimentsRemove(CmdBase):
+    def run(self):
+
+        self.repo.experiments.remove(
+            exp_names=self.args.experiment, queue=self.args.queue,
+        )
+
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
-    EXPERIMENTS_HELP = "Commands to display and compare experiments."
+    EXPERIMENTS_HELP = "Commands to run and compare experiments."
 
     experiments_parser = subparsers.add_parser(
         "experiments",
         parents=[parent_parser],
         aliases=["exp"],
-        description=append_doc_link(EXPERIMENTS_HELP, "experiments"),
+        description=append_doc_link(EXPERIMENTS_HELP, "exp"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        help=EXPERIMENTS_HELP,
     )
 
     experiments_subparsers = experiments_parser.add_subparsers(
@@ -555,7 +712,7 @@ def add_parser(subparsers, parent_parser):
     experiments_show_parser = experiments_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_SHOW_HELP, "experiments/show"),
+        description=append_doc_link(EXPERIMENTS_SHOW_HELP, "exp/show"),
         help=EXPERIMENTS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -564,20 +721,30 @@ def add_parser(subparsers, parent_parser):
         "--all-branches",
         action="store_true",
         default=False,
-        help="Show metrics for all branches.",
+        help="Show experiments derived from the tip of all Git branches.",
     )
     experiments_show_parser.add_argument(
         "-T",
         "--all-tags",
         action="store_true",
         default=False,
-        help="Show metrics for all tags.",
+        help="Show experiments derived from all Git tags.",
     )
     experiments_show_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
-        help="Show metrics for all commits.",
+        help="Show experiments derived from all Git commits.",
+    )
+    experiments_show_parser.add_argument(
+        "-n",
+        "--num",
+        type=int,
+        default=1,
+        dest="num",
+        metavar="<num>",
+        help="Show the last `num` commits from HEAD.",
     )
     experiments_show_parser.add_argument(
         "--no-pager",
@@ -653,20 +820,26 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 
-    EXPERIMENTS_CHECKOUT_HELP = "Checkout experiments."
-    experiments_checkout_parser = experiments_subparsers.add_parser(
-        "checkout",
+    EXPERIMENTS_APPLY_HELP = (
+        "Apply the changes from an experiment to your workspace."
+    )
+    experiments_apply_parser = experiments_subparsers.add_parser(
+        "apply",
         parents=[parent_parser],
-        description=append_doc_link(
-            EXPERIMENTS_CHECKOUT_HELP, "experiments/checkout"
-        ),
-        help=EXPERIMENTS_CHECKOUT_HELP,
+        description=append_doc_link(EXPERIMENTS_APPLY_HELP, "exp/apply"),
+        help=EXPERIMENTS_APPLY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_checkout_parser.add_argument(
-        "experiment", help="Checkout this experiment.",
+    experiments_apply_parser.add_argument(
+        "--no-force",
+        action="store_false",
+        dest="force",
+        help="Fail if this command would overwrite conflicting changes.",
     )
-    experiments_checkout_parser.set_defaults(func=CmdExperimentsCheckout)
+    experiments_apply_parser.add_argument(
+        "experiment", help="Experiment to be applied.",
+    )
+    experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
     EXPERIMENTS_DIFF_HELP = (
         "Show changes between experiments in the DVC repository."
@@ -674,7 +847,7 @@ def add_parser(subparsers, parent_parser):
     experiments_diff_parser = experiments_subparsers.add_parser(
         "diff",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_DIFF_HELP, "experiments/diff"),
+        description=append_doc_link(EXPERIMENTS_DIFF_HELP, "exp/diff"),
         help=EXPERIMENTS_DIFF_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -733,42 +906,29 @@ def add_parser(subparsers, parent_parser):
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
         parents=[parent_parser],
-        description=append_doc_link(EXPERIMENTS_RUN_HELP, "experiments/run"),
+        description=append_doc_link(EXPERIMENTS_RUN_HELP, "exp/run"),
         help=EXPERIMENTS_RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     _add_run_common(experiments_run_parser)
     experiments_run_parser.add_argument(
-        "--checkpoint-resume", type=str, default=None, help=argparse.SUPPRESS,
-    )
-    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
-
-    EXPERIMENTS_RESUME_HELP = "Resume checkpoint experiments."
-    experiments_resume_parser = experiments_subparsers.add_parser(
-        "resume",
-        parents=[parent_parser],
-        aliases=["res"],
-        description=append_doc_link(
-            EXPERIMENTS_RESUME_HELP, "experiments/resume"
-        ),
-        help=EXPERIMENTS_RESUME_HELP,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    _add_run_common(experiments_resume_parser)
-    experiments_resume_parser.add_argument(
         "-r",
         "--rev",
         type=str,
-        default=Experiments.LAST_CHECKPOINT,
         dest="checkpoint_resume",
         help=(
             "Continue the specified checkpoint experiment. "
-            "If no experiment revision is provided, "
-            "the most recently run checkpoint experiment will be used."
+            "(Only required for explicitly resuming checkpoints in queued "
+            "or temp dir runs.)"
         ),
         metavar="<experiment_rev>",
     )
-    experiments_resume_parser.set_defaults(func=CmdExperimentsRun)
+    experiments_run_parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Reset existing checkpoints and restart the experiment.",
+    )
+    experiments_run_parser.set_defaults(func=CmdExperimentsRun)
 
     EXPERIMENTS_GC_HELP = "Garbage collect unneeded experiments."
     EXPERIMENTS_GC_DESCRIPTION = (
@@ -778,9 +938,7 @@ def add_parser(subparsers, parent_parser):
     experiments_gc_parser = experiments_subparsers.add_parser(
         "gc",
         parents=[parent_parser],
-        description=append_doc_link(
-            EXPERIMENTS_GC_DESCRIPTION, "experiments/gc"
-        ),
+        description=append_doc_link(EXPERIMENTS_GC_DESCRIPTION, "exp/gc"),
         help=EXPERIMENTS_GC_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -829,11 +987,202 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_gc_parser.set_defaults(func=CmdExperimentsGC)
 
+    EXPERIMENTS_BRANCH_HELP = "Promote an experiment to a Git branch."
+    experiments_branch_parser = experiments_subparsers.add_parser(
+        "branch",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_BRANCH_HELP, "exp/branch"),
+        help=EXPERIMENTS_BRANCH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_branch_parser.add_argument(
+        "experiment", help="Experiment to be promoted.",
+    )
+    experiments_branch_parser.add_argument(
+        "branch", help="Git branch name to use.",
+    )
+    experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)
+
+    EXPERIMENTS_LIST_HELP = "List local and remote experiments."
+    experiments_list_parser = experiments_subparsers.add_parser(
+        "list",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_LIST_HELP, "exp/list"),
+        help=EXPERIMENTS_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_list_parser.add_argument(
+        "--rev",
+        type=str,
+        default=None,
+        help=(
+            "List experiments derived from the specified revision. "
+            "Defaults to HEAD if neither `--rev` nor `--all` are specified."
+        ),
+        metavar="<rev>",
+    )
+    experiments_list_parser.add_argument(
+        "--all", action="store_true", help="List all experiments.",
+    )
+    experiments_list_parser.add_argument(
+        "git_remote",
+        nargs="?",
+        default=None,
+        help=(
+            "Optional Git remote name or Git URL. If provided, experiments "
+            "from the specified Git repository will be listed instead of "
+            "local experiments."
+        ),
+        metavar="[<git_remote>]",
+    )
+    experiments_list_parser.set_defaults(func=CmdExperimentsList)
+
+    EXPERIMENTS_PUSH_HELP = "Push a local experiment to a Git remote."
+    experiments_push_parser = experiments_subparsers.add_parser(
+        "push",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_PUSH_HELP, "exp/push"),
+        help=EXPERIMENTS_PUSH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_push_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Replace experiment in the Git remote if it already exists.",
+    )
+    experiments_push_parser.add_argument(
+        "--no-cache",
+        action="store_false",
+        dest="push_cache",
+        help=(
+            "Do not push cached outputs for this experiment to DVC remote "
+            "storage."
+        ),
+    )
+    experiments_push_parser.add_argument(
+        "-r",
+        "--remote",
+        dest="dvc_remote",
+        metavar="<name>",
+        help="Name of the DVC remote to use when pushing cached outputs.",
+    )
+    experiments_push_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        metavar="<number>",
+        help=(
+            "Number of jobs to run simultaneously when pushing to DVC remote "
+            "storage."
+        ),
+    )
+    experiments_push_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help="Push run history for all stages.",
+    )
+    experiments_push_parser.add_argument(
+        "git_remote",
+        help="Git remote name or Git URL.",
+        metavar="<git_remote>",
+    )
+    experiments_push_parser.add_argument(
+        "experiment", help="Experiment to push.", metavar="<experiment>",
+    )
+    experiments_push_parser.set_defaults(func=CmdExperimentsPush)
+
+    EXPERIMENTS_PULL_HELP = "Pull an experiment from a Git remote."
+    experiments_pull_parser = experiments_subparsers.add_parser(
+        "pull",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_PULL_HELP, "exp/pull"),
+        help=EXPERIMENTS_PULL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_pull_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Replace local experiment already exists.",
+    )
+    experiments_pull_parser.add_argument(
+        "--no-cache",
+        action="store_false",
+        dest="pull_cache",
+        help=(
+            "Do not pull cached outputs for this experiment from DVC remote "
+            "storage."
+        ),
+    )
+    experiments_pull_parser.add_argument(
+        "-r",
+        "--remote",
+        dest="dvc_remote",
+        metavar="<name>",
+        help="Name of the DVC remote to use when pulling cached outputs.",
+    )
+    experiments_pull_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        metavar="<number>",
+        help=(
+            "Number of jobs to run simultaneously when pulling from DVC "
+            "remote storage."
+        ),
+    )
+    experiments_pull_parser.add_argument(
+        "--run-cache",
+        action="store_true",
+        default=False,
+        help="Pull run history for all stages.",
+    )
+    experiments_pull_parser.add_argument(
+        "git_remote",
+        help="Git remote name or Git URL.",
+        metavar="<git_remote>",
+    )
+    experiments_pull_parser.add_argument(
+        "experiment", help="Experiment to pull.", metavar="<experiment>",
+    )
+    experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
+
+    EXPERIMENTS_REMOVE_HELP = "Remove local experiments."
+    experiments_remove_parser = experiments_subparsers.add_parser(
+        "remove",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_REMOVE_HELP, "exp/remove"),
+        help=EXPERIMENTS_REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_remove_parser.add_argument(
+        "--queue", action="store_true", help="Remove all queued experiments.",
+    )
+    experiments_remove_parser.add_argument(
+        "experiment",
+        nargs="*",
+        help="Experiments to remove.",
+        metavar="<experiment>",
+    )
+    experiments_remove_parser.set_defaults(func=CmdExperimentsRemove)
+
 
 def _add_run_common(parser):
     """Add common args for 'exp run' and 'exp resume'."""
     # inherit arguments from `dvc repro`
     add_repro_arguments(parser)
+    parser.add_argument(
+        "-n",
+        "--name",
+        default=None,
+        help=(
+            "Human-readable experiment name. If not specified, a name will "
+            "be auto-generated."
+        ),
+        metavar="<name>",
+    )
     parser.add_argument(
         "--params",
         action="append",
@@ -851,7 +1200,7 @@ def _add_run_common(parser):
         "--run-all",
         action="store_true",
         default=False,
-        help="Execute all experiments in the run queue.",
+        help="Execute all experiments in the run queue. Implies --temp.",
     )
     parser.add_argument(
         "-j",
@@ -859,4 +1208,13 @@ def _add_run_common(parser):
         type=int,
         help="Run the specified number of experiments at a time in parallel.",
         metavar="<number>",
+    )
+    parser.add_argument(
+        "--temp",
+        action="store_true",
+        dest="tmp_dir",
+        help=(
+            "Run this experiment in a separate temporary directory instead of "
+            "your workspace."
+        ),
     )

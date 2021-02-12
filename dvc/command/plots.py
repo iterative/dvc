@@ -5,29 +5,10 @@ import os
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.schema import PLOT_PROPS
 from dvc.utils import format_link
+from dvc.utils.html import write
 
 logger = logging.getLogger(__name__)
-
-PAGE_HTML = """<!DOCTYPE html>
-<html>
-<head>
-    <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
-</head>
-<body>
-    {divs}
-</body>
-</html>"""
-
-DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
 
 
 class CmdPlots(CmdBase):
@@ -35,6 +16,8 @@ class CmdPlots(CmdBase):
         raise NotImplementedError
 
     def _props(self):
+        from dvc.schema import PLOT_PROPS
+
         # Pass only props specified by user, to not shadow ones from plot def
         props = {p: getattr(self.args, p) for p in PLOT_PROPS}
         return {k: v for k, v in props.items() if v is not None}
@@ -58,16 +41,10 @@ class CmdPlots(CmdBase):
                 logger.info(plots[target])
                 return 0
 
-            divs = [
-                DIV_HTML.format(id=f"plot{i}", vega_json=plot)
-                for i, plot in enumerate(plots.values())
-            ]
-            html = PAGE_HTML.format(divs="\n".join(divs))
             path = self.args.out or "plots.html"
-
             path = os.path.join(os.getcwd(), path)
-            with open(path, "w") as fobj:
-                fobj.write(html)
+
+            write(path, plots)
 
             logger.info(f"file://{path}")
 
@@ -158,10 +135,12 @@ def add_parser(subparsers, parent_parser):
     plots_diff_parser.add_argument(
         "--targets",
         nargs="*",
-        help="Files to visualize (supports any file, "
-        "even when not found as `plots` in `dvc.yaml`). "
-        "Shows all plots by default.",
-        metavar="<path>",
+        help=(
+            "Specific plots file(s) to visualize "
+            "(even if not found as `plots` in `dvc.yaml`). "
+            "Shows all tracked plots by default.",
+        ),
+        metavar="<paths>",
     ).complete = completion.FILE
     plots_diff_parser.add_argument(
         "-e",

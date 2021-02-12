@@ -81,7 +81,6 @@ class SSHMocked(Base, URLInfo):
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         assert parents
-        assert not exist_ok
 
         with self._ssh() as _ssh:
             _ssh.makedirs(self.path)
@@ -92,12 +91,6 @@ class SSHMocked(Base, URLInfo):
             with _ssh.open(self.path, "w+") as fobj:
                 # NOTE: accepts both str and bytes
                 fobj.write(contents)
-
-    def write_text(self, contents, encoding=None, errors=None):
-        if not encoding:
-            encoding = locale.getpreferredencoding(False)
-        assert errors is None
-        self.write_bytes(contents.encode(encoding))
 
     def read_bytes(self):
         with self._ssh() as _ssh:

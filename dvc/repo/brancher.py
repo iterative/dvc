@@ -1,7 +1,5 @@
 from funcy import group_by
 
-from dvc.tree.local import LocalTree
-
 
 def brancher(  # noqa: E302
     self,
@@ -9,6 +7,7 @@ def brancher(  # noqa: E302
     all_branches=False,
     all_tags=False,
     all_commits=False,
+    all_experiments=False,
     sha_only=False,
 ):
     """Generator that iterates over specified revisions.
@@ -26,9 +25,11 @@ def brancher(  # noqa: E302
             - empty string it there is no branches to iterate over
             - "workspace" if there are uncommitted changes in the SCM repo
     """
-    if not any([revs, all_branches, all_tags, all_commits]):
+    if not any([revs, all_branches, all_tags, all_commits, all_experiments]):
         yield ""
         return
+
+    from dvc.tree.local import LocalTree
 
     saved_tree = self.tree
     revs = revs.copy() if revs else []
@@ -49,6 +50,11 @@ def brancher(  # noqa: E302
 
         if all_tags:
             revs.extend(scm.list_tags())
+
+    if all_experiments:
+        from dvc.repo.experiments.utils import exp_commits
+
+        revs.extend(exp_commits(scm))
 
     try:
         if revs:

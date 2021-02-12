@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 import threading
@@ -43,6 +44,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     CHUNK_SIZE = 2 ** 16
 
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     # Constructor
     def __init__(self, repo, config):
@@ -81,24 +83,23 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             if self.user is None and self.path_info.user is not None:
                 self.user = self.path_info.user
 
+            # Construct hostname from path_info by stripping path
+            http_info = HTTPURLInfo(self.path_info.url)
+            self.hostname = http_info.replace(path="").url
+
     # Webdav client
     @wrap_prop(threading.Lock())
     @cached_property
     def _client(self):
         from webdav3.client import Client
 
-        # Construct hostname from path_info by stripping path
-        http_info = HTTPURLInfo(self.path_info.url)
-        hostname = http_info.replace(path="").url
-
         # Set password or ask for it
         if self.ask_password and self.password is None and self.token is None:
-            host, user = self.path_info.host, self.path_info.user
-            self.password = ask_password(host, user)
+            self.password = ask_password(self.hostname, self.user)
 
         # Setup webdav client options dictionary
         options = {
-            "webdav_hostname": hostname,
+            "webdav_hostname": self.hostname,
             "webdav_login": self.user,
             "webdav_password": self.password,
             "webdav_token": self.token,
@@ -113,14 +114,33 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Check whether client options are valid
         if not client.valid():
             raise ConfigError(
-                f"Configuration for WebDAV {hostname} is invalid."
+                f"Configuration for WebDAV {self.hostname} is invalid."
             )
 
         # Check whether connection is valid (root should always exist)
-        if not client.check(self.path_info.path):
-            raise WebDAVConnectionError(hostname)
+        if not client.check("/"):
+            raise WebDAVConnectionError(self.hostname)
 
         return client
+
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
+        from webdav3.exceptions import RemoteResourceNotFound
+
+        assert mode in {"r", "rt", "rb"}
+
+        fobj = io.BytesIO()
+
+        try:
+            self._client.download_from(buff=fobj, remote_path=path_info.path)
+        except RemoteResourceNotFound as exc:
+            raise FileNotFoundError from exc
+
+        fobj.seek(0)
+
+        if "mode" == "rb":
+            return fobj
+
+        return io.TextIOWrapper(fobj, encoding=encoding)
 
     # Checks whether file/directory exists at remote
     def exists(self, path_info, use_dvcignore=True):
@@ -128,7 +148,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         return self._client.check(path_info.path)
 
     # Gets file hash 'etag'
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
+
         # Use webdav client info method to get etag
         etag = self._client.info(path_info.path)["etag"].strip('"')
 
@@ -170,6 +192,36 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                     # Yield path info to non directory
                     yield info
 
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        dirs = deque([path_info.path])
+
+        while dirs:
+            for entry in self._client.list(dirs.pop(), get_info=True):
+                path = entry["path"]
+                if entry["isdir"]:
+                    dirs.append(path)
+                    continue
+
+                if detail:
+                    yield {
+                        "type": "file",
+                        "name": path,
+                        "size": entry["size"],
+                        "etag": entry["etag"],
+                    }
+                else:
+                    yield path
+
+            if not recursive:
+                for entry in dirs:
+                    if detail:
+                        yield {"type": "directory", "name": entry}
+                    else:
+                        yield entry
+                return None
+
     # Removes file/directory
     def remove(self, path_info):
         # Use webdav client clean (DELETE) method to remove file/directory
@@ -178,7 +230,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
     # Creates directories
     def makedirs(self, path_info):
         # Terminate recursion
-        if path_info.path == self.path_info.path or self.exists(path_info):
+        if path_info.path == "/" or self.exists(path_info):
             return
 
         # Recursively descent to root
@@ -188,9 +240,15 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         self._client.mkdir(path_info.path)
 
     # Moves file/directory at remote
-    def move(self, from_info, to_info, mode=None):
+    def move(self, from_info, to_info):
         # Webdav client move
         self._client.move(from_info.path, to_info.path)
+
+    def _upload_fobj(self, fobj, to_info):
+        # In contrast to other upload_fobj implementations, this one does not
+        # exactly do a chunked-upload but rather put everything in one request.
+        self.makedirs(to_info.parent)
+        self._client.upload_to(buff=fobj, remote_path=to_info.path)
 
     # Downloads file from remote to file
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
@@ -199,7 +257,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
             with Tqdm.wrapattr(
                 fd,
                 "write",
-                total=None if no_progress_bar else self._file_size(from_info),
+                total=None if no_progress_bar else self.getsize(from_info),
                 leave=False,
                 desc=from_info.url if name is None else name,
                 disable=no_progress_bar,
@@ -236,6 +294,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                 )
 
     # Queries size of file at remote
-    def _file_size(self, path_info):
+    def getsize(self, path_info):
         # Get file size from info dictionary and convert to int (from str)
         return int(self._client.info(path_info.path)["size"])

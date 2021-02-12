@@ -9,10 +9,9 @@ import re
 import stat
 import sys
 import time
+from typing import Optional, Tuple
 
 import colorama
-import nanotime
-from shortuuid import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -48,40 +47,33 @@ def file_md5(fname, tree=None):
     from dvc.progress import Tqdm
 
     if tree:
-        exists_func = tree.exists
         stat_func = tree.stat
         open_func = tree.open
     else:
-        exists_func = os.path.exists
         stat_func = os.stat
         open_func = open
 
-    if exists_func(fname):
-        hash_md5 = hashlib.md5()
-        binary = not istextfile(fname, tree=tree)
-        size = stat_func(fname).st_size
-        no_progress_bar = True
-        if size >= LARGE_FILE_SIZE:
-            no_progress_bar = False
-            msg = (
-                "Computing md5 for a large file '{}'. This is only done once."
-            )
-            logger.info(msg.format(relpath(fname)))
-        name = relpath(fname)
+    hash_md5 = hashlib.md5()
+    binary = not istextfile(fname, tree=tree)
+    size = stat_func(fname).st_size
+    no_progress_bar = True
+    if size >= LARGE_FILE_SIZE:
+        no_progress_bar = False
+        msg = "Computing md5 for a large file '{}'. This is only done once."
+        logger.info(msg.format(relpath(fname)))
+    name = relpath(fname)
 
-        with Tqdm(
-            desc=name,
-            disable=no_progress_bar,
-            total=size,
-            bytes=True,
-            leave=False,
-        ) as pbar:
-            with open_func(fname, "rb") as fobj:
-                _fobj_md5(fobj, hash_md5, binary, pbar.update)
+    with Tqdm(
+        desc=name,
+        disable=no_progress_bar,
+        total=size,
+        bytes=True,
+        leave=False,
+    ) as pbar:
+        with open_func(fname, "rb") as fobj:
+            _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
-        return (hash_md5.hexdigest(), hash_md5.digest())
-
-    return (None, None)
+    return hash_md5.hexdigest()
 
 
 def bytes_hash(byts, typ):
@@ -227,12 +219,16 @@ def fix_env(env=None):
     return env
 
 
-def tmp_fname(fname):
+def tmp_fname(fname=""):
     """ Temporary name for a partial download """
+    from shortuuid import uuid
+
     return os.fspath(fname) + "." + uuid() + ".tmp"
 
 
 def current_timestamp():
+    import nanotime
+
     return int(nanotime.timestamp(time.time()))
 
 
@@ -252,6 +248,7 @@ def colorize(message, color=None, style=None):
         "blue": colorama.Fore.BLUE,
         "red": colorama.Fore.RED,
         "magenta": colorama.Fore.MAGENTA,
+        "cyan": colorama.Fore.CYAN,
     }
 
     return "{style}{color}{message}{reset}".format(
@@ -348,14 +345,21 @@ def env2bool(var, undefined=False):
 
 
 def resolve_output(inp, out):
+    import errno
     from urllib.parse import urlparse
 
     name = os.path.basename(os.path.normpath(urlparse(inp).path))
     if not out:
-        return name
-    if os.path.isdir(out):
-        return os.path.join(out, name)
-    return out
+        ret = name
+    elif os.path.isdir(out):
+        ret = os.path.join(out, name)
+    else:
+        ret = out
+
+    if os.path.exists(ret):
+        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), ret)
+
+    return ret
 
 
 def resolve_paths(repo, out):
@@ -409,7 +413,9 @@ def error_link(name):
     return format_link(f"https://error.dvc.org/{name}")
 
 
-def parse_target(target: str, default: str = None):
+def parse_target(
+    target: str, default: str = None, isa_glob: bool = False
+) -> Tuple[Optional[str], Optional[str]]:
     from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
     from dvc.exceptions import DvcException
     from dvc.parsing import JOIN
@@ -417,9 +423,14 @@ def parse_target(target: str, default: str = None):
     if not target:
         return None, None
 
+    default = default or PIPELINE_FILE
+    if isa_glob:
+        path, _, glob = target.rpartition(":")
+        return path or default, glob or None
+
     # look for first "@", so as not to assume too much about stage name
     # eg: it might contain ":" in a generated stages from dict which might
-    # affect further parsings with the regex.
+    # affect further parsing with the regex.
     group, _, key = target.partition(JOIN)
     match = TARGET_REGEX.match(group)
 
@@ -446,11 +457,25 @@ def parse_target(target: str, default: str = None):
             return ret if is_valid_filename(target) else ret[::-1]
 
     if not path:
-        path = default or PIPELINE_FILE
-        logger.debug("Assuming file to be '%s'", path)
+        logger.trace(  # type: ignore[attr-defined]
+            "Assuming file to be '%s'", default
+        )
 
-    return path, name
+    return path or default, name
 
 
 def is_exec(mode):
-    return mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+
+
+def glob_targets(targets, glob=True, recursive=True):
+    if not glob:
+        return targets
+
+    from glob import iglob
+
+    return [
+        exp_target
+        for target in targets
+        for exp_target in iglob(target, recursive=recursive)
+    ]

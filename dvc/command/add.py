@@ -3,13 +3,17 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 
 logger = logging.getLogger(__name__)
 
 
 class CmdAdd(CmdBase):
     def run(self):
+        from dvc.exceptions import (
+            DvcException,
+            RecursiveAddingWhileUsingFilename,
+        )
+
         try:
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
@@ -22,6 +26,10 @@ class CmdAdd(CmdBase):
                 external=self.args.external,
                 glob=self.args.glob,
                 desc=self.args.desc,
+                out=self.args.out,
+                remote=self.args.remote,
+                to_remote=self.args.to_remote,
+                jobs=self.args.jobs,
             )
 
         except DvcException:
@@ -67,8 +75,37 @@ def add_parser(subparsers, parent_parser):
     )
     parser.add_argument(
         "--file",
-        help="Specify name of the DVC-file this command will generate.",
+        help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        help="Destination path to put files to.",
+        metavar="<path>",
+    )
+    parser.add_argument(
+        "--to-remote",
+        action="store_true",
+        default=False,
+        help="Download it directly to the remote",
+    )
+    parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to download to",
+        metavar="<name>",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     parser.add_argument(
         "--desc",

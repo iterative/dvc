@@ -4,7 +4,7 @@ from dvc import utils
 def test_file_md5_crlf(tmp_dir):
     tmp_dir.gen("cr", b"a\nb\nc")
     tmp_dir.gen("crlf", b"a\r\nb\r\nc")
-    assert utils.file_md5("cr")[0] == utils.file_md5("crlf")[0]
+    assert utils.file_md5("cr") == utils.file_md5("crlf")
 
 
 def test_dict_md5():

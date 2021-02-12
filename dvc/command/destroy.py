@@ -3,13 +3,14 @@ import logging
 
 import dvc.prompt as prompt
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
 
 class CmdDestroy(CmdBase):
     def run(self):
+        from dvc.exceptions import DvcException
+
         try:
             statement = (
                 "This will destroy all information about your pipelines,"
@@ -32,7 +33,7 @@ class CmdDestroy(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    DESTROY_HELP = "Remove DVC-files, local DVC config and data cache."
+    DESTROY_HELP = "Remove DVC files, local DVC config and data cache."
 
     destroy_parser = subparsers.add_parser(
         "destroy",

@@ -1,56 +1,34 @@
 import argparse
 import logging
-import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import _show_metrics
 from dvc.command.status import CmdDataStatus
-from dvc.dvcfile import PIPELINE_FILE
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
 
 class CmdRepro(CmdBase):
     def run(self):
-        saved_dir = os.path.realpath(os.curdir)
-        os.chdir(self.args.cwd)
+        stages = self.repo.reproduce(**self._repro_kwargs)
+        if len(stages) == 0:
+            logger.info(CmdDataStatus.UP_TO_DATE_MSG)
+        else:
+            logger.info(
+                "Use `dvc push` to send your updates to " "remote storage."
+            )
 
-        # Dirty hack so the for loop below can at least enter once
-        if self.args.all_pipelines:
-            self.args.targets = [None]
-        elif not self.args.targets:
-            self.args.targets = self.default_targets
+        if self.args.metrics:
+            metrics = self.repo.metrics.show()
+            logger.info(_show_metrics(metrics))
 
-        ret = 0
-        for target in self.args.targets:
-            try:
-                stages = self.repo.reproduce(target, **self._repro_kwargs)
-
-                if len(stages) == 0:
-                    logger.info(CmdDataStatus.UP_TO_DATE_MSG)
-                else:
-                    logger.info(
-                        "Use `dvc push` to send your updates to "
-                        "remote storage."
-                    )
-
-                if self.args.metrics:
-                    metrics = self.repo.metrics.show()
-                    logger.info(_show_metrics(metrics))
-
-            except DvcException:
-                logger.exception("")
-                ret = 1
-                break
-
-        os.chdir(saved_dir)
-        return ret
+        return 0
 
     @property
     def _repro_kwargs(self):
         return {
+            "targets": self.args.targets,
             "single_item": self.args.single_item,
             "force": self.args.force,
             "dry": self.args.dry,
@@ -63,6 +41,7 @@ class CmdRepro(CmdBase):
             "recursive": self.args.recursive,
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
+            "glob": self.args.glob,
         }
 
 
@@ -70,8 +49,8 @@ def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help=f"Stages to reproduce. '{PIPELINE_FILE}' by default.",
-    ).complete = completion.DVC_FILE
+        help="Stages to reproduce. 'dvc.yaml' by default.",
+    ).complete = completion.DVCFILES_AND_STAGE
     repro_parser.add_argument(
         "-f",
         "--force",
@@ -86,14 +65,6 @@ def add_arguments(repro_parser):
         default=False,
         help="Reproduce only single data item without recursive dependencies "
         "check.",
-    )
-    repro_parser.add_argument(
-        "-c",
-        "--cwd",
-        default=os.path.curdir,
-        help="Directory within your repo to reproduce from. Note: deprecated "
-        "by `dvc --cd <path>`.",
-        metavar="<path>",
     )
     repro_parser.add_argument(
         "-m",
@@ -121,8 +92,8 @@ def add_arguments(repro_parser):
         "--pipeline",
         action="store_true",
         default=False,
-        help="Reproduce the whole pipeline that the specified stage file "
-        "belongs to.",
+        help="Reproduce the whole pipeline that the specified targets "
+        "belong to.",
     )
     repro_parser.add_argument(
         "-P",
@@ -174,6 +145,12 @@ def add_arguments(repro_parser):
             "Try automatically pulling missing cache for outputs restored "
             "from the run-cache."
         ),
+    )
+    repro_parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Allows targets containing shell-style wildcards.",
     )
 
 

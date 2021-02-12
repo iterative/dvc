@@ -6,8 +6,10 @@ from urllib.parse import urlparse
 
 from voluptuous import Any
 
+import dvc.objects as objects
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
+from dvc.checkout import checkout
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -46,7 +48,7 @@ class OutputAlreadyTrackedError(DvcException):
 
 class OutputIsStageFileError(DvcException):
     def __init__(self, path):
-        super().__init__(f"Stage file '{path}' cannot be an output.")
+        super().__init__(f"DVC file '{path}' cannot be an output.")
 
 
 class OutputIsIgnoredError(DvcException):
@@ -76,6 +78,10 @@ class BaseOutput:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
+    PARAM_ISEXEC = "isexec"
+    PARAM_LIVE = "live"
+    PARAM_LIVE_SUMMARY = "summary"
+    PARAM_LIVE_HTML = "html"
 
     METRIC_SCHEMA = Any(
         None,
@@ -104,13 +110,15 @@ class BaseOutput:
         plot=False,
         persist=False,
         checkpoint=False,
+        live=False,
         desc=None,
+        isexec=False,
     ):
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
         #
-        #   .def_path - path from definition in stage file
+        #   .def_path - path from definition in DVC file
         #   .path_info - PathInfo/URLInfo structured resolved path
         #   .fspath - local only, resolved
         #   .__str__ - for presentation purposes, def_path/relpath
@@ -130,11 +138,15 @@ class BaseOutput:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
+        self.live = live
         self.desc = desc
 
         self.path_info = self._parse_path(tree, path)
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
+
+        self.obj = None
+        self.isexec = False if self.IS_DEPENDENCY else isexec
 
     def _parse_path(self, tree, path):
         if tree:
@@ -171,7 +183,7 @@ class BaseOutput:
 
     @property
     def dir_cache(self):
-        return self.cache.get_dir_cache(self.hash_info)
+        return self.hash_info.dir_info
 
     @classmethod
     def supported(cls, url):
@@ -179,12 +191,12 @@ class BaseOutput:
 
     @property
     def cache_path(self):
-        return self.cache.tree.hash_to_path_info(self.hash_info.value).url
+        return self.cache.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
         if not self.use_cache:
-            return self.tree.get_hash(self.path_info)
-        return self.cache.get_hash(self.tree, self.path_info)
+            return self.tree.get_hash(self.path_info, self.tree.PARAM_CHECKSUM)
+        return objects.stage(self.cache, self.path_info, self.tree).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -201,9 +213,15 @@ class BaseOutput:
         if not self.use_cache or not self.hash_info:
             return True
 
-        return self.cache.changed_cache(
-            self.hash_info, filter_info=filter_info
-        )
+        obj = self.get_obj(filter_info=filter_info)
+        if not obj:
+            return True
+
+        try:
+            objects.check(self.cache, obj)
+            return False
+        except (FileNotFoundError, objects.ObjectFormatError):
+            return True
 
     def workspace_status(self):
         if not self.exists:
@@ -286,15 +304,33 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.hash_info = self.get_hash()
+        self.obj = objects.stage(self.cache, self.path_info, self.tree)
+        self.hash_info = self.obj.hash_info
+        self.isexec = self.isfile() and self.tree.isexec(self.path_info)
 
-    def commit(self):
+    def set_exec(self):
+        if self.isfile() and self.isexec:
+            self.cache.set_exec(self.path_info)
+
+    def commit(self, filter_info=None):
         if not self.exists:
             raise self.DoesNotExistError(self)
 
         assert self.hash_info
+
         if self.use_cache:
-            self.cache.save(self.path_info, self.cache.tree, self.hash_info)
+            obj = objects.stage(
+                self.cache, filter_info or self.path_info, self.tree
+            )
+            objects.save(self.cache, obj)
+            checkout(
+                filter_info or self.path_info,
+                self.tree,
+                obj,
+                self.cache,
+                relink=True,
+            )
+            self.set_exec()
 
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
@@ -328,13 +364,36 @@ class BaseOutput:
         if self.checkpoint:
             ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
+        if self.isexec:
+            ret[self.PARAM_ISEXEC] = self.isexec
+
+        if self.live:
+            ret[self.PARAM_LIVE] = self.live
+
         return ret
 
     def verify_metric(self):
         raise DvcException(f"verify metric is not supported for {self.scheme}")
 
-    def download(self, to):
-        self.tree.download(self.path_info, to.path_info)
+    def download(self, to, jobs=None):
+        self.tree.download(self.path_info, to.path_info, jobs=jobs)
+
+    def get_obj(self, filter_info=None):
+        if self.obj:
+            obj = self.obj
+        elif self.hash_info:
+            try:
+                obj = objects.load(self.cache, self.hash_info)
+            except FileNotFoundError:
+                return None
+        else:
+            return None
+
+        if filter_info and filter_info != self.path_info:
+            prefix = filter_info.relative_to(self.path_info).parts
+            obj = obj.filter(self.cache, prefix)
+
+        return obj
 
     def checkout(
         self,
@@ -352,20 +411,30 @@ class BaseOutput:
                 )
             return None
 
+        obj = self.get_obj(filter_info=filter_info)
+        if not obj and (filter_info and filter_info != self.path_info):
+            # backward compatibility
+            return None
+
+        added = not self.exists
+
         try:
-            return self.cache.checkout(
-                self.path_info,
-                self.hash_info,
+            modified = checkout(
+                filter_info or self.path_info,
+                self.tree,
+                obj,
+                self.cache,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
-                filter_info=filter_info,
                 **kwargs,
             )
         except CheckoutError:
             if allow_missing or self.checkpoint:
                 return None
             raise
+        self.set_exec()
+        return added, False if added else modified
 
     def remove(self, ignore_remove=False):
         self.tree.remove(self.path_info)
@@ -390,29 +459,49 @@ class BaseOutput:
             self.repo.scm.ignore(self.fspath)
 
     def get_files_number(self, filter_info=None):
-        if not self.use_cache:
+        from funcy import ilen
+
+        if not self.use_cache or not self.hash_info:
             return 0
 
-        return self.cache.get_files_number(
-            self.path_info, self.hash_info, filter_info
+        if not self.hash_info.isdir:
+            return 1
+
+        if not filter_info or filter_info == self.path_info:
+            return self.hash_info.nfiles or 0
+
+        if not self.hash_info.dir_info:
+            return 0
+
+        return ilen(
+            filter_info.isin_or_eq(self.path_info / relpath)
+            for relpath, _ in self.hash_info.dir_info.items()
         )
 
     def unprotect(self):
         if self.exists:
-            self.tree.unprotect(self.path_info)
+            self.cache.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
+
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
-        if self.cache.changed_cache_file(self.hash_info):
+
+        try:
+            objects.check(self.cache, self.cache.get(self.hash_info))
+        except (FileNotFoundError, objects.ObjectFormatError):
             self.repo.cloud.pull(
                 NamedCache.make("local", self.hash_info.value, str(self)),
                 show_checksums=False,
                 **kwargs,
             )
+
+        try:
+            objects.load(self.cache, self.hash_info)
+            assert self.hash_info.dir_info
+        except (objects.ObjectFormatError, FileNotFoundError):
             self.hash_info.dir_info = None
-        if not self.hash_info.dir_info:
-            self.cache.set_dir_info(self.hash_info)
+
         return self.dir_cache
 
     def collect_used_dir_cache(
@@ -444,7 +533,9 @@ class BaseOutput:
         except DvcException:
             logger.debug(f"failed to pull cache for '{self}'")
 
-        if self.cache.changed_cache_file(self.hash_info):
+        try:
+            objects.check(self.cache, self.cache.get(self.hash_info))
+        except (FileNotFoundError, objects.ObjectFormatError):
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
@@ -455,8 +546,7 @@ class BaseOutput:
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
-            else:
-                return cache
+            return cache
 
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
@@ -530,8 +620,9 @@ class BaseOutput:
             raise cls.IsStageFileError(path)
 
         if stage:
-            check = stage.repo.tree.dvcignore.check_ignore(path)
-            if check.match:
+            abs_path = os.path.join(stage.wdir, path)
+            if stage.repo.tree.dvcignore.is_ignored(abs_path):
+                check = stage.repo.tree.dvcignore.check_ignore(abs_path)
                 raise cls.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
@@ -573,6 +664,6 @@ class BaseOutput:
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        self.hash_info = self.cache.merge(
-            ancestor_info, self.hash_info, other.hash_info
+        self.hash_info = objects.merge(
+            self.cache, ancestor_info, self.hash_info, other.hash_info
         )

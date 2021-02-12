@@ -14,9 +14,13 @@ class StageFileFormatError(DvcException):
 
 
 class StageFileDoesNotExistError(DvcException):
-    def __init__(self, fname):
+    DVC_IGNORED = "is dvc-ignored"
+    DOES_NOT_EXIST = "does not exist"
+
+    def __init__(self, fname, dvc_ignored=False):
         self.file = fname
-        super().__init__(f"'{self.file}' does not exist.")
+        message = self.DVC_IGNORED if dvc_ignored else self.DOES_NOT_EXIST
+        super().__init__(f"'{self.file}' {message}")
 
 
 class StageFileAlreadyExistsError(DvcException):
@@ -27,7 +31,7 @@ class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
         from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
-        msg = f"'{fname}' is not a DVC-file"
+        msg = f"'{fname}' is not a .dvc file"
 
         sname = fname + DVC_FILE_SUFFIX
         if is_dvc_file(sname):
@@ -80,13 +84,18 @@ class MissingDataSource(DvcException):
         super().__init__(msg)
 
 
-class StageNotFound(KeyError, DvcException):
+class StageNotFound(DvcException, KeyError):
     def __init__(self, file, name):
         self.file = file.relpath
         self.name = name
         super().__init__(
             f"Stage '{self.name}' not found inside '{self.file}' file"
         )
+
+    def __str__(self):
+        # `KeyError` quotes the message
+        # see: https://bugs.python.org/issue2651
+        return self.msg
 
 
 class StageNameUnspecified(DvcException):

@@ -78,7 +78,7 @@ def merge_patterns(pattern_a, prefix_a, pattern_b, prefix_b):
     """
     if not pattern_a:
         return pattern_b, prefix_b
-    elif not pattern_b:
+    if not pattern_b:
         return pattern_a, prefix_a
 
     longest_common_dir = os.path.commonpath([prefix_a, prefix_b])

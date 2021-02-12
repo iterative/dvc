@@ -57,6 +57,7 @@ def test_pull(mocker):
             "--force",
             "--recursive",
             "--run-cache",
+            "--glob",
         ]
     )
     assert cli_args.func == CmdDataPull
@@ -77,6 +78,7 @@ def test_pull(mocker):
         force=True,
         recursive=True,
         run_cache=True,
+        glob=True,
     )
 
 
@@ -96,6 +98,7 @@ def test_push(mocker):
             "--with-deps",
             "--recursive",
             "--run-cache",
+            "--glob",
         ]
     )
     assert cli_args.func == CmdDataPush
@@ -115,4 +118,5 @@ def test_push(mocker):
         with_deps=True,
         recursive=True,
         run_cache=True,
+        glob=True,
     )

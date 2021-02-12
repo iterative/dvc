@@ -46,24 +46,9 @@ def dynamic_chunk_size(func):
 
 
 @dynamic_chunk_size
-def _upload_to_bucket(
-    bucket,
-    from_file,
-    to_info,
-    chunk_size=None,
-    name=None,
-    no_progress_bar=False,
-):
+def _upload_to_bucket(bucket, fobj, to_info, chunk_size=None):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size)
-    with open(from_file, mode="rb") as fobj:
-        with Tqdm.wrapattr(
-            fobj,
-            "read",
-            desc=name or to_info.path,
-            total=os.path.getsize(from_file),
-            disable=no_progress_bar,
-        ) as wrapped:
-            blob.upload_from_file(wrapped)
+    blob.upload_from_file(fobj)
 
 
 class GSTree(BaseTree):
@@ -71,6 +56,7 @@ class GSTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
     PARAM_CHECKSUM = "md5"
+    DETAIL_FIELDS = frozenset(("md5", "size"))
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -138,6 +124,11 @@ class GSTree(BaseTree):
         blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
         return blob.exists()
 
+    def getsize(self, path_info):
+        bucket = self.gs.bucket(path_info.bucket)
+        blob = bucket.get_blob(path_info.path)
+        return blob.size
+
     def _list_paths(self, path_info, max_items=None):
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
             prefix=path_info.path, max_results=max_items
@@ -152,6 +143,27 @@ class GSTree(BaseTree):
             if fname.endswith("/"):
                 continue
             yield path_info.replace(fname)
+
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        import base64
+
+        assert recursive
+
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path
+        ):
+            if detail:
+                md5_hash = base64.b64decode(blob.md5_hash)
+                yield {
+                    "type": "file",
+                    "name": blob.name,
+                    "md5": md5_hash.hex(),
+                    "size": blob.size,
+                }
+            else:
+                yield blob.name
 
     def remove(self, path_info):
         if path_info.scheme != "gs":
@@ -182,10 +194,11 @@ class GSTree(BaseTree):
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
         import base64
         import codecs
 
+        assert name == self.PARAM_CHECKSUM
         bucket = path_info.bucket
         path = path_info.path
         blob = self.gs.bucket(bucket).get_blob(path)
@@ -200,17 +213,25 @@ class GSTree(BaseTree):
             size=blob.size,
         )
 
+    def _upload_fobj(self, fobj, to_info):
+        bucket = self.gs.bucket(to_info.bucket)
+        # With other references being given in the @dynamic_chunk_size
+        # this function does not respect tree.CHUNK_SIZE, since it is
+        # too big for GS to handle. Rather it dynamically calculates the
+        # best possible chunk size
+        _upload_to_bucket(bucket, fobj, to_info)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        bucket = self.gs.bucket(to_info.bucket)
-        _upload_to_bucket(
-            bucket,
-            from_file,
-            to_info,
-            name=name,
-            no_progress_bar=no_progress_bar,
-        )
+        with open(from_file, mode="rb") as fobj:
+            self.upload_fobj(
+                fobj,
+                to_info,
+                desc=name or to_info.path,
+                total=os.path.getsize(from_file),
+                no_progress_bar=no_progress_bar,
+            )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         bucket = self.gs.bucket(from_info.bucket)

@@ -19,6 +19,7 @@ class CmdImport(CmdBase):
                 rev=self.args.rev,
                 no_exec=self.args.no_exec,
                 desc=self.args.desc,
+                jobs=self.args.jobs,
             )
         except DvcException:
             logger.exception(
@@ -64,14 +65,14 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "--file",
-        help="Specify name of the DVC-file this command will generate.",
+        help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
     )
     import_parser.add_argument(
         "--no-exec",
         action="store_true",
         default=False,
-        help="Only create DVC-file without actually downloading it.",
+        help="Only create .dvc file without actually downloading it.",
     )
     import_parser.add_argument(
         "--desc",
@@ -81,5 +82,16 @@ def add_parser(subparsers, parent_parser):
             "User description of the data (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    import_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     import_parser.set_defaults(func=CmdImport)

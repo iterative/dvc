@@ -4,6 +4,8 @@ from unittest.mock import call
 import pytest
 
 from dvc.external_repo import external_repo
+from dvc.objects import save, stage
+from dvc.path_info import PathInfo
 from tests.unit.tree.test_repo import make_subrepo
 
 
@@ -26,13 +28,24 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")
 
     with external_repo(str(erepo_dir)) as repo:
-        spy = mocker.spy(repo, "make_repo")
+        spy = mocker.spy(repo.repo_tree, "repo_factory")
 
         list(repo.repo_tree.walk(repo.root_dir))  # drain
         assert spy.call_count == len(subrepos)
 
         paths = [os.path.join(repo.root_dir, path) for path in subrepo_paths]
-        spy.assert_has_calls([call(path) for path in paths], any_order=True)
+        spy.assert_has_calls(
+            [
+                call(
+                    path,
+                    scm=repo.scm,
+                    rev=repo.get_rev(),
+                    repo_factory=repo.repo_tree.repo_factory,
+                )
+                for path in paths
+            ],
+            any_order=True,
+        )
 
 
 @pytest.mark.parametrize("root_is_dvc", [False, True])
@@ -53,18 +66,18 @@ def test_subrepo_is_constructed_properly(
     with external_repo(
         str(tmp_dir), cache_dir=str(cache_dir), cache_types=["symlink"]
     ) as repo:
-        spy = mocker.spy(repo, "make_repo")
+        spy = mocker.spy(repo.repo_tree, "repo_factory")
 
         list(repo.repo_tree.walk(repo.root_dir))  # drain
         assert spy.call_count == 1
         subrepo = spy.return_value
 
         assert repo.url == str(tmp_dir)
-        assert repo.cache_dir == str(cache_dir)
+        assert repo.config["cache"]["dir"] == str(cache_dir)
         assert repo.cache.local.cache_dir == str(cache_dir)
         assert subrepo.cache.local.cache_dir == str(cache_dir)
 
-        assert repo.cache_types == ["symlink"]
+        assert repo.config["cache"]["type"] == ["symlink"]
         assert repo.cache.local.cache_types == ["symlink"]
         assert subrepo.cache.local.cache_types == ["symlink"]
 
@@ -96,6 +109,17 @@ def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
 
     with external_repo(str(tmp_dir)) as repo:
         spy = mocker.spy(repo.cloud, "pull")
-        repo.fetch_external(["dir1"], jobs=3)
+
+        obj = stage(
+            dvc.cache.local,
+            PathInfo(repo.root_dir) / "dir1",
+            repo.repo_tree,
+            follow_subrepos=False,
+            jobs=3,
+        )
+        save(
+            dvc.cache.local, obj, jobs=3,
+        )
+
         run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
         assert run_jobs == 3

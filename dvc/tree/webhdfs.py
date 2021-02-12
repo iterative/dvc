@@ -1,5 +1,7 @@
 import logging
 import os
+import posixpath
+import shutil
 import threading
 from contextlib import contextmanager
 from urllib.parse import urlparse
@@ -33,6 +35,7 @@ class WebHDFSTree(BaseTree):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
     PARAM_CHECKSUM = "checksum"
+    TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -42,16 +45,13 @@ class WebHDFSTree(BaseTree):
         if not url:
             return
 
-        parsed = urlparse(url)
-        user = parsed.username or config.get("user")
+        self.path_info = self.PATH_CLS(url)
 
-        self.path_info = self.PATH_CLS.from_parts(
-            scheme="webhdfs",
-            host=parsed.hostname,
-            user=user,
-            port=parsed.port,
-            path=parsed.path,
-        )
+        parsed = urlparse(url)
+
+        self.host = parsed.hostname
+        self.user = parsed.username or config.get("user")
+        self.port = parsed.port
 
         self.hdfscli_config = config.get("hdfscli_config")
         self.token = config.get("webhdfs_token")
@@ -62,7 +62,6 @@ class WebHDFSTree(BaseTree):
     def hdfs_client(self):
         import hdfs
 
-        logger.debug("URL: %s", self.path_info)
         logger.debug("HDFSConfig: %s", self.hdfscli_config)
 
         try:
@@ -79,35 +78,35 @@ class WebHDFSTree(BaseTree):
             if not any(err in exc_msg for err in errors):
                 raise
 
-            http_url = f"http://{self.path_info.host}:{self.path_info.port}"
+            http_url = f"http://{self.host}:{self.port}"
+            logger.debug("URL: %s", http_url)
 
             if self.token is not None:
                 client = hdfs.TokenClient(http_url, token=self.token, root="/")
             else:
                 client = hdfs.InsecureClient(
-                    http_url, user=self.path_info.user, root="/"
+                    http_url, user=self.user, root="/"
                 )
 
         return client
 
     @contextmanager
-    def open(self, path_info, mode="r", encoding=None):
+    def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb"}
 
         with self.hdfs_client.read(
             path_info.path, encoding=encoding
         ) as reader:
-            yield reader.read()
+            yield reader
 
     def walk_files(self, path_info, **kwargs):
         if not self.exists(path_info):
             return
 
         root = path_info.path
-        for path, _, files in self.hdfs_client.walk(root):
-            for file_ in files:
-                path = os.path.join(path, file_)
-                yield path_info.replace(path=path)
+        for path, _, fnames in self.hdfs_client.walk(root):
+            for fname in fnames:
+                yield path_info.replace(path=posixpath.join(path, fname))
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -122,7 +121,12 @@ class WebHDFSTree(BaseTree):
         status = self.hdfs_client.status(path_info.path, strict=False)
         return status is not None
 
-    def get_file_hash(self, path_info):
+    def getsize(self, path_info):
+        return self.hdfs_client.status(path_info.path)["length"]
+
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
+
         checksum = self.hdfs_client.checksum(path_info.path)
         hash_info = HashInfo(self.PARAM_CHECKSUM, checksum["bytes"])
 
@@ -131,12 +135,16 @@ class WebHDFSTree(BaseTree):
 
     def copy(self, from_info, to_info, **_kwargs):
         with self.hdfs_client.read(from_info.path) as reader:
-            content = reader.read()
-        self.hdfs_client.write(to_info.path, data=content)
+            with self.hdfs_client.write(to_info.path) as writer:
+                shutil.copyfileobj(reader, writer)
 
-    def move(self, from_info, to_info, mode=None):
+    def move(self, from_info, to_info):
         self.hdfs_client.makedirs(to_info.parent.path)
         self.hdfs_client.rename(from_info.path, to_info.path)
+
+    def _upload_fobj(self, fobj, to_info):
+        with self.hdfs_client.write(to_info.path) as fdest:
+            shutil.copyfileobj(fobj, fdest)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
@@ -155,7 +163,7 @@ class WebHDFSTree(BaseTree):
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
-        total = self.hdfs_client.status(from_info.path)["length"]
+        total = self.getsize(from_info)
         with Tqdm(
             desc=name, total=total, disable=no_progress_bar, bytes=True
         ) as pbar:

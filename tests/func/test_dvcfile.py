@@ -201,10 +201,12 @@ def test_remove_stage_lockfile(tmp_dir, dvc, run_copy):
     lock_file = dvc_file._lockfile
     assert dvc_file.exists()
     assert lock_file.exists()
-    assert {"copy-bar-foobar", "copy-foo-bar"} == set(lock_file.load().keys())
+    assert {"copy-bar-foobar", "copy-foo-bar"} == set(
+        lock_file.load()["stages"].keys()
+    )
     lock_file.remove_stage(stage)
 
-    assert ["copy-bar-foobar"] == list(lock_file.load().keys())
+    assert ["copy-bar-foobar"] == list(lock_file.load()["stages"].keys())
 
     # sanity check
     stage2.reload()
@@ -315,8 +317,8 @@ def test_dvcfile_dump_preserves_meta(tmp_dir, dvc, run_copy):
 
     data = dvcfile._load()[0]
     metadata = {"name": "copy-file"}
+    stage.meta = metadata
     data["stages"]["run_copy"]["meta"] = metadata
-    dump_yaml(dvcfile.path, data)
 
     dvcfile.dump(stage)
     assert dvcfile._load()[0] == data
@@ -355,7 +357,7 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
             - foo"""
     )
     tmp_dir.gen("dvc.yaml", text)
-    stage = dvc.get_stage(name="generate-foo")
+    stage = dvc.stage.load_one(name="generate-foo")
     stage.outs[0].use_cache = False
     dvcfile = stage.dvcfile
 
@@ -374,10 +376,11 @@ def test_dvcfile_dump_preserves_comments(tmp_dir, dvc):
     ],
 )
 def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
-    dump_yaml("dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]})
-    dvc.config["feature"]["parametrization"] = True
+    dump_yaml(
+        "dvc.yaml", {"stages": data, "vars": [{"foo": "foobar"}]},
+    )
 
-    stage = dvc.get_stage(name=name)
+    stage = dvc.stage.load_one(name=name)
     dvcfile = stage.dvcfile
 
     with pytest.raises(ParametrizedDumpError) as exc:

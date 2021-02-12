@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from math import pi
+from unittest.mock import mock_open
 
 import pytest
 
@@ -10,13 +11,13 @@ from dvc.parsing.context import (
     CtxList,
     KeyNotInContext,
     MergeError,
-    ParamsFileNotFound,
+    ParamsLoadError,
     Value,
+    recurse_not_a_node,
 )
 from dvc.tree.local import LocalTree
 from dvc.utils import relpath
-from dvc.utils.serialize import dump_yaml
-from tests.func.test_stage_resolver import recurse_not_a_node
+from dvc.utils.serialize import dump_yaml, dumps_yaml
 
 
 def test_context():
@@ -216,17 +217,13 @@ def test_overwrite_with_setitem():
 
 
 def test_load_from(mocker):
-    def _yaml_load(*args, **kwargs):
-        return {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
-
-    mocker.patch("dvc.parsing.context.LOADERS", {".yaml": _yaml_load})
-
-    class tree:
-        def exists(self, _):
-            return True
-
+    d = {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
+    tree = mocker.Mock(
+        open=mock_open(read_data=dumps_yaml(d)),
+        **{"exists.return_value": True, "isdir.return_value": False},
+    )
     file = "params.yaml"
-    c = Context.load_from(tree(), file)
+    c = Context.load_from(tree, file)
 
     assert asdict(c["x"].meta) == {
         "source": file,
@@ -262,22 +259,25 @@ def test_load_from(mocker):
 
 def test_clone():
     d = {
-        "lst": [
-            {"foo0": "foo0", "bar0": "bar0"},
-            {"foo1": "foo1", "bar1": "bar1"},
-        ]
+        "dct": {
+            "foo0": "foo0",
+            "bar0": "bar0",
+            "foo1": "foo1",
+            "bar1": "bar1",
+        },
+        "lst": [1, 2, 3],
     }
     c1 = Context(d)
     c2 = Context.clone(c1)
 
-    c2["lst"][0]["foo0"] = "foo"
-    del c2["lst"][1]["foo1"]
+    c2["dct"]["foo0"] = "foo"
+    del c2["dct"]["foo1"]
 
     assert c1 != c2
     assert c1 == Context(d)
-    assert c2.select("lst.0.foo0") == Value("foo")
+    assert c2.select("lst.0") == Value(1)
     with pytest.raises(KeyNotInContext):
-        c2.select("lst.1.foo1")
+        c2.select("lst.1.not_existing_key")
 
 
 def test_track(tmp_dir):
@@ -294,29 +294,29 @@ def test_track(tmp_dir):
 
     context = Context.load_from(tree, path)
 
-    def key_tracked(key):
-        assert len(context.tracked) == 1
-        return key in context.tracked[relpath(path)]
+    def key_tracked(d, key):
+        assert len(d) == 1
+        return key in d[relpath(path)]
 
-    with context.track():
+    with context.track() as tracked:
         context.select("lst")
-        assert key_tracked("lst")
+        assert key_tracked(tracked, "lst")
 
         context.select("dct")
-        assert not key_tracked("dct")
+        assert not key_tracked(tracked, "dct")
 
         context.select("dct.foo")
-        assert key_tracked("dct.foo")
+        assert key_tracked(tracked, "dct.foo")
 
         # Currently, it's unable to track dictionaries, as it can be merged
         # from multiple sources.
         context.select("lst.0")
-        assert not key_tracked("lst.0")
+        assert not key_tracked(tracked, "lst.0")
 
         # FIXME: either support tracking list values in ParamsDependency
         # or, prevent this from being tracked.
         context.select("lst.0.foo0")
-        assert key_tracked("lst.0.foo0")
+        assert key_tracked(tracked, "lst.0.foo0")
 
 
 def test_track_from_multiple_files(tmp_dir):
@@ -333,46 +333,51 @@ def test_track_from_multiple_files(tmp_dir):
     c = Context.load_from(tree, path2)
     context.merge_update(c)
 
-    def key_tracked(path, key):
-        return key in context.tracked[relpath(path)]
+    def key_tracked(d, path, key):
+        return key in d[relpath(path)]
 
-    with context.track():
+    with context.track() as tracked:
         context.select("Train")
-        assert not (key_tracked(path1, "Train") or key_tracked(path2, "Train"))
+        assert not (
+            key_tracked(tracked, path1, "Train")
+            or key_tracked(tracked, path2, "Train")
+        )
 
         context.select("Train.us")
         assert not (
-            key_tracked(path1, "Train.us") or key_tracked(path2, "Train.us")
+            key_tracked(tracked, path1, "Train.us")
+            or key_tracked(tracked, path2, "Train.us")
         )
 
         context.select("Train.us.lr")
-        assert key_tracked(path1, "Train.us.lr") and not key_tracked(
-            path2, "Train.us.lr"
+        assert key_tracked(tracked, path1, "Train.us.lr") and not key_tracked(
+            tracked, path2, "Train.us.lr"
         )
         context.select("Train.us.layers")
-        assert not key_tracked(path1, "Train.us.layers") and key_tracked(
-            path2, "Train.us.layers"
-        )
+        assert not key_tracked(
+            tracked, path1, "Train.us.layers"
+        ) and key_tracked(tracked, path2, "Train.us.layers")
 
     context = Context.clone(context)
-    assert not context.tracked
+    assert not context._tracked_data
 
     # let's see with an alias
     context["us"] = context["Train"]["us"]
-    with context.track():
+    with context.track() as tracked:
         context.select("us")
         assert not (
-            key_tracked(path1, "Train.us") or key_tracked(path2, "Train.us")
+            key_tracked(tracked, path1, "Train.us")
+            or key_tracked(tracked, path2, "Train.us")
         )
 
         context.select("us.lr")
-        assert key_tracked(path1, "Train.us.lr") and not key_tracked(
-            path2, "Train.us.lr"
+        assert key_tracked(tracked, path1, "Train.us.lr") and not key_tracked(
+            tracked, path2, "Train.us.lr"
         )
         context.select("Train.us.layers")
-        assert not key_tracked(path1, "Train.us.layers") and key_tracked(
-            path2, "Train.us.layers"
-        )
+        assert not key_tracked(
+            tracked, path1, "Train.us.layers"
+        ) and key_tracked(tracked, path2, "Train.us.layers")
 
 
 def test_node_value():
@@ -411,7 +416,29 @@ def test_resolve_resolves_dict_keys():
     }
 
 
-def test_merge_from_raises_if_file_not_exist(tmp_dir, dvc):
-    context = Context(foo="bar")
-    with pytest.raises(ParamsFileNotFound):
-        context.merge_from(dvc.tree, tmp_dir / DEFAULT_PARAMS_FILE)
+def test_resolve_resolves_boolean_value():
+    d = {"enabled": True, "disabled": False}
+    context = Context(d)
+
+    assert context.resolve_str("${enabled}") is True
+    assert context.resolve_str("${disabled}") is False
+
+    assert context.resolve_str("--flag ${enabled}") == "--flag true"
+    assert context.resolve_str("--flag ${disabled}") == "--flag false"
+
+
+def test_load_from_raises_if_file_not_exist(tmp_dir, dvc):
+    with pytest.raises(ParamsLoadError) as exc_info:
+        Context.load_from(dvc.tree, tmp_dir / DEFAULT_PARAMS_FILE)
+
+    assert str(exc_info.value) == "'params.yaml' does not exist"
+
+
+def test_load_from_raises_if_file_is_directory(tmp_dir, dvc):
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
+
+    with pytest.raises(ParamsLoadError) as exc_info:
+        Context.load_from(dvc.tree, data_dir)
+
+    assert str(exc_info.value) == "'data' is a directory"

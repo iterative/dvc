@@ -23,7 +23,7 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     tree = DvcTree(dvc)
-    with tree.open("foo", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
         assert fobj.read() == "foo"
 
 
@@ -32,7 +32,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     tree = DvcTree(dvc)
-    with tree.open("file", "r") as fobj:
+    with tree.open(PathInfo(tmp_dir) / "file", "r") as fobj:
         # NOTE: Unlike RepoTree, DvcTree should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
@@ -46,7 +46,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     # NOTE: Unlike RepoTree, DvcTree should not
     # be affected by a dirty workspace.
     with pytest.raises(FileNotFoundError):
-        with tree.open("file", "r"):
+        with tree.open(PathInfo(tmp_dir) / "file", "r"):
             pass
 
 
@@ -66,7 +66,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
             continue
 
         tree = DvcTree(dvc)
-        with tree.open("foo", "r") as fobj:
+        with tree.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
             assert fobj.read() == "foo"
 
 
@@ -133,25 +133,7 @@ def test_walk(tmp_dir, dvc):
     assert len(actual) == len(expected)
 
 
-@pytest.mark.parametrize(
-    "fetch,expected",
-    [
-        (False, []),
-        (
-            True,
-            [
-                PathInfo("dir") / "subdir1",
-                PathInfo("dir") / "subdir2",
-                PathInfo("dir") / "subdir1" / "foo1",
-                PathInfo("dir") / "subdir1" / "bar1",
-                PathInfo("dir") / "subdir2" / "foo2",
-                PathInfo("dir") / "foo",
-                PathInfo("dir") / "bar",
-            ],
-        ),
-    ],
-)
-def test_walk_dir(tmp_dir, dvc, fetch, expected):
+def test_walk_dir(tmp_dir, dvc):
     tmp_dir.gen(
         {
             "dir": {
@@ -164,9 +146,17 @@ def test_walk_dir(tmp_dir, dvc, fetch, expected):
     )
 
     dvc.add("dir")
-    tree = DvcTree(dvc, fetch=fetch)
+    tree = DvcTree(dvc)
 
-    expected = [str(tmp_dir / path) for path in expected]
+    expected = [
+        str(tmp_dir / "dir" / "subdir1"),
+        str(tmp_dir / "dir" / "subdir2"),
+        str(tmp_dir / "dir" / "subdir1" / "foo1"),
+        str(tmp_dir / "dir" / "subdir1" / "bar1"),
+        str(tmp_dir / "dir" / "subdir2" / "foo2"),
+        str(tmp_dir / "dir" / "foo"),
+        str(tmp_dir / "dir" / "bar"),
+    ]
 
     actual = []
     for root, dirs, files in tree.walk("dir"):
@@ -210,7 +200,7 @@ def test_isdvc(tmp_dir, dvc):
 def test_get_hash_file(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
     tree = DvcTree(dvc)
-    assert tree.get_hash(PathInfo(tmp_dir) / "foo") == HashInfo(
+    assert tree.get_hash(PathInfo(tmp_dir) / "foo", "md5") == HashInfo(
         "md5", "acbd18db4cc2f85cedef654fccc4a4d8",
     )
 
@@ -221,7 +211,7 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
     )
     tree = DvcTree(dvc)
     get_file_hash_spy = mocker.spy(tree, "get_file_hash")
-    assert tree.get_hash(PathInfo(tmp_dir) / "dir") == HashInfo(
+    assert tree.get_hash(PathInfo(tmp_dir) / "dir", "md5") == HashInfo(
         "md5", "8761c4e9acad696bee718615e23e22db.dir",
     )
     assert not get_file_hash_spy.called
@@ -231,12 +221,12 @@ def test_get_hash_granular(tmp_dir, dvc):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    tree = DvcTree(dvc, fetch=True)
+    tree = DvcTree(dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    assert tree.get_hash(subdir) == HashInfo(
+    assert tree.get_hash(subdir, "md5") == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
     )
-    assert tree.get_hash(subdir / "data") == HashInfo(
+    assert tree.get_hash(subdir / "data", "md5") == HashInfo(
         "md5", "8d777f385d3dfec8815d20f7496026dc",
     )
 
@@ -246,7 +236,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     tree = DvcTree(dvc)
-    actual = tree.get_hash(PathInfo(tmp_dir) / "file")
+    actual = tree.get_hash(PathInfo(tmp_dir) / "file", "md5")
     expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
     assert actual == expected
 
@@ -256,7 +246,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     (tmp_dir / "dir" / "baz").write_text("baz")
 
     tree = DvcTree(dvc)
-    actual = tree.get_hash(PathInfo(tmp_dir) / "dir")
+    actual = tree.get_hash(PathInfo(tmp_dir) / "dir", "md5")
     expected = HashInfo("md5", "5ea40360f5b4ec688df672a4db9c17d1.dir")
 
     assert actual == expected

@@ -5,7 +5,6 @@ import subprocess
 import threading
 from contextlib import contextmanager
 
-from dvc.env import DVC_CHECKPOINT, DVC_ROOT
 from dvc.utils import fix_env
 
 from .decorators import relock_repo, unlocked_repo
@@ -21,7 +20,9 @@ class CheckpointKilledError(StageCmdFailedError):
     pass
 
 
-def _nix_cmd(executable, cmd):
+def _make_cmd(executable, cmd):
+    if executable is None:
+        return cmd
     opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
     name = os.path.basename(executable).lower()
     return [executable] + opts.get(name, []) + ["-c", cmd]
@@ -43,44 +44,55 @@ def warn_if_fish(executable):
     )
 
 
-@unlocked_repo
-def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
+def _enforce_cmd_list(cmd):
+    assert cmd
+    return cmd if isinstance(cmd, list) else cmd.splitlines()
+
+
+def prepare_kwargs(stage, checkpoint_func=None, run_env=None):
     kwargs = {"cwd": stage.wdir, "env": fix_env(None), "close_fds": True}
-    if checkpoint_func:
-        # indicate that checkpoint cmd is being run inside DVC
-        kwargs["env"].update(_checkpoint_env(stage))
 
-    if os.name == "nt":
-        kwargs["shell"] = True
-        cmd = stage.cmd
-    else:
-        # NOTE: when you specify `shell=True`, `Popen` [1] will default to
-        # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
-        # But we actually want to run the same shell that we are running
-        # from right now, which is usually determined by the `SHELL` env
-        # var. So instead, we compose our command on our own, making sure
-        # to include special flags to prevent shell from reading any
-        # configs and modifying env, which may change the behavior or the
-        # command we are running. See [2] for more info.
-        #
-        # [1] https://github.com/python/cpython/blob/3.7/Lib/subprocess.py
-        #                                                            #L1426
-        # [2] https://github.com/iterative/dvc/issues/2506
-        #                                           #issuecomment-535396799
-        kwargs["shell"] = False
-        executable = os.getenv("SHELL") or "/bin/sh"
-        warn_if_fish(executable)
-        cmd = _nix_cmd(executable, stage.cmd)
+    kwargs["env"].update(stage.env(checkpoint_func=checkpoint_func))
+    if run_env:
+        kwargs["env"].update(run_env)
 
+    # NOTE: when you specify `shell=True`, `Popen` [1] will default to
+    # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
+    # But we actually want to run the same shell that we are running
+    # from right now, which is usually determined by the `SHELL` env
+    # var. So instead, we compose our command on our own, making sure
+    # to include special flags to prevent shell from reading any
+    # configs and modifying env, which may change the behavior or the
+    # command we are running. See [2] for more info.
+    #
+    # [1] https://github.com/python/cpython/blob/3.7/Lib/subprocess.py
+    #                                                            #L1426
+    # [2] https://github.com/iterative/dvc/issues/2506
+    #                                           #issuecomment-535396799
+    kwargs["shell"] = True if os.name == "nt" else False
+    return kwargs
+
+
+def display_command(cmd):
+    logger.info("%s %s", ">", cmd)
+
+
+def get_executable():
+    return (os.getenv("SHELL") or "/bin/sh") if os.name != "nt" else None
+
+
+def _run(stage, executable, cmd, checkpoint_func, **kwargs):
     main_thread = isinstance(
         threading.current_thread(),
         threading._MainThread,  # pylint: disable=protected-access
     )
+
+    exec_cmd = _make_cmd(executable, cmd)
     old_handler = None
     p = None
 
     try:
-        p = subprocess.Popen(cmd, **kwargs)
+        p = subprocess.Popen(exec_cmd, **kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -94,11 +106,32 @@ def cmd_run(stage, *args, checkpoint_func=None, **kwargs):
     retcode = None if not p else p.returncode
     if retcode != 0:
         if killed.is_set():
-            raise CheckpointKilledError(stage.cmd, retcode)
-        raise StageCmdFailedError(stage.cmd, retcode)
+            raise CheckpointKilledError(cmd, retcode)
+        raise StageCmdFailedError(cmd, retcode)
 
 
-def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
+def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
+    logger.info("Running stage '%s':", stage.addressing)
+    commands = _enforce_cmd_list(stage.cmd)
+    kwargs = prepare_kwargs(
+        stage, checkpoint_func=checkpoint_func, run_env=run_env
+    )
+    executable = get_executable()
+
+    if not dry:
+        warn_if_fish(executable)
+
+    for cmd in commands:
+        display_command(cmd)
+        if dry:
+            continue
+
+        _run(stage, executable, cmd, checkpoint_func=checkpoint_func, **kwargs)
+
+
+def run_stage(
+    stage, dry=False, force=False, checkpoint_func=None, run_env=None, **kwargs
+):
     if not (dry or force or checkpoint_func):
         from .cache import RunCacheNotFoundError
 
@@ -106,21 +139,10 @@ def run_stage(stage, dry=False, force=False, checkpoint_func=None, **kwargs):
             stage.repo.stage_cache.restore(stage, **kwargs)
             return
         except RunCacheNotFoundError:
-            pass
+            stage.save_deps()
 
-    callback_str = "callback " if stage.is_callback else ""
-    logger.info(
-        "Running %s" "stage '%s' with command:",
-        callback_str,
-        stage.addressing,
-    )
-    logger.info("\t%s", stage.cmd)
-    if not dry:
-        cmd_run(stage, checkpoint_func=checkpoint_func)
-
-
-def _checkpoint_env(stage):
-    return {DVC_CHECKPOINT: "1", DVC_ROOT: stage.repo.root_dir}
+    run = cmd_run if dry else unlocked_repo(cmd_run)
+    run(stage, dry=dry, checkpoint_func=checkpoint_func, run_env=run_env)
 
 
 @contextmanager

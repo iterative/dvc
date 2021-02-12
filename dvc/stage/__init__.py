@@ -2,12 +2,12 @@ import logging
 import os
 import string
 from collections import defaultdict
+from contextlib import suppress
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from funcy import cached_property, project
 
-import dvc.dependency as dependency
 import dvc.prompt as prompt
 from dvc.exceptions import (
     CacheLinkError,
@@ -15,7 +15,6 @@ from dvc.exceptions import (
     DvcException,
     MergeError,
 )
-from dvc.output.base import OutputDoesNotExistError
 from dvc.utils import relpath
 
 from . import params
@@ -33,12 +32,15 @@ from .utils import (
     fill_stage_dependencies,
     fill_stage_outputs,
     get_dump,
-    stage_dump_eq,
 )
+
+if TYPE_CHECKING:
+    from dvc.dvcfile import DVCFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
 INVALID_STAGENAME_CHARS = set(string.punctuation) - {"_", "-"}
+Env = Dict[str, str]
 
 
 def loads_from(cls, repo, path, wdir, data):
@@ -55,6 +57,7 @@ def loads_from(cls, repo, path, wdir, data):
                 Stage.PARAM_ALWAYS_CHANGED,
                 Stage.PARAM_MD5,
                 Stage.PARAM_DESC,
+                Stage.PARAM_META,
                 "name",
             ],
         ),
@@ -87,19 +90,31 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
 
-    if stage and stage.dvcfile.exists():
-        has_persist_outs = any(out.persist for out in stage.outs)
-        ignore_run_cache = (
-            not kwargs.get("run_cache", True) or has_persist_outs
-        )
-        if has_persist_outs:
-            logger.warning("Build cache is ignored when persisting outputs.")
-
-        if not ignore_run_cache and stage.can_be_skipped:
-            logger.info("Stage is cached, skipping")
-            return None
-
     return stage
+
+
+def restore_meta(stage):
+    from .exceptions import StageNotFound
+
+    if not stage.dvcfile.exists():
+        return
+
+    try:
+        old = stage.reload()
+    except StageNotFound:
+        return
+
+    # will be used to restore comments later
+    # noqa, pylint: disable=protected-access
+    stage._stage_text = old._stage_text
+
+    stage.meta = old.meta
+    stage.desc = old.desc
+
+    old_desc = {out.def_path: out.desc for out in old.outs}
+
+    for out in stage.outs:
+        out.desc = old_desc.get(out.def_path, None)
 
 
 class Stage(params.StageParams):
@@ -120,7 +135,8 @@ class Stage(params.StageParams):
         always_changed=False,
         stage_text=None,
         dvcfile=None,
-        desc=None,
+        desc: Optional[str] = None,
+        meta=None,
     ):
         if deps is None:
             deps = []
@@ -138,7 +154,8 @@ class Stage(params.StageParams):
         self.always_changed = always_changed
         self._stage_text = stage_text
         self._dvcfile = dvcfile
-        self.desc = desc
+        self.desc: Optional[str] = desc
+        self.meta = meta
         self.raw_data = RawData()
 
     @property
@@ -152,7 +169,7 @@ class Stage(params.StageParams):
         self.__dict__.pop("relpath", None)
 
     @property
-    def dvcfile(self):
+    def dvcfile(self) -> "DVCFile":
         if self.path and self._dvcfile and self.path == self._dvcfile.path:
             return self._dvcfile
 
@@ -162,13 +179,13 @@ class Stage(params.StageParams):
                 "and is detached from dvcfile."
             )
 
-        from dvc.dvcfile import Dvcfile
+        from dvc.dvcfile import make_dvcfile
 
-        self._dvcfile = Dvcfile(self.repo, self.path)
+        self._dvcfile = make_dvcfile(self.repo, self.path)
         return self._dvcfile
 
     @dvcfile.setter
-    def dvcfile(self, dvcfile):
+    def dvcfile(self, dvcfile: "DVCFile") -> None:
         self._dvcfile = dvcfile
 
     def __repr__(self):
@@ -205,7 +222,7 @@ class Stage(params.StageParams):
 
     @property
     def is_data_source(self):
-        """Whether the DVC-file was created with `dvc add` or `dvc import`"""
+        """Whether the DVC file was created with `dvc add` or `dvc import`"""
         return self.cmd is None
 
     @property
@@ -214,11 +231,11 @@ class Stage(params.StageParams):
         A callback stage is always considered as changed,
         so it runs on every `dvc repro` call.
         """
-        return not self.is_data_source and len(self.deps) == 0
+        return self.cmd and not any((self.deps, self.outs))
 
     @property
     def is_import(self):
-        """Whether the DVC-file was created with `dvc import`."""
+        """Whether the DVC file was created with `dvc import`."""
         return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
 
     @property
@@ -226,7 +243,9 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        return isinstance(self.deps[0], dependency.RepoDependency)
+        from dvc.dependency import RepoDependency
+
+        return isinstance(self.deps[0], RepoDependency)
 
     @property
     def is_checkpoint(self):
@@ -236,20 +255,57 @@ class Stage(params.StageParams):
         """
         return any(out.checkpoint for out in self.outs)
 
+    def short_description(self) -> Optional["str"]:
+        desc: Optional["str"] = None
+        if self.desc:
+            with suppress(ValueError):
+                # try to use first non-empty line as a description
+                line = next(filter(None, self.desc.splitlines()))
+                desc = line.strip()
+        return desc
+
+    def _read_env(self, out, checkpoint_func=None) -> Env:
+        env: Env = {}
+        if out.live:
+            from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
+            from dvc.output import BaseOutput
+            from dvc.schema import LIVE_PROPS
+
+            env[DVCLIVE_PATH] = str(out.path_info)
+            if isinstance(out.live, dict):
+                config = project(out.live, LIVE_PROPS)
+
+                env[DVCLIVE_SUMMARY] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
+                )
+                env[DVCLIVE_HTML] = str(
+                    int(config.get(BaseOutput.PARAM_LIVE_HTML, True))
+                )
+        elif out.checkpoint and checkpoint_func:
+            from dvc.env import DVC_CHECKPOINT
+
+            env.update({DVC_CHECKPOINT: "1"})
+        return env
+
+    def env(self, checkpoint_func=None) -> Env:
+        from dvc.env import DVC_ROOT
+
+        env: Env = {}
+        if self.repo:
+            env.update({DVC_ROOT: self.repo.root_dir})
+
+        for out in self.outs:
+            current = self._read_env(out, checkpoint_func=checkpoint_func)
+            if set(env.keys()).intersection(set(current.keys())):
+                raise DvcException("Duplicated env variable")
+            env.update(current)
+        return env
+
     def changed_deps(self):
         if self.frozen:
             return False
 
-        if self.is_callback:
-            logger.debug(
-                '%s is a "callback" stage '
-                "(has a command and no dependencies) and thus always "
-                "considered as changed.",
-                self,
-            )
-            return True
-
-        if self.always_changed or self.is_checkpoint:
+        if self.is_callback or self.always_changed or self.is_checkpoint:
             return True
 
         return self._changed_deps()
@@ -304,7 +360,7 @@ class Stage(params.StageParams):
     def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if (out.persist or out.checkpoint) and not force:
+            if (out.persist or out.checkpoint or out.live) and not force:
                 out.unprotect()
                 continue
 
@@ -354,45 +410,15 @@ class Stage(params.StageParams):
 
         return self
 
-    def update(self, rev=None):
+    def update(self, rev=None, to_remote=False, remote=None, jobs=None):
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
-        update_import(self, rev=rev)
-
-    @property
-    def can_be_skipped(self):
-        return (
-            self.is_cached and not self.is_callback and not self.always_changed
+        update_import(
+            self, rev=rev, to_remote=to_remote, remote=remote, jobs=jobs
         )
 
     def reload(self):
         return self.dvcfile.stage
-
-    @property
-    def is_cached(self):
-        """Checks if this stage has been already ran and stored"""
-        old = self.reload()
-        if old.changed_outs():
-            return False
-
-        # NOTE: need to save checksums for deps in order to compare them
-        # with what is written in the old stage.
-        self.save_deps()
-        if not stage_dump_eq(Stage, old.dumpd(), self.dumpd()):
-            return False
-
-        # NOTE: committing to prevent potential data duplication. For example
-        #
-        #    $ dvc config cache.type hardlink
-        #    $ echo foo > foo
-        #    $ dvc add foo
-        #    $ rm -f foo
-        #    $ echo foo > foo
-        #    $ dvc add foo # should replace foo with a link to cache
-        #
-        old.commit()
-
-        return True
 
     def dumpd(self):
         return get_dump(self)
@@ -418,6 +444,8 @@ class Stage(params.StageParams):
             dep.save()
 
     def save_outs(self, allow_missing=False):
+        from dvc.output.base import OutputDoesNotExistError
+
         for out in self.outs:
             try:
                 out.save()
@@ -446,11 +474,13 @@ class Stage(params.StageParams):
         )
 
     @rwlocked(write=["outs"])
-    def commit(self, allow_missing=False):
+    def commit(self, allow_missing=False, filter_info=None):
+        from dvc.output.base import OutputDoesNotExistError
+
         link_failures = []
-        for out in self.outs:
+        for out in self.filter_outs(filter_info):
             try:
-                out.commit()
+                out.commit(filter_info=filter_info)
             except OutputDoesNotExistError:
                 if not (allow_missing or out.checkpoint):
                     raise
@@ -472,7 +502,8 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if not self.frozen and self.is_import:
-            sync_import(self, dry, force)
+            jobs = kwargs.get("jobs", None)
+            sync_import(self, dry, force, jobs)
         elif not self.frozen and self.cmd:
             run_stage(self, dry, force, **kwargs)
         else:
@@ -484,6 +515,8 @@ class Stage(params.StageParams):
                 check_missing_outputs(self)
 
         if not dry:
+            if kwargs.get("checkpoint_func", None):
+                allow_missing = True
             self.save(allow_missing=allow_missing)
             if not no_commit:
                 self.commit(allow_missing=allow_missing)
@@ -495,11 +528,14 @@ class Stage(params.StageParams):
         return filter(_func, self.outs) if path_info else self.outs
 
     @rwlocked(write=["outs"])
-    def checkout(self, **kwargs):
+    def checkout(self, allow_missing=False, **kwargs):
         stats = defaultdict(list)
-        kwargs["allow_missing"] = self.is_checkpoint
         for out in self.filter_outs(kwargs.get("filter_info")):
-            key, outs = self._checkout(out, **kwargs)
+            key, outs = self._checkout(
+                out,
+                allow_missing=allow_missing or self.is_checkpoint,
+                **kwargs,
+            )
             if key:
                 stats[key].extend(outs)
         return stats
@@ -593,13 +629,13 @@ class Stage(params.StageParams):
 
         if not stage.is_data_source or stage.deps or len(stage.outs) > 1:
             raise MergeError(
-                "unable to auto-merge DVC-files that weren't "
+                "unable to auto-merge DVC files that weren't "
                 "created by `dvc add`"
             )
 
         if ancestor_out and not stage.outs:
             raise MergeError(
-                "unable to auto-merge DVC-files with deleted outputs"
+                "unable to auto-merge DVC files with deleted outputs"
             )
 
     def merge(self, ancestor, other):
@@ -624,12 +660,16 @@ class Stage(params.StageParams):
 
         self.outs[0].merge(ancestor_out, other.outs[0])
 
+    def dump(self, **kwargs):
+        self.dvcfile.dump(self, **kwargs)
+
 
 class PipelineStage(Stage):
     def __init__(self, *args, name=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.cmd_changed = False
+        self.tracked_vars = {}
 
     def __eq__(self, other):
         return super().__eq__(other) and self.name == other.name
@@ -647,10 +687,6 @@ class PipelineStage(Stage):
 
     def reload(self):
         return self.dvcfile.stages[self.name]
-
-    @property
-    def is_cached(self):
-        return self.name in self.dvcfile.stages and super().is_cached
 
     def _status_stage(self, ret):
         if self.cmd_changed:

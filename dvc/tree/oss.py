@@ -45,6 +45,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
 
+        self.bucket = self.path_info.bucket
         self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
 
         self.key_id = (
@@ -64,12 +65,11 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
     def oss_service(self):
         import oss2
 
-        logger.debug(f"URL: {self.path_info}")
         logger.debug(f"key id: {self.key_id}")
         logger.debug(f"key secret: {self.key_secret}")
 
         auth = oss2.Auth(self.key_id, self.key_secret)
-        bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)
+        bucket = oss2.Bucket(auth, self.endpoint, self.bucket)
 
         # Ensure bucket exists
         try:
@@ -84,7 +84,7 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         return bucket
 
     def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.path_info.bucket
+        assert path_info.bucket == self.bucket
 
         return self.oss_service.sign_url("GET", path_info.path, expires)
 
@@ -116,6 +116,9 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         logger.debug(f"Removing oss://{path_info}")
         self.oss_service.delete_object(path_info.path)
 
+    def _upload_fobj(self, fobj, to_info):
+        self.oss_service.put_object(to_info.path, fobj)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
@@ -128,6 +131,11 @@ class OSSTree(BaseTree):  # pylint:disable=abstract-method
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
-            self.oss_service.get_object_to_file(
-                from_info.path, to_file, progress_callback=pbar.update_to
+            import oss2
+
+            oss2.resumable_download(
+                self.oss_service,
+                from_info.path,
+                to_file,
+                progress_callback=pbar.update_to,
             )

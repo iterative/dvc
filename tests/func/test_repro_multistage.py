@@ -6,7 +6,7 @@ import pytest
 from funcy import lsplit
 
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
-from dvc.exceptions import CyclicGraphError
+from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.main import main
 from dvc.stage import PipelineStage
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -53,10 +53,6 @@ class TestReproUnderDirMultiStage(
 class TestReproDepDirWithOutputsUnderItMultiStage(
     MultiStageRun, test_repro.TestReproDepDirWithOutputsUnderIt
 ):
-    pass
-
-
-class TestReproNoDepsMultiStage(MultiStageRun, test_repro.TestReproNoDeps):
     pass
 
 
@@ -168,6 +164,19 @@ def test_non_existing_stage_name(tmp_dir, dvc, run_copy):
         dvc.freeze(":copy-file1-file3")
 
     assert main(["freeze", ":copy-file1-file3"]) != 0
+
+
+def test_repro_frozen(tmp_dir, dvc, run_copy):
+    (data_stage,) = tmp_dir.dvc_gen("data", "foo")
+    stage0 = run_copy("data", "stage0", name="copy-data-stage0")
+    run_copy("stage0", "stage1", name="copy-data-stage1")
+    run_copy("stage1", "stage2", name="copy-data-stage2")
+
+    dvc.freeze("copy-data-stage1")
+
+    tmp_dir.gen("data", "bar")
+    stages = dvc.reproduce()
+    assert stages == [data_stage, stage0]
 
 
 def test_downstream(tmp_dir, dvc):
@@ -286,7 +295,9 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
 
     assert dvc.status([target]) == {target: ["changed command"]}
     assert dvc.reproduce(target)[0] == stage
-    m.assert_called_once_with(stage, checkpoint_func=None)
+    m.assert_called_once_with(
+        stage, checkpoint_func=None, dry=False, run_env=None
+    )
 
 
 def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
@@ -382,8 +393,6 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
 
 
 def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
-    from dvc.exceptions import ReproductionError
-
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_yaml(
@@ -403,8 +412,6 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
 
 
 def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
-    from dvc.exceptions import ReproductionError
-
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
     dump_yaml(
@@ -493,7 +500,7 @@ def test_repro_multiple_params(tmp_dir, dvc):
     assert len(stage.outs) == 1
 
     lockfile = stage.dvcfile._lockfile
-    assert lockfile.load()["read_params"]["params"] == {
+    assert lockfile.load()["stages"]["read_params"]["params"] == {
         "params2.yaml": {
             "lists": [42, 42.0, "42"],
             "floats": 42.0,
@@ -518,3 +525,43 @@ def test_repro_multiple_params(tmp_dir, dvc):
     dump_yaml(tmp_dir / "params.yaml", params)
 
     assert dvc.reproduce(stage.addressing) == [stage]
+
+
+@pytest.mark.parametrize("multiline", [True, False])
+def test_repro_list_of_commands_in_order(tmp_dir, dvc, multiline):
+    cmd = ["echo foo>foo", "echo bar>bar"]
+    if multiline:
+        cmd = "\n".join(cmd)
+
+    dump_yaml("dvc.yaml", {"stages": {"multi": {"cmd": cmd}}})
+
+    (tmp_dir / "dvc.yaml").write_text(
+        dedent(
+            """\
+            stages:
+              multi:
+                cmd:
+                - echo foo>foo
+                - echo bar>bar
+        """
+        )
+    )
+    dvc.reproduce(targets=["multi"])
+    assert (tmp_dir / "foo").read_text() == "foo\n"
+    assert (tmp_dir / "bar").read_text() == "bar\n"
+
+
+@pytest.mark.parametrize("multiline", [True, False])
+def test_repro_list_of_commands_raise_and_stops_after_failure(
+    tmp_dir, dvc, multiline
+):
+    cmd = ["echo foo>foo", "failed_command", "echo baz>bar"]
+    if multiline:
+        cmd = "\n".join(cmd)
+
+    dump_yaml("dvc.yaml", {"stages": {"multi": {"cmd": cmd}}})
+
+    with pytest.raises(ReproductionError):
+        dvc.reproduce(targets=["multi"])
+    assert (tmp_dir / "foo").read_text() == "foo\n"
+    assert not (tmp_dir / "bar").exists()

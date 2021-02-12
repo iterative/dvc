@@ -1,35 +1,66 @@
 import logging
 import os
+from typing import TYPE_CHECKING
 
 import colorama
 
-from dvc.dvcfile import Dvcfile, is_dvc_file
-
 from ..exceptions import (
     CacheLinkError,
+    InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from ..output.base import OutputDoesNotExistError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
-from ..utils import LARGE_DIR_SIZE, resolve_paths
+from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc.types import TargetType
+
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def add(
-    repo, targets, recursive=False, no_commit=False, fname=None, **kwargs,
+def add(  # noqa: C901
+    repo,
+    targets: "TargetType",
+    recursive=False,
+    no_commit=False,
+    fname=None,
+    to_remote=False,
+    **kwargs,
 ):
+    from dvc.utils.collections import ensure_list
+
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
-    if isinstance(targets, str):
-        targets = [targets]
+    targets = ensure_list(targets)
+
+    to_cache = kwargs.get("out") and not to_remote
+    invalid_opt = None
+    if to_remote or to_cache:
+        message = "{option} can't be used with "
+        message += "--to-remote" if to_remote else "-o"
+        if len(targets) != 1:
+            invalid_opt = "multiple targets"
+        elif no_commit:
+            invalid_opt = "--no-commit option"
+        elif recursive:
+            invalid_opt = "--recursive option"
+    else:
+        message = "{option} can't be used without --to-remote"
+        if kwargs.get("remote"):
+            invalid_opt = "--remote"
+        elif kwargs.get("jobs"):
+            invalid_opt = "--jobs"
+
+    if invalid_opt is not None:
+        raise InvalidArgumentError(message.format(option=invalid_opt))
 
     link_failures = []
     stages_list = []
@@ -47,7 +78,7 @@ def add(
                 logger.warning(
                     "You are adding a large directory '{target}' recursively,"
                     " consider tracking it as a whole instead.\n"
-                    "{purple}HINT:{nc} Remove the generated DVC-file and then"
+                    "{purple}HINT:{nc} Remove the generated DVC file and then"
                     " run `{cyan}dvc add {target}{nc}`".format(
                         purple=colorama.Fore.MAGENTA,
                         cyan=colorama.Fore.CYAN,
@@ -78,11 +109,20 @@ def add(
                 )
             except OutputDuplicationError as exc:
                 raise OutputDuplicationError(
-                    exc.output, set(exc.stages) - set(stages)
+                    exc.output, list(set(exc.stages) - set(stages))
                 )
 
             link_failures.extend(
-                _process_stages(repo, stages, no_commit, pbar)
+                _process_stages(
+                    repo,
+                    sub_targets,
+                    stages,
+                    no_commit,
+                    pbar,
+                    to_remote,
+                    to_cache,
+                    **kwargs,
+                )
             )
             stages_list += stages
 
@@ -103,8 +143,42 @@ def add(
     return stages_list
 
 
-def _process_stages(repo, stages, no_commit, pbar):
+def _process_stages(
+    repo, sub_targets, stages, no_commit, pbar, to_remote, to_cache, **kwargs
+):
     link_failures = []
+    from dvc.dvcfile import Dvcfile
+
+    from ..output.base import OutputDoesNotExistError
+
+    if to_remote or to_cache:
+        # Already verified in the add()
+        (stage,) = stages
+        (target,) = sub_targets
+        (out,) = stage.outs
+
+        if to_remote:
+            out.hash_info = repo.cloud.transfer(
+                target,
+                jobs=kwargs.get("jobs"),
+                remote=kwargs.get("remote"),
+                command="add",
+            )
+        else:
+            from dvc.objects import transfer
+            from dvc.tree import get_cloud_tree
+
+            from_tree = get_cloud_tree(repo, url=target)
+            out.hash_info = transfer(
+                out.cache,
+                from_tree,
+                from_tree.path_info,
+                jobs=kwargs.get("jobs"),
+            )
+            out.checkout()
+
+        Dvcfile(repo, stage.path).dump(stage)
+        return link_failures
 
     with Tqdm(
         total=len(stages),
@@ -132,6 +206,8 @@ def _process_stages(repo, stages, no_commit, pbar):
 
 
 def _find_all_targets(repo, target, recursive):
+    from dvc.dvcfile import is_dvc_file
+
     if os.path.isdir(target) and recursive:
         return [
             os.fspath(path)
@@ -150,28 +226,29 @@ def _find_all_targets(repo, target, recursive):
 
 
 def _create_stages(
-    repo, targets, fname, pbar=None, external=False, glob=False, desc=None,
+    repo,
+    targets,
+    fname,
+    pbar=None,
+    external=False,
+    glob=False,
+    desc=None,
+    **kwargs,
 ):
-    from glob import iglob
+    from dvc.dvcfile import Dvcfile
+    from dvc.stage import Stage, create_stage, restore_meta
 
-    from dvc.stage import Stage, create_stage
-
-    if glob:
-        expanded_targets = [
-            exp_target
-            for target in targets
-            for exp_target in iglob(target, recursive=True)
-        ]
-    else:
-        expanded_targets = targets
+    expanded_targets = glob_targets(targets, glob=glob)
 
     stages = []
     for out in Tqdm(
         expanded_targets,
-        desc="Creating DVC-files",
+        desc="Creating DVC files",
         disable=len(expanded_targets) < LARGE_DIR_SIZE,
         unit="file",
     ):
+        if kwargs.get("out"):
+            out = resolve_output(out, kwargs["out"])
         path, wdir, out = resolve_paths(repo, out)
         stage = create_stage(
             Stage,
@@ -181,10 +258,10 @@ def _create_stages(
             outs=[out],
             external=external,
         )
-        if stage:
-            Dvcfile(repo, stage.path).remove()
-            if desc:
-                stage.outs[0].desc = desc
+        restore_meta(stage)
+        Dvcfile(repo, stage.path).remove()
+        if desc:
+            stage.outs[0].desc = desc
 
         repo._reset()  # pylint: disable=protected-access
 

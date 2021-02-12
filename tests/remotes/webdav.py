@@ -1,14 +1,12 @@
 # pylint:disable=abstract-method
 import os
-from pathlib import Path
 from wsgiref.simple_server import make_server
 
 import pytest
-from funcy import first
+from funcy import cached_property, first
 from wsgidav.wsgidav_app import WsgiDAVApp
 
 from dvc.path_info import WebDAVURLInfo
-from dvc.utils.fs import makedirs
 from tests.utils.httpd import run_server_on_thread
 
 from .base import Base
@@ -21,15 +19,27 @@ class Webdav(Base, WebDAVURLInfo):
     def get_url(port):  # pylint: disable=arguments-differ
         return f"webdav://localhost:{port}"
 
+    @cached_property
+    def client(self):
+        from webdav3.client import Client
+
+        user, secrets = first(AUTH.items())
+        return Client(
+            {
+                "webdav_hostname": self.replace(path="").url,
+                "webdav_login": user,
+                "webdav_password": secrets["password"],
+            }
+        )
+
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
-        assert parents
-        makedirs(self.path, exist_ok=exist_ok)
+        assert mode == 0o777
+        parent_dirs = list(reversed(self.parents))[1:] if parents else []
+        for d in parent_dirs + [self]:
+            self.client.mkdir(d.path)  # pylint: disable=no-member
 
     def write_bytes(self, contents):
-        Path(self.path).write_bytes(contents)
-
-    def write_text(self, contents, encoding=None, errors=None):
-        Path(self.path).write_text(contents, encoding=encoding, errors=errors)
+        self.client.upload_to(contents, self.path)
 
 
 @pytest.fixture

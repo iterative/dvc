@@ -157,7 +157,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch.object(
         BaseTree, "_collect_dir", return_value=dir_info,
     ):
-        hash1 = dvc.cache.local.tree.get_hash(path_info)
+        hash1 = dvc.cache.local.tree.get_hash(path_info, "md5")
 
     dir_info = DirInfo.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
@@ -165,7 +165,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch.object(
         BaseTree, "_collect_dir", return_value=dir_info,
     ):
-        hash2 = dvc.cache.local.tree.get_hash(path_info)
+        hash2 = dvc.cache.local.tree.get_hash(path_info, "md5")
 
     assert hash1 == hash2
 
@@ -190,13 +190,13 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
         remote = dvc.cloud.get_remote("upstream")
         assert not remote.tree.exists(
-            remote.tree.hash_to_path_info(foo.hash_info.value)
+            remote.cache.hash_to_path_info(foo.hash_info.value)
         )
         assert remote.tree.exists(
-            remote.tree.hash_to_path_info(bar.hash_info.value)
+            remote.cache.hash_to_path_info(bar.hash_info.value)
         )
         assert not remote.tree.exists(
-            remote.tree.hash_to_path_info(baz.hash_info.value)
+            remote.cache.hash_to_path_info(baz.hash_info.value)
         )
 
     # Push everything and delete local cache
@@ -273,8 +273,8 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
 
     # foo .dir file should be uploaded after bar
     remote = dvc.cloud.get_remote("upstream")
-    foo_path = remote.tree.hash_to_path_info(foo.hash_info.value)
-    bar_path = remote.tree.hash_to_path_info(
+    foo_path = remote.cache.hash_to_path_info(foo.hash_info.value)
+    bar_path = remote.cache.hash_to_path_info(
         foo.hash_info.dir_info.trie[("bar",)].value
     )
     paths = [args[1] for args, _ in mocked_upload.call_args_list]
@@ -414,7 +414,7 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.tree.hash_to_path_info(
+    remote_cache_file = remote.cache.hash_to_path_info(
         stage.outs[0].hash_info.value
     )
 
@@ -432,14 +432,14 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
 
     # remove one of the cache files for directory
     file_hashes = list(used.child_keys(cache.tree.scheme, dir_hash))
-    remove(cache.tree.hash_to_path_info(file_hashes[0]))
+    remove(cache.hash_to_path_info(file_hashes[0]))
 
     dvc.push()
-    assert not remote.tree.exists(remote.tree.hash_to_path_info(dir_hash))
+    assert not remote.tree.exists(remote.cache.hash_to_path_info(dir_hash))
     assert not remote.tree.exists(
-        remote.tree.hash_to_path_info(file_hashes[0])
+        remote.cache.hash_to_path_info(file_hashes[0])
     )
-    assert remote.tree.exists(remote.tree.hash_to_path_info(file_hashes[1]))
+    assert remote.tree.exists(remote.cache.hash_to_path_info(file_hashes[1]))
 
 
 def test_upload_exists(tmp_dir, dvc, local_remote):

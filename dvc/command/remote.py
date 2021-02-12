@@ -3,7 +3,6 @@ import logging
 
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-from dvc.config import ConfigError, merge
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
@@ -17,12 +16,16 @@ class CmdRemote(CmdConfig):
             self.args.name = self.args.name.lower()
 
     def _check_exists(self, conf):
+        from dvc.config import ConfigError
+
         if self.args.name not in conf["remote"]:
             raise ConfigError(f"remote '{self.args.name}' doesn't exist.")
 
 
 class CmdRemoteAdd(CmdRemote):
     def run(self):
+        from dvc.config import ConfigError
+
         if self.args.default:
             logger.info(f"Setting '{self.args.name}' as a default remote.")
 
@@ -46,13 +49,14 @@ class CmdRemoteRemove(CmdRemote):
             self._check_exists(conf)
             del conf["remote"][self.args.name]
 
+        up_to_level = self.args.level or "repo"
         # Remove core.remote refs to this remote in any shadowing configs
         for level in reversed(self.config.LEVELS):
             with self.config.edit(level) as conf:
                 if conf["core"].get("remote") == self.args.name:
                     del conf["core"]["remote"]
 
-            if level == self.args.level:
+            if level == up_to_level:
                 break
 
         return 0
@@ -60,6 +64,8 @@ class CmdRemoteRemove(CmdRemote):
 
 class CmdRemoteModify(CmdRemote):
     def run(self):
+        from dvc.config import merge
+
         with self.config.edit(self.args.level) as conf:
             merged = self.config.load_config_to_level(self.args.level)
             merge(merged, conf)
@@ -77,9 +83,10 @@ class CmdRemoteModify(CmdRemote):
 
 class CmdRemoteDefault(CmdRemote):
     def run(self):
+        from dvc.config import ConfigError
 
         if self.args.name is None and not self.args.unset:
-            conf = self.config.load_one(self.args.level)
+            conf = self.config.read(self.args.level)
             try:
                 print(conf["core"]["remote"])
             except KeyError:
@@ -107,7 +114,7 @@ class CmdRemoteDefault(CmdRemote):
 
 class CmdRemoteList(CmdRemote):
     def run(self):
-        conf = self.config.load_one(self.args.level)
+        conf = self.config.read(self.args.level)
         for name, conf in conf["remote"].items():
             logger.info("{}\t{}".format(name, conf["url"]))
         return 0
@@ -119,6 +126,8 @@ class CmdRemoteRename(CmdRemote):
             conf["core"]["remote"] = self.args.new
 
     def run(self):
+        from dvc.config import ConfigError
+
         all_config = self.config.load_config_to_level(None)
         if self.args.new in all_config.get("remote", {}):
             raise ConfigError(
@@ -133,8 +142,9 @@ class CmdRemoteRename(CmdRemote):
             del conf["remote"][self.args.name]
             self._rename_default(conf)
 
+        up_to_level = self.args.level or "repo"
         for level in reversed(self.config.LEVELS):
-            if level == self.args.level:
+            if level == up_to_level:
                 break
             with self.config.edit(level) as level_conf:
                 self._rename_default(level_conf)

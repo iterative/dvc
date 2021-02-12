@@ -4,12 +4,12 @@ import pytest
 
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
+DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
     """\
     import os
     import sys
     import shutil
-    from time import sleep
 
     from dvc.api import make_checkpoint
 
@@ -50,8 +50,18 @@ def exp_stage(tmp_dir, scm, dvc):
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         name="copy-file",
+        deps=["copy.py"],
     )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
     scm.commit("init")
     return stage
 
@@ -61,13 +71,18 @@ def checkpoint_stage(tmp_dir, scm, dvc):
     tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
-        cmd="python checkpoint.py foo 5 params.yaml metrics.yaml",
+        cmd=(
+            f"python checkpoint.py foo {DEFAULT_ITERATIONS} "
+            "params.yaml metrics.yaml"
+        ),
         metrics_no_cache=["metrics.yaml"],
         params=["foo"],
         checkpoints=["foo"],
+        deps=["checkpoint.py"],
         no_exec=True,
         name="checkpoint-file",
     )
-    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml"])
+    scm.add(["dvc.yaml", "checkpoint.py", "params.yaml", ".gitignore"])
     scm.commit("init")
+    stage.iterations = DEFAULT_ITERATIONS
     return stage

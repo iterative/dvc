@@ -16,6 +16,9 @@ class CmdUpdate(CmdBase):
                 targets=self.args.targets,
                 rev=self.args.rev,
                 recursive=self.args.recursive,
+                to_remote=self.args.to_remote,
+                remote=self.args.remote,
+                jobs=self.args.jobs,
             )
         except DvcException:
             logger.exception("failed update data")
@@ -33,7 +36,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     update_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to update.",
+        "targets", nargs="+", help=".dvc files to update.",
     ).complete = completion.DVC_FILE
     update_parser.add_argument(
         "--rev",
@@ -47,5 +50,28 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Update all stages in the specified directory.",
+    )
+    update_parser.add_argument(
+        "--to-remote",
+        action="store_true",
+        default=False,
+        help="Update data directly on the remote",
+    )
+    update_parser.add_argument(
+        "-r",
+        "--remote",
+        help="Remote storage to perform updates to",
+        metavar="<name>",
+    )
+    update_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of jobs to run simultaneously. "
+            "The default value is 4 * cpu_count(). "
+            "For SSH remotes, the default is 4. "
+        ),
+        metavar="<number>",
     )
     update_parser.set_defaults(func=CmdUpdate)

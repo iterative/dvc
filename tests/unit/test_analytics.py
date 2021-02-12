@@ -82,11 +82,8 @@ def test_send(mock_post, tmp_path):
     ],
 )
 def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_dir):
-    import configobj
-
-    conf = configobj.ConfigObj({"core": config})
-    conf.filename = dvc.config.files["repo"]
-    conf.write()
+    with dvc.config.edit(validate=False) as conf:
+        conf["core"] = config
 
     # reset DVC_TEST env var, which affects `is_enabled()`
     monkeypatch.delenv("DVC_TEST")

@@ -1,10 +1,13 @@
+import json
 import os
+import textwrap
 from uuid import uuid4
 
 import pytest
 
 from dvc.cache import Cache
 from dvc.dependency.base import DependencyDoesNotExistError
+from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.stage import Stage
 from dvc.utils.fs import makedirs
@@ -68,7 +71,7 @@ class TestImportFilename(TestDvc):
         os.mkdir("sub")
 
         path = os.path.join("sub", "bar.dvc")
-        ret = main(["import-url", "--file", path, self.external_source])
+        ret = main(["import-url", "--file", path, self.external_source, "out"])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists(path))
 
@@ -207,3 +210,136 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
     )
 
     assert dvc.status() == {}
+
+
+def test_import_url_preserve_meta(tmp_dir, dvc):
+    text = textwrap.dedent(
+        """\
+        # top comment
+        desc: top desc
+        deps:
+        - path: foo # dep comment
+        outs:
+        - path: bar # out comment
+          desc: out desc
+        meta: some metadata
+    """
+    )
+    tmp_dir.gen("bar.dvc", text)
+
+    tmp_dir.gen("foo", "foo")
+    dvc.imp_url("foo", out="bar")
+    assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
+        """\
+        # top comment
+        desc: top desc
+        deps:
+        - path: foo # dep comment
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        outs:
+        - path: bar # out comment
+          desc: out desc
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        meta: some metadata
+        md5: be7ade0aa89cc8d56e320867a9de9740
+        frozen: true
+    """
+    )
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+        pytest.lazy_fixture("http"),
+    ],
+    indirect=True,
+)
+def test_import_url_to_remote_single_file(
+    tmp_dir, dvc, workspace, local_remote
+):
+    workspace.gen("foo", "foo")
+
+    url = "remote://workspace/foo"
+    stage = dvc.imp_url(url, to_remote=True)
+
+    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo.dvc").exists()
+
+    assert len(stage.deps) == 1
+    assert stage.deps[0].def_path == url
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
+    workspace.gen(
+        {
+            "data": {
+                "foo": "foo",
+                "bar": "bar",
+                "sub_dir": {"baz": "sub_dir/baz"},
+            }
+        }
+    )
+
+    url = "remote://workspace/data"
+    stage = dvc.imp_url(url, to_remote=True)
+
+    assert not (tmp_dir / "data").exists()
+    assert (tmp_dir / "data.dvc").exists()
+
+    assert len(stage.deps) == 1
+    assert stage.deps[0].def_path == url
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    with open(local_remote.hash_to_path_info(hash_info.value)) as stream:
+        file_parts = json.load(stream)
+
+    assert len(file_parts) == 3
+    assert {file_part["relpath"] for file_part in file_parts} == {
+        "foo",
+        "bar",
+        "sub_dir/baz",
+    }
+
+    for file_part in file_parts:
+        assert (
+            local_remote.hash_to_path_info(file_part["md5"]).read_text()
+            == file_part["relpath"]
+        )
+
+
+def test_import_url_to_remote_invalid_combinations(dvc):
+    with pytest.raises(InvalidArgumentError, match="--no-exec"):
+        dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)

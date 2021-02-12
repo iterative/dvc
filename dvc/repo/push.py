@@ -1,3 +1,4 @@
+from ..utils import glob_targets
 from . import locked
 
 
@@ -13,14 +14,18 @@ def push(
     recursive=False,
     all_commits=False,
     run_cache=False,
+    revs=None,
+    glob=False,
 ):
     used_run_cache = self.stage_cache.push(remote) if run_cache else []
 
     if isinstance(targets, str):
         targets = [targets]
 
+    expanded_targets = glob_targets(targets, glob=glob)
+
     used = self.used_cache(
-        targets,
+        expanded_targets,
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
@@ -30,6 +35,7 @@ def push(
         jobs=jobs,
         recursive=recursive,
         used_run_cache=used_run_cache,
+        revs=revs,
     )
 
     return len(used_run_cache) + self.cloud.push(used, jobs, remote=remote)

@@ -150,6 +150,8 @@ def test_memory_runs_of_multiple_stages(tmp_dir, dvc, run_copy, mocker):
 
 
 def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
+    from dvc.output import base
+
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-foo-bar")
 
@@ -157,7 +159,7 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
 
     mock_restore = mocker.spy(dvc.stage_cache, "restore")
     mock_run = mocker.patch("dvc.stage.run.cmd_run")
-    mock_checkout = mocker.spy(dvc.cache.local, "checkout")
+    mock_checkout = mocker.spy(base, "checkout")
 
     # removing any information that `dvc` could use to re-generate from
     (tmp_dir / "bar").unlink()
@@ -168,6 +170,6 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
 
     mock_restore.assert_called_once_with(stage, pull=True)
     mock_run.assert_not_called()
-    mock_checkout.assert_called_once()
+    assert mock_checkout.call_count == 2
     assert (tmp_dir / "bar").exists() and not (tmp_dir / "foo").unlink()
     assert (tmp_dir / PIPELINE_LOCK).exists()

@@ -1,2 +1,2 @@
 PyInstaller==3.5
-psutil
+numpy==1.19.3

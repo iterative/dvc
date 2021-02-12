@@ -60,7 +60,7 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].fspath, outs[0])
-        self.assertEqual(stage.outs[0].hash_info.value, file_md5(self.FOO)[0])
+        self.assertEqual(stage.outs[0].hash_info.value, file_md5(self.FOO))
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):
@@ -527,32 +527,6 @@ class TestCmdRunOverwrite(TestDvc):
                 self.FOO,
                 "-d",
                 self.CODE,
-                "-o",
-                "out",
-                "--file",
-                "out.dvc",
-                "--single-stage",
-                "python",
-                self.CODE,
-                self.FOO,
-                "out",
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-        # NOTE: check that dvcfile was NOT overwritten
-        self.assertEqual(stage_mtime, os.path.getmtime("out.dvc"))
-        stage_mtime = os.path.getmtime("out.dvc")
-
-        time.sleep(1)
-
-        ret = main(
-            [
-                "run",
-                "-d",
-                self.FOO,
-                "-d",
-                self.CODE,
                 "--force",
                 "--no-run-cache",
                 "--single-stage",
@@ -660,30 +634,40 @@ class TestCmdRunWorkingDirectory(TestDvc):
         self.assertEqual(d[Stage.PARAM_WDIR], "..")
 
 
-def test_rerun_deterministic(tmp_dir, run_copy):
+def test_rerun_deterministic(tmp_dir, run_copy, mocker):
+    from dvc.stage.run import subprocess
+
     tmp_dir.gen("foo", "foo content")
 
-    assert run_copy("foo", "out", single_stage=True) is not None
-    assert run_copy("foo", "out", single_stage=True) is None
+    spy = mocker.spy(subprocess, "Popen")
+
+    run_copy("foo", "out", single_stage=True)
+    assert spy.called
+
+    spy.reset_mock()
+    run_copy("foo", "out", single_stage=True)
+    assert not spy.called
 
 
-def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy):
+def test_rerun_deterministic_ignore_cache(tmp_dir, run_copy, mocker):
+    from dvc.stage.run import subprocess
+
     tmp_dir.gen("foo", "foo content")
 
-    assert run_copy("foo", "out", single_stage=True) is not None
-    assert (
-        run_copy("foo", "out", run_cache=False, single_stage=True) is not None
-    )
+    spy = mocker.spy(subprocess, "Popen")
+
+    run_copy("foo", "out", single_stage=True)
+    assert spy.called
+
+    spy.reset_mock()
+    run_copy("foo", "out", run_cache=False, single_stage=True)
+    assert spy.called
 
 
 def test_rerun_callback(dvc):
     def run_callback(force=False):
         return dvc.run(
-            cmd="echo content > out",
-            outs=["out"],
-            deps=[],
-            force=force,
-            single_stage=True,
+            cmd="echo content > out", force=force, single_stage=True,
         )
 
     assert run_callback() is not None
@@ -768,6 +752,7 @@ class TestRunPersist(TestDvc):
             [
                 "run",
                 "--single-stage",
+                "--always-changed",
                 self.outs_command,
                 file,
                 f"echo {file_content} >> {file}",
@@ -830,14 +815,15 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
         data_dir_stage = self.DATA_DIR + DVC_FILE_SUFFIX
         data_stage = os.path.basename(self.DATA) + DVC_FILE_SUFFIX
 
-        self.assertIn("Paths for outs:\n", error_output)
+        self.assertIn("The output paths:\n", error_output)
         self.assertIn(
             f"\n'{self.DATA_DIR}'('{data_dir_stage}')\n", error_output,
         )
         self.assertIn(f"\n'{self.DATA}'('{data_stage}')\n", error_output)
         self.assertIn(
-            "\noverlap. To avoid unpredictable behaviour, rerun "
-            "command with non overlapping outs paths.",
+            "overlap and are thus in the same tracked directory.\n"
+            "To keep reproducibility, outputs should be in separate "
+            "tracked directories or tracked individually.",
             error_output,
         )
 
@@ -938,37 +924,6 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
                     mock_checkout.assert_not_called()
 
 
-class TestPersistentOutput(TestDvc):
-    def test_ignore_run_cache(self):
-        warning = "Build cache is ignored when persisting outputs."
-
-        with open("immutable", "w") as fobj:
-            fobj.write("1")
-
-        cmd = [
-            "run",
-            "--force",
-            "--single-stage",
-            "--deps",
-            "immutable",
-            "--outs-persist",
-            "greetings",
-            "echo hello>>greetings",
-        ]
-
-        with self._caplog.at_level(logging.WARNING, logger="dvc"):
-            assert main(cmd) == 0
-            assert warning not in self._caplog.text
-
-            assert main(cmd) == 0
-            assert warning in self._caplog.text
-
-        # Even if the "immutable" dependency didn't change
-        # it should run the command again, as it is "ignoring build cache"
-        with open("greetings") as fobj:
-            assert "hello\nhello\n" == fobj.read()
-
-
 def test_bad_stage_fname(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo content")
 
@@ -1005,30 +960,70 @@ def test_metrics_dir(tmp_dir, dvc, caplog, run_copy_metrics, metrics_type):
     )
 
 
-def test_run_force_doesnot_preserve_comments_and_meta(tmp_dir, dvc, run_copy):
-    """Depends on loading of stage on `run` where we don't check the file
-    for stage already exists, so we don't copy `stage_text` over due to which
-    `meta` and `comments` don't get preserved."""
+def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
     tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
     text = textwrap.dedent(
         """\
+      desc: top desc
       cmd: python copy.py foo bar
       deps:
       - path: copy.py
       - path: foo
       outs:
-      # comment not preserved
+      # comment preserved
       - path: bar
+        desc: out desc
       meta:
         name: copy-foo-bar
     """
     )
     (tmp_dir / "bar.dvc").write_text(text)
     dvc.reproduce("bar.dvc")
-    assert "comment" in (tmp_dir / "bar.dvc").read_text()
-    assert "meta" in (tmp_dir / "bar.dvc").read_text()
+
+    # CRLF on windows makes the generated file bigger in size
+    code_size = 143 if os.name == "nt" else 142
+    assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
+        f"""\
+        desc: top desc
+        cmd: python copy.py foo bar
+        deps:
+        - path: copy.py
+          md5: 90c27dd80b698fe766f0c3ee0b6b9729
+          size: {code_size}
+        - path: foo
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        outs:
+        # comment preserved
+        - path: bar
+          desc: out desc
+          md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+        meta:
+          name: copy-foo-bar
+        md5: be659ce4a33cebb85d4e8e1335d394ad
+    """
+    )
 
     run_copy("foo1", "bar1", single_stage=True, force=True, fname="bar.dvc")
-
-    assert "comment" not in (tmp_dir / "bar.dvc").read_text()
-    assert "meta" not in (tmp_dir / "bar.dvc").read_text()
+    assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
+        f"""\
+        desc: top desc
+        cmd: python copy.py foo1 bar1
+        deps:
+        - path: foo1
+          md5: 299a0be4a5a79e6a59fdd251b19d78bb
+          size: 4
+        - path: copy.py
+          md5: 90c27dd80b698fe766f0c3ee0b6b9729
+          size: {code_size}
+        outs:
+        # comment preserved
+        - path: bar1
+          md5: 299a0be4a5a79e6a59fdd251b19d78bb
+          size: 4
+        meta:
+          name: copy-foo-bar
+        md5: 9e725b11cb393e6a7468369fa50328b7
+    """
+    )

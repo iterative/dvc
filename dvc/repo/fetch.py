@@ -1,8 +1,8 @@
 import logging
+import os
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError
-from dvc.scm.base import CloneError
+from dvc.exceptions import DownloadError, NoOutputOrStageError
 
 from . import locked
 
@@ -22,6 +22,7 @@ def fetch(
     recursive=False,
     all_commits=False,
     run_cache=False,
+    revs=None,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -49,6 +50,7 @@ def fetch(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
+        revs=revs,
     )
 
     downloaded = 0
@@ -79,20 +81,49 @@ def fetch(
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
+    from dvc.objects import save, stage
+    from dvc.path_info import PathInfo
+    from dvc.scm.base import CloneError
 
-    failed, downloaded = 0, 0
+    failed = 0
+
+    results = []
+
+    def cb(result):
+        results.append(result)
+
     cache = self.cache.local
     try:
         with external_repo(
             repo_url, repo_rev, cache_dir=cache.cache_dir
         ) as repo:
-            d, f, _ = repo.fetch_external(files, jobs=jobs)
-            downloaded += d
-            failed += f
+            root = PathInfo(repo.root_dir)
+            for path in files:
+                path_info = root / path
+                try:
+                    used = repo.used_cache(
+                        [os.fspath(path_info)],
+                        force=True,
+                        jobs=jobs,
+                        recursive=True,
+                    )
+                    cb(repo.cloud.pull(used, jobs))
+                except (NoOutputOrStageError, NoRemoteError):
+                    pass
+                obj = stage(
+                    cache,
+                    path_info,
+                    repo.repo_tree,
+                    jobs=jobs,
+                    follow_subrepos=False,
+                )
+                save(
+                    cache, obj, jobs=jobs, download_callback=cb,
+                )
     except CloneError:
         failed += 1
         logger.exception(
             "failed to fetch data for '{}'".format(", ".join(files))
         )
 
-    return downloaded, failed
+    return sum(results), failed

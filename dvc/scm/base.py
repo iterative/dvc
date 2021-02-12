@@ -1,6 +1,9 @@
 """Manages source control systems (e.g. Git) in DVC."""
 
 import os
+from contextlib import contextmanager
+
+from funcy import get_in
 
 from dvc.exceptions import DvcException
 
@@ -34,6 +37,10 @@ class NoSCMError(SCMError):
         super().__init__(msg)
 
 
+class MergeConflictError(SCMError):
+    pass
+
+
 class Base:
     """Base class for source control management driver implementations."""
 
@@ -65,6 +72,10 @@ class Base:
         submodule.
         """
         return True
+
+    def is_ignored(self, path):  # pylint: disable=unused-argument
+        """Returns whether or not path is ignored by SCM."""
+        return False
 
     def ignore(self, path):  # pylint: disable=unused-argument
         """Makes SCM ignore a specified path."""
@@ -165,8 +176,28 @@ class Base:
         to track new files
         """
 
+    @contextmanager
+    def track_file_changes(self, config=None):
+        autostage = get_in(config or {}, ["core", "autostage"])
+
+        try:
+            yield
+        except Exception:
+            self.cleanup_ignores()
+            raise
+
+        self.reset_ignores()
+        if autostage:
+            self.track_changed_files()
+        else:
+            self.remind_to_track()
+        self.reset_tracked_files()
+
     def belongs_to_scm(self, path):
         """Return boolean whether file belongs to scm"""
 
     def close(self):
         """ Method to close the files """
+
+    def _reset(self) -> None:
+        pass

@@ -36,7 +36,7 @@ def test_get_file_hash(tmp_dir, azure):
     to_info = azure
     tree.upload(PathInfo("foo"), to_info)
     assert tree.exists(to_info)
-    hash_info = tree.get_file_hash(to_info)
+    hash_info = tree.get_file_hash(to_info, "etag")
     assert hash_info.name == "etag"
     hash_ = hash_info.value
     assert hash_

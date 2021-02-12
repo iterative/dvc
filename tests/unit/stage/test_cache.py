@@ -2,6 +2,8 @@ import os
 
 import pytest
 
+from dvc.output import base
+
 
 def test_stage_cache(tmp_dir, dvc, mocker):
     tmp_dir.gen("dep", "dep")
@@ -42,12 +44,12 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
+    checkout_spy = mocker.spy(base, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 2
+    assert checkout_spy.call_count == 4
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -95,12 +97,12 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
+    checkout_spy = mocker.spy(base, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 2
+    assert checkout_spy.call_count == 4
 
     assert (tmp_dir / "out").exists()
     assert (tmp_dir / "out_no_cache").exists()
@@ -149,12 +151,12 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(dvc.cache.local, "checkout")
+    checkout_spy = mocker.spy(base, "checkout")
     with dvc.lock, dvc.state:
         stage.run()
 
     assert not run_spy.called
-    assert checkout_spy.call_count == 2
+    assert checkout_spy.call_count == 4
 
     assert (tmp_dir / "wdir" / "out").exists()
     assert (tmp_dir / "wdir" / "out_no_cache").exists()
@@ -173,6 +175,8 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         config["cache"]["shared"] = "group"
 
     dvc.cache = Cache(dvc)
+
+    assert not os.path.exists(dvc.cache.local.cache_dir)
 
     run_copy("foo", "bar", name="copy-foo-bar")
 
@@ -198,7 +202,7 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         dir_mode = 0o777
         file_mode = 0o666
     else:
-        dir_mode = 0o775
+        dir_mode = 0o2775
         file_mode = 0o664
 
     assert _mode(dvc.cache.local.cache_dir) == dir_mode
@@ -208,14 +212,22 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     assert _mode(cache_file) == file_mode
 
 
-def test_always_changed(mocker):
-    from dvc.repo import Repo
-    from dvc.stage import Stage
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"cmd": "cmd"},
+        {"cmd": "cmd", "deps": ["path"]},
+        {"cmd": "cmd", "outs": ["path"]},
+        {"always_changed": True},
+    ],
+)
+def test_unhashable(tmp_dir, dvc, mocker, kwargs):
+    from dvc.stage import Stage, create_stage
     from dvc.stage.cache import RunCacheNotFoundError, StageCache
 
-    repo = mocker.Mock(spec=Repo)
-    cache = StageCache(repo)
-    stage = Stage(repo, always_changed=True)
+    cache = StageCache(dvc)
+    stage = create_stage(Stage, path="stage.dvc", repo=dvc, **kwargs)
     get_stage_hash = mocker.patch("dvc.stage.cache._get_stage_hash")
     assert cache.save(stage) is None
     assert get_stage_hash.not_called

@@ -5,6 +5,8 @@ import os
 import pydoc
 import sys
 
+from rich.pager import Pager
+
 from dvc.env import DVC_PAGER
 from dvc.utils import format_link
 
@@ -46,3 +48,8 @@ def find_pager():
 
 def pager(text):
     find_pager()(text)
+
+
+class DvcPager(Pager):
+    def show(self, content: str) -> None:
+        pager(content)

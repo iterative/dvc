@@ -6,6 +6,7 @@ from ..scheme import Schemes
 
 def get_cloud_cache(tree):
     from .base import CloudCache
+    from .gdrive import GDriveCache
     from .local import LocalCache
     from .ssh import SSHCache
 
@@ -14,6 +15,9 @@ def get_cloud_cache(tree):
 
     if tree.scheme == Schemes.SSH:
         return SSHCache(tree)
+
+    if tree.scheme == Schemes.GDRIVE:
+        return GDriveCache(tree)
 
     return CloudCache(tree)
 
@@ -56,7 +60,7 @@ class Cache:
         elif "dir" not in config:
             settings = None
         else:
-            from ..config import LOCAL_COMMON
+            from ..config_schema import LOCAL_COMMON
 
             settings = {"url": config["dir"]}
             for opt in LOCAL_COMMON.keys():
@@ -65,18 +69,23 @@ class Cache:
 
         self._cache[Schemes.LOCAL] = _get_cache(repo, settings)
 
-        for scheme in self.CLOUD_SCHEMES:
+    def _initalize_cloud_cache(self, schemes):
+        for scheme in schemes:
             remote = self.config.get(scheme)
             settings = {"name": remote} if remote else None
-            self._cache[scheme] = _get_cache(repo, settings)
+            self._cache[scheme] = _get_cache(self.repo, settings)
 
     def __getattr__(self, name):
+        if name not in self._cache and name in self.CLOUD_SCHEMES:
+            self._initalize_cloud_cache([name])
+
         try:
             return self._cache[name]
         except KeyError as exc:
             raise AttributeError from exc
 
     def by_scheme(self):
+        self._initalize_cloud_cache(self.CLOUD_SCHEMES)
         yield from self._cache.items()
 
 

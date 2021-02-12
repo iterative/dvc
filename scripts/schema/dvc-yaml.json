@@ -102,8 +102,8 @@
           "type": "object",
           "properties": {
             "cmd": {
-              "type": "string",
-              "description": "Command to run"
+              "type": ["string", "array"],
+              "description": "Command(s) to run"
             },
             "wdir": {
               "type": "string",

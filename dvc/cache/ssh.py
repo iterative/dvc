@@ -66,7 +66,7 @@ class SSHCache(CloudCache):
             with ThreadPoolExecutor(
                 max_workers=jobs or self.tree.JOBS
             ) as executor:
-                path_infos = [self.tree.hash_to_path_info(x) for x in hashes]
+                path_infos = [self.hash_to_path_info(x) for x in hashes]
                 chunks = to_chunks(path_infos, num_chunks=self.tree.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)

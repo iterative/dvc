@@ -67,6 +67,8 @@ class AzureTree(BaseTree):
         "knack": "knack",
     }
     PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
+
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000
 
@@ -76,10 +78,12 @@ class AzureTree(BaseTree):
         self._account_url = None
         url = config.get("url", "azure://")
         self.path_info = self.PATH_CLS(url)
+        self.bucket = self.path_info.bucket
 
-        if not self.path_info.bucket:
+        if not self.bucket:
             container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
+            self.bucket = self.path_info.bucket
 
         self._conn_str = config.get(
             "connection_string"
@@ -126,8 +130,6 @@ class AzureTree(BaseTree):
         )
         from azure.storage.blob import BlobServiceClient
 
-        logger.debug(f"URL {self.path_info}")
-
         if self._conn_str:
             logger.debug(f"Using connection string '{self._conn_str}'")
             blob_service = BlobServiceClient.from_connection_string(
@@ -139,10 +141,8 @@ class AzureTree(BaseTree):
                 self._account_url, credential=self._credential
             )
 
-        logger.debug(f"Container name {self.path_info.bucket}")
-        container_client = blob_service.get_container_client(
-            self.path_info.bucket
-        )
+        logger.debug(f"Container name {self.bucket}")
+        container_client = blob_service.get_container_client(self.bucket)
 
         try:  # verify that container exists
             container_client.get_container_properties()
@@ -204,6 +204,27 @@ class AzureTree(BaseTree):
 
             yield path_info.replace(path=fname)
 
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        assert recursive
+
+        container_client = self.blob_service.get_container_client(
+            path_info.bucket
+        )
+        for blob in container_client.list_blobs(
+            name_starts_with=path_info.path
+        ):
+            if detail:
+                yield {
+                    "type": "file",
+                    "name": blob.name,
+                    "size": blob.size,
+                    "etag": blob.etag,
+                }
+            else:
+                yield blob.name
+
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
@@ -213,22 +234,35 @@ class AzureTree(BaseTree):
             path_info.bucket, path_info.path
         ).delete_blob()
 
-    def get_file_hash(self, path_info):
+    def getsize(self, path_info):
+        blob_client = self.blob_service.get_blob_client(
+            path_info.bucket, path_info.path
+        )
+        properties = blob_client.get_blob_properties()
+        return properties.size
+
+    def get_file_hash(self, path_info, name):
+        assert name == self.PARAM_CHECKSUM
         return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))
+
+    def _upload_fobj(self, fobj, to_info):
+        blob_client = self.blob_service.get_blob_client(
+            to_info.bucket, to_info.path
+        )
+        blob_client.upload_blob(fobj, overwrite=True)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        # import pdb; pdb.set_trace()
-        blob_client = self.blob_service.get_blob_client(
-            to_info.bucket, to_info.path
-        )
         total = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
-            with Tqdm.wrapattr(
-                fobj, "read", desc=name, total=total, disable=no_progress_bar
-            ) as wrapped:
-                blob_client.upload_blob(wrapped, overwrite=True)
+            self.upload_fobj(
+                fobj,
+                to_info,
+                desc=name,
+                total=total,
+                no_progress_bar=no_progress_bar,
+            )
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs

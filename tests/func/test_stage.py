@@ -6,7 +6,7 @@ import pytest
 from dvc.dvcfile import SingleStageFile
 from dvc.main import main
 from dvc.output.local import LocalOutput
-from dvc.repo import Repo
+from dvc.repo import Repo, lock_repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.exceptions import StageFileFormatError
 from dvc.stage.run import run_stage
@@ -216,9 +216,9 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
         deep_subrepo_dir.gen("subrepo_file", "subrepo file content")
         deep_subrepo.add("subrepo_file")
 
-    stages = dvc.collect(None)
-    subrepo_stages = subrepo.collect(None)
-    deep_subrepo_stages = deep_subrepo.collect(None)
+    stages = dvc.stage.collect(None)
+    subrepo_stages = subrepo.stage.collect(None)
+    deep_subrepo_stages = deep_subrepo.stage.collect(None)
 
     assert stages == []
     assert subrepo_stages != []
@@ -306,5 +306,9 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
         callback = mocker.Mock()
     else:
         callback = None
-    run_stage(stage, checkpoint_func=callback)
-    mock_cmd_run.assert_called_with(stage, checkpoint_func=callback)
+
+    with lock_repo(dvc):
+        run_stage(stage, checkpoint_func=callback)
+    mock_cmd_run.assert_called_with(
+        stage, checkpoint_func=callback, dry=False, run_env=None
+    )

@@ -1,7 +1,5 @@
 """Exceptions raised by the dvc."""
-from funcy import first
-
-from dvc.utils import error_link, format_link, relpath
+from typing import List
 
 
 class DvcException(Exception):
@@ -9,6 +7,7 @@ class DvcException(Exception):
 
     def __init__(self, msg, *args):
         assert msg
+        self.msg = msg
         super().__init__(msg, *args)
 
 
@@ -26,6 +25,8 @@ class OutputDuplicationError(DvcException):
     """
 
     def __init__(self, output, stages):
+        from funcy import first
+
         assert isinstance(output, str)
         assert all(hasattr(stage, "relpath") for stage in stages)
         if len(stages) == 1:
@@ -49,10 +50,12 @@ class OutputNotFoundError(DvcException):
     """
 
     def __init__(self, output, repo=None):
+        from dvc.utils import relpath
+
         self.output = output
         self.repo = repo
         super().__init__(
-            "Unable to find DVC-file with output '{path}'".format(
+            "Unable to find DVC file with output '{path}'".format(
                 path=relpath(self.output)
             )
         )
@@ -170,11 +173,11 @@ class BadMetricError(DvcException):
         )
 
 
-class NoMetricsError(DvcException):
+class MetricsError(DvcException):
     pass
 
 
-class NoMetricsParsedError(NoMetricsError):
+class NoMetricsParsedError(MetricsError):
     def __init__(self, command):
         super().__init__(
             f"Could not parse {command} files. Use `-v` option to see more "
@@ -182,13 +185,22 @@ class NoMetricsParsedError(NoMetricsError):
         )
 
 
-class NoMetricsFoundError(NoMetricsError):
+class NoMetricsFoundError(MetricsError):
     def __init__(self, command, run_options):
         super().__init__(
             f"No {command} files in this repository. "
             f"Use `{run_options}` options for "
             f"`dvc run` to mark stage outputs as {command}."
         )
+
+
+class MetricDoesNotExistError(MetricsError):
+    def __init__(self, targets: List[str]):
+        if len(targets) == 1:
+            msg = "'{}' does not exist."
+        else:
+            msg = "'{}' do not exist."
+        super().__init__(msg.format(", ".join(targets)))
 
 
 class RecursiveAddingWhileUsingFilename(DvcException):
@@ -227,11 +239,6 @@ class FileMissingError(DvcException):
         )
 
 
-class FileOwnershipError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"file '{path}' not owned by user! ")
-
-
 class DvcIgnoreInCollectedDirError(DvcException):
     def __init__(self, ignore_dirname):
         super().__init__(
@@ -242,6 +249,8 @@ class DvcIgnoreInCollectedDirError(DvcException):
 
 class GitHookAlreadyExistsError(DvcException):
     def __init__(self, hook_name):
+        from dvc.utils import format_link
+
         super().__init__(
             "Hook '{}' already exists. Please refer to {} for more "
             "info.".format(
@@ -266,6 +275,8 @@ class UploadError(DvcException):
 
 class CheckoutError(DvcException):
     def __init__(self, target_infos, stats=None):
+        from dvc.utils import error_link
+
         self.target_infos = target_infos
         self.stats = stats
         targets = [str(t) for t in target_infos]
@@ -291,6 +302,8 @@ class NoRemoteInExternalRepoError(DvcException):
 
 class NoOutputInExternalRepoError(DvcException):
     def __init__(self, path, external_repo_path, external_repo_url):
+        from dvc.utils import relpath
+
         super().__init__(
             "Output '{}' not found in target repository '{}'".format(
                 relpath(path, external_repo_path), external_repo_url
@@ -321,6 +334,8 @@ class PathMissingError(DvcException):
 
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, path_info):
+        from dvc.utils import format_link
+
         super().__init__(
             (
                 "Current operation was unsuccessful because '{}' requires "
@@ -355,6 +370,8 @@ class MergeError(DvcException):
 
 
 class CacheLinkError(DvcException):
+    from dvc.utils import format_link
+
     SUPPORT_LINK = "See {} for more information.".format(
         format_link(
             "https://dvc.org/doc/user-guide/troubleshooting#cache-types"

@@ -1,6 +1,5 @@
 from dvc.cli import parse_args
 from dvc.command.repro import CmdRepro
-from dvc.dvcfile import PIPELINE_FILE
 
 default_arguments = {
     "all_pipelines": False,
@@ -15,6 +14,8 @@ default_arguments = {
     "recursive": False,
     "force_downstream": False,
     "pull": False,
+    "glob": False,
+    "targets": [],
 }
 
 
@@ -22,7 +23,7 @@ def test_default_arguments(dvc, mocker):
     cmd = CmdRepro(parse_args(["repro"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()
-    cmd.repo.reproduce.assert_called_with(PIPELINE_FILE, **default_arguments)
+    cmd.repo.reproduce.assert_called_with(**default_arguments)
 
 
 def test_downstream(dvc, mocker):
@@ -31,4 +32,4 @@ def test_downstream(dvc, mocker):
     cmd.run()
     arguments = default_arguments.copy()
     arguments.update({"downstream": True})
-    cmd.repo.reproduce.assert_called_with(PIPELINE_FILE, **arguments)
+    cmd.repo.reproduce.assert_called_with(**arguments)

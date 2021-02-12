@@ -1,4 +1,9 @@
+import hashlib
 import io
+
+from dvc.hash_info import HashInfo
+from dvc.istextfile import istextblock
+from dvc.utils import dos2unix
 
 
 class IterStream(io.RawIOBase):
@@ -6,10 +11,13 @@ class IterStream(io.RawIOBase):
 
     def __init__(self, iterator):  # pylint: disable=super-init-not-called
         self.iterator = iterator
-        self.leftover = None
+        self.leftover = b""
 
     def readable(self):
         return True
+
+    def writable(self) -> bool:
+        return False
 
     # Python 3 requires only .readinto() method, it still uses other ones
     # under some circumstances and falls back if those are absent. Since
@@ -38,8 +46,43 @@ class IterStream(io.RawIOBase):
 
         # Return an arbitrary number or bytes
         if n <= 0:
-            self.leftover = None
+            self.leftover = b""
             return chunk
 
         output, self.leftover = chunk[:n], chunk[n:]
         return output
+
+    def peek(self, n):
+        while len(self.leftover) < n:
+            try:
+                self.leftover += next(self.iterator)
+            except StopIteration:
+                break
+        return self.leftover[:n]
+
+
+class HashedStreamReader:
+
+    PARAM_CHECKSUM = "md5"
+
+    def __init__(self, fobj):
+        self.md5 = hashlib.md5()
+        self.is_text_file = None
+        self.reader = fobj.read1 if hasattr(fobj, "read1") else fobj.read
+
+    def read(self, n=-1):
+        chunk = self.reader(n)
+        if self.is_text_file is None:
+            self.is_text_file = istextblock(chunk)
+
+        if self.is_text_file:
+            data = dos2unix(chunk)
+        else:
+            data = chunk
+        self.md5.update(data)
+
+        return chunk
+
+    @property
+    def hash_info(self):
+        return HashInfo(self.PARAM_CHECKSUM, self.md5.hexdigest(), nfiles=1)

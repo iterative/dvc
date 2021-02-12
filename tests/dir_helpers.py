@@ -238,6 +238,9 @@ class TmpDir(pathlib.Path):
             }
         return super().read_text(*args, **kwargs)
 
+    def hash_to_path_info(self, hash_):
+        return self / hash_[0:2] / hash_[2:]
+
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
@@ -329,10 +332,14 @@ def run_copy(tmp_dir, dvc):
     )
 
     def run_copy(src, dst, **run_kwargs):
+        wdir = pathlib.Path(run_kwargs.get("wdir", "."))
+        wdir = pathlib.Path("../" * len(wdir.parts))
+        script_path = wdir / "copy.py"
+
         return dvc.run(
-            cmd=f"python copy.py {src} {dst}",
+            cmd=f"python {script_path} {src} {dst}",
             outs=[dst],
-            deps=[src, "copy.py"],
+            deps=[src, f"{script_path}"],
             **run_kwargs,
         )
 

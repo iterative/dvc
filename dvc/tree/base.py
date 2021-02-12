@@ -1,14 +1,17 @@
+import errno
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, FrozenSet, Optional
 from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
 
 from dvc.dir_info import DirInfo
 from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
+from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
@@ -53,16 +56,17 @@ class BaseTree:
 
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
-    DEFAULT_VERIFY = False
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 5
     TRAVERSE_PREFIX_LEN = 3
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
 
-    CACHE_MODE: Optional[int] = None
-    SHARED_MODE_MAP = {None: (None, None), "group": (None, None)}
+    # Needed for some providers, and http open()
+    CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
+
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
+    DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
     state = StateNoop()
 
@@ -70,12 +74,8 @@ class BaseTree:
         self.repo = repo
         self.config = config
 
-        self._check_requires(config)
+        self._check_requires()
 
-        shared = config.get("shared")
-        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
-
-        self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.path_info = None
 
     @cached_property
@@ -107,31 +107,44 @@ class BaseTree:
 
         return missing
 
-    def _check_requires(self, config):
+    def _check_requires(self):
+        from ..scheme import Schemes
+        from ..utils import format_link
+        from ..utils.pkg import PKG
+
         missing = self.get_missing_deps()
         if not missing:
             return
 
-        url = config.get("url", f"{self.scheme}://")
-        msg = (
-            "URL '{}' is supported but requires these missing "
-            "dependencies: {}. If you have installed dvc using pip, "
-            "choose one of these options to proceed: \n"
-            "\n"
-            "    1) Install specific missing dependencies:\n"
-            "        pip install {}\n"
-            "    2) Install dvc package that includes those missing "
-            "dependencies: \n"
-            "        pip install 'dvc[{}]'\n"
-            "    3) Install dvc package with all possible "
-            "dependencies included: \n"
-            "        pip install 'dvc[all]'\n"
-            "\n"
-            "If you have installed dvc from a binary package and you "
-            "are still seeing this message, please report it to us "
-            "using https://github.com/iterative/dvc/issues. Thank you!"
-        ).format(url, missing, " ".join(missing), self.scheme)
-        raise RemoteMissingDepsError(msg)
+        url = self.config.get("url", f"{self.scheme}://")
+
+        scheme = self.scheme
+        if scheme == Schemes.WEBDAVS:
+            scheme = Schemes.WEBDAV
+
+        by_pkg = {
+            "pip": f"pip install 'dvc[{scheme}]'",
+            "conda": f"conda install -c conda-forge dvc-{scheme}",
+        }
+
+        cmd = by_pkg.get(PKG)
+        if cmd:
+            link = format_link("https://dvc.org/doc/install")
+            hint = (
+                f"To install dvc with those dependencies, run:\n"
+                "\n"
+                f"\t{cmd}\n"
+                "\n"
+                f"See {link} for more info."
+            )
+        else:
+            link = format_link("https://github.com/iterative/dvc/issues")
+            hint = f"Please report this bug to {link}. Thank you!"
+
+        raise RemoteMissingDepsError(
+            f"URL '{url}' is supported but requires these missing "
+            f"dependencies: {missing}. {hint}"
+        )
 
     @classmethod
     def supported(cls, config):
@@ -145,23 +158,15 @@ class BaseTree:
         return parsed.scheme == cls.scheme
 
     @property
-    def file_mode(self):
-        return self._file_mode
-
-    @property
-    def dir_mode(self):
-        return self._dir_mode
-
-    @property
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def open(self, path_info, mode: str = "r", encoding: str = None):
+    def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         if hasattr(self, "_generate_download_url"):
             # pylint:disable=no-member
             func = self._generate_download_url  # type: ignore[attr-defined]
             get_url = partial(func, path_info)
-            return open_url(get_url, mode=mode, encoding=encoding)
+            return open_url(get_url, mode=mode, encoding=encoding, **kwargs)
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
@@ -182,6 +187,12 @@ class BaseTree:
         """
         return True
 
+    def isexec(self, path_info):
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between executable and non-executable file.
+        """
+        return False
+
     def iscopy(self, path_info):
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
@@ -195,8 +206,14 @@ class BaseTree:
         """
         raise NotImplementedError
 
+    def ls(self, path_info, detail=False, **kwargs):
+        raise RemoteActionNotImplemented("ls", self.scheme)
+
     def is_empty(self, path_info):
         return False
+
+    def getsize(self, path_info):
+        return None
 
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
@@ -206,16 +223,12 @@ class BaseTree:
         directories before copying/linking/moving data
         """
 
-    def move(self, from_info, to_info, mode=None):
-        assert mode is None
+    def move(self, from_info, to_info):
         self.copy(from_info, to_info)
         self.remove(from_info)
 
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
-
-    def copy_fobj(self, fobj, to_info):
-        raise RemoteActionNotImplemented("copy_fobj", self.scheme)
 
     def symlink(self, from_info, to_info):
         raise RemoteActionNotImplemented("symlink", self.scheme)
@@ -226,18 +239,7 @@ class BaseTree:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
-    @staticmethod
-    def protect(path_info):
-        pass
-
-    def is_protected(self, path_info):
-        return False
-
     # pylint: enable=unused-argument
-
-    @staticmethod
-    def unprotect(path_info):
-        pass
 
     @classmethod
     def is_dir_hash(cls, hash_):
@@ -246,13 +248,15 @@ class BaseTree:
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     @use_state
-    def get_hash(self, path_info, **kwargs):
+    def get_hash(self, path_info, name, **kwargs):
         assert path_info and (
             isinstance(path_info, str) or path_info.scheme == self.scheme
         )
 
         if not self.exists(path_info):
-            return None
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path_info
+            )
 
         # pylint: disable=assignment-from-none
         hash_info = self.state.get(path_info)
@@ -264,7 +268,7 @@ class BaseTree:
             hash_info
             and hash_info.isdir
             and not self.cache.tree.exists(
-                self.cache.tree.hash_to_path_info(hash_info.value)
+                self.cache.hash_to_path_info(hash_info.value)
             )
         ):
             hash_info = None
@@ -272,55 +276,70 @@ class BaseTree:
         if hash_info:
             assert hash_info.name == self.PARAM_CHECKSUM
             if hash_info.isdir:
-                self.cache.set_dir_info(hash_info)
+                from dvc.objects import Tree
+
+                # NOTE: loading the tree will restore hash_info.dir_info
+                Tree.load(self.cache, hash_info)
+            assert hash_info.name == name
             return hash_info
 
         if self.isdir(path_info):
-            hash_info = self.get_dir_hash(path_info, **kwargs)
+            hash_info = self.get_dir_hash(path_info, name, **kwargs)
         else:
-            hash_info = self.get_file_hash(path_info)
+            hash_info = self.get_file_hash(path_info, name)
 
         if hash_info and self.exists(path_info):
             self.state.save(path_info, hash_info)
 
         return hash_info
 
-    def get_file_hash(self, path_info):
+    def get_file_hash(self, path_info, name):
         raise NotImplementedError
 
-    def hash_to_path_info(self, hash_):
-        return self.path_info / hash_[0:2] / hash_[2:]
+    def _calculate_hashes(self, file_infos, name):
+        def _get_file_hash(path_info):
+            return self.get_file_hash(path_info, name)
 
-    def _calculate_hashes(self, file_infos):
-        file_infos = list(file_infos)
         with Tqdm(
             total=len(file_infos),
             unit="md5",
             desc="Computing file/dir hashes (only done once)",
         ) as pbar:
-            worker = pbar.wrap_fn(self.get_file_hash)
+            worker = pbar.wrap_fn(_get_file_hash)
             with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
                 hash_infos = executor.map(worker, file_infos)
                 return dict(zip(file_infos, hash_infos))
 
-    def _collect_dir(self, path_info, **kwargs):
+    def _iter_hashes(self, path_info, name, **kwargs):
+        if name in self.DETAIL_FIELDS:
+            for details in self.ls(path_info, recursive=True, detail=True):
+                file_info = path_info.replace(path=details["name"])
+                hash_info = HashInfo(
+                    name, details[name], size=details.get("size"),
+                )
+                yield file_info, hash_info
 
-        file_infos = set()
+            return None
 
-        for fname in self.walk_files(path_info, **kwargs):
-            if DvcIgnore.DVCIGNORE_FILE == fname.name:
-                raise DvcIgnoreInCollectedDirError(fname.parent)
+        file_infos = []
+        for file_info in self.walk_files(path_info, **kwargs):
+            hash_info = self.state.get(  # pylint: disable=assignment-from-none
+                file_info
+            )
+            if not hash_info:
+                file_infos.append(file_info)
+                continue
+            assert hash_info.name == name
+            yield file_info, hash_info
 
-            file_infos.add(fname)
+        yield from self._calculate_hashes(file_infos, name).items()
 
-        hash_infos = {fi: self.state.get(fi) for fi in file_infos}
-        not_in_state = {fi for fi, hi in hash_infos.items() if hi is None}
-
-        new_hash_infos = self._calculate_hashes(not_in_state)
-        hash_infos.update(new_hash_infos)
-
+    def _collect_dir(self, path_info, name, **kwargs):
         dir_info = DirInfo()
-        for fi, hi in hash_infos.items():
+        for fi, hi in self._iter_hashes(path_info, name, **kwargs):
+            if DvcIgnore.DVCIGNORE_FILE == fi.name:
+                raise DvcIgnoreInCollectedDirError(fi.parent)
+
             # NOTE: this is lossy transformation:
             #   "hey\there" -> "hey/there"
             #   "hey/there" -> "hey/there"
@@ -334,19 +353,17 @@ class BaseTree:
         return dir_info
 
     @use_state
-    def get_dir_hash(self, path_info, **kwargs):
-        dir_info = self._collect_dir(path_info, **kwargs)
-        hash_info = self.repo.cache.local.save_dir_info(dir_info)
+    def get_dir_hash(self, path_info, name, **kwargs):
+        from dvc.objects import Tree
+
+        dir_info = self._collect_dir(path_info, name, **kwargs)
+        hash_info = Tree.save_dir_info(self.repo.cache.local, dir_info)
         hash_info.size = dir_info.size
+        hash_info.dir_info = dir_info
         return hash_info
 
     def upload(
-        self,
-        from_info,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        file_mode=None,
+        self, from_info, to_info, name=None, no_progress_bar=False,
     ):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
@@ -366,8 +383,16 @@ class BaseTree:
             to_info,
             name=name,
             no_progress_bar=no_progress_bar,
-            file_mode=file_mode,
         )
+
+    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+        if not hasattr(self, "_upload_fobj"):
+            raise RemoteActionNotImplemented("upload_fobj", self.scheme)
+
+        with Tqdm.wrapattr(
+            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
+        ) as wrapped:
+            self._upload_fobj(wrapped, to_info)  # pylint: disable=no-member
 
     def download(
         self,
@@ -375,8 +400,8 @@ class BaseTree:
         to_info,
         name=None,
         no_progress_bar=False,
-        file_mode=None,
-        dir_mode=None,
+        jobs=None,
+        **kwargs,
     ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
@@ -393,16 +418,14 @@ class BaseTree:
 
         if self.isdir(from_info):
             return self._download_dir(
-                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+                from_info, to_info, name, no_progress_bar, jobs, **kwargs,
             )
-        return self._download_file(
-            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-        )
+        return self._download_file(from_info, to_info, name, no_progress_bar,)
 
     def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
     ):
-        from_infos = list(self.walk_files(from_info))
+        from_infos = list(self.walk_files(from_info, **kwargs))
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )
@@ -414,15 +437,10 @@ class BaseTree:
             disable=no_progress_bar,
         ) as pbar:
             download_files = pbar.wrap_fn(
-                partial(
-                    self._download_file,
-                    name=name,
-                    no_progress_bar=True,
-                    file_mode=file_mode,
-                    dir_mode=dir_mode,
-                )
+                partial(self._download_file, name=name, no_progress_bar=True,)
             )
-            with ThreadPoolExecutor(max_workers=self.jobs) as executor:
+            max_workers = jobs or self.jobs
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
                     for from_info, to_info in zip(from_infos, to_infos)
@@ -444,9 +462,9 @@ class BaseTree:
                         raise exc
 
     def _download_file(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        self, from_info, to_info, name, no_progress_bar,
     ):
-        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
+        makedirs(to_info.parent, exist_ok=True)
 
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)
         name = name or to_info.name
@@ -457,4 +475,4 @@ class BaseTree:
             from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
         )
 
-        move(tmp_file, to_info, mode=file_mode)
+        move(tmp_file, to_info)

@@ -50,6 +50,8 @@ def _get_flags(out):
         # `out.plot` is in the same order as is in the file when read
         # and, should be dumped as-is without any sorting
         yield from out.plot.items()
+    if out.live and isinstance(out.live, dict):
+        yield from out.live.items()
 
 
 def _serialize_out(out):
@@ -59,15 +61,19 @@ def _serialize_out(out):
 
 @no_type_check
 def _serialize_outs(outputs: List[BaseOutput]):
-    outs, metrics, plots = [], [], []
+    outs, metrics, plots, live = [], [], [], None
     for out in sort_by_path(outputs):
         bucket = outs
         if out.plot:
             bucket = plots
         elif out.metric:
             bucket = metrics
+        elif out.live:
+            assert live is None
+            live = _serialize_out(out)
+            continue
         bucket.append(_serialize_out(out))
-    return outs, metrics, plots
+    return outs, metrics, plots, live
 
 
 def _serialize_params_keys(params):
@@ -122,7 +128,13 @@ def to_pipeline_file(stage: "PipelineStage"):
     deps = sorted(d.def_path for d in deps)
     params = _serialize_params_keys(params)
 
-    outs, metrics, plots = _serialize_outs(stage.outs)
+    outs, metrics, plots, live = _serialize_outs(stage.outs)
+
+    cmd = stage.cmd
+    assert cmd, (
+        f"'{stage.PARAM_CMD}' cannot be empty for stage '{stage.name}', "
+        f"got: '{cmd}'(type: '{type(cmd).__name__}')"
+    )
     res = [
         (stage.PARAM_DESC, stage.desc),
         (stage.PARAM_CMD, stage.cmd),
@@ -132,8 +144,10 @@ def to_pipeline_file(stage: "PipelineStage"):
         (stage.PARAM_OUTS, outs),
         (stage.PARAM_METRICS, metrics),
         (stage.PARAM_PLOTS, plots),
+        (stage.PARAM_LIVE, live),
         (stage.PARAM_FROZEN, stage.frozen),
         (stage.PARAM_ALWAYS_CHANGED, stage.always_changed),
+        (stage.PARAM_META, stage.meta),
     ]
     return {
         stage.name: OrderedDict([(key, value) for key, value in res if value])
@@ -148,6 +162,9 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
             (item.PARAM_PATH, item.def_path),
             *item.hash_info.to_dict().items(),
         ]
+
+        if item.isexec:
+            ret.append((item.PARAM_ISEXEC, True))
 
         return OrderedDict(ret)
 
@@ -185,10 +202,6 @@ def to_single_stage_file(stage: "Stage"):
     text = stage._stage_text  # noqa, pylint: disable=protected-access
     if text is not None:
         saved_state = parse_yaml_for_update(text, stage.path)
-        # Stage doesn't work with meta in any way, so .dumpd() doesn't
-        # have it. We simply copy it over.
-        if "meta" in saved_state:
-            state["meta"] = saved_state["meta"]
         apply_diff(state, saved_state)
         state = saved_state
     return state

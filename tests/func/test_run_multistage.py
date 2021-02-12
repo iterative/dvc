@@ -34,14 +34,10 @@ def test_run_no_exec(tmp_dir, dvc, run_copy):
     assert not os.path.exists(PIPELINE_LOCK)
 
     data, _ = stage.dvcfile._load()
-    assert data == {
-        "stages": {
-            "copy-foo-to-bar": {
-                "cmd": "python copy.py foo bar",
-                "deps": ["copy.py", "foo"],
-                "outs": ["bar"],
-            }
-        }
+    assert data["stages"]["copy-foo-to-bar"] == {
+        "cmd": "python copy.py foo bar",
+        "deps": ["copy.py", "foo"],
+        "outs": ["bar"],
     }
 
 
@@ -77,13 +73,15 @@ def test_run_multi_stage_repeat(tmp_dir, dvc, run_copy):
     }
 
 
-def test_multi_stage_run_cached(tmp_dir, dvc, run_copy):
+def test_multi_stage_run_cached(tmp_dir, dvc, run_copy, mocker):
+    from dvc.stage.run import subprocess
+
     tmp_dir.dvc_gen("foo", "foo")
 
     run_copy("foo", "foo2", name="copy-foo1-foo2")
-    stage2 = run_copy("foo", "foo2", name="copy-foo1-foo2")
-
-    assert stage2 is None
+    spy = mocker.spy(subprocess, "Popen")
+    run_copy("foo", "foo2", name="copy-foo1-foo2")
+    assert not spy.called
 
 
 def test_multistage_dump_on_non_cached_outputs(tmp_dir, dvc):
@@ -172,7 +170,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
                 "always_changed": True,
                 "wdir": "dir",
             },
-        }
+        },
     }
 
     run_head(
@@ -197,7 +195,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
                 "metrics": [{"foobar-1": {"cache": False}}],
             },
             **data["stages"],
-        }
+        },
     }
 
 
@@ -244,7 +242,7 @@ def test_run_params_default(tmp_dir, dvc):
     assert stage.deps[0].params == ["nested.nested1.nested2"]
 
     lockfile = stage.dvcfile._lockfile
-    assert lockfile.load()["read_params"]["params"] == {
+    assert lockfile.load()["stages"]["read_params"]["params"] == {
         "params.yaml": {"nested.nested1.nested2": "42"}
     }
 
@@ -267,7 +265,7 @@ def test_run_params_custom_file(tmp_dir, dvc):
     isinstance(stage.deps[0], ParamsDependency)
     assert stage.deps[0].params == ["lists"]
     lockfile = stage.dvcfile._lockfile
-    assert lockfile.load()["read_params"]["params"] == {
+    assert lockfile.load()["stages"]["read_params"]["params"] == {
         "params2.yaml": {"lists": [42, 42.0, "42"]}
     }
 
@@ -424,16 +422,18 @@ def test_run_external_outputs(
 
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
     assert (tmp_dir / "dvc.lock").read_text() == (
-        "mystage:\n"
-        "  cmd: mycmd\n"
-        "  deps:\n"
-        "  - path: remote://workspace/foo\n"
-        f"    {hash_name}: {foo_hash}\n"
-        "    size: 3\n"
-        "  outs:\n"
-        "  - path: remote://workspace/bar\n"
-        f"    {hash_name}: {bar_hash}\n"
-        "    size: 3\n"
+        "schema: '2.0'\n"
+        "stages:\n"
+        "  mystage:\n"
+        "    cmd: mycmd\n"
+        "    deps:\n"
+        "    - path: remote://workspace/foo\n"
+        f"      {hash_name}: {foo_hash}\n"
+        "      size: 3\n"
+        "    outs:\n"
+        "    - path: remote://workspace/bar\n"
+        f"      {hash_name}: {bar_hash}\n"
+        "      size: 3\n"
     )
 
     assert (workspace / "foo").read_text() == "foo"

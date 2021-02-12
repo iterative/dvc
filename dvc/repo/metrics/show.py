@@ -1,8 +1,16 @@
 import logging
+from typing import List
 
-from dvc.exceptions import NoMetricsFoundError, NoMetricsParsedError
+from dvc.exceptions import (
+    MetricDoesNotExistError,
+    NoMetricsFoundError,
+    NoMetricsParsedError,
+)
+from dvc.output import BaseOutput
+from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
+from dvc.repo.live import summary_path_info
 from dvc.scm.base import SCMError
 from dvc.tree.repo import RepoTree
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
@@ -10,8 +18,20 @@ from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 logger = logging.getLogger(__name__)
 
 
-def _is_metric(out):
-    return bool(out.metric)
+def _is_metric(out: BaseOutput) -> bool:
+    return bool(out.metric) or bool(out.live)
+
+
+def _to_path_infos(metrics: List[BaseOutput]) -> List[PathInfo]:
+    result = []
+    for out in metrics:
+        if out.metric:
+            result.append(out.path_info)
+        elif out.live:
+            path_info = summary_path_info(out)
+            if path_info:
+                result.append(path_info)
+    return result
 
 
 def _collect_metrics(repo, targets, revision, recursive):
@@ -22,7 +42,7 @@ def _collect_metrics(repo, targets, revision, recursive):
         recursive=recursive,
         rev=revision,
     )
-    return [m.path_info for m in metrics] + list(path_infos)
+    return _to_path_infos(metrics) + list(path_infos)
 
 
 def _extract_metrics(metrics, path, rev):
@@ -55,7 +75,7 @@ def _read_metrics(repo, metrics, rev):
 
     res = {}
     for metric in metrics:
-        if not tree.exists(metric):
+        if not tree.isfile(metric):
             continue
 
         try:
@@ -105,6 +125,8 @@ def show(
     if not res:
         if metrics_found:
             raise NoMetricsParsedError("metrics")
+        elif targets:
+            raise MetricDoesNotExistError(targets)
         else:
             raise NoMetricsFoundError("metrics", "-m/-M")
 

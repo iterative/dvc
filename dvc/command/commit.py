@@ -3,13 +3,14 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
 
 class CmdCommit(CmdBase):
     def run(self):
+        from dvc.exceptions import DvcException
+
         if not self.args.targets:
             self.args.targets = [None]
 
@@ -32,7 +33,10 @@ class CmdCommit(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    COMMIT_HELP = "Save changed data to cache and update DVC-files."
+    COMMIT_HELP = (
+        "Record changes to files or directories tracked by DVC"
+        " by storing the current versions in the cache."
+    )
 
     commit_parser = subparsers.add_parser(
         "commit",
@@ -65,7 +69,7 @@ def add_parser(subparsers, parent_parser):
     commit_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC-files to commit. Optional. "
-        "(Finds all DVC-files in the workspace by default.)",
+        help="stages or .dvc files to commit. Optional. "
+        "(Finds all DVC files in the workspace by default.)",
     ).complete = completion.DVC_FILE
     commit_parser.set_defaults(func=CmdCommit)

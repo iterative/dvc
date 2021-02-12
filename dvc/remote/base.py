@@ -1,10 +1,10 @@
 import errno
 import hashlib
+import itertools
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
-
-from funcy import concat
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
@@ -277,8 +277,8 @@ class Remote:
             status_info.items(), desc="Analysing status", unit="file"
         ):
             if info["status"] == status:
-                cache.append(cache_obj.tree.hash_to_path_info(md5))
-                path_infos.append(self.tree.hash_to_path_info(md5))
+                cache.append(cache_obj.hash_to_path_info(md5))
+                path_infos.append(self.cache.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)
             elif info["status"] == STATUS_MISSING:
@@ -309,11 +309,7 @@ class Remote:
         )
 
         if download:
-            func = partial(
-                _log_exceptions(self.tree.download, "download"),
-                dir_mode=cache.tree.dir_mode,
-                file_mode=cache.tree.file_mode,
-            )
+            func = _log_exceptions(self.tree.download, "download")
             status = STATUS_DELETED
             desc = "Downloading"
         else:
@@ -343,99 +339,150 @@ class Remote:
 
         with Tqdm(total=total, unit="file", desc=desc) as pbar:
             func = pbar.wrap_fn(func)
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
-                if download:
-                    from_infos, to_infos, names, _ = (
-                        d + f for d, f in zip(dir_plans, file_plans)
-                    )
-                    fails = sum(
-                        executor.map(func, from_infos, to_infos, names)
-                    )
-                else:
-                    # for uploads, push files first, and any .dir files last
+            self._process_plans(
+                download,
+                dir_plans,
+                file_plans,
+                dir_contents,
+                missing_files,
+                jobs,
+                func,
+            )
 
-                    file_futures = {}
-                    for from_info, to_info, name, hash_ in zip(*file_plans):
-                        file_futures[hash_] = executor.submit(
-                            func, from_info, to_info, name
-                        )
-                    dir_futures = {}
-                    for from_info, to_info, name, dir_hash in zip(*dir_plans):
-                        # if for some reason a file contained in this dir is
-                        # missing both locally and in the remote, we want to
-                        # push whatever file content we have, but should not
-                        # push .dir file
-                        for file_hash in missing_files:
-                            if file_hash in dir_contents[dir_hash]:
-                                logger.debug(
-                                    "directory '%s' contains missing files,"
-                                    "skipping .dir file upload",
-                                    name,
-                                )
-                                break
-                        else:
-                            wait_futures = {
-                                future
-                                for file_hash, future in file_futures.items()
-                                if file_hash in dir_contents[dir_hash]
-                            }
-                            dir_futures[dir_hash] = executor.submit(
-                                self._dir_upload,
-                                func,
-                                wait_futures,
-                                from_info,
-                                to_info,
-                                name,
-                            )
-                    fails = sum(
-                        future.result()
-                        for future in concat(
-                            file_futures.values(), dir_futures.values()
-                        )
-                    )
+        return total
 
-        if fails:
+    def _process_plans(
+        self,
+        download,
+        dir_plans,
+        file_plans,
+        dir_contents,
+        missing_files,
+        jobs,
+        func,
+    ):
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            processor = partial(self._create_tasks, executor, jobs, func)
+            processor.transfer_func = func
             if download:
-                self.index.clear()
-                raise DownloadError(fails)
-            raise UploadError(fails)
+                self._download_plans(dir_plans, file_plans, processor)
+            else:
+                self._upload_plans(
+                    dir_plans,
+                    file_plans,
+                    dir_contents,
+                    missing_files,
+                    processor,
+                )
 
-        if not download:
-            # index successfully pushed dirs
-            for dir_hash, future in dir_futures.items():
-                if future.result() == 0:
-                    file_hashes = dir_contents[dir_hash]
-                    logger.debug(
-                        "Indexing pushed dir '{}' with "
-                        "'{}' nested files".format(dir_hash, len(file_hashes))
-                    )
-                    self.index.update([dir_hash], file_hashes)
+    def _create_tasks(self, executor, jobs, func, file_plans):
+        fails = 0
+        file_plan_iterator = iter(file_plans)
 
-        return len(dir_plans[0]) + len(file_plans[0])
+        def create_taskset(amount):
+            return {
+                executor.submit(func, from_info, to_info, name)
+                for from_info, to_info, name, _ in itertools.islice(
+                    file_plan_iterator, amount
+                )
+            }
 
-    @staticmethod
-    def _dir_upload(func, futures, from_info, to_info, name):
-        for future in as_completed(futures):
-            if future.result():
-                # do not upload this .dir file if any file in this
-                # directory failed to upload
+        tasks = create_taskset(jobs * 5)
+        while tasks:
+            done, tasks = futures.wait(
+                tasks, return_when=futures.FIRST_COMPLETED
+            )
+            fails += sum(task.result() for task in done)
+            tasks.update(create_taskset(len(done)))
+        return fails
+
+    def _download_plans(self, dir_plans, file_plans, processor):
+        plans = [*zip(*dir_plans), *zip(*file_plans)]
+        fails = processor(plans)
+        if fails:
+            self.index.clear()
+            raise DownloadError(fails)
+
+    def _upload_plans(
+        self, dir_plans, file_plans, dir_contents, missing_files, processor
+    ):
+        total_fails = 0
+        succeeded_dir_hashes = []
+        all_file_plans = list(zip(*file_plans))
+        for dir_from_info, dir_to_info, dir_name, dir_hash in zip(*dir_plans):
+            bound_file_plans = []
+            directory_hashes = dir_contents[dir_hash]
+
+            for file_plan in all_file_plans.copy():
+                if file_plan[-1] in directory_hashes:
+                    bound_file_plans.append(file_plan)
+                    all_file_plans.remove(file_plan)
+
+            dir_fails = processor(bound_file_plans)
+            if dir_fails:
                 logger.debug(
                     "failed to upload full contents of '{}', "
-                    "aborting .dir file upload".format(name)
+                    "aborting .dir file upload".format(dir_name)
                 )
-                logger.error(f"failed to upload '{from_info}' to '{to_info}'")
-                return 1
-        return func(from_info, to_info, name)
+                logger.error(
+                    f"failed to upload '{dir_from_info}'"
+                    f" to '{dir_to_info}'"
+                )
+                total_fails += dir_fails + 1
+            elif directory_hashes.intersection(missing_files):
+                # if for some reason a file contained in this dir is
+                # missing both locally and in the remote, we want to
+                # push whatever file content we have, but should not
+                # push .dir file
+                logger.debug(
+                    "directory '%s' contains missing files,"
+                    "skipping .dir file upload",
+                    dir_name,
+                )
+            else:
+                is_dir_failed = processor.transfer_func(
+                    dir_from_info, dir_to_info, dir_name
+                )
+                total_fails += is_dir_failed
+                if not is_dir_failed:
+                    succeeded_dir_hashes.append(dir_hash)
+
+        # insert the rest
+        total_fails += processor(all_file_plans)
+        if total_fails:
+            raise UploadError(total_fails)
+
+        # index successfully pushed dirs
+        for dir_hash in succeeded_dir_hashes:
+            file_hashes = dir_contents[dir_hash]
+            logger.debug(
+                "Indexing pushed dir '{}' with "
+                "'{}' nested files".format(dir_hash, len(file_hashes))
+            )
+            self.index.update([dir_hash], file_hashes)
 
     @index_locked
     def push(self, cache, named_cache, jobs=None, show_checksums=False):
-        return self._process(
+        ret = self._process(
             cache,
             named_cache,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
+
+        if self.tree.scheme == "local":
+            with self.tree.state:
+                for checksum in named_cache.scheme_keys("local"):
+                    cache_file = self.cache.hash_to_path_info(checksum)
+                    if self.tree.exists(cache_file):
+                        hash_info = HashInfo(
+                            self.tree.PARAM_CHECKSUM, checksum
+                        )
+                        self.tree.state.save(cache_file, hash_info)
+                        self.cache.protect(cache_file)
+
+        return ret
 
     @index_locked
     def pull(self, cache, named_cache, jobs=None, show_checksums=False):
@@ -447,10 +494,10 @@ class Remote:
             download=True,
         )
 
-        if not self.tree.verify:
+        if not self.cache.verify:
             with cache.tree.state:
                 for checksum in named_cache.scheme_keys("local"):
-                    cache_file = cache.tree.hash_to_path_info(checksum)
+                    cache_file = cache.hash_to_path_info(checksum)
                     if cache.tree.exists(cache_file):
                         # We can safely save here, as existing corrupted files
                         # will be removed upon status, while files corrupted
@@ -460,8 +507,20 @@ class Remote:
                             cache.tree.PARAM_CHECKSUM, checksum
                         )
                         cache.tree.state.save(cache_file, hash_info)
+                        cache.protect(cache_file)
 
         return ret
+
+    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
+        from dvc.objects import transfer
+
+        return transfer(
+            self.cache,
+            from_tree,
+            from_info,
+            jobs=jobs,
+            no_progress_bar=no_progress_bar,
+        )
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):

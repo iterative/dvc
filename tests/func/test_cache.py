@@ -1,14 +1,14 @@
 import os
 import stat
+import textwrap
 
 import configobj
 import pytest
 
 from dvc.cache import Cache
-from dvc.cache.base import DirCacheError
-from dvc.dir_info import DirInfo
 from dvc.hash_info import HashInfo
 from dvc.main import main
+from dvc.objects import ObjectFormatError
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc
 
@@ -38,7 +38,7 @@ class TestCache(TestDvc):
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = Cache(self.dvc).local.tree.hash_to_path_info(self.cache1_md5)
+        cache = Cache(self.dvc).local.hash_to_path_info(self.cache1_md5)
         self.assertEqual(os.fspath(cache), self.cache1)
 
 
@@ -48,24 +48,19 @@ class TestCacheLoadBadDirCache(TestDvc):
         self.assertEqual(len(ret), 0)
 
     def test(self):
+        from dvc.objects import load
+
         dir_hash = "123.dir"
-        fname = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
-        )
+        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
         self.create(fname, "<clearly>not,json")
-        with pytest.raises(DirCacheError):
-            self.dvc.cache.local.load_dir_cache(HashInfo("md5", dir_hash))
+        with pytest.raises(ObjectFormatError):
+            load(self.dvc.cache.local, HashInfo("md5", dir_hash))
 
         dir_hash = "234.dir"
-        fname = os.fspath(
-            self.dvc.cache.local.tree.hash_to_path_info(dir_hash)
-        )
+        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
         self.create(fname, '{"a": "b"}')
-        dir_info = self.dvc.cache.local.load_dir_cache(
-            HashInfo("md5", dir_hash)
-        )
-        self.assertTrue(isinstance(dir_info, DirInfo))
-        self.assertEqual(dir_info.nfiles, 0)
+        with pytest.raises(ObjectFormatError):
+            load(self.dvc.cache.local, HashInfo("md5", dir_hash))
 
 
 class TestExternalCacheDir(TestDvc):
@@ -193,23 +188,69 @@ def test_default_cache_type(dvc):
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize(
-    "group, dir_mode", [(False, 0o755), (True, 0o775)],
+    "group", [False, True],
 )
-def test_shared_cache(tmp_dir, dvc, group, dir_mode):
+def test_shared_cache(tmp_dir, dvc, group):
+    from dvc.utils.fs import umask
+
     if group:
         with dvc.config.edit() as conf:
             conf["cache"].update({"shared": "group"})
     dvc.cache = Cache(dvc)
+    cache_dir = dvc.cache.local.cache_dir
+
+    assert not os.path.exists(cache_dir)
 
     tmp_dir.dvc_gen(
         {"file": "file content", "dir": {"file2": "file 2 " "content"}}
     )
 
-    for root, dnames, fnames in os.walk(dvc.cache.local.cache_dir):
-        for dname in dnames:
-            path = os.path.join(root, dname)
-            assert stat.S_IMODE(os.stat(path).st_mode) == dir_mode
+    actual = {}
+    for root, dnames, fnames in os.walk(cache_dir):
+        for name in dnames + fnames:
+            path = os.path.join(root, name)
+            actual[path] = oct(stat.S_IMODE(os.stat(path).st_mode))
 
-        for fname in fnames:
-            path = os.path.join(root, fname)
-            assert stat.S_IMODE(os.stat(path).st_mode) == 0o444
+    file_mode = oct(0o444)
+    dir_mode = oct(0o2775 if group else (0o777 & ~umask))
+
+    expected = {
+        os.path.join(cache_dir, "17"): dir_mode,
+        os.path.join(
+            cache_dir, "17", "4eaa1dd94050255b7b98a7e1924b31.dir"
+        ): file_mode,
+        os.path.join(cache_dir, "97"): dir_mode,
+        os.path.join(
+            cache_dir, "97", "e17781c198500e2766ea56bd697c03"
+        ): file_mode,
+        os.path.join(cache_dir, "d1"): dir_mode,
+        os.path.join(
+            cache_dir, "d1", "0b4c3ff123b26dc068d43a8bef2d23"
+        ): file_mode,
+    }
+
+    assert expected == actual
+
+
+def test_cache_dir_local(tmp_dir, dvc, caplog):
+    (tmp_dir / ".dvc" / "config.local").write_text(
+        textwrap.dedent(
+            """\
+            [cache]
+                dir = some/path
+            """
+        )
+    )
+    path = os.path.join(dvc.dvc_dir, "some", "path")
+
+    caplog.clear()
+    assert main(["cache", "dir", "--local"]) == 0
+    assert path in caplog.text
+
+    caplog.clear()
+    assert main(["cache", "dir"]) == 0
+    assert path in caplog.text
+
+    caplog.clear()
+    assert main(["cache", "dir", "--project"]) == 251
+    assert "option 'dir' doesn't exist in section 'cache'" in caplog.text

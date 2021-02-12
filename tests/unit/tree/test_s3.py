@@ -9,6 +9,7 @@ prefix = "some/prefix"
 url = f"s3://{bucket_name}/{prefix}"
 key_id = "key-id"
 key_secret = "key-secret"
+session_token = "session-token"
 
 
 @pytest.fixture(autouse=True)
@@ -65,10 +66,16 @@ def test_sse_kms_key_id(dvc):
 def test_key_id_and_secret(dvc):
     tree = S3Tree(
         dvc,
-        {"url": url, "access_key_id": key_id, "secret_access_key": key_secret},
+        {
+            "url": url,
+            "access_key_id": key_id,
+            "secret_access_key": key_secret,
+            "session_token": session_token,
+        },
     )
     assert tree.access_key_id == key_id
     assert tree.secret_access_key == key_secret
+    assert tree.session_token == session_token
 
 
 def test_get_s3_no_credentials(mocker):

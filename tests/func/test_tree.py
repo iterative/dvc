@@ -2,13 +2,13 @@ import os
 from operator import itemgetter
 from os.path import join
 
+import pytest
+
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.scm import SCM
-from dvc.tree.git import GitTree
+from dvc.tree import get_cloud_tree
 from dvc.tree.local import LocalTree
-from dvc.tree.repo import RepoTree
-from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
@@ -45,7 +45,7 @@ class GitTreeTests:
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         with tree.open(self.FOO) as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         with tree.open(self.UNICODE) as fd:
@@ -56,14 +56,14 @@ class GitTreeTests:
             tree.open(self.DATA_DIR)
 
     def test_exists(self):
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertFalse(tree.exists(self.FOO))
         self.assertFalse(tree.exists(self.UNICODE))
         self.assertFalse(tree.exists(self.DATA_DIR))
         self.scm.add([self.FOO, self.UNICODE, self.DATA])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertTrue(tree.exists(self.FOO))
         self.assertTrue(tree.exists(self.UNICODE))
         self.assertTrue(tree.exists(self.DATA_DIR))
@@ -73,7 +73,7 @@ class GitTreeTests:
         self.scm.add([self.FOO, self.DATA_DIR])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertTrue(tree.isdir(self.DATA_DIR))
         self.assertFalse(tree.isdir(self.FOO))
         self.assertFalse(tree.isdir("non-existing-file"))
@@ -82,7 +82,7 @@ class GitTreeTests:
         self.scm.add([self.FOO, self.DATA_DIR])
         self.scm.commit("add")
 
-        tree = GitTree(self.git, "master")
+        tree = self.scm.get_tree("master")
         self.assertTrue(tree.isfile(self.FOO))
         self.assertFalse(tree.isfile(self.DATA_DIR))
         self.assertFalse(tree.isfile("not-existing-file"))
@@ -162,7 +162,7 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         scm = SCM(self._root_dir)
         scm.add([self.DATA_SUB_DIR])
         scm.commit("add data_dir/data_sub_dir/data_sub")
-        tree = GitTree(self.git, "master")
+        tree = scm.get_tree("master")
         self.assertWalkEqual(
             tree.walk("."),
             [
@@ -185,50 +185,6 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
                 )
             ],
         )
-
-
-def test_repotree_walk_fetch(tmp_dir, dvc, scm, local_remote):
-    out = tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="init")[0].outs[0]
-    dvc.push()
-    remove(dvc.cache.local.cache_dir)
-    remove(tmp_dir / "dir")
-
-    tree = RepoTree(dvc, fetch=True)
-    for _, _, _ in tree.walk("dir"):
-        pass
-
-    assert os.path.exists(out.cache_path)
-    for _, hi in out.dir_cache.items():
-        assert hi.name == out.tree.PARAM_CHECKSUM
-        assert os.path.exists(dvc.cache.local.tree.hash_to_path_info(hi.value))
-
-
-def test_repotree_cache_save(tmp_dir, dvc, scm, erepo_dir, local_cloud):
-    with erepo_dir.chdir():
-        erepo_dir.gen({"dir": {"subdir": {"foo": "foo"}, "bar": "bar"}})
-        erepo_dir.dvc_add("dir/subdir", commit="subdir")
-        erepo_dir.scm_add("dir", commit="dir")
-        erepo_dir.add_remote(config=local_cloud.config)
-        erepo_dir.dvc.push()
-
-    # test only cares that either fetch or stream are set so that DVC dirs are
-    # walked.
-    #
-    # for this test, all file objects are being opened() and copied from tree
-    # into dvc.cache, not fetched or streamed from a remote
-    tree = RepoTree(erepo_dir.dvc, stream=True)
-    expected = [
-        tree.get_file_hash(PathInfo(erepo_dir / path)).value
-        for path in ("dir/bar", "dir/subdir/foo")
-    ]
-
-    cache = dvc.cache.local
-    path_info = PathInfo(erepo_dir / "dir")
-    hash_info = cache.tree.get_hash(path_info)
-    cache.save(path_info, tree, hash_info)
-
-    for hash_ in expected:
-        assert os.path.exists(cache.tree.hash_to_path_info(hash_))
 
 
 def test_cleantree_subrepo(tmp_dir, dvc, scm, monkeypatch):
@@ -274,3 +230,95 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     kw = {"ignore_subrepos": False}
     assert get_dirs(next(dvc_tree.walk(path, **kw))) == ["subdir"]
     assert get_dirs(next(scm_tree.walk(path, **kw))) == ["subdir"]
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("http"),
+    ],
+)
+def test_tree_getsize(dvc, cloud):
+    cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
+    tree = get_cloud_tree(dvc, **cloud.config)
+    path_info = tree.path_info
+
+    assert tree.getsize(path_info / "baz") == 7
+    assert tree.getsize(path_info / "data" / "foo") == 3
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("gdrive"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("http"),
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("oss"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("ssh"),
+        pytest.lazy_fixture("webhdfs"),
+    ],
+)
+def test_tree_upload_fobj(dvc, tmp_dir, cloud):
+    tmp_dir.gen("foo", "foo")
+    tree = get_cloud_tree(dvc, **cloud.config)
+
+    from_info = tmp_dir / "foo"
+    to_info = tree.path_info / "foo"
+
+    with open(from_info, "rb") as stream:
+        tree.upload_fobj(stream, to_info)
+
+    assert tree.exists(to_info)
+    with tree.open(to_info, "rb") as stream:
+        assert stream.read() == b"foo"
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("webdav"),
+    ],
+)
+def test_tree_ls(dvc, cloud):
+    cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
+    tree = get_cloud_tree(dvc, **cloud.config)
+    path_info = tree.path_info
+
+    assert {
+        os.path.basename(file_key)
+        for file_key in tree.ls(path_info / "data", recursive=True)
+    } == {"foo", "baz", "quux"}
+
+
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("webdav"),
+    ],
+)
+def test_tree_ls_with_etag(dvc, cloud):
+    cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
+    tree = get_cloud_tree(dvc, **cloud.config)
+    path_info = tree.path_info
+
+    for details in tree.ls(path_info / "data", recursive=True, detail=True):
+        assert (
+            tree.get_file_hash(
+                path_info.replace(path=details["name"]), tree.PARAM_CHECKSUM
+            ).value
+            == details[tree.PARAM_CHECKSUM]
+        )

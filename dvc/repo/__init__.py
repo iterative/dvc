@@ -2,32 +2,21 @@ import logging
 import os
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
 
 from funcy import cached_property, cat
-from git import InvalidGitRepositoryError
 
-from dvc.config import Config
-from dvc.dvcfile import PIPELINE_FILE, Dvcfile, is_valid_filename
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
-from dvc.exceptions import (
-    NoOutputOrStageError,
-    NotDvcRepoError,
-    OutputNotFoundError,
-)
+from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.path_info import PathInfo
-from dvc.scm import Base
-from dvc.scm.base import SCMError
-from dvc.tree.repo import RepoTree
 from dvc.utils.fs import path_isin
 
-from ..stage.exceptions import StageFileDoesNotExistError, StageNotFound
-from ..utils import parse_target
-from .graph import build_graph, build_outs_graph, get_pipeline, get_pipelines
+from .graph import build_graph, build_outs_graph, get_pipelines
 from .trie import build_outs_trie
 
 if TYPE_CHECKING:
+    from dvc.scm import Base
     from dvc.tree.base import BaseTree
 
 
@@ -96,13 +85,14 @@ class Repo:
     def _get_repo_dirs(
         self,
         root_dir: str = None,
-        scm: Base = None,
+        scm: "Base" = None,
         rev: str = None,
         uninitialized: bool = False,
     ):
         assert bool(scm) == bool(rev)
 
         from dvc.scm import SCM
+        from dvc.scm.base import SCMError
         from dvc.scm.git import Git
         from dvc.utils.fs import makedirs
 
@@ -120,8 +110,10 @@ class Repo:
 
             try:
                 scm = SCM(root_dir or os.curdir)
-            except (SCMError, InvalidGitRepositoryError):
+            except SCMError:
                 scm = SCM(os.curdir, no_scm=True)
+
+            from dvc.scm import Base
 
             assert isinstance(scm, Base)
             root_dir = scm.root_dir
@@ -135,17 +127,27 @@ class Repo:
         rev=None,
         subrepos=False,
         uninitialized=False,
+        config=None,
+        url=None,
+        repo_factory=None,
     ):
         from dvc.cache import Cache
+        from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.lock import LockNoop, make_lock
-        from dvc.repo.experiments import Experiments
+        from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
+        from dvc.repo.stage import StageLoad
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
         from dvc.tree.local import LocalTree
+
+        self.url = url
+        self._tree_conf = {
+            "repo_factory": repo_factory,
+        }
 
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
@@ -153,11 +155,12 @@ class Repo:
 
         tree_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:
-            self.tree = scm.get_tree(rev, **tree_kwargs)
+            self._tree = scm.get_tree(rev, **tree_kwargs)
         else:
-            self.tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
+            self._tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
 
-        self.config = Config(self.dvc_dir, tree=self.tree)
+        self.config = Config(self.dvc_dir, tree=self.tree, config=config)
+        self._uninitialized = uninitialized
         self._scm = scm
 
         # used by RepoTree to determine if it should traverse subrepos
@@ -165,6 +168,7 @@ class Repo:
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
+        self.stage = StageLoad(self)
 
         if scm or not self.dvc_dir:
             self.lock = LockNoop()
@@ -183,24 +187,70 @@ class Repo:
             self.state = State(self)
             self.stage_cache = StageCache(self)
 
-            try:
-                self.experiments = Experiments(self)
-            except NotImplementedError:
-                self.experiments = None
-
             self._ignore()
 
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
+        self.live = Live(self)
+
+        self.stage_collection_error_handler: Optional[
+            Callable[[str, Exception], None]
+        ] = None
         self._lock_depth = 0
+
+    def __str__(self):
+        return self.url or self.root_dir
+
+    @staticmethod
+    @contextmanager
+    def open(url, *args, **kwargs):
+        if url is None:
+            url = os.getcwd()
+
+        if os.path.exists(url):
+            try:
+                yield Repo(url, *args, **kwargs)
+                return
+            except NotDvcRepoError:
+                pass  # fallthrough to external_repo
+
+        from dvc.external_repo import external_repo
+
+        with external_repo(url, *args, **kwargs) as repo:
+            yield repo
 
     @cached_property
     def scm(self):
         from dvc.scm import SCM
+        from dvc.scm.base import SCMError
+
+        if self._scm:
+            return self._scm
 
         no_scm = self.config["core"].get("no_scm", False)
-        return self._scm if self._scm else SCM(self.root_dir, no_scm=no_scm)
+        try:
+            return SCM(self.root_dir, no_scm=no_scm)
+        except SCMError:
+            if self._uninitialized:
+                # might not be a git/dvc repo at all
+                # used in `params/metrics/plots/live` targets
+                return SCM(self.root_dir, no_scm=True)
+            raise
+
+    def get_rev(self):
+        from dvc.tree.local import LocalTree
+
+        assert self.scm
+        if isinstance(self.tree, LocalTree):
+            return self.scm.get_rev()
+        return self.tree.rev
+
+    @cached_property
+    def experiments(self):
+        from dvc.repo.experiments import Experiments
+
+        return Experiments(self)
 
     @property
     def tree(self) -> "BaseTree":
@@ -255,41 +305,20 @@ class Repo:
         return Repo(root_dir)
 
     def unprotect(self, target):
-        return self.cache.local.tree.unprotect(PathInfo(target))
+        return self.cache.local.unprotect(PathInfo(target))
 
     def _ignore(self):
         flist = [
             self.config.files["local"],
             self.tmp_dir,
         ]
-        if self.experiments:
-            flist.append(self.experiments.exp_dir)
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]
 
         self.scm.ignore_list(flist)
 
-    def get_stage(self, path=None, name=None):
-        if not path:
-            path = PIPELINE_FILE
-            logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
-
-        dvcfile = Dvcfile(self, path)
-        return dvcfile.stages[name]
-
-    def get_stages(self, path=None, name=None):
-        if not path:
-            path = PIPELINE_FILE
-            logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
-
-        if name:
-            return [self.get_stage(path, name)]
-
-        dvcfile = Dvcfile(self, path)
-        return list(dvcfile.stages.values())
-
-    def check_modified_graph(self, new_stages):
+    def check_modified_graph(self, new_stages, old_stages=None):
         """Generate graph including the new stage to check for errors"""
         # Building graph might be costly for the ones with many DVC-files,
         # so we provide this undocumented hack to skip it. See [1] for
@@ -304,101 +333,8 @@ class Repo:
         #
         # [1] https://github.com/iterative/dvc/issues/2671
         if not getattr(self, "_skip_graph_checks", False):
-            build_graph(self.stages + new_stages)
-
-    def _collect_inside(self, path, graph):
-        import networkx as nx
-
-        stages = nx.dfs_postorder_nodes(graph)
-        return [stage for stage in stages if path_isin(stage.path, path)]
-
-    def collect(
-        self, target=None, with_deps=False, recursive=False, graph=None
-    ):
-        if not target:
-            return list(graph) if graph else self.stages
-
-        if recursive and os.path.isdir(target):
-            return self._collect_inside(
-                os.path.abspath(target), graph or self.graph
-            )
-
-        path, name = parse_target(target)
-        stages = self.get_stages(path, name)
-        if not with_deps:
-            return stages
-
-        res = set()
-        for stage in stages:
-            res.update(self._collect_pipeline(stage, graph=graph))
-        return res
-
-    def _collect_pipeline(self, stage, graph=None):
-        import networkx as nx
-
-        pipeline = get_pipeline(get_pipelines(graph or self.graph), stage)
-        return nx.dfs_postorder_nodes(pipeline, stage)
-
-    def _collect_from_default_dvcfile(self, target):
-        dvcfile = Dvcfile(self, PIPELINE_FILE)
-        if dvcfile.exists():
-            return dvcfile.stages.get(target)
-
-    def collect_granular(
-        self, target=None, with_deps=False, recursive=False, graph=None
-    ):
-        """
-        Priority is in the order of following in case of ambiguity:
-            - .dvc file or .yaml file
-            - dir if recursive and directory exists
-            - stage_name
-            - output file
-        """
-        if not target:
-            return [(stage, None) for stage in self.stages]
-
-        file, name = parse_target(target)
-        stages = []
-
-        # Optimization: do not collect the graph for a specific target
-        if not file:
-            # parsing is ambiguous when it does not have a colon
-            # or if it's not a dvcfile, as it can be a stage name
-            # in `dvc.yaml` or, an output in a stage.
-            logger.debug(
-                "Checking if stage '%s' is in '%s'", target, PIPELINE_FILE
-            )
-            if not (recursive and os.path.isdir(target)):
-                stage = self._collect_from_default_dvcfile(target)
-                if stage:
-                    stages = (
-                        self._collect_pipeline(stage) if with_deps else [stage]
-                    )
-        elif not with_deps and is_valid_filename(file):
-            stages = self.get_stages(file, name)
-
-        if not stages:
-            if not (recursive and os.path.isdir(target)):
-                try:
-                    (out,) = self.find_outs_by_path(target, strict=False)
-                    filter_info = PathInfo(os.path.abspath(target))
-                    return [(out.stage, filter_info)]
-                except OutputNotFoundError:
-                    pass
-
-            try:
-                stages = self.collect(target, with_deps, recursive, graph)
-            except StageFileDoesNotExistError as exc:
-                # collect() might try to use `target` as a stage name
-                # and throw error that dvc.yaml does not exist, whereas it
-                # should say that both stage name and file does not exist.
-                if file and is_valid_filename(file):
-                    raise
-                raise NoOutputOrStageError(target, exc.file) from exc
-            except StageNotFound as exc:
-                raise NoOutputOrStageError(target, exc.file) from exc
-
-        return [(stage, None) for stage in stages]
+            existing_stages = self.stages if old_stages is None else old_stages
+            build_graph(existing_stages + new_stages)
 
     def used_cache(
         self,
@@ -407,11 +343,13 @@ class Repo:
         with_deps=False,
         all_tags=False,
         all_commits=False,
+        all_experiments=False,
         remote=None,
         force=False,
         jobs=None,
         recursive=False,
         used_run_cache=None,
+        revs=None,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -420,7 +358,8 @@ class Repo:
         (namely, a file described as an output on a stage).
 
         The scope is, by default, the working directory, but you can use
-        `all_branches`/`all_tags`/`all_commits` to expand the scope.
+        `all_branches`/`all_tags`/`all_commits`/`all_experiments` to expand
+        the scope.
 
         Returns:
             A dictionary with Schemes (representing output's location) mapped
@@ -432,14 +371,16 @@ class Repo:
         cache = NamedCache()
 
         for branch in self.brancher(
+            revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
+            all_experiments=all_experiments,
         ):
             targets = targets or [None]
 
             pairs = cat(
-                self.collect_granular(
+                self.stage.collect_granular(
                     target, recursive=recursive, with_deps=with_deps
                 )
                 for target in targets
@@ -490,28 +431,12 @@ class Repo:
         NOTE: For large repos, this could be an expensive
               operation. Consider using some memoization.
         """
-        return self._collect_stages()
-
-    def _collect_stages(self):
-        stages = []
-        outs = set()
-
-        for root, dirs, files in self.tree.walk(self.root_dir):
-            for file_name in filter(is_valid_filename, files):
-                new_stages = self.get_stages(os.path.join(root, file_name))
-                stages.extend(new_stages)
-                outs.update(
-                    out.fspath
-                    for stage in new_stages
-                    for out in stage.outs
-                    if out.scheme == "local"
-                )
-            dirs[:] = [d for d in dirs if os.path.join(root, d) not in outs]
-        return stages
+        error_handler = self.stage_collection_error_handler
+        return self.stage.collect_repo(onerror=error_handler)
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
-        if not outs:
-            outs = [out for stage in self.stages for out in stage.outs]
+        # using `outs_graph` to ensure graph checks are run
+        outs = outs or self.outs_graph
 
         abs_path = os.path.abspath(path)
         path_info = PathInfo(abs_path)
@@ -532,24 +457,22 @@ class Repo:
 
         return matched
 
-    def find_out_by_relpath(self, relpath):
-        path = os.path.join(self.root_dir, relpath)
-        (out,) = self.find_outs_by_path(path)
-        return out
-
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
 
     @cached_property
     def repo_tree(self):
-        return RepoTree(self, subrepos=self.subrepos, fetch=True)
+        from dvc.tree.repo import RepoTree
+
+        return RepoTree(self, subrepos=self.subrepos, **self._tree_conf)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
+        from dvc.tree.repo import RepoTree
 
-        tree = RepoTree(self, stream=True, subrepos=True)
+        tree = RepoTree(self, subrepos=True)
         path = PathInfo(self.root_dir) / path
         try:
             with self.state:
@@ -566,6 +489,7 @@ class Repo:
         self.scm.close()
 
     def _reset(self):
+        self.scm._reset()  # pylint: disable=protected-access
         self.__dict__.pop("outs_trie", None)
         self.__dict__.pop("outs_graph", None)
         self.__dict__.pop("graph", None)
