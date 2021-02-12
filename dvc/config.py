@@ -198,7 +198,8 @@ SCHEMA = {
                 "hdfs": {"user": str, **REMOTE_COMMON},
                 "azure": {
                     "connection_string": str,
-                    "azcli_credential": Bool,
+                    "sas_token": str,
+                    "storage_key": str,
                     "storage_account": str,
                     "client_id": str,
                     "client_secret": str,

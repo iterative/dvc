@@ -5,6 +5,7 @@ from dvc.tree.azure import AzureTree
 
 container_name = "test_container"
 url = f"azure://{container_name}"
+sas_token = "test_sas_token"
 client_id = "test_id"
 client_secret = "test_client_secret"
 tenant_id = "test_tenant_id"
@@ -83,3 +84,21 @@ def test_credential_is_chained_token_credential(dvc):
     default_credential_config = {"url": url, "azcli_credential": True}
     tree = AzureTree(dvc, default_credential_config)
     assert isinstance(tree._credential, ChainedTokenCredential)
+
+
+def test_credential_is_chained_token_credential_if_svc_in_config(dvc):
+    svc_config = {
+        "url": url,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "tenant_id": tenant_id,
+    }
+    tree = AzureTree(dvc, svc_config)
+    assert isinstance(tree._credential, ChainedTokenCredential)
+    assert tree._conn_str is None
+
+
+def test_credential_is_sas_token(dvc):
+    default_credential_config = {"url": url, "sas_token": sas_token}
+    tree = AzureTree(dvc, default_credential_config)
+    assert tree._credential == sas_token

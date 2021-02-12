@@ -1,10 +1,24 @@
 import logging
 import os
+import pdb
 import threading
 from datetime import datetime, timedelta
 
+from azure.identity import (
+    AzureCliCredential,
+    ChainedTokenCredential,
+    ClientSecretCredential,
+    DefaultAzureCredential,
+    EnvironmentCredential,
+)
+from azure.identity._credentials import (
+    DefaultAzureCredential,
+    EnvironmentCredential,
+)
+from azure.identity._exceptions import CredentialUnavailableError
 from funcy import cached_property, wrap_prop
 
+from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
@@ -13,6 +27,35 @@ from dvc.scheme import Schemes
 from .base import BaseTree
 
 logger = logging.getLogger(__name__)
+
+
+class ServicePrincipalConfigCredential:
+    def __init__(self, config):
+        self._credential = None
+        self._credential = self._create_client_secret_cred(config)
+
+    def _create_client_secret_cred(self, config):
+        client_id = config.get("client_id")
+        client_secret = config.get("client_secret")
+        tenant_id = config.get("tenant_id")
+
+        if not (client_id and client_secret and tenant_id):
+            return None
+
+        return ClientSecretCredential(
+            client_id=client_id,
+            client_secret=client_secret,
+            tenant_id=tenant_id,
+        )
+
+    def get_token(self, *scopes, **kwargs):
+        if not self._credential:
+            message = (
+                "Dvc authentication unavailable. "
+                "Some service principle auth data missing from config."
+            )
+            raise CredentialUnavailableError(message=message)
+        return self._credential.get_token(*scopes, **kwargs)
 
 
 class AzureTree(BaseTree):
@@ -38,77 +81,28 @@ class AzureTree(BaseTree):
             container = self._az_config.get("storage", "container_name", None)
             self.path_info = self.PATH_CLS(f"azure://{container}")
 
-        self._storage_account = config.get(
-            "storage_account"
-        ) or self._az_config.get("storage", "account", None)
-        self._account_url = (
-            f"https://{self._storage_account}.blob.core.windows.net"
-        )
+        self._conn_str = config.get(
+            "connection_string"
+        ) or self._az_config.get("storage", "connection_string", None)
 
-        self._conn_str, self._credential = self._get_string_token_credential(
-            config
-        )
-
-        if not (self._conn_str or self._credential):
-            from azure.identity import (
-                AzureCliCredential,
-                ChainedTokenCredential,
+        if not self._conn_str:
+            name = config.get("storage_account") or self._az_config.get(
+                "storage", "account", None
             )
+            self._account_url = f"https://{name}.blob.core.windows.net"
 
-            if not self._storage_account:
-                logging.warning(
-                    "You must enter a storage account name for this auth flow"
-                )
-
-            # Microsoft azure docs
-            # https://docs.microsoft.com/en-us/python/api/overview/azure/identity-readme?view=azure-python
-            if config.get("azcli_credential"):
-                self._credential = ChainedTokenCredential(AzureCliCredential())
-            else:
-                self._credential = self._create_client_secret_cred(config)
-
-    def _create_client_secret_cred(self, config):
-        from azure.identity import ClientSecretCredential
-
-        client_id = config.get("client_id") or self._az_config.get(
-            "client", "id", None
-        )
-
-        client_secret = config.get("client_secret") or self._az_config.get(
-            "client", "secret", None
-        )
-
-        tenant_id = config.get("tenant_id") or self._az_config.get(
-            "tenant", "id", None
-        )
-
-        if not (client_id and client_secret and tenant_id):
-            logging.warning(
-                "Not enough information to authenticate to azure remote."
+        # Microsoft azure docs
+        # https://docs.microsoft.com/en-us/python/api/overview/azure/identity-readme?view=azure-python
+        self._credential = (
+            config.get("sas_token")
+            or config.get("storage_key")
+            or self._az_config.get("storage", "key", None)
+            or self._az_config.get("storage", "sas_token", None)
+            or ChainedTokenCredential(
+                ServicePrincipalConfigCredential(config),
+                DefaultAzureCredential(),
             )
-            return None
-
-        return ClientSecretCredential(
-            client_id=client_id,
-            client_secret=client_secret,
-            tenant_id=tenant_id,
         )
-
-    def _get_string_token_credential(self, config):
-        # Get `token` like credential to pass to
-        # blob service client. String like
-        # conn_str, sas_token, account_key
-        _conn_str = config.get("connection_string") or self._az_config.get(
-            "storage", "connection_string", None
-        )
-
-        _credential = config.get("sas_token") or self._az_config.get(
-            "storage", "sas_token", None
-        )
-        if not _credential:
-            _credential = self._az_config.get("storage", "key", None)
-
-        return _conn_str, _credential
 
     @cached_property
     def _az_config(self):
@@ -225,7 +219,7 @@ class AzureTree(BaseTree):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-
+        # import pdb; pdb.set_trace()
         blob_client = self.blob_service.get_blob_client(
             to_info.bucket, to_info.path
         )
