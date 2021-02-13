@@ -521,7 +521,7 @@ class CmdExperimentsRun(CmdRepro):
             queue=self.args.queue,
             run_all=self.args.run_all,
             jobs=self.args.jobs,
-            params=self.args.params,
+            params=self.args.set_param,
             checkpoint_resume=self.args.checkpoint_resume,
             reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
@@ -1184,10 +1184,11 @@ def _add_run_common(parser):
         metavar="<name>",
     )
     parser.add_argument(
-        "--params",
+        "-S",
+        "--set-param",
         action="append",
         default=[],
-        help="Use the specified param values when reproducing pipelines.",
+        help="Use the specified param value when reproducing pipelines.",
         metavar="[<filename>:]<param_name>=<param_value>",
     )
     parser.add_argument(
