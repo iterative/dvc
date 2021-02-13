@@ -6,7 +6,7 @@ import pytest
 from dvc.external_repo import external_repo
 from dvc.objects import save, stage
 from dvc.path_info import PathInfo
-from tests.unit.tree.test_repo import make_subrepo
+from tests.unit.fs.test_repo import make_subrepo
 
 
 def test_hook_is_called(tmp_dir, erepo_dir, mocker):
@@ -28,9 +28,9 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")
 
     with external_repo(str(erepo_dir)) as repo:
-        spy = mocker.spy(repo.repo_tree, "repo_factory")
+        spy = mocker.spy(repo.repo_fs, "repo_factory")
 
-        list(repo.repo_tree.walk(repo.root_dir))  # drain
+        list(repo.repo_fs.walk(repo.root_dir))  # drain
         assert spy.call_count == len(subrepos)
 
         paths = [os.path.join(repo.root_dir, path) for path in subrepo_paths]
@@ -40,7 +40,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
                     path,
                     scm=repo.scm,
                     rev=repo.get_rev(),
-                    repo_factory=repo.repo_tree.repo_factory,
+                    repo_factory=repo.repo_fs.repo_factory,
                 )
                 for path in paths
             ],
@@ -66,9 +66,9 @@ def test_subrepo_is_constructed_properly(
     with external_repo(
         str(tmp_dir), cache_dir=str(cache_dir), cache_types=["symlink"]
     ) as repo:
-        spy = mocker.spy(repo.repo_tree, "repo_factory")
+        spy = mocker.spy(repo.repo_fs, "repo_factory")
 
-        list(repo.repo_tree.walk(repo.root_dir))  # drain
+        list(repo.repo_fs.walk(repo.root_dir))  # drain
         assert spy.call_count == 1
         subrepo = spy.return_value
 
@@ -113,7 +113,7 @@ def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
         obj = stage(
             dvc.cache.local,
             PathInfo(repo.root_dir) / "dir1",
-            repo.repo_tree,
+            repo.repo_fs,
             follow_subrepos=False,
             jobs=3,
         )

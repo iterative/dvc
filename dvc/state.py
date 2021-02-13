@@ -133,13 +133,13 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     MAX_UINT = 2 ** 64 - 2
 
     def __init__(self, repo):
-        from dvc.tree.local import LocalTree
+        from dvc.fs.local import LocalFileSystem
 
         super().__init__()
 
         self.repo = repo
         self.root_dir = repo.root_dir
-        self.tree = LocalTree(None, {"url": self.root_dir})
+        self.fs = LocalFileSystem(None, {"url": self.root_dir})
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
@@ -410,7 +410,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert isinstance(hash_info, HashInfo)
         assert os.path.exists(path_info)
 
-        actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
+        actual_mtime, actual_size = get_mtime_and_size(path_info, self.fs)
         actual_inode = get_inode(path_info)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -438,13 +438,13 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert isinstance(path_info, str) or path_info.scheme == "local"
         path = os.fspath(path_info)
 
-        # NOTE: use os.path.exists instead of LocalTree.exists
+        # NOTE: use os.path.exists instead of LocalFileSystem.exists
         # because it uses lexists() and will return True for broken
         # symlinks that we cannot stat() in get_mtime_and_size
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(path, self.tree)
+        actual_mtime, actual_size = get_mtime_and_size(path, self.fs)
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -467,10 +467,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         """
         assert isinstance(path_info, str) or path_info.scheme == "local"
 
-        if not self.tree.exists(path_info):
+        if not self.fs.exists(path_info):
             return
 
-        mtime, _ = get_mtime_and_size(path_info, self.tree)
+        mtime, _ = get_mtime_and_size(path_info, self.fs)
         inode = get_inode(path_info)
         relative_path = relpath(path_info, self.root_dir)
 
@@ -493,11 +493,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             inode = self._from_sqlite(inode)
             path = os.path.join(self.root_dir, relative_path)
 
-            if path in used or not self.tree.exists(path):
+            if path in used or not self.fs.exists(path):
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path, self.tree)
+            actual_mtime, _ = get_mtime_and_size(path, self.fs)
 
             if (inode, mtime) == (actual_inode, actual_mtime):
                 logger.debug("Removing '%s' as unused link.", path)

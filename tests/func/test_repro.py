@@ -13,12 +13,12 @@ from dvc.exceptions import (
     ReproductionError,
     StagePathAsOutputError,
 )
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.output.base import BaseOutput
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -652,8 +652,7 @@ class TestReproDataSource(TestReproChangedData):
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
         self.assertEqual(
-            stages[0].outs[0].hash_info.value,
-            file_md5(self.BAR, self.dvc.tree),
+            stages[0].outs[0].hash_info.value, file_md5(self.BAR, self.dvc.fs),
         )
 
 
@@ -737,8 +736,8 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalTree.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
@@ -877,9 +876,9 @@ class TestReproAlreadyCached(TestRepro):
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
-            LocalTree,
+            LocalFileSystem,
             "download",
-            side_effect=LocalTree.download,
+            side_effect=LocalFileSystem.download,
             autospec=True,
         )
 

@@ -1,7 +1,7 @@
 from dvc.output.base import BaseOutput
 
-from ..tree.gs import GSTree
+from ..fs.gs import GSFileSystem
 
 
 class GSOutput(BaseOutput):
-    TREE_CLS = GSTree
+    FS_CLS = GSFileSystem

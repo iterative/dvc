@@ -10,12 +10,12 @@ from dvc.system import System
 from dvc.utils import is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
-from .base import BaseTree
+from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
 
-class LocalTree(BaseTree):
+class LocalFileSystem(BaseFileSystem):
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
@@ -30,7 +30,7 @@ class LocalTree(BaseTree):
         self.dvcignore_root = dvcignore_root
 
     @property
-    def tree_root(self):
+    def fs_root(self):
         return self.config.get("url")
 
     @property
@@ -43,7 +43,7 @@ class LocalTree(BaseTree):
     def dvcignore(self):
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
-        root = self.dvcignore_root or self.tree_root
+        root = self.dvcignore_root or self.fs_root
         cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
         return cls(self, root)
 
@@ -92,7 +92,7 @@ class LocalTree(BaseTree):
         use_dvcignore=True,
         ignore_subrepos=True,
     ):
-        """Directory tree generator.
+        """Directory fs generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks

@@ -13,7 +13,7 @@ import dvc.prompt as prompt
 from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
 
-from ..base import BaseTree
+from ..base import BaseFileSystem
 from ..pool import get_connection
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def ask_password(host, user, port):
     )
 
 
-class SSHTree(BaseTree):
+class SSHFileSystem(BaseFileSystem):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
     JOBS = 4
@@ -101,7 +101,7 @@ class SSHTree(BaseTree):
     def _load_user_ssh_config(hostname):
         import paramiko
 
-        user_config_file = SSHTree.ssh_config_filename()
+        user_config_file = SSHFileSystem.ssh_config_filename()
         user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
             ssh_config = paramiko.SSHConfig()

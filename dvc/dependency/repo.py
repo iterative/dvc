@@ -23,7 +23,7 @@ class RepoDependency(LocalDependency):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
-    def _parse_path(self, tree, path):
+    def _parse_path(self, fs, path):
         return None
 
     @property
@@ -52,7 +52,7 @@ class RepoDependency(LocalDependency):
         with self._make_repo(locked=locked) as repo:
             path_info = PathInfo(repo.root_dir) / self.def_path
             return get_hash(
-                path_info, repo.repo_tree, "md5", follow_subrepos=False
+                path_info, repo.repo_fs, "md5", follow_subrepos=False
             )
 
     def workspace_status(self):
@@ -86,13 +86,13 @@ class RepoDependency(LocalDependency):
             obj = stage(
                 cache,
                 path_info,
-                repo.repo_tree,
+                repo.repo_fs,
                 jobs=jobs,
                 follow_subrepos=False,
             )
             save(cache, obj, jobs=jobs)
 
-        checkout(to.path_info, to.tree, obj, cache)
+        checkout(to.path_info, to.fs, obj, cache)
 
     def update(self, rev=None):
         if rev:

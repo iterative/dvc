@@ -8,7 +8,7 @@ from dvc import api
 from dvc.exceptions import FileMissingError, OutputNotFoundError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
-from tests.unit.tree.test_repo import make_subrepo
+from tests.unit.fs.test_repo import make_subrepo
 
 cloud_names = [
     "s3",

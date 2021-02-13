@@ -22,16 +22,12 @@ def istextblock(block):
     return float(len(nontext)) / len(block) <= 0.30
 
 
-def istextfile(fname, blocksize=512, tree=None):
+def istextfile(fname, fs, blocksize=512):
     """ Uses heuristics to guess whether the given file is text or binary,
         by reading a single block of bytes from the file.
         If more than 30% of the chars in the block are non-text, or there
         are NUL ('\x00') bytes in the block, assume this is a binary file.
     """
-    if tree:
-        open_func = tree.open
-    else:
-        open_func = open
-    with open_func(fname, "rb") as fobj:
+    with fs.open(fname, "rb") as fobj:
         block = fobj.read(blocksize)
     return istextblock(block)

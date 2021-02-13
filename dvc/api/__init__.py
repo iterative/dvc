@@ -23,13 +23,13 @@ def get_url(path, repo=None, rev=None, remote=None):
     with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
         path_info = PathInfo(_repo.root_dir) / path
         with reraise(FileNotFoundError, PathMissingError(path, repo)):
-            metadata = _repo.repo_tree.metadata(path_info)
+            metadata = _repo.repo_fs.metadata(path_info)
 
         if not metadata.is_dvc:
             raise OutputNotFoundError(path, repo)
 
         cloud = metadata.repo.cloud
-        hash_info = get_hash(path_info, _repo.repo_tree, "md5")
+        hash_info = get_hash(path_info, _repo.repo_fs, "md5")
         return cloud.get_url_for(remote, checksum=hash_info.value)
 
 

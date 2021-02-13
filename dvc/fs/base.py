@@ -38,12 +38,12 @@ class RemoteMissingDepsError(DvcException):
 
 @decorator
 def use_state(call):
-    tree = call._args[0]  # pylint: disable=protected-access
-    with tree.state:
+    fs = call._args[0]  # pylint: disable=protected-access
+    with fs.state:
         return call()
 
 
-class BaseTree:
+class BaseFileSystem:
     scheme = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
     PATH_CLS = URLInfo  # type: Any

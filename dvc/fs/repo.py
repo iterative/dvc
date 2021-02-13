@@ -10,8 +10,8 @@ from funcy import lfilter, wrap_with
 
 from dvc.path_info import PathInfo
 
-from .base import BaseTree
-from .dvc import DvcTree
+from .base import BaseFileSystem
+from .dvc import DvcFileSystem
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -21,14 +21,14 @@ logger = logging.getLogger(__name__)
 RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
 
 
-class RepoTree(BaseTree):  # pylint:disable=abstract-method
-    """DVC + git-tracked files tree.
+class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
+    """DVC + git-tracked files fs.
 
     Args:
         repo: DVC or git repo.
         subrepos: traverse to subrepos (by default, it ignores subrepos)
         repo_factory: A function to initialize subrepo with, default is Repo.
-        kwargs: Additional keyword arguments passed to the `DvcTree()`.
+        kwargs: Additional keyword arguments passed to the `DvcFileSystem()`.
     """
 
     scheme = "local"
@@ -57,11 +57,11 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
         self._subrepos_trie[self.root_dir] = repo
 
-        self._dvctrees = {}
-        """Keep a dvctree instance of each repo."""
+        self._dvcfss = {}
+        """Keep a dvcfs instance of each repo."""
 
         if hasattr(repo, "dvc_dir"):
-            self._dvctrees[repo.root_dir] = DvcTree(repo)
+            self._dvcfss[repo.root_dir] = DvcFileSystem(repo)
 
     def _get_repo(self, path) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
@@ -97,7 +97,7 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
                     rev=self.repo.get_rev(),
                     repo_factory=self.repo_factory,
                 )
-                self._dvctrees[repo.root_dir] = DvcTree(repo)
+                self._dvcfss[repo.root_dir] = DvcFileSystem(repo)
             self._subrepos_trie[d] = repo
 
     def _is_dvc_repo(self, dir_path):
@@ -109,11 +109,13 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
         repo_path = os.path.join(dir_path, Repo.DVC_DIR)
         # dvcignore will ignore subrepos, therefore using `use_dvcignore=False`
-        return self._main_repo.tree.isdir(repo_path, use_dvcignore=False)
+        return self._main_repo.fs.isdir(repo_path, use_dvcignore=False)
 
-    def _get_tree_pair(self, path) -> Tuple[BaseTree, Optional[DvcTree]]:
+    def _get_fs_pair(
+        self, path
+    ) -> Tuple[BaseFileSystem, Optional[DvcFileSystem]]:
         """
-        Returns a pair of trees based on repo the path falls in, using prefix.
+        Returns a pair of fss based on repo the path falls in, using prefix.
         """
         path = os.path.abspath(path)
 
@@ -121,8 +123,8 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         # this can happen if the path is outside of the repo
         repo = self._get_repo(path) or self._main_repo
 
-        dvc_tree = self._dvctrees.get(repo.root_dir)
-        return repo.tree, dvc_tree
+        dvc_fs = self._dvcfss.get(repo.root_dir)
+        return repo.fs, dvc_fs
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
@@ -130,99 +132,99 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if "b" in mode:
             encoding = None
 
-        tree, dvc_tree = self._get_tree_pair(path)
+        fs, dvc_fs = self._get_fs_pair(path)
         path_info = PathInfo(path)
         try:
-            return tree.open(path_info, mode=mode, encoding=encoding)
+            return fs.open(path_info, mode=mode, encoding=encoding)
         except FileNotFoundError:
-            if not dvc_tree:
+            if not dvc_fs:
                 raise
 
-        return dvc_tree.open(path_info, mode=mode, encoding=encoding, **kwargs)
+        return dvc_fs.open(path_info, mode=mode, encoding=encoding, **kwargs)
 
     def exists(
         self, path, use_dvcignore=True
     ):  # pylint: disable=arguments-differ
-        tree, dvc_tree = self._get_tree_pair(path)
+        fs, dvc_fs = self._get_fs_pair(path)
 
-        if not dvc_tree:
-            return tree.exists(path)
+        if not dvc_fs:
+            return fs.exists(path)
 
-        if tree.exists(path):
+        if fs.exists(path):
             return True
 
         try:
-            meta = dvc_tree.metadata(path)
+            meta = dvc_fs.metadata(path)
         except FileNotFoundError:
             return False
 
         (out,) = meta.outs
         assert len(meta.outs) == 1
-        if tree.exists(out.path_info):
+        if fs.exists(out.path_info):
             return False
         return True
 
     def isdir(self, path):  # pylint: disable=arguments-differ
-        tree, dvc_tree = self._get_tree_pair(path)
+        fs, dvc_fs = self._get_fs_pair(path)
 
         try:
-            st = tree.stat(path)
+            st = fs.stat(path)
             return stat.S_ISDIR(st.st_mode)
         except (OSError, ValueError):
             # from CPython's os.path.isdir()
             pass
 
-        if not dvc_tree:
+        if not dvc_fs:
             return False
 
         try:
-            meta = dvc_tree.metadata(path)
+            meta = dvc_fs.metadata(path)
         except FileNotFoundError:
             return False
 
         (out,) = meta.outs
         assert len(meta.outs) == 1
-        if tree.exists(out.path_info):
+        if fs.exists(out.path_info):
             return False
         return meta.isdir
 
     def isdvc(self, path, **kwargs):
-        _, dvc_tree = self._get_tree_pair(path)
-        return dvc_tree is not None and dvc_tree.isdvc(path, **kwargs)
+        _, dvc_fs = self._get_fs_pair(path)
+        return dvc_fs is not None and dvc_fs.isdvc(path, **kwargs)
 
     def isfile(self, path):  # pylint: disable=arguments-differ
-        tree, dvc_tree = self._get_tree_pair(path)
+        fs, dvc_fs = self._get_fs_pair(path)
 
         try:
-            st = tree.stat(path)
+            st = fs.stat(path)
             return stat.S_ISREG(st.st_mode)
         except (OSError, ValueError):
             # from CPython's os.path.isfile()
             pass
 
-        if not dvc_tree:
+        if not dvc_fs:
             return False
 
         try:
-            meta = dvc_tree.metadata(path)
+            meta = dvc_fs.metadata(path)
         except FileNotFoundError:
             return False
 
         (out,) = meta.outs
         assert len(meta.outs) == 1
-        if tree.exists(out.path_info):
+        if fs.exists(out.path_info):
             return False
         return meta.isfile
 
     def isexec(self, path_info):
-        tree, dvc_tree = self._get_tree_pair(path_info)
-        if dvc_tree and dvc_tree.exists(path_info):
-            return dvc_tree.isexec(path_info)
-        return tree.isexec(path_info)
+        fs, dvc_fs = self._get_fs_pair(path_info)
+        if dvc_fs and dvc_fs.exists(path_info):
+            return dvc_fs.isexec(path_info)
+        return fs.isexec(path_info)
 
     def stat(self, path):
-        tree, _ = self._get_tree_pair(path)
-        return tree.stat(path)
+        fs, _ = self._get_fs_pair(path)
+        return fs.stat(path)
 
     def _dvc_walk(self, walk):
         try:
@@ -239,15 +241,15 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
          NOTE: subrepo will only be discovered when walking if
          ignore_subrepos is set to False.
         """
-        tree, dvc_tree = self._get_tree_pair(dir_path)
-        tree_walk = tree.walk(
+        fs, dvc_fs = self._get_fs_pair(dir_path)
+        fs_walk = fs.walk(
             dir_path, topdown=True, ignore_subrepos=not self._traverse_subrepos
         )
-        if dvc_tree:
-            dvc_walk = dvc_tree.walk(dir_path, topdown=True, **kwargs)
+        if dvc_fs:
+            dvc_walk = dvc_fs.walk(dir_path, topdown=True, **kwargs)
         else:
             dvc_walk = None
-        yield from self._walk(tree_walk, dvc_walk, **kwargs)
+        yield from self._walk(fs_walk, dvc_walk, **kwargs)
 
     def _walk(self, repo_walk, dvc_walk=None, dvcfiles=False):
         from dvc.dvcfile import is_valid_filename
@@ -313,11 +315,11 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         follow_subrepos=None,
         **kwargs
     ):  # pylint: disable=arguments-differ
-        """Walk and merge both DVC and repo trees.
+        """Walk and merge both DVC and repo fss.
 
         Args:
             top: path to walk from
-            topdown: if True, tree will be walked from top down.
+            topdown: if True, fs will be walked from top down.
             onerror: if set, onerror function will be called if an error
                 occurs (by default errors are ignored).
             dvcfiles: if True, dvcfiles will be included in the files list
@@ -342,25 +344,25 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         if follow_subrepos is not None:
             ignore_subrepos = not follow_subrepos
 
-        tree, dvc_tree = self._get_tree_pair(top)
-        repo_exists = tree.exists(top)
-        repo_walk = tree.walk(
+        fs, dvc_fs = self._get_fs_pair(top)
+        repo_exists = fs.exists(top)
+        repo_walk = fs.walk(
             top,
             topdown=topdown,
             onerror=onerror,
             ignore_subrepos=ignore_subrepos,
         )
 
-        if not dvc_tree or (repo_exists and dvc_tree.isdvc(top)):
+        if not dvc_fs or (repo_exists and dvc_fs.isdvc(top)):
             yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
             return
 
         if not repo_exists:
-            yield from dvc_tree.walk(top, topdown=topdown, **kwargs)
+            yield from dvc_fs.walk(top, topdown=topdown, **kwargs)
 
         dvc_walk = None
-        if dvc_tree.exists(top):
-            dvc_walk = dvc_tree.walk(top, topdown=topdown, **kwargs)
+        if dvc_fs.exists(top):
+            dvc_walk = dvc_fs.walk(top, topdown=topdown, **kwargs)
 
         yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 
@@ -385,21 +387,21 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
     @property
     def hash_jobs(self):  # pylint: disable=invalid-overridden-method
-        return self._main_repo.tree.hash_jobs
+        return self._main_repo.fs.hash_jobs
 
     def metadata(self, path):
         abspath = os.path.abspath(path)
         path_info = PathInfo(abspath)
-        tree, dvc_tree = self._get_tree_pair(path_info)
+        fs, dvc_fs = self._get_fs_pair(path_info)
 
         dvc_meta = None
-        if dvc_tree:
+        if dvc_fs:
             with suppress(FileNotFoundError):
-                dvc_meta = dvc_tree.metadata(path_info)
+                dvc_meta = dvc_fs.metadata(path_info)
 
         stat_result = None
         with suppress(FileNotFoundError):
-            stat_result = tree.stat(path_info)
+            stat_result = fs.stat(path_info)
 
         if not stat_result and not dvc_meta:
             raise FileNotFoundError
@@ -421,9 +423,9 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
         return meta
 
     def info(self, path_info):
-        tree, dvc_tree = self._get_tree_pair(path_info)
+        fs, dvc_fs = self._get_fs_pair(path_info)
 
         try:
-            return tree.info(path_info)
+            return fs.info(path_info)
         except FileNotFoundError:
-            return dvc_tree.info(path_info)
+            return dvc_fs.info(path_info)

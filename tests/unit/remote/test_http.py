@@ -1,14 +1,14 @@
 import pytest
 
 from dvc.exceptions import HTTPError
-from dvc.tree.http import HTTPTree
+from dvc.fs.http import HTTPFileSystem
 
 
 def test_download_fails_on_error_code(dvc, http):
-    tree = HTTPTree(dvc, http.config)
+    fs = HTTPFileSystem(dvc, http.config)
 
     with pytest.raises(HTTPError):
-        tree._download(http / "missing.txt", "missing.txt")
+        fs._download(http / "missing.txt", "missing.txt")
 
 
 def test_public_auth_method(dvc):
@@ -19,9 +19,9 @@ def test_public_auth_method(dvc):
         "password": "",
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._auth_method() is None
+    assert fs._auth_method() is None
 
 
 def test_basic_auth_method(dvc):
@@ -38,10 +38,10 @@ def test_basic_auth_method(dvc):
         "password": password,
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._auth_method() == auth
-    assert isinstance(tree._auth_method(), HTTPBasicAuth)
+    assert fs._auth_method() == auth
+    assert isinstance(fs._auth_method(), HTTPBasicAuth)
 
 
 def test_digest_auth_method(dvc):
@@ -58,10 +58,10 @@ def test_digest_auth_method(dvc):
         "password": password,
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._auth_method() == auth
-    assert isinstance(tree._auth_method(), HTTPDigestAuth)
+    assert fs._auth_method() == auth
+    assert isinstance(fs._auth_method(), HTTPDigestAuth)
 
 
 def test_custom_auth_method(dvc):
@@ -75,11 +75,11 @@ def test_custom_auth_method(dvc):
         "password": password,
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._auth_method() is None
-    assert header in tree.headers
-    assert tree.headers[header] == password
+    assert fs._auth_method() is None
+    assert header in fs.headers
+    assert fs.headers[header] == password
 
 
 def test_ssl_verify_is_enabled_by_default(dvc):
@@ -88,9 +88,9 @@ def test_ssl_verify_is_enabled_by_default(dvc):
         "path_info": "file.html",
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._session.verify is True
+    assert fs._session.verify is True
 
 
 def test_ssl_verify_disable(dvc):
@@ -100,9 +100,9 @@ def test_ssl_verify_disable(dvc):
         "ssl_verify": False,
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._session.verify is False
+    assert fs._session.verify is False
 
 
 def test_http_method(dvc):
@@ -120,11 +120,11 @@ def test_http_method(dvc):
         "method": "PUT",
     }
 
-    tree = HTTPTree(dvc, config)
+    fs = HTTPFileSystem(dvc, config)
 
-    assert tree._auth_method() == auth
-    assert tree.method == "PUT"
-    assert isinstance(tree._auth_method(), HTTPBasicAuth)
+    assert fs._auth_method() == auth
+    assert fs.method == "PUT"
+    assert isinstance(fs._auth_method(), HTTPBasicAuth)
 
 
 def test_exists(mocker):
@@ -139,17 +139,17 @@ def test_exists(mocker):
     # on HEAD request failure.
     res.raw = io.StringIO("foo")
 
-    tree = HTTPTree(None, {})
-    mocker.patch.object(tree, "request", return_value=res)
+    fs = HTTPFileSystem(None, {})
+    mocker.patch.object(fs, "request", return_value=res)
 
     url = URLInfo("https://example.org/file.txt")
 
     res.status_code = 200
-    assert tree.exists(url) is True
+    assert fs.exists(url) is True
 
     res.status_code = 404
-    assert tree.exists(url) is False
+    assert fs.exists(url) is False
 
     res.status_code = 403
     with pytest.raises(HTTPError):
-        tree.exists(url)
+        fs.exists(url)

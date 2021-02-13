@@ -11,7 +11,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseTree
+from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _upload_to_bucket(bucket, fobj, to_info, chunk_size=None):
     blob.upload_from_file(fobj)
 
 
-class GSTree(BaseTree):
+class GSFileSystem(BaseFileSystem):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
@@ -196,7 +196,7 @@ class GSTree(BaseTree):
     def _upload_fobj(self, fobj, to_info):
         bucket = self.gs.bucket(to_info.bucket)
         # With other references being given in the @dynamic_chunk_size
-        # this function does not respect tree.CHUNK_SIZE, since it is
+        # this function does not respect fs.CHUNK_SIZE, since it is
         # too big for GS to handle. Rather it dynamically calculates the
         # best possible chunk size
         _upload_to_bucket(bucket, fobj, to_info)

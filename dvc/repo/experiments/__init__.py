@@ -251,10 +251,10 @@ class Experiments:
 
         # NOTE: dirty DVC lock files must be restored to index state to
         # avoid checking out incorrect persist or checkpoint outs
-        tree = self.scm.get_tree("HEAD")
+        fs = self.scm.get_fs("HEAD")
         lock_files = [
             str(fname)
-            for fname in tree.walk_files(self.scm.root_dir)
+            for fname in fs.walk_files(self.scm.root_dir)
             if is_lock_file(fname)
         ]
         if lock_files:
@@ -333,7 +333,7 @@ class Experiments:
             path = PathInfo(params_fname)
             suffix = path.suffix.lower()
             modify_data = MODIFIERS[suffix]
-            with modify_data(path, tree=self.repo.tree) as data:
+            with modify_data(path, fs=self.repo.fs) as data:
                 benedict(data).merge(params[params_fname], overwrite=True)
 
         # Force params file changes to be staged in git

@@ -13,7 +13,7 @@ from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
-from .base import BaseTree, RemoteCmdError
+from .base import BaseFileSystem, RemoteCmdError
 from .pool import get_connection
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def _hadoop_fs_checksum(path_info):
     return _group(regex, stdout, "checksum")
 
 
-class HDFSTree(BaseTree):
+class HDFSFileSystem(BaseFileSystem):
     scheme = Schemes.HDFS
     REQUIRES = {"pyarrow": "pyarrow"}
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"

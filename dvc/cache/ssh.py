@@ -28,7 +28,7 @@ class SSHCache(CloudCache):
                 callback(path)
             return ret
 
-        with self.tree.ssh(path_infos[0]) as ssh:
+        with self.fs.ssh(path_infos[0]) as ssh:
             channels = ssh.open_max_sftp_channels()
             max_workers = len(channels)
 
@@ -47,11 +47,11 @@ class SSHCache(CloudCache):
         faster than current approach (relying on exists(path_info)) applied in
         remote/base.
         """
-        if not self.tree.CAN_TRAVERSE:
+        if not self.fs.CAN_TRAVERSE:
             return list(set(hashes) & set(self.all()))
 
         # possibly prompt for credentials before "Querying" progress output
-        self.tree.ensure_credentials()
+        self.fs.ensure_credentials()
 
         with Tqdm(
             desc="Querying "
@@ -64,10 +64,10 @@ class SSHCache(CloudCache):
                 return self.batch_exists(chunks, callback=pbar.update_msg)
 
             with ThreadPoolExecutor(
-                max_workers=jobs or self.tree.JOBS
+                max_workers=jobs or self.fs.JOBS
             ) as executor:
                 path_infos = [self.hash_to_path_info(x) for x in hashes]
-                chunks = to_chunks(path_infos, num_chunks=self.tree.JOBS)
+                chunks = to_chunks(path_infos, num_chunks=self.fs.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(hashes, in_remote))
@@ -75,10 +75,10 @@ class SSHCache(CloudCache):
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
-            root = posixpath.join(self.tree.path_info.path, prefix[:2])
+            root = posixpath.join(self.fs.path_info.path, prefix[:2])
         else:
-            root = self.tree.path_info.path
-        with self.tree.ssh(self.tree.path_info) as ssh:
+            root = self.fs.path_info.path
+        with self.fs.ssh(self.fs.path_info) as ssh:
             if prefix and not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly

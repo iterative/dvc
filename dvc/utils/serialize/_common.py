@@ -8,26 +8,26 @@ from typing_extensions import Protocol
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.tree.base import BaseTree
+    from dvc.fs.base import BaseFileSystem
     from dvc.types import AnyPath
 
 
 class DumperFn(Protocol):
     def __call__(
-        self, path: "AnyPath", data: Any, tree: "BaseTree" = None
+        self, path: "AnyPath", data: Any, fs: "BaseFileSystem" = None
     ) -> Any:
         ...
 
 
 class ModifierFn(Protocol):
     def __call__(
-        self, path: "AnyPath", tree: "BaseTree" = None
+        self, path: "AnyPath", fs: "BaseFileSystem" = None
     ) -> ContextManager[Dict]:
         ...
 
 
 class LoaderFn(Protocol):
-    def __call__(self, path: "AnyPath", tree: "BaseTree" = None) -> Any:
+    def __call__(self, path: "AnyPath", fs: "BaseFileSystem" = None) -> Any:
         ...
 
 
@@ -45,14 +45,14 @@ class ParseError(DvcException):
         super().__init__(f"unable to read: '{path}', {message}")
 
 
-def _load_data(path: "AnyPath", parser: ParserFn, tree: "BaseTree" = None):
-    open_fn = tree.open if tree else open
+def _load_data(path: "AnyPath", parser: ParserFn, fs: "BaseFileSystem" = None):
+    open_fn = fs.open if fs else open
     with open_fn(path, encoding="utf-8") as fd:  # type: ignore
         return parser(fd.read(), path)
 
 
-def _dump_data(path, data: Any, dumper: DumperFn, tree: "BaseTree" = None):
-    open_fn = tree.open if tree else open
+def _dump_data(path, data: Any, dumper: DumperFn, fs: "BaseFileSystem" = None):
+    open_fn = fs.open if fs else open
     with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore
         dumper(data, fd)
 
@@ -62,10 +62,10 @@ def _modify_data(
     path: "AnyPath",
     parser: ParserFn,
     dumper: DumperFn,
-    tree: "BaseTree" = None,
+    fs: "BaseFileSystem" = None,
 ):
-    exists_fn = tree.exists if tree else os.path.exists
+    exists_fn = fs.exists if fs else os.path.exists
     file_exists = exists_fn(path)  # type: ignore
-    data = _load_data(path, parser=parser, tree=tree) if file_exists else {}
+    data = _load_data(path, parser=parser, fs=fs) if file_exists else {}
     yield data
-    dumper(path, data, tree=tree)
+    dumper(path, data, fs=fs)

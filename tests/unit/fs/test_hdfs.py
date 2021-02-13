@@ -1,7 +1,7 @@
 import os
 
+from dvc.fs.hdfs import _hadoop_fs_checksum
 from dvc.path_info import URLInfo
-from dvc.tree.hdfs import _hadoop_fs_checksum
 
 
 def test_hadoop_fs_checksum(mocker):

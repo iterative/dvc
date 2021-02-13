@@ -18,7 +18,7 @@ from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 from dvc.utils.stream import IterStream
 
-from .base import BaseTree
+from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -85,7 +85,7 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
-class GDriveTree(BaseTree):
+class GDriveFileSystem(BaseFileSystem):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
     PARAM_CHECKSUM = "checksum"
@@ -131,7 +131,7 @@ class GDriveTree(BaseTree):
         self._validate_config()
         self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
-            if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA)
+            if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
                 os.path.join(
@@ -173,8 +173,8 @@ class GDriveTree(BaseTree):
         Useful for tests, exception messages, etc. Returns either env variable
         name if it's set or actual path to the credentials file.
         """
-        if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
-            return GDriveTree.GDRIVE_CREDENTIALS_DATA
+        if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA):
+            return GDriveFileSystem.GDRIVE_CREDENTIALS_DATA
         if os.path.exists(self._gdrive_user_credentials_path):
             return self._gdrive_user_credentials_path
         return None
@@ -188,7 +188,7 @@ class GDriveTree(BaseTree):
         DVC config client id or secret but forgets to remove the cached
         credentials file.
         """
-        if not os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
+        if not os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA):
             if (
                 settings["client_config"]["client_id"]
                 != auth.credentials.client_id
@@ -211,9 +211,11 @@ class GDriveTree(BaseTree):
         from pydrive2.auth import GoogleAuth
         from pydrive2.drive import GoogleDrive
 
-        if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
+        if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA):
             with open(self._gdrive_user_credentials_path, "w") as cred_file:
-                cred_file.write(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
+                cred_file.write(
+                    os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
+                )
 
         auth_settings = {
             "client_config_backend": "settings",
@@ -259,7 +261,7 @@ class GDriveTree(BaseTree):
                 gauth.ServiceAuth()
             else:
                 gauth.CommandLineAuth()
-                GDriveTree._validate_credentials(gauth, auth_settings)
+                GDriveFileSystem._validate_credentials(gauth, auth_settings)
 
         # Handle AuthenticationError, RefreshError and other auth failures
         # It's hard to come up with a narrow exception, since PyDrive throws
@@ -268,7 +270,7 @@ class GDriveTree(BaseTree):
         except Exception as exc:
             raise GDriveAuthError(self.credentials_location) from exc
         finally:
-            if os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA):
+            if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA):
                 os.remove(self._gdrive_user_credentials_path)
 
         return GoogleDrive(gauth)

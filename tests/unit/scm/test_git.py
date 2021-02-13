@@ -42,8 +42,8 @@ def test_walk_with_submodules(tmp_dir, scm, git_dir):
 
     files = []
     dirs = []
-    tree = scm.get_tree("HEAD")
-    for _, dnames, fnames in tree.walk("."):
+    fs = scm.get_fs("HEAD")
+    for _, dnames, fnames in fs.walk("."):
         dirs.extend(dnames)
         files.extend(fnames)
 
@@ -59,20 +59,20 @@ def test_walk_onerror(tmp_dir, scm):
     tmp_dir.scm_gen(
         {"foo": "foo"}, commit="init",
     )
-    tree = scm.get_tree("HEAD")
+    fs = scm.get_fs("HEAD")
 
     # path does not exist
-    for _ in tree.walk("dir"):
+    for _ in fs.walk("dir"):
         pass
     with pytest.raises(OSError):
-        for _ in tree.walk("dir", onerror=onerror):
+        for _ in fs.walk("dir", onerror=onerror):
             pass
 
     # path is not a directory
-    for _ in tree.walk("foo"):
+    for _ in fs.walk("foo"):
         pass
     with pytest.raises(OSError):
-        for _ in tree.walk("foo", onerror=onerror):
+        for _ in fs.walk("foo", onerror=onerror):
             pass
 
 

@@ -14,8 +14,8 @@ class PythonFileCorruptedError(ParseError):
         super().__init__(path, message)
 
 
-def load_py(path, tree=None):
-    return _load_data(path, parser=parse_py, tree=tree)
+def load_py(path, fs=None):
+    return _load_data(path, parser=parse_py, fs=fs)
 
 
 def parse_py(text, path):
@@ -76,13 +76,13 @@ def _dump(data, stream):
     stream.close()
 
 
-def dump_py(path, data, tree=None):
-    return _dump_data(path, data, dumper=_dump, tree=tree)
+def dump_py(path, data, fs=None):
+    return _dump_data(path, data, dumper=_dump, fs=fs)
 
 
 @contextmanager
-def modify_py(path, tree=None):
-    with _modify_data(path, parse_py_for_update, dump_py, tree=tree) as d:
+def modify_py(path, fs=None):
+    with _modify_data(path, parse_py_for_update, dump_py, fs=fs) as d:
         yield d
 
 

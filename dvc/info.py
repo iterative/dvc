@@ -7,10 +7,10 @@ import uuid
 import psutil
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.fs import ALL_FS, get_fs_cls, get_fs_config
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
 from dvc.system import System
-from dvc.tree import TREES, get_tree_cls, get_tree_config
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
@@ -75,7 +75,7 @@ def _get_caches(cache):
 
 def _get_remotes(config):
     schemes = (
-        get_tree_cls(get_tree_config(config, name=remote)).scheme
+        get_fs_cls(get_fs_config(config, name=remote)).scheme
         for remote in config["remote"]
     )
 
@@ -117,11 +117,11 @@ def _get_linktype_support_info(repo):
 def _get_supported_remotes():
 
     supported_remotes = []
-    for tree_cls in TREES:
-        if not tree_cls.get_missing_deps():
-            supported_remotes.append(tree_cls.scheme)
+    for fs_cls in ALL_FS:
+        if not fs_cls.get_missing_deps():
+            supported_remotes.append(fs_cls.scheme)
 
-    if len(supported_remotes) == len(TREES):
+    if len(supported_remotes) == len(ALL_FS):
         return "All remotes"
 
     if len(supported_remotes) == 1:

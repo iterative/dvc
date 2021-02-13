@@ -7,9 +7,9 @@ from dvc.ignore import DvcIgnorePatterns
 
 
 def mock_dvcignore(dvcignore_path, patterns):
-    tree = MagicMock()
-    with patch.object(tree, "open", mock_open(read_data="\n".join(patterns))):
-        ignore_patterns = DvcIgnorePatterns.from_files(dvcignore_path, tree)
+    fs = MagicMock()
+    with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
+        ignore_patterns = DvcIgnorePatterns.from_files(dvcignore_path, fs)
 
     return ignore_patterns
 

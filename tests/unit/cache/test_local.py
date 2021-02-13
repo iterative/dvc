@@ -5,9 +5,9 @@ import pytest
 
 from dvc.cache import NamedCache
 from dvc.cache.local import LocalCache
+from dvc.fs.local import LocalFileSystem
 from dvc.path_info import PathInfo
 from dvc.remote.index import RemoteIndexNoop
-from dvc.tree.local import LocalTree
 
 
 def test_status_download_optimization(mocker, dvc):
@@ -15,7 +15,7 @@ def test_status_download_optimization(mocker, dvc):
         And the desired files to fetch are already on the local cache,
         Don't check the existence of the desired files on the remote cache
     """
-    cache = LocalCache(LocalTree(dvc, {}))
+    cache = LocalCache(LocalFileSystem(dvc, {}))
 
     infos = NamedCache()
     infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
@@ -37,8 +37,8 @@ def test_status_download_optimization(mocker, dvc):
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
 def test_is_protected(tmp_dir, dvc, link_name):
     cache = dvc.cache.local
-    tree = cache.tree
-    link_method = getattr(tree, link_name)
+    fs = cache.fs
+    link_method = getattr(fs, link_name)
 
     (tmp_dir / "foo").write_text("foo")
 

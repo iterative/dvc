@@ -135,7 +135,7 @@ def make_definition(
 
 class DataResolver:
     def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
-        self.tree = tree = repo.tree
+        self.fs = fs = repo.fs
         self.wdir = wdir
         self.relpath = relpath(self.wdir / "dvc.yaml")
 
@@ -144,7 +144,7 @@ class DataResolver:
         self.context: Context = Context()
 
         try:
-            args = tree, vars_, wdir  # load from `vars` section
+            args = fs, vars_, wdir  # load from `vars` section
             self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
@@ -270,8 +270,8 @@ class EntryDefinition:
             context = Context.clone(context)
 
         try:
-            tree = self.resolver.tree
-            context.load_from_vars(tree, vars_, wdir, stage_name=name)
+            fs = self.resolver.fs
+            context.load_from_vars(fs, vars_, wdir, stage_name=name)
         except VarsAlreadyLoaded as exc:
             format_and_raise(exc, f"'{self.where}.{name}.vars'", self.relpath)
 

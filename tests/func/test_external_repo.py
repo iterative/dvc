@@ -3,13 +3,13 @@ import os
 from mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
+from dvc.fs.local import LocalFileSystem
 from dvc.objects import save, stage
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
-from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
-from tests.unit.tree.test_repo import make_subrepo
+from tests.unit.fs.test_repo import make_subrepo
 
 
 def test_external_repo(erepo_dir):
@@ -51,7 +51,7 @@ def test_cache_reused(erepo_dir, mocker, local_cloud):
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(LocalTree, "download")
+    download_spy = mocker.spy(LocalFileSystem, "download")
 
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"
@@ -92,7 +92,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_tree.download(
+        repo.repo_fs.download(
             PathInfo(repo.root_dir) / "subdir" / "file", PathInfo(dest),
         )
 
@@ -187,7 +187,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_tree.download(
+        repo.repo_fs.download(
             PathInfo(repo.root_dir) / "dir",
             PathInfo(tmp_dir / "out"),
             follow_subrepos=False,
@@ -203,7 +203,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         obj = stage(
             repo.cache.local,
             PathInfo(repo.root_dir) / "dir",
-            repo.repo_tree,
+            repo.repo_fs,
             follow_subrepos=False,
         )
         save(repo.cache.local, obj)
@@ -226,7 +226,7 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_tree.download(
+        repo.repo_fs.download(
             PathInfo(repo.root_dir) / "dir",
             PathInfo(tmp_dir / "out"),
             follow_subrepos=False,

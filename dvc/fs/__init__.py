@@ -1,45 +1,45 @@
 import posixpath
 from urllib.parse import urlparse
 
-from .azure import AzureTree
-from .gdrive import GDriveTree
-from .gs import GSTree
-from .hdfs import HDFSTree
-from .http import HTTPTree
-from .https import HTTPSTree
-from .local import LocalTree
-from .oss import OSSTree
-from .s3 import S3Tree
-from .ssh import SSHTree
-from .webdav import WebDAVTree
-from .webdavs import WebDAVSTree
-from .webhdfs import WebHDFSTree
+from .azure import AzureFileSystem
+from .gdrive import GDriveFileSystem
+from .gs import GSFileSystem
+from .hdfs import HDFSFileSystem
+from .http import HTTPFileSystem
+from .https import HTTPSFileSystem
+from .local import LocalFileSystem
+from .oss import OSSFileSystem
+from .s3 import S3FileSystem
+from .ssh import SSHFileSystem
+from .webdav import WebDAVFileSystem
+from .webdavs import WebDAVSFileSystem
+from .webhdfs import WebHDFSFileSystem
 
-TREES = [
-    AzureTree,
-    GDriveTree,
-    GSTree,
-    HDFSTree,
-    HTTPTree,
-    HTTPSTree,
-    S3Tree,
-    SSHTree,
-    OSSTree,
-    WebDAVTree,
-    WebDAVSTree,
-    WebHDFSTree
-    # NOTE: LocalTree is the default
+ALL_FS = [
+    AzureFileSystem,
+    GDriveFileSystem,
+    GSFileSystem,
+    HDFSFileSystem,
+    HTTPFileSystem,
+    HTTPSFileSystem,
+    S3FileSystem,
+    SSHFileSystem,
+    OSSFileSystem,
+    WebDAVFileSystem,
+    WebDAVSFileSystem,
+    WebHDFSFileSystem
+    # NOTE: LocalFileSystem is the default
 ]
 
 
-def get_tree_cls(remote_conf):
-    for tree_cls in TREES:
-        if tree_cls.supported(remote_conf):
-            return tree_cls
-    return LocalTree
+def get_fs_cls(remote_conf):
+    for fs_cls in ALL_FS:
+        if fs_cls.supported(remote_conf):
+            return fs_cls
+    return LocalFileSystem
 
 
-def get_tree_config(config, **kwargs):
+def get_fs_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
         remote_conf = config["remote"][name.lower()]
@@ -74,18 +74,18 @@ def _resolve_remote_refs(config, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = get_tree_config(config, name=parsed.netloc)
+    base = get_fs_config(config, name=parsed.netloc)
     url = posixpath.join(base["url"], parsed.path.lstrip("/"))
     return {**base, **remote_conf, "url": url}
 
 
-def get_cloud_tree(repo, **kwargs):
+def get_cloud_fs(repo, **kwargs):
     from dvc.config import ConfigError
     from dvc.config_schema import SCHEMA, Invalid
 
-    remote_conf = get_tree_config(repo.config, **kwargs)
+    remote_conf = get_fs_config(repo.config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
         raise ConfigError(str(exc)) from None
-    return get_tree_cls(remote_conf)(repo, remote_conf)
+    return get_fs_cls(remote_conf)(repo, remote_conf)

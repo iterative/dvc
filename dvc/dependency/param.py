@@ -91,7 +91,7 @@ class ParamsDependency(LocalDependency):
         suffix = self.path_info.suffix.lower()
         loader = LOADERS[suffix]
         try:
-            config = loader(self.path_info, tree=self.repo.tree)
+            config = loader(self.path_info, fs=self.repo.fs)
         except ParseError as exc:
             raise BadParamFileError(
                 f"Unable to read parameters from '{self}'"
