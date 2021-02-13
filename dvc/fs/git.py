@@ -3,18 +3,19 @@ import os
 
 from funcy import cached_property
 
-from dvc.tree.base import BaseTree
 from dvc.utils import is_exec, relpath
 
+from .base import BaseFileSystem
 
-class GitTree(BaseTree):  # pylint:disable=abstract-method
+
+class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
     def __init__(
         self, root_dir, trie, use_dvcignore=False, dvcignore_root=None
     ):
         super().__init__(None, {})
-        self._tree_root = root_dir
+        self._fs_root = root_dir
         self.trie = trie
         self.use_dvcignore = use_dvcignore
         self.dvcignore_root = dvcignore_root
@@ -24,17 +25,17 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         return self.trie.rev
 
     @property
-    def tree_root(self):
-        return self._tree_root
+    def fs_root(self):
+        return self._fs_root
 
     def _get_key(self, path):
         if isinstance(path, str):
             if not os.path.isabs(path):
                 relparts = path.split(os.sep)
             else:
-                relparts = relpath(path, self.tree_root).split(os.sep)
+                relparts = relpath(path, self.fs_root).split(os.sep)
         else:
-            relparts = path.relative_to(self.tree_root).parts
+            relparts = path.relative_to(self.fs_root).parts
         if relparts == ["."]:
             return ()
         return tuple(relparts)
@@ -43,7 +44,7 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
     def dvcignore(self):
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
 
-        root = self.dvcignore_root or self.tree_root
+        root = self.dvcignore_root or self.fs_root
         cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
         return cls(self, root)
 
@@ -122,9 +123,9 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         key = self._get_key(top)
         for prefix, dirs, files in self.trie.walk(key, topdown=topdown):
             if prefix:
-                root = os.path.join(self.tree_root, os.sep.join(prefix))
+                root = os.path.join(self.fs_root, os.sep.join(prefix))
             else:
-                root = self.tree_root
+                root = self.fs_root
             if use_dvcignore:
                 dirs[:], files[:] = self.dvcignore(
                     root, dirs, files, ignore_subrepos=ignore_subrepos,

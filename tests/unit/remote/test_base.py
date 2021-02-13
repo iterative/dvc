@@ -4,8 +4,8 @@ import mock
 import pytest
 
 from dvc.cache.base import CloudCache
+from dvc.fs.base import BaseFileSystem, RemoteCmdError
 from dvc.path_info import PathInfo
-from dvc.tree.base import BaseTree, RemoteCmdError
 
 
 class _CallableOrNone:
@@ -26,19 +26,21 @@ def test_cmd_error(dvc):
     err = "sed: expression #1, char 2: extra characters after command"
 
     with mock.patch.object(
-        BaseTree, "remove", side_effect=RemoteCmdError("base", cmd, ret, err),
+        BaseFileSystem,
+        "remove",
+        side_effect=RemoteCmdError("base", cmd, ret, err),
     ):
         with pytest.raises(RemoteCmdError):
-            BaseTree(dvc, config).remove("file")
+            BaseFileSystem(dvc, config).remove("file")
 
 
 @mock.patch.object(CloudCache, "list_hashes_traverse")
 @mock.patch.object(CloudCache, "list_hashes_exists")
 def test_hashes_exist(object_exists, traverse, dvc):
-    cache = CloudCache(BaseTree(dvc, {}))
+    cache = CloudCache(BaseFileSystem(dvc, {}))
 
     # remote does not support traverse
-    cache.tree.CAN_TRAVERSE = False
+    cache.fs.CAN_TRAVERSE = False
     with mock.patch.object(
         cache, "list_hashes", return_value=list(range(256))
     ):
@@ -47,7 +49,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
         object_exists.assert_called_with(hashes, None, None)
         traverse.assert_not_called()
 
-    cache.tree.CAN_TRAVERSE = True
+    cache.fs.CAN_TRAVERSE = True
 
     # large remote, small local
     object_exists.reset_mock()
@@ -61,7 +63,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
         # before returning all 256 remote hashes
         max_hashes = math.ceil(
             cache._max_estimation_size(hashes)
-            / pow(16, cache.tree.TRAVERSE_PREFIX_LEN)
+            / pow(16, cache.fs.TRAVERSE_PREFIX_LEN)
         )
         assert max_hashes < 256
         object_exists.assert_called_with(
@@ -72,7 +74,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
     # large remote, large local
     object_exists.reset_mock()
     traverse.reset_mock()
-    cache.tree.JOBS = 16
+    cache.fs.JOBS = 16
     with mock.patch.object(
         cache, "list_hashes", return_value=list(range(256))
     ):
@@ -80,7 +82,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
         cache.hashes_exist(hashes)
         object_exists.assert_not_called()
         traverse.assert_called_with(
-            256 * pow(16, cache.tree.TRAVERSE_PREFIX_LEN),
+            256 * pow(16, cache.fs.TRAVERSE_PREFIX_LEN),
             set(range(256)),
             None,
             None,
@@ -94,11 +96,11 @@ def test_hashes_exist(object_exists, traverse, dvc):
     CloudCache, "_path_to_hash", side_effect=lambda x: x,
 )
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
-    cache = CloudCache(BaseTree(dvc, {}))
-    cache.tree.path_info = PathInfo("foo")
+    cache = CloudCache(BaseFileSystem(dvc, {}))
+    cache.fs.path_info = PathInfo("foo")
 
     # parallel traverse
-    size = 256 / cache.tree.JOBS * cache.tree.LIST_OBJECT_PAGE_SIZE
+    size = 256 / cache.fs.JOBS * cache.fs.LIST_OBJECT_PAGE_SIZE
     list(cache.list_hashes_traverse(size, {0}))
     for i in range(1, 16):
         list_hashes.assert_any_call(
@@ -119,8 +121,8 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
 
 
 def test_list_hashes(dvc):
-    cache = CloudCache(BaseTree(dvc, {}))
-    cache.tree.path_info = PathInfo("foo")
+    cache = CloudCache(BaseFileSystem(dvc, {}))
+    cache.fs.path_info = PathInfo("foo")
 
     with mock.patch.object(
         cache, "_list_paths", return_value=["12/3456", "bar"]
@@ -130,20 +132,20 @@ def test_list_hashes(dvc):
 
 
 def test_list_paths(dvc):
-    cache = CloudCache(BaseTree(dvc, {}))
-    cache.tree.path_info = PathInfo("foo")
+    cache = CloudCache(BaseFileSystem(dvc, {}))
+    cache.fs.path_info = PathInfo("foo")
 
     with mock.patch.object(
-        cache.tree, "walk_files", return_value=[]
+        cache.fs, "walk_files", return_value=[]
     ) as walk_mock:
         for _ in cache._list_paths():
             pass
-        walk_mock.assert_called_with(cache.tree.path_info, prefix=False)
+        walk_mock.assert_called_with(cache.fs.path_info, prefix=False)
 
         for _ in cache._list_paths(prefix="000"):
             pass
         walk_mock.assert_called_with(
-            cache.tree.path_info / "00" / "0", prefix=True
+            cache.fs.path_info / "00" / "0", prefix=True
         )
 
 
@@ -152,4 +154,4 @@ def test_list_paths(dvc):
     [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
 )
 def test_is_dir_hash(hash_, result):
-    assert BaseTree.is_dir_hash(hash_) == result
+    assert BaseFileSystem.is_dir_hash(hash_) == result

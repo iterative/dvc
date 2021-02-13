@@ -9,9 +9,9 @@ from mock import patch
 from dvc.config import Config
 from dvc.dir_info import DirInfo
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -158,7 +158,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch(
         "dvc.oid._collect_dir", return_value=dir_info,
     ):
-        hash1 = get_hash(path_info, dvc.cache.local.tree, "md5")
+        hash1 = get_hash(path_info, dvc.cache.local.fs, "md5")
 
     dir_info = DirInfo.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
@@ -166,7 +166,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch(
         "dvc.oid._collect_dir", return_value=dir_info,
     ):
-        hash2 = get_hash(path_info, dvc.cache.local.tree, "md5")
+        hash2 = get_hash(path_info, dvc.cache.local.fs, "md5")
 
     assert hash1 == hash2
 
@@ -177,26 +177,26 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalTree._upload
+    original = LocalFileSystem._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "foo" in name:
             raise Exception("stop foo")
         return original(self, from_file, to_info, name, **kwargs)
 
-    with patch.object(LocalTree, "_upload", unreliable_upload):
+    with patch.object(LocalFileSystem, "_upload", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 3
 
         remote = dvc.cloud.get_remote("upstream")
-        assert not remote.tree.exists(
+        assert not remote.fs.exists(
             remote.cache.hash_to_path_info(foo.hash_info.value)
         )
-        assert remote.tree.exists(
+        assert remote.fs.exists(
             remote.cache.hash_to_path_info(bar.hash_info.value)
         )
-        assert not remote.tree.exists(
+        assert not remote.fs.exists(
             remote.cache.hash_to_path_info(baz.hash_info.value)
         )
 
@@ -204,7 +204,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     dvc.push()
     remove(dvc.cache.local.cache_dir)
 
-    with patch.object(LocalTree, "_download", side_effect=Exception):
+    with patch.object(LocalFileSystem, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -218,7 +218,7 @@ def test_raise_on_too_many_open_files(
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch.object(
-        LocalTree,
+        LocalFileSystem,
         "_upload",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
@@ -269,7 +269,9 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     foo = tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})[0].outs[0]
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.patch.object(LocalTree, "_upload", return_value=0)
+    mocked_upload = mocker.patch.object(
+        LocalFileSystem, "_upload", return_value=0
+    )
     dvc.push()
 
     # foo .dir file should be uploaded after bar
@@ -432,15 +434,13 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     used = stage.get_used_cache(remote=remote)
 
     # remove one of the cache files for directory
-    file_hashes = list(used.child_keys(cache.tree.scheme, dir_hash))
+    file_hashes = list(used.child_keys(cache.fs.scheme, dir_hash))
     remove(cache.hash_to_path_info(file_hashes[0]))
 
     dvc.push()
-    assert not remote.tree.exists(remote.cache.hash_to_path_info(dir_hash))
-    assert not remote.tree.exists(
-        remote.cache.hash_to_path_info(file_hashes[0])
-    )
-    assert remote.tree.exists(remote.cache.hash_to_path_info(file_hashes[1]))
+    assert not remote.fs.exists(remote.cache.hash_to_path_info(dir_hash))
+    assert not remote.fs.exists(remote.cache.hash_to_path_info(file_hashes[0]))
+    assert remote.fs.exists(remote.cache.hash_to_path_info(file_hashes[1]))
 
 
 def test_upload_exists(tmp_dir, dvc, local_remote):
@@ -448,14 +448,14 @@ def test_upload_exists(tmp_dir, dvc, local_remote):
     remote = dvc.cloud.get_remote("upstream")
     # allow uploaded files to be writable for this test,
     # normally they are set to read-only for DVC remotes
-    remote.tree.CACHE_MODE = 0o644
+    remote.fs.CACHE_MODE = 0o644
 
     from_info = PathInfo(tmp_dir / "foo")
-    to_info = remote.tree.path_info / "foo"
-    remote.tree.upload(from_info, to_info)
-    assert remote.tree.exists(to_info)
+    to_info = remote.fs.path_info / "foo"
+    remote.fs.upload(from_info, to_info)
+    assert remote.fs.exists(to_info)
 
     tmp_dir.gen("foo", "bar")
-    remote.tree.upload(from_info, to_info)
-    with remote.tree.open(to_info) as fobj:
+    remote.fs.upload(from_info, to_info)
+    with remote.fs.open(to_info) as fobj:
         assert fobj.read() == "bar"

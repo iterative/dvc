@@ -22,11 +22,11 @@ class LocalCache(CloudCache):
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, tree):
-        super().__init__(tree)
-        self.cache_dir = tree.config.get("url")
+    def __init__(self, fs):
+        super().__init__(fs)
+        self.cache_dir = fs.config.get("url")
 
-        shared = tree.config.get("shared")
+        shared = fs.config.get("shared")
         if shared:
             self._file_mode = 0o664
             self._dir_mode = 0o2775
@@ -36,11 +36,11 @@ class LocalCache(CloudCache):
 
     @property
     def cache_dir(self):
-        return self.tree.path_info.fspath if self.tree.path_info else None
+        return self.fs.path_info.fspath if self.fs.path_info else None
 
     @cache_dir.setter
     def cache_dir(self, value):
-        self.tree.path_info = PathInfo(value) if value else None
+        self.fs.path_info = PathInfo(value) if value else None
 
     @cached_property
     def cache_path(self):
@@ -71,7 +71,7 @@ class LocalCache(CloudCache):
             unit="file",
             desc="Querying " + ("cache in " + name if name else "local cache"),
         ):
-            hash_info = HashInfo(self.tree.PARAM_CHECKSUM, hash_)
+            hash_info = HashInfo(self.fs.PARAM_CHECKSUM, hash_)
             try:
                 self.check(hash_info)
                 ret.append(hash_)
@@ -81,14 +81,14 @@ class LocalCache(CloudCache):
         return ret
 
     def _list_paths(self, prefix=None, progress_callback=None):
-        assert self.tree.path_info is not None
+        assert self.fs.path_info is not None
         if prefix:
-            path_info = self.tree.path_info / prefix[:2]
-            if not self.tree.exists(path_info):
+            path_info = self.fs.path_info / prefix[:2]
+            if not self.fs.exists(path_info):
                 return
         else:
-            path_info = self.tree.path_info
-        # NOTE: use utils.fs walk_files since tree.walk_files will not follow
+            path_info = self.fs.path_info
+        # NOTE: use utils.fs walk_files since fs.walk_files will not follow
         # symlinks
         if progress_callback:
             for path in walk_files(path_info):
@@ -100,10 +100,10 @@ class LocalCache(CloudCache):
     def _remove_unpacked_dir(self, hash_):
         info = self.hash_to_path_info(hash_)
         path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.tree.remove(path_info)
+        self.fs.remove(path_info)
 
     def _unprotect_file(self, path):
-        if self.tree.is_symlink(path) or self.tree.is_hardlink(path):
+        if self.fs.is_symlink(path) or self.fs.is_hardlink(path):
             logger.debug("Unprotecting '%s'", path)
             tmp = os.path.join(os.path.dirname(path), "." + uuid())
 
@@ -126,7 +126,7 @@ class LocalCache(CloudCache):
         os.chmod(path, self._file_mode)
 
     def _unprotect_dir(self, path):
-        for fname in self.tree.walk_files(path):
+        for fname in self.fs.walk_files(path):
             self._unprotect_file(fname)
 
     def unprotect(self, path_info):

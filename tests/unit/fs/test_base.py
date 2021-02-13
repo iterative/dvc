@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.tree.base import BaseTree, RemoteMissingDepsError
+from dvc.fs.base import BaseFileSystem, RemoteMissingDepsError
 
 
 @pytest.mark.parametrize(
@@ -13,7 +13,7 @@ from dvc.tree.base import BaseTree, RemoteMissingDepsError
 )
 def test_missing_deps(pkg, msg, mocker):
     requires = {"missing": "missing"}
-    mocker.patch.object(BaseTree, "REQUIRES", requires)
+    mocker.patch.object(BaseFileSystem, "REQUIRES", requires)
     mocker.patch("dvc.utils.pkg.PKG", pkg)
     with pytest.raises(RemoteMissingDepsError, match=msg):
-        BaseTree(None, {})
+        BaseFileSystem(None, {})

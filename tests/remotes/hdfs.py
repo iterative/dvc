@@ -250,7 +250,7 @@ def hdfs(mocker):
         "pyarrow.fs.HadoopFileSystem", FakeHadoopFileSystem, create=True
     )
 
-    mocker.patch("dvc.tree.hdfs._hadoop_fs_checksum", hadoop_fs_checksum)
+    mocker.patch("dvc.fs.hdfs._hadoop_fs_checksum", hadoop_fs_checksum)
 
     url = f"hdfs://example.com:12345/{uuid.uuid4()}"
     yield HDFS(url)

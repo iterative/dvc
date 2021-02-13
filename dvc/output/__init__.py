@@ -14,11 +14,11 @@ from dvc.output.ssh import SSHOutput
 from dvc.output.webhdfs import WebHDFSOutput
 from dvc.scheme import Schemes
 
-from ..tree import get_cloud_tree
-from ..tree.hdfs import HDFSTree
-from ..tree.local import LocalTree
-from ..tree.s3 import S3Tree
-from ..tree.webhdfs import WebHDFSTree
+from ..fs import get_cloud_fs
+from ..fs.hdfs import HDFSFileSystem
+from ..fs.local import LocalFileSystem
+from ..fs.s3 import S3FileSystem
+from ..fs.webhdfs import WebHDFSFileSystem
 
 OUTS = [
     HDFSOutput,
@@ -53,10 +53,10 @@ CHECKSUM_SCHEMA = Any(
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    LocalTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3Tree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    HDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    WebHDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3FileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    HDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    WebHDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
@@ -88,13 +88,13 @@ def _get(
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
-        return OUTS_MAP[tree.scheme](
+        fs = get_cloud_fs(stage.repo, name=parsed.netloc)
+        return OUTS_MAP[fs.scheme](
             stage,
             p,
             info,
             cache=cache,
-            tree=tree,
+            fs=fs,
             metric=metric,
             plot=plot,
             persist=persist,
@@ -111,7 +111,7 @@ def _get(
                 p,
                 info,
                 cache=cache,
-                tree=None,
+                fs=None,
                 metric=metric,
                 plot=plot,
                 persist=persist,
@@ -125,7 +125,7 @@ def _get(
         p,
         info,
         cache=cache,
-        tree=None,
+        fs=None,
         metric=metric,
         plot=plot,
         persist=persist,

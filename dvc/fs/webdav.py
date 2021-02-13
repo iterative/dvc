@@ -12,7 +12,7 @@ from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseTree
+from .base import BaseFileSystem
 from .http import ask_password
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class WebDAVConnectionError(DvcException):
         super().__init__(f"Unable to connect to WebDAV {host}.")
 
 
-class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
+class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     # Use webdav scheme
     scheme = Schemes.WEBDAV
 
@@ -47,7 +47,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
     # Constructor
     def __init__(self, repo, config):
-        # Call BaseTree constructor
+        # Call BaseFileSystem constructor
         super().__init__(repo, config)
 
         # Get username from configuration
@@ -235,7 +235,7 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
 
     # Downloads file from remote to file
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        # Progress from HTTPTree
+        # Progress from HTTPFileSystem
         with open(to_file, "wb") as fd:
             with Tqdm.wrapattr(
                 fd,

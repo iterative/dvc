@@ -13,7 +13,7 @@ from dvc.exceptions import DownloadError
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
-from tests.unit.tree.test_repo import make_subrepo
+from tests.unit.fs.test_repo import make_subrepo
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -305,7 +305,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove(dst_cache)
 
     with patch(
-        "dvc.tree.local.LocalTree._download", side_effect=Exception
+        "dvc.fs.local.LocalFileSystem._download", side_effect=Exception
     ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 

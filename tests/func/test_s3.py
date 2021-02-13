@@ -9,7 +9,7 @@ import pytest
 from moto import mock_s3
 
 from dvc.cache.base import CloudCache
-from dvc.tree.s3 import S3Tree
+from dvc.fs.s3 import S3FileSystem
 from tests.remotes import S3
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
@@ -34,7 +34,7 @@ def reduced_min_part_size(f):
 
 
 def _get_src_dst():
-    base_info = S3Tree.PATH_CLS(S3.get_url())
+    base_info = S3FileSystem.PATH_CLS(S3.get_url())
     return base_info / "from", base_info / "to"
 
 
@@ -46,35 +46,38 @@ def test_copy_singlepart_preserve_etag():
     s3.create_bucket(Bucket=from_info.bucket)
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
-    S3Tree._copy(s3, from_info, to_info, {})
+    S3FileSystem._copy(s3, from_info, to_info, {})
 
 
 @mock_s3
 @pytest.mark.parametrize(
     "base_info",
-    [S3Tree.PATH_CLS("s3://bucket/"), S3Tree.PATH_CLS("s3://bucket/ns/")],
+    [
+        S3FileSystem.PATH_CLS("s3://bucket/"),
+        S3FileSystem.PATH_CLS("s3://bucket/ns/"),
+    ],
 )
 def test_link_created_on_non_nested_path(base_info, tmp_dir, dvc, scm):
     from dvc.checkout import _link
 
-    tree = S3Tree(dvc, {"url": str(base_info.parent)})
-    cache = CloudCache(tree)
-    s3 = cache.tree.s3.meta.client
+    fs = S3FileSystem(dvc, {"url": str(base_info.parent)})
+    cache = CloudCache(fs)
+    s3 = cache.fs.s3.meta.client
     s3.create_bucket(Bucket=base_info.bucket)
     s3.put_object(
         Bucket=base_info.bucket, Key=(base_info / "from").path, Body="data"
     )
     _link(cache, base_info / "from", base_info / "to")
 
-    assert cache.tree.exists(base_info / "from")
-    assert cache.tree.exists(base_info / "to")
+    assert cache.fs.exists(base_info / "from")
+    assert cache.fs.exists(base_info / "to")
 
 
 @mock_s3
 def test_makedirs_doesnot_try_on_top_level_paths(tmp_dir, dvc, scm):
-    base_info = S3Tree.PATH_CLS("s3://bucket/")
-    tree = S3Tree(dvc, {"url": str(base_info)})
-    tree.makedirs(base_info)
+    base_info = S3FileSystem.PATH_CLS("s3://bucket/")
+    fs = S3FileSystem(dvc, {"url": str(base_info)})
+    fs.makedirs(base_info)
 
 
 def _upload_multipart(s3, Bucket, Key):
@@ -115,24 +118,24 @@ def test_copy_multipart_preserve_etag():
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=from_info.bucket)
     _upload_multipart(s3, from_info.bucket, from_info.path)
-    S3Tree._copy(s3, from_info, to_info, {})
+    S3FileSystem._copy(s3, from_info, to_info, {})
 
 
 def test_s3_isdir(tmp_dir, dvc, s3):
     s3.gen({"data": {"foo": "foo"}})
-    tree = S3Tree(dvc, s3.config)
+    fs = S3FileSystem(dvc, s3.config)
 
-    assert not tree.isdir(s3 / "data" / "foo")
-    assert tree.isdir(s3 / "data")
+    assert not fs.isdir(s3 / "data" / "foo")
+    assert fs.isdir(s3 / "data")
 
 
 def test_s3_upload_fobj(tmp_dir, dvc, s3):
     s3.gen({"data": {"foo": "foo"}})
-    tree = S3Tree(dvc, s3.config)
+    fs = S3FileSystem(dvc, s3.config)
 
     to_info = s3 / "data" / "bar"
-    with tree.open(s3 / "data" / "foo", "rb") as stream:
-        tree.upload_fobj(stream, to_info, 1)
+    with fs.open(s3 / "data" / "foo", "rb") as stream:
+        fs.upload_fobj(stream, to_info, 1)
 
     assert to_info.read_text() == "foo"
 
@@ -167,16 +170,16 @@ def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
     monkeypatch.setenv(var, str(tmp_dir))
 
     # Fresh import to see the effects of changing HOME variable
-    s3_mod = importlib.reload(sys.modules[S3Tree.__module__])
-    tree = s3_mod.S3Tree(dvc, s3.config)
-    assert tree._transfer_config is None
+    s3_mod = importlib.reload(sys.modules[S3FileSystem.__module__])
+    fs = s3_mod.S3FileSystem(dvc, s3.config)
+    assert fs._transfer_config is None
 
-    with tree._get_s3() as s3:
+    with fs._get_s3() as s3:
         s3_config = s3.meta.client.meta.config.s3
         assert s3_config["use_accelerate_endpoint"]
         assert s3_config["addressing_style"] == "path"
 
-    transfer_config = tree._transfer_config
+    transfer_config = fs._transfer_config
     assert transfer_config.max_io_queue_size == 1000
     assert transfer_config.multipart_chunksize == 64 * MB
     assert transfer_config.multipart_threshold == 1000 * KB
@@ -204,13 +207,13 @@ def test_s3_aws_config_different_profile(tmp_dir, dvc, s3, monkeypatch):
     )
     monkeypatch.setenv("AWS_CONFIG_FILE", config_file)
 
-    tree = S3Tree(dvc, {**s3.config, "profile": "dev"})
-    assert tree._transfer_config is None
+    fs = S3FileSystem(dvc, {**s3.config, "profile": "dev"})
+    assert fs._transfer_config is None
 
-    with tree._get_s3() as s3:
+    with fs._get_s3() as s3:
         s3_config = s3.meta.client.meta.config.s3
         assert s3_config["addresing_style"] == "virtual"
         assert "use_accelerate_endpoint" not in s3_config
 
-    transfer_config = tree._transfer_config
+    transfer_config = fs._transfer_config
     assert transfer_config.multipart_threshold == 2 * GB

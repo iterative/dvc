@@ -8,9 +8,9 @@ from git import Repo
 
 from dvc.cache.local import LocalCache
 from dvc.exceptions import CollectCacheError
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
 
@@ -321,7 +321,9 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     dvc.remove(dir2.relpath)
     dvc.gc(workspace=True)
 
-    mocked_remove = mocker.patch.object(LocalTree, "remove", autospec=True)
+    mocked_remove = mocker.patch.object(
+        LocalFileSystem, "remove", autospec=True
+    )
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 8
     # dir (and unpacked dir) should be first 4 checksums removed from

@@ -1,4 +1,4 @@
-from dvc.tree.webhdfs import WebHDFSTree
+from dvc.fs.webhdfs import WebHDFSFileSystem
 
 user = "test"
 webhdfs_token = "token"
@@ -16,9 +16,9 @@ def test_init(dvc):
         "user": user,
     }
 
-    tree = WebHDFSTree(dvc, config)
-    assert tree.path_info == url
-    assert tree.token == webhdfs_token
-    assert tree.alias == webhdfs_alias
-    assert tree.path_info.user == user
-    assert tree.hdfscli_config == hdfscli_config
+    fs = WebHDFSFileSystem(dvc, config)
+    assert fs.path_info == url
+    assert fs.token == webhdfs_token
+    assert fs.alias == webhdfs_alias
+    assert fs.path_info.user == user
+    assert fs.hdfscli_config == hdfscli_config

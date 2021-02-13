@@ -13,7 +13,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseTree
+from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def update_pbar(pbar, total):
     return update
 
 
-class WebHDFSTree(BaseTree):
+class WebHDFSFileSystem(BaseFileSystem):
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}

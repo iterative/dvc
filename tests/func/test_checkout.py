@@ -17,12 +17,12 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -148,7 +148,7 @@ class CheckoutBase(TestDvcGit):
         paths = [
             path
             for output in stage["outs"]
-            for path in self.dvc.tree.walk_files(output["path"])
+            for path in self.dvc.fs.walk_files(output["path"])
         ]
 
         return [
@@ -312,8 +312,8 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalTree.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
@@ -769,7 +769,7 @@ def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
     dvc.add("remote://workspace/foo")
 
     remote = dvc.cloud.get_remote("workspace")
-    remote.tree.remove(file_path)
+    remote.fs.remove(file_path)
     assert not file_path.exists()
 
     stats = dvc.checkout(force=True)

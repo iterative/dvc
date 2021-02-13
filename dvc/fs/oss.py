@@ -8,12 +8,12 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .base import BaseTree
+from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
 
-class OSSTree(BaseTree):  # pylint:disable=abstract-method
+class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     """
     oss2 document:
     https://www.alibabacloud.com/help/doc-detail/32026.htm

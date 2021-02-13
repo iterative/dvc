@@ -48,13 +48,13 @@ def _collect_configs(repo: "Repo", rev, targets=None) -> List["DvcPath"]:
 def _read_params(repo, configs, rev):
     res = {}
     for config in configs:
-        if not repo.tree.exists(config):
+        if not repo.fs.exists(config):
             continue
 
         suffix = config.suffix.lower()
         loader = LOADERS[suffix]
         try:
-            res[str(config)] = loader(config, tree=repo.tree)
+            res[str(config)] = loader(config, fs=repo.fs)
         except ParseError:
             logger.debug(
                 "failed to read '%s' on '%s'", config, rev, exc_info=True

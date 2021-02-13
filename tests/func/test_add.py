@@ -21,6 +21,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
+from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
@@ -28,7 +29,6 @@ from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
@@ -38,7 +38,7 @@ from tests.utils import get_gitignore_content
 
 def test_add(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
-    md5 = file_md5("foo", dvc.tree)
+    md5 = file_md5("foo", dvc.fs)
 
     assert stage is not None
 
@@ -732,7 +732,7 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.cache.local.tree, "copy")
+    copy_spy = mocker.spy(dvc.cache.local.fs, "copy")
 
     dvc.add("foo")
 
@@ -758,7 +758,7 @@ def test_should_relink_on_repeated_add(
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.cache.local.tree, link)(PathInfo("bar"), PathInfo("foo"))
+    getattr(dvc.cache.local.fs, link)(PathInfo("bar"), PathInfo("foo"))
 
     dvc.cache.local.cache_types = [new_link]
 
@@ -838,7 +838,7 @@ def test_add_empty_files(tmp_dir, dvc, link):
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     dvc.cache.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(LocalTree, "is_hardlink")
+    m = mocker.spy(LocalFileSystem, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1

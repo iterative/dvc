@@ -7,7 +7,7 @@ from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
 from ._metadata import Metadata
-from .base import BaseTree
+from .base import BaseFileSystem
 
 if typing.TYPE_CHECKING:
     from dvc.output.base import BaseOutput
@@ -16,8 +16,8 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class DvcTree(BaseTree):  # pylint:disable=abstract-method
-    """DVC repo tree.
+class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
+    """DVC repo fs.
 
     Args:
         repo: DVC repo.
@@ -79,7 +79,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
             else:
                 checksum = out.hash_info.value
             remote_info = remote_obj.cache.hash_to_path_info(checksum)
-            return remote_obj.tree.open(
+            return remote_obj.fs.open(
                 remote_info, mode=mode, encoding=encoding
             )
 

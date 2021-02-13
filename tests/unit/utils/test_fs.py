@@ -6,9 +6,9 @@ import pytest
 from mock import patch
 
 import dvc
+from dvc.fs.local import LocalFileSystem
 from dvc.path_info import PathInfo
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
@@ -28,9 +28,9 @@ from tests.basic_env import TestDir
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        tree = LocalTree(None, {"url": self.root_dir}, use_dvcignore=True)
-        file_time, file_size = get_mtime_and_size(self.DATA, tree)
-        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, tree)
+        fs = LocalFileSystem(None, {"url": self.root_dir}, use_dvcignore=True)
+        file_time, file_size = get_mtime_and_size(self.DATA, fs)
+        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, fs)
 
         actual_file_size = os.path.getsize(self.DATA)
         actual_dir_size = os.path.getsize(self.DATA) + os.path.getsize(
@@ -129,15 +129,15 @@ def test_path_object_and_str_are_valid_types_get_mtime_and_size(tmp_dir):
     tmp_dir.gen(
         {"dir": {"dir_file": "dir file content"}, "file": "file_content"}
     )
-    tree = LocalTree(None, {"url": os.fspath(tmp_dir)}, use_dvcignore=True)
+    fs = LocalFileSystem(None, {"url": os.fspath(tmp_dir)}, use_dvcignore=True)
 
-    time, size = get_mtime_and_size("dir", tree)
-    object_time, object_size = get_mtime_and_size(PathInfo("dir"), tree)
+    time, size = get_mtime_and_size("dir", fs)
+    object_time, object_size = get_mtime_and_size(PathInfo("dir"), fs)
     assert time == object_time
     assert size == object_size
 
-    time, size = get_mtime_and_size("file", tree)
-    object_time, object_size = get_mtime_and_size(PathInfo("file"), tree)
+    time, size = get_mtime_and_size("file", fs)
+    object_time, object_size = get_mtime_and_size(PathInfo("file"), fs)
     assert time == object_time
     assert size == object_size
 

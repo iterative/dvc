@@ -62,7 +62,7 @@ def _maybe_collect_from_dvc_yaml(
     from dvc.stage.exceptions import StageNotFound
 
     stages: StageList = []
-    if loader.tree.exists(PIPELINE_FILE):
+    if loader.fs.exists(PIPELINE_FILE):
         with suppress(StageNotFound):
             stages = loader.load_all(PIPELINE_FILE, target, **load_kwargs)
     return _collect_with_deps(stages, loader.graph) if with_deps else stages
@@ -88,7 +88,7 @@ def _collect_specific_target(
         # else, we assume it's a output name in the `collect_granular()` below
         msg = "Checking if stage '%s' is in '%s'"
         logger.debug(msg, target, PIPELINE_FILE)
-        if not (recursive and loader.tree.isdir(target)):
+        if not (recursive and loader.fs.isdir(target)):
             stages = _maybe_collect_from_dvc_yaml(
                 loader, target, with_deps, accept_group=accept_group,
             )
@@ -304,8 +304,8 @@ class StageLoad:
         return self.load_all(path, expr, glob=True)
 
     @property
-    def tree(self):
-        return self.repo.tree
+    def fs(self):
+        return self.repo.fs
 
     @property
     def graph(self) -> "DiGraph":
@@ -353,7 +353,7 @@ class StageLoad:
         if not target:
             return list(graph) if graph else self.repo.stages
 
-        if recursive and self.repo.tree.isdir(target):
+        if recursive and self.repo.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
             path = os.path.abspath(target)
@@ -398,7 +398,7 @@ class StageLoad:
             self, target, with_deps, recursive, accept_group
         )
         if not stages:
-            if not (recursive and self.tree.isdir(target)):
+            if not (recursive and self.fs.isdir(target)):
                 try:
                     (out,) = self.repo.find_outs_by_path(target, strict=False)
                     filter_info = PathInfo(os.path.abspath(target))
@@ -443,17 +443,17 @@ class StageLoad:
                 the collection.
         """
         from dvc.dvcfile import is_valid_filename
-        from dvc.tree.local import LocalTree
+        from dvc.fs.local import LocalFileSystem
 
         scm = self.repo.scm
         sep = os.sep
         outs: Set[str] = set()
 
-        is_local_tree = isinstance(self.tree, LocalTree)
+        is_local_fs = isinstance(self.fs, LocalFileSystem)
 
         def is_ignored(path):
-            # apply only for the local tree
-            return is_local_tree and scm.is_ignored(path)
+            # apply only for the local fs
+            return is_local_fs and scm.is_ignored(path)
 
         def is_dvcfile_and_not_ignored(root, file):
             return is_valid_filename(file) and not is_ignored(
@@ -465,7 +465,7 @@ class StageLoad:
             return dir_path in outs or is_ignored(dir_path)
 
         stages = []
-        for root, dirs, files in self.tree.walk(self.repo.root_dir):
+        for root, dirs, files in self.fs.walk(self.repo.root_dir):
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
 
             for file in filter(dvcfile_filter, files):

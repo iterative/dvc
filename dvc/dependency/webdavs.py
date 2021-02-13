@@ -1,6 +1,6 @@
-from ..tree.webdavs import WebDAVSTree
+from ..fs.webdavs import WebDAVSFileSystem
 from .webdav import WebDAVDependency
 
 
 class WebDAVSDependency(WebDAVDependency):
-    TREE_CLS = WebDAVSTree
+    FS_CLS = WebDAVSFileSystem

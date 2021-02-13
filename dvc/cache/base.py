@@ -17,32 +17,32 @@ class CloudCache:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, tree):
-        self.tree = tree
-        self.repo = tree.repo
+    def __init__(self, fs):
+        self.fs = fs
+        self.repo = fs.repo
 
-        self.verify = tree.config.get("verify", self.DEFAULT_VERIFY)
-        self.cache_types = tree.config.get("type") or copy(
+        self.verify = fs.config.get("verify", self.DEFAULT_VERIFY)
+        self.cache_types = fs.config.get("type") or copy(
             self.DEFAULT_CACHE_TYPES
         )
         self.cache_type_confirmed = False
 
     def move(self, from_info, to_info):
-        self.tree.move(from_info, to_info)
+        self.fs.move(from_info, to_info)
 
     def makedirs(self, path_info):
-        self.tree.makedirs(path_info)
+        self.fs.makedirs(path_info)
 
     def get(self, hash_info):
         """ get raw object """
         return HashFile(
             # Prefer string path over PathInfo when possible due to performance
             self.hash_to_path(hash_info.value),
-            self.tree,
+            self.fs,
             hash_info,
         )
 
-    def add(self, path_info, tree, hash_info, **kwargs):
+    def add(self, path_info, fs, hash_info, **kwargs):
         try:
             self.check(hash_info)
             return
@@ -52,21 +52,21 @@ class CloudCache:
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
-        if isinstance(tree, type(self.tree)):
-            self.tree.move(path_info, cache_info)
+        if isinstance(fs, type(self.fs)):
+            self.fs.move(path_info, cache_info)
         else:
-            with tree.open(path_info, mode="rb") as fobj:
-                self.tree.upload_fobj(fobj, cache_info)
+            with fs.open(path_info, mode="rb") as fobj:
+                self.fs.upload_fobj(fobj, cache_info)
         self.protect(cache_info)
-        with self.tree.state:
-            self.tree.state.save(cache_info, hash_info)
+        with self.fs.state:
+            self.fs.state.save(cache_info, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:
             callback(1)
 
     def hash_to_path_info(self, hash_):
-        return self.tree.path_info / hash_[0:2] / hash_[2:]
+        return self.fs.path_info / hash_[0:2] / hash_[2:]
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
@@ -110,7 +110,7 @@ class CloudCache:
             obj.check(self)
         except ObjectFormatError:
             logger.warning("corrupted cache file '%s'.", obj.path_info)
-            self.tree.remove(obj.path_info)
+            self.fs.remove(obj.path_info)
             raise
 
         # making cache file read-only so we don't need to check it
@@ -120,22 +120,22 @@ class CloudCache:
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             if len(prefix) > 2:
-                path_info = self.tree.path_info / prefix[:2] / prefix[2:]
+                path_info = self.fs.path_info / prefix[:2] / prefix[2:]
             else:
-                path_info = self.tree.path_info / prefix[:2]
+                path_info = self.fs.path_info / prefix[:2]
             prefix = True
         else:
-            path_info = self.tree.path_info
+            path_info = self.fs.path_info
             prefix = False
         if progress_callback:
-            for file_info in self.tree.walk_files(path_info, prefix=prefix):
+            for file_info in self.fs.walk_files(path_info, prefix=prefix):
                 progress_callback()
                 yield file_info.path
         else:
-            yield from self.tree.walk_files(path_info, prefix=prefix)
+            yield from self.fs.walk_files(path_info, prefix=prefix)
 
     def _path_to_hash(self, path):
-        parts = self.tree.PATH_CLS(path).parts[-2:]
+        parts = self.fs.PATH_CLS(path).parts[-2:]
 
         if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
             raise ValueError(f"Bad cache file path '{path}'")
@@ -143,7 +143,7 @@ class CloudCache:
         return "".join(parts)
 
     def list_hashes(self, prefix=None, progress_callback=None):
-        """Iterate over hashes in this tree.
+        """Iterate over hashes in this fs.
 
         If `prefix` is specified, only hashes which begin with `prefix`
         will be returned.
@@ -171,18 +171,18 @@ class CloudCache:
     def _max_estimation_size(self, hashes):
         # Max remote size allowed for us to use traverse method
         return max(
-            self.tree.TRAVERSE_THRESHOLD_SIZE,
+            self.fs.TRAVERSE_THRESHOLD_SIZE,
             len(hashes)
-            / self.tree.TRAVERSE_WEIGHT_MULTIPLIER
-            * self.tree.LIST_OBJECT_PAGE_SIZE,
+            / self.fs.TRAVERSE_WEIGHT_MULTIPLIER
+            * self.fs.LIST_OBJECT_PAGE_SIZE,
         )
 
     def _estimate_remote_size(self, hashes=None, name=None):
-        """Estimate tree size based on number of entries beginning with
+        """Estimate fs size based on number of entries beginning with
         "00..." prefix.
         """
-        prefix = "0" * self.tree.TRAVERSE_PREFIX_LEN
-        total_prefixes = pow(16, self.tree.TRAVERSE_PREFIX_LEN)
+        prefix = "0" * self.fs.TRAVERSE_PREFIX_LEN
+        total_prefixes = pow(16, self.fs.TRAVERSE_PREFIX_LEN)
         if hashes:
             max_hashes = self._max_estimation_size(hashes)
         else:
@@ -215,7 +215,7 @@ class CloudCache:
     def list_hashes_traverse(
         self, remote_size, remote_hashes, jobs=None, name=None
     ):
-        """Iterate over all hashes found in this tree.
+        """Iterate over all hashes found in this fs.
         Hashes are fetched in parallel according to prefix, except in
         cases where the remote size is very small.
 
@@ -229,8 +229,8 @@ class CloudCache:
         sense to use a generator to gradually iterate over it, without
         keeping all of it in memory.
         """
-        num_pages = remote_size / self.tree.LIST_OBJECT_PAGE_SIZE
-        if num_pages < 256 / self.tree.JOBS:
+        num_pages = remote_size / self.fs.LIST_OBJECT_PAGE_SIZE
+        if num_pages < 256 / self.fs.JOBS:
             # Fetching prefixes in parallel requires at least 255 more
             # requests, for small enough remotes it will be faster to fetch
             # entire cache without splitting it into prefixes.
@@ -243,12 +243,10 @@ class CloudCache:
             yield from remote_hashes
             initial = len(remote_hashes)
             traverse_prefixes = [f"{i:02x}" for i in range(1, 256)]
-            if self.tree.TRAVERSE_PREFIX_LEN > 2:
+            if self.fs.TRAVERSE_PREFIX_LEN > 2:
                 traverse_prefixes += [
-                    "{0:0{1}x}".format(i, self.tree.TRAVERSE_PREFIX_LEN)
-                    for i in range(
-                        1, pow(16, self.tree.TRAVERSE_PREFIX_LEN - 2)
-                    )
+                    "{0:0{1}x}".format(i, self.fs.TRAVERSE_PREFIX_LEN)
+                    for i in range(1, pow(16, self.fs.TRAVERSE_PREFIX_LEN - 2))
                 ]
         with Tqdm(
             desc="Querying "
@@ -266,13 +264,13 @@ class CloudCache:
                 )
 
             with ThreadPoolExecutor(
-                max_workers=jobs or self.tree.JOBS
+                max_workers=jobs or self.fs.JOBS
             ) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
                 yield from itertools.chain.from_iterable(in_remote)
 
     def all(self, jobs=None, name=None):
-        """Iterate over all hashes in this tree.
+        """Iterate over all hashes in this fs.
 
         Hashes will be fetched in parallel threads according to prefix
         (except for small remotes) and a progress bar will be displayed.
@@ -283,7 +281,7 @@ class CloudCache:
             )
         )
 
-        if not self.tree.CAN_TRAVERSE:
+        if not self.fs.CAN_TRAVERSE:
             return self.list_hashes()
 
         remote_size, remote_hashes = self._estimate_remote_size(name=name)
@@ -298,24 +296,24 @@ class CloudCache:
         removed = False
         # hashes must be sorted to ensure we always remove .dir files first
         for hash_ in sorted(
-            self.all(jobs, str(self.tree.path_info)),
-            key=self.tree.is_dir_hash,
+            self.all(jobs, str(self.fs.path_info)),
+            key=self.fs.is_dir_hash,
             reverse=True,
         ):
             if hash_ in used:
                 continue
             path_info = self.hash_to_path_info(hash_)
-            if self.tree.is_dir_hash(hash_):
+            if self.fs.is_dir_hash(hash_):
                 # backward compatibility
                 # pylint: disable=protected-access
                 self._remove_unpacked_dir(hash_)
-            self.tree.remove(path_info)
+            self.fs.remove(path_info)
             removed = True
 
         return removed
 
     def list_hashes_exists(self, hashes, jobs=None, name=None):
-        """Return list of the specified hashes which exist in this tree.
+        """Return list of the specified hashes which exist in this fs.
         Hashes will be queried individually.
         """
         logger.debug(
@@ -329,12 +327,12 @@ class CloudCache:
         ) as pbar:
 
             def exists_with_progress(path_info):
-                ret = self.tree.exists(path_info)
+                ret = self.fs.exists(path_info)
                 pbar.update_msg(str(path_info))
                 return ret
 
             with ThreadPoolExecutor(
-                max_workers=jobs or self.tree.JOBS
+                max_workers=jobs or self.fs.JOBS
             ) as executor:
                 path_infos = map(self.hash_to_path_info, hashes)
                 in_remote = executor.map(exists_with_progress, path_infos)
@@ -376,24 +374,24 @@ class CloudCache:
         """
         # Remotes which do not use traverse prefix should override
         # hashes_exist() (see ssh, local)
-        assert self.tree.TRAVERSE_PREFIX_LEN >= 2
+        assert self.fs.TRAVERSE_PREFIX_LEN >= 2
 
         hashes = set(hashes)
-        if len(hashes) == 1 or not self.tree.CAN_TRAVERSE:
+        if len(hashes) == 1 or not self.fs.CAN_TRAVERSE:
             remote_hashes = self.list_hashes_exists(hashes, jobs, name)
             return remote_hashes
 
         # Max remote size allowed for us to use traverse method
         remote_size, remote_hashes = self._estimate_remote_size(hashes, name)
 
-        traverse_pages = remote_size / self.tree.LIST_OBJECT_PAGE_SIZE
+        traverse_pages = remote_size / self.fs.LIST_OBJECT_PAGE_SIZE
         # For sufficiently large remotes, traverse must be weighted to account
         # for performance overhead from large lists/sets.
         # From testing with S3, for remotes with 1M+ files, object_exists is
         # faster until len(hashes) is at least 10k~100k
-        if remote_size > self.tree.TRAVERSE_THRESHOLD_SIZE:
+        if remote_size > self.fs.TRAVERSE_THRESHOLD_SIZE:
             traverse_weight = (
-                traverse_pages * self.tree.TRAVERSE_WEIGHT_MULTIPLIER
+                traverse_pages * self.fs.TRAVERSE_WEIGHT_MULTIPLIER
             )
         else:
             traverse_weight = traverse_pages

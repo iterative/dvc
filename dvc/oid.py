@@ -9,27 +9,27 @@ from dvc.progress import Tqdm
 from dvc.utils import file_md5
 
 
-def get_file_hash(path_info, tree, name):
-    info = tree.info(path_info)
+def get_file_hash(path_info, fs, name):
+    info = fs.info(path_info)
     if name in info:
         assert not info[name].endswith(".dir")
         return HashInfo(name, info[name], size=info["size"])
 
-    func = getattr(tree, name, None)
+    func = getattr(fs, name, None)
     if func:
         return func(path_info)
 
     if name == "md5":
         return HashInfo(
-            name, file_md5(path_info, tree), size=tree.getsize(path_info)
+            name, file_md5(path_info, fs), size=fs.getsize(path_info)
         )
 
     raise NotImplementedError
 
 
-def _calculate_hashes(file_infos, tree, name):
+def _calculate_hashes(file_infos, fs, name):
     def _get_file_hash(path_info):
-        return get_file_hash(path_info, tree, name)
+        return get_file_hash(path_info, fs, name)
 
     with Tqdm(
         total=len(file_infos),
@@ -37,14 +37,14 @@ def _calculate_hashes(file_infos, tree, name):
         desc="Computing file/dir hashes (only done once)",
     ) as pbar:
         worker = pbar.wrap_fn(_get_file_hash)
-        with ThreadPoolExecutor(max_workers=tree.hash_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=fs.hash_jobs) as executor:
             hash_infos = executor.map(worker, file_infos)
             return dict(zip(file_infos, hash_infos))
 
 
-def _iter_hashes(path_info, tree, name, **kwargs):
-    if name in tree.DETAIL_FIELDS:
-        for details in tree.ls(path_info, recursive=True, detail=True):
+def _iter_hashes(path_info, fs, name, **kwargs):
+    if name in fs.DETAIL_FIELDS:
+        for details in fs.ls(path_info, recursive=True, detail=True):
             file_info = path_info.replace(path=details["name"])
             hash_info = HashInfo(
                 name, details[name], size=details.get("size"),
@@ -54,8 +54,8 @@ def _iter_hashes(path_info, tree, name, **kwargs):
         return None
 
     file_infos = []
-    for file_info in tree.walk_files(path_info, **kwargs):
-        hash_info = tree.state.get(  # pylint: disable=assignment-from-none
+    for file_info in fs.walk_files(path_info, **kwargs):
+        hash_info = fs.state.get(  # pylint: disable=assignment-from-none
             file_info
         )
         if not hash_info:
@@ -64,14 +64,14 @@ def _iter_hashes(path_info, tree, name, **kwargs):
         assert hash_info.name == name
         yield file_info, hash_info
 
-    yield from _calculate_hashes(file_infos, tree, name).items()
+    yield from _calculate_hashes(file_infos, fs, name).items()
 
 
-def _collect_dir(path_info, tree, name, **kwargs):
+def _collect_dir(path_info, fs, name, **kwargs):
     from dvc.dir_info import DirInfo
 
     dir_info = DirInfo()
-    for fi, hi in _iter_hashes(path_info, tree, name, **kwargs):
+    for fi, hi in _iter_hashes(path_info, fs, name, **kwargs):
         if DvcIgnore.DVCIGNORE_FILE == fi.name:
             raise DvcIgnoreInCollectedDirError(fi.parent)
 
@@ -88,29 +88,29 @@ def _collect_dir(path_info, tree, name, **kwargs):
     return dir_info
 
 
-def get_dir_hash(path_info, tree, name, **kwargs):
+def get_dir_hash(path_info, fs, name, **kwargs):
     from dvc.objects import Tree
 
-    dir_info = _collect_dir(path_info, tree, name, **kwargs)
-    hash_info = Tree.save_dir_info(tree.repo.cache.local, dir_info)
+    dir_info = _collect_dir(path_info, fs, name, **kwargs)
+    hash_info = Tree.save_dir_info(fs.repo.cache.local, dir_info)
     hash_info.size = dir_info.size
     hash_info.dir_info = dir_info
     return hash_info
 
 
-def get_hash(path_info, tree, name, **kwargs):
+def get_hash(path_info, fs, name, **kwargs):
     assert path_info and (
-        isinstance(path_info, str) or path_info.scheme == tree.scheme
+        isinstance(path_info, str) or path_info.scheme == fs.scheme
     )
 
-    if not tree.exists(path_info):
+    if not fs.exists(path_info):
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    with tree.state:
+    with fs.state:
         # pylint: disable=assignment-from-none
-        hash_info = tree.state.get(path_info)
+        hash_info = fs.state.get(path_info)
 
         # If we have dir hash in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_hash() call below,
@@ -118,8 +118,8 @@ def get_hash(path_info, tree, name, **kwargs):
         if (
             hash_info
             and hash_info.isdir
-            and not tree.cache.tree.exists(
-                tree.cache.hash_to_path_info(hash_info.value)
+            and not fs.cache.fs.exists(
+                fs.cache.hash_to_path_info(hash_info.value)
             )
         ):
             hash_info = None
@@ -128,17 +128,17 @@ def get_hash(path_info, tree, name, **kwargs):
             if hash_info.isdir:
                 from dvc.objects import Tree
 
-                # NOTE: loading the tree will restore hash_info.dir_info
-                Tree.load(tree.cache, hash_info)
+                # NOTE: loading the fs will restore hash_info.dir_info
+                Tree.load(fs.cache, hash_info)
             assert hash_info.name == name
             return hash_info
 
-        if tree.isdir(path_info):
-            hash_info = get_dir_hash(path_info, tree, name, **kwargs)
+        if fs.isdir(path_info):
+            hash_info = get_dir_hash(path_info, fs, name, **kwargs)
         else:
-            hash_info = get_file_hash(path_info, tree, name)
+            hash_info = get_file_hash(path_info, fs, name)
 
-        if hash_info and tree.exists(path_info):
-            tree.state.save(path_info, hash_info)
+        if hash_info and fs.exists(path_info):
+            fs.state.save(path_info, hash_info)
 
     return hash_info

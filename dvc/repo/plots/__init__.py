@@ -49,7 +49,7 @@ class Plots:
             }}}
         Data parsing is postponed, since it's affected by props.
         """
-        from dvc.tree.repo import RepoTree
+        from dvc.fs.repo import RepoFileSystem
         from dvc.utils.collections import ensure_list
 
         targets = ensure_list(targets)
@@ -60,16 +60,16 @@ class Plots:
                 continue
             rev = rev or "workspace"
 
-            tree = RepoTree(self.repo)
+            fs = RepoFileSystem(self.repo)
             plots = _collect_plots(self.repo, targets, rev, recursive)
             for path_info, props in plots.items():
 
                 if rev not in data:
                     data[rev] = {}
 
-                if tree.isdir(path_info):
+                if fs.isdir(path_info):
                     plot_files = []
-                    for pi in tree.walk_files(path_info):
+                    for pi in fs.walk_files(path_info):
                         plot_files.append(
                             (pi, relpath(pi, self.repo.root_dir))
                         )
@@ -83,7 +83,7 @@ class Plots:
 
                     # Load data from git or dvc cache
                     try:
-                        with tree.open(path) as fd:
+                        with fs.open(path) as fd:
                             data[rev][repo_path]["data"] = fd.read()
                     except FileNotFoundError:
                         # This might happen simply because cache is absent

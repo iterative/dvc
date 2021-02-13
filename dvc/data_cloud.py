@@ -104,11 +104,11 @@ class DataCloud:
             command (str): the command which is benefitting from this function
                 (to be used for reporting better error messages).
         """
-        from dvc.tree import get_cloud_tree
+        from dvc.fs import get_cloud_fs
 
-        from_tree = get_cloud_tree(self.repo, url=source)
+        from_fs = get_cloud_fs(self.repo, url=source)
         remote = self.get_remote(remote, command)
-        return remote.transfer(from_tree, from_tree.path_info, jobs=jobs)
+        return remote.transfer(from_fs, from_fs.path_info, jobs=jobs)
 
     def status(
         self,

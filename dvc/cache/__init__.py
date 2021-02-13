@@ -4,32 +4,32 @@ from collections import defaultdict
 from ..scheme import Schemes
 
 
-def get_cloud_cache(tree):
+def get_cloud_cache(fs):
     from .base import CloudCache
     from .gdrive import GDriveCache
     from .local import LocalCache
     from .ssh import SSHCache
 
-    if tree.scheme == Schemes.LOCAL:
-        return LocalCache(tree)
+    if fs.scheme == Schemes.LOCAL:
+        return LocalCache(fs)
 
-    if tree.scheme == Schemes.SSH:
-        return SSHCache(tree)
+    if fs.scheme == Schemes.SSH:
+        return SSHCache(fs)
 
-    if tree.scheme == Schemes.GDRIVE:
-        return GDriveCache(tree)
+    if fs.scheme == Schemes.GDRIVE:
+        return GDriveCache(fs)
 
-    return CloudCache(tree)
+    return CloudCache(fs)
 
 
 def _get_cache(repo, settings):
-    from ..tree import get_cloud_tree
+    from ..fs import get_cloud_fs
 
     if not settings:
         return None
 
-    tree = get_cloud_tree(repo, **settings)
-    return get_cloud_cache(tree)
+    fs = get_cloud_fs(repo, **settings)
+    return get_cloud_cache(fs)
 
 
 class Cache:

@@ -1,5 +1,5 @@
+from dvc.fs.azure import AzureFileSystem
 from dvc.path_info import PathInfo
-from dvc.tree.azure import AzureTree
 
 container_name = "container-name"
 connection_string = (
@@ -15,27 +15,27 @@ def test_init_env_var(monkeypatch, dvc):
     monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
 
     config = {"url": "azure://"}
-    tree = AzureTree(dvc, config)
-    assert tree.path_info == "azure://" + container_name
-    assert tree._conn_str == connection_string
+    fs = AzureFileSystem(dvc, config)
+    assert fs.path_info == "azure://" + container_name
+    assert fs._conn_str == connection_string
 
 
 def test_init(dvc):
     prefix = "some/prefix"
     url = f"azure://{container_name}/{prefix}"
     config = {"url": url, "connection_string": connection_string}
-    tree = AzureTree(dvc, config)
-    assert tree.path_info == url
-    assert tree._conn_str == connection_string
+    fs = AzureFileSystem(dvc, config)
+    assert fs.path_info == url
+    assert fs._conn_str == connection_string
 
 
 def test_info(tmp_dir, azure):
     tmp_dir.gen("foo", "foo")
 
-    tree = AzureTree(None, azure.config)
+    fs = AzureFileSystem(None, azure.config)
     to_info = azure
-    tree.upload(PathInfo("foo"), to_info)
-    assert tree.exists(to_info)
-    hash_ = tree.info(to_info)["etag"]
+    fs.upload(PathInfo("foo"), to_info)
+    assert fs.exists(to_info)
+    hash_ = fs.info(to_info)["etag"]
     assert isinstance(hash_, str)
     assert hash_.strip("'").strip('"') == hash_

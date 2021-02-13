@@ -113,7 +113,7 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
                 obj = stage(
                     cache,
                     path_info,
-                    repo.repo_tree,
+                    repo.repo_fs,
                     jobs=jobs,
                     follow_subrepos=False,
                 )

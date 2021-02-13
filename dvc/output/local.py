@@ -8,13 +8,13 @@ from dvc.output.base import BaseOutput
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
-from ..tree.local import LocalTree
+from ..fs.local import LocalFileSystem
 
 logger = logging.getLogger(__name__)
 
 
 class LocalOutput(BaseOutput):
-    TREE_CLS = LocalTree
+    FS_CLS = LocalFileSystem
     sep = os.sep
 
     def __init__(self, stage, path, *args, **kwargs):
@@ -25,14 +25,14 @@ class LocalOutput(BaseOutput):
         if (
             self.is_in_repo
             and self.repo
-            and isinstance(self.repo.tree, LocalTree)
+            and isinstance(self.repo.fs, LocalFileSystem)
         ):
-            self.tree = self.repo.tree
+            self.fs = self.repo.fs
 
-    def _parse_path(self, tree, path):
+    def _parse_path(self, fs, path):
         parsed = urlparse(path)
         if parsed.scheme == "remote":
-            p = tree.path_info / parsed.path.lstrip("/")
+            p = fs.path_info / parsed.path.lstrip("/")
         else:
             # NOTE: we can path either from command line or .dvc file,
             # so we should expect both posix and windows style paths.
@@ -40,12 +40,12 @@ class LocalOutput(BaseOutput):
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            p = self.TREE_CLS.PATH_CLS(path)
+            p = self.FS_CLS.PATH_CLS(path)
             if self.stage and not p.is_absolute():
                 p = self.stage.wdir / p
 
         abs_p = os.path.abspath(os.path.normpath(p))
-        return self.TREE_CLS.PATH_CLS(abs_p)
+        return self.FS_CLS.PATH_CLS(abs_p)
 
     def __str__(self):
         if not self.repo or not self.is_in_repo:
@@ -91,6 +91,6 @@ class LocalOutput(BaseOutput):
             logger.debug(msg, str(self.path_info), name)
             return
 
-        if not istextfile(path):
+        if not istextfile(path, self.fs):
             msg = "binary file '{}' cannot be used as {}."
             raise DvcException(msg.format(self.path_info, name))

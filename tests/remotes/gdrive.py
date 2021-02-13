@@ -6,8 +6,8 @@ from functools import partial, partialmethod
 import pytest
 from funcy import cached_property
 
+from dvc.fs.gdrive import GDriveFileSystem
 from dvc.path_info import CloudURLInfo
-from dvc.tree.gdrive import GDriveTree
 from dvc.utils import tmp_fname
 
 from .base import Base
@@ -23,7 +23,7 @@ CREDENTIALS_FILE = os.path.join(
 class GDrive(Base, CloudURLInfo):
     @staticmethod
     def should_test():
-        return bool(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
+        return bool(os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA))
 
     @cached_property
     def config(self):
@@ -50,7 +50,7 @@ class GDrive(Base, CloudURLInfo):
 
         tmp_path = tmp_fname()
         with open(tmp_path, "w") as stream:
-            stream.write(os.getenv(GDriveTree.GDRIVE_CREDENTIALS_DATA))
+            stream.write(os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA))
 
         GoogleDriveFileSystem._connect_cache = partial(
             pydata_google_auth.load_user_credentials, tmp_path
@@ -88,6 +88,6 @@ def gdrive(test_config, make_tmp_dir):
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
 
     ret = GDrive(GDrive.get_url())
-    tree = GDriveTree(tmp_dir.dvc, ret.config)
-    tree._gdrive_create_dir("root", tree.path_info.path)
+    fs = GDriveFileSystem(tmp_dir.dvc, ret.config)
+    fs._gdrive_create_dir("root", fs.path_info.path)
     yield ret

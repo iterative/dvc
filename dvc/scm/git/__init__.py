@@ -340,15 +340,15 @@ class Git(Base):
                 pass
         raise NoGitBackendError(name)
 
-    def get_tree(self, rev: str, **kwargs):
-        from dvc.tree.git import GitTree
+    def get_fs(self, rev: str, **kwargs):
+        from dvc.fs.git import GitFileSystem
 
         from .objects import GitTrie
 
         resolved = self.resolve_rev(rev)
         tree_obj = self._backend_func("get_tree_obj", rev=resolved)
         trie = GitTrie(tree_obj, resolved)
-        return GitTree(self.root_dir, trie, **kwargs)
+        return GitFileSystem(self.root_dir, trie, **kwargs)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")

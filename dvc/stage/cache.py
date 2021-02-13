@@ -232,9 +232,9 @@ class StageCache:
 
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
-            _log_exceptions(remote.tree.upload, "upload"),
-            self.repo.cache.local.tree,
-            remote.tree,
+            _log_exceptions(remote.fs.upload, "upload"),
+            self.repo.cache.local.fs,
+            remote.fs,
         )
 
     def pull(self, remote):
@@ -242,9 +242,9 @@ class StageCache:
 
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
-            _log_exceptions(remote.tree.download, "download"),
-            remote.tree,
-            self.repo.cache.local.tree,
+            _log_exceptions(remote.fs.download, "download"),
+            remote.fs,
+            self.repo.cache.local.fs,
         )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):

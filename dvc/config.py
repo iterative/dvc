@@ -63,9 +63,9 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True, tree=None, config=None,
+        self, dvc_dir=None, validate=True, fs=None, config=None,
     ):  # pylint: disable=super-init-not-called
-        from dvc.tree.local import LocalTree
+        from dvc.fs.local import LocalFileSystem
 
         self.dvc_dir = dvc_dir
 
@@ -79,8 +79,8 @@ class Config(dict):
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
-        self.wtree = LocalTree(None, {"url": self.dvc_dir})
-        self.tree = tree or self.wtree
+        self.wfs = LocalFileSystem(None, {"url": self.dvc_dir})
+        self.fs = fs or self.wfs
 
         self.load(validate=validate, config=config)
 
@@ -143,19 +143,19 @@ class Config(dict):
         if not self["cache"].get("dir") and self.dvc_dir:
             self["cache"]["dir"] = os.path.join(self.dvc_dir, "cache")
 
-    def _get_tree(self, level):
-        # NOTE: this might be a GitTree, which doesn't see things outside of
+    def _get_fs(self, level):
+        # NOTE: this might be a Gitfs, which doesn't see things outside of
         # the repo.
-        return self.tree if level == "repo" else self.wtree
+        return self.fs if level == "repo" else self.wfs
 
     def _load_config(self, level):
         from configobj import ConfigObj
 
         filename = self.files[level]
-        tree = self._get_tree(level)
+        fs = self._get_fs(level)
 
-        if tree.exists(filename, use_dvcignore=False):
-            with tree.open(filename) as fobj:
+        if fs.exists(filename, use_dvcignore=False):
+            with fs.open(filename) as fobj:
                 conf_obj = ConfigObj(fobj)
         else:
             conf_obj = ConfigObj()
@@ -165,14 +165,14 @@ class Config(dict):
         from configobj import ConfigObj
 
         filename = self.files[level]
-        tree = self._get_tree(level)
+        fs = self._get_fs(level)
 
         logger.debug(f"Writing '{filename}'.")
 
-        tree.makedirs(os.path.dirname(filename))
+        fs.makedirs(os.path.dirname(filename))
 
         config = ConfigObj(_pack_remotes(conf_dict))
-        with tree.open(filename, "wb") as fobj:
+        with fs.open(filename, "wb") as fobj:
             config.write(fobj)
         config.filename = filename
 

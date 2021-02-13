@@ -17,7 +17,7 @@ from dvc.dependency.webhdfs import WebHDFSDependency
 from dvc.output.base import BaseOutput
 from dvc.scheme import Schemes
 
-from ..tree import get_cloud_tree
+from ..fs import get_cloud_fs
 from .repo import RepoDependency
 
 DEPS = [
@@ -64,8 +64,8 @@ SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 def _get(stage, p, info):
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
-        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
-        return DEP_MAP[tree.scheme](stage, p, info, tree=tree)
+        fs = get_cloud_fs(stage.repo, name=parsed.netloc)
+        return DEP_MAP[fs.scheme](stage, p, info, fs=fs)
 
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)

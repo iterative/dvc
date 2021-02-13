@@ -1,16 +1,16 @@
-from .base import BaseTree
+from .base import BaseFileSystem
 
 
-class MemoryTree(BaseTree):
+class MemoryFileSystem(BaseFileSystem):
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):
-        from fsspec.implementations.memory import MemoryFileSystem
+        from fsspec.implementations.memory import MemoryFileSystem as MemFS
 
         super().__init__(repo, config)
 
-        self.fs = MemoryFileSystem()
+        self.fs = MemFS()
 
     def exists(self, path_info, use_dvcignore=True):
         return self.fs.exists(path_info.path)

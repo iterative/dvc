@@ -20,7 +20,7 @@ from dvc.exceptions import (
 from dvc.hash_info import HashInfo
 from dvc.oid import get_hash
 
-from ..tree.base import BaseTree
+from ..fs.base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class OutputIsIgnoredError(DvcException):
 class BaseOutput:
     IS_DEPENDENCY = False
 
-    TREE_CLS = BaseTree
+    FS_CLS = BaseFileSystem
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
@@ -105,7 +105,7 @@ class BaseOutput:
         stage,
         path,
         info=None,
-        tree=None,
+        fs=None,
         cache=True,
         metric=False,
         plot=False,
@@ -130,10 +130,10 @@ class BaseOutput:
         self.repo = stage.repo if stage else None
         self.def_path = path
         self.hash_info = HashInfo.from_dict(info)
-        if tree:
-            self.tree = tree
+        if fs:
+            self.fs = fs
         else:
-            self.tree = self.TREE_CLS(self.repo, {})
+            self.fs = self.FS_CLS(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -142,18 +142,18 @@ class BaseOutput:
         self.live = live
         self.desc = desc
 
-        self.path_info = self._parse_path(tree, path)
+        self.path_info = self._parse_path(fs, path)
         if self.use_cache and self.cache is None:
             raise RemoteCacheRequiredError(self.path_info)
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
 
-    def _parse_path(self, tree, path):
-        if tree:
+    def _parse_path(self, fs, path):
+        if fs:
             parsed = urlparse(path)
-            return tree.path_info / parsed.path.lstrip("/")
-        return self.TREE_CLS.PATH_CLS(path)
+            return fs.path_info / parsed.path.lstrip("/")
+        return self.FS_CLS.PATH_CLS(path)
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
@@ -165,7 +165,7 @@ class BaseOutput:
 
     @property
     def scheme(self):
-        return self.TREE_CLS.scheme
+        return self.FS_CLS.scheme
 
     @property
     def is_in_repo(self):
@@ -188,7 +188,7 @@ class BaseOutput:
 
     @classmethod
     def supported(cls, url):
-        return cls.TREE_CLS.supported(url)
+        return cls.FS_CLS.supported(url)
 
     @property
     def cache_path(self):
@@ -196,10 +196,8 @@ class BaseOutput:
 
     def get_hash(self):
         if not self.use_cache:
-            return get_hash(
-                self.path_info, self.tree, self.tree.PARAM_CHECKSUM
-            )
-        return objects.stage(self.cache, self.path_info, self.tree).hash_info
+            return get_hash(self.path_info, self.fs, self.fs.PARAM_CHECKSUM)
+        return objects.stage(self.cache, self.path_info, self.fs).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -207,7 +205,7 @@ class BaseOutput:
 
     @property
     def exists(self):
-        return self.tree.exists(self.path_info)
+        return self.fs.exists(self.path_info)
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
@@ -251,13 +249,13 @@ class BaseOutput:
 
     @property
     def is_empty(self):
-        return self.tree.is_empty(self.path_info)
+        return self.fs.is_empty(self.path_info)
 
     def isdir(self):
-        return self.tree.isdir(self.path_info)
+        return self.fs.isdir(self.path_info)
 
     def isfile(self):
-        return self.tree.isfile(self.path_info)
+        return self.fs.isfile(self.path_info)
 
     # pylint: disable=no-member
 
@@ -307,9 +305,9 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = objects.stage(self.cache, self.path_info, self.tree)
+        self.obj = objects.stage(self.cache, self.path_info, self.fs)
         self.hash_info = self.obj.hash_info
-        self.isexec = self.isfile() and self.tree.isexec(self.path_info)
+        self.isexec = self.isfile() and self.fs.isexec(self.path_info)
 
     def set_exec(self):
         if self.isfile() and self.isexec:
@@ -323,12 +321,12 @@ class BaseOutput:
 
         if self.use_cache:
             obj = objects.stage(
-                self.cache, filter_info or self.path_info, self.tree
+                self.cache, filter_info or self.path_info, self.fs
             )
             objects.save(self.cache, obj)
             checkout(
                 filter_info or self.path_info,
-                self.tree,
+                self.fs,
                 obj,
                 self.cache,
                 relink=True,
@@ -379,7 +377,7 @@ class BaseOutput:
         raise DvcException(f"verify metric is not supported for {self.scheme}")
 
     def download(self, to, jobs=None):
-        self.tree.download(self.path_info, to.path_info, jobs=jobs)
+        self.fs.download(self.path_info, to.path_info, jobs=jobs)
 
     def get_obj(self, filter_info=None):
         if self.obj:
@@ -424,7 +422,7 @@ class BaseOutput:
         try:
             modified = checkout(
                 filter_info or self.path_info,
-                self.tree,
+                self.fs,
                 obj,
                 self.cache,
                 force=force,
@@ -440,7 +438,7 @@ class BaseOutput:
         return added, False if added else modified
 
     def remove(self, ignore_remove=False):
-        self.tree.remove(self.path_info)
+        self.fs.remove(self.path_info)
         if self.scheme != "local":
             return
 
@@ -452,7 +450,7 @@ class BaseOutput:
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 
-        self.tree.move(self.path_info, out.path_info)
+        self.fs.move(self.path_info, out.path_info)
         self.def_path = out.def_path
         self.path_info = out.path_info
         self.save()
@@ -624,8 +622,8 @@ class BaseOutput:
 
         if stage:
             abs_path = os.path.join(stage.wdir, path)
-            if stage.repo.tree.dvcignore.is_ignored(abs_path):
-                check = stage.repo.tree.dvcignore.check_ignore(abs_path)
+            if stage.repo.fs.dvcignore.is_ignored(abs_path):
+                check = stage.repo.fs.dvcignore.check_ignore(abs_path)
                 raise cls.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
@@ -636,7 +634,7 @@ class BaseOutput:
         other = out.dumpd()
 
         ignored = [
-            self.tree.PARAM_CHECKSUM,
+            self.fs.PARAM_CHECKSUM,
             HashInfo.PARAM_SIZE,
             HashInfo.PARAM_NFILES,
         ]

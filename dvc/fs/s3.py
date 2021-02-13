@@ -13,14 +13,14 @@ from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.utils import conversions, error_link
 
-from .base import BaseTree
+from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
-class S3Tree(BaseTree):
+class S3FileSystem(BaseFileSystem):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
