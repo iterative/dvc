@@ -138,6 +138,16 @@ class GitTree(BaseTree):  # pylint:disable=abstract-method
         mode = self.stat(path_info).st_mode
         return is_exec(mode)
 
+    def info(self, path_info):
+        key = self._get_key(path_info)
+        try:
+            st = self.trie.stat(key)
+        except KeyError:
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path_info
+            )
+        return {"size": st.st_size}
+
     def stat(self, path):
         key = self._get_key(path)
         try:

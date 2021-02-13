@@ -1,13 +1,13 @@
 import logging
 import os
+import stat
 
 from funcy import cached_property
 
-from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
-from dvc.utils import file_md5, is_exec, tmp_fname
+from dvc.utils import is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from .base import BaseTree
@@ -207,18 +207,13 @@ class LocalTree(BaseTree):
     def reflink(self, from_info, to_info):
         System.reflink(from_info, to_info)
 
-    def get_file_hash(self, path_info, name):
-        assert name == "md5"
-        hash_info = HashInfo(name, file_md5(path_info))
-
-        if hash_info:
-            hash_info.size = os.path.getsize(path_info)
-
-        return hash_info
-
     @staticmethod
-    def getsize(path_info):
-        return os.path.getsize(path_info)
+    def info(path_info):
+        st = os.stat(path_info)
+        return {
+            "size": st.st_size,
+            "type": "dir" if stat.S_ISDIR(st.st_mode) else "file",
+        }
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,

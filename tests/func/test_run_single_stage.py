@@ -60,7 +60,9 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].fspath, outs[0])
-        self.assertEqual(stage.outs[0].hash_info.value, file_md5(self.FOO))
+        self.assertEqual(
+            stage.outs[0].hash_info.value, file_md5(self.FOO, self.dvc.tree)
+        )
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):

@@ -4,6 +4,7 @@ from contextlib import _GeneratorContextManager as GCM
 from funcy import reraise
 
 from dvc.exceptions import OutputNotFoundError, PathMissingError
+from dvc.oid import get_hash
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 
@@ -28,7 +29,7 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise OutputNotFoundError(path, repo)
 
         cloud = metadata.repo.cloud
-        hash_info = _repo.repo_tree.get_hash(path_info, "md5")
+        hash_info = get_hash(path_info, _repo.repo_tree, "md5")
         return cloud.get_url_for(remote, checksum=hash_info.value)
 
 

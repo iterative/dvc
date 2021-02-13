@@ -222,16 +222,14 @@ class HDFSTree(BaseTree):
             file_info = hdfs.get_file_info(path_info.path)
             return file_info.type == pyarrow.fs.FileType.Directory
 
-    def getsize(self, path_info):
+    def info(self, path_info):
         with self.hdfs(path_info) as hdfs:
-            file_info = hdfs.get_file_info(path_info.path)
-            return file_info.size
+            finfo = hdfs.get_file_info(path_info.path)
+            return {"size": finfo.size}
 
-    def get_file_hash(self, path_info, name):
-        assert name == self.PARAM_CHECKSUM
-        # NOTE: pyarrow doesn't support checksum, so we need to use hadoop
+    def checksum(self, path_info):
         return HashInfo(
-            self.PARAM_CHECKSUM,
+            "checksum",
             _hadoop_fs_checksum(path_info),
             size=self.getsize(path_info),
         )

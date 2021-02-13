@@ -18,6 +18,7 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.hash_info import HashInfo
+from dvc.oid import get_hash
 
 from ..tree.base import BaseTree
 
@@ -195,7 +196,9 @@ class BaseOutput:
 
     def get_hash(self):
         if not self.use_cache:
-            return self.tree.get_hash(self.path_info, self.tree.PARAM_CHECKSUM)
+            return get_hash(
+                self.path_info, self.tree, self.tree.PARAM_CHECKSUM
+            )
         return objects.stage(self.cache, self.path_info, self.tree).hash_info
 
     @property

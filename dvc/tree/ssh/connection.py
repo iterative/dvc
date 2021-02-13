@@ -76,12 +76,15 @@ class SSHConnection:
 
         return lstat.st_mode if lstat else 0
 
-    def getsize(self, path):
-        lstat = None
-        with suppress(FileNotFoundError):
-            lstat = self.sftp.lstat(path)
+    def info(self, path):
+        st = self.sftp.stat(path)
+        return {
+            "size": st.st_size,
+            "type": "dir" if stat.S_ISDIR(st.st_mode) else "file",
+        }
 
-        return lstat.st_size if lstat else 0
+    def getsize(self, path):
+        return self.info(path)["size"]
 
     def exists(self, path):
         return bool(self.st_mode(path))

@@ -6,7 +6,6 @@ from funcy import cached_property, memoize, wrap_prop, wrap_with
 
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
-from dvc.hash_info import HashInfo
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -146,28 +145,12 @@ class HTTPTree(BaseTree):  # pylint:disable=abstract-method
             return True
         raise HTTPError(res.status_code, res.reason)
 
-    def getsize(self, path_info):
-        response = self.request("GET", path_info.url, stream=True)
-        if response.status_code != 200:
-            raise HTTPError(response.status_code, response.reason)
-        return self._content_length(response)
-
-    def get_file_hash(self, path_info, name):
-        assert name == self.PARAM_CHECKSUM
-
+    def info(self, path_info):
         url = path_info.url
-
         headers = self._head(url).headers
-
         etag = headers.get("ETag") or headers.get("Content-MD5")
-
-        if not etag:
-            raise DvcException(
-                "could not find an ETag or "
-                "Content-MD5 header for '{url}'".format(url=url)
-            )
-
-        return HashInfo(self.PARAM_CHECKSUM, etag)
+        size = int(headers.get("Content-Length"))
+        return {"etag": etag, "size": size}
 
     def _upload_fobj(self, fobj, to_info):
         def chunks(fobj):

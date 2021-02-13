@@ -8,7 +8,6 @@ from funcy import cached_property, nullcontext, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
 from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -147,22 +146,6 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
         # Use webdav check to test for file existence
         return self._client.check(path_info.path)
 
-    # Gets file hash 'etag'
-    def get_file_hash(self, path_info, name):
-        assert name == self.PARAM_CHECKSUM
-
-        # Use webdav client info method to get etag
-        etag = self._client.info(path_info.path)["etag"].strip('"')
-
-        # From HTTPTree
-        if not etag:
-            raise DvcException(
-                "could not find an ETag or "
-                "Content-MD5 header for '{url}'".format(url=path_info.url)
-            )
-
-        return HashInfo(self.PARAM_CHECKSUM, etag)
-
     # Checks whether path points to directory
     def isdir(self, path_info):
         # Use webdav is_dir to test whether path points to a directory
@@ -293,7 +276,9 @@ class WebDAVTree(BaseTree):  # pylint:disable=abstract-method
                     buff=fd_wrapped, remote_path=to_info.path
                 )
 
-    # Queries size of file at remote
-    def getsize(self, path_info):
-        # Get file size from info dictionary and convert to int (from str)
-        return int(self._client.info(path_info.path)["size"])
+    def info(self, path_info):
+        info = self._client.info(path_info.path)
+        return {
+            "size": int(info["size"]),
+            "etag": info["etag"],
+        }

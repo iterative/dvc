@@ -7,6 +7,7 @@ from dvc.progress import Tqdm
 
 from .dir_info import DirInfo
 from .exceptions import DvcException
+from .oid import get_hash
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class HashFile:
         return bool(self.hash_info)
 
     def check(self, odb):
-        actual = self.tree.get_hash(self.path_info, odb.tree.PARAM_CHECKSUM)
+        actual = get_hash(self.path_info, self.tree, odb.tree.PARAM_CHECKSUM)
 
         logger.trace(
             "cache '%s' expected '%s' actual '%s'",
@@ -63,7 +64,9 @@ class File(HashFile):
 
     @classmethod
     def stage(cls, odb, path_info, tree, **kwargs):
-        hash_info = tree.get_hash(path_info, odb.tree.PARAM_CHECKSUM, **kwargs)
+        hash_info = get_hash(
+            path_info, tree, odb.tree.PARAM_CHECKSUM, **kwargs
+        )
         raw = odb.get(hash_info)
         obj = cls(raw.path_info, raw.tree, hash_info)
         obj.src = HashFile(path_info, tree, hash_info)
@@ -113,7 +116,7 @@ class Tree(HashFile):
         with tree.open(path_info, "rb") as fobj:
             odb.tree.upload_fobj(fobj, tmp_info)
 
-        hash_info = odb.tree.get_hash(tmp_info, odb.tree.PARAM_CHECKSUM)
+        hash_info = get_hash(tmp_info, odb.tree, odb.tree.PARAM_CHECKSUM)
         hash_info.value += odb.tree.CHECKSUM_DIR_SUFFIX
         hash_info.dir_info = dir_info
         hash_info.nfiles = dir_info.nfiles
@@ -124,7 +127,9 @@ class Tree(HashFile):
 
     @classmethod
     def stage(cls, odb, path_info, tree, **kwargs):
-        hash_info = tree.get_hash(path_info, odb.tree.PARAM_CHECKSUM, **kwargs)
+        hash_info = get_hash(
+            path_info, tree, odb.tree.PARAM_CHECKSUM, **kwargs
+        )
         hi = cls.save_dir_info(odb, hash_info.dir_info, hash_info)
         hi.size = hash_info.size
         raw = odb.get(hi)

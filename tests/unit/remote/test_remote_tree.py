@@ -98,8 +98,8 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
 
     remote.tree.copy(from_info, to_info)
 
-    from_hash = remote.tree.get_hash(from_info, remote.tree.PARAM_CHECKSUM)
-    to_hash = another.get_hash(to_info, remote.tree.PARAM_CHECKSUM)
+    from_hash = remote.tree.info(from_info)["etag"]
+    to_hash = another.info(to_info)["etag"]
 
     assert from_hash == to_hash
 

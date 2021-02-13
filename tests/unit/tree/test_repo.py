@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 
 from dvc.hash_info import HashInfo
+from dvc.oid import get_hash
 from dvc.path_info import PathInfo
 from dvc.tree.repo import RepoTree
 
@@ -483,11 +484,13 @@ def test_repo_tree_no_subrepos(tmp_dir, dvc, scm):
 def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen({"foo": "foo"})
     tree = RepoTree(dvc)
-    dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_file_hash")
-    assert tree.get_hash(PathInfo(tmp_dir) / "foo", "md5") == HashInfo(
-        "md5", "acbd18db4cc2f85cedef654fccc4a4d8",
+    expected = "acbd18db4cc2f85cedef654fccc4a4d8"
+    assert tree.info(PathInfo(tmp_dir) / "foo").get("md5") is None
+    assert get_hash(PathInfo(tmp_dir) / "foo", tree, "md5") == HashInfo(
+        "md5", expected,
     )
-    assert dvc_tree_spy.called
+    (tmp_dir / "foo").unlink()
+    assert tree.info(PathInfo(tmp_dir) / "foo")["md5"] == expected
 
 
 def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
@@ -495,21 +498,17 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     tree = RepoTree(dvc)
-    get_file_hash_spy = mocker.spy(tree, "get_file_hash")
-    dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_dir_hash")
-    assert tree.get_hash(PathInfo(tmp_dir) / "dir", "md5") == HashInfo(
+    expected = "8761c4e9acad696bee718615e23e22db.dir"
+    assert tree.info(PathInfo(tmp_dir) / "dir").get("md5") is None
+    assert get_hash(PathInfo(tmp_dir) / "dir", tree, "md5") == HashInfo(
         "md5", "8761c4e9acad696bee718615e23e22db.dir",
     )
-    assert get_file_hash_spy.called
-    assert not dvc_tree_spy.called
-    get_file_hash_spy.reset_mock()
 
     shutil.rmtree(tmp_dir / "dir")
-    assert tree.get_hash(PathInfo(tmp_dir) / "dir", "md5") == HashInfo(
+    assert tree.info(PathInfo(tmp_dir) / "dir")["md5"] == expected
+    assert get_hash(PathInfo(tmp_dir) / "dir", tree, "md5") == HashInfo(
         "md5", "8761c4e9acad696bee718615e23e22db.dir",
     )
-    assert not get_file_hash_spy.called
-    assert dvc_tree_spy.called
 
 
 def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
@@ -517,15 +516,19 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     tree = RepoTree(dvc)
-    dvc_tree_spy = mocker.spy(tree._dvctrees[dvc.root_dir], "get_file_hash")
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    assert tree.get_hash(subdir, "md5") == HashInfo(
+    assert tree.info(subdir).get("md5") is None
+    assert get_hash(subdir, tree, "md5") == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
     )
-    assert tree.get_hash(subdir / "data", "md5") == HashInfo(
+    assert tree.info(subdir / "data").get("md5") is None
+    assert get_hash(subdir / "data", tree, "md5") == HashInfo(
         "md5", "8d777f385d3dfec8815d20f7496026dc",
     )
-    assert dvc_tree_spy.called
+    (tmp_dir / "dir" / "subdir" / "data").unlink()
+    assert (
+        tree.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
+    )
 
 
 def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
@@ -541,7 +544,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
     tmp_dir.scm.commit("add dir")
 
     tree = RepoTree(dvc)
-    actual = tree.get_hash(PathInfo(tmp_dir) / "dir", "md5")
+    actual = get_hash(PathInfo(tmp_dir) / "dir", tree, "md5")
     expected = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
     assert actual == expected
 
@@ -551,7 +554,17 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     tree = RepoTree(dvc)
-    actual = tree.get_hash(PathInfo(tmp_dir) / "file", "md5")
+    assert tree.info(PathInfo(tmp_dir) / "file").get("md5") is None
+    actual = get_hash(PathInfo(tmp_dir) / "file", tree, "md5")
+    expected = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
+    assert actual == expected
+
+    (tmp_dir / "file").unlink()
+    assert (
+        tree.info(PathInfo(tmp_dir) / "file")["md5"]
+        == "8c7dd922ad47494fc02c388e12c00eac"
+    )
+    actual = get_hash(PathInfo(tmp_dir) / "file", tree, "md5")
     expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
     assert actual == expected
 
@@ -561,7 +574,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     (tmp_dir / "dir" / "baz").write_text("baz")
 
     tree = RepoTree(dvc)
-    actual = tree.get_hash(PathInfo(tmp_dir) / "dir", "md5")
+    actual = get_hash(PathInfo(tmp_dir) / "dir", tree, "md5")
     expected = HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
     assert actual == expected
     assert actual.dir_info.nfiles == 3

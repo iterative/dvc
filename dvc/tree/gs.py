@@ -7,7 +7,6 @@ from functools import wraps
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -124,10 +123,10 @@ class GSTree(BaseTree):
         blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
         return blob.exists()
 
-    def getsize(self, path_info):
+    def info(self, path_info):
         bucket = self.gs.bucket(path_info.bucket)
         blob = bucket.get_blob(path_info.path)
-        return blob.size
+        return {"type": "file", "size": blob.size}
 
     def _list_paths(self, path_info, max_items=None):
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
@@ -193,25 +192,6 @@ class GSTree(BaseTree):
 
         to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
-
-    def get_file_hash(self, path_info, name):
-        import base64
-        import codecs
-
-        assert name == self.PARAM_CHECKSUM
-        bucket = path_info.bucket
-        path = path_info.path
-        blob = self.gs.bucket(bucket).get_blob(path)
-        if not blob:
-            return HashInfo(self.PARAM_CHECKSUM, None)
-
-        b64_md5 = blob.md5_hash
-        md5 = base64.b64decode(b64_md5)
-        return HashInfo(
-            self.PARAM_CHECKSUM,
-            codecs.getencoder("hex")(md5)[0].decode("utf-8"),
-            size=blob.size,
-        )
 
     def _upload_fobj(self, fobj, to_info):
         bucket = self.gs.bucket(to_info.bucket)

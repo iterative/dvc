@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
-from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -167,7 +166,7 @@ class AzureTree(BaseTree):
                     "type": "file",
                     "name": blob.name,
                     "size": blob.size,
-                    "etag": blob.etag,
+                    "etag": blob.etag.strip('"'),
                 }
             else:
                 yield blob.name
@@ -181,16 +180,16 @@ class AzureTree(BaseTree):
             path_info.bucket, path_info.path
         ).delete_blob()
 
-    def getsize(self, path_info):
+    def info(self, path_info):
         blob_client = self.blob_service.get_blob_client(
             path_info.bucket, path_info.path
         )
         properties = blob_client.get_blob_properties()
-        return properties.size
-
-    def get_file_hash(self, path_info, name):
-        assert name == self.PARAM_CHECKSUM
-        return HashInfo(self.PARAM_CHECKSUM, self.get_etag(path_info))
+        return {
+            "type": "file",
+            "size": properties.size,
+            "etag": properties.etag.strip('"'),
+        }
 
     def _upload_fobj(self, fobj, to_info):
         blob_client = self.blob_service.get_blob_client(
