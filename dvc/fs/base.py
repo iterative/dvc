@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
-from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
 
@@ -140,17 +139,6 @@ class BaseFileSystem:
             f"URL '{url}' is supported but requires these missing "
             f"dependencies: {missing}. {hint}"
         )
-
-    @classmethod
-    def supported(cls, config):
-        if isinstance(config, (str, bytes)):
-            url = config
-        else:
-            url = config["url"]
-
-        # NOTE: silently skipping remote, calling code should handle that
-        parsed = urlparse(url)
-        return parsed.scheme == cls.scheme
 
     @property
     def cache(self):

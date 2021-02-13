@@ -1,6 +1,7 @@
 import posixpath
 from urllib.parse import urlparse
 
+from ..scheme import Schemes
 from .azure import AzureFileSystem
 from .gdrive import GDriveFileSystem
 from .gs import GSFileSystem
@@ -15,28 +16,26 @@ from .webdav import WebDAVFileSystem
 from .webdavs import WebDAVSFileSystem
 from .webhdfs import WebHDFSFileSystem
 
-ALL_FS = [
-    AzureFileSystem,
-    GDriveFileSystem,
-    GSFileSystem,
-    HDFSFileSystem,
-    HTTPFileSystem,
-    HTTPSFileSystem,
-    S3FileSystem,
-    SSHFileSystem,
-    OSSFileSystem,
-    WebDAVFileSystem,
-    WebDAVSFileSystem,
-    WebHDFSFileSystem
+FS_MAP = {
+    Schemes.AZURE: AzureFileSystem,
+    Schemes.GDRIVE: GDriveFileSystem,
+    Schemes.GS: GSFileSystem,
+    Schemes.HDFS: HDFSFileSystem,
+    Schemes.WEBHDFS: WebHDFSFileSystem,
+    Schemes.HTTP: HTTPFileSystem,
+    Schemes.HTTPS: HTTPSFileSystem,
+    Schemes.S3: S3FileSystem,
+    Schemes.SSH: SSHFileSystem,
+    Schemes.OSS: OSSFileSystem,
+    Schemes.WEBDAV: WebDAVFileSystem,
+    Schemes.WEBDAVS: WebDAVSFileSystem,
     # NOTE: LocalFileSystem is the default
-]
+}
 
 
 def get_fs_cls(remote_conf):
-    for fs_cls in ALL_FS:
-        if fs_cls.supported(remote_conf):
-            return fs_cls
-    return LocalFileSystem
+    scheme = urlparse(remote_conf["url"]).scheme
+    return FS_MAP.get(scheme, LocalFileSystem)
 
 
 def get_fs_config(config, **kwargs):

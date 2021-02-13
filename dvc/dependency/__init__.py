@@ -20,20 +20,6 @@ from dvc.scheme import Schemes
 from ..fs import get_cloud_fs
 from .repo import RepoDependency
 
-DEPS = [
-    AzureDependency,
-    GSDependency,
-    HDFSDependency,
-    HTTPDependency,
-    HTTPSDependency,
-    S3Dependency,
-    SSHDependency,
-    WebDAVDependency,
-    WebDAVSDependency,
-    WebHDFSDependency,
-    # NOTE: LocalDependency is the default choice
-]
-
 DEP_MAP = {
     Schemes.LOCAL: LocalDependency,
     Schemes.SSH: SSHDependency,
@@ -75,10 +61,8 @@ def _get(stage, p, info):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    for d in DEPS:
-        if d.supported(p):
-            return d(stage, p, info)
-    return LocalDependency(stage, p, info)
+    dep_cls = DEP_MAP.get(parsed.scheme, LocalDependency)
+    return dep_cls(stage, p, info)
 
 
 def loadd_from(stage, d_list):
