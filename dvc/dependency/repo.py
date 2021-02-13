@@ -47,10 +47,12 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_hash(self, locked=True):
+        from dvc.oid import get_hash
+
         with self._make_repo(locked=locked) as repo:
             path_info = PathInfo(repo.root_dir) / self.def_path
-            return repo.repo_tree.get_hash(
-                path_info, "md5", follow_subrepos=False
+            return get_hash(
+                path_info, repo.repo_tree, "md5", follow_subrepos=False
             )
 
     def workspace_status(self):

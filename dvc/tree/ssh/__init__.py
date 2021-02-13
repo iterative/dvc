@@ -235,22 +235,17 @@ class SSHTree(BaseTree):
         with self.ssh(from_info) as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
-    def get_file_hash(self, path_info, name):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        assert name == self.PARAM_CHECKSUM
+    def md5(self, path_info):
         with self.ssh(path_info) as ssh:
-            hash_info = HashInfo(self.PARAM_CHECKSUM, ssh.md5(path_info.path),)
+            return HashInfo(
+                "md5",
+                ssh.md5(path_info.path),
+                size=ssh.getsize(path_info.path),
+            )
 
-            if hash_info:
-                hash_info.size = ssh.getsize(path_info.path)
-
-            return hash_info
-
-    def getsize(self, path_info):
+    def info(self, path_info):
         with self.ssh(path_info) as ssh:
-            return ssh.getsize(path_info.path)
+            return ssh.info(path_info.path)
 
     def _upload_fobj(self, fobj, to_info):
         self.makedirs(to_info.parent)

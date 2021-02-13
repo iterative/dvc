@@ -651,7 +651,10 @@ class TestReproDataSource(TestReproChangedData):
         stages = self.dvc.reproduce(self.foo_stage.path)
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
-        self.assertEqual(stages[0].outs[0].hash_info.value, file_md5(self.BAR))
+        self.assertEqual(
+            stages[0].outs[0].hash_info.value,
+            file_md5(self.BAR, self.dvc.tree),
+        )
 
 
 class TestReproChangedDir(SingleStageRun, TestDvc):

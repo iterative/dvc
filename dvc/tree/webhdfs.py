@@ -121,17 +121,16 @@ class WebHDFSTree(BaseTree):
         status = self.hdfs_client.status(path_info.path, strict=False)
         return status is not None
 
-    def getsize(self, path_info):
-        return self.hdfs_client.status(path_info.path)["length"]
+    def info(self, path_info):
+        st = self.hdfs_client.status(path_info.path)
+        return {"size": st["length"]}
 
-    def get_file_hash(self, path_info, name):
-        assert name == self.PARAM_CHECKSUM
-
-        checksum = self.hdfs_client.checksum(path_info.path)
-        hash_info = HashInfo(self.PARAM_CHECKSUM, checksum["bytes"])
-
-        hash_info.size = self.hdfs_client.status(path_info.path)["length"]
-        return hash_info
+    def checksum(self, path_info):
+        return HashInfo(
+            "checksum",
+            self.hdfs_client.checksum(path_info.path)["bytes"],
+            size=self.hdfs_client.status(path_info.path)["length"],
+        )
 
     def copy(self, from_info, to_info, **_kwargs):
         with self.hdfs_client.read(from_info.path) as reader:

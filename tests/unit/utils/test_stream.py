@@ -1,3 +1,4 @@
+from dvc.tree.local import LocalTree
 from dvc.utils import file_md5
 from dvc.utils.stream import HashedStreamReader
 
@@ -10,7 +11,7 @@ def test_hashed_stream_reader(tmp_dir):
         stream_reader = HashedStreamReader(fobj)
         assert stream_reader.read(3) == b"foo"
 
-    hex_digest = file_md5(foo)
+    hex_digest = file_md5(foo, LocalTree(None, {}))
     assert stream_reader.is_text_file
     assert hex_digest == stream_reader.hash_info.value
 
@@ -26,6 +27,6 @@ def test_hashed_stream_reader_as_chunks(tmp_dir):
             if not chunk:
                 break
 
-    hex_digest = file_md5(foo)
+    hex_digest = file_md5(foo, LocalTree(None, {}))
     assert not stream_reader.is_text_file
     assert hex_digest == stream_reader.hash_info.value

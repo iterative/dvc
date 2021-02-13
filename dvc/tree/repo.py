@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from funcy import lfilter, wrap_with
 
-from dvc.hash_info import HashInfo
 from dvc.path_info import PathInfo
 
 from .base import BaseTree
@@ -370,38 +369,6 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def get_dir_hash(
-        self, path_info, name, follow_subrepos=None, **kwargs
-    ):  # pylint: disable=arguments-differ
-        tree, dvc_tree = self._get_tree_pair(path_info)
-        if tree.exists(path_info):
-            return super().get_dir_hash(
-                path_info, name, follow_subrepos=follow_subrepos, **kwargs
-            )
-        if not dvc_tree:
-            raise FileNotFoundError
-        return dvc_tree.get_dir_hash(path_info, name, **kwargs)
-
-    def get_file_hash(self, path_info, name):
-        """Return file checksum for specified path.
-
-        If path_info is a DVC out, the pre-computed checksum for the file
-        will be used. If path_info is a git file, MD5 will be computed for
-        the git object.
-        """
-        from dvc.utils import file_md5
-
-        assert name == self.PARAM_CHECKSUM
-        if not self.exists(path_info):
-            raise FileNotFoundError
-        _, dvc_tree = self._get_tree_pair(path_info)
-        if dvc_tree and dvc_tree.exists(path_info):
-            try:
-                return dvc_tree.get_file_hash(path_info, name)
-            except FileNotFoundError:
-                pass
-        return HashInfo(self.PARAM_CHECKSUM, file_md5(path_info, self))
-
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
     ):
@@ -452,3 +419,11 @@ class RepoTree(BaseTree):  # pylint:disable=abstract-method
 
             meta.is_exec = bool(stat_result) and is_exec(stat_result.st_mode)
         return meta
+
+    def info(self, path_info):
+        tree, dvc_tree = self._get_tree_pair(path_info)
+
+        try:
+            return tree.info(path_info)
+        except FileNotFoundError:
+            return dvc_tree.info(path_info)

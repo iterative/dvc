@@ -11,7 +11,6 @@ from dvc.dir_info import DirInfo
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.tree.base import BaseTree
 from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
@@ -147,6 +146,8 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
+    from dvc.oid import get_hash
+
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
     path_info = PathInfo("data")
@@ -154,18 +155,18 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     dir_info = DirInfo.from_list(
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
-    with patch.object(
-        BaseTree, "_collect_dir", return_value=dir_info,
+    with patch(
+        "dvc.oid._collect_dir", return_value=dir_info,
     ):
-        hash1 = dvc.cache.local.tree.get_hash(path_info, "md5")
+        hash1 = get_hash(path_info, dvc.cache.local.tree, "md5")
 
     dir_info = DirInfo.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
-    with patch.object(
-        BaseTree, "_collect_dir", return_value=dir_info,
+    with patch(
+        "dvc.oid._collect_dir", return_value=dir_info,
     ):
-        hash2 = dvc.cache.local.tree.get_hash(path_info, "md5")
+        hash2 = get_hash(path_info, dvc.cache.local.tree, "md5")
 
     assert hash1 == hash2
 

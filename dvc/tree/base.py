@@ -1,6 +1,4 @@
-import errno
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 from multiprocessing import cpu_count
@@ -9,10 +7,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property, decorator
 
-from dvc.dir_info import DirInfo
-from dvc.exceptions import DvcException, DvcIgnoreInCollectedDirError
-from dvc.hash_info import HashInfo
-from dvc.ignore import DvcIgnore
+from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.state import StateNoop
@@ -212,8 +207,11 @@ class BaseTree:
     def is_empty(self, path_info):
         return False
 
+    def info(self, path_info):
+        raise NotImplementedError
+
     def getsize(self, path_info):
-        return None
+        return self.info(path_info).get("size")
 
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
@@ -246,121 +244,6 @@ class BaseTree:
         if not hash_:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
-
-    @use_state
-    def get_hash(self, path_info, name, **kwargs):
-        assert path_info and (
-            isinstance(path_info, str) or path_info.scheme == self.scheme
-        )
-
-        if not self.exists(path_info):
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), path_info
-            )
-
-        # pylint: disable=assignment-from-none
-        hash_info = self.state.get(path_info)
-
-        # If we have dir hash in state db, but dir cache file is lost,
-        # then we need to recollect the dir via .get_dir_hash() call below,
-        # see https://github.com/iterative/dvc/issues/2219 for context
-        if (
-            hash_info
-            and hash_info.isdir
-            and not self.cache.tree.exists(
-                self.cache.hash_to_path_info(hash_info.value)
-            )
-        ):
-            hash_info = None
-
-        if hash_info:
-            assert hash_info.name == self.PARAM_CHECKSUM
-            if hash_info.isdir:
-                from dvc.objects import Tree
-
-                # NOTE: loading the tree will restore hash_info.dir_info
-                Tree.load(self.cache, hash_info)
-            assert hash_info.name == name
-            return hash_info
-
-        if self.isdir(path_info):
-            hash_info = self.get_dir_hash(path_info, name, **kwargs)
-        else:
-            hash_info = self.get_file_hash(path_info, name)
-
-        if hash_info and self.exists(path_info):
-            self.state.save(path_info, hash_info)
-
-        return hash_info
-
-    def get_file_hash(self, path_info, name):
-        raise NotImplementedError
-
-    def _calculate_hashes(self, file_infos, name):
-        def _get_file_hash(path_info):
-            return self.get_file_hash(path_info, name)
-
-        with Tqdm(
-            total=len(file_infos),
-            unit="md5",
-            desc="Computing file/dir hashes (only done once)",
-        ) as pbar:
-            worker = pbar.wrap_fn(_get_file_hash)
-            with ThreadPoolExecutor(max_workers=self.hash_jobs) as executor:
-                hash_infos = executor.map(worker, file_infos)
-                return dict(zip(file_infos, hash_infos))
-
-    def _iter_hashes(self, path_info, name, **kwargs):
-        if name in self.DETAIL_FIELDS:
-            for details in self.ls(path_info, recursive=True, detail=True):
-                file_info = path_info.replace(path=details["name"])
-                hash_info = HashInfo(
-                    name, details[name], size=details.get("size"),
-                )
-                yield file_info, hash_info
-
-            return None
-
-        file_infos = []
-        for file_info in self.walk_files(path_info, **kwargs):
-            hash_info = self.state.get(  # pylint: disable=assignment-from-none
-                file_info
-            )
-            if not hash_info:
-                file_infos.append(file_info)
-                continue
-            assert hash_info.name == name
-            yield file_info, hash_info
-
-        yield from self._calculate_hashes(file_infos, name).items()
-
-    def _collect_dir(self, path_info, name, **kwargs):
-        dir_info = DirInfo()
-        for fi, hi in self._iter_hashes(path_info, name, **kwargs):
-            if DvcIgnore.DVCIGNORE_FILE == fi.name:
-                raise DvcIgnoreInCollectedDirError(fi.parent)
-
-            # NOTE: this is lossy transformation:
-            #   "hey\there" -> "hey/there"
-            #   "hey/there" -> "hey/there"
-            # The latter is fine filename on Windows, which
-            # will transform to dir/file on back transform.
-            #
-            # Yes, this is a BUG, as long as we permit "/" in
-            # filenames on Windows and "\" on Unix
-            dir_info.trie[fi.relative_to(path_info).parts] = hi
-
-        return dir_info
-
-    @use_state
-    def get_dir_hash(self, path_info, name, **kwargs):
-        from dvc.objects import Tree
-
-        dir_info = self._collect_dir(path_info, name, **kwargs)
-        hash_info = Tree.save_dir_info(self.repo.cache.local, dir_info)
-        hash_info.size = dir_info.size
-        hash_info.dir_info = dir_info
-        return hash_info
 
     def upload(
         self, from_info, to_info, name=None, no_progress_bar=False,

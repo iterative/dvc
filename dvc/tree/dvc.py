@@ -54,7 +54,7 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         raise FileNotFoundError
 
     def open(  # type: ignore
-        self, path: PathInfo, mode="r", encoding="utf-8", remote=None, **kwargs
+        self, path: PathInfo, mode="r", encoding=None, remote=None, **kwargs
     ):  # pylint: disable=arguments-differ
         try:
             outs = self._find_outs(path, strict=False)
@@ -219,30 +219,6 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
     def isexec(self, path_info):  # pylint: disable=unused-argument
         return False
 
-    def get_dir_hash(self, path_info, name, **kwargs):
-        try:
-            outs = self._find_outs(path_info, strict=True)
-            if len(outs) == 1 and outs[0].is_dir_checksum:
-                out = outs[0]
-                # other code expects us to fetch the dir at this point
-                self._fetch_dir(out, **kwargs)
-                assert out.hash_info.name == name
-                return out.hash_info
-        except OutputNotFoundError:
-            pass
-
-        return super().get_dir_hash(path_info, name, **kwargs)
-
-    def get_file_hash(self, path_info, name):
-        assert name == "md5"
-        outs = self._find_outs(path_info, strict=False)
-        if len(outs) != 1:
-            raise OutputNotFoundError
-        out = outs[0]
-        if out.is_dir_checksum:
-            return self._get_granular_hash(path_info, out)
-        return out.hash_info
-
     def metadata(self, path_info):
         path_info = PathInfo(os.path.abspath(path_info))
 
@@ -254,3 +230,20 @@ class DvcTree(BaseTree):  # pylint:disable=abstract-method
         meta = Metadata(path_info=path_info, outs=outs, repo=self.repo)
         meta.isdir = meta.isdir or self.check_isdir(meta.path_info, meta.outs)
         return meta
+
+    def info(self, path_info):
+        meta = self.metadata(path_info)
+        ret = {"type": "dir" if meta.isdir else "file"}
+        if meta.is_output and len(meta.outs) == 1 and meta.outs[0].hash_info:
+            hash_info = meta.outs[0].hash_info
+            ret["size"] = hash_info.size
+            ret[hash_info.name] = hash_info.value
+        elif meta.part_of_output:
+            (out,) = meta.outs
+            key = path_info.relative_to(out.path_info).parts
+            hash_info = out.hash_info.dir_info.trie.get(key)
+            if hash_info:
+                ret["size"] = hash_info.size
+                ret[hash_info.name] = hash_info.value
+
+        return ret

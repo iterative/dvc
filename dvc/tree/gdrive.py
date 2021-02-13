@@ -599,14 +599,11 @@ class GDriveTree(BaseTree):
         item_id = self._get_item_id(path_info)
         self.gdrive_delete_file(item_id)
 
-    def get_file_hash(self, path_info, name):
-        raise NotImplementedError
-
-    def getsize(self, path_info):
+    def info(self, path_info):
         item_id = self._get_item_id(path_info)
         gdrive_file = self._drive.CreateFile({"id": item_id})
         gdrive_file.FetchMetadata(fields="fileSize")
-        return gdrive_file.get("fileSize")
+        return {"size": gdrive_file.get("fileSize")}
 
     def _upload_fobj(self, fobj, to_info):
         dirname = to_info.parent

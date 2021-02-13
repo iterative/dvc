@@ -10,6 +10,7 @@ from dvc.exceptions import (
     DvcException,
 )
 from dvc.objects import ObjectFormatError, check, load
+from dvc.oid import get_hash
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
@@ -29,7 +30,7 @@ def _changed(path_info, tree, obj, cache):
         return True
 
     try:
-        actual = tree.get_hash(path_info, obj.hash_info.name)
+        actual = get_hash(path_info, tree, obj.hash_info.name)
     except FileNotFoundError:
         logger.debug("'%s' doesn't exist.", path_info)
         return True
@@ -55,7 +56,7 @@ def _remove(path_info, tree, cache, force=False):
         tree.remove(path_info)
         return
 
-    current = tree.get_hash(path_info, tree.PARAM_CHECKSUM)
+    current = get_hash(path_info, tree, tree.PARAM_CHECKSUM)
     try:
         obj = load(cache, current)
         check(cache, obj)

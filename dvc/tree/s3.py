@@ -260,9 +260,12 @@ class S3Tree(BaseTree):
 
         return path_info.path in self._list_paths(path_info)
 
-    def getsize(self, path_info):
+    def info(self, path_info):
         with self._get_obj(path_info) as obj:
-            return obj.content_length
+            return {
+                "etag": obj.e_tag.strip('"'),
+                "size": obj.content_length,
+            }
 
     def _list_paths(self, path_info, max_items=None):
         with self._get_bucket(path_info.bucket) as bucket:
@@ -418,14 +421,9 @@ class S3Tree(BaseTree):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
-    def get_file_hash(self, path_info, name):
-        assert name == self.PARAM_CHECKSUM
+    def etag(self, path_info):
         with self._get_obj(path_info) as obj:
-            return HashInfo(
-                self.PARAM_CHECKSUM,
-                obj.e_tag.strip('"'),
-                size=obj.content_length,
-            )
+            return HashInfo("etag", size=obj.content_length,)
 
     def _upload_fobj(self, fobj, to_info):
         with self._get_obj(to_info) as obj:

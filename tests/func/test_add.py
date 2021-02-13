@@ -38,7 +38,7 @@ from tests.utils import get_gitignore_content
 
 def test_add(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
-    md5 = file_md5("foo")
+    md5 = file_md5("foo", dvc.tree)
 
     assert stage is not None
 
@@ -443,7 +443,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_module.tree.local, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.oid, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -474,7 +474,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_module.tree.local, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.oid, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
@@ -521,7 +521,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_hash_counter = mocker.spy(LocalTree, "get_dir_hash")
+    get_dir_hash_counter = mocker.spy(dvc_module.oid, "get_dir_hash")
     ret = main(["add", "data"])
     assert ret == 0
 

@@ -29,16 +29,13 @@ def test_init(dvc):
     assert tree._conn_str == connection_string
 
 
-def test_get_file_hash(tmp_dir, azure):
+def test_info(tmp_dir, azure):
     tmp_dir.gen("foo", "foo")
 
     tree = AzureTree(None, azure.config)
     to_info = azure
     tree.upload(PathInfo("foo"), to_info)
     assert tree.exists(to_info)
-    hash_info = tree.get_file_hash(to_info, "etag")
-    assert hash_info.name == "etag"
-    hash_ = hash_info.value
-    assert hash_
+    hash_ = tree.info(to_info)["etag"]
     assert isinstance(hash_, str)
     assert hash_.strip("'").strip('"') == hash_
