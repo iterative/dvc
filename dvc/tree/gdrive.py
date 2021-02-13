@@ -88,6 +88,7 @@ class GDriveURLInfo(CloudURLInfo):
 class GDriveTree(BaseTree):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
+    PARAM_CHECKSUM = "checksum"
     REQUIRES = {"pydrive2": "pydrive2"}
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
@@ -285,20 +286,21 @@ class GDriveTree(BaseTree):
             ),
         }
 
-        self._cache_path_id(self._path, cache["root_id"], cache)
+        self._cache_path_id(self._path, cache["root_id"], cache=cache)
 
         for item in self._gdrive_list(
             "'{}' in parents and trashed=false".format(cache["root_id"])
         ):
             item_path = (self.path_info / item["title"]).path
-            self._cache_path_id(item_path, item["id"], cache)
+            self._cache_path_id(item_path, item["id"], cache=cache)
 
         return cache
 
-    def _cache_path_id(self, path, item_id, cache=None):
+    def _cache_path_id(self, path, *item_ids, cache=None):
         cache = cache or self._ids_cache
-        cache["dirs"][path].append(item_id)
-        cache["ids"][item_id] = path
+        for item_id in item_ids:
+            cache["dirs"][path].append(item_id)
+            cache["ids"][item_id] = path
 
     @cached_property
     def _list_params(self):
@@ -477,7 +479,7 @@ class GDriveTree(BaseTree):
             return self._ids_cache["dirs"].get(path, [])
         return []
 
-    def _path_to_item_ids(self, path, create, use_cache):
+    def _path_to_item_ids(self, path, create=False, use_cache=True):
         item_ids = self._get_cached_item_ids(path, use_cache)
         if item_ids:
             return item_ids
@@ -510,35 +512,88 @@ class GDriveTree(BaseTree):
         else:
             return True
 
-    def _list_paths(self, prefix=None):
-        if not self._ids_cache["ids"]:
-            return
-
-        if prefix:
-            dir_ids = self._ids_cache["dirs"].get(prefix[:2])
-            if not dir_ids:
-                return
-        else:
-            dir_ids = self._ids_cache["ids"]
-        parents_query = " or ".join(
-            f"'{dir_id}' in parents" for dir_id in dir_ids
+    def _gdrive_list_ids(self, query_ids):
+        query = " or ".join(
+            f"'{query_id}' in parents" for query_id in query_ids
         )
-        query = f"({parents_query}) and trashed=false"
+        query = f"({query}) and trashed=false"
+        return self._gdrive_list(query)
 
-        for item in self._gdrive_list(query):
-            parent_id = item["parents"][0]["id"]
-            yield posixpath.join(
-                self._ids_cache["ids"][parent_id], item["title"]
-            )
+    def _ls_recursive(self, path_info, detail=False):
+        root_path = path_info.path
+        seen_paths = set()
+
+        dir_ids = [self._ids_cache["ids"].copy()]
+        while dir_ids:
+            query_ids = {
+                dir_id: dir_name
+                for dir_id, dir_name in dir_ids.pop().items()
+                if posixpath.commonpath([root_path, dir_name]) == root_path
+                if dir_id not in seen_paths
+            }
+            if not query_ids:
+                continue
+
+            seen_paths |= query_ids.keys()
+
+            new_query_ids = {}
+            dir_ids.append(new_query_ids)
+            for item in self._gdrive_list_ids(query_ids):
+                parent_id = item["parents"][0]["id"]
+                item_path = posixpath.join(query_ids[parent_id], item["title"])
+                if item["mimeType"] == FOLDER_MIME_TYPE:
+                    new_query_ids[item["id"]] = item_path
+                    self._cache_path_id(item_path, item["id"])
+                    continue
+
+                if detail:
+                    yield {
+                        "type": "file",
+                        "name": item_path,
+                        "size": item["fileSize"],
+                        "checksum": item["md5Checksum"],
+                    }
+                else:
+                    yield item_path
+
+    def ls(
+        self, path_info, detail=False, recursive=False
+    ):  # pylint: disable=arguments-differ
+        if recursive:
+            yield from self._ls_recursive(path_info, detail=detail)
+            return None
+
+        cached = path_info.path in self._ids_cache["dirs"]
+        if cached:
+            dir_ids = self._ids_cache["dirs"][path_info.path]
+        else:
+            dir_ids = self._path_to_item_ids(path_info.path)
+
+        if not dir_ids:
+            return None
+
+        root_path = path_info.path
+        for item in self._gdrive_list_ids(dir_ids):
+            item_path = posixpath.join(root_path, item["title"])
+            if detail:
+                if item["mimeType"] == FOLDER_MIME_TYPE:
+                    yield {"type": "directory", "name": item_path}
+                else:
+                    yield {
+                        "type": "file",
+                        "name": item_path,
+                        "size": item["fileSize"],
+                        "checksum": item["md5Checksum"],
+                    }
+            else:
+                yield item_path
+
+        if not cached:
+            self._cache_path_id(root_path, *dir_ids)
 
     def walk_files(self, path_info, **kwargs):
-        use_prefix = kwargs.pop("prefix", False)
-        if path_info == self.path_info or not use_prefix:
-            prefix = None
-        else:
-            prefix = path_info.path
-        for fname in self._list_paths(prefix=prefix, **kwargs):
-            yield path_info.replace(fname)
+        for filename in self.ls(path_info, recursive=True):
+            yield path_info.replace(path=filename)
 
     def remove(self, path_info):
         item_id = self._get_item_id(path_info)

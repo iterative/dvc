@@ -281,6 +281,34 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
         assert stream.read() == b"foo"
 
 
+@pytest.mark.parametrize("cloud", [pytest.lazy_fixture("gdrive")])
+def test_tree_ls(dvc, cloud):
+    cloud.gen(
+        {
+            "directory": {
+                "foo": "foo",
+                "bar": "bar",
+                "baz": {"quux": "quux", "egg": {"foo": "foo"}},
+                "empty": {},
+            }
+        }
+    )
+    tree = get_cloud_tree(dvc, **cloud.config)
+    path_info = cloud / "directory"
+
+    assert {os.path.basename(file_key) for file_key in tree.ls(path_info)} == {
+        "foo",
+        "bar",
+        "baz",
+        "empty",
+    }
+    assert set(tree.ls(path_info / "empty")) == set()
+    assert {
+        (detail["type"], os.path.basename(detail["name"]))
+        for detail in tree.ls(path_info / "baz", detail=True)
+    } == {("file", "quux"), ("directory", "egg")}
+
+
 @pytest.mark.parametrize(
     "cloud",
     [
@@ -288,9 +316,10 @@ def test_tree_upload_fobj(dvc, tmp_dir, cloud):
         pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("webdav"),
+        pytest.lazy_fixture("gdrive"),
     ],
 )
-def test_tree_ls(dvc, cloud):
+def test_tree_ls_recursive(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
     tree = get_cloud_tree(dvc, **cloud.config)
     path_info = tree.path_info
