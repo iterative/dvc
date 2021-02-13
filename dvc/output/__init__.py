@@ -20,15 +20,6 @@ from ..fs.local import LocalFileSystem
 from ..fs.s3 import S3FileSystem
 from ..fs.webhdfs import WebHDFSFileSystem
 
-OUTS = [
-    HDFSOutput,
-    S3Output,
-    GSOutput,
-    SSHOutput,
-    WebHDFSOutput,
-    # NOTE: LocalOutput is the default choice
-]
-
 OUTS_MAP = {
     Schemes.HDFS: HDFSOutput,
     Schemes.S3: S3Output,
@@ -104,23 +95,8 @@ def _get(
             isexec=isexec,
         )
 
-    for o in OUTS:
-        if o.supported(p):
-            return o(
-                stage,
-                p,
-                info,
-                cache=cache,
-                fs=None,
-                metric=metric,
-                plot=plot,
-                persist=persist,
-                checkpoint=checkpoint,
-                live=live,
-                desc=desc,
-                isexec=isexec,
-            )
-    return LocalOutput(
+    out_cls = OUTS_MAP.get(parsed.scheme, LocalOutput)
+    return out_cls(
         stage,
         p,
         info,

@@ -7,7 +7,7 @@ import uuid
 import psutil
 
 from dvc.exceptions import DvcException, NotDvcRepoError
-from dvc.fs import ALL_FS, get_fs_cls, get_fs_config
+from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
 from dvc.system import System
@@ -117,11 +117,11 @@ def _get_linktype_support_info(repo):
 def _get_supported_remotes():
 
     supported_remotes = []
-    for fs_cls in ALL_FS:
+    for scheme, fs_cls in FS_MAP.items():
         if not fs_cls.get_missing_deps():
-            supported_remotes.append(fs_cls.scheme)
+            supported_remotes.append(scheme)
 
-    if len(supported_remotes) == len(ALL_FS):
+    if len(supported_remotes) == len(FS_MAP):
         return "All remotes"
 
     if len(supported_remotes) == 1:

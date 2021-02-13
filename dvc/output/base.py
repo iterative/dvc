@@ -186,10 +186,6 @@ class BaseOutput:
     def dir_cache(self):
         return self.hash_info.dir_info
 
-    @classmethod
-    def supported(cls, url):
-        return cls.FS_CLS.supported(url)
-
     @property
     def cache_path(self):
         return self.cache.hash_to_path_info(self.hash_info.value).url
