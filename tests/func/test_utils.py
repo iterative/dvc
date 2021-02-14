@@ -10,7 +10,7 @@ def test_file_md5_crlf(tmp_dir, dos2unix):
     tmp_dir.gen("crlf", b"a\r\nb\r\nc")
     fs = LocalFileSystem(None, {})
     eq = utils.file_md5("cr", fs, enable_d2u=dos2unix) == utils.file_md5(
-        "crlf", enable_d2u=dos2unix
+        "crlf", fs, enable_d2u=dos2unix
     )
     assert eq == dos2unix
 

@@ -6,8 +6,8 @@ from voluptuous import MultipleInvalid
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
     from dvc.path_info import PathInfo
-    from dvc.tree.base import BaseTree
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +19,11 @@ class ODBConfigFormatError(DvcException):
     pass
 
 
-def load_config(path_info: "PathInfo", tree: "BaseTree",) -> dict:
+def load_config(path_info: "PathInfo", fs: "BaseFileSystem",) -> dict:
     from dvc.utils.serialize import load_yaml
 
-    if tree.exists(path_info):
-        data = load_yaml(path_info, tree=tree)
+    if fs.exists(path_info):
+        data = load_yaml(path_info, fs=fs)
     else:
         data = {}
 
@@ -36,14 +36,14 @@ def load_config(path_info: "PathInfo", tree: "BaseTree",) -> dict:
 
 
 def dump_config(
-    config: dict, path_info: "PathInfo", tree: "BaseTree",
+    config: dict, path_info: "PathInfo", fs: "BaseFileSystem",
 ):
     from dvc.utils.serialize import modify_yaml
 
     logger.debug("Writing ODB config '%s'", path_info)
-    if not tree.exists(path_info.parent):
-        tree.makedirs(path_info.parent)
-    with modify_yaml(path_info, tree=tree) as data:
+    if not fs.exists(path_info.parent):
+        fs.makedirs(path_info.parent)
+    with modify_yaml(path_info, fs=fs) as data:
         data.update(config)
 
 

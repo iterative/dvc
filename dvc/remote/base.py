@@ -570,9 +570,9 @@ class Remote:
         from dvc.odb.config import CONFIG_FILENAME, load_config, migrate_config
         from dvc.odb.versions import ODB_VERSION
 
-        config_path = self.tree.path_info / CONFIG_FILENAME
+        config_path = self.fs.path_info / CONFIG_FILENAME
         self._config = load_config(
-            self.tree.path_info / CONFIG_FILENAME, self.tree
+            self.fs.path_info / CONFIG_FILENAME, self.fs
         )
 
         dos2unix = self.repo.config["core"].get("dos2unix", False)
@@ -585,12 +585,12 @@ class Remote:
         if not dos2unix and self.version != ODB_VERSION.V2:
             migrate_config(self._config)
             self._config_modified = True
-        elif not self.tree.exists(config_path):
+        elif not self.fs.exists(config_path):
             self._config_modified = True
 
     def _dump_config(self):
         from dvc.odb.config import CONFIG_FILENAME, dump_config
 
-        config_path = self.tree.path_info / CONFIG_FILENAME
-        dump_config(self._config, config_path, self.tree)
+        config_path = self.fs.path_info / CONFIG_FILENAME
+        dump_config(self._config, config_path, self.fs)
         self._config_modified = False

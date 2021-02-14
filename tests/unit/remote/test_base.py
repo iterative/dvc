@@ -99,7 +99,7 @@ def test_hashes_exist(object_exists, traverse, dvc, mocker):
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc, mocker):
     mocker.patch.object(CloudCache, "_load_config")
     cache = CloudCache(BaseFileSystem(dvc, {}))
-    cache.tree.path_info = PathInfo("foo")
+    cache.fs.path_info = PathInfo("foo")
 
     # parallel traverse
     size = 256 / cache.fs.JOBS * cache.fs.LIST_OBJECT_PAGE_SIZE
@@ -125,7 +125,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc, mocker):
 def test_list_hashes(dvc, mocker):
     mocker.patch.object(CloudCache, "_load_config")
     cache = CloudCache(BaseFileSystem(dvc, {}))
-    cache.tree.path_info = PathInfo("foo")
+    cache.fs.path_info = PathInfo("foo")
 
     with mock.patch.object(
         cache, "_list_paths", return_value=["12/3456", "bar"]
@@ -137,7 +137,7 @@ def test_list_hashes(dvc, mocker):
 def test_list_paths(dvc, mocker):
     mocker.patch.object(CloudCache, "_load_config")
     cache = CloudCache(BaseFileSystem(dvc, {}))
-    cache.tree.path_info = PathInfo("foo")
+    cache.fs.path_info = PathInfo("foo")
 
     with mock.patch.object(
         cache.fs, "walk_files", return_value=[]
