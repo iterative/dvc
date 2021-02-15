@@ -443,7 +443,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_module.oid, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.oid, "get_file_hash")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -474,7 +474,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_module.oid, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.oid, "get_file_hash")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
@@ -516,7 +516,7 @@ class TestAddCommit(TestDvc):
         ret = main(["commit", self.FOO + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
+        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 2)
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
@@ -888,12 +888,11 @@ def test_add_symlink_file(tmp_dir, dvc):
     assert (tmp_dir / "dir" / "foo").read_text() == "bar"
     assert (tmp_dir / "dir" / "bar").read_text() == "bar"
 
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "37": {"b51d194a7513e45b56f6524f2d51f2": "bar"}
-    }
-    assert not (
+    expected_path = (
         tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
-    ).is_symlink()
+    )
+    assert expected_path.read_text() == "bar"
+    assert not expected_path.is_symlink()
 
     # Test that subsequent add succeeds
     # See https://github.com/iterative/dvc/issues/4654
@@ -946,9 +945,9 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
 
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
-    }
+    assert (
+        tmp_dir / ".dvc" / "cache" / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
+    ).read_text() == "foo"
 
 
 def test_add_preserve_meta(tmp_dir, dvc):
@@ -1149,6 +1148,10 @@ def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
     ],
 )
 def test_add_dos2unix(tmp_dir, dvc, dos2unix, expected):
+    from dvc.hash_info import HashName
+
     dvc.config["core"]["dos2unix"] = dos2unix
     (stage,) = tmp_dir.dvc_gen({"foo": "foo\r\n"})
-    assert stage.outs[0].hash_info == HashInfo("md5", expected)
+
+    name = HashName.MD5_D2U.value if dos2unix else HashName.MD5.value
+    assert stage.outs[0].hash_info == HashInfo(name, expected)
