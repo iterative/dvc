@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
+from dvc.hash_info import HashName
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -21,8 +22,8 @@ class AzureFileSystem(BaseFileSystem):
         "azure-storage-blob": "azure.storage.blob",
         "knack": "knack",
     }
-    PARAM_CHECKSUM = "etag"
-    DETAIL_FIELDS = frozenset(("etag", "size"))
+    _DEFAULT_HASH = HashName.ETAG
+    DETAIL_FIELDS = frozenset((str(HashName.ETAG.value), "size"))
 
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 5000

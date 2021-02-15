@@ -192,7 +192,7 @@ class BaseOutput:
 
     def get_hash(self):
         if not self.use_cache:
-            return get_hash(self.path_info, self.fs, self.fs.PARAM_CHECKSUM)
+            return get_hash(self.path_info, self.fs, self.fs.hash_name)
         return objects.stage(self.cache, self.path_info, self.fs).hash_info
 
     @property
@@ -630,7 +630,7 @@ class BaseOutput:
         other = out.dumpd()
 
         ignored = [
-            self.fs.PARAM_CHECKSUM,
+            self.fs.hash_name,
             HashInfo.PARAM_SIZE,
             HashInfo.PARAM_NFILES,
         ]

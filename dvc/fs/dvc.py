@@ -3,6 +3,7 @@ import os
 import typing
 
 from dvc.exceptions import OutputNotFoundError
+from dvc.hash_info import HashName
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
@@ -24,7 +25,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     """
 
     scheme = "local"
-    PARAM_CHECKSUM = "md5"
+    _DEFAULT_HASH = HashName.MD5
 
     def __init__(self, repo):
         super().__init__(repo, {"url": repo.root_dir})

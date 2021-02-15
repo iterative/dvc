@@ -6,6 +6,7 @@ from funcy import cached_property, memoize, wrap_prop, wrap_with
 
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException, HTTPError
+from dvc.hash_info import HashName
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -27,7 +28,7 @@ def ask_password(host, user):
 class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.HTTP
     PATH_CLS = HTTPURLInfo
-    PARAM_CHECKSUM = "etag"
+    _DEFAULT_HASH = HashName.ETAG
     CAN_TRAVERSE = False
 
     SESSION_RETRIES = 5

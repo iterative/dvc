@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import closing, contextmanager
 from urllib.parse import urlparse
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
@@ -62,7 +62,7 @@ class HDFSFileSystem(BaseFileSystem):
     scheme = Schemes.HDFS
     REQUIRES = {"pyarrow": "pyarrow"}
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
-    PARAM_CHECKSUM = "checksum"
+    _DEFAULT_HASH = HashName.CHECKSUM
     TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):

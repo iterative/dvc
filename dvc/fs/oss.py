@@ -4,6 +4,7 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
+from dvc.hash_info import HashName
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -35,7 +36,7 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.OSS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"oss2": "oss2"}
-    PARAM_CHECKSUM = "etag"
+    _DEFAULT_HASH = HashName.ETAG
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
 

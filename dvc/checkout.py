@@ -56,7 +56,7 @@ def _remove(path_info, fs, cache, force=False):
         fs.remove(path_info)
         return
 
-    current = get_hash(path_info, fs, fs.PARAM_CHECKSUM)
+    current = get_hash(path_info, fs, fs.hash_name)
     try:
         obj = load(cache, current)
         check(cache, obj)

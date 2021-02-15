@@ -1,9 +1,11 @@
+from dvc.hash_info import HashName
+
 from .base import BaseFileSystem
 
 
 class MemoryFileSystem(BaseFileSystem):
     scheme = "local"
-    PARAM_CHECKSUM = "md5"
+    _DEFAULT_HASH = HashName.MD5
 
     def __init__(self, repo, config):
         from fsspec.implementations.memory import MemoryFileSystem as MemFS

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from funcy import lfilter, wrap_with
 
+from dvc.hash_info import HashName
 from dvc.path_info import PathInfo
 
 from .base import BaseFileSystem
@@ -32,7 +33,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     """
 
     scheme = "local"
-    PARAM_CHECKSUM = "md5"
+    _DEFAULT_HASH = HashName.MD5
 
     def __init__(
         self, repo, subrepos=False, repo_factory: RepoFactory = None,

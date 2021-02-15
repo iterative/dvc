@@ -36,7 +36,7 @@ class HashFile:
         return bool(self.hash_info)
 
     def check(self, odb):
-        actual = get_hash(self.path_info, self.fs, odb.fs.PARAM_CHECKSUM)
+        actual = get_hash(self.path_info, self.fs, odb.fs.hash_name)
 
         logger.trace(
             "cache '%s' expected '%s' actual '%s'",
@@ -64,7 +64,7 @@ class File(HashFile):
 
     @classmethod
     def stage(cls, odb, path_info, fs, **kwargs):
-        hash_info = get_hash(path_info, fs, odb.fs.PARAM_CHECKSUM, **kwargs)
+        hash_info = get_hash(path_info, fs, odb.fs.hash_name, **kwargs)
         raw = odb.get(hash_info)
         obj = cls(raw.path_info, raw.fs, hash_info)
         obj.src = HashFile(path_info, fs, hash_info)
@@ -93,7 +93,7 @@ class Tree(HashFile):
 
     @classmethod
     def save_dir_info(cls, odb, dir_info, hash_info=None):
-        if hash_info and hash_info.name == odb.fs.PARAM_CHECKSUM:
+        if hash_info and hash_info.name == odb.fs.hash_name:
             try:
                 odb.check(hash_info)
                 assert hash_info.dir_info == dir_info
@@ -114,7 +114,7 @@ class Tree(HashFile):
         with fs.open(path_info, "rb") as fobj:
             odb.fs.upload_fobj(fobj, tmp_info)
 
-        hash_info = get_hash(tmp_info, odb.fs, odb.fs.PARAM_CHECKSUM)
+        hash_info = get_hash(tmp_info, odb.fs, odb.fs.hash_name)
         hash_info.value += odb.fs.CHECKSUM_DIR_SUFFIX
         hash_info.dir_info = dir_info
         hash_info.nfiles = dir_info.nfiles
@@ -125,7 +125,7 @@ class Tree(HashFile):
 
     @classmethod
     def stage(cls, odb, path_info, fs, **kwargs):
-        hash_info = get_hash(path_info, fs, odb.fs.PARAM_CHECKSUM, **kwargs)
+        hash_info = get_hash(path_info, fs, odb.fs.hash_name, **kwargs)
         hi = cls.save_dir_info(odb, hash_info.dir_info, hash_info)
         hi.size = hash_info.size
         raw = odb.get(hi)

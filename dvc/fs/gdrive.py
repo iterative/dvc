@@ -12,6 +12,7 @@ from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
 
 from dvc.exceptions import DvcException, FileMissingError
+from dvc.hash_info import HashName
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -88,7 +89,7 @@ class GDriveURLInfo(CloudURLInfo):
 class GDriveFileSystem(BaseFileSystem):
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
-    PARAM_CHECKSUM = "checksum"
+    _DEFAULT_HASH = HashName.CHECKSUM
     REQUIRES = {"pydrive2": "pydrive2"}
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1

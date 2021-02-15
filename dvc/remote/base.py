@@ -496,7 +496,7 @@ class Remote:
                 for checksum in named_cache.scheme_keys("local"):
                     cache_file = self.cache.hash_to_path_info(checksum)
                     if self.fs.exists(cache_file):
-                        hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
+                        hash_info = HashInfo(self.fs.hash_name, checksum)
                         self.fs.state.save(cache_file, hash_info)
                         self.cache.protect(cache_file)
 
@@ -521,7 +521,7 @@ class Remote:
                         # will be removed upon status, while files corrupted
                         # during download will not be moved from tmp_file
                         # (see `BaseFileSystem.download()`)
-                        hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
+                        hash_info = HashInfo(cache.fs.hash_name, checksum)
                         cache.fs.state.save(cache_file, hash_info)
                         cache.protect(cache_file)
 

@@ -8,6 +8,7 @@ from funcy import cached_property, nullcontext, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashName
 from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -42,7 +43,7 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     # Chunk size for buffered upload/download with progress bar
     CHUNK_SIZE = 2 ** 16
 
-    PARAM_CHECKSUM = "etag"
+    _DEFAULT_HASH = HashName.ETAG
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
     # Constructor

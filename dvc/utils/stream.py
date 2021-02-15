@@ -1,7 +1,7 @@
 import hashlib
 import io
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.istextfile import istextblock
 from dvc.utils import dos2unix
 
@@ -63,7 +63,7 @@ class IterStream(io.RawIOBase):
 
 class HashedStreamReader:
 
-    PARAM_CHECKSUM = "md5"
+    hash_name = HashName.MD5
 
     def __init__(self, fobj):
         self.md5 = hashlib.md5()
@@ -85,4 +85,4 @@ class HashedStreamReader:
 
     @property
     def hash_info(self):
-        return HashInfo(self.PARAM_CHECKSUM, self.md5.hexdigest(), nfiles=1)
+        return HashInfo(self.hash_name, self.md5.hexdigest(), nfiles=1)

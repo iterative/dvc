@@ -7,6 +7,7 @@ from functools import wraps
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashName
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -54,7 +55,7 @@ class GSFileSystem(BaseFileSystem):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
-    PARAM_CHECKSUM = "md5"
+    _DEFAULT_HASH = HashName.MD5
     DETAIL_FIELDS = frozenset(("md5", "size"))
 
     def __init__(self, repo, config):

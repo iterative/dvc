@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property, wrap_prop
 
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -34,7 +34,7 @@ class WebHDFSFileSystem(BaseFileSystem):
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
-    PARAM_CHECKSUM = "checksum"
+    _DEFAULT_HASH = HashName.CHECKSUM
     TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, repo, config):
@@ -127,7 +127,7 @@ class WebHDFSFileSystem(BaseFileSystem):
 
     def checksum(self, path_info):
         return HashInfo(
-            "checksum",
+            HashName.CHECKSUM,
             self.hdfs_client.checksum(path_info.path)["bytes"],
             size=self.hdfs_client.status(path_info.path)["length"],
         )

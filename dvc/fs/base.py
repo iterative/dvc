@@ -7,6 +7,7 @@ from typing import Any, ClassVar, Dict, FrozenSet, Optional
 from funcy import cached_property, decorator
 
 from dvc.exceptions import DvcException
+from dvc.hash_info import HashName
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.state import StateNoop
@@ -59,7 +60,7 @@ class BaseFileSystem:
     # Needed for some providers, and http open()
     CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
-    PARAM_CHECKSUM: ClassVar[Optional[str]] = None
+    _DEFAULT_HASH: ClassVar[Optional["HashName"]] = None
     DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
     state = StateNoop()
@@ -71,6 +72,16 @@ class BaseFileSystem:
         self._check_requires()
 
         self.path_info = None
+
+    @cached_property
+    def hash_name(self) -> Optional[str]:
+        if (
+            self._DEFAULT_HASH == HashName.MD5
+            and self.repo
+            and self.repo.config["core"].get("dos2unix", False)
+        ):
+            return HashName.MD5_D2U.value
+        return self._DEFAULT_HASH.value if self._DEFAULT_HASH else None
 
     @cached_property
     def jobs(self):

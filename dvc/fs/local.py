@@ -4,6 +4,7 @@ import stat
 
 from funcy import cached_property
 
+from dvc.hash_info import HashName
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class LocalFileSystem(BaseFileSystem):
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
-    PARAM_CHECKSUM = "md5"
+    _DEFAULT_HASH = HashName.MD5
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
 

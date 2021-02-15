@@ -7,7 +7,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException, ETagMismatchError
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -24,7 +24,7 @@ class S3FileSystem(BaseFileSystem):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"boto3": "boto3"}
-    PARAM_CHECKSUM = "etag"
+    _DEFAULT_HASH = HashName.ETAG
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def __init__(self, repo, config):
@@ -423,7 +423,7 @@ class S3FileSystem(BaseFileSystem):
 
     def etag(self, path_info):
         with self._get_obj(path_info) as obj:
-            return HashInfo("etag", size=obj.content_length,)
+            return HashInfo(HashName.ETAG.value, size=obj.content_length,)
 
     def _upload_fobj(self, fobj, to_info):
         with self._get_obj(to_info) as obj:

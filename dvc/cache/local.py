@@ -71,7 +71,7 @@ class LocalCache(CloudCache):
             unit="file",
             desc="Querying " + ("cache in " + name if name else "local cache"),
         ):
-            hash_info = HashInfo(self.fs.PARAM_CHECKSUM, hash_)
+            hash_info = HashInfo(self.fs.hash_name, hash_)
             try:
                 self.check(hash_info)
                 ret.append(hash_)

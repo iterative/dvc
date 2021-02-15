@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from funcy import first, memoize, silent, wrap_with
 
 import dvc.prompt as prompt
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.scheme import Schemes
 
 from ..base import BaseFileSystem
@@ -35,7 +35,7 @@ class SSHFileSystem(BaseFileSystem):
     REQUIRES = {"paramiko": "paramiko"}
     JOBS = 4
 
-    PARAM_CHECKSUM = "md5"
+    _DEFAULT_HASH = HashName.MD5
     # At any given time some of the connections will go over network and
     # paramiko stuff, so we would ideally have it double of server processors.
     # We use conservative setting of 4 instead to not exhaust max sessions.
@@ -238,7 +238,7 @@ class SSHFileSystem(BaseFileSystem):
     def md5(self, path_info):
         with self.ssh(path_info) as ssh:
             return HashInfo(
-                "md5",
+                HashName.MD5.value,
                 ssh.md5(path_info.path),
                 size=ssh.getsize(path_info.path),
             )
