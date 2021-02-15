@@ -1,3 +1,4 @@
+import enum
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Dict, Optional
@@ -5,6 +6,17 @@ from typing import Dict, Optional
 HASH_DIR_SUFFIX = ".dir"
 
 DirInfo = Dict[str, str]
+
+
+class HashName(str, enum.Enum):
+    MD5 = "md5"  # Raw MD5
+    MD5_D2U = "md5-d2u"  # DVC dos2unix MD5
+    ETAG = "etag"
+    CHECKSUM = "checksum"  # cloud specific checksum ([web]HDFS, gdrive)
+
+    @classmethod
+    def all_names(cls):
+        return [v.value for v in cls]
 
 
 @dataclass

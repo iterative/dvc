@@ -1,12 +1,18 @@
 import errno
 import os
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.ignore import DvcIgnore
 from dvc.progress import Tqdm
 from dvc.utils import file_md5
+
+_HASH_FUNCTIONS = {
+    HashName.MD5: file_md5,
+    HashName.MD5_D2U: partial(file_md5, enable_d2u=True),
+}
 
 
 def get_file_hash(path_info, fs, name):
@@ -19,10 +25,14 @@ def get_file_hash(path_info, fs, name):
     if func:
         return func(path_info)
 
-    if name == "md5":
+    try:
         return HashInfo(
-            name, file_md5(path_info, fs), size=fs.getsize(path_info)
+            name,
+            _HASH_FUNCTIONS[name](path_info, fs),
+            size=fs.getsize(path_info),
         )
+    except KeyError:
+        pass
 
     raise NotImplementedError
 
