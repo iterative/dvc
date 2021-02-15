@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
+from dvc.hash_info import HashInfo, HashName
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
@@ -456,7 +456,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None
 
         self._update_state_record_timestamp_for_inode(actual_inode)
-        return HashInfo("md5", value, size=int(actual_size))
+        return HashInfo(HashName.MD5.value, value, size=int(actual_size))
 
     def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This

@@ -122,6 +122,15 @@ def get_hash(path_info, fs, name, **kwargs):
         # pylint: disable=assignment-from-none
         hash_info = fs.state.get(path_info)
 
+        # NOTE: state does not store hash name, assume it gives us the correct
+        # MD5 type
+        if (
+            hash_info
+            and name == HashName.MD5_D2U
+            and hash_info.name == HashName.MD5
+        ):
+            hash_info.name = HashName.MD5_D2U.value
+
         # If we have dir hash in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_hash() call below,
         # see https://github.com/iterative/dvc/issues/2219 for context
