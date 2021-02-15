@@ -5,6 +5,8 @@ import subprocess
 import threading
 from contextlib import contextmanager
 
+from funcy import first
+
 from dvc.utils import fix_env
 
 from .decorators import relock_repo, unlocked_repo
@@ -97,7 +99,9 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         killed = threading.Event()
-        with checkpoint_monitor(stage, checkpoint_func, p, killed):
+        with checkpoint_monitor(
+            stage, checkpoint_func, p, killed
+        ), live_monitor(stage, p):
             p.communicate()
     finally:
         if old_handler:
@@ -168,6 +172,48 @@ def checkpoint_monitor(stage, callback_func, proc, killed):
     finally:
         done.set()
         monitor_thread.join()
+
+
+@contextmanager
+def live_monitor(stage, proc):
+    out = first((o for o in stage.outs if o.live))
+    if not out or not out.live["html"]:
+        yield None
+        return
+
+    logger.debug(
+        "Monitoring live stage '%s' with cmd process '%d'", stage, proc.pid
+    )
+
+    done = threading.Event()
+    monitor_thread = threading.Thread(
+        target=_live_run, args=(out, proc, done),
+    )
+
+    try:
+        monitor_thread.start()
+        yield monitor_thread
+    finally:
+        done.set()
+        monitor_thread.join()
+
+
+def _live_run(out, proc, done):
+    from dvc.api.live import summary
+
+    signal_path = os.path.join(out.repo.tmp_dir, "DVC_LIVE")
+    while True:
+        if os.path.exists(signal_path):
+            try:
+                summary((str(out.path_info)))
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("ERROR while running live")
+                _kill(proc)
+            finally:
+                os.remove(signal_path)
+        if done.wait(1):
+            summary(str(out.path_info))
+            return
 
 
 def _checkpoint_run(stage, callback_func, done, proc, killed):
