@@ -63,7 +63,7 @@ class IterStream(io.RawIOBase):
 
 class HashedStreamReader:
 
-    hash_name = HashName.MD5
+    hash_name = HashName.MD5.value
 
     def __init__(self, fobj):
         self.md5 = hashlib.md5()
