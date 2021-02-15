@@ -37,13 +37,19 @@ def load_config(path_info: "PathInfo", fs: "BaseFileSystem",) -> dict:
 def dump_config(
     config: dict, path_info: "PathInfo", fs: "BaseFileSystem",
 ):
+    from tempfile import NamedTemporaryFile
+
     from dvc.utils.serialize import modify_yaml
 
     logger.debug("Writing ODB config '%s'", path_info)
     if not fs.exists(path_info.parent):
         fs.makedirs(path_info.parent)
-    with modify_yaml(path_info, fs=fs) as data:
-        data.update(config)
+
+    with NamedTemporaryFile() as tmp:
+        with modify_yaml(tmp.name) as data:
+            data.update(config)
+        tmp.seek(0)
+        fs.upload_fobj(tmp, path_info)
 
 
 def migrate_config(config: dict) -> bool:
