@@ -126,7 +126,7 @@ class GSFileSystem(BaseFileSystem):
     def info(self, path_info):
         bucket = self.gs.bucket(path_info.bucket)
         blob = bucket.get_blob(path_info.path)
-        return {"type": "file", "size": blob.size}
+        return {"type": "file", "size": blob.size, "etag": blob.etag}
 
     def _list_paths(self, path_info, max_items=None):
         for blob in self.gs.bucket(path_info.bucket).list_blobs(
@@ -160,6 +160,7 @@ class GSFileSystem(BaseFileSystem):
                     "name": blob.name,
                     "md5": md5_hash.hex(),
                     "size": blob.size,
+                    "etag": blob.etag,
                 }
             else:
                 yield blob.name
