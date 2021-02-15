@@ -95,19 +95,19 @@ class TestGCBranchesTags(TestDvcGit):
         self.dvc.scm.add([".gitignore", stages[0].relpath])
         self.dvc.scm.commit("master")
 
-        self._check_cache(4)
+        self._check_cache(5)
 
         self.dvc.gc(all_tags=True, all_branches=True)
 
-        self._check_cache(3)
+        self._check_cache(4)
 
         self.dvc.gc(all_tags=False, all_branches=True)
 
-        self._check_cache(2)
+        self._check_cache(3)
 
         self.dvc.gc(all_tags=True, all_branches=False)
 
-        self._check_cache(1)
+        self._check_cache(2)
 
 
 class TestGCMultipleDvcRepos(TestDvcGit):
@@ -172,13 +172,13 @@ class TestGCMultipleDvcRepos(TestDvcGit):
 
         os.chdir(cwd)
 
-        self._check_cache(3)
+        self._check_cache(4)
 
         self.dvc.gc(repos=[self.additional_path], workspace=True)
-        self._check_cache(3)
+        self._check_cache(4)
 
         self.dvc.gc(workspace=True)
-        self._check_cache(2)
+        self._check_cache(3)
 
 
 def test_all_commits(tmp_dir, scm, dvc):
@@ -203,9 +203,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
 
-    assert _count_files(dvc.cache.local.cache_dir) == 4
+    assert _count_files(dvc.cache.local.cache_dir) == 5
     dvc.gc(force=True, workspace=True)
-    assert _count_files(dvc.cache.local.cache_dir) == 2
+    assert _count_files(dvc.cache.local.cache_dir) == 3
 
 
 def _count_files(path):
@@ -341,14 +341,14 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "foo2", name="copy")
     shutil.rmtree(dvc.stage_cache.cache_dir)
-    assert _count_files(dvc.cache.local.cache_dir) == 1
+    assert _count_files(dvc.cache.local.cache_dir) == 2
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.cache.local.cache_dir) == 1
+    assert _count_files(dvc.cache.local.cache_dir) == 2
 
     # remove pipeline file and lockfile and check
     Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.cache.local.cache_dir) == 0
+    assert _count_files(dvc.cache.local.cache_dir) == 1
 
 
 @pytest.mark.parametrize(
