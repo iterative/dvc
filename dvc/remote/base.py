@@ -82,7 +82,6 @@ class Remote:
             self.index = self.INDEX_CLS(
                 self.repo, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
             )
-            self._load_config()
         else:
             self.index = RemoteIndexNoop()
 
@@ -94,12 +93,7 @@ class Remote:
 
     @property
     def version(self):
-        from dvc.odb.versions import LATEST_VERSION
-        from dvc.parsing.versions import SCHEMA_KWD
-
-        if self._config:
-            return self._config.get(SCHEMA_KWD, LATEST_VERSION)
-        return LATEST_VERSION
+        return self.cache.version
 
     @index_locked
     def gc(self, *args, **kwargs):
@@ -487,8 +481,7 @@ class Remote:
 
     @index_locked
     def push(self, cache, named_cache, jobs=None, show_checksums=False):
-        if self._config_modified:
-            self._dump_config()
+        self.cache.dump_config()
 
         ret = self._process(
             cache,
@@ -537,9 +530,6 @@ class Remote:
     def transfer(self, from_fs, from_info, jobs=None, no_progress_bar=False):
         from dvc.objects import transfer
 
-        if self._config_modified:
-            self._dump_config()
-
         return transfer(
             self.cache,
             from_fs,
@@ -565,32 +555,3 @@ class Remote:
                 "nor on remote. Missing cache files:\n{}".format(missing_desc)
             )
             logger.warning(msg)
-
-    def _load_config(self):
-        from dvc.odb.config import CONFIG_FILENAME, load_config, migrate_config
-        from dvc.odb.versions import ODB_VERSION
-
-        config_path = self.fs.path_info / CONFIG_FILENAME
-        self._config = load_config(
-            self.fs.path_info / CONFIG_FILENAME, self.fs
-        )
-
-        dos2unix = self.repo.config["core"].get("dos2unix", False)
-        if dos2unix and self.version != ODB_VERSION.V1:
-            raise DvcException(
-                "dos2unix MD5 is incompatible with ODB version "
-                f"'{self.version}'"
-            )
-
-        if not dos2unix and self.version != ODB_VERSION.V2:
-            migrate_config(self._config)
-            self._config_modified = True
-        elif not self.fs.exists(config_path):
-            self._config_modified = True
-
-    def _dump_config(self):
-        from dvc.odb.config import CONFIG_FILENAME, dump_config
-
-        config_path = self.fs.path_info / CONFIG_FILENAME
-        dump_config(self._config, config_path, self.fs)
-        self._config_modified = False

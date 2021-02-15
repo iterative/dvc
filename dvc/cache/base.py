@@ -59,8 +59,7 @@ class CloudCache:
         except (ObjectFormatError, FileNotFoundError):
             pass
 
-        if self._config_modified:
-            self._dump_config()
+        self.dump_config()
 
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
@@ -447,9 +446,10 @@ class CloudCache:
         elif not self.fs.exists(config_path):
             self._config_modified = True
 
-    def _dump_config(self):
+    def dump_config(self):
         from dvc.odb.config import CONFIG_FILENAME, dump_config
 
-        config_path = self.fs.path_info / CONFIG_FILENAME
-        dump_config(self._config, config_path, self.fs)
-        self._config_modified = False
+        if self._config_modified:
+            config_path = self.fs.path_info / CONFIG_FILENAME
+            dump_config(self._config, config_path, self.fs)
+            self._config_modified = False
