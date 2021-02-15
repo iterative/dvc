@@ -162,6 +162,8 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(config["cache"]["dir"], dname.replace("\\", "/"))
 
     def test_relative_path(self):
+        from dvc.odb.config import CONFIG_FILENAME
+
         tmpdir = os.path.realpath(self.mkdtemp())
         dname = relpath(tmpdir)
         ret = main(["cache", "dir", dname])
@@ -177,8 +179,8 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(ret, 0)
 
         subdirs = os.listdir(tmpdir)
-        self.assertEqual(len(subdirs), 1)
-        files = os.listdir(os.path.join(tmpdir, subdirs[0]))
+        self.assertEqual(set(subdirs), {"ac", CONFIG_FILENAME})
+        files = os.listdir(os.path.join(tmpdir, "ac"))
         self.assertEqual(len(files), 1)
 
 
@@ -191,6 +193,7 @@ def test_default_cache_type(dvc):
     "group", [False, True],
 )
 def test_shared_cache(tmp_dir, dvc, group):
+    from dvc.odb.config import CONFIG_FILENAME
     from dvc.utils.fs import umask
 
     if group:
@@ -227,6 +230,7 @@ def test_shared_cache(tmp_dir, dvc, group):
         os.path.join(
             cache_dir, "d1", "0b4c3ff123b26dc068d43a8bef2d23"
         ): file_mode,
+        os.path.join(cache_dir, CONFIG_FILENAME): file_mode,
     }
 
     assert expected == actual
