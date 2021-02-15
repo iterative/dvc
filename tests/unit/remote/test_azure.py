@@ -17,7 +17,6 @@ def test_init_env_var(monkeypatch, dvc):
     config = {"url": "azure://"}
     fs = AzureFileSystem(dvc, config)
     assert fs.path_info == "azure://" + container_name
-    assert fs._conn_str == connection_string
 
 
 def test_init(dvc):
@@ -26,7 +25,6 @@ def test_init(dvc):
     config = {"url": url, "connection_string": connection_string}
     fs = AzureFileSystem(dvc, config)
     assert fs.path_info == url
-    assert fs._conn_str == connection_string
 
 
 def test_info(tmp_dir, azure):
