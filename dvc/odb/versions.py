@@ -1,9 +1,8 @@
-import enum
 from collections.abc import Mapping
 
 from voluptuous import validators
 
-from dvc.parsing.versions import SCHEMA_KWD
+from dvc.parsing.versions import SCHEMA_KWD, VersionEnum
 
 
 def odb_version_schema(value):
@@ -15,12 +14,6 @@ def odb_version_schema(value):
         value, expected
     )
     return validators.Any(*expected, msg=msg)(value)
-
-
-class VersionEnum(str, enum.Enum):
-    @classmethod
-    def all_versions(cls):
-        return [v.value for v in cls]
 
 
 class ODB_VERSION(VersionEnum):
@@ -44,4 +37,6 @@ class ODB_VERSION(VersionEnum):
 
 
 LATEST_VERSION = ODB_VERSION.V2.value  # pylint: disable=no-member
-LATEST_VERSION_INFO = {SCHEMA_KWD: LATEST_VERSION}
+EMPTY_VERSION_INFO = {
+    SCHEMA_KWD: ODB_VERSION.V1.value  # pylint: disable=no-member
+}

@@ -22,19 +22,15 @@ class ODBConfigFormatError(DvcException):
 def load_config(path_info: "PathInfo", fs: "BaseFileSystem",) -> dict:
     from dvc.utils.serialize import load_yaml
 
-    from .versions import LATEST_VERSION_INFO
+    from .versions import EMPTY_VERSION_INFO
 
     if fs.exists(path_info):
         data = load_yaml(path_info, fs=fs)
     else:
-        data = LATEST_VERSION_INFO
+        data = EMPTY_VERSION_INFO
 
-    try:
-        _validate_version(data)
-        return data
-    except MultipleInvalid:
-        pass
-    return LATEST_VERSION_INFO
+    _validate_version(data)
+    return data
 
 
 def dump_config(
