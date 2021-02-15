@@ -3,19 +3,23 @@
 set -e
 set -x
 
+FPM_FLAGS='--description "Data Version Control - datasets, models, and experiments versioning for ML or data science projects"'
+FPM_FLAGS+=' -n dvc -s dir -f'
+FPM_FLAGS+=' --url https://dvc.org'
+FPM_FLAGS+=' --license "Apache License 2.0"'
+
 if [[ "$(uname)" == 'Linux' ]]; then
   INSTALL_DIR=usr
-  FPM_FLAGS=
+  FPM_FLAGS+=' --depends "git >= 1.7.0"'  # needed for gitpython
 else
   INSTALL_DIR=usr/local
-  FPM_FLAGS='--osxpkg-identifier-prefix com.iterative'
+  FPM_FLAGS+=' --osxpkg-identifier-prefix com.iterative'
   FPM_FLAGS+=' --after-install scripts/fpm/after-install.sh'
   FPM_FLAGS+=' --after-remove scripts/fpm/after-remove.sh'
 fi
 
 BUILD_DIR=build
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
-DESC='Data Version Control - datasets, models, and experiments versioning for ML or data science projects'
 LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
 
 FPM_PACKAGE_DIRS="usr"
@@ -49,17 +53,7 @@ command_exists() {
 fpm_build() {
   print_info "Building $1..."
   VERSION=$(python -c "import dvc; from dvc import __version__; print(str(__version__))")
-  fpm -s dir \
-    -f \
-    -t $1 \
-    --description "$DESC" \
-    --url https://dvc.org \
-    --license "Apache License 2.0" \
-    $FPM_FLAGS \
-    -n dvc \
-    -v $VERSION \
-    -C $BUILD_DIR \
-    $FPM_PACKAGE_DIRS
+  eval "fpm -t $1 $FPM_FLAGS -v $VERSION -C $BUILD_DIR $FPM_PACKAGE_DIRS"
 }
 
 cleanup() {
