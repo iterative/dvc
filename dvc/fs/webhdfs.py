@@ -127,7 +127,7 @@ class WebHDFSFileSystem(BaseFileSystem):
 
     def checksum(self, path_info):
         return HashInfo(
-            HashName.CHECKSUM,
+            HashName.CHECKSUM.value,
             self.hdfs_client.checksum(path_info.path)["bytes"],
             size=self.hdfs_client.status(path_info.path)["length"],
         )

@@ -420,8 +420,8 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
 
     outs = ["foo", "bar", "lorem", "ipsum", "baz", "lorem2"]
 
-    # each one's a copy of other, hence 3
-    assert len(recurse_list_dir(path)) == 3
+    # each one's a copy of other, hence 3 (plus odb config file)
+    assert len(recurse_list_dir(path)) == 4
 
     clean(outs, dvc)
     assert set(dvc.pull(["dvc.yaml"])["added"]) == {"lorem2", "baz"}
@@ -434,11 +434,11 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
 
     clean(TmpDir(path).iterdir())
     dvc.push(["dvc.yaml:copy-ipsum-baz"])
-    assert len(recurse_list_dir(path)) == 1
+    assert len(recurse_list_dir(path)) == 2
 
     clean(TmpDir(path).iterdir())
     dvc.push(["dvc.yaml"])
-    assert len(recurse_list_dir(path)) == 2
+    assert len(recurse_list_dir(path)) == 3
 
     with pytest.raises(StageNotFound):
         dvc.push(["dvc.yaml:StageThatDoesNotExist"])
@@ -524,7 +524,7 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
     run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
 
     dvc.push("copy-foo-bar")
-    assert len(recurse_list_dir(local_remote.url)) == 1
+    assert len(recurse_list_dir(local_remote.url)) == 2
     # pushing everything so as we can check pull/fetch only downloads
     # from specified targets
     dvc.push()

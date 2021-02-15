@@ -39,9 +39,10 @@ class ParseError(DvcException):
     """Errors while parsing files"""
 
     def __init__(self, path: "AnyPath", message: str):
+        from dvc.path_info import URLInfo
         from dvc.utils import relpath
 
-        path = relpath(path)
+        path = path if isinstance(path, URLInfo) else relpath(path)
         super().__init__(f"unable to read: '{path}', {message}")
 
 

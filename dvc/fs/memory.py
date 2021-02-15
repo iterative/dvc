@@ -15,7 +15,7 @@ class MemoryFileSystem(BaseFileSystem):
         self.fs = MemFS()
 
     def exists(self, path_info, use_dvcignore=True):
-        return self.fs.exists(path_info.path)
+        return self.fs.exists(path_info.fspath)
 
     def open(self, path_info, mode="r", encoding=None, **kwargs):
         return self.fs.open(

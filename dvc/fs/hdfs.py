@@ -229,7 +229,7 @@ class HDFSFileSystem(BaseFileSystem):
 
     def checksum(self, path_info):
         return HashInfo(
-            "checksum",
+            HashName.CHECKSUM.value,
             _hadoop_fs_checksum(path_info),
             size=self.getsize(path_info),
         )
