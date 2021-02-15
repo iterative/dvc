@@ -451,5 +451,8 @@ class CloudCache:
 
         if self._config_modified:
             config_path = self.fs.path_info / CONFIG_FILENAME
+            if self.fs.exists(config_path):
+                self.unprotect(config_path)
             dump_config(self._config, config_path, self.fs)
+            self.protect(config_path)
             self._config_modified = False
