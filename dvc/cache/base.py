@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
+from funcy import cached_property
+
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 
@@ -28,14 +30,17 @@ class CloudCache:
         )
         self.cache_type_confirmed = False
         self._config_modified = False
-        self._load_config()
 
     @property
     def version(self):
         from dvc.odb.versions import LATEST_VERSION
         from dvc.parsing.versions import SCHEMA_KWD
 
-        return self._config.get(SCHEMA_KWD, LATEST_VERSION)
+        return self.config.get(SCHEMA_KWD, LATEST_VERSION)
+
+    @cached_property
+    def config(self):
+        return self._load_config()
 
     def move(self, from_info, to_info):
         self.fs.move(from_info, to_info)
@@ -426,33 +431,33 @@ class CloudCache:
 
     def _load_config(self):
         from dvc.odb.config import CONFIG_FILENAME, load_config, migrate_config
-        from dvc.odb.versions import ODB_VERSION
+        from dvc.odb.versions import LATEST_VERSION, ODB_VERSION
+        from dvc.parsing.versions import SCHEMA_KWD
 
         config_path = self.fs.path_info / CONFIG_FILENAME
-        self._config = load_config(
-            self.fs.path_info / CONFIG_FILENAME, self.fs
-        )
+        config = load_config(self.fs.path_info / CONFIG_FILENAME, self.fs)
+        version = config.get(SCHEMA_KWD, LATEST_VERSION)
 
         dos2unix = self.repo.config["core"].get("dos2unix", False)
-        if dos2unix and self.version != ODB_VERSION.V1:
+        if dos2unix and version != ODB_VERSION.V1:
             raise DvcException(
-                "dos2unix MD5 is incompatible with ODB version "
-                f"'{self.version}'"
+                f"dos2unix MD5 is incompatible with ODB version '{version}'"
             )
 
-        if not dos2unix and self.version != ODB_VERSION.V2:
-            migrate_config(self._config)
+        if not dos2unix and version != ODB_VERSION.V2:
+            migrate_config(config)
             self._config_modified = True
         elif not self.fs.exists(config_path):
             self._config_modified = True
+        return config
 
     def dump_config(self):
         from dvc.odb.config import CONFIG_FILENAME, dump_config
 
-        if self._config_modified:
+        if self.config and self._config_modified:
             config_path = self.fs.path_info / CONFIG_FILENAME
             if self.fs.exists(config_path):
                 self.unprotect(config_path)
-            dump_config(self._config, config_path, self.fs)
+            dump_config(self.config, config_path, self.fs)
             self.protect(config_path)
             self._config_modified = False

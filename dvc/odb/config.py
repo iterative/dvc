@@ -24,6 +24,7 @@ def load_config(path_info: "PathInfo", fs: "BaseFileSystem",) -> dict:
 
     from .versions import EMPTY_VERSION_INFO
 
+    logger.debug("Loading ODB config '%s'", path_info)
     if fs.exists(path_info):
         data = load_yaml(path_info, fs=fs)
     else:
