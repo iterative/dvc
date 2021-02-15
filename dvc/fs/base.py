@@ -4,7 +4,7 @@ from functools import partial
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
-from funcy import cached_property, decorator
+from funcy import cached_property
 
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
@@ -33,13 +33,6 @@ class RemoteActionNotImplemented(DvcException):
 
 class RemoteMissingDepsError(DvcException):
     pass
-
-
-@decorator
-def use_state(call):
-    fs = call._args[0]  # pylint: disable=protected-access
-    with fs.state:
-        return call()
 
 
 class BaseFileSystem:
