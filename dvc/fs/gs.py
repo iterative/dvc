@@ -160,6 +160,7 @@ class GSFileSystem(BaseFileSystem):
                     "name": blob.name,
                     "md5": md5_hash.hex(),
                     "size": blob.size,
+                    "etag": blob.etag,
                 }
             else:
                 yield blob.name
