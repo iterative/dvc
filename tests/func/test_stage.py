@@ -55,8 +55,8 @@ def test_empty_list():
 
 def test_list():
     lst = [
-        {LocalOutput.PARAM_PATH: "foo", LocalFileSystem.PARAM_CHECKSUM: "123"},
-        {LocalOutput.PARAM_PATH: "bar", LocalFileSystem.PARAM_CHECKSUM: None},
+        {LocalOutput.PARAM_PATH: "foo", LocalFileSystem.hash_name: "123"},
+        {LocalOutput.PARAM_PATH: "bar", LocalFileSystem.hash_name: None},
         {LocalOutput.PARAM_PATH: "baz"},
     ]
     d = {Stage.PARAM_DEPS: lst}

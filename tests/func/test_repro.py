@@ -736,8 +736,8 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalFileSystem.hash_name]
+        del d[Stage.PARAM_DEPS][0][LocalFileSystem.hash_name]
         dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
