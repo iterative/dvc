@@ -139,6 +139,7 @@ SCHEMA = {
                     "region": str,
                     "profile": str,
                     "credentialpath": str,
+                    "configpath": str,
                     "endpointurl": str,
                     "access_key_id": str,
                     "secret_access_key": str,
