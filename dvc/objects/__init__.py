@@ -3,11 +3,11 @@ import json
 import logging
 from concurrent import futures
 
+from dvc.dir_info import DirInfo
+from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 
-from .dir_info import DirInfo
-from .exceptions import DvcException
-from .oid import get_hash
+from .stage import get_hash
 
 logger = logging.getLogger(__name__)
 
@@ -187,12 +187,6 @@ class Tree(HashFile):
             return None
 
         return load(odb, self.save_dir_info(odb, dir_info))
-
-
-def stage(odb, path_info, fs, **kwargs):
-    if fs.isdir(path_info):
-        return Tree.stage(odb, path_info, fs, **kwargs)
-    return File.stage(odb, path_info, fs, **kwargs)
 
 
 def save(odb, obj, **kwargs):

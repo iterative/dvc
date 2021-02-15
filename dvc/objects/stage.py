@@ -89,7 +89,7 @@ def _collect_dir(path_info, fs, name, **kwargs):
 
 
 def get_dir_hash(path_info, fs, name, **kwargs):
-    from dvc.objects import Tree
+    from . import Tree
 
     dir_info = _collect_dir(path_info, fs, name, **kwargs)
     hash_info = Tree.save_dir_info(fs.repo.cache.local, dir_info)
@@ -126,7 +126,7 @@ def get_hash(path_info, fs, name, **kwargs):
 
         if hash_info:
             if hash_info.isdir:
-                from dvc.objects import Tree
+                from . import Tree
 
                 # NOTE: loading the fs will restore hash_info.dir_info
                 Tree.load(fs.cache, hash_info)
@@ -142,3 +142,11 @@ def get_hash(path_info, fs, name, **kwargs):
             fs.state.save(path_info, hash_info)
 
     return hash_info
+
+
+def stage(odb, path_info, fs, **kwargs):
+    from . import File, Tree
+
+    if fs.isdir(path_info):
+        return Tree.stage(odb, path_info, fs, **kwargs)
+    return File.stage(odb, path_info, fs, **kwargs)

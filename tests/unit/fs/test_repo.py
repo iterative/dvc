@@ -6,7 +6,7 @@ import pytest
 
 from dvc.fs.repo import RepoFileSystem
 from dvc.hash_info import HashInfo
-from dvc.oid import get_hash
+from dvc.objects.stage import get_hash
 from dvc.path_info import PathInfo
 
 

@@ -10,7 +10,7 @@ from dvc.exceptions import (
     DvcException,
 )
 from dvc.objects import ObjectFormatError, check, load
-from dvc.oid import get_hash
+from dvc.objects.stage import get_hash
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )

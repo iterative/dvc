@@ -81,7 +81,8 @@ def fetch(
 
 def _fetch_external(self, repo_url, repo_rev, files, jobs):
     from dvc.external_repo import external_repo
-    from dvc.objects import save, stage
+    from dvc.objects import save
+    from dvc.objects.stage import stage
     from dvc.path_info import PathInfo
     from dvc.scm.base import CloneError
 

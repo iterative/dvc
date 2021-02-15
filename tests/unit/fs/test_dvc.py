@@ -5,7 +5,7 @@ import pytest
 
 from dvc.fs.dvc import DvcFileSystem
 from dvc.hash_info import HashInfo
-from dvc.oid import get_hash
+from dvc.objects.stage import get_hash
 from dvc.path_info import PathInfo
 
 
@@ -214,7 +214,7 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = DvcFileSystem(dvc)
-    get_file_hash_spy = mocker.spy(dvc_module.oid, "get_file_hash")
+    get_file_hash_spy = mocker.spy(dvc_module.objects.stage, "get_file_hash")
     assert (
         fs.info(PathInfo(tmp_dir) / "dir")["md5"]
         == "8761c4e9acad696bee718615e23e22db.dir"

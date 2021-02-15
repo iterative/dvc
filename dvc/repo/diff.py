@@ -2,7 +2,7 @@ import logging
 import os
 
 from dvc.exceptions import PathMissingError
-from dvc.oid import get_file_hash, get_hash
+from dvc.objects.stage import get_file_hash, get_hash
 from dvc.repo import locked
 
 logger = logging.getLogger(__name__)

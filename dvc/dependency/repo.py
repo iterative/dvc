@@ -47,7 +47,7 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_hash(self, locked=True):
-        from dvc.oid import get_hash
+        from dvc.objects.stage import get_hash
 
         with self._make_repo(locked=locked) as repo:
             path_info = PathInfo(repo.root_dir) / self.def_path
@@ -75,7 +75,8 @@ class RepoDependency(LocalDependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects import save, stage
+        from dvc.objects import save
+        from dvc.objects.stage import stage
 
         cache = self.repo.cache.local
 
