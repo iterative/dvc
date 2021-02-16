@@ -166,9 +166,6 @@ def test_set_ref(tmp_dir, git):
 
 
 def test_set_ref_with_message(tmp_dir, git):
-    if git.test_backend == "pygit2":
-        pytest.skip()
-
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     init_rev = tmp_dir.scm.get_rev()
     tmp_dir.scm_gen({"file": "1"}, commit="commit")

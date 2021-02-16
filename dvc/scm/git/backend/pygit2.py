@@ -5,6 +5,8 @@ import stat
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
+from funcy import cached_property
+
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
@@ -64,11 +66,18 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         self._stashes: dict = {}
 
     def close(self):
+        del self._refdb
         self.repo.free()
 
     @property
     def root_dir(self) -> str:
         return self.repo.workdir
+
+    @cached_property
+    def _refdb(self):
+        from pygit2 import RefdbFsBackend
+
+        return RefdbFsBackend(self.repo)
 
     @staticmethod
     def clone(
@@ -210,18 +219,19 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         symbolic: Optional[bool] = False,
     ):
-        if message:
-            # pygit2 reflog message handling is bugged in 1.4.0
-            # see: https://github.com/libgit2/pygit2/issues/1061
-            raise NotImplementedError
-
         if old_ref and old_ref != self.get_ref(name, follow=False):
             raise SCMError(f"Failed to set '{name}'")
 
+        if message:
+            self._refdb.ensure_log(name)
         if symbolic:
-            self.repo.create_reference_symbolic(name, new_ref, True)
+            self.repo.create_reference_symbolic(
+                name, new_ref, True, message=message
+            )
         else:
-            self.repo.create_reference_direct(name, new_ref, True)
+            self.repo.create_reference_direct(
+                name, new_ref, True, message=message
+            )
 
     def get_ref(self, name, follow: bool = True) -> Optional[str]:
         from pygit2 import GIT_REF_SYMBOLIC
