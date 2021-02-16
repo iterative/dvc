@@ -5,10 +5,10 @@ import textwrap
 import configobj
 import pytest
 
-from dvc.cache import Cache
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects import ObjectFormatError
+from dvc.objects.db import ODBManager
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc
 
@@ -19,12 +19,12 @@ class TestCache(TestDvc):
         self.cache1_md5 = "123"
         self.cache2_md5 = "234"
         self.cache1 = os.path.join(
-            self.dvc.cache.local.cache_dir,
+            self.dvc.odb.local.cache_dir,
             self.cache1_md5[0:2],
             self.cache1_md5[2:],
         )
         self.cache2 = os.path.join(
-            self.dvc.cache.local.cache_dir,
+            self.dvc.odb.local.cache_dir,
             self.cache2_md5[0:2],
             self.cache2_md5[2:],
         )
@@ -32,13 +32,13 @@ class TestCache(TestDvc):
         self.create(self.cache2, "2")
 
     def test_all(self):
-        md5_list = list(Cache(self.dvc).local.all())
+        md5_list = list(ODBManager(self.dvc).local.all())
         self.assertEqual(len(md5_list), 2)
         self.assertIn(self.cache1_md5, md5_list)
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = Cache(self.dvc).local.hash_to_path_info(self.cache1_md5)
+        cache = ODBManager(self.dvc).local.hash_to_path_info(self.cache1_md5)
         self.assertEqual(os.fspath(cache), self.cache1)
 
 
@@ -51,16 +51,16 @@ class TestCacheLoadBadDirCache(TestDvc):
         from dvc.objects import load
 
         dir_hash = "123.dir"
-        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
+        fname = os.fspath(self.dvc.odb.local.hash_to_path_info(dir_hash))
         self.create(fname, "<clearly>not,json")
         with pytest.raises(ObjectFormatError):
-            load(self.dvc.cache.local, HashInfo("md5", dir_hash))
+            load(self.dvc.odb.local, HashInfo("md5", dir_hash))
 
         dir_hash = "234.dir"
-        fname = os.fspath(self.dvc.cache.local.hash_to_path_info(dir_hash))
+        fname = os.fspath(self.dvc.odb.local.hash_to_path_info(dir_hash))
         self.create(fname, '{"a": "b"}')
         with pytest.raises(ObjectFormatError):
-            load(self.dvc.cache.local, HashInfo("md5", dir_hash))
+            load(self.dvc.odb.local, HashInfo("md5", dir_hash))
 
 
 class TestExternalCacheDir(TestDvc):
@@ -70,7 +70,7 @@ class TestExternalCacheDir(TestDvc):
         ret = main(["config", "cache.dir", cache_dir])
         self.assertEqual(ret, 0)
 
-        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
+        self.assertFalse(os.path.exists(self.dvc.odb.local.cache_dir))
 
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
@@ -89,7 +89,7 @@ class TestExternalCacheDir(TestDvc):
 
         self.dvc.__init__()
 
-        assert self.dvc.cache.ssh.fs.path_info == ssh_url + "/tmp"
+        assert self.dvc.odb.ssh.fs.path_info == ssh_url + "/tmp"
 
 
 class TestSharedCacheDir(TestDir):
@@ -183,7 +183,7 @@ class TestCmdCacheDir(TestDvc):
 
 
 def test_default_cache_type(dvc):
-    assert dvc.cache.local.cache_types == ["reflink", "copy"]
+    assert dvc.odb.local.cache_types == ["reflink", "copy"]
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
@@ -196,8 +196,8 @@ def test_shared_cache(tmp_dir, dvc, group):
     if group:
         with dvc.config.edit() as conf:
             conf["cache"].update({"shared": "group"})
-    dvc.cache = Cache(dvc)
-    cache_dir = dvc.cache.local.cache_dir
+    dvc.odb = ODBManager(dvc)
+    cache_dir = dvc.odb.local.cache_dir
 
     assert not os.path.exists(cache_dir)
 

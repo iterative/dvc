@@ -131,11 +131,11 @@ class Repo:
         url=None,
         repo_factory=None,
     ):
-        from dvc.cache import Cache
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs.local import LocalFileSystem
         from dvc.lock import LockNoop, make_lock
+        from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
@@ -168,7 +168,7 @@ class Repo:
         # used by RepoFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
-        self.cache = Cache(self)
+        self.odb = ODBManager(self)
         self.cloud = DataCloud(self)
         self.stage = StageLoad(self)
 
@@ -307,7 +307,7 @@ class Repo:
         return Repo(root_dir)
 
     def unprotect(self, target):
-        return self.cache.local.unprotect(PathInfo(target))
+        return self.odb.local.unprotect(PathInfo(target))
 
     def _ignore(self):
         flist = [
@@ -315,8 +315,8 @@ class Repo:
             self.tmp_dir,
         ]
 
-        if path_isin(self.cache.local.cache_dir, self.root_dir):
-            flist += [self.cache.local.cache_dir]
+        if path_isin(self.odb.local.cache_dir, self.root_dir):
+            flist += [self.odb.local.cache_dir]
 
         self.scm.ignore_list(flist)
 
@@ -368,7 +368,7 @@ class Repo:
             to items containing the output's `dumpd` names and the output's
             children (if the given output is a directory).
         """
-        from dvc.cache import NamedCache
+        from dvc.objects.db import NamedCache
 
         cache = NamedCache()
 

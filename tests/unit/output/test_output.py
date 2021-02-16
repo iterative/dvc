@@ -4,8 +4,8 @@ import pytest
 from funcy import first
 from voluptuous import MultipleInvalid, Schema
 
-from dvc.cache import NamedCache
 from dvc.ignore import _no_match
+from dvc.objects.db import NamedCache
 from dvc.output import CHECKSUM_SCHEMA, BaseOutput
 
 

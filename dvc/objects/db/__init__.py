@@ -1,44 +1,37 @@
-"""Manages cache of a DVC repo."""
 from collections import defaultdict
 
-from ..scheme import Schemes
+from dvc.scheme import Schemes
 
 
-def get_cloud_cache(fs):
-    from .base import CloudCache
-    from .gdrive import GDriveCache
-    from .local import LocalCache
-    from .ssh import SSHCache
+def get_odb(fs):
+    from .base import ObjectDB
+    from .gdrive import GDriveObjectDB
+    from .local import LocalObjectDB
+    from .ssh import SSHObjectDB
 
     if fs.scheme == Schemes.LOCAL:
-        return LocalCache(fs)
+        return LocalObjectDB(fs)
 
     if fs.scheme == Schemes.SSH:
-        return SSHCache(fs)
+        return SSHObjectDB(fs)
 
     if fs.scheme == Schemes.GDRIVE:
-        return GDriveCache(fs)
+        return GDriveObjectDB(fs)
 
-    return CloudCache(fs)
+    return ObjectDB(fs)
 
 
-def _get_cache(repo, settings):
-    from ..fs import get_cloud_fs
+def _get_odb(repo, settings):
+    from dvc.fs import get_cloud_fs
 
     if not settings:
         return None
 
     fs = get_cloud_fs(repo, **settings)
-    return get_cloud_cache(fs)
+    return get_odb(fs)
 
 
-class Cache:
-    """Class that manages cache locations of a DVC repo.
-
-    Args:
-        repo (dvc.repo.Repo): repo instance that this cache belongs to.
-    """
-
+class ODBManager:
     CACHE_DIR = "cache"
     CLOUD_SCHEMES = [
         Schemes.S3,
@@ -51,7 +44,7 @@ class Cache:
     def __init__(self, repo):
         self.repo = repo
         self.config = config = repo.config["cache"]
-        self._cache = {}
+        self._odb = {}
 
         local = config.get("local")
 
@@ -60,33 +53,33 @@ class Cache:
         elif "dir" not in config:
             settings = None
         else:
-            from ..config_schema import LOCAL_COMMON
+            from dvc.config_schema import LOCAL_COMMON
 
             settings = {"url": config["dir"]}
             for opt in LOCAL_COMMON.keys():
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        self._cache[Schemes.LOCAL] = _get_cache(repo, settings)
+        self._odb[Schemes.LOCAL] = _get_odb(repo, settings)
 
-    def _initalize_cloud_cache(self, schemes):
+    def _init_odb(self, schemes):
         for scheme in schemes:
             remote = self.config.get(scheme)
             settings = {"name": remote} if remote else None
-            self._cache[scheme] = _get_cache(self.repo, settings)
+            self._odb[scheme] = _get_odb(self.repo, settings)
 
     def __getattr__(self, name):
-        if name not in self._cache and name in self.CLOUD_SCHEMES:
-            self._initalize_cloud_cache([name])
+        if name not in self._odb and name in self.CLOUD_SCHEMES:
+            self._init_odb([name])
 
         try:
-            return self._cache[name]
+            return self._odb[name]
         except KeyError as exc:
             raise AttributeError from exc
 
     def by_scheme(self):
-        self._initalize_cloud_cache(self.CLOUD_SCHEMES)
-        yield from self._cache.items()
+        self._init_odb(self.CLOUD_SCHEMES)
+        yield from self._odb.items()
 
 
 class NamedCacheItem:

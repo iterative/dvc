@@ -9,15 +9,15 @@ from dvc.hash_info import HashInfo
 from dvc.objects import ObjectFormatError
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
+from dvc.utils import relpath
+from dvc.utils.fs import copyfile, remove, umask, walk_files
 
-from ..utils import relpath
-from ..utils.fs import copyfile, remove, umask, walk_files
-from .base import CloudCache
+from .base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
 
-class LocalCache(CloudCache):
+class LocalObjectDB(ObjectDB):
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"

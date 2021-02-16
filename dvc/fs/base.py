@@ -131,8 +131,8 @@ class BaseFileSystem:
         )
 
     @property
-    def cache(self):
-        return getattr(self.repo.cache, self.scheme)
+    def odb(self):
+        return getattr(self.repo.odb, self.scheme)
 
     def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         if hasattr(self, "_generate_download_url"):

@@ -92,7 +92,7 @@ def get_dir_hash(path_info, fs, name, **kwargs):
     from . import Tree
 
     dir_info = _collect_dir(path_info, fs, name, **kwargs)
-    hash_info = Tree.save_dir_info(fs.repo.cache.local, dir_info)
+    hash_info = Tree.save_dir_info(fs.repo.odb.local, dir_info)
     hash_info.size = dir_info.size
     hash_info.dir_info = dir_info
     return hash_info
@@ -118,9 +118,7 @@ def get_hash(path_info, fs, name, **kwargs):
         if (
             hash_info
             and hash_info.isdir
-            and not fs.cache.fs.exists(
-                fs.cache.hash_to_path_info(hash_info.value)
-            )
+            and not fs.odb.fs.exists(fs.odb.hash_to_path_info(hash_info.value))
         ):
             hash_info = None
 
@@ -129,7 +127,7 @@ def get_hash(path_info, fs, name, **kwargs):
                 from . import Tree
 
                 # NOTE: loading the fs will restore hash_info.dir_info
-                Tree.load(fs.cache, hash_info)
+                Tree.load(fs.odb, hash_info)
             assert hash_info.name == name
             return hash_info
 

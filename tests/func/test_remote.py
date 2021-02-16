@@ -158,7 +158,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch(
         "dvc.objects.stage._collect_dir", return_value=dir_info,
     ):
-        hash1 = get_hash(path_info, dvc.cache.local.fs, "md5")
+        hash1 = get_hash(path_info, dvc.odb.local.fs, "md5")
 
     dir_info = DirInfo.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
@@ -166,7 +166,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch(
         "dvc.objects.stage._collect_dir", return_value=dir_info,
     ):
-        hash2 = get_hash(path_info, dvc.cache.local.fs, "md5")
+        hash2 = get_hash(path_info, dvc.odb.local.fs, "md5")
 
     assert hash1 == hash2
 
@@ -191,18 +191,18 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
         remote = dvc.cloud.get_remote("upstream")
         assert not remote.fs.exists(
-            remote.cache.hash_to_path_info(foo.hash_info.value)
+            remote.odb.hash_to_path_info(foo.hash_info.value)
         )
         assert remote.fs.exists(
-            remote.cache.hash_to_path_info(bar.hash_info.value)
+            remote.odb.hash_to_path_info(bar.hash_info.value)
         )
         assert not remote.fs.exists(
-            remote.cache.hash_to_path_info(baz.hash_info.value)
+            remote.odb.hash_to_path_info(baz.hash_info.value)
         )
 
     # Push everything and delete local cache
     dvc.push()
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     with patch.object(LocalFileSystem, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
@@ -256,7 +256,7 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
     external_dir = tmp_path_factory.mktemp("external_dir")
     (external_dir / "file").write_text("content")
 
-    dvc.cache.local = None
+    dvc.odb.local = None
     with pytest.raises(RemoteCacheRequiredError):
         dvc.run(
             cmd="echo hello world",
@@ -276,8 +276,8 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
 
     # foo .dir file should be uploaded after bar
     remote = dvc.cloud.get_remote("upstream")
-    foo_path = remote.cache.hash_to_path_info(foo.hash_info.value)
-    bar_path = remote.cache.hash_to_path_info(
+    foo_path = remote.odb.hash_to_path_info(foo.hash_info.value)
+    bar_path = remote.odb.hash_to_path_info(
         foo.hash_info.dir_info.trie[("bar",)].value
     )
     paths = [args[1] for args, _ in mocked_upload.call_args_list]
@@ -417,7 +417,7 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     dvc.push()
     remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.cache.hash_to_path_info(
+    remote_cache_file = remote.odb.hash_to_path_info(
         stage.outs[0].hash_info.value
     )
 
@@ -429,18 +429,18 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     remote = dvc.cloud.get_remote("upstream")
 
-    cache = dvc.cache.local
+    odb = dvc.odb.local
     dir_hash = stage.outs[0].hash_info.value
     used = stage.get_used_cache(remote=remote)
 
     # remove one of the cache files for directory
-    file_hashes = list(used.child_keys(cache.fs.scheme, dir_hash))
-    remove(cache.hash_to_path_info(file_hashes[0]))
+    file_hashes = list(used.child_keys(odb.fs.scheme, dir_hash))
+    remove(odb.hash_to_path_info(file_hashes[0]))
 
     dvc.push()
-    assert not remote.fs.exists(remote.cache.hash_to_path_info(dir_hash))
-    assert not remote.fs.exists(remote.cache.hash_to_path_info(file_hashes[0]))
-    assert remote.fs.exists(remote.cache.hash_to_path_info(file_hashes[1]))
+    assert not remote.fs.exists(remote.odb.hash_to_path_info(dir_hash))
+    assert not remote.fs.exists(remote.odb.hash_to_path_info(file_hashes[0]))
+    assert remote.fs.exists(remote.odb.hash_to_path_info(file_hashes[1]))
 
 
 def test_upload_exists(tmp_dir, dvc, local_remote):

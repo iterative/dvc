@@ -201,10 +201,10 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
     )
     scm.tag("v2")
 
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     # invalidate_dir_info to force cache loading
-    dvc.cache.local._dir_info = {}
+    dvc.odb.local._dir_info = {}
 
     diff = dvc.diff("v1", "v2")
     assert diff["added"] == []

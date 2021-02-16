@@ -6,12 +6,12 @@ from typing import Optional
 
 from dvc.progress import Tqdm
 
-from ..objects import HashFile, ObjectFormatError
+from .. import HashFile, ObjectFormatError
 
 logger = logging.getLogger(__name__)
 
 
-class CloudCache:
+class ObjectDB:
 
     DEFAULT_VERIFY = False
     DEFAULT_CACHE_TYPES = ["copy"]

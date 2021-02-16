@@ -3,8 +3,8 @@ import math
 import mock
 import pytest
 
-from dvc.cache.base import CloudCache
 from dvc.fs.base import BaseFileSystem, RemoteCmdError
+from dvc.objects.db.base import ObjectDB
 from dvc.path_info import PathInfo
 
 
@@ -34,36 +34,32 @@ def test_cmd_error(dvc):
             BaseFileSystem(dvc, config).remove("file")
 
 
-@mock.patch.object(CloudCache, "list_hashes_traverse")
-@mock.patch.object(CloudCache, "list_hashes_exists")
+@mock.patch.object(ObjectDB, "list_hashes_traverse")
+@mock.patch.object(ObjectDB, "list_hashes_exists")
 def test_hashes_exist(object_exists, traverse, dvc):
-    cache = CloudCache(BaseFileSystem(dvc, {}))
+    odb = ObjectDB(BaseFileSystem(dvc, {}))
 
     # remote does not support traverse
-    cache.fs.CAN_TRAVERSE = False
-    with mock.patch.object(
-        cache, "list_hashes", return_value=list(range(256))
-    ):
+    odb.fs.CAN_TRAVERSE = False
+    with mock.patch.object(odb, "list_hashes", return_value=list(range(256))):
         hashes = set(range(1000))
-        cache.hashes_exist(hashes)
+        odb.hashes_exist(hashes)
         object_exists.assert_called_with(hashes, None, None)
         traverse.assert_not_called()
 
-    cache.fs.CAN_TRAVERSE = True
+    odb.fs.CAN_TRAVERSE = True
 
     # large remote, small local
     object_exists.reset_mock()
     traverse.reset_mock()
-    with mock.patch.object(
-        cache, "list_hashes", return_value=list(range(256))
-    ):
+    with mock.patch.object(odb, "list_hashes", return_value=list(range(256))):
         hashes = list(range(1000))
-        cache.hashes_exist(hashes)
-        # verify that _cache_paths_with_max() short circuits
+        odb.hashes_exist(hashes)
+        # verify that _odb_paths_with_max() short circuits
         # before returning all 256 remote hashes
         max_hashes = math.ceil(
-            cache._max_estimation_size(hashes)
-            / pow(16, cache.fs.TRAVERSE_PREFIX_LEN)
+            odb._max_estimation_size(hashes)
+            / pow(16, odb.fs.TRAVERSE_PREFIX_LEN)
         )
         assert max_hashes < 256
         object_exists.assert_called_with(
@@ -74,15 +70,13 @@ def test_hashes_exist(object_exists, traverse, dvc):
     # large remote, large local
     object_exists.reset_mock()
     traverse.reset_mock()
-    cache.fs.JOBS = 16
-    with mock.patch.object(
-        cache, "list_hashes", return_value=list(range(256))
-    ):
+    odb.fs.JOBS = 16
+    with mock.patch.object(odb, "list_hashes", return_value=list(range(256))):
         hashes = list(range(1000000))
-        cache.hashes_exist(hashes)
+        odb.hashes_exist(hashes)
         object_exists.assert_not_called()
         traverse.assert_called_with(
-            256 * pow(16, cache.fs.TRAVERSE_PREFIX_LEN),
+            256 * pow(16, odb.fs.TRAVERSE_PREFIX_LEN),
             set(range(256)),
             None,
             None,
@@ -90,18 +84,18 @@ def test_hashes_exist(object_exists, traverse, dvc):
 
 
 @mock.patch.object(
-    CloudCache, "list_hashes", return_value=[],
+    ObjectDB, "list_hashes", return_value=[],
 )
 @mock.patch.object(
-    CloudCache, "_path_to_hash", side_effect=lambda x: x,
+    ObjectDB, "_path_to_hash", side_effect=lambda x: x,
 )
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
-    cache = CloudCache(BaseFileSystem(dvc, {}))
-    cache.fs.path_info = PathInfo("foo")
+    odb = ObjectDB(BaseFileSystem(dvc, {}))
+    odb.fs.path_info = PathInfo("foo")
 
     # parallel traverse
-    size = 256 / cache.fs.JOBS * cache.fs.LIST_OBJECT_PAGE_SIZE
-    list(cache.list_hashes_traverse(size, {0}))
+    size = 256 / odb.fs.JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
+    list(odb.list_hashes_traverse(size, {0}))
     for i in range(1, 16):
         list_hashes.assert_any_call(
             prefix=f"{i:03x}", progress_callback=CallableOrNone
@@ -114,38 +108,36 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     # default traverse (small remote)
     size -= 1
     list_hashes.reset_mock()
-    list(cache.list_hashes_traverse(size - 1, {0}))
+    list(odb.list_hashes_traverse(size - 1, {0}))
     list_hashes.assert_called_with(
         prefix=None, progress_callback=CallableOrNone
     )
 
 
 def test_list_hashes(dvc):
-    cache = CloudCache(BaseFileSystem(dvc, {}))
-    cache.fs.path_info = PathInfo("foo")
+    odb = ObjectDB(BaseFileSystem(dvc, {}))
+    odb.fs.path_info = PathInfo("foo")
 
     with mock.patch.object(
-        cache, "_list_paths", return_value=["12/3456", "bar"]
+        odb, "_list_paths", return_value=["12/3456", "bar"]
     ):
-        hashes = list(cache.list_hashes())
+        hashes = list(odb.list_hashes())
         assert hashes == ["123456"]
 
 
 def test_list_paths(dvc):
-    cache = CloudCache(BaseFileSystem(dvc, {}))
-    cache.fs.path_info = PathInfo("foo")
+    odb = ObjectDB(BaseFileSystem(dvc, {}))
+    odb.fs.path_info = PathInfo("foo")
 
-    with mock.patch.object(
-        cache.fs, "walk_files", return_value=[]
-    ) as walk_mock:
-        for _ in cache._list_paths():
+    with mock.patch.object(odb.fs, "walk_files", return_value=[]) as walk_mock:
+        for _ in odb._list_paths():
             pass
-        walk_mock.assert_called_with(cache.fs.path_info, prefix=False)
+        walk_mock.assert_called_with(odb.fs.path_info, prefix=False)
 
-        for _ in cache._list_paths(prefix="000"):
+        for _ in odb._list_paths(prefix="000"):
             pass
         walk_mock.assert_called_with(
-            cache.fs.path_info / "00" / "0", prefix=True
+            odb.fs.path_info / "00" / "0", prefix=True
         )
 
 

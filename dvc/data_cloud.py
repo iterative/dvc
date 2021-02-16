@@ -64,7 +64,7 @@ class DataCloud:
         remote = self.get_remote(remote, "push")
 
         return remote.push(
-            self.repo.cache.local,
+            self.repo.odb.local,
             cache,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -86,7 +86,7 @@ class DataCloud:
         remote = self.get_remote(remote, "pull")
 
         return remote.pull(
-            self.repo.cache.local,
+            self.repo.odb.local,
             cache,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -133,7 +133,7 @@ class DataCloud:
         """
         remote = self.get_remote(remote, "status")
         return remote.status(
-            self.repo.cache.local,
+            self.repo.odb.local,
             cache,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -142,4 +142,4 @@ class DataCloud:
 
     def get_url_for(self, remote, checksum):
         remote = self.get_remote(remote)
-        return str(remote.cache.hash_to_path_info(checksum))
+        return str(remote.odb.hash_to_path_info(checksum))

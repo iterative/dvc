@@ -1,7 +1,7 @@
 import logging
 
-from dvc.cache import NamedCache
 from dvc.exceptions import InvalidArgumentError
+from dvc.objects.db import NamedCache
 
 from ..scheme import Schemes
 from . import locked
@@ -72,11 +72,11 @@ def gc(
                 )
             )
 
-    for scheme, cache in self.cache.by_scheme():
-        if not cache:
+    for scheme, odb in self.odb.by_scheme():
+        if not odb:
             continue
 
-        removed = cache.gc(set(used.scheme_keys(scheme)), jobs=jobs)
+        removed = odb.gc(set(used.scheme_keys(scheme)), jobs=jobs)
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
 

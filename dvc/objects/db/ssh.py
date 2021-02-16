@@ -7,12 +7,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dvc.progress import Tqdm
 from dvc.utils import to_chunks
 
-from .base import CloudCache
+from .base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
 
-class SSHCache(CloudCache):
+class SSHObjectDB(ObjectDB):
     def batch_exists(self, path_infos, callback):
         def _exists(chunk_and_channel):
             chunk, channel = chunk_and_channel

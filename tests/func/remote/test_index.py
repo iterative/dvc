@@ -82,7 +82,7 @@ def test_clear_on_gc(tmp_dir, dvc, tmp_path_factory, remote, mocker):
 def test_clear_on_download_err(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
     dvc.push()
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     mocked_clear = mocker.patch.object(remote.INDEX_CLS, "clear")
     mocker.patch.object(LocalFileSystem, "_download", side_effect=Exception)

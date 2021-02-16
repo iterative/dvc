@@ -593,7 +593,7 @@ class Experiments:
                 name=item.name,
                 branch=item.branch,
                 tmp_dir=base_tmp_dir,
-                cache_dir=self.repo.cache.local.cache_dir,
+                cache_dir=self.repo.odb.local.cache_dir,
             )
             executors[stash_rev] = executor
 

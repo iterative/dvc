@@ -6,10 +6,10 @@ from funcy import first
 from mock import patch
 
 import dvc.data_cloud as cloud
-from dvc.cache import Cache
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError
+from dvc.objects.db import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
@@ -218,7 +218,7 @@ def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         with erepo_dir.dvc.config.edit() as conf:
             conf["cache"]["type"] = "symlink"
-        erepo_dir.dvc.cache = Cache(erepo_dir.dvc)
+        erepo_dir.dvc.odb = ODBManager(erepo_dir.dvc)
         erepo_dir.scm_add(
             [erepo_dir.dvc.config.files["repo"]],
             "set source repo cache type to symlink",
@@ -240,7 +240,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -256,7 +256,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -486,9 +486,9 @@ def test_pull_imported_stage_from_subrepos(
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
     remove("out")
-    makedirs(dvc.cache.local.cache_dir)
+    makedirs(dvc.odb.local.cache_dir)
 
     stats = dvc.pull(["out.dvc"])
 
