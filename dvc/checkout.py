@@ -232,16 +232,17 @@ def _checkout(
     progress_callback=None,
     relink=False,
 ):
-    if not obj.hash_info.isdir:
-        ret = _checkout_file(
-            path_info, fs, obj, cache, force, progress_callback, relink
-        )
-    else:
-        ret = _checkout_dir(
-            path_info, fs, obj, cache, force, progress_callback, relink,
-        )
+    with fs.repo.state:
+        if not obj.hash_info.isdir:
+            ret = _checkout_file(
+                path_info, fs, obj, cache, force, progress_callback, relink
+            )
+        else:
+            ret = _checkout_dir(
+                path_info, fs, obj, cache, force, progress_callback, relink,
+            )
 
-    fs.repo.state.save_link(path_info, fs)
+        fs.repo.state.save_link(path_info, fs)
 
     return ret
 

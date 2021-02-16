@@ -26,7 +26,8 @@ def _get_unused_links(repo):
         for out in stage.outs
         if out.scheme == "local"
     ]
-    return repo.state.get_unused_links(used, repo.fs)
+    with repo.state:
+        return repo.state.get_unused_links(used, repo.fs)
 
 
 def _fspath_dir(path):
@@ -95,7 +96,8 @@ def checkout(
         unused = _get_unused_links(self)
 
     stats["deleted"] = [_fspath_dir(u) for u in unused]
-    self.state.remove_links(unused, self.fs)
+    with self.state:
+        self.state.remove_links(unused, self.fs)
 
     if isinstance(targets, str):
         targets = [targets]

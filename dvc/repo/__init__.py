@@ -33,7 +33,7 @@ def lock_repo(repo: "Repo"):
         if depth > 0:
             yield
         else:
-            with repo.lock, repo.state:
+            with repo.lock:
                 repo._reset()
                 yield
                 # Graph cache is no longer valid after we release the repo.lock
