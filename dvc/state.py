@@ -48,23 +48,12 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
-    def load(self):
+    def __enter__(self):
         pass
 
     @abstractmethod
-    def dump(self):
-        pass
-
-    def __enter__(self):
-        if self.count <= 0:
-            self.load()
-        self.count += 1
-
     def __exit__(self, typ, value, tbck):
-        self.count -= 1
-        if self.count > 0:
-            return
-        self.dump()
+        pass
 
 
 class StateNoop(StateBase):
@@ -77,10 +66,10 @@ class StateNoop(StateBase):
     def save_link(self, path_info, fs):
         pass
 
-    def load(self):
+    def __enter__(self):
         pass
 
-    def dump(self):
+    def __exit__(self, typ, value, tbck):
         pass
 
 
@@ -224,7 +213,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         cmd = "PRAGMA user_version = {};"
         self._execute(cmd.format(self.VERSION))
 
-    def load(self):
+    def _load(self):
         """Loads state database."""
         retries = 1
         while True:
@@ -264,7 +253,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self._execute("VACUUM")
         self.database.isolation_level = ""
 
-    def dump(self):
+    def _dump(self):
         """Saves state database."""
         assert self.database is not None
 
@@ -312,6 +301,17 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.database = None
         self.cursor = None
         self.inserts = 0
+
+    def __enter__(self):
+        if self.count <= 0:
+            self._load()
+        self.count += 1
+
+    def __exit__(self, typ, value, tbck):
+        self.count -= 1
+        if self.count > 0:
+            return
+        self._dump()
 
     @staticmethod
     def _file_metadata_changed(actual_mtime, mtime, actual_size, size):
