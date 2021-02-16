@@ -52,6 +52,8 @@ def add(  # noqa: C901
             invalid_opt = "--no-commit option"
         elif recursive:
             invalid_opt = "--recursive option"
+        elif kwargs.get("external"):
+            invalid_opt = "--external option"
     else:
         message = "{option} can't be used without --to-remote"
         if kwargs.get("remote"):
@@ -88,7 +90,12 @@ def add(  # noqa: C901
                 )
 
             stages = _create_stages(
-                repo, sub_targets, fname, pbar=pbar, **kwargs,
+                repo,
+                sub_targets,
+                fname,
+                pbar=pbar,
+                transfer=to_remote or to_cache,
+                **kwargs,
             )
 
             try:
@@ -230,6 +237,7 @@ def _create_stages(
     external=False,
     glob=False,
     desc=None,
+    transfer=False,
     **kwargs,
 ):
     from dvc.dvcfile import Dvcfile
@@ -246,7 +254,9 @@ def _create_stages(
     ):
         if kwargs.get("out"):
             out = resolve_output(out, kwargs["out"])
-        path, wdir, out = resolve_paths(repo, out)
+        path, wdir, out = resolve_paths(
+            repo, out, always_local=transfer and not kwargs.get("out")
+        )
         stage = create_stage(
             Stage,
             repo,

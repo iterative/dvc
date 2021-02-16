@@ -1,6 +1,7 @@
 import json
 import os
 import textwrap
+from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 import pytest
@@ -338,6 +339,20 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
             local_remote.hash_to_path_info(file_part["md5"]).read_text()
             == file_part["relpath"]
         )
+
+
+def test_import_url_to_remote_absolute(tmp_dir, dvc, local_remote):
+    with NamedTemporaryFile("w") as temp_file:
+        temp_file.write("foo")
+        temp_file.file.close()
+
+        base = os.path.basename(temp_file.name)
+        stage = dvc.imp_url(temp_file.name, to_remote=True)
+
+    base_info = tmp_dir / base
+    assert stage.deps[0].fspath == temp_file.name
+    assert stage.outs[0].fspath == os.fspath(base_info)
+    assert base_info.with_suffix(".dvc").exists()
 
 
 def test_import_url_to_remote_invalid_combinations(dvc):
