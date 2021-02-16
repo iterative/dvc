@@ -58,8 +58,8 @@ class CloudCache:
             with fs.open(path_info, mode="rb") as fobj:
                 self.fs.upload_fobj(fobj, cache_info)
         self.protect(cache_info)
-        with self.fs.state:
-            self.fs.state.save(cache_info, hash_info)
+        with self.fs.repo.state:
+            self.fs.repo.state.save(cache_info, self.fs, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:

@@ -9,7 +9,6 @@ from funcy import cached_property
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
-from dvc.state import StateNoop
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
@@ -54,8 +53,6 @@ class BaseFileSystem:
 
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
     DETAIL_FIELDS: FrozenSet[str] = frozenset()
-
-    state = StateNoop()
 
     def __init__(self, repo, config):
         self.repo = repo
