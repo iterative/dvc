@@ -18,7 +18,8 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.hash_info import HashInfo
-from dvc.oid import get_hash
+from dvc.objects.stage import get_hash
+from dvc.objects.stage import stage as ostage
 
 from ..fs.base import BaseFileSystem
 
@@ -193,7 +194,7 @@ class BaseOutput:
     def get_hash(self):
         if not self.use_cache:
             return get_hash(self.path_info, self.fs, self.fs.PARAM_CHECKSUM)
-        return objects.stage(self.cache, self.path_info, self.fs).hash_info
+        return ostage(self.cache, self.path_info, self.fs).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -301,7 +302,7 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = objects.stage(self.cache, self.path_info, self.fs)
+        self.obj = ostage(self.cache, self.path_info, self.fs)
         self.hash_info = self.obj.hash_info
         self.isexec = self.isfile() and self.fs.isexec(self.path_info)
 
@@ -316,9 +317,7 @@ class BaseOutput:
         assert self.hash_info
 
         if self.use_cache:
-            obj = objects.stage(
-                self.cache, filter_info or self.path_info, self.fs
-            )
+            obj = ostage(self.cache, filter_info or self.path_info, self.fs)
             objects.save(self.cache, obj)
             checkout(
                 filter_info or self.path_info,

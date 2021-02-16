@@ -4,7 +4,8 @@ from mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
 from dvc.fs.local import LocalFileSystem
-from dvc.objects import save, stage
+from dvc.objects import save
+from dvc.objects.stage import stage
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.utils import relpath

@@ -4,7 +4,7 @@ from contextlib import _GeneratorContextManager as GCM
 from funcy import reraise
 
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.oid import get_hash
+from dvc.objects.stage import get_hash
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 

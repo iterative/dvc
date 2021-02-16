@@ -4,7 +4,8 @@ from unittest.mock import call
 import pytest
 
 from dvc.external_repo import external_repo
-from dvc.objects import save, stage
+from dvc.objects import save
+from dvc.objects.stage import stage
 from dvc.path_info import PathInfo
 from tests.unit.fs.test_repo import make_subrepo
 
