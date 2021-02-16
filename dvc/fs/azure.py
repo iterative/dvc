@@ -63,13 +63,9 @@ class AzureFileSystem(BaseFileSystem):
 
     @wrap_prop(threading.Lock())
     @cached_property
-    def client(self):
-        import adlfs.spec
+    def fs(self):
         from adlfs import AzureBlobFileSystem
 
-        assert self.connection_string or self.account_name
-
-        adlfs.spec.FORWARDED_BLOB_PROPERTIES.append("etag")
         file_system = AzureBlobFileSystem(
             account_name=self.account_name,
             connection_string=self.connection_string,
@@ -89,10 +85,10 @@ class AzureFileSystem(BaseFileSystem):
     def open(
         self, path_info, mode="r", **kwargs
     ):  # pylint: disable=arguments-differ
-        return self.client.open(self._with_bucket(path_info), mode=mode)
+        return self.fs.open(self._with_bucket(path_info), mode=mode)
 
     def exists(self, path_info, use_dvcignore=False):
-        return self.client.exists(self._with_bucket(path_info))
+        return self.fs.exists(self._with_bucket(path_info))
 
     def _strip_bucket(self, entry):
         _, entry = entry.split("/", 1)
@@ -114,7 +110,7 @@ class AzureFileSystem(BaseFileSystem):
     ):  # pylint: disable=arguments-differ
         path = self._with_bucket(path_info)
         if recursive:
-            for root, _, files in self.client.walk(path, detail=detail):
+            for root, _, files in self.fs.walk(path, detail=detail):
                 if detail:
                     files = files.values()
                 yield from self._strip_buckets(files, detail, prefix=root)
@@ -127,10 +123,10 @@ class AzureFileSystem(BaseFileSystem):
             yield path_info.replace(path=file)
 
     def remove(self, path_info):
-        self.client.delete(self._with_bucket(path_info))
+        self.fs.delete(self._with_bucket(path_info))
 
     def info(self, path_info):
-        info = self.client.info(self._with_bucket(path_info)).copy()
+        info = self.fs.info(self._with_bucket(path_info)).copy()
         info["name"] = self._strip_bucket(info["name"])
         return info
 
@@ -150,7 +146,7 @@ class AzureFileSystem(BaseFileSystem):
                 total=total,
                 no_progress_bar=no_progress_bar,
             )
-        self.client.invalidate_cache(self._with_bucket(to_info.parent))
+        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
