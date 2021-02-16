@@ -34,11 +34,6 @@ class StateBase(ABC):
     def __init__(self):
         self.count = 0
 
-    @property
-    @abstractmethod
-    def files(self):
-        pass
-
     @abstractmethod
     def save(self, path_info, hash_info):
         pass
@@ -72,10 +67,6 @@ class StateBase(ABC):
 
 
 class StateNoop(StateBase):
-    @property
-    def files(self):
-        return []
-
     def save(self, path_info, hash_info):
         pass
 
@@ -153,19 +144,9 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         self.state_file = os.path.join(repo.tmp_dir, self.STATE_FILE)
 
-        # https://www.sqlite.org/tempfiles.html
-        self.temp_files = [
-            self.state_file + "-journal",
-            self.state_file + "-wal",
-        ]
-
         self.database = None
         self.cursor = None
         self.inserts = 0
-
-    @property
-    def files(self):
-        return self.temp_files + [self.state_file]
 
     def _execute(self, cmd, parameters=()):
         logger.trace(cmd)
