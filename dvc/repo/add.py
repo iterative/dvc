@@ -170,7 +170,7 @@ def _process_stages(
 
             from_fs = get_cloud_fs(repo, url=target)
             out.hash_info = transfer(
-                out.cache, from_fs, from_fs.path_info, jobs=kwargs.get("jobs"),
+                out.odb, from_fs, from_fs.path_info, jobs=kwargs.get("jobs"),
             )
             out.checkout()
 

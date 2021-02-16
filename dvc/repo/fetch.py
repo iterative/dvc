@@ -93,10 +93,10 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
     def cb(result):
         results.append(result)
 
-    cache = self.cache.local
+    odb = self.odb.local
     try:
         with external_repo(
-            repo_url, repo_rev, cache_dir=cache.cache_dir
+            repo_url, repo_rev, cache_dir=odb.cache_dir
         ) as repo:
             root = PathInfo(repo.root_dir)
             for path in files:
@@ -112,14 +112,14 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
                 except (NoOutputOrStageError, NoRemoteError):
                     pass
                 obj = stage(
-                    cache,
+                    odb,
                     path_info,
                     repo.repo_fs,
                     jobs=jobs,
                     follow_subrepos=False,
                 )
                 save(
-                    cache, obj, jobs=jobs, download_callback=cb,
+                    odb, obj, jobs=jobs, download_callback=cb,
                 )
     except CloneError:
         failed += 1

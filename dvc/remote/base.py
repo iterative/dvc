@@ -68,11 +68,11 @@ class Remote:
     INDEX_CLS = RemoteIndex
 
     def __init__(self, fs):
-        from dvc.cache import get_cloud_cache
+        from dvc.objects.db import get_odb
 
         self.fs = fs
         self.repo = fs.repo
-        self.cache = get_cloud_cache(self.fs)
+        self.odb = get_odb(self.fs)
 
         config = fs.config
         url = config.get("url")
@@ -92,7 +92,7 @@ class Remote:
 
     @index_locked
     def gc(self, *args, **kwargs):
-        removed = self.cache.gc(*args, **kwargs)
+        removed = self.odb.gc(*args, **kwargs)
 
         if removed:
             self.index.clear()
@@ -129,7 +129,7 @@ class Remote:
         if not hashes:
             return indexed_hashes
 
-        return indexed_hashes + self.cache.hashes_exist(list(hashes), **kwargs)
+        return indexed_hashes + self.odb.hashes_exist(list(hashes), **kwargs)
 
     def _status(
         self,
@@ -227,7 +227,7 @@ class Remote:
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(
-                self.cache.list_hashes_exists(indexed_dirs)
+                self.odb.list_hashes_exists(indexed_dirs)
             )
             missing_dirs = indexed_dirs.difference(indexed_dir_exists)
             if missing_dirs:
@@ -239,7 +239,7 @@ class Remote:
 
         # Check if non-indexed (new) dir hashes exist on remote
         dir_exists = dir_md5s.intersection(indexed_dir_exists)
-        dir_exists.update(self.cache.list_hashes_exists(dir_md5s - dir_exists))
+        dir_exists.update(self.odb.list_hashes_exists(dir_md5s - dir_exists))
 
         # If .dir hash exists on the remote, assume directory contents
         # still exists on the remote
@@ -278,7 +278,7 @@ class Remote:
         ):
             if info["status"] == status:
                 cache.append(cache_obj.hash_to_path_info(md5))
-                path_infos.append(self.cache.hash_to_path_info(md5))
+                path_infos.append(self.odb.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)
             elif info["status"] == STATUS_MISSING:
@@ -474,11 +474,11 @@ class Remote:
         if self.fs.scheme == "local":
             with self.fs.repo.state:
                 for checksum in named_cache.scheme_keys("local"):
-                    cache_file = self.cache.hash_to_path_info(checksum)
+                    cache_file = self.odb.hash_to_path_info(checksum)
                     if self.fs.exists(cache_file):
                         hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
                         self.fs.repo.state.save(cache_file, self.fs, hash_info)
-                        self.cache.protect(cache_file)
+                        self.odb.protect(cache_file)
 
         return ret
 
@@ -492,7 +492,7 @@ class Remote:
             download=True,
         )
 
-        if not self.cache.verify:
+        if not self.odb.verify:
             with cache.fs.repo.state:
                 for checksum in named_cache.scheme_keys("local"):
                     cache_file = cache.hash_to_path_info(checksum)
@@ -513,7 +513,7 @@ class Remote:
         from dvc.objects import transfer
 
         return transfer(
-            self.cache,
+            self.odb,
             from_fs,
             from_info,
             jobs=jobs,

@@ -8,7 +8,6 @@ from voluptuous import Any
 
 import dvc.objects as objects
 import dvc.prompt as prompt
-from dvc.cache import NamedCache
 from dvc.checkout import checkout
 from dvc.exceptions import (
     CheckoutError,
@@ -18,6 +17,7 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.hash_info import HashInfo
+from dvc.objects.db import NamedCache
 from dvc.objects.stage import get_hash
 from dvc.objects.stage import stage as ostage
 
@@ -144,7 +144,7 @@ class BaseOutput:
         self.desc = desc
 
         self.path_info = self._parse_path(fs, path)
-        if self.use_cache and self.cache is None:
+        if self.use_cache and self.odb is None:
             raise RemoteCacheRequiredError(self.path_info)
 
         self.obj = None
@@ -180,8 +180,8 @@ class BaseOutput:
         return self.use_cache or self.stage.is_repo_import
 
     @property
-    def cache(self):
-        return getattr(self.repo.cache, self.scheme)
+    def odb(self):
+        return getattr(self.repo.odb, self.scheme)
 
     @property
     def dir_cache(self):
@@ -189,12 +189,12 @@ class BaseOutput:
 
     @property
     def cache_path(self):
-        return self.cache.hash_to_path_info(self.hash_info.value).url
+        return self.odb.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
         if not self.use_cache:
             return get_hash(self.path_info, self.fs, self.fs.PARAM_CHECKSUM)
-        return ostage(self.cache, self.path_info, self.fs).hash_info
+        return ostage(self.odb, self.path_info, self.fs).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -216,7 +216,7 @@ class BaseOutput:
             return True
 
         try:
-            objects.check(self.cache, obj)
+            objects.check(self.odb, obj)
             return False
         except (FileNotFoundError, objects.ObjectFormatError):
             return True
@@ -302,13 +302,13 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = ostage(self.cache, self.path_info, self.fs)
+        self.obj = ostage(self.odb, self.path_info, self.fs)
         self.hash_info = self.obj.hash_info
         self.isexec = self.isfile() and self.fs.isexec(self.path_info)
 
     def set_exec(self):
         if self.isfile() and self.isexec:
-            self.cache.set_exec(self.path_info)
+            self.odb.set_exec(self.path_info)
 
     def commit(self, filter_info=None):
         if not self.exists:
@@ -317,13 +317,13 @@ class BaseOutput:
         assert self.hash_info
 
         if self.use_cache:
-            obj = ostage(self.cache, filter_info or self.path_info, self.fs)
-            objects.save(self.cache, obj)
+            obj = ostage(self.odb, filter_info or self.path_info, self.fs)
+            objects.save(self.odb, obj)
             checkout(
                 filter_info or self.path_info,
                 self.fs,
                 obj,
-                self.cache,
+                self.odb,
                 relink=True,
             )
             self.set_exec()
@@ -379,7 +379,7 @@ class BaseOutput:
             obj = self.obj
         elif self.hash_info:
             try:
-                obj = objects.load(self.cache, self.hash_info)
+                obj = objects.load(self.odb, self.hash_info)
             except FileNotFoundError:
                 return None
         else:
@@ -387,7 +387,7 @@ class BaseOutput:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.cache, prefix)
+            obj = obj.filter(self.odb, prefix)
 
         return obj
 
@@ -419,7 +419,7 @@ class BaseOutput:
                 filter_info or self.path_info,
                 self.fs,
                 obj,
-                self.cache,
+                self.odb,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
@@ -476,7 +476,7 @@ class BaseOutput:
 
     def unprotect(self):
         if self.exists:
-            self.cache.unprotect(self.path_info)
+            self.odb.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
 
@@ -484,7 +484,7 @@ class BaseOutput:
             raise DvcException("cannot get dir cache for file checksum")
 
         try:
-            objects.check(self.cache, self.cache.get(self.hash_info))
+            objects.check(self.odb, self.odb.get(self.hash_info))
         except (FileNotFoundError, objects.ObjectFormatError):
             self.repo.cloud.pull(
                 NamedCache.make("local", self.hash_info.value, str(self)),
@@ -493,7 +493,7 @@ class BaseOutput:
             )
 
         try:
-            objects.load(self.cache, self.hash_info)
+            objects.load(self.odb, self.hash_info)
             assert self.hash_info.dir_info
         except (objects.ObjectFormatError, FileNotFoundError):
             self.hash_info.dir_info = None
@@ -530,7 +530,7 @@ class BaseOutput:
             logger.debug(f"failed to pull cache for '{self}'")
 
         try:
-            objects.check(self.cache, self.cache.get(self.hash_info))
+            objects.check(self.odb, self.odb.get(self.hash_info))
         except (FileNotFoundError, objects.ObjectFormatError):
             msg = (
                 "Missing cache for directory '{}'. "
@@ -661,5 +661,5 @@ class BaseOutput:
         self._check_can_merge(other)
 
         self.hash_info = objects.merge(
-            self.cache, ancestor_info, self.hash_info, other.hash_info
+            self.odb, ancestor_info, self.hash_info, other.hash_info
         )

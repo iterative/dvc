@@ -167,16 +167,16 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
 def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     import stat
 
-    from dvc.cache import Cache
+    from dvc.objects.db import ODBManager
 
     tmp_dir.gen("foo", "foo")
 
     with dvc.config.edit() as config:
         config["cache"]["shared"] = "group"
 
-    dvc.cache = Cache(dvc)
+    dvc.odb = ODBManager(dvc)
 
-    assert not os.path.exists(dvc.cache.local.cache_dir)
+    assert not os.path.exists(dvc.odb.local.cache_dir)
 
     run_copy("foo", "bar", name="copy-foo-bar")
 
@@ -205,7 +205,7 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
         dir_mode = 0o2775
         file_mode = 0o664
 
-    assert _mode(dvc.cache.local.cache_dir) == dir_mode
+    assert _mode(dvc.odb.local.cache_dir) == dir_mode
     assert _mode(dvc.stage_cache.cache_dir) == dir_mode
     assert _mode(parent_cache_dir) == dir_mode
     assert _mode(cache_dir) == dir_mode

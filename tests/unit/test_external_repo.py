@@ -58,7 +58,7 @@ def test_subrepo_is_constructed_properly(
 
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
-    local_cache = subrepo.dvc.cache.local.cache_dir
+    local_cache = subrepo.dvc.odb.local.cache_dir
 
     tmp_dir.scm_gen("bar", "bar", commit="add bar")
     subrepo.dvc_gen("foo", "foo", commit="add foo")
@@ -75,19 +75,19 @@ def test_subrepo_is_constructed_properly(
 
         assert repo.url == str(tmp_dir)
         assert repo.config["cache"]["dir"] == str(cache_dir)
-        assert repo.cache.local.cache_dir == str(cache_dir)
-        assert subrepo.cache.local.cache_dir == str(cache_dir)
+        assert repo.odb.local.cache_dir == str(cache_dir)
+        assert subrepo.odb.local.cache_dir == str(cache_dir)
 
         assert repo.config["cache"]["type"] == ["symlink"]
-        assert repo.cache.local.cache_types == ["symlink"]
-        assert subrepo.cache.local.cache_types == ["symlink"]
+        assert repo.odb.local.cache_types == ["symlink"]
+        assert subrepo.odb.local.cache_types == ["symlink"]
 
         assert (
             subrepo.config["remote"]["auto-generated-upstream"]["url"]
             == local_cache
         )
         if root_is_dvc:
-            main_cache = tmp_dir.dvc.cache.local.cache_dir
+            main_cache = tmp_dir.dvc.odb.local.cache_dir
             assert repo.config["remote"]["auto-generated-upstream"][
                 "url"
             ] == str(main_cache)
@@ -112,14 +112,14 @@ def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
         spy = mocker.spy(repo.cloud, "pull")
 
         obj = stage(
-            dvc.cache.local,
+            dvc.odb.local,
             PathInfo(repo.root_dir) / "dir1",
             repo.repo_fs,
             follow_subrepos=False,
             jobs=3,
         )
         save(
-            dvc.cache.local, obj, jobs=3,
+            dvc.odb.local, obj, jobs=3,
         )
 
         run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")

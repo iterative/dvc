@@ -724,12 +724,12 @@ class TestRunCommit(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
+        self.assertFalse(os.path.exists(self.dvc.odb.local.cache_dir))
 
         ret = main(["commit", fname + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
+        self.assertEqual(len(os.listdir(self.dvc.odb.local.cache_dir)), 1)
 
 
 class TestRunPersist(TestDvc):

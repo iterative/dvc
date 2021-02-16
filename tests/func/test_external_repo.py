@@ -114,7 +114,7 @@ def test_relative_remote(erepo_dir, tmp_dir):
     erepo_dir.dvc.push()
 
     (erepo_dir / "file").unlink()
-    remove(erepo_dir.dvc.cache.local.cache_dir)
+    remove(erepo_dir.dvc.odb.local.cache_dir)
 
     url = os.fspath(erepo_dir)
 
@@ -197,17 +197,17 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         assert (tmp_dir / "out").read_text() == expected_files
 
         # clear cache to test saving to cache
-        cache_dir = tmp_dir / repo.cache.local.cache_dir
+        cache_dir = tmp_dir / repo.odb.local.cache_dir
         remove(cache_dir)
         makedirs(cache_dir)
 
         obj = stage(
-            repo.cache.local,
+            repo.odb.local,
             PathInfo(repo.root_dir) / "dir",
             repo.repo_fs,
             follow_subrepos=False,
         )
-        save(repo.cache.local, obj)
+        save(repo.odb.local, obj)
         assert set(cache_dir.glob("*/*")) == {
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",

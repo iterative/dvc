@@ -5,10 +5,10 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.cache import Cache
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
+from dvc.objects.db import ODBManager
 from dvc.stage import Stage
 from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
@@ -185,7 +185,7 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
     # remove external cache to make sure that we don't need it to import dirs
     with dvc.config.edit() as conf:
         del conf["cache"]
-    dvc.cache = Cache(dvc)
+    dvc.odb = ODBManager(dvc)
 
     assert not (tmp_dir / "dir").exists()  # sanity check
     dvc.imp_url("remote://workspace/dir")

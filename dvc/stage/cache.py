@@ -58,7 +58,7 @@ class StageCache:
 
     @cached_property
     def cache_dir(self):
-        return os.path.join(self.repo.cache.local.cache_dir, "runs")
+        return os.path.join(self.repo.odb.local.cache_dir, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
@@ -117,12 +117,12 @@ class StageCache:
 
     @contextmanager
     def _cache_type_copy(self):
-        cache_types = self.repo.cache.local.cache_types
-        self.repo.cache.local.cache_types = ["copy"]
+        cache_types = self.repo.odb.local.cache_types
+        self.repo.odb.local.cache_types = ["copy"]
         try:
             yield
         finally:
-            self.repo.cache.local.cache_types = cache_types
+            self.repo.odb.local.cache_types = cache_types
 
     def _uncached_outs(self, stage, cache):
         # NOTE: using temporary stage to avoid accidentally modifying original
@@ -166,12 +166,12 @@ class StageCache:
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
         path = PathInfo(self._get_cache_path(cache_key, cache_value))
-        self.repo.cache.local.makedirs(path.parent)
+        self.repo.odb.local.makedirs(path.parent)
         tmp = tempfile.NamedTemporaryFile(delete=False, dir=path.parent).name
         assert os.path.exists(path.parent)
         assert os.path.isdir(path.parent)
         dump_yaml(tmp, cache)
-        self.repo.cache.local.move(PathInfo(tmp), path)
+        self.repo.odb.local.move(PathInfo(tmp), path)
 
     def restore(self, stage, run_cache=True, pull=False):
         from .serialize import to_single_stage_lockfile
@@ -233,7 +233,7 @@ class StageCache:
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.fs.upload, "upload"),
-            self.repo.cache.local.fs,
+            self.repo.odb.local.fs,
             remote.fs,
         )
 
@@ -244,11 +244,11 @@ class StageCache:
         return self._transfer(
             _log_exceptions(remote.fs.download, "download"),
             remote.fs,
-            self.repo.cache.local.fs,
+            self.repo.odb.local.fs,
         )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
-        from dvc.cache import NamedCache
+        from dvc.objects.db import NamedCache
 
         cache = NamedCache()
 
