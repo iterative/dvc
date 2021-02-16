@@ -38,16 +38,27 @@ class AzureFileSystem(BaseFileSystem):
         self.path_info = self.PATH_CLS(url)
         self.bucket = self.path_info.bucket
 
-        self.connection_string = config.get(
+        self._login_info = self._prepare_credentials(config)
+
+    def _prepare_credentials(self, config):
+        login_info = {}
+        login_info["connection_string"] = config.get(
             "connection_string",
             self._az_config.get("storage", "connection_string", None),
         )
-        self.account_name = config.get(
+        login_info["account_name"] = config.get(
             "account_name", self._az_config.get("storage", "account", None)
         )
-        self.sas_token = config.get(
+        login_info["account_key"] = config.get(
+            "account_key", self._az_config.get("storage", "key", None)
+        )
+        login_info["sas_token"] = config.get(
             "sas_token", self._az_config.get("storage", "sas_token", None)
         )
+        login_info["tenant_id"] = config.get("tenant_id")
+        login_info["client_id"] = config.get("client_id")
+        login_info["client_secret"] = config.get("client_secret")
+        return login_info
 
     @cached_property
     def _az_config(self):
@@ -66,11 +77,7 @@ class AzureFileSystem(BaseFileSystem):
     def fs(self):
         from adlfs import AzureBlobFileSystem
 
-        file_system = AzureBlobFileSystem(
-            account_name=self.account_name,
-            connection_string=self.connection_string,
-            sas_token=self.sas_token,
-        )
+        file_system = AzureBlobFileSystem(**self._login_info)
         if self.bucket not in [
             container.rstrip("/") for container in file_system.ls("/")
         ]:
