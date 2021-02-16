@@ -33,12 +33,6 @@ class LocalFileSystem(BaseFileSystem):
     def fs_root(self):
         return self.config.get("url")
 
-    @property
-    def state(self):
-        from dvc.state import StateNoop
-
-        return self.repo.state if self.repo else StateNoop()
-
     @cached_property
     def dvcignore(self):
         from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop

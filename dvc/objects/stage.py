@@ -55,8 +55,8 @@ def _iter_hashes(path_info, fs, name, **kwargs):
 
     file_infos = []
     for file_info in fs.walk_files(path_info, **kwargs):
-        hash_info = fs.state.get(  # pylint: disable=assignment-from-none
-            file_info
+        hash_info = fs.repo.state.get(  # pylint: disable=assignment-from-none
+            file_info, fs,
         )
         if not hash_info:
             file_infos.append(file_info)
@@ -108,9 +108,9 @@ def get_hash(path_info, fs, name, **kwargs):
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    with fs.state:
+    with fs.repo.state:
         # pylint: disable=assignment-from-none
-        hash_info = fs.state.get(path_info)
+        hash_info = fs.repo.state.get(path_info, fs)
 
         # If we have dir hash in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_hash() call below,
@@ -139,7 +139,7 @@ def get_hash(path_info, fs, name, **kwargs):
             hash_info = get_file_hash(path_info, fs, name)
 
         if hash_info and fs.exists(path_info):
-            fs.state.save(path_info, hash_info)
+            fs.repo.state.save(path_info, fs, hash_info)
 
     return hash_info
 

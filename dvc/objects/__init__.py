@@ -171,7 +171,7 @@ class Tree(HashFile):
         ):
             entry_obj = HashFile(entry_info, self.src_fs, entry_hash)
             entry_obj.save(odb, **kwargs)
-        self.src_fs.state.save(self.src_path_info, hi)
+        self.src_fs.repo.state.save(self.src_path_info, self.src_fs, hi)
 
     def filter(self, odb, prefix):
         hash_info = self.hash_info.dir_info.trie.get(prefix)

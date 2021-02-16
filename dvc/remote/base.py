@@ -472,12 +472,12 @@ class Remote:
         )
 
         if self.fs.scheme == "local":
-            with self.fs.state:
+            with self.fs.repo.state:
                 for checksum in named_cache.scheme_keys("local"):
                     cache_file = self.cache.hash_to_path_info(checksum)
                     if self.fs.exists(cache_file):
                         hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
-                        self.fs.state.save(cache_file, hash_info)
+                        self.fs.repo.state.save(cache_file, self.fs, hash_info)
                         self.cache.protect(cache_file)
 
         return ret
@@ -493,7 +493,7 @@ class Remote:
         )
 
         if not self.cache.verify:
-            with cache.fs.state:
+            with cache.fs.repo.state:
                 for checksum in named_cache.scheme_keys("local"):
                     cache_file = cache.hash_to_path_info(checksum)
                     if cache.fs.exists(cache_file):
@@ -502,7 +502,9 @@ class Remote:
                         # during download will not be moved from tmp_file
                         # (see `BaseFileSystem.download()`)
                         hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
-                        cache.fs.state.save(cache_file, hash_info)
+                        cache.fs.repo.state.save(
+                            cache_file, cache.fs, hash_info
+                        )
                         cache.protect(cache_file)
 
         return ret

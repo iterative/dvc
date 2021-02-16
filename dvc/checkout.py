@@ -167,7 +167,7 @@ def _checkout_file(
         _link(cache, cache_info, path_info)
         modified = True
 
-    fs.state.save(path_info, obj.hash_info)
+    fs.repo.state.save(path_info, fs, obj.hash_info)
     if progress_callback:
         progress_callback(str(path_info))
 
@@ -217,7 +217,7 @@ def _checkout_dir(
         or modified
     )
 
-    fs.state.save(path_info, obj.hash_info)
+    fs.repo.state.save(path_info, fs, obj.hash_info)
 
     # relink is not modified, assume it as nochange
     return modified and not relink
@@ -241,7 +241,7 @@ def _checkout(
             path_info, fs, obj, cache, force, progress_callback, relink,
         )
 
-    fs.state.save_link(path_info)
+    fs.repo.state.save_link(path_info, fs)
 
     return ret
 
