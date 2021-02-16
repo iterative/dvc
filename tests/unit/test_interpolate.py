@@ -6,13 +6,7 @@ from dvc.parsing.context import Context, recurse_not_a_node
 
 
 @pytest.mark.parametrize(
-    "template, var",
-    [
-        ("${value}", "value"),
-        ("${{item}}", "item"),
-        ("${ item }", "item"),
-        ("${{ value }}", "value"),
-    ],
+    "template, var", [("${value}", "value"), ("${ item }", "item")],
 )
 @pytest.mark.parametrize(
     "data", [True, 12, pi, None, False, 0, "0", "123", "Foobar", "", inf, 3e4]
@@ -26,10 +20,7 @@ def test_resolve_primitive_values(data, template, var):
     "template, expected",
     [
         (r"\${value}", "${value}"),
-        (r"\${{value}}", "${{value}}"),
         (r"\${ value }", "${ value }"),
-        (r"\${{ value }}", "${{ value }}"),
-        (r"\${{ value }} days", "${{ value }} days"),
         (r"\${ value } days", "${ value } days"),
         (r"Month of \${value}", "Month of ${value}"),
         (r"May the \${value} be with you", "May the ${value} be with you"),
@@ -39,7 +30,7 @@ def test_resolve_primitive_values(data, template, var):
         ),
     ],
 )
-def test_escape(template, expected, mocker):
+def test_escape(template, expected):
     context = Context({"value": "value"})
     assert context.resolve(template) == expected
 
