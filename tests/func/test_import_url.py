@@ -1,7 +1,7 @@
 import json
 import os
 import textwrap
-from tempfile import NamedTemporaryFile
+from tempfile import gettempdir
 from uuid import uuid4
 
 import pytest
@@ -342,17 +342,19 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
 
 def test_import_url_to_remote_absolute(tmp_dir, dvc, local_remote):
-    with NamedTemporaryFile("w") as temp_file:
-        temp_file.write("foo")
-        temp_file.file.close()
+    from shortuuid import uuid
 
-        base = os.path.basename(temp_file.name)
-        stage = dvc.imp_url(temp_file.name, to_remote=True)
+    temp_name = uuid()
+    temp_file = os.path.join(gettempdir(), temp_name)
+    with open(temp_file, "w") as stream:
+        stream.write("foo")
 
-    base_info = tmp_dir / base
-    assert stage.deps[0].fspath == temp_file.name
-    assert stage.outs[0].fspath == os.fspath(base_info)
-    assert base_info.with_suffix(".dvc").exists()
+    stage = dvc.imp_url(temp_file, to_remote=True)
+
+    foo = tmp_dir / temp_name
+    assert stage.deps[0].fspath == temp_file
+    assert stage.outs[0].fspath == os.fspath(foo)
+    assert foo.with_suffix(".dvc").exists()
 
 
 def test_import_url_to_remote_invalid_combinations(dvc):

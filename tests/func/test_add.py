@@ -6,7 +6,7 @@ import shutil
 import stat
 import textwrap
 import time
-from tempfile import NamedTemporaryFile
+from tempfile import gettempdir
 
 import colorama
 import pytest
@@ -1016,29 +1016,32 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 
 
 def test_add_to_remote_absolute(tmp_dir, dvc, local_remote):
-    with NamedTemporaryFile("w") as temp_file:
-        temp_file.write("foo")
-        temp_file.file.close()
+    from shortuuid import uuid
 
-        base = os.path.basename(temp_file.name)
-        dvc.add(temp_file.name, to_remote=True)
+    temp_name = uuid()
+    temp_file = os.path.join(gettempdir(), temp_name)
+    with open(temp_file, "w") as stream:
+        stream.write("foo")
 
-    assert (tmp_dir / base).with_suffix(".dvc").exists()
-    assert not os.path.exists(temp_file.name)
+    dvc.add(temp_file, to_remote=True)
+    os.unlink(temp_file)
 
-    dvc.pull(base)
-    assert not os.path.exists(temp_file.name)
-    assert (tmp_dir / base).read_text() == "foo"
+    foo = tmp_dir / temp_name
+    assert foo.with_suffix(".dvc").exists()
+    assert not os.path.exists(temp_file)
+
+    dvc.pull(temp_name)
+    assert not os.path.exists(temp_file)
+    assert foo.read_text() == "foo"
 
     with pytest.raises(StageExternalOutputsError):
-        with NamedTemporaryFile("w") as temp_file:
-            temp_file.write("foo")
-            temp_file.file.close()
+        with open(temp_file, "w") as stream:
+            stream.write("foo")
 
-            base = os.path.basename(temp_file.name)
-            dvc.add(
-                temp_file.name, out=temp_file.name + "_new", to_remote=True
-            )
+        temp_file_2 = os.path.join(gettempdir(), uuid())
+        dvc.add(temp_file, out=temp_file_2, to_remote=True)
+
+    os.unlink(temp_file)
 
 
 @pytest.mark.parametrize(
