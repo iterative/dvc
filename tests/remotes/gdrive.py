@@ -46,7 +46,11 @@ class GDrive(Base, CloudURLInfo):
     @cached_property
     def client(self):
         import pydata_google_auth
-        from gdrivefs import GoogleDriveFileSystem
+
+        try:
+            from gdrivefs import GoogleDriveFileSystem
+        except ImportError:
+            pytest.skip("gdrivefs is not installed")
 
         tmp_path = tmp_fname()
         with open(tmp_path, "w") as stream:

@@ -153,7 +153,8 @@ tests_requirements = [
     "mypy",
     "wsgidav",
     "crc32c",
-    "gdrivefs @ git+https://github.com/intake/gdrivefs.git",
+    # pypi doesn't allow for direct dependencies
+    #    "gdrivefs @ git+https://github.com/intake/gdrivefs.git",
 ]
 
 setup(
