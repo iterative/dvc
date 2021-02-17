@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 from textwrap import dedent
 
@@ -53,9 +54,6 @@ LIVE_CHECKPOINT_SCRIPT = dedent(
 
 @pytest.fixture
 def live_stage(tmp_dir, scm, dvc):
-
-    pytest.skip("dvclive does not exist yet")
-
     def make(summary=True, html=True, live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
         tmp_dir.gen("train.py", LIVE_SCRITP)
@@ -130,8 +128,8 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
     assert (tmp_dir / "logs").is_dir()
     plots = dvc.plots.show()
-    assert "logs/accuracy.tsv" in plots
-    assert "logs/loss.tsv" in plots
+    assert os.path.join("logs", "accuracy.tsv") in plots
+    assert os.path.join("logs", "loss.tsv") in plots
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
@@ -143,8 +141,8 @@ def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
 
     assert (tmp_dir / "logs").is_dir()
     plots = dvc.plots.show()
-    assert "logs/accuracy.tsv" in plots
-    assert "logs/loss.tsv" in plots
+    assert os.path.join("logs", "accuracy.tsv") in plots
+    assert os.path.join("logs", "loss.tsv") in plots
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
@@ -169,9 +167,6 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
 
 @pytest.fixture
 def live_checkpoint_stage(tmp_dir, scm, dvc):
-
-    pytest.skip("dvclive does not exist yet")
-
     def make(live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
 
