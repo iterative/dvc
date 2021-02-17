@@ -50,12 +50,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
-<<<<<<< HEAD
-    "dulwich>=0.20.14",
-=======
     "dulwich>=0.20.19",
-    "pygit2>=1.4.0",
->>>>>>> 52ee995f5... Update requirements of dulwich to 0.20.19 (#5480)
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
