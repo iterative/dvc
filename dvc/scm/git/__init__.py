@@ -386,7 +386,7 @@ class Git(Base):
     _stash_iter = partialmethod(_backend_func, "_stash_iter")
     _stash_push = partialmethod(_backend_func, "_stash_push")
     _stash_apply = partialmethod(_backend_func, "_stash_apply")
-    reflog_delete = partialmethod(_backend_func, "reflog_delete")
+    _stash_drop = partialmethod(_backend_func, "_stash_drop")
     describe = partialmethod(_backend_func, "describe")
     diff = partialmethod(_backend_func, "diff")
     reset = partialmethod(_backend_func, "reset")

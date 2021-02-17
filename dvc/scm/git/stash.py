@@ -1,11 +1,9 @@
 """git stash convenience wrapper."""
 
 import logging
-import os
 from typing import Optional
 
 from dvc.scm.base import SCMError
-from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -62,19 +60,12 @@ class Stash:
         self.scm._stash_apply(rev)  # pylint: disable=protected-access
 
     def drop(self, index: int = 0):
-        ref = "{0}@{{{1}}}".format(self.ref, index)
         if index < 0 or index >= len(self):
-            raise SCMError(f"Invalid stash ref '{ref}'")
-        logger.debug("Dropping '%s'", ref)
-        self.scm.reflog_delete(ref, updateref=True, rewrite=True)
-
-        # if we removed the last reflog entry, delete the ref and reflog
-        if len(self) == 0:
-            self.scm.remove_ref(self.ref)
-            parts = self.ref.split("/")
-            reflog = os.path.join(self.scm.root_dir, ".git", "logs", *parts)
-            if os.path.exists(reflog):
-                remove(reflog)
+            raise SCMError(f"Invalid stash ref '{self.ref}@{{{index}}}'")
+        logger.debug("Dropping '%s@{%d}'", self.ref, index)
+        self.scm._stash_drop(  # pylint: disable=protected-access
+            self.ref, index
+        )
 
     def clear(self):
         logger.debug("Clear stash '%s'", self.ref)

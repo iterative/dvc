@@ -539,10 +539,17 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def _stash_apply(self, rev: str):
         raise NotImplementedError
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        raise NotImplementedError
+    def _stash_drop(self, ref: str, index: int):
+        from dvc.scm.git import Stash
+
+        if ref == Stash.DEFAULT_STASH:
+            raise NotImplementedError
+
+        stash = self._get_stash(ref)
+        try:
+            stash.drop(index)
+        except ValueError as exc:
+            raise SCMError("Failed to drop stash entry") from exc
 
     def describe(
         self,

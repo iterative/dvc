@@ -346,10 +346,13 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         raise NotImplementedError
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        raise NotImplementedError
+    def _stash_drop(self, ref: str, index: int):
+        from dvc.scm.git import Stash
+
+        if ref != Stash.DEFAULT_STASH:
+            raise NotImplementedError
+
+        self.repo.stash_drop(index)
 
     def describe(
         self,
