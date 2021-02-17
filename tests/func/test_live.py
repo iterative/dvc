@@ -59,9 +59,15 @@ def live_stage(tmp_dir, scm, dvc):
     except ImportError:
         pytest.skip("no dvclive")
 
-    def make(summary=True, html=True, live=None, live_no_cache=None):
+    def make(
+        summary=True,
+        html=True,
+        live=None,
+        live_no_cache=None,
+        code=LIVE_SCRITP,
+    ):
         assert bool(live) != bool(live_no_cache)
-        tmp_dir.gen("train.py", LIVE_SCRITP)
+        tmp_dir.gen("train.py", code)
         tmp_dir.gen("params.yaml", "foo: 1")
         stage = dvc.run(
             cmd="python train.py",
@@ -247,3 +253,21 @@ def test_live_checkpoints_resume(
         4,
         2,
     ]
+
+
+def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
+    show_spy = mocker.spy(dvc.live, "show")
+    mocker.patch("dvc.stage.run._AWAIT_RUN_COMPLETION_SECONDS", 0.07)
+    script = dedent(
+        """
+        import dvclive
+        import sys
+        import time
+        dvclive.log("loss", 1/2)
+        dvclive.log("accuracy", 1/2)
+        dvclive.next_step()
+        time.sleep(0.1)"""
+    )
+    live_stage(summary=True, live="logs", code=script)
+
+    assert show_spy.call_count == 2

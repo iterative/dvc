@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 CHECKPOINT_SIGNAL_FILE = "DVC_CHECKPOINT"
+_AWAIT_RUN_COMPLETION_SECONDS = 1
 
 
 class CheckpointKilledError(StageCmdFailedError):
@@ -199,20 +200,27 @@ def live_monitor(stage, proc):
 
 
 def _live_run(out, proc, done):
-    from dvc.api.live import summary
+    from dvc.utils.html import write
+
+    def create_summary(out):
+        metrics, plots = out.repo.live.show(str(out.path_info))
+
+        html_path = out.path_info.with_suffix(".html")
+        write(html_path, plots, metrics)
+        logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
     signal_path = os.path.join(out.repo.tmp_dir, "DVC_LIVE")
     while True:
         if os.path.exists(signal_path):
             try:
-                summary((str(out.path_info)))
+                create_summary(out)
             except Exception:  # pylint: disable=broad-except
                 logger.exception("ERROR while running live")
                 _kill(proc)
             finally:
                 os.remove(signal_path)
-        if done.wait(1):
-            summary(str(out.path_info))
+        if done.wait(_AWAIT_RUN_COMPLETION_SECONDS):
+            create_summary(out)
             return
 
 
@@ -232,7 +240,7 @@ def _checkpoint_run(stage, callback_func, done, proc, killed):
             finally:
                 logger.debug("Remove checkpoint signal file")
                 os.remove(signal_path)
-        if done.wait(1):
+        if done.wait(_AWAIT_RUN_COMPLETION_SECONDS):
             return
 
 
