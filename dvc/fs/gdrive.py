@@ -117,14 +117,11 @@ class GDriveFileSystem(BaseFileSystem):
         self._path = self.path_info.path
         self._trash_only = config.get("gdrive_trash_only")
         self._use_service_account = config.get("gdrive_use_service_account")
-        self._service_account_email = config.get(
-            "gdrive_service_account_email"
-        )
         self._service_account_user_email = config.get(
             "gdrive_service_account_user_email"
         )
-        self._service_account_p12_file_path = config.get(
-            "gdrive_service_account_p12_file_path"
+        self._service_account_json_file_path = config.get(
+            "gdrive_service_account_json_file_path"
         )
         self._client_id = config.get("gdrive_client_id")
         self._client_secret = config.get("gdrive_client_secret")
@@ -142,14 +139,14 @@ class GDriveFileSystem(BaseFileSystem):
 
     def _validate_config(self):
         # Validate Service Account configuration
-        if self._use_service_account and (
-            not self._service_account_email
-            or not self._service_account_p12_file_path
+        if (
+            self._use_service_account
+            and not self._service_account_json_file_path
         ):
             raise DvcException(
-                "To use service account, set `gdrive_service_account_email`,\n"
-                "`gdrive_service_account_p12_file_path`, and optionally "
-                "`gdrive_service_account_user_email`\nin DVC config. "
+                "To use service account, set "
+                "`gdrive_service_account_json_file_path`, and optionally"
+                "`gdrive_service_account_user_email` in DVC config\n"
                 "Learn more at {}".format(
                     format_link("https://man.dvc.org/remote/modify")
                 )
@@ -220,7 +217,6 @@ class GDriveFileSystem(BaseFileSystem):
         auth_settings = {
             "client_config_backend": "settings",
             "save_credentials": True,
-            "save_credentials_backend": "file",
             "save_credentials_file": self._gdrive_user_credentials_path,
             "get_refresh_token": True,
             "oauth_scope": [
@@ -230,12 +226,13 @@ class GDriveFileSystem(BaseFileSystem):
         }
 
         if self._use_service_account:
+            auth_settings["save_credentials_backend"] = "json"
             auth_settings["service_config"] = {
-                "client_service_email": self._service_account_email,
                 "client_user_email": self._service_account_user_email,
-                "client_pkcs12_file_path": self._service_account_p12_file_path,
+                "client_json_file_path": self._service_account_json_file_path,
             }
         else:
+            auth_settings["save_credentials_backend"] = "file"
             auth_settings["client_config"] = {
                 "client_id": self._client_id or self.DEFAULT_GDRIVE_CLIENT_ID,
                 "client_secret": self._client_secret

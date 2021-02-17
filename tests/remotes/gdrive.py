@@ -1,7 +1,8 @@
 # pylint:disable=abstract-method
+import json
 import os
 import uuid
-from functools import partial, partialmethod
+from functools import partialmethod
 
 import pytest
 from funcy import cached_property
@@ -14,11 +15,6 @@ from .base import Base
 
 TEST_GDRIVE_REPO_BUCKET = "root"
 
-CREDENTIALS_DIR = os.path.join(os.path.expanduser("~"), ".config", "pydata")
-CREDENTIALS_FILE = os.path.join(
-    CREDENTIALS_DIR, "pydata_google_credentials.json"
-)
-
 
 class GDrive(Base, CloudURLInfo):
     @staticmethod
@@ -27,11 +23,23 @@ class GDrive(Base, CloudURLInfo):
 
     @cached_property
     def config(self):
+        tmp_path = tmp_fname()
+        with open(tmp_path, "w") as stream:
+            raw_credentials = os.getenv(
+                GDriveFileSystem.GDRIVE_CREDENTIALS_DATA
+            )
+            try:
+                credentials = json.loads(raw_credentials)
+            except ValueError:
+                credentials = {}
+
+            use_service_account = credentials.get("type") == "service_account"
+            stream.write(raw_credentials)
+
         return {
             "url": self.url,
-            "gdrive_service_account_email": "test",
-            "gdrive_service_account_p12_file_path": "test.p12",
-            "gdrive_use_service_account": True,
+            "gdrive_service_account_json_file_path": tmp_path,
+            "gdrive_use_service_account": use_service_account,
         }
 
     @staticmethod
@@ -45,21 +53,16 @@ class GDrive(Base, CloudURLInfo):
 
     @cached_property
     def client(self):
-        import pydata_google_auth
-
         try:
             from gdrivefs import GoogleDriveFileSystem
         except ImportError:
             pytest.skip("gdrivefs is not installed")
 
-        tmp_path = tmp_fname()
-        with open(tmp_path, "w") as stream:
-            stream.write(os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA))
-
-        GoogleDriveFileSystem._connect_cache = partial(
-            pydata_google_auth.load_user_credentials, tmp_path
+        return GoogleDriveFileSystem(
+            token="cache",
+            tokens_file=self.config["gdrive_service_account_json_file_path"],
+            service_account=self.config["gdrive_use_service_account"],
         )
-        return GoogleDriveFileSystem(token="cache")
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         if not self.client.exists(self.path):
@@ -82,8 +85,6 @@ class GDrive(Base, CloudURLInfo):
 
 @pytest.fixture
 def gdrive(test_config, make_tmp_dir):
-    pytest.skip("temporarily disabled")
-
     test_config.requires("gdrive")
     if not GDrive.should_test():
         pytest.skip("no gdrive")
