@@ -19,23 +19,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _get_unused_links(repo):
-    used = [
-        out.fspath
-        for stage in repo.stages
-        for out in stage.outs
-        if out.scheme == "local"
-    ]
-    with repo.state:
-        return repo.state.get_unused_links(used, repo.fs)
-
-
 def _fspath_dir(path):
     if not os.path.exists(str(path)):
         return str(path)
 
     path = relpath(path)
     return os.path.join(path, "") if os.path.isdir(path) else path
+
+
+def _remove_unused_links(repo):
+    used = [
+        out.fspath
+        for stage in repo.stages
+        for out in stage.outs
+        if out.scheme == "local"
+    ]
+
+    with repo.state:
+        unused = repo.state.get_unused_links(used, repo.fs)
+        ret = [_fspath_dir(u) for u in unused]
+        repo.state.remove_links(unused, repo.fs)
+        return ret
 
 
 def get_all_files_numbers(pairs):
@@ -84,7 +88,6 @@ def checkout(
     **kwargs,
 ):
 
-    unused = []
     stats = {
         "added": [],
         "deleted": [],
@@ -93,11 +96,7 @@ def checkout(
     }
     if not targets:
         targets = [None]
-        unused = _get_unused_links(self)
-
-    stats["deleted"] = [_fspath_dir(u) for u in unused]
-    with self.state:
-        self.state.remove_links(unused, self.fs)
+        stats["deleted"] = _remove_unused_links(self)
 
     if isinstance(targets, str):
         targets = [targets]
