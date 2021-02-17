@@ -66,7 +66,8 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         self._stashes: dict = {}
 
     def close(self):
-        del self._refdb
+        if hasattr(self, "_refdb"):
+            del self._refdb
         self.repo.free()
 
     @property
@@ -320,15 +321,16 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     ) -> Tuple[Optional[str], bool]:
         from dvc.scm.git import Stash
 
-        # TODO: support custom refspecs once pygit2's reflog handling is fixed
-        if ref != Stash.DEFAULT_STASH:
-            raise NotImplementedError
-
         oid = self.repo.stash(
             self.repo.default_signature,
             message=message,
             include_untracked=include_untracked,
         )
+        commit = self.repo[oid]
+
+        if ref != Stash.DEFAULT_STASH:
+            self.set_ref(ref, commit.id, message=commit.message)
+            self.repo.stash_drop()
         return str(oid), False
 
     def _stash_apply(self, rev: str):
@@ -344,7 +346,9 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                     self.repo.stash_apply(i)
                     return
 
-        raise NotImplementedError
+        self.set_ref(Stash.DEFAULT_STASH, commit.id, message=commit.message)
+        self.repo.stash_apply()
+        self.repo.stash_drop()
 
     def _stash_drop(self, ref: str, index: int):
         from dvc.scm.git import Stash
