@@ -27,7 +27,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Install requirements
-      run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+      run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit git+https://github.com/intake/gdrivefs.git
     - name: Check README
       run: python setup.py checkdocs
     - uses: pre-commit/action@v2.0.0
