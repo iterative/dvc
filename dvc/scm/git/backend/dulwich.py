@@ -4,7 +4,16 @@ import logging
 import os
 import stat
 from io import BytesIO, StringIO
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from funcy import cached_property
 
@@ -117,10 +126,13 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.commondir()
 
-    def add(self, paths: List[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         from dvc.utils.fs import walk_files
 
         assert paths or update
+
+        if isinstance(paths, str):
+            paths = [paths]
 
         if update and not paths:
             self.repo.stage(list(self.repo.open_index()))
