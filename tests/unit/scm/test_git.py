@@ -513,3 +513,30 @@ def test_remind_to_track(scm, caplog):
     scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
     scm.remind_to_track()
     assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text
+
+
+def test_add(tmp_dir, scm, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
+    tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
+    git.add(["foo", "dir"])
+    staged, unstaged, untracked = scm.status()
+    assert set(staged["add"]) == {"foo", "dir/baz"}
+    assert len(unstaged) == 0
+    assert len(untracked) == 1
+
+    scm.commit("commit")
+    tmp_dir.gen({"foo": "bar", "dir": {"baz": "bar"}})
+    git.add([], update=True)
+    staged, unstaged, _ = scm.status()
+    assert set(staged["modify"]) == {"foo", "dir/baz"}
+    assert len(unstaged) == 0
+    assert len(untracked) == 1
+
+    scm.reset()
+    git.add(["dir"], update=True)
+    staged, unstaged, _ = scm.status()
+    assert set(staged["modify"]) == {"dir/baz"}
+    assert len(unstaged) == 1
+    assert len(untracked) == 1
