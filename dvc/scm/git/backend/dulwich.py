@@ -164,7 +164,18 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
         if update:
             index = self.repo.open_index()
-            self.repo.stage([fname for fname in files if fname in index])
+            if os.name == "nt":
+                # NOTE: we need git/unix separator to compare against index
+                # paths but repo.stage() expects to be called with OS paths
+                self.repo.stage(
+                    [
+                        fname
+                        for fname in files
+                        if fname.replace(b"\\", b"/") in index
+                    ]
+                )
+            else:
+                self.repo.stage([fname for fname in files if fname in index])
         else:
             self.repo.stage(files)
 
