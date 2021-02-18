@@ -50,7 +50,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
-    "dulwich>=0.20.18",
+    "dulwich>=0.20.19",
     "pygit2>=1.4.0",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
@@ -94,7 +94,7 @@ install_requires = [
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
+gdrive = ["pydrive2>=1.7.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob>=12.0", "azure-identity==1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
@@ -145,6 +145,7 @@ tests_requirements = [
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "pylint==2.5.3",
+    "astroid<2.5",  # temporary required for pylint, see #5469
     "pylint-pytest>=0.3.0",
     "pylint-plugin-utils",
     "wget",
@@ -152,6 +153,8 @@ tests_requirements = [
     "mypy",
     "wsgidav",
     "crc32c",
+    # pypi doesn't allow for direct dependencies
+    #    "gdrivefs @ git+https://github.com/intake/gdrivefs.git",
 ]
 
 setup(

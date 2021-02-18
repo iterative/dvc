@@ -6,11 +6,11 @@ import configobj
 import pytest
 from git import Repo
 
-from dvc.cache.local import LocalCache
 from dvc.exceptions import CollectCacheError
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
+from dvc.objects.db.local import LocalObjectDB
 from dvc.repo import Repo as DvcRepo
-from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit
 
@@ -22,13 +22,13 @@ class TestGC(TestDvcGit):
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
         self.good_cache = [
-            self.dvc.cache.local.hash_to_path_info(md5)
-            for md5 in self.dvc.cache.local.all()
+            self.dvc.odb.local.hash_to_path_info(md5)
+            for md5 in self.dvc.odb.local.all()
         ]
 
         self.bad_cache = []
         for i in ["123", "234", "345"]:
-            path = os.path.join(self.dvc.cache.local.cache_dir, i[0:2], i[2:])
+            path = os.path.join(self.dvc.odb.local.cache_dir, i[0:2], i[2:])
             self.create(path, i)
             self.bad_cache.append(path)
 
@@ -42,7 +42,7 @@ class TestGC(TestDvcGit):
         self._test_gc()
 
     def _test_gc(self):
-        self.assertTrue(os.path.isdir(self.dvc.cache.local.cache_dir))
+        self.assertTrue(os.path.isdir(self.dvc.odb.local.cache_dir))
         for c in self.bad_cache:
             self.assertFalse(os.path.exists(c))
 
@@ -187,11 +187,11 @@ def test_all_commits(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")
     tmp_dir.dvc_gen("testfile", "workspace")
 
-    n = _count_files(dvc.cache.local.cache_dir)
+    n = _count_files(dvc.odb.local.cache_dir)
     dvc.gc(all_commits=True)
 
     # Only one uncommitted file should go away
-    assert _count_files(dvc.cache.local.cache_dir) == n - 1
+    assert _count_files(dvc.odb.local.cache_dir) == n - 1
 
 
 def test_gc_no_dir_cache(tmp_dir, dvc):
@@ -203,9 +203,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
 
-    assert _count_files(dvc.cache.local.cache_dir) == 4
+    assert _count_files(dvc.odb.local.cache_dir) == 4
     dvc.gc(force=True, workspace=True)
-    assert _count_files(dvc.cache.local.cache_dir) == 2
+    assert _count_files(dvc.odb.local.cache_dir) == 2
 
 
 def _count_files(path):
@@ -218,7 +218,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + LocalCache.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalObjectDB.UNPACKED_DIR_SUFFIX
     )
 
     # older (pre 1.0) versions of dvc used to generate this dir
@@ -321,7 +321,9 @@ def test_gc_cloud_remove_order(tmp_dir, scm, dvc, tmp_path_factory, mocker):
     dvc.remove(dir2.relpath)
     dvc.gc(workspace=True)
 
-    mocked_remove = mocker.patch.object(LocalTree, "remove", autospec=True)
+    mocked_remove = mocker.patch.object(
+        LocalFileSystem, "remove", autospec=True
+    )
     dvc.gc(workspace=True, cloud=True)
     assert len(mocked_remove.mock_calls) == 8
     # dir (and unpacked dir) should be first 4 checksums removed from
@@ -339,14 +341,14 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "foo2", name="copy")
     shutil.rmtree(dvc.stage_cache.cache_dir)
-    assert _count_files(dvc.cache.local.cache_dir) == 1
+    assert _count_files(dvc.odb.local.cache_dir) == 1
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.cache.local.cache_dir) == 1
+    assert _count_files(dvc.odb.local.cache_dir) == 1
 
     # remove pipeline file and lockfile and check
     Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.cache.local.cache_dir) == 0
+    assert _count_files(dvc.odb.local.cache_dir) == 0
 
 
 @pytest.mark.parametrize(

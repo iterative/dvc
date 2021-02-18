@@ -4,8 +4,8 @@ import pytest
 from funcy import first
 from voluptuous import MultipleInvalid, Schema
 
-from dvc.cache import NamedCache
 from dvc.ignore import _no_match
+from dvc.objects.db import NamedCache
 from dvc.output import CHECKSUM_SCHEMA, BaseOutput
 
 
@@ -75,10 +75,10 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     mocker.patch.object(stage, "addressing", "stage.dvc")
     mocker.patch.object(stage, "wdir", ".")
     mocker.patch.object(
-        stage.repo.tree.dvcignore, "is_ignored", return_value=False,
+        stage.repo.fs.dvcignore, "is_ignored", return_value=False,
     )
     mocker.patch.object(
-        stage.repo.tree.dvcignore,
+        stage.repo.fs.dvcignore,
         "check_ignore",
         return_value=_no_match("path"),
     )

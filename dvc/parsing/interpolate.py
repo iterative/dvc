@@ -22,11 +22,10 @@ RBRACK = "]"
 PERIOD = "."
 KEYCRE = re.compile(
     r"""
-    (?<!\\)                   # escape \${} or ${{}}
-    \$                        # starts with $
-    (?:({{)|({))              # either starts with double braces or single
-    (.*?)                     # match every char inside
-    (?(1)}})(?(2)})           # end with same kinds of braces it opened with
+    (?<!\\)                            # escape \${}
+    \${                                # starts with ${
+    (?P<inner>.*?)                     # match every char inside
+    }                                  # end with {
 """,
     re.VERBOSE,
 )
@@ -137,6 +136,7 @@ def parse_expr(s: str):
         result = get_parser().parseString(s, parseAll=True)
     except ParseException as exc:
         format_and_raise_parse_error(exc)
+        raise AssertionError("unreachable")
 
     joined = result.asList()
     assert len(joined) == 1
@@ -144,7 +144,7 @@ def parse_expr(s: str):
 
 
 def get_expression(match: "Match", skip_checks: bool = False):
-    _, _, inner = match.groups()
+    inner = match["inner"]
     return inner if skip_checks else parse_expr(inner)
 
 

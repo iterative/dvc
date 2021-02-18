@@ -17,12 +17,12 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -101,12 +101,10 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
         _, entry_hash = next(
-            load(
-                self.dvc.cache.local, out.hash_info
-            ).hash_info.dir_info.items()
+            load(self.dvc.odb.local, out.hash_info).hash_info.dir_info.items()
         )
         cache = os.fspath(
-            self.dvc.cache.local.hash_to_path_info(entry_hash.value)
+            self.dvc.odb.local.hash_to_path_info(entry_hash.value)
         )
 
         os.chmod(cache, 0o644)
@@ -148,7 +146,7 @@ class CheckoutBase(TestDvcGit):
         paths = [
             path
             for output in stage["outs"]
-            for path in self.dvc.tree.walk_files(output["path"])
+            for path in self.dvc.fs.walk_files(output["path"])
         ]
 
         return [
@@ -312,8 +310,8 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalTree.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         with pytest.raises(CheckoutError):
@@ -470,7 +468,7 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         self.assertTrue(System.is_symlink(self.DATA))
         old_data_link = os.path.realpath(self.DATA)
 
-        old_cache_dir = self.dvc.cache.local.cache_dir
+        old_cache_dir = self.dvc.odb.local.cache_dir
         new_cache_dir = old_cache_dir + "_new"
         os.rename(old_cache_dir, new_cache_dir)
 
@@ -514,7 +512,7 @@ def test_checkout_no_checksum(tmp_dir, dvc):
     [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
 )
 def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
-    dvc.cache.local.cache_types = [link]
+    dvc.odb.local.cache_types = [link]
 
     tmp_dir.dvc_gen({"dir": {"data": "text"}})
     dvc.unprotect("dir/data")
@@ -527,7 +525,7 @@ def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_checkout_relink_protected(tmp_dir, dvc, link):
-    dvc.cache.local.cache_types = [link]
+    dvc.odb.local.cache_types = [link]
 
     tmp_dir.dvc_gen("foo", "foo")
     dvc.unprotect("foo")
@@ -718,7 +716,7 @@ def test_checkout_with_relink_existing(tmp_dir, dvc, link):
     (tmp_dir / "foo").unlink()
 
     tmp_dir.dvc_gen("bar", "bar")
-    dvc.cache.local.cache_types = [link]
+    dvc.odb.local.cache_types = [link]
 
     stats = dvc.checkout(relink=True)
     assert stats == {**empty_checkout, "added": ["foo"]}
@@ -769,7 +767,7 @@ def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
     dvc.add("remote://workspace/foo")
 
     remote = dvc.cloud.get_remote("workspace")
-    remote.tree.remove(file_path)
+    remote.fs.remove(file_path)
     assert not file_path.exists()
 
     stats = dvc.checkout(force=True)

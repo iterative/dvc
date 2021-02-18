@@ -165,15 +165,12 @@ def _process_stages(
                 command="add",
             )
         else:
+            from dvc.fs import get_cloud_fs
             from dvc.objects import transfer
-            from dvc.tree import get_cloud_tree
 
-            from_tree = get_cloud_tree(repo, url=target)
+            from_fs = get_cloud_fs(repo, url=target)
             out.hash_info = transfer(
-                out.cache,
-                from_tree,
-                from_tree.path_info,
-                jobs=kwargs.get("jobs"),
+                out.odb, from_fs, from_fs.path_info, jobs=kwargs.get("jobs"),
             )
             out.checkout()
 
@@ -212,7 +209,7 @@ def _find_all_targets(repo, target, recursive):
         return [
             os.fspath(path)
             for path in Tqdm(
-                repo.tree.walk_files(target),
+                repo.fs.walk_files(target),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",

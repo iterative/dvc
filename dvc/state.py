@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlencode, urlunparse
 
 from dvc.exceptions import DvcException
+from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.utils import current_timestamp, relpath, to_chunks
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
@@ -34,21 +35,16 @@ class StateBase(ABC):
     def __init__(self):
         self.count = 0
 
-    @property
     @abstractmethod
-    def files(self):
+    def save(self, path_info, fs, hash_info):
         pass
 
     @abstractmethod
-    def save(self, path_info, hash_info):
+    def get(self, path_info, fs):
         pass
 
     @abstractmethod
-    def get(self, path_info):
-        pass
-
-    @abstractmethod
-    def save_link(self, path_info):
+    def save_link(self, path_info, fs):
         pass
 
     @abstractmethod
@@ -72,17 +68,13 @@ class StateBase(ABC):
 
 
 class StateNoop(StateBase):
-    @property
-    def files(self):
-        return []
-
-    def save(self, path_info, hash_info):
+    def save(self, path_info, fs, hash_info):
         pass
 
-    def get(self, path_info):  # pylint: disable=unused-argument
+    def get(self, path_info, fs):  # pylint: disable=unused-argument
         return None
 
-    def save_link(self, path_info):
+    def save_link(self, path_info, fs):
         pass
 
     def load(self):
@@ -133,13 +125,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     MAX_UINT = 2 ** 64 - 2
 
     def __init__(self, repo):
-        from dvc.tree.local import LocalTree
 
         super().__init__()
 
         self.repo = repo
         self.root_dir = repo.root_dir
-        self.tree = LocalTree(None, {"url": self.root_dir})
+        self.fs = LocalFileSystem(None, {"url": self.root_dir})
 
         state_config = repo.config.get("state", {})
         self.row_limit = state_config.get("row_limit", self.STATE_ROW_LIMIT)
@@ -153,19 +144,9 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         self.state_file = os.path.join(repo.tmp_dir, self.STATE_FILE)
 
-        # https://www.sqlite.org/tempfiles.html
-        self.temp_files = [
-            self.state_file + "-journal",
-            self.state_file + "-wal",
-        ]
-
         self.database = None
         self.cursor = None
         self.inserts = 0
-
-    @property
-    def files(self):
-        return self.temp_files + [self.state_file]
 
     def _execute(self, cmd, parameters=()):
         logger.trace(cmd)
@@ -398,19 +379,23 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
-    def save(self, path_info, hash_info):
+    def save(self, path_info, fs, hash_info):
         """Save hash for the specified path info.
 
         Args:
             path_info (dict): path_info to save hash for.
             hash_info (HashInfo): hash to save.
         """
+
+        if not isinstance(fs, LocalFileSystem):
+            return
+
         assert isinstance(path_info, str) or path_info.scheme == "local"
         assert hash_info
         assert isinstance(hash_info, HashInfo)
         assert os.path.exists(path_info)
 
-        actual_mtime, actual_size = get_mtime_and_size(path_info, self.tree)
+        actual_mtime, actual_size = get_mtime_and_size(path_info, self.fs)
         actual_inode = get_inode(path_info)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -424,7 +409,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             actual_inode, actual_mtime, actual_size, hash_info.value
         )
 
-    def get(self, path_info):
+    def get(self, path_info, fs):
         """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
 
@@ -435,16 +420,19 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             HashInfo or None: hash for the specified path info or None if it
             doesn't exist in the state database.
         """
+        if not isinstance(fs, LocalFileSystem):
+            return None
+
         assert isinstance(path_info, str) or path_info.scheme == "local"
         path = os.fspath(path_info)
 
-        # NOTE: use os.path.exists instead of LocalTree.exists
+        # NOTE: use os.path.exists instead of LocalFileSystem.exists
         # because it uses lexists() and will return True for broken
         # symlinks that we cannot stat() in get_mtime_and_size
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(path, self.tree)
+        actual_mtime, actual_size = get_mtime_and_size(path, self.fs)
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -458,19 +446,22 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self._update_state_record_timestamp_for_inode(actual_inode)
         return HashInfo("md5", value, size=int(actual_size))
 
-    def save_link(self, path_info):
+    def save_link(self, path_info, fs):
         """Adds the specified path to the list of links created by dvc. This
         list is later used on `dvc checkout` to cleanup old links.
 
         Args:
             path_info (dict): path info to add to the list of links.
         """
-        assert isinstance(path_info, str) or path_info.scheme == "local"
-
-        if not self.tree.exists(path_info):
+        if not isinstance(fs, LocalFileSystem):
             return
 
-        mtime, _ = get_mtime_and_size(path_info, self.tree)
+        assert isinstance(path_info, str) or path_info.scheme == "local"
+
+        if not self.fs.exists(path_info):
+            return
+
+        mtime, _ = get_mtime_and_size(path_info, self.fs)
         inode = get_inode(path_info)
         relative_path = relpath(path_info, self.root_dir)
 
@@ -479,12 +470,15 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         )
         self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
-    def get_unused_links(self, used):
+    def get_unused_links(self, used, fs):
         """Removes all saved links except the ones that are used.
 
         Args:
             used (list): list of used links that should not be removed.
         """
+        if not isinstance(fs, LocalFileSystem):
+            return
+
         unused = []
 
         self._execute(f"SELECT * FROM {self.LINK_STATE_TABLE}")
@@ -493,11 +487,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             inode = self._from_sqlite(inode)
             path = os.path.join(self.root_dir, relative_path)
 
-            if path in used or not self.tree.exists(path):
+            if path in used or not self.fs.exists(path):
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path, self.tree)
+            actual_mtime, _ = get_mtime_and_size(path, self.fs)
 
             if (inode, mtime) == (actual_inode, actual_mtime):
                 logger.debug("Removing '%s' as unused link.", path)
@@ -505,7 +499,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         return unused
 
-    def remove_links(self, unused):
+    def remove_links(self, unused, fs):
+        if not isinstance(fs, LocalFileSystem):
+            return
+
         for path in unused:
             remove(path)
 

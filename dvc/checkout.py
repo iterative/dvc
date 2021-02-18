@@ -10,6 +10,7 @@ from dvc.exceptions import (
     DvcException,
 )
 from dvc.objects import ObjectFormatError, check, load
+from dvc.objects.stage import get_hash
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
@@ -17,7 +18,7 @@ from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
 logger = logging.getLogger(__name__)
 
 
-def _changed(path_info, tree, obj, cache):
+def _changed(path_info, fs, obj, cache):
     logger.trace("checking if '%s'('%s') has changed.", path_info, obj)
 
     try:
@@ -29,7 +30,7 @@ def _changed(path_info, tree, obj, cache):
         return True
 
     try:
-        actual = tree.get_hash(path_info, obj.hash_info.name)
+        actual = get_hash(path_info, fs, obj.hash_info.name)
     except FileNotFoundError:
         logger.debug("'%s' doesn't exist.", path_info)
         return True
@@ -47,15 +48,15 @@ def _changed(path_info, tree, obj, cache):
     return False
 
 
-def _remove(path_info, tree, cache, force=False):
-    if not tree.exists(path_info):
+def _remove(path_info, fs, cache, force=False):
+    if not fs.exists(path_info):
         return
 
     if force:
-        tree.remove(path_info)
+        fs.remove(path_info)
         return
 
-    current = tree.get_hash(path_info, tree.PARAM_CHECKSUM)
+    current = get_hash(path_info, fs, fs.PARAM_CHECKSUM)
     try:
         obj = load(cache, current)
         check(cache, obj)
@@ -68,26 +69,26 @@ def _remove(path_info, tree, cache, force=False):
         if not prompt.confirm(msg):
             raise ConfirmRemoveError(str(path_info))
 
-    tree.remove(path_info)
+    fs.remove(path_info)
 
 
 def _verify_link(cache, path_info, link_type):
-    if link_type == "hardlink" and cache.tree.getsize(path_info) == 0:
+    if link_type == "hardlink" and cache.fs.getsize(path_info) == 0:
         return
 
     if cache.cache_type_confirmed:
         return
 
-    is_link = getattr(cache.tree, f"is_{link_type}", None)
+    is_link = getattr(cache.fs, f"is_{link_type}", None)
     if is_link and not is_link(path_info):
-        cache.tree.remove(path_info)
+        cache.fs.remove(path_info)
         raise DvcException(f"failed to verify {link_type}")
 
     cache.cache_type_confirmed = True
 
 
 def _do_link(cache, from_info, to_info, link_method):
-    if cache.tree.exists(to_info):
+    if cache.fs.exists(to_info):
         raise DvcException(f"Link '{to_info}' already exists!")
 
     link_method(from_info, to_info)
@@ -100,7 +101,7 @@ def _do_link(cache, from_info, to_info, link_method):
 @slow_link_guard
 def _try_links(cache, from_info, to_info, link_types):
     while link_types:
-        link_method = getattr(cache.tree, link_types[0])
+        link_method = getattr(cache.fs, link_types[0])
         try:
             _do_link(cache, from_info, to_info, link_method)
             _verify_link(cache, to_info, link_types[0])
@@ -116,7 +117,7 @@ def _try_links(cache, from_info, to_info, link_types):
 
 
 def _link(cache, from_info, to_info):
-    assert cache.tree.isfile(from_info)
+    assert cache.fs.isfile(from_info)
     cache.makedirs(to_info.parent)
     _try_links(cache, from_info, to_info, cache.cache_types)
 
@@ -130,76 +131,76 @@ def _cache_is_copy(cache, path_info):
         return True
 
     workspace_file = path_info.with_name("." + uuid())
-    test_cache_file = cache.tree.path_info / ".cache_type_test_file"
-    if not cache.tree.exists(test_cache_file):
+    test_cache_file = cache.fs.path_info / ".cache_type_test_file"
+    if not cache.fs.exists(test_cache_file):
         cache.makedirs(test_cache_file.parent)
-        with cache.tree.open(test_cache_file, "wb") as fobj:
+        with cache.fs.open(test_cache_file, "wb") as fobj:
             fobj.write(bytes(1))
     try:
         _link(cache, test_cache_file, workspace_file)
     finally:
-        cache.tree.remove(workspace_file)
-        cache.tree.remove(test_cache_file)
+        cache.fs.remove(workspace_file)
+        cache.fs.remove(test_cache_file)
 
     cache.cache_type_confirmed = True
     return cache.cache_types[0] == "copy"
 
 
 def _checkout_file(
-    path_info, tree, obj, cache, force, progress_callback=None, relink=False,
+    path_info, fs, obj, cache, force, progress_callback=None, relink=False,
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
     cache_info = cache.hash_to_path_info(obj.hash_info.value)
-    if tree.exists(path_info):
-        if not relink and _changed(path_info, tree, obj, cache):
+    if fs.exists(path_info):
+        if not relink and _changed(path_info, fs, obj, cache):
             modified = True
-            _remove(path_info, tree, cache, force=force)
+            _remove(path_info, fs, cache, force=force)
             _link(cache, cache_info, path_info)
         else:
-            if tree.iscopy(path_info) and _cache_is_copy(cache, path_info):
+            if fs.iscopy(path_info) and _cache_is_copy(cache, path_info):
                 cache.unprotect(path_info)
             else:
-                _remove(path_info, tree, cache, force=force)
+                _remove(path_info, fs, cache, force=force)
                 _link(cache, cache_info, path_info)
     else:
         _link(cache, cache_info, path_info)
         modified = True
 
-    tree.state.save(path_info, obj.hash_info)
+    fs.repo.state.save(path_info, fs, obj.hash_info)
     if progress_callback:
         progress_callback(str(path_info))
 
     return modified
 
 
-def _remove_redundant_files(path_info, tree, dir_info, cache, force):
-    existing_files = set(tree.walk_files(path_info))
+def _remove_redundant_files(path_info, fs, dir_info, cache, force):
+    existing_files = set(fs.walk_files(path_info))
 
     needed_files = {info for info, _ in dir_info.items(path_info)}
     redundant_files = existing_files - needed_files
     for path in redundant_files:
-        _remove(path, tree, cache, force)
+        _remove(path, fs, cache, force)
 
     return bool(redundant_files)
 
 
 def _checkout_dir(
-    path_info, tree, obj, cache, force, progress_callback=None, relink=False,
+    path_info, fs, obj, cache, force, progress_callback=None, relink=False,
 ):
     modified = False, False
     # Create dir separately so that dir is created
     # even if there are no files in it
-    if not tree.exists(path_info):
+    if not fs.exists(path_info):
         modified = True
-        tree.makedirs(path_info)
+        fs.makedirs(path_info)
 
     logger.debug("Linking directory '%s'.", path_info)
 
     for entry_info, entry_hash_info in obj.hash_info.dir_info.items(path_info):
         entry_modified = _checkout_file(
             entry_info,
-            tree,
+            fs,
             cache.get(entry_hash_info),
             cache,
             force,
@@ -211,12 +212,12 @@ def _checkout_dir(
 
     modified = (
         _remove_redundant_files(
-            path_info, tree, obj.hash_info.dir_info, cache, force
+            path_info, fs, obj.hash_info.dir_info, cache, force
         )
         or modified
     )
 
-    tree.state.save(path_info, obj.hash_info)
+    fs.repo.state.save(path_info, fs, obj.hash_info)
 
     # relink is not modified, assume it as nochange
     return modified and not relink
@@ -224,7 +225,7 @@ def _checkout_dir(
 
 def _checkout(
     path_info,
-    tree,
+    fs,
     obj,
     cache,
     force=False,
@@ -233,21 +234,21 @@ def _checkout(
 ):
     if not obj.hash_info.isdir:
         ret = _checkout_file(
-            path_info, tree, obj, cache, force, progress_callback, relink
+            path_info, fs, obj, cache, force, progress_callback, relink
         )
     else:
         ret = _checkout_dir(
-            path_info, tree, obj, cache, force, progress_callback, relink,
+            path_info, fs, obj, cache, force, progress_callback, relink,
         )
 
-    tree.state.save_link(path_info)
+    fs.repo.state.save_link(path_info, fs)
 
     return ret
 
 
 def checkout(
     path_info,
-    tree,
+    fs,
     obj,
     cache,
     force=False,
@@ -255,7 +256,7 @@ def checkout(
     relink=False,
     quiet=False,
 ):
-    if path_info.scheme not in ["local", cache.tree.scheme]:
+    if path_info.scheme not in ["local", cache.fs.scheme]:
         raise NotImplementedError
 
     failed = None
@@ -266,10 +267,10 @@ def checkout(
                 "No file hash info found for '%s'. It won't be created.",
                 path_info,
             )
-        _remove(path_info, tree, cache, force=force)
+        _remove(path_info, fs, cache, force=force)
         failed = path_info
 
-    elif not relink and not _changed(path_info, tree, obj, cache):
+    elif not relink and not _changed(path_info, fs, obj, cache):
         logger.trace("Data '%s' didn't change.", path_info)
         skip = True
     else:
@@ -282,7 +283,7 @@ def checkout(
                     obj.hash_info,
                     path_info,
                 )
-            _remove(path_info, tree, cache, force=force)
+            _remove(path_info, fs, cache, force=force)
             failed = path_info
 
     if failed or skip:
@@ -297,5 +298,5 @@ def checkout(
     logger.debug("Checking out '%s' with cache '%s'.", path_info, obj)
 
     return _checkout(
-        path_info, tree, obj, cache, force, progress_callback, relink,
+        path_info, fs, obj, cache, force, progress_callback, relink,
     )

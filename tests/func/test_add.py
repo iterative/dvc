@@ -12,7 +12,6 @@ import pytest
 from mock import call, patch
 
 import dvc as dvc_module
-from dvc.cache import Cache
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
@@ -21,14 +20,15 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
+from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
+from dvc.objects.db import ODBManager
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
@@ -38,7 +38,7 @@ from tests.utils import get_gitignore_content
 
 def test_add(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
-    md5 = file_md5("foo")
+    md5 = file_md5("foo", dvc.fs)
 
     assert stage is not None
 
@@ -106,7 +106,7 @@ def test_add_directory(tmp_dir, dvc):
 
     hash_info = stage.outs[0].hash_info
 
-    dir_info = load(dvc.cache.local, hash_info).hash_info.dir_info
+    dir_info = load(dvc.odb.local, hash_info).hash_info.dir_info
     for path, _ in dir_info.trie.items():
         assert "\\" not in path
 
@@ -443,7 +443,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_module.tree.local, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.objects.stage, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -474,7 +474,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_module.tree.local, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.objects.stage, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
@@ -511,17 +511,17 @@ class TestAddCommit(TestDvc):
         ret = main(["add", self.FOO, "--no-commit"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
+        self.assertFalse(os.path.exists(self.dvc.odb.local.cache_dir))
 
         ret = main(["commit", self.FOO + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
+        self.assertEqual(len(os.listdir(self.dvc.odb.local.cache_dir)), 1)
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_hash_counter = mocker.spy(LocalTree, "get_dir_hash")
+    get_dir_hash_counter = mocker.spy(dvc_module.objects.stage, "get_dir_hash")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -700,7 +700,7 @@ def test_windows_should_add_when_cache_on_different_drive(
     tmp_dir, dvc, temporary_windows_drive
 ):
     dvc.config["cache"]["dir"] = temporary_windows_drive
-    dvc.cache = Cache(dvc)
+    dvc.odb = ODBManager(dvc)
 
     (stage,) = tmp_dir.dvc_gen({"file": "file"})
     cache_path = stage.outs[0].cache_path
@@ -713,12 +713,12 @@ def test_windows_should_add_when_cache_on_different_drive(
 def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     tmp_dir.gen("dir/data", "data")
 
-    dvc.cache.local.cache_types = ["symlink"]
+    dvc.odb.local.cache_types = ["symlink"]
 
     dvc.add("dir")
     tmp_dir.gen("dir/new_file", "new_file_content")
 
-    unprotect_spy = mocker.spy(dvc.cache.local, "unprotect")
+    unprotect_spy = mocker.spy(dvc.odb.local, "unprotect")
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
@@ -726,13 +726,13 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
 
 
 def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
-    dvc.cache.local.cache_types = ["copy"]
+    dvc.odb.local.cache_types = ["copy"]
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     shutil.copy("bar", "foo")
 
-    copy_spy = mocker.spy(dvc.cache.local.tree, "copy")
+    copy_spy = mocker.spy(dvc.odb.local.fs, "copy")
 
     dvc.add("foo")
 
@@ -758,9 +758,9 @@ def test_should_relink_on_repeated_add(
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.cache.local.tree, link)(PathInfo("bar"), PathInfo("foo"))
+    getattr(dvc.odb.local.fs, link)(PathInfo("bar"), PathInfo("foo"))
 
-    dvc.cache.local.cache_types = [new_link]
+    dvc.odb.local.cache_types = [new_link]
 
     dvc.add("foo")
 
@@ -769,7 +769,7 @@ def test_should_relink_on_repeated_add(
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_should_protect_on_repeated_add(link, tmp_dir, dvc):
-    dvc.cache.local.cache_types = [link]
+    dvc.odb.local.cache_types = [link]
 
     tmp_dir.dvc_gen({"foo": "foo"})
 
@@ -827,7 +827,7 @@ def test_not_raises_on_re_add(tmp_dir, dvc):
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_add_empty_files(tmp_dir, dvc, link):
     file = "foo"
-    dvc.cache.local.cache_types = [link]
+    dvc.odb.local.cache_types = [link]
     stages = tmp_dir.dvc_gen(file, "")
 
     assert (tmp_dir / file).exists()
@@ -836,9 +836,9 @@ def test_add_empty_files(tmp_dir, dvc, link):
 
 
 def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
-    dvc.cache.local.cache_types = ["hardlink"]
+    dvc.odb.local.cache_types = ["hardlink"]
     tmp_dir.gen({"foo": "", "bar": "", "lorem": "lorem", "ipsum": "ipsum"})
-    m = mocker.spy(LocalTree, "is_hardlink")
+    m = mocker.spy(LocalFileSystem, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
     assert m.call_count == 1

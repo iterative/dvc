@@ -28,6 +28,10 @@ jobs:
         python-version: 3.8
     - name: Install requirements
       run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+    - name: install temporary dependencies
+      run: |
+        pip install git+https://github.com/isidentical/gdrivefs@service-account
+        pip install git+https://github.com/isidentical/pydata-google-auth@service-account
     - name: Check README
       run: python setup.py checkdocs
     - uses: pre-commit/action@v2.0.0
@@ -69,6 +73,10 @@ jobs:
       run: |
         pip install wheel
         pip install -e ".[all,tests]"
+    - name: install temporary dependencies
+      run: |
+        pip install git+https://github.com/isidentical/gdrivefs@service-account
+        pip install git+https://github.com/isidentical/pydata-google-auth@service-account
     - name: setup git
       run: |
         git config --global user.email "dvctester@example.com"

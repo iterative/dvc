@@ -3,13 +3,14 @@ import os
 from mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
-from dvc.objects import save, stage
+from dvc.fs.local import LocalFileSystem
+from dvc.objects import save
+from dvc.objects.stage import stage
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
-from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
-from tests.unit.tree.test_repo import make_subrepo
+from tests.unit.fs.test_repo import make_subrepo
 
 
 def test_external_repo(erepo_dir):
@@ -51,7 +52,7 @@ def test_cache_reused(erepo_dir, mocker, local_cloud):
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(LocalTree, "download")
+    download_spy = mocker.spy(LocalFileSystem, "download")
 
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"
@@ -92,7 +93,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_tree.download(
+        repo.repo_fs.download(
             PathInfo(repo.root_dir) / "subdir" / "file", PathInfo(dest),
         )
 
@@ -113,7 +114,7 @@ def test_relative_remote(erepo_dir, tmp_dir):
     erepo_dir.dvc.push()
 
     (erepo_dir / "file").unlink()
-    remove(erepo_dir.dvc.cache.local.cache_dir)
+    remove(erepo_dir.dvc.odb.local.cache_dir)
 
     url = os.fspath(erepo_dir)
 
@@ -187,7 +188,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_tree.download(
+        repo.repo_fs.download(
             PathInfo(repo.root_dir) / "dir",
             PathInfo(tmp_dir / "out"),
             follow_subrepos=False,
@@ -196,17 +197,17 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         assert (tmp_dir / "out").read_text() == expected_files
 
         # clear cache to test saving to cache
-        cache_dir = tmp_dir / repo.cache.local.cache_dir
+        cache_dir = tmp_dir / repo.odb.local.cache_dir
         remove(cache_dir)
         makedirs(cache_dir)
 
         obj = stage(
-            repo.cache.local,
+            repo.odb.local,
             PathInfo(repo.root_dir) / "dir",
-            repo.repo_tree,
+            repo.repo_fs,
             follow_subrepos=False,
         )
-        save(repo.cache.local, obj)
+        save(repo.odb.local, obj)
         assert set(cache_dir.glob("*/*")) == {
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
@@ -226,7 +227,7 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_tree.download(
+        repo.repo_fs.download(
             PathInfo(repo.root_dir) / "dir",
             PathInfo(tmp_dir / "out"),
             follow_subrepos=False,

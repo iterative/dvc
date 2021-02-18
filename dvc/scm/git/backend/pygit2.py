@@ -2,7 +2,7 @@ import locale
 import logging
 import os
 from io import BytesIO, StringIO
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple
+from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
@@ -84,7 +84,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         raise NotImplementedError
 
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         raise NotImplementedError
 
     def commit(self, msg: str, no_verify: bool = False):

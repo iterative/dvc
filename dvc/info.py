@@ -7,10 +7,10 @@ import uuid
 import psutil
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
 from dvc.system import System
-from dvc.tree import TREES, get_tree_cls, get_tree_config
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
@@ -37,16 +37,16 @@ def get_dvc_info():
         # can't auto-create it, as it might cause issues if the user
         # later decides to enable shared cache mode with
         # `dvc config cache.shared group`.
-        if os.path.exists(repo.cache.local.cache_dir):
+        if os.path.exists(repo.odb.local.cache_dir):
             info.append(
                 "Cache types: {}".format(_get_linktype_support_info(repo))
             )
-            fs_type = get_fs_type(repo.cache.local.cache_dir)
+            fs_type = get_fs_type(repo.odb.local.cache_dir)
             info.append(f"Cache directory: {fs_type}")
         else:
             info.append("Cache types: " + error_link("no-dvc-cache"))
 
-        info.append(f"Caches: {_get_caches(repo.cache)}")
+        info.append(f"Caches: {_get_caches(repo.odb)}")
 
         info.append(f"Remotes: {_get_remotes(repo.config)}")
 
@@ -75,7 +75,7 @@ def _get_caches(cache):
 
 def _get_remotes(config):
     schemes = (
-        get_tree_cls(get_tree_config(config, name=remote)).scheme
+        get_fs_cls(get_fs_config(config, name=remote)).scheme
         for remote in config["remote"]
     )
 
@@ -91,7 +91,7 @@ def _get_linktype_support_info(repo):
     }
 
     fname = "." + str(uuid.uuid4())
-    src = os.path.join(repo.cache.local.cache_dir, fname)
+    src = os.path.join(repo.odb.local.cache_dir, fname)
     open(src, "w").close()
     dst = os.path.join(repo.root_dir, fname)
 
@@ -117,11 +117,11 @@ def _get_linktype_support_info(repo):
 def _get_supported_remotes():
 
     supported_remotes = []
-    for tree_cls in TREES:
-        if not tree_cls.get_missing_deps():
-            supported_remotes.append(tree_cls.scheme)
+    for scheme, fs_cls in FS_MAP.items():
+        if not fs_cls.get_missing_deps():
+            supported_remotes.append(scheme)
 
-    if len(supported_remotes) == len(TREES):
+    if len(supported_remotes) == len(FS_MAP):
         return "All remotes"
 
     if len(supported_remotes) == 1:

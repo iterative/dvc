@@ -17,31 +17,35 @@ def parse_params(path_params: Iterable[str]) -> List[Dict[str, List[str]]]:
     return [{path: params} for path, params in ret.items()]
 
 
-def loads_params(path_params: Iterable[str],) -> Dict[str, Dict[str, Any]]:
-
+def loads_param_overrides(
+    path_params: Iterable[str],
+) -> Dict[str, Dict[str, Any]]:
     """Loads the content of params from the cli as Python object."""
     from ruamel.yaml import YAMLError
 
+    from dvc.dependency.param import ParamsDependency
     from dvc.exceptions import InvalidArgumentError
 
     from .serialize import loads_yaml
 
-    normalized_params = parse_params(path_params)
     ret: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
-    for part in normalized_params:
-        assert part
-        (item,) = part.items()
-        path, param_keys = item
+    for path_param in path_params:
+        param_name, _, param_value = path_param.partition("=")
+        if not param_value:
+            raise InvalidArgumentError(
+                f"Must provide a value for parameter '{param_name}'"
+            )
+        path, _, param_name = param_name.partition(":")
+        if not param_name:
+            param_name = path
+            path = ParamsDependency.DEFAULT_PARAMS_FILE
 
-        for param_str in param_keys:
-            try:
-                key, _, value = param_str.partition("=")
-                # interpret value strings using YAML rules
-                parsed = loads_yaml(value)
-                ret[path][key] = parsed
-            except (ValueError, YAMLError):
-                raise InvalidArgumentError(
-                    f"Invalid param/value pair '{param_str}'"
-                )
+        try:
+            ret[path][param_name] = loads_yaml(param_value)
+        except (ValueError, YAMLError):
+            raise InvalidArgumentError(
+                f"Invalid parameter value for '{param_name}': '{param_value}"
+            )
+
     return ret

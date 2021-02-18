@@ -41,36 +41,31 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
             progress_func(len(data))
 
 
-def file_md5(fname, tree=None):
+def file_md5(fname, fs):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.istextfile import istextfile
     from dvc.progress import Tqdm
 
-    if tree:
-        stat_func = tree.stat
-        open_func = tree.open
-    else:
-        stat_func = os.stat
-        open_func = open
-
     hash_md5 = hashlib.md5()
-    binary = not istextfile(fname, tree=tree)
-    size = stat_func(fname).st_size
+    binary = not istextfile(fname, fs=fs)
+    size = fs.getsize(fname) or 0
     no_progress_bar = True
     if size >= LARGE_FILE_SIZE:
         no_progress_bar = False
-        msg = "Computing md5 for a large file '{}'. This is only done once."
-        logger.info(msg.format(relpath(fname)))
-    name = relpath(fname)
+        msg = (
+            f"Computing md5 for a large file '{fname}'. "
+            "This is only done once."
+        )
+        logger.info(msg)
 
     with Tqdm(
-        desc=name,
+        desc=str(fname),
         disable=no_progress_bar,
         total=size,
         bytes=True,
         leave=False,
     ) as pbar:
-        with open_func(fname, "rb") as fobj:
+        with fs.open(fname, "rb") as fobj:
             _fobj_md5(fobj, hash_md5, binary, pbar.update)
 
     return hash_md5.hexdigest()

@@ -60,7 +60,9 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].fspath, outs[0])
-        self.assertEqual(stage.outs[0].hash_info.value, file_md5(self.FOO))
+        self.assertEqual(
+            stage.outs[0].hash_info.value, file_md5(self.FOO, self.dvc.fs)
+        )
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):
@@ -722,12 +724,12 @@ class TestRunCommit(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
+        self.assertFalse(os.path.exists(self.dvc.odb.local.cache_dir))
 
         ret = main(["commit", fname + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
+        self.assertEqual(len(os.listdir(self.dvc.odb.local.cache_dir)), 1)
 
 
 class TestRunPersist(TestDvc):

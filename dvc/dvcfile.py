@@ -20,7 +20,6 @@ from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
     dump_yaml,
-    load_yaml,
     modify_yaml,
     parse_yaml,
     parse_yaml_for_update,
@@ -106,14 +105,22 @@ class FileMixin:
         return relpath(self.path)
 
     def exists(self):
-        return self.repo.tree.exists(self.path)
+        return self.repo.fs.exists(self.path)
 
     def _is_git_ignored(self):
-        from dvc.tree.local import LocalTree
+        from dvc.fs.local import LocalFileSystem
 
         return isinstance(
-            self.repo.tree, LocalTree
+            self.repo.fs, LocalFileSystem
         ) and self.repo.scm.is_ignored(self.path)
+
+    def _verify_filename(self):
+        if self.verify:
+            check_dvc_filename(self.path)
+
+    def _check_gitignored(self):
+        if self._is_git_ignored():
+            raise FileIsGitIgnored(self.path)
 
     def _load(self):
         # it raises the proper exceptions by priority:
@@ -122,16 +129,15 @@ class FileMixin:
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
         if not self.exists():
-            is_ignored = self.repo.tree.exists(self.path, use_dvcignore=False)
+            is_ignored = self.repo.fs.exists(self.path, use_dvcignore=False)
             raise StageFileDoesNotExistError(self.path, dvc_ignored=is_ignored)
 
-        if self.verify:
-            check_dvc_filename(self.path)
-        if not self.repo.tree.isfile(self.path):
+        self._verify_filename()
+        if not self.repo.fs.isfile(self.path):
             raise StageFileIsNotDvcFileError(self.path)
-        if self._is_git_ignored():
-            raise FileIsGitIgnored(self.path)
-        with self.repo.tree.open(self.path, encoding="utf-8") as fd:
+
+        self._check_gitignored()
+        with self.repo.fs.open(self.path, encoding="utf-8") as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
         return self.validate(d, self.relpath), stage_text
@@ -232,7 +238,7 @@ class PipelineFile(FileMixin):
         self._check_if_parametrized(stage)
         stage_data = serialize.to_pipeline_file(stage)
 
-        with modify_yaml(self.path, tree=self.repo.tree) as data:
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
             if not data:
                 logger.info("Creating '%s'", self.relpath)
 
@@ -330,18 +336,25 @@ class Lockfile(FileMixin):
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
-    def load(self):
-        if not self.exists():
-            return {}
+    def _verify_filename(self):
+        pass  # lockfile path is hardcoded, so no need to verify here
 
-        data = load_yaml(self.path, tree=self.repo.tree)
+    def _load(self):
         try:
-            data = self.validate(data, fname=self.relpath)
+            return super()._load()
+        except StageFileDoesNotExistError:
+            # we still need to account for git-ignored dvc.lock file
+            # even though it may not exist or have been .dvcignored
+            self._check_gitignored()
+            return {}, ""
         except StageFileFormatError as exc:
             raise LockfileCorruptedError(
                 f"Lockfile '{self.relpath}' is corrupted."
             ) from exc
-        return data
+
+    def load(self):
+        d, _ = self._load()
+        return d
 
     @property
     def latest_version_info(self):
@@ -351,7 +364,7 @@ class Lockfile(FileMixin):
     def dump(self, stage, **kwargs):
         stage_data = serialize.to_lockfile(stage)
 
-        with modify_yaml(self.path, tree=self.repo.tree) as data:
+        with modify_yaml(self.path, fs=self.repo.fs) as data:
             version = LOCKFILE_VERSION.from_dict(data)
             if version == LOCKFILE_VERSION.V1:
                 logger.info(

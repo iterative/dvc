@@ -4,7 +4,7 @@ on:
     branches:
     - master
   release:
-    types: [released]
+    types: [released, prereleased]
 jobs:
   linux:
     runs-on: ubuntu-16.04
@@ -121,11 +121,11 @@ jobs:
       with:
         store_login: ${{ secrets.STORE_LOGIN }}
         snap: ${{ steps.snapcraft.outputs.snap }}
-        release: edge
+        release: edge,v2/edge
     - name: Publish to the stable channel
       uses: snapcore/action-publish@v1
-      if: github.event_name == 'release'
+      if: ${{ github.event_name == 'release' && github.event.release.released }}
       with:
         store_login: ${{ secrets.STORE_LOGIN }}
         snap: ${{ steps.snapcraft.outputs.snap }}
-        release: stable
+        release: stable,v2/stable

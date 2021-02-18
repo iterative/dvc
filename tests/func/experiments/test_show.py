@@ -108,14 +108,14 @@ def test_show_checkpoint(
     for i, rev in enumerate(checkpoints):
         if i == 0:
             name = dvc.experiments.get_exact_name(rev)
-            tree = "╓"
+            fs = "╓"
         elif i == len(checkpoints) - 1:
             name = rev[:7]
-            tree = "╨"
+            fs = "╨"
         else:
             name = rev[:7]
-            tree = "╟"
-        assert f"{tree} {name}" in cap.out
+            fs = "╟"
+        assert f"{fs} {name}" in cap.out
 
 
 @pytest.mark.parametrize("workspace", [True, False])

@@ -1,6 +1,6 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Mapping, Optional, Tuple
+from typing import Callable, Iterable, Mapping, Optional, Tuple, Union
 
 from dvc.scm.base import SCMError
 
@@ -52,7 +52,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         pass
 
     @abstractmethod

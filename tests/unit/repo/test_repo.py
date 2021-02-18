@@ -45,7 +45,7 @@ def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):
     [os.path.join("dir", "subdir", "file"), os.path.join("dir", "subdir")],
 )
 def test_used_cache(tmp_dir, dvc, path):
-    from dvc.cache import NamedCache
+    from dvc.objects.db import NamedCache
 
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
     expected = NamedCache.make(

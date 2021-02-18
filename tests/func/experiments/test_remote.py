@@ -262,11 +262,11 @@ def test_push_pull_cache(
         assert os.path.exists(path)
         assert open(path).read() == str(x)
 
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     dvc.experiments.pull(remote, ref_info.name, pull_cache=True)
     for x in range(2, checkpoint_stage.iterations + 1):
         hash_ = digest(str(x))
-        path = os.path.join(dvc.cache.local.cache_dir, hash_[:2], hash_[2:])
+        path = os.path.join(dvc.odb.local.cache_dir, hash_[:2], hash_[2:])
         assert os.path.exists(path)
         assert open(path).read() == str(x)

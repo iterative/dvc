@@ -16,8 +16,8 @@ class YAMLFileCorruptedError(YAMLError):
         super().__init__(path, "YAML file structure is corrupted")
 
 
-def load_yaml(path, tree=None):
-    return _load_data(path, parser=parse_yaml, tree=tree)
+def load_yaml(path, fs=None):
+    return _load_data(path, parser=parse_yaml, fs=fs)
 
 
 def parse_yaml(text, path, typ="safe"):
@@ -65,8 +65,8 @@ def _dump(data, stream):
     return yaml.dump(data, stream)
 
 
-def dump_yaml(path, data, tree=None):
-    return _dump_data(path, data, dumper=_dump, tree=tree)
+def dump_yaml(path, data, fs=None):
+    return _dump_data(path, data, dumper=_dump, fs=fs)
 
 
 def loads_yaml(s, typ="safe"):
@@ -82,6 +82,6 @@ def dumps_yaml(d):
 
 
 @contextmanager
-def modify_yaml(path, tree=None):
-    with _modify_data(path, parse_yaml_for_update, dump_yaml, tree=tree) as d:
+def modify_yaml(path, fs=None):
+    with _modify_data(path, parse_yaml_for_update, dump_yaml, fs=fs) as d:
         yield d

@@ -28,8 +28,8 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
     assert ref_info and ref_info.baseline_sha == baseline
 
     new_mock.assert_called_once()
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -68,8 +68,8 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
     )
     exp = first(results)
 
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 3"
 
 
@@ -103,7 +103,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
     "changes, expected",
     [
         [["foo=baz"], "{foo: baz, goo: {bag: 3}, lorem: false}"],
-        [["foo=baz,goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
+        [["foo=baz", "goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
         [
             ["goo.bag=4"],
             "{foo: [bar: 1, baz: 2], goo: {bag: 4}, lorem: false}",
@@ -114,7 +114,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
             "{foo: [bar: 1, baz: 3], goo: {bag: 3}, lorem: false}",
         ],
         [
-            ["foo[1]=- baz\n- goo"],
+            ["foo[1]=[baz, goo]"],
             "{foo: [bar: 1, [baz, goo]], goo: {bag: 3}, lorem: false}",
         ],
         [
@@ -142,8 +142,8 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     exp = first(results)
 
     new_mock.assert_called_once()
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == expected
 
 
@@ -238,10 +238,10 @@ def test_update_py_params(tmp_dir, scm, dvc):
     )
     exp_a = first(results)
 
-    tree = scm.get_tree(exp_a)
-    with tree.open(tmp_dir / "params.py") as fobj:
+    fs = scm.get_fs(exp_a)
+    with fs.open(tmp_dir / "params.py") as fobj:
         assert fobj.read().strip() == "INT = 2"
-    with tree.open(tmp_dir / "metrics.py") as fobj:
+    with fs.open(tmp_dir / "metrics.py") as fobj:
         assert fobj.read().strip() == "INT = 2"
 
     tmp_dir.gen(
@@ -261,7 +261,11 @@ def test_update_py_params(tmp_dir, scm, dvc):
 
     results = dvc.experiments.run(
         stage.addressing,
-        params=["params.py:FLOAT=0.1,Train.seed=2121,Klass.a=222"],
+        params=[
+            "params.py:FLOAT=0.1",
+            "params.py:Train.seed=2121",
+            "params.py:Klass.a=222",
+        ],
         tmp_dir=True,
     )
     exp_a = first(results)
@@ -280,10 +284,10 @@ def test_update_py_params(tmp_dir, scm, dvc):
         # in order to compare with the original
         return text.replace("\r\n", "\n")
 
-    tree = scm.get_tree(exp_a)
-    with tree.open(tmp_dir / "params.py") as fobj:
+    fs = scm.get_fs(exp_a)
+    with fs.open(tmp_dir / "params.py") as fobj:
         assert _dos2unix(fobj.read().strip()) == result
-    with tree.open(tmp_dir / "metrics.py") as fobj:
+    with fs.open(tmp_dir / "metrics.py") as fobj:
         assert _dos2unix(fobj.read().strip()) == result
 
     tmp_dir.gen("params.py", "INT = 1\n")
@@ -406,11 +410,11 @@ def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
         stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     exp = first(results)
-    tree = scm.get_tree(exp)
-    assert tree.exists("dvc.yaml")
-    assert tree.exists("dvc.lock")
-    assert tree.exists("copy.py")
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    assert fs.exists("dvc.yaml")
+    assert fs.exists("dvc.lock")
+    assert fs.exists("copy.py")
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
 
@@ -428,8 +432,8 @@ def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage, workspace):
     )
     exp = first(results)
 
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     if not workspace:
@@ -509,10 +513,10 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
 
-    tree = scm.get_tree(exp)
+    fs = scm.get_fs(exp)
     for fname in ["metrics.yaml", "dvc.lock"]:
-        assert tree.exists(subdir / fname)
-    with tree.open(subdir / "metrics.yaml") as fobj:
+        assert fs.exists(subdir / fname)
+    with fs.open(subdir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     assert dvc.experiments.get_exact_name(exp) == ref_info.name
@@ -521,7 +525,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
 
 @pytest.mark.parametrize("workspace", [True, False])
 def test_subrepo(tmp_dir, scm, workspace):
-    from tests.unit.tree.test_repo import make_subrepo
+    from tests.unit.fs.test_repo import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
@@ -554,10 +558,10 @@ def test_subrepo(tmp_dir, scm, workspace):
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
 
-    tree = scm.get_tree(exp)
+    fs = scm.get_fs(exp)
     for fname in ["metrics.yaml", "dvc.lock"]:
-        assert tree.exists(subrepo / fname)
-    with tree.open(subrepo / "metrics.yaml") as fobj:
+        assert fs.exists(subrepo / fname)
+    with fs.open(subrepo / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
@@ -577,8 +581,8 @@ def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
     expected = {"foo: 2", "foo: 3"}
     metrics = set()
     for exp in results:
-        tree = scm.get_tree(exp)
-        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        fs = scm.get_fs(exp)
+        with fs.open(tmp_dir / "metrics.yaml") as fobj:
             metrics.add(fobj.read().strip())
     assert expected == metrics
 

@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from dvc.tree.gs import GSTree, dynamic_chunk_size
+from dvc.fs.gs import GSFileSystem, dynamic_chunk_size
 
 BUCKET = "bucket"
 PREFIX = "prefix"
@@ -17,17 +17,17 @@ CONFIG = {
 
 
 def test_init(dvc):
-    tree = GSTree(dvc, CONFIG)
-    assert tree.path_info == URL
-    assert tree.projectname == PROJECT
-    assert tree.credentialpath == CREDENTIALPATH
+    fs = GSFileSystem(dvc, CONFIG)
+    assert fs.path_info == URL
+    assert fs.projectname == PROJECT
+    assert fs.credentialpath == CREDENTIALPATH
 
 
 @mock.patch("google.cloud.storage.Client.from_service_account_json")
 def test_gs(mock_client, dvc):
-    tree = GSTree(dvc, CONFIG)
-    assert tree.credentialpath
-    assert tree.gs
+    fs = GSFileSystem(dvc, CONFIG)
+    assert fs.credentialpath
+    assert fs.gs
     mock_client.assert_called_once_with(CREDENTIALPATH)
 
 
@@ -35,8 +35,8 @@ def test_gs(mock_client, dvc):
 def test_gs_no_credspath(mock_client, dvc):
     config = CONFIG.copy()
     del config["credentialpath"]
-    tree = GSTree(dvc, config)
-    assert tree.gs
+    fs = GSFileSystem(dvc, config)
+    assert fs.gs
     mock_client.assert_called_with(PROJECT)
 
 

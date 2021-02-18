@@ -138,11 +138,11 @@ class BaseExecutor(ABC):
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
-    def pack_repro_args(path, *args, tree=None, extra=None, **kwargs):
+    def pack_repro_args(path, *args, fs=None, extra=None, **kwargs):
         dpath = os.path.dirname(path)
-        if tree:
-            open_func = tree.open
-            tree.makedirs(dpath)
+        if fs:
+            open_func = fs.open
+            fs.makedirs(dpath)
         else:
             from dvc.utils.fs import makedirs
 

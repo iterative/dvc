@@ -138,7 +138,7 @@ def add_parser(subparsers, parent_parser):
         help=(
             "Specific plots file(s) to visualize "
             "(even if not found as `plots` in `dvc.yaml`). "
-            "Shows all tracked plots by default.",
+            "Shows all tracked plots by default."
         ),
         metavar="<paths>",
     ).complete = completion.FILE

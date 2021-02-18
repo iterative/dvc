@@ -3,10 +3,10 @@ import os
 import pytest
 
 from dvc.exceptions import DownloadError, UploadError
+from dvc.fs.local import LocalFileSystem
 from dvc.remote.base import Remote
 from dvc.remote.index import RemoteIndex
 from dvc.remote.local import LocalRemote
-from dvc.tree.local import LocalTree
 from dvc.utils.fs import remove
 
 
@@ -17,7 +17,7 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
     dvc.config["core"]["remote"] = "upstream"
 
     # patch hashes_exist since the LocalRemote normally overrides
-    # BaseTree.hashes_exist.
+    # BaseFileSystem.hashes_exist.
     def hashes_exist(self, *args, **kwargs):
         return Remote.hashes_exist(self, *args, **kwargs)
 
@@ -82,10 +82,10 @@ def test_clear_on_gc(tmp_dir, dvc, tmp_path_factory, remote, mocker):
 def test_clear_on_download_err(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
     dvc.push()
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
 
     mocked_clear = mocker.patch.object(remote.INDEX_CLS, "clear")
-    mocker.patch.object(LocalTree, "_download", side_effect=Exception)
+    mocker.patch.object(LocalFileSystem, "_download", side_effect=Exception)
     with pytest.raises(DownloadError):
         dvc.pull()
     mocked_clear.assert_called_once_with()
@@ -95,14 +95,14 @@ def test_partial_upload(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
     tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})
 
-    original = LocalTree._upload
+    original = LocalFileSystem._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "baz" in name:
             raise Exception("stop baz")
         return original(self, from_file, to_info, name, **kwargs)
 
-    mocker.patch.object(LocalTree, "_upload", unreliable_upload)
+    mocker.patch.object(LocalFileSystem, "_upload", unreliable_upload)
     with pytest.raises(UploadError):
         dvc.push()
     with remote.index:

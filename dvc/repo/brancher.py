@@ -20,7 +20,7 @@ def brancher(  # noqa: E302
         sha_only (bool): only return git SHA for a revision.
 
     Yields:
-        str: the display name for the currently selected tree, it could be:
+        str: the display name for the currently selected fs, it could be:
             - a git revision identifier
             - empty string it there is no branches to iterate over
             - "workspace" if there are uncommitted changes in the SCM repo
@@ -29,14 +29,14 @@ def brancher(  # noqa: E302
         yield ""
         return
 
-    from dvc.tree.local import LocalTree
+    from dvc.fs.local import LocalFileSystem
 
-    saved_tree = self.tree
+    saved_fs = self.fs
     revs = revs.copy() if revs else []
 
     scm = self.scm
 
-    self.tree = LocalTree(self, {"url": self.root_dir}, use_dvcignore=True)
+    self.fs = LocalFileSystem(self, {"url": self.root_dir}, use_dvcignore=True)
     yield "workspace"
 
     if revs and "workspace" in revs:
@@ -59,15 +59,15 @@ def brancher(  # noqa: E302
     try:
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
-                self.tree = scm.get_tree(
+                self.fs = scm.get_fs(
                     sha, use_dvcignore=True, dvcignore_root=self.root_dir
                 )
                 # ignore revs that don't contain repo root
                 # (i.e. revs from before a subdir=True repo was init'ed)
-                if self.tree.exists(self.root_dir):
+                if self.fs.exists(self.root_dir):
                     if sha_only:
                         yield sha
                     else:
                         yield ", ".join(names)
     finally:
-        self.tree = saved_tree
+        self.fs = saved_fs

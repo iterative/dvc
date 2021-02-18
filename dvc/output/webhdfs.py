@@ -1,7 +1,7 @@
 from dvc.output.base import BaseOutput
 
-from ..tree.webhdfs import WebHDFSTree
+from ..fs.webhdfs import WebHDFSFileSystem
 
 
 class WebHDFSOutput(BaseOutput):
-    TREE_CLS = WebHDFSTree
+    FS_CLS = WebHDFSFileSystem
