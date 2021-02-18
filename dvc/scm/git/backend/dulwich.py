@@ -567,9 +567,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         )
         return (
             {
-                status: [os.fsdecode(name)]
+                status: [os.fsdecode(name) for name in paths]
                 for status, paths in staged.items()
-                for name in paths
+                if paths
             },
             [os.fsdecode(name) for name in unstaged],
             [os.fsdecode(name) for name in untracked],
