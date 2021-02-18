@@ -1,13 +1,28 @@
 import contextlib
+import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import MetricDoesNotExistError, MetricsError
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from dvc.output import BaseOutput
     from dvc.path_info import PathInfo
     from dvc.repo import Repo
+
+
+def create_summary(out):
+    from dvc.utils.html import write
+
+    assert out.live and out.live["html"]
+
+    metrics, plots = out.repo.live.show(str(out.path_info))
+
+    html_path = out.path_info.with_suffix(".html")
+    write(html_path, plots, metrics)
+    logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
 
 def summary_path_info(out: "BaseOutput") -> Optional["PathInfo"]:

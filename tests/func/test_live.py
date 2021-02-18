@@ -1,4 +1,5 @@
 import os
+from contextlib import suppress
 from copy import deepcopy
 from textwrap import dedent
 
@@ -6,9 +7,9 @@ import pytest
 from funcy import first
 
 from dvc import stage as stage_module
-from dvc.exceptions import MetricsError
+from dvc.exceptions import MetricDoesNotExistError, MetricsError
 
-LIVE_SCRITP = dedent(
+LIVE_SCRIPT = dedent(
     """
         import dvclive
         import sys
@@ -53,18 +54,20 @@ LIVE_CHECKPOINT_SCRIPT = dedent(
 
 
 @pytest.fixture
-def live_stage(tmp_dir, scm, dvc):
+def live_stage(tmp_dir, scm, dvc, mocker):
     try:
         import dvclive  # noqa, pylint:disable=unused-import
     except ImportError:
         pytest.skip("no dvclive")
+
+    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", 0.01)
 
     def make(
         summary=True,
         html=True,
         live=None,
         live_no_cache=None,
-        code=LIVE_SCRITP,
+        code=LIVE_SCRIPT,
     ):
         assert bool(live) != bool(live_no_cache)
         tmp_dir.gen("train.py", code)
@@ -92,14 +95,15 @@ def live_stage(tmp_dir, scm, dvc):
 def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
     run_spy = mocker.spy(stage_module.run, "_run")
     tmp_dir.gen("src", "dependency")
-    dvc.run(
-        cmd="mkdir logs && touch logs.json",
-        deps=["src"],
-        name="run_logger",
-        live="logs",
-        live_no_summary=not summary,
-        live_no_html=not report,
-    )
+    with suppress(MetricDoesNotExistError):
+        dvc.run(
+            cmd="mkdir logs && touch logs.json",
+            deps=["src"],
+            name="run_logger",
+            live="logs",
+            live_no_summary=not summary,
+            live_no_html=not report,
+        )
 
     assert run_spy.call_count == 1
     _, kwargs = run_spy.call_args
@@ -177,11 +181,13 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
 
 
 @pytest.fixture
-def live_checkpoint_stage(tmp_dir, scm, dvc):
+def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
     try:
         import dvclive  # noqa, pylint:disable=unused-import
     except ImportError:
         pytest.skip("no dvclive")
+
+    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", 0.01)
 
     def make(live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
@@ -257,7 +263,11 @@ def test_live_checkpoints_resume(
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     show_spy = mocker.spy(dvc.live, "show")
-    mocker.patch("dvc.stage.run._AWAIT_RUN_COMPLETION_SECONDS", 0.07)
+
+    # make sure script takes more time to execute than one monitor sleep cycle
+    monitor_await_time = 0.01
+    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", monitor_await_time)
+
     script = dedent(
         """
         import dvclive
@@ -266,7 +276,9 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
         dvclive.log("loss", 1/2)
         dvclive.log("accuracy", 1/2)
         dvclive.next_step()
-        time.sleep(0.1)"""
+        time.sleep({})""".format(
+            str(monitor_await_time * 2)
+        )
     )
     live_stage(summary=True, live="logs", code=script)
 

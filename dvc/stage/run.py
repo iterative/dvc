@@ -1,12 +1,17 @@
+import functools
 import logging
 import os
 import signal
 import subprocess
 import threading
-from contextlib import contextmanager
+from abc import ABC, abstractmethod
+from contextlib import ExitStack
+from dataclasses import dataclass
+from typing import Callable, ClassVar
 
 from funcy import first
 
+from dvc.repo.live import create_summary
 from dvc.utils import fix_env
 
 from .decorators import relock_repo, unlocked_repo
@@ -15,11 +20,11 @@ from .exceptions import StageCmdFailedError
 logger = logging.getLogger(__name__)
 
 
-CHECKPOINT_SIGNAL_FILE = "DVC_CHECKPOINT"
-_AWAIT_RUN_COMPLETION_SECONDS = 1
-
-
 class CheckpointKilledError(StageCmdFailedError):
+    pass
+
+
+class LiveKilledError(StageCmdFailedError):
     pass
 
 
@@ -92,27 +97,42 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
 
     exec_cmd = _make_cmd(executable, cmd)
     old_handler = None
-    p = None
 
     try:
         p = subprocess.Popen(exec_cmd, **kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        killed = threading.Event()
-        with checkpoint_monitor(
-            stage, checkpoint_func, p, killed
-        ), live_monitor(stage, p):
+        monitors = _get_monitors(stage, checkpoint_func, p)
+
+        if monitors:
+            with ExitStack() as stack:
+                for m in monitors:
+                    stack.enter_context(m)
+                p.communicate()
+        else:
             p.communicate()
+
+        if p.returncode != 0:
+            for m in monitors:
+                if m.config.killed.is_set():
+                    raise m.error_cls(cmd, p.returncode)
+            raise StageCmdFailedError(cmd, p.returncode)
     finally:
         if old_handler:
             signal.signal(signal.SIGINT, old_handler)
 
-    retcode = None if not p else p.returncode
-    if retcode != 0:
-        if killed.is_set():
-            raise CheckpointKilledError(cmd, retcode)
-        raise StageCmdFailedError(cmd, retcode)
+
+def _get_monitors(stage, checkpoint_func, proc):
+    result = []
+    if checkpoint_func:
+        result.append(CheckpointMonitor(stage, checkpoint_func, proc))
+
+    live = first((o for o in stage.outs if (o.live and o.live["html"])))
+    if live:
+        result.append(LiveMonitor(live, proc))
+
+    return result
 
 
 def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
@@ -150,97 +170,109 @@ def run_stage(
     run(stage, dry=dry, checkpoint_func=checkpoint_func, run_env=run_env)
 
 
-@contextmanager
-def checkpoint_monitor(stage, callback_func, proc, killed):
-    if not callback_func:
-        yield None
-        return
-
-    logger.debug(
-        "Monitoring checkpoint stage '%s' with cmd process '%d'",
-        stage,
-        proc.pid,
-    )
-    done = threading.Event()
-    monitor_thread = threading.Thread(
-        target=_checkpoint_run,
-        args=(stage, callback_func, done, proc, killed),
-    )
-
-    try:
-        monitor_thread.start()
-        yield monitor_thread
-    finally:
-        done.set()
-        monitor_thread.join()
+@dataclass
+class MonitorConfig:
+    name: str
+    stage: "Stage"  # type: ignore[name-defined] # noqa: F821
+    task: Callable
+    proc: subprocess.Popen
+    done: threading.Event
+    killed: threading.Event
+    signal_path: str
+    AWAIT: ClassVar[float] = 1.0
 
 
-@contextmanager
-def live_monitor(stage, proc):
-    out = first((o for o in stage.outs if o.live))
-    if not out or not out.live["html"]:
-        yield None
-        return
+class Monitor(ABC):
+    def __init__(self, config: MonitorConfig):
+        self.config = config
+        self.monitor_thread = threading.Thread(
+            target=_monitor_loop, args=(self.config,),
+        )
 
-    logger.debug(
-        "Monitoring live stage '%s' with cmd process '%d'", stage, proc.pid
-    )
+    def __enter__(self):
+        logger.debug(
+            "Monitoring stage '%s' with cmd process '%d'",
+            self.config.stage,
+            self.config.proc.pid,
+        )
+        self.monitor_thread.start()
 
-    done = threading.Event()
-    monitor_thread = threading.Thread(
-        target=_live_run, args=(out, proc, done),
-    )
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.config.done.set()
+        self.monitor_thread.join()
 
-    try:
-        monitor_thread.start()
-        yield monitor_thread
-    finally:
-        done.set()
-        monitor_thread.join()
+    @property
+    @abstractmethod
+    def SIGNAL_FILE(self) -> str:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def error_cls(self):
+        raise NotImplementedError
+
+    def signal_path(self, stage):
+        return os.path.join(stage.repo.tmp_dir, self.SIGNAL_FILE)
 
 
-def _live_run(out, proc, done):
-    from dvc.utils.html import write
+class CheckpointMonitor(Monitor):
+    SIGNAL_FILE = "DVC_CHECKPOINT"
+    error_cls = CheckpointKilledError
 
-    def create_summary(out):
-        metrics, plots = out.repo.live.show(str(out.path_info))
+    def __init__(self, stage, callback_func, proc):
+        super().__init__(
+            MonitorConfig(
+                "checkpoint",
+                stage,
+                functools.partial(_run_callback, stage, callback_func),
+                proc,
+                threading.Event(),
+                threading.Event(),
+                self.signal_path(stage),
+            )
+        )
 
-        html_path = out.path_info.with_suffix(".html")
-        write(html_path, plots, metrics)
-        logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
-    signal_path = os.path.join(out.repo.tmp_dir, "DVC_LIVE")
+class LiveMonitor(Monitor):
+    SIGNAL_FILE = "DVC_LIVE"
+    error_cls = LiveKilledError
+
+    def __init__(self, out, proc):
+        super().__init__(
+            MonitorConfig(
+                "live",
+                out.stage,
+                functools.partial(create_summary, out),
+                proc,
+                threading.Event(),
+                threading.Event(),
+                self.signal_path(out.stage),
+            )
+        )
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # make sure all data is visualied after training
+        self.config.task()
+        super().__exit__(exc_type, exc_val, exc_tb)
+
+
+def _monitor_loop(config: MonitorConfig):
     while True:
-        if os.path.exists(signal_path):
+        if os.path.exists(config.signal_path):
             try:
-                create_summary(out)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("ERROR while running live")
-                _kill(proc)
-            finally:
-                os.remove(signal_path)
-        if done.wait(_AWAIT_RUN_COMPLETION_SECONDS):
-            create_summary(out)
-            return
-
-
-def _checkpoint_run(stage, callback_func, done, proc, killed):
-    """Run callback_func whenever checkpoint signal file is present."""
-    signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
-    while True:
-        if os.path.exists(signal_path):
-            try:
-                _run_callback(stage, callback_func)
+                config.task()
             except Exception:  # pylint: disable=broad-except
                 logger.exception(
-                    "Error generating checkpoint, %s will be aborted", stage
+                    "Error running '%s' task, '%s' will be aborted",
+                    config.name,
+                    config.stage,
                 )
-                _kill(proc)
-                killed.set()
+                _kill(config.proc)
+                config.killed.set()
             finally:
                 logger.debug("Remove checkpoint signal file")
-                os.remove(signal_path)
-        if done.wait(_AWAIT_RUN_COMPLETION_SECONDS):
+                os.remove(config.signal_path)
+        if config.done.wait(config.AWAIT):
             return
 
 
