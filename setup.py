@@ -96,7 +96,7 @@ install_requires = [
 gs = ["google-cloud-storage==1.19.0"]
 gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
-azure = ["adlfs @ git+https://github.com/dask/adlfs.git", "knack"]
+azure = ["adlfs>=0.6.3", "azure.identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
 oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
 ssh = ["paramiko[invoke]>=2.7.0"]

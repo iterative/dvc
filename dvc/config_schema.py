@@ -183,6 +183,9 @@ SCHEMA = {
                     "connection_string": str,
                     "sas_token": str,
                     "account_name": str,
+                    "tenant_id": str,
+                    "client_id": str,
+                    "client_secret": str,
                     **REMOTE_COMMON,
                 },
                 "oss": {

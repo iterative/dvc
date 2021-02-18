@@ -5,13 +5,24 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
+from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
+from dvc.utils import format_link
 
 from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
+_DEFAULT_CREDS_STEPS = (
+    "https://azuresdkdocs.blob.core.windows.net/$web/python/"
+    "azure-identity/1.4.0/azure.identity.html#azure.identity"
+    ".DefaultAzureCredential"
+)
+
+
+class AzureAuthError(DvcException):
+    pass
 
 
 class AzureFileSystem(BaseFileSystem):
@@ -22,6 +33,7 @@ class AzureFileSystem(BaseFileSystem):
     REQUIRES = {
         "adlfs": "adlfs",
         "knack": "knack",
+        "azure-identity": "azure.identity",
     }
 
     def __init__(self, repo, config):
@@ -38,9 +50,11 @@ class AzureFileSystem(BaseFileSystem):
         self.path_info = self.PATH_CLS(url)
         self.bucket = self.path_info.bucket
 
-        self._login_info = self._prepare_credentials(config)
+        self.login_method, self.login_info = self._prepare_credentials(config)
 
     def _prepare_credentials(self, config):
+        from azure.identity.aio import DefaultAzureCredential
+
         login_info = {}
         login_info["connection_string"] = config.get(
             "connection_string",
@@ -58,7 +72,23 @@ class AzureFileSystem(BaseFileSystem):
         login_info["tenant_id"] = config.get("tenant_id")
         login_info["client_id"] = config.get("client_id")
         login_info["client_secret"] = config.get("client_secret")
-        return login_info
+
+        if not any(login_info.values()):
+            login_info["credentials"] = DefaultAzureCredential()
+
+        for login_method, required_keys in [  # noqa
+            ("connection string", ["connection_string"]),
+            ("account key", ["account_name", "account_key"]),
+            ("SAS token", ["account_name", "sas_token"]),
+            ("anonymous login", ["account_name"]),
+            (f"default credentials ({_DEFAULT_CREDS_STEPS})", ["credentials"]),
+        ]:
+            if all(login_info.get(key) is not None for key in required_keys):
+                break
+        else:
+            login_method = None
+
+        return login_method, login_info
 
     @cached_property
     def _az_config(self):
@@ -76,12 +106,21 @@ class AzureFileSystem(BaseFileSystem):
     @cached_property
     def fs(self):
         from adlfs import AzureBlobFileSystem
+        from azure.core.exceptions import AzureError
 
-        file_system = AzureBlobFileSystem(**self._login_info)
-        if self.bucket not in [
-            container.rstrip("/") for container in file_system.ls("/")
-        ]:
-            file_system.mkdir(self.bucket)
+        try:
+            file_system = AzureBlobFileSystem(**self.login_info)
+            if self.bucket not in [
+                container.rstrip("/") for container in file_system.ls("/")
+            ]:
+                file_system.mkdir(self.bucket)
+        except (ValueError, AzureError) as e:
+            raise AzureAuthError(
+                f"Authentication to Azure Blob Storage via {self.login_method}"
+                " failed.\nLearn more about configuration settings at"
+                f" {format_link('https://man.dvc.org/remote/modify')}"
+            ) from e
+
         return file_system
 
     def _with_bucket(self, path):
