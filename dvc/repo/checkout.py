@@ -35,11 +35,10 @@ def _remove_unused_links(repo):
         if out.scheme == "local"
     ]
 
-    with repo.state:
-        unused = repo.state.get_unused_links(used, repo.fs)
-        ret = [_fspath_dir(u) for u in unused]
-        repo.state.remove_links(unused, repo.fs)
-        return ret
+    unused = repo.state.get_unused_links(used, repo.fs)
+    ret = [_fspath_dir(u) for u in unused]
+    repo.state.remove_links(unused, repo.fs)
+    return ret
 
 
 def get_all_files_numbers(pairs):

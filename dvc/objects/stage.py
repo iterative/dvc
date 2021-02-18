@@ -108,36 +108,35 @@ def get_hash(path_info, fs, name, **kwargs):
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    with fs.repo.state:
-        # pylint: disable=assignment-from-none
-        hash_info = fs.repo.state.get(path_info, fs)
+    # pylint: disable=assignment-from-none
+    hash_info = fs.repo.state.get(path_info, fs)
 
-        # If we have dir hash in state db, but dir cache file is lost,
-        # then we need to recollect the dir via .get_dir_hash() call below,
-        # see https://github.com/iterative/dvc/issues/2219 for context
-        if (
-            hash_info
-            and hash_info.isdir
-            and not fs.odb.fs.exists(fs.odb.hash_to_path_info(hash_info.value))
-        ):
-            hash_info = None
+    # If we have dir hash in state db, but dir cache file is lost,
+    # then we need to recollect the dir via .get_dir_hash() call below,
+    # see https://github.com/iterative/dvc/issues/2219 for context
+    if (
+        hash_info
+        and hash_info.isdir
+        and not fs.odb.fs.exists(fs.odb.hash_to_path_info(hash_info.value))
+    ):
+        hash_info = None
 
-        if hash_info:
-            if hash_info.isdir:
-                from . import Tree
+    if hash_info:
+        if hash_info.isdir:
+            from . import Tree
 
-                # NOTE: loading the fs will restore hash_info.dir_info
-                Tree.load(fs.odb, hash_info)
-            assert hash_info.name == name
-            return hash_info
+            # NOTE: loading the fs will restore hash_info.dir_info
+            Tree.load(fs.odb, hash_info)
+        assert hash_info.name == name
+        return hash_info
 
-        if fs.isdir(path_info):
-            hash_info = get_dir_hash(path_info, fs, name, **kwargs)
-        else:
-            hash_info = get_file_hash(path_info, fs, name)
+    if fs.isdir(path_info):
+        hash_info = get_dir_hash(path_info, fs, name, **kwargs)
+    else:
+        hash_info = get_file_hash(path_info, fs, name)
 
-        if hash_info and fs.exists(path_info):
-            fs.repo.state.save(path_info, fs, hash_info)
+    if hash_info and fs.exists(path_info):
+        fs.repo.state.save(path_info, fs, hash_info)
 
     return hash_info
 

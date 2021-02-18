@@ -22,7 +22,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
         single_stage=True,
     )
 
-    with dvc.lock, dvc.state:
+    with dvc.lock:
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "out").exists()
@@ -45,7 +45,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
     checkout_spy = mocker.spy(base, "checkout")
-    with dvc.lock, dvc.state:
+    with dvc.lock:
         stage.run()
 
     assert not run_spy.called
@@ -75,7 +75,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
         single_stage=True,
     )
 
-    with dvc.lock, dvc.state:
+    with dvc.lock:
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "out").exists()
@@ -98,7 +98,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
     checkout_spy = mocker.spy(base, "checkout")
-    with dvc.lock, dvc.state:
+    with dvc.lock:
         stage.run()
 
     assert not run_spy.called
@@ -129,7 +129,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
         wdir="wdir",
     )
 
-    with dvc.lock, dvc.state:
+    with dvc.lock:
         stage.remove(remove_outs=True, force=True)
 
     assert not (tmp_dir / "wdir" / "out").exists()
@@ -152,7 +152,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
     checkout_spy = mocker.spy(base, "checkout")
-    with dvc.lock, dvc.state:
+    with dvc.lock:
         stage.run()
 
     assert not run_spy.called

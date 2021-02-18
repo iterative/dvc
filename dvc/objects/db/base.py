@@ -58,8 +58,7 @@ class ObjectDB:
             with fs.open(path_info, mode="rb") as fobj:
                 self.fs.upload_fobj(fobj, cache_info)
         self.protect(cache_info)
-        with self.fs.repo.state:
-            self.fs.repo.state.save(cache_info, self.fs, hash_info)
+        self.fs.repo.state.save(cache_info, self.fs, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:

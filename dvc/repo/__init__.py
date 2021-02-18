@@ -477,11 +477,10 @@ class Repo:
         fs = RepoFileSystem(self, subrepos=True)
         path = PathInfo(self.root_dir) / path
         try:
-            with self.state:
-                with fs.open(
-                    path, mode=mode, encoding=encoding, remote=remote,
-                ) as fobj:
-                    yield fobj
+            with fs.open(
+                path, mode=mode, encoding=encoding, remote=remote,
+            ) as fobj:
+                yield fobj
         except FileNotFoundError as exc:
             raise FileMissingError(path) from exc
         except IsADirectoryError as exc:

@@ -472,13 +472,12 @@ class Remote:
         )
 
         if self.fs.scheme == "local":
-            with self.fs.repo.state:
-                for checksum in named_cache.scheme_keys("local"):
-                    cache_file = self.odb.hash_to_path_info(checksum)
-                    if self.fs.exists(cache_file):
-                        hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
-                        self.fs.repo.state.save(cache_file, self.fs, hash_info)
-                        self.odb.protect(cache_file)
+            for checksum in named_cache.scheme_keys("local"):
+                cache_file = self.odb.hash_to_path_info(checksum)
+                if self.fs.exists(cache_file):
+                    hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
+                    self.fs.repo.state.save(cache_file, self.fs, hash_info)
+                    self.odb.protect(cache_file)
 
         return ret
 
@@ -493,19 +492,16 @@ class Remote:
         )
 
         if not self.odb.verify:
-            with cache.fs.repo.state:
-                for checksum in named_cache.scheme_keys("local"):
-                    cache_file = cache.hash_to_path_info(checksum)
-                    if cache.fs.exists(cache_file):
-                        # We can safely save here, as existing corrupted files
-                        # will be removed upon status, while files corrupted
-                        # during download will not be moved from tmp_file
-                        # (see `BaseFileSystem.download()`)
-                        hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
-                        cache.fs.repo.state.save(
-                            cache_file, cache.fs, hash_info
-                        )
-                        cache.protect(cache_file)
+            for checksum in named_cache.scheme_keys("local"):
+                cache_file = cache.hash_to_path_info(checksum)
+                if cache.fs.exists(cache_file):
+                    # We can safely save here, as existing corrupted files
+                    # will be removed upon status, while files corrupted
+                    # during download will not be moved from tmp_file
+                    # (see `BaseFileSystem.download()`)
+                    hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
+                    cache.fs.repo.state.save(cache_file, cache.fs, hash_info)
+                    cache.protect(cache_file)
 
         return ret
 

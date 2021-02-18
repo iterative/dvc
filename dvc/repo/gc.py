@@ -55,7 +55,6 @@ def gc(
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)
-            stack.enter_context(repo.state)
 
         used = NamedCache()
         for repo in all_repos + [self]:

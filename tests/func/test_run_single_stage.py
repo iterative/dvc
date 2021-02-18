@@ -917,7 +917,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
 
         patch_run = mock.patch("dvc.stage.run.cmd_run", wraps=cmd_run)
 
-        with self.dvc.lock, self.dvc.state:
+        with self.dvc.lock:
             with patch_checkout as mock_checkout:
                 with patch_run as mock_run:
                     stage.run()
