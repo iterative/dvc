@@ -1,7 +1,7 @@
 import pytest
 from azure.identity import ChainedTokenCredential
 
-from dvc.tree.azure import AzureTree
+from dvc.fs.azure import AzureFileSystem
 
 container_name = "test_container"
 url = f"azure://{container_name}"
@@ -41,12 +41,12 @@ def configure_env():
 
 
 def test_init(dvc):
-    tree = AzureTree(dvc, config)
+    tree = AzureFileSystem(dvc, config)
     assert tree.path_info == url
 
 
 def test_if_sas_token_in_config_sas_token_is_credential(dvc):
-    tree = AzureTree(dvc, sas_token_config)
+    tree = AzureFileSystem(dvc, sas_token_config)
 
     assert tree._credential == dummy_sas_token
 
@@ -55,13 +55,13 @@ def test_if_sas_token_in_env_sas_token_is_credential(
     monkeypatch, dvc, configure_env
 ):
     configure_env(monkeypatch, {"AZURE_STORAGE_SAS_TOKEN": dummy_sas_token})
-    tree = AzureTree(dvc, only_url_config)
+    tree = AzureFileSystem(dvc, only_url_config)
 
     assert tree._credential == dummy_sas_token
 
 
 def test_if_account_key_in_config_account_key_is_credential(dvc):
-    tree = AzureTree(dvc, account_key_config)
+    tree = AzureFileSystem(dvc, account_key_config)
 
     assert tree._credential == dummy_storage_account_key
 
@@ -72,7 +72,7 @@ def test_if_account_key_in_env_account_key_is_credential(
     configure_env(
         monkeypatch, {"AZURE_STORAGE_KEY": dummy_storage_account_key}
     )
-    tree = AzureTree(dvc, only_url_config)
+    tree = AzureFileSystem(dvc, only_url_config)
 
     assert tree._credential == dummy_storage_account_key
 
@@ -85,6 +85,6 @@ def test_credential_is_chained_token_credential_if_no_auth_string_tokens(dvc):
     svc_config = {
         "url": url,
     }
-    tree = AzureTree(dvc, svc_config)
+    tree = AzureFileSystem(dvc, svc_config)
     assert isinstance(tree._credential, ChainedTokenCredential)
     assert tree._conn_str is None
