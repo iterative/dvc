@@ -236,7 +236,7 @@ class Config(dict):
                 str: {
                     "url": func,
                     "gdrive_user_credentials_file": func,
-                    "gdrive_service_account_p12_file_path": func,
+                    "gdrive_service_account_json_file_path": func,
                     "credentialpath": func,
                     "keyfile": func,
                     "cert_path": func,

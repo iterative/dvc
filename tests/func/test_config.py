@@ -218,7 +218,7 @@ def test_config_loads_without_error_for_non_dvc_repo(tmp_dir):
         ("keyfile", "ssh://user@example.com:1234/path/to/dir"),
         ("cert_path", "webdavs://example.com/files/USERNAME/"),
         ("key_path", "webdavs://example.com/files/USERNAME/"),
-        ("gdrive_service_account_p12_file_path", "gdrive://root/test"),
+        ("gdrive_service_account_json_file_path", "gdrive://root/test"),
         ("gdrive_user_credentials_file", "gdrive://root/test"),
     ],
 )
