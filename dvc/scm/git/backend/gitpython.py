@@ -188,7 +188,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.git_dir
 
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: List[str], update=False):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:

@@ -4,7 +4,7 @@ import logging
 import os
 import stat
 from io import BytesIO, StringIO
-from typing import Callable, Dict, Iterable, Mapping, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from funcy import cached_property
 
@@ -117,16 +117,16 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.commondir()
 
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: List[str], update=False):
         from dvc.utils.fs import walk_files
 
-        if update:
-            raise NotImplementedError
+        assert paths or update
 
-        if isinstance(paths, str):
-            paths = [paths]
+        if update and not paths:
+            self.repo.stage(list(self.repo.open_index()))
+            return
 
-        files = []
+        files: List[bytes] = []
         for path in paths:
             if not os.path.isabs(path) and self._submodules:
                 # NOTE: If path is inside a submodule, Dulwich expects the
@@ -142,13 +142,19 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                         )
                         break
             if os.path.isdir(path):
-                files.extend(walk_files(path))
+                files.extend(
+                    os.fsencode(relpath(fpath, self.root_dir))
+                    for fpath in walk_files(path)
+                )
             else:
-                files.append(path)
+                files.append(os.fsencode(relpath(path, self.root_dir)))
 
-        for fpath in files:
-            # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
-            self.repo.stage(relpath(fpath, self.root_dir))
+        # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
+        if update:
+            index = self.repo.open_index()
+            self.repo.stage([fname for fname in files if fname in index])
+        else:
+            self.repo.stage(files)
 
     def commit(self, msg: str, no_verify: bool = False):
         from dulwich.errors import CommitError
