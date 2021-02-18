@@ -20,7 +20,6 @@ from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
     dump_yaml,
-    load_yaml,
     modify_yaml,
     parse_yaml,
     parse_yaml_for_update,
@@ -115,6 +114,14 @@ class FileMixin:
             self.repo.fs, LocalFileSystem
         ) and self.repo.scm.is_ignored(self.path)
 
+    def _verify_filename(self):
+        if self.verify:
+            check_dvc_filename(self.path)
+
+    def _check_gitignored(self):
+        if self._is_git_ignored():
+            raise FileIsGitIgnored(self.path)
+
     def _load(self):
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
@@ -125,12 +132,11 @@ class FileMixin:
             is_ignored = self.repo.fs.exists(self.path, use_dvcignore=False)
             raise StageFileDoesNotExistError(self.path, dvc_ignored=is_ignored)
 
-        if self.verify:
-            check_dvc_filename(self.path)
+        self._verify_filename()
         if not self.repo.fs.isfile(self.path):
             raise StageFileIsNotDvcFileError(self.path)
-        if self._is_git_ignored():
-            raise FileIsGitIgnored(self.path)
+
+        self._check_gitignored()
         with self.repo.fs.open(self.path, encoding="utf-8") as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
@@ -330,18 +336,25 @@ class Lockfile(FileMixin):
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
 
-    def load(self):
-        if not self.exists():
-            return {}
+    def _verify_filename(self):
+        pass  # lockfile path is hardcoded, so no need to verify here
 
-        data = load_yaml(self.path, fs=self.repo.fs)
+    def _load(self):
         try:
-            data = self.validate(data, fname=self.relpath)
+            return super()._load()
+        except StageFileDoesNotExistError:
+            # we still need to account for git-ignored dvc.lock file
+            # even though it may not exist or have been .dvcignored
+            self._check_gitignored()
+            return {}, ""
         except StageFileFormatError as exc:
             raise LockfileCorruptedError(
                 f"Lockfile '{self.relpath}' is corrupted."
             ) from exc
-        return data
+
+    def load(self):
+        d, _ = self._load()
+        return d
 
     @property
     def latest_version_info(self):

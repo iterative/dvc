@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.dvcfile import Lockfile, LockfileCorruptedError
+from dvc.dvcfile import FileIsGitIgnored, Lockfile, LockfileCorruptedError
 from dvc.stage import PipelineStage
 from dvc.utils.serialize import dump_yaml
 
@@ -83,3 +83,30 @@ def test_load_when_lockfile_is_corrupted(tmp_dir, dvc, corrupt_data):
     with pytest.raises(LockfileCorruptedError) as exc_info:
         lockfile.load()
     assert "Dvcfile.lock" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("dvcignored", [True, False])
+@pytest.mark.parametrize("file_exists", [True, False])
+def test_try_loading_lockfile_that_is_gitignored(
+    tmp_dir, dvc, scm, dvcignored, file_exists
+):
+    # it should raise error if the file is git-ignored, even if:
+    #   1. The file does not exist at all.
+    #   2. Or, is dvc-ignored.
+    files = [".gitignore"]
+    if dvcignored:
+        files.append(".dvcignore")
+
+    for file in files:
+        with (tmp_dir / file).open(mode="a+") as fd:
+            fd.write("dvc.lock")
+
+    if file_exists:
+        (tmp_dir / "dvc.lock").write_text("")
+
+    scm._reset()
+
+    with pytest.raises(FileIsGitIgnored) as exc_info:
+        Lockfile(dvc, "dvc.lock").load()
+
+    assert str(exc_info.value) == "'dvc.lock' is git-ignored."
