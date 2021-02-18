@@ -6,7 +6,6 @@ import shutil
 import stat
 import textwrap
 import time
-from tempfile import gettempdir
 
 import colorama
 import pytest
@@ -1015,33 +1014,25 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
 
 
-def test_add_to_remote_absolute(tmp_dir, dvc, local_remote):
-    from shortuuid import uuid
+def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
+    tmp_abs_dir = make_tmp_dir("abs")
+    tmp_foo = tmp_abs_dir / "foo"
+    tmp_foo.write_text("foo")
 
-    temp_name = uuid()
-    temp_file = os.path.join(gettempdir(), temp_name)
-    with open(temp_file, "w") as stream:
-        stream.write("foo")
+    dvc.add(str(tmp_foo), to_remote=True)
+    tmp_foo.unlink()
 
-    dvc.add(temp_file, to_remote=True)
-    os.unlink(temp_file)
-
-    foo = tmp_dir / temp_name
+    foo = tmp_dir / "foo"
     assert foo.with_suffix(".dvc").exists()
-    assert not os.path.exists(temp_file)
+    assert not os.path.exists(tmp_foo)
 
-    dvc.pull(temp_name)
-    assert not os.path.exists(temp_file)
+    dvc.pull("foo")
+    assert not os.path.exists(tmp_foo)
     assert foo.read_text() == "foo"
 
     with pytest.raises(StageExternalOutputsError):
-        with open(temp_file, "w") as stream:
-            stream.write("foo")
-
-        temp_file_2 = os.path.join(gettempdir(), uuid())
-        dvc.add(temp_file, out=temp_file_2, to_remote=True)
-
-    os.unlink(temp_file)
+        tmp_bar = tmp_abs_dir / "bar"
+        dvc.add(str(tmp_foo), out=str(tmp_bar), to_remote=True)
 
 
 @pytest.mark.parametrize(

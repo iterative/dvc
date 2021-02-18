@@ -1,7 +1,6 @@
 import json
 import os
 import textwrap
-from tempfile import gettempdir
 from uuid import uuid4
 
 import pytest
@@ -341,18 +340,17 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
         )
 
 
-def test_import_url_to_remote_absolute(tmp_dir, dvc, local_remote):
-    from shortuuid import uuid
+def test_import_url_to_remote_absolute(
+    tmp_dir, make_tmp_dir, dvc, local_remote
+):
+    tmp_abs_dir = make_tmp_dir("abs")
+    tmp_foo = tmp_abs_dir / "foo"
+    tmp_foo.write_text("foo")
 
-    temp_name = uuid()
-    temp_file = os.path.join(gettempdir(), temp_name)
-    with open(temp_file, "w") as stream:
-        stream.write("foo")
+    stage = dvc.imp_url(str(tmp_foo), to_remote=True)
 
-    stage = dvc.imp_url(temp_file, to_remote=True)
-
-    foo = tmp_dir / temp_name
-    assert stage.deps[0].fspath == temp_file
+    foo = tmp_dir / "foo"
+    assert stage.deps[0].fspath == str(tmp_foo)
     assert stage.outs[0].fspath == os.fspath(foo)
     assert foo.with_suffix(".dvc").exists()
 
