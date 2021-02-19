@@ -233,9 +233,10 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         from pygit2 import GitError
 
-        def _contains(ref, search_id):
+        def _contains(repo, ref, search_commit):
             commit, _ref = self.repo.resolve_refish(ref)
-            return search_id == commit.id or search_id in commit.parent_ids
+            base = repo.merge_base(search_commit.id, commit.id)
+            return base == search_commit.id
 
         try:
             search_commit, _ref = self.repo.resolve_refish(rev)
@@ -246,7 +247,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             yield from (
                 ref
                 for ref in self.iter_refs()
-                if _contains(ref, search_commit.id)
+                if _contains(self.repo, ref, search_commit)
             )
             return
 
@@ -255,7 +256,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             if (
                 ref.split("/")[: len(literal)] == literal
                 or fnmatch.fnmatch(ref, pattern)
-            ) and _contains(ref, search_commit.id):
+            ) and _contains(self.repo, ref, search_commit):
                 yield ref
 
     def push_refspec(
