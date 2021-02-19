@@ -2,13 +2,25 @@ import locale
 import logging
 import os
 from io import BytesIO, StringIO
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
 from .base import BaseGitBackend
+
+if TYPE_CHECKING:
+    from ..objects import GitCommit
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +185,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             return shas.pop()  # type: ignore
         raise RevError(f"unknown Git revision '{rev}'")
 
-    def resolve_commit(self, rev: str) -> str:
+    def resolve_commit(self, rev: str) -> "GitCommit":
         raise NotImplementedError
 
     def branch_revs(self, branch: str, end_rev: Optional[str] = None):

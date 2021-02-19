@@ -1,10 +1,21 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Mapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.scm.base import SCMError
 
 from ..objects import GitObject
+
+if TYPE_CHECKING:
+    from ..objects import GitCommit
 
 
 class NoGitBackendError(SCMError):
@@ -122,7 +133,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def resolve_commit(self, rev: str) -> str:
+    def resolve_commit(self, rev: str) -> "GitCommit":
         pass
 
     @abstractmethod
