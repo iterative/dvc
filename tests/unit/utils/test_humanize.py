@@ -1,6 +1,8 @@
 from collections import OrderedDict
 
-from dvc.utils.humanize import get_summary
+import pytest
+
+from dvc.utils.humanize import get_summary, truncate_text
 
 
 def test_get_summary():
@@ -38,3 +40,35 @@ def test_get_summary():
     assert get_summary([]) == ""
     assert get_summary([("x", 0), ("y", [])]) == ""
     assert get_summary([("x", 1), ("y", [])]) == "1 file x"
+
+
+def test_truncate_text():
+    text = "lorem ipsum"
+    length = 5
+
+    truncated = truncate_text(text, length)
+    # length should not cross the max length
+    assert len(truncated) == length
+    assert truncated[:-1] == text[: length - 1]
+    # last character should be ellipsis
+    assert truncated[-1] == "…"
+
+    truncated = truncate_text(text, length, with_ellipsis=False)
+    # length should not cross the max length
+    assert len(truncated) == length
+    assert truncated == text[:length]
+
+
+@pytest.mark.parametrize("with_ellipsis", [True, False])
+def test_truncate_text_smaller_than_max_length(with_ellipsis):
+    text = "lorem ipsum"
+
+    # exact match as length
+    truncated = truncate_text(text, len(text), with_ellipsis=with_ellipsis)
+    assert len(truncated) == len(text)
+    assert truncated == text
+
+    # max_length > len(text)
+    truncated = truncate_text(text, len(text) + 1, with_ellipsis=with_ellipsis)
+    assert len(truncated) == len(text)
+    assert truncated == text
