@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.utils.cli_parse import parse_params
+from dvc.utils.humanize import truncate_text
 
 if TYPE_CHECKING:
     from dvc.output.base import BaseOutput
@@ -14,7 +15,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MAX_TEXT_LENGTH = 80
-ELLIPSIS = "…"
 
 
 def generate_description(stage: "Stage") -> str:
@@ -47,9 +47,7 @@ def prepare_description(
     stage: "Stage", max_length: int = MAX_TEXT_LENGTH
 ) -> str:
     desc = stage.short_description() or generate_description(stage)
-    if len(desc) > max_length:
-        return desc[: max_length - 1] + ELLIPSIS
-    return desc
+    return truncate_text(desc, max_length)
 
 
 def prepare_stages_data(
