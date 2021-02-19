@@ -1,4 +1,3 @@
-import datetime
 import os
 import stat
 from abc import ABC, abstractmethod
@@ -125,7 +124,7 @@ class GitTrie:
 @dataclass
 class GitCommit:
     hexsha: str
-    commit_time: datetime.datetime
+    commit_time: int
     commit_time_offset: int
     message: str
     parents: List[str]

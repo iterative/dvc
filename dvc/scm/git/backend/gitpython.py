@@ -2,7 +2,6 @@ import io
 import locale
 import logging
 import os
-from datetime import datetime
 from functools import partial
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
@@ -329,7 +328,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             commit = commit.object
         return GitCommit(
             commit.hexsha,
-            datetime.fromtimestamp(commit.committed_date),
+            commit.committed_date,
             commit.committer_tz_offset,
             commit.message,
             [str(parent) for parent in commit.parents],

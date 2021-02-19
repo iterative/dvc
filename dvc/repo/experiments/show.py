@@ -1,5 +1,6 @@
 import logging
 from collections import OrderedDict, defaultdict
+from datetime import datetime
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
@@ -18,7 +19,7 @@ def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
             res["timestamp"] = None
         else:
             commit = repo.scm.resolve_commit(rev)
-            res["timestamp"] = commit.commit_time
+            res["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
         configs = _collect_configs(repo, rev=rev)
         params = _read_params(repo, configs, rev)
