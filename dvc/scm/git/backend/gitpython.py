@@ -5,13 +5,13 @@ import os
 from functools import partial
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
-from funcy import first, ignore
+from funcy import ignore
 
 from dvc.progress import Tqdm
 from dvc.scm.base import CloneError, MergeConflictError, RevError, SCMError
 from dvc.utils import fix_env, is_binary, relpath
 
-from ..objects import GitObject
+from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
@@ -315,7 +315,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         raise RevError(f"unknown Git revision '{rev}'")
 
-    def resolve_commit(self, rev):
+    def resolve_commit(self, rev: str) -> "GitCommit":
         """Return Commit object for the specified revision."""
         from git.exc import BadName, GitCommandError
         from git.objects.tag import TagObject
@@ -323,25 +323,16 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         try:
             commit = self.repo.rev_parse(rev)
         except (BadName, GitCommandError):
-            commit = None
+            raise SCMError(f"Invalid commit '{rev}'")
         if isinstance(commit, TagObject):
             commit = commit.object
-        return commit
-
-    def branch_revs(
-        self, branch: str, end_rev: Optional[str] = None
-    ) -> Iterable[str]:
-        """Iterate over revisions in a given branch (from newest to oldest).
-
-        If end_rev is set, iterator will stop when the specified revision is
-        reached.
-        """
-        commit = self.resolve_commit(branch)
-        while commit is not None:
-            yield commit.hexsha
-            commit = first(commit.parents)
-            if commit and commit.hexsha == end_rev:
-                return
+        return GitCommit(
+            commit.hexsha,
+            commit.committed_date,
+            commit.committer_tz_offset,
+            commit.message,
+            [str(parent) for parent in commit.parents],
+        )
 
     def set_ref(
         self,

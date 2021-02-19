@@ -7,7 +7,7 @@ from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
-from ..objects import GitObject
+from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
@@ -169,11 +169,20 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             return shas.pop()  # type: ignore
         raise RevError(f"unknown Git revision '{rev}'")
 
-    def resolve_commit(self, rev: str) -> str:
-        raise NotImplementedError
+    def resolve_commit(self, rev: str) -> "GitCommit":
+        from pygit2 import GitError
 
-    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
-        raise NotImplementedError
+        try:
+            commit, _ref = self.repo.resolve_refish(rev)
+        except (KeyError, GitError):
+            raise SCMError(f"Invalid commit '{rev}'")
+        return GitCommit(
+            str(commit.id),
+            commit.commit_time,
+            commit.commit_time_offset,
+            commit.message,
+            [str(parent) for parent in commit.parent_ids],
+        )
 
     def _get_stash(self, ref: str):
         raise NotImplementedError

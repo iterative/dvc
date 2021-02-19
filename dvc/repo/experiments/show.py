@@ -19,7 +19,7 @@ def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
             res["timestamp"] = None
         else:
             commit = repo.scm.resolve_commit(rev)
-            res["timestamp"] = datetime.fromtimestamp(commit.committed_date)
+            res["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
         configs = _collect_configs(repo, rev=rev)
         params = _read_params(repo, configs, rev)
@@ -121,7 +121,7 @@ def show(
             for ref in repo.scm.iter_refs(base=str(ref_info))
         ]
         for exp_ref, _ in sorted(
-            commits, key=lambda x: x[1].committed_date, reverse=True,
+            commits, key=lambda x: x[1].commit_time, reverse=True,
         ):
             ref_info = ExpRefInfo.from_ref(exp_ref)
             assert ref_info.baseline_sha == rev

@@ -1,7 +1,8 @@
 import os
 import stat
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from dataclasses import dataclass
+from typing import Iterable, List, Optional
 
 from pygtrie import Trie
 
@@ -118,3 +119,12 @@ class GitTrie:
     def stat(self, key: tuple) -> os.stat_result:
         obj = self.trie[key]
         return os.stat_result((obj.mode, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+
+
+@dataclass
+class GitCommit:
+    hexsha: str
+    commit_time: int
+    commit_time_offset: int
+    message: str
+    parents: List[str]

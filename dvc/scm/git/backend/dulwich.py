@@ -5,6 +5,7 @@ import os
 import stat
 from io import BytesIO, StringIO
 from typing import (
+    TYPE_CHECKING,
     Callable,
     Dict,
     Iterable,
@@ -24,6 +25,9 @@ from dvc.utils import relpath
 
 from ..objects import GitObject
 from .base import BaseGitBackend
+
+if TYPE_CHECKING:
+    from ..objects import GitCommit
 
 logger = logging.getLogger(__name__)
 
@@ -240,10 +244,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def resolve_rev(self, rev: str) -> str:
         raise NotImplementedError
 
-    def resolve_commit(self, rev: str) -> str:
-        raise NotImplementedError
-
-    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
+    def resolve_commit(self, rev: str) -> "GitCommit":
         raise NotImplementedError
 
     def _get_stash(self, ref: str):

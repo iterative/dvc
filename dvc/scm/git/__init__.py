@@ -365,7 +365,6 @@ class Git(Base):
     get_rev = partialmethod(_backend_func, "get_rev")
     _resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")
-    branch_revs = partialmethod(_backend_func, "branch_revs")
 
     set_ref = partialmethod(_backend_func, "set_ref")
     get_ref = partialmethod(_backend_func, "get_ref")
@@ -401,6 +400,22 @@ class Git(Base):
                 if len(ref_infos) > 1:
                     raise RevError(f"ambiguous Git revision '{rev}'")
             raise
+
+    def branch_revs(
+        self, branch: str, end_rev: Optional[str] = None
+    ) -> Iterable[str]:
+        """Iterate over revisions in a given branch (from newest to oldest).
+
+        If end_rev is set, iterator will stop when the specified revision is
+        reached.
+        """
+        commit = self.resolve_commit(branch)
+        while commit is not None:
+            yield commit.hexsha
+            parent = first(commit.parents)
+            if parent is None or parent == end_rev:
+                return
+            commit = self.resolve_commit(parent)
 
     @contextmanager
     def detach_head(self, rev: Optional[str] = None):

@@ -761,7 +761,7 @@ class Experiments:
             # if we can't tell from branch name, fall back to parent commit
             exp_commit = self.scm.resolve_commit(exp_rev)
             if exp_commit:
-                exp_baseline = first(exp_commit.parents).hexsha
+                exp_baseline = first(exp_commit.parents)
         if exp_baseline == baseline_sha:
             return exp_baseline
         raise BaselineMismatchError(exp_baseline, baseline_sha)
