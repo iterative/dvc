@@ -5,7 +5,7 @@ import os
 from functools import partial
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
-from funcy import first, ignore
+from funcy import ignore
 
 from dvc.progress import Tqdm
 from dvc.scm.base import CloneError, MergeConflictError, RevError, SCMError
@@ -333,21 +333,6 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             commit.message,
             [str(parent) for parent in commit.parents],
         )
-
-    def branch_revs(
-        self, branch: str, end_rev: Optional[str] = None
-    ) -> Iterable[str]:
-        """Iterate over revisions in a given branch (from newest to oldest).
-
-        If end_rev is set, iterator will stop when the specified revision is
-        reached.
-        """
-        commit = self.resolve_commit(branch)
-        while commit is not None:
-            yield commit.hexsha
-            commit = first(commit.parents)
-            if commit and commit.hexsha == end_rev:
-                return
 
     def set_ref(
         self,

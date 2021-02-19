@@ -188,8 +188,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def resolve_commit(self, rev: str) -> "GitCommit":
         raise NotImplementedError
 
-    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
-        raise NotImplementedError
 
     def _get_stash(self, ref: str):
         raise NotImplementedError

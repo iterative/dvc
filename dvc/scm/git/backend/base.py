@@ -137,12 +137,6 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def branch_revs(
-        self, branch: str, end_rev: Optional[str] = None
-    ) -> Iterable[str]:
-        pass
-
-    @abstractmethod
     def set_ref(
         self,
         name: str,
