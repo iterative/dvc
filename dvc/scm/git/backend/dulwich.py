@@ -200,7 +200,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def branch(self, branch: str):
-        raise NotImplementedError
+        from dulwich.porcelain import Error, branch_create
+
+        try:
+            branch_create(self.root_dir, branch)
+        except Error as exc:
+            raise SCMError(f"Failed to create branch '{branch}'") from exc
 
     def tag(self, tag: str):
         raise NotImplementedError

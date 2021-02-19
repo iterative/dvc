@@ -116,7 +116,13 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def branch(self, branch: str):
-        raise NotImplementedError
+        from pygit2 import GitError
+
+        try:
+            commit = self.repo[self.repo.head.target]
+            self.repo.create_branch(branch, commit)
+        except GitError as exc:
+            raise SCMError(f"Failed to create branch '{branch}'") from exc
 
     def tag(self, tag: str):
         raise NotImplementedError
