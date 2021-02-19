@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
@@ -75,6 +76,7 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
     LOCAL_BRANCH_PREFIX = "refs/heads/"
+    RE_HEXSHA = re.compile(r"^[0-9A-Fa-f]{4,40}$")
 
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
@@ -119,12 +121,7 @@ class Git(Base):
 
     @classmethod
     def is_sha(cls, rev):
-        for _, backend in GitBackends.DEFAULT.items():
-            try:
-                return backend.is_sha(rev)
-            except NotImplementedError:
-                pass
-        raise NoGitBackendError("is_sha")
+        return rev and cls.RE_HEXSHA.search(rev)
 
     @staticmethod
     def _get_git_dir(root_dir):
