@@ -221,12 +221,42 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         ref.delete()
 
     def iter_refs(self, base: Optional[str] = None):
-        for ref in self.repo.references:
-            if ref.startswith(base):
-                yield ref
+        if base:
+            for ref in self.repo.references:
+                if ref.startswith(base):
+                    yield ref
+        else:
+            yield from self.repo.references
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
-        raise NotImplementedError
+        import fnmatch
+
+        from pygit2 import GitError
+
+        def _contains(ref, search_id):
+            commit, _ref = self.repo.resolve_refish(ref)
+            return search_id == commit.id or search_id in commit.parent_ids
+
+        try:
+            search_commit, _ref = self.repo.resolve_refish(rev)
+        except (KeyError, GitError):
+            raise SCMError(f"Invalid rev '{rev}'")
+
+        if not pattern:
+            yield from (
+                ref
+                for ref in self.iter_refs()
+                if _contains(ref, search_commit.id)
+            )
+            return
+
+        literal = pattern.rstrip("/").split("/")
+        for ref in self.iter_refs():
+            if (
+                ref.split("/")[: len(literal)] == literal
+                or fnmatch.fnmatch(ref, pattern)
+            ) and _contains(ref, search_commit.id):
+                yield ref
 
     def push_refspec(
         self,
