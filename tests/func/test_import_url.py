@@ -340,6 +340,21 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
         )
 
 
+def test_import_url_to_remote_absolute(
+    tmp_dir, make_tmp_dir, dvc, local_remote
+):
+    tmp_abs_dir = make_tmp_dir("abs")
+    tmp_foo = tmp_abs_dir / "foo"
+    tmp_foo.write_text("foo")
+
+    stage = dvc.imp_url(str(tmp_foo), to_remote=True)
+
+    foo = tmp_dir / "foo"
+    assert stage.deps[0].fspath == str(tmp_foo)
+    assert stage.outs[0].fspath == os.fspath(foo)
+    assert foo.with_suffix(".dvc").exists()
+
+
 def test_import_url_to_remote_invalid_combinations(dvc):
     with pytest.raises(InvalidArgumentError, match="--no-exec"):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)

@@ -27,7 +27,9 @@ def imp_url(
     from dvc.stage import Stage, create_stage, restore_meta
 
     out = resolve_output(url, out)
-    path, wdir, out = resolve_paths(self, out)
+    path, wdir, out = resolve_paths(
+        self, out, always_local=to_remote and not out
+    )
 
     if to_remote and no_exec:
         raise InvalidArgumentError(

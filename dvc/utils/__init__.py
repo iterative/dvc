@@ -357,7 +357,7 @@ def resolve_output(inp, out):
     return ret
 
 
-def resolve_paths(repo, out):
+def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
     from ..dvcfile import DVC_FILE_SUFFIX
@@ -391,6 +391,9 @@ def resolve_paths(repo, out):
         raise DvcException(msg)
     else:
         wdir = dirname
+        out = base
+
+    if always_local:
         out = base
 
     path = os.path.join(wdir, base + DVC_FILE_SUFFIX)

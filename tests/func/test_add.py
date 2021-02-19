@@ -27,7 +27,10 @@ from dvc.objects.db import ODBManager
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
-from dvc.stage.exceptions import StagePathNotFoundError
+from dvc.stage.exceptions import (
+    StageExternalOutputsError,
+    StagePathNotFoundError,
+)
 from dvc.system import System
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
@@ -324,8 +327,6 @@ def test_add_filtered_files_in_dir(
     indirect=["workspace"],
 )
 def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
-    from dvc.stage.exceptions import StageExternalOutputsError
-
     workspace.gen("file", "file")
 
     with pytest.raises(StageExternalOutputsError):
@@ -1013,12 +1014,34 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
 
 
+def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
+    tmp_abs_dir = make_tmp_dir("abs")
+    tmp_foo = tmp_abs_dir / "foo"
+    tmp_foo.write_text("foo")
+
+    dvc.add(str(tmp_foo), to_remote=True)
+    tmp_foo.unlink()
+
+    foo = tmp_dir / "foo"
+    assert foo.with_suffix(".dvc").exists()
+    assert not os.path.exists(tmp_foo)
+
+    dvc.pull("foo")
+    assert not os.path.exists(tmp_foo)
+    assert foo.read_text() == "foo"
+
+    with pytest.raises(StageExternalOutputsError):
+        tmp_bar = tmp_abs_dir / "bar"
+        dvc.add(str(tmp_foo), out=str(tmp_bar), to_remote=True)
+
+
 @pytest.mark.parametrize(
     "invalid_opt, kwargs",
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
         ("--recursive", {"targets": ["foo"], "recursive": True},),
+        ("--external", {"targets": ["foo"], "external": True}),
     ],
 )
 def test_add_to_remote_invalid_combinations(dvc, invalid_opt, kwargs):
