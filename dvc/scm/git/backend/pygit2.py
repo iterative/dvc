@@ -2,25 +2,13 @@ import locale
 import logging
 import os
 from io import BytesIO, StringIO
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
-from ..objects import GitObject
+from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
-
-if TYPE_CHECKING:
-    from ..objects import GitCommit
 
 logger = logging.getLogger(__name__)
 
@@ -186,8 +174,19 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise RevError(f"unknown Git revision '{rev}'")
 
     def resolve_commit(self, rev: str) -> "GitCommit":
-        raise NotImplementedError
+        from pygit2 import GitError
 
+        try:
+            commit, _ref = self.repo.resolve_refish(rev)
+        except (KeyError, GitError):
+            raise SCMError(f"Invalid commit '{rev}'")
+        return GitCommit(
+            str(commit.id),
+            commit.commit_time,
+            commit.commit_time_offset,
+            commit.message,
+            [str(parent) for parent in commit.parent_ids],
+        )
 
     def _get_stash(self, ref: str):
         raise NotImplementedError
