@@ -41,11 +41,6 @@ class BaseGitBackend(ABC):
     ):
         pass
 
-    @staticmethod
-    @abstractmethod
-    def is_sha(rev: str) -> bool:
-        pass
-
     @property
     @abstractmethod
     def dir(self) -> str:

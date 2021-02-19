@@ -118,10 +118,6 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     ):
         raise NotImplementedError
 
-    @staticmethod
-    def is_sha(rev: str) -> bool:
-        raise NotImplementedError
-
     @property
     def dir(self) -> str:
         return self.repo.commondir()
