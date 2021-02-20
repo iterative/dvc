@@ -38,7 +38,7 @@ def generate_description(stage: "Stage") -> str:
 
     plots_and_metrics = list(filter(is_plot_or_metric, stage.outs))
     if plots_and_metrics:
-        desc.append("Generates " + part_desc(plots_and_metrics))
+        desc.append("Reports " + part_desc(plots_and_metrics))
 
     return "; ".join(desc)
 
