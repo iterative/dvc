@@ -22,10 +22,10 @@ def generate_description(stage: "Stage") -> str:
         return ", ".join(out.def_path for out in outs)
 
     if not stage.deps and not stage.outs:
-        return "No outputs or dependencies."
+        return "No outputs or dependencies"
 
     if not stage.outs and stage.deps:
-        return "Stage depends on " + part_desc(stage.deps)
+        return "Depends on " + part_desc(stage.deps)
 
     def is_plot_or_metric(out: "BaseOutput"):
         return bool(out.plot) or bool(out.metric)
@@ -34,11 +34,11 @@ def generate_description(stage: "Stage") -> str:
 
     outs = list(filterfalse(is_plot_or_metric, stage.outs))
     if outs:
-        desc.append("Produces " + part_desc(outs))
+        desc.append("Outputs " + part_desc(outs))
 
     plots_and_metrics = list(filter(is_plot_or_metric, stage.outs))
     if plots_and_metrics:
-        desc.append("Generates " + part_desc(plots_and_metrics))
+        desc.append("Reports " + part_desc(plots_and_metrics))
 
     return "; ".join(desc)
 
@@ -346,7 +346,7 @@ def add_parser(subparsers, parent_parser):
         "--fail",
         action="store_true",
         default=False,
-        help="Fail immediately if there's an error.",
+        help="Fail immediately, do not suppress any syntax errors.",
     )
     stage_list_parser.add_argument(
         "-R",
@@ -359,6 +359,6 @@ def add_parser(subparsers, parent_parser):
         "--names-only",
         action="store_true",
         default=False,
-        help="List only the name of the stages.",
+        help="List only stage names.",
     )
     stage_list_parser.set_defaults(func=CmdStageList)
