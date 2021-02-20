@@ -348,7 +348,7 @@ def add_parser(subparsers, parent_parser):
         "--fail",
         action="store_true",
         default=False,
-        help="Do not suppress any syntax errors, fail immediately.",
+        help="Fail immediately, do not suppress any syntax errors.",
     )
     stage_list_parser.add_argument(
         "-R",
