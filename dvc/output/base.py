@@ -197,7 +197,7 @@ class BaseOutput:
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
-                self.repo.state,
+                self.repo.odb.local,
             )
         return ostage(self.odb, self.path_info, self.fs).hash_info
 

@@ -91,7 +91,7 @@ def get_dir_hash(path_info, fs, name, state, **kwargs):
     return hash_info
 
 
-def get_hash(path_info, fs, name, state, **kwargs):
+def get_hash(path_info, fs, name, odb, **kwargs):
     assert path_info and (
         isinstance(path_info, str) or path_info.scheme == fs.scheme
     )
@@ -101,6 +101,7 @@ def get_hash(path_info, fs, name, state, **kwargs):
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
+    state = odb.repo.state
     # pylint: disable=assignment-from-none
     hash_info = state.get(path_info, fs)
 
@@ -110,7 +111,7 @@ def get_hash(path_info, fs, name, state, **kwargs):
     if (
         hash_info
         and hash_info.isdir
-        and not fs.odb.fs.exists(fs.odb.hash_to_path_info(hash_info.value))
+        and not odb.fs.exists(odb.hash_to_path_info(hash_info.value))
     ):
         hash_info = None
 
@@ -119,7 +120,7 @@ def get_hash(path_info, fs, name, state, **kwargs):
             from . import Tree
 
             # NOTE: loading the fs will restore hash_info.dir_info
-            Tree.load(fs.odb, hash_info)
+            Tree.load(odb, hash_info)
         assert hash_info.name == name
         return hash_info
 

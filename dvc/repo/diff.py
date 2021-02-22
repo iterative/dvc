@@ -2,7 +2,8 @@ import logging
 import os
 
 from dvc.exceptions import PathMissingError
-from dvc.objects.stage import get_file_hash, get_hash
+from dvc.objects.stage import get_file_hash
+from dvc.objects.stage import stage as ostage
 from dvc.repo import locked
 
 logger = logging.getLogger(__name__)
@@ -128,9 +129,9 @@ def _output_paths(repo, repo_fs, targets):
 
     def _to_checksum(output):
         if on_working_fs:
-            return get_hash(
-                output.path_info, repo.odb.local.fs, "md5", repo.state
-            ).value
+            return ostage(
+                repo.odb.local, output.path_info, repo.odb.local.fs,
+            ).hash_info.value
         return output.hash_info.value
 
     for stage in repo.stages:
