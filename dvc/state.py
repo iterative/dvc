@@ -100,8 +100,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             "state save (%s, %s, %s) %s", inode, mtime, size, hash_info.value
         )
 
-        with self.md5s as ref:
-            ref[inode] = (mtime, size, hash_info.value)
+        self.md5s[inode] = (mtime, size, hash_info.value)
 
     def get(self, path_info, fs):
         """Gets the hash for the specified path info. Hash will be
@@ -129,8 +128,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         mtime, size = get_mtime_and_size(path, self.fs)
         inode = get_inode(path)
 
-        with self.md5s as ref:
-            value = ref.get(inode)
+        value = self.md5s.get(inode)
 
         if not value or value[0] != mtime or value[1] != size:
             return None
