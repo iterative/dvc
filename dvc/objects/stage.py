@@ -27,19 +27,23 @@ def get_file_hash(path_info, fs, name):
     raise NotImplementedError
 
 
-def _calculate_hashes(file_infos, fs, name):
-    def _get_file_hash(path_info):
-        return get_file_hash(path_info, fs, name)
+def _calculate_hashes(path_info, fs, name, **kwargs):
+    def _get_file_hash(file_info):
+        hash_info = fs.repo.state.get(  # pylint: disable=assignment-from-none
+            file_info, fs,
+        )
+        if not hash_info:
+            hash_info = get_file_hash(file_info, fs, name)
+            fs.repo.state.save(file_info, fs, hash_info)
+        return file_info, hash_info
 
     with Tqdm(
-        total=len(file_infos),
-        unit="md5",
-        desc="Computing file/dir hashes (only done once)",
+        unit="md5", desc="Computing file/dir hashes (only done once)",
     ) as pbar:
         worker = pbar.wrap_fn(_get_file_hash)
         with ThreadPoolExecutor(max_workers=fs.hash_jobs) as executor:
-            hash_infos = executor.map(worker, file_infos)
-            return dict(zip(file_infos, hash_infos))
+            pairs = executor.map(worker, fs.walk_files(path_info, **kwargs))
+            return dict(pairs)
 
 
 def _iter_hashes(path_info, fs, name, **kwargs):
@@ -53,18 +57,7 @@ def _iter_hashes(path_info, fs, name, **kwargs):
 
         return None
 
-    file_infos = []
-    for file_info in fs.walk_files(path_info, **kwargs):
-        hash_info = fs.repo.state.get(  # pylint: disable=assignment-from-none
-            file_info, fs,
-        )
-        if not hash_info:
-            file_infos.append(file_info)
-            continue
-        assert hash_info.name == name
-        yield file_info, hash_info
-
-    yield from _calculate_hashes(file_infos, fs, name).items()
+    yield from _calculate_hashes(path_info, fs, name, **kwargs).items()
 
 
 def _collect_dir(path_info, fs, name, **kwargs):
