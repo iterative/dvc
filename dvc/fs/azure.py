@@ -177,8 +177,12 @@ class AzureFileSystem(BaseFileSystem):
         return info
 
     def _upload_fobj(self, fobj, to_info):
+        from adlfs import AzureBlobFile
+
         with self.open(to_info, "wb") as fdest:
-            shutil.copyfileobj(fobj, fdest)
+            shutil.copyfileobj(
+                fobj, fdest, length=AzureBlobFile.DEFAULT_BLOCK_SIZE
+            )
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
