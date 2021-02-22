@@ -488,8 +488,10 @@ class Repo:
 
     def close(self):
         self.scm.close()
+        self.state.close()
 
     def _reset(self):
+        self.state.close()
         self.scm._reset()  # pylint: disable=protected-access
         self.__dict__.pop("outs_trie", None)
         self.__dict__.pop("outs_graph", None)

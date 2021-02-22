@@ -114,6 +114,8 @@ class TmpDir(pathlib.Path):
     def close(self):
         if hasattr(self, "scm"):
             self.scm.close()
+        if hasattr(self, "dvc"):
+            self.dvc.close()
 
     def _require(self, name):
         if not hasattr(self, name):

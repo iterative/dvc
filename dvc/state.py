@@ -33,6 +33,10 @@ class StateVersionTooNewError(DvcException):
 
 class StateBase(ABC):
     @abstractmethod
+    def close(self):
+        pass
+
+    @abstractmethod
     def save(self, path_info, fs, hash_info):
         pass
 
@@ -46,6 +50,9 @@ class StateBase(ABC):
 
 
 class StateNoop(StateBase):
+    def close(self):
+        pass
+
     def save(self, path_info, fs, hash_info):
         pass
 

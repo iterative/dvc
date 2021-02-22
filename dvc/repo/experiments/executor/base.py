@@ -337,7 +337,7 @@ class BaseExecutor(ABC):
             logger.exception("unexpected error")
             raise
         finally:
-            dvc.scm.close()
+            dvc.close()
             if old_cwd:
                 os.chdir(old_cwd)
 
