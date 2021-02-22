@@ -57,16 +57,16 @@ class StateNoop(StateBase):
 
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, repo):
+    def __init__(self, root_dir=None, tmp_dir=None):
         from diskcache import Cache
 
         super().__init__()
 
-        self.repo = repo
-        self.root_dir = repo.root_dir
+        self.tmp_dir = tmp_dir
+        self.root_dir = root_dir
         self.fs = LocalFileSystem(None, {"url": self.root_dir})
 
-        if not repo.tmp_dir:
+        if not tmp_dir:
             return
 
         config = {"eviction_policy": "least-recently-used"}
