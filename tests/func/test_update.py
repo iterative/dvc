@@ -3,6 +3,7 @@ import os
 import pytest
 
 from dvc.dvcfile import Dvcfile
+from dvc.exceptions import InvalidArgumentError
 from tests.unit.fs.test_repo import make_subrepo
 
 
@@ -315,6 +316,14 @@ def test_update_from_subrepos(tmp_dir, dvc, erepo_dir, is_dvc):
         "url": repo_path,
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+def test_update_import_to_remote(tmp_dir, dvc, erepo_dir, local_remote):
+    erepo_dir.scm_gen({"foo": "foo"}, commit="add foo")
+    stage = dvc.imp(os.fspath(erepo_dir), "foo")
+    erepo_dir.scm_gen({"foo": "bar"}, commit="update foo")
+    with pytest.raises(InvalidArgumentError):
+        dvc.update(stage.path, to_remote=True)
 
 
 @pytest.mark.parametrize(
