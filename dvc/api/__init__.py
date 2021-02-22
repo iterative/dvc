@@ -29,7 +29,7 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise OutputNotFoundError(path, repo)
 
         cloud = metadata.repo.cloud
-        hash_info = get_hash(path_info, _repo.repo_fs, "md5")
+        hash_info = get_hash(path_info, _repo.repo_fs, "md5", _repo.state)
         return cloud.get_url_for(remote, checksum=hash_info.value)
 
 

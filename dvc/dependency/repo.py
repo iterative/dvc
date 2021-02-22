@@ -47,13 +47,16 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_hash(self, locked=True):
-        from dvc.objects.stage import get_hash
+        from dvc.objects.stage import stage
 
         with self._make_repo(locked=locked) as repo:
             path_info = PathInfo(repo.root_dir) / self.def_path
-            return get_hash(
-                path_info, repo.repo_fs, "md5", follow_subrepos=False
-            )
+            return stage(
+                self.repo.odb.local,
+                path_info,
+                repo.repo_fs,
+                follow_subrepos=False,
+            ).hash_info
 
     def workspace_status(self):
         current = self._get_hash(locked=True)

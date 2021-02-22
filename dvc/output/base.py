@@ -193,7 +193,12 @@ class BaseOutput:
 
     def get_hash(self):
         if not self.use_cache:
-            return get_hash(self.path_info, self.fs, self.fs.PARAM_CHECKSUM)
+            return get_hash(
+                self.path_info,
+                self.fs,
+                self.fs.PARAM_CHECKSUM,
+                self.repo.state,
+            )
         return ostage(self.odb, self.path_info, self.fs).hash_info
 
     @property

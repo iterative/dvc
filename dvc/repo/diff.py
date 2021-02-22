@@ -128,7 +128,9 @@ def _output_paths(repo, repo_fs, targets):
 
     def _to_checksum(output):
         if on_working_fs:
-            return get_hash(output.path_info, repo.odb.local.fs, "md5").value
+            return get_hash(
+                output.path_info, repo.odb.local.fs, "md5", repo.state
+            ).value
         return output.hash_info.value
 
     for stage in repo.stages:
