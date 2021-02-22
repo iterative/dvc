@@ -1,58 +1,94 @@
 import logging
 import os
+import shutil
 import threading
-from datetime import datetime, timedelta
 
 from funcy import cached_property, wrap_prop
 
+from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
+from dvc.utils import format_link
 
 from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
+_DEFAULT_CREDS_STEPS = (
+    "https://azuresdkdocs.blob.core.windows.net/$web/python/"
+    "azure-identity/1.4.0/azure.identity.html#azure.identity"
+    ".DefaultAzureCredential"
+)
+
+
+class AzureAuthError(DvcException):
+    pass
 
 
 class AzureFileSystem(BaseFileSystem):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
-    REQUIRES = {
-        "azure-storage-blob": "azure.storage.blob",
-        "knack": "knack",
-    }
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
-
-    COPY_POLL_SECONDS = 5
-    LIST_OBJECT_PAGE_SIZE = 5000
+    REQUIRES = {
+        "adlfs": "adlfs",
+        "knack": "knack",
+        "azure-identity": "azure.identity",
+    }
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get("url", "azure://")
+        url = config.get("url")
         self.path_info = self.PATH_CLS(url)
         self.bucket = self.path_info.bucket
 
         if not self.bucket:
             container = self._az_config.get("storage", "container_name", None)
-            self.path_info = self.PATH_CLS(f"azure://{container}")
-            self.bucket = self.path_info.bucket
+            url = f"azure://{container}"
 
-        self._conn_str = config.get(
-            "connection_string"
-        ) or self._az_config.get("storage", "connection_string", None)
+        self.path_info = self.PATH_CLS(url)
+        self.bucket = self.path_info.bucket
 
-        self._account_url = None
-        if not self._conn_str:
-            name = self._az_config.get("storage", "account", None)
-            self._account_url = f"https://{name}.blob.core.windows.net"
+        self.login_method, self.login_info = self._prepare_credentials(config)
 
-        self._credential = config.get("sas_token") or self._az_config.get(
-            "storage", "sas_token", None
+    def _prepare_credentials(self, config):
+        from azure.identity.aio import DefaultAzureCredential
+
+        login_info = {}
+        login_info["connection_string"] = config.get(
+            "connection_string",
+            self._az_config.get("storage", "connection_string", None),
         )
-        if not self._credential:
-            self._credential = self._az_config.get("storage", "key", None)
+        login_info["account_name"] = config.get(
+            "account_name", self._az_config.get("storage", "account", None)
+        )
+        login_info["account_key"] = config.get(
+            "account_key", self._az_config.get("storage", "key", None)
+        )
+        login_info["sas_token"] = config.get(
+            "sas_token", self._az_config.get("storage", "sas_token", None)
+        )
+        login_info["tenant_id"] = config.get("tenant_id")
+        login_info["client_id"] = config.get("client_id")
+        login_info["client_secret"] = config.get("client_secret")
+
+        if not any(login_info.values()):
+            login_info["credentials"] = DefaultAzureCredential()
+
+        for login_method, required_keys in [  # noqa
+            ("connection string", ["connection_string"]),
+            ("account key", ["account_name", "account_key"]),
+            ("SAS token", ["account_name", "sas_token"]),
+            ("anonymous login", ["account_name"]),
+            (f"default credentials ({_DEFAULT_CREDS_STEPS})", ["credentials"]),
+        ]:
+            if all(login_info.get(key) is not None for key in required_keys):
+                break
+        else:
+            login_method = None
+
+        return login_method, login_info
 
     @cached_property
     def _az_config(self):
@@ -68,158 +104,109 @@ class AzureFileSystem(BaseFileSystem):
 
     @wrap_prop(threading.Lock())
     @cached_property
-    def blob_service(self):
-        # pylint: disable=no-name-in-module
-        from azure.core.exceptions import (
-            HttpResponseError,
-            ResourceNotFoundError,
-        )
-        from azure.storage.blob import BlobServiceClient
+    def fs(self):
+        from adlfs import AzureBlobFileSystem
+        from azure.core.exceptions import AzureError
 
-        if self._conn_str:
-            logger.debug(f"Using connection string '{self._conn_str}'")
-            blob_service = BlobServiceClient.from_connection_string(
-                self._conn_str, credential=self._credential
-            )
-        else:
-            logger.debug(f"Using account url '{self._account_url}'")
-            blob_service = BlobServiceClient(
-                self._account_url, credential=self._credential
-            )
+        try:
+            file_system = AzureBlobFileSystem(**self.login_info)
+            if self.bucket not in [
+                container.rstrip("/") for container in file_system.ls("/")
+            ]:
+                file_system.mkdir(self.bucket)
+        except (ValueError, AzureError) as e:
+            raise AzureAuthError(
+                f"Authentication to Azure Blob Storage via {self.login_method}"
+                " failed.\nLearn more about configuration settings at"
+                f" {format_link('https://man.dvc.org/remote/modify')}"
+            ) from e
 
-        logger.debug(f"Container name {self.bucket}")
-        container_client = blob_service.get_container_client(self.bucket)
+        return file_system
 
-        try:  # verify that container exists
-            container_client.get_container_properties()
-        except ResourceNotFoundError:
-            container_client.create_container()
-        except HttpResponseError as exc:
-            # client may not have account-level privileges
-            if exc.status_code != 403:
-                raise
+    def _with_bucket(self, path):
+        if isinstance(path, self.PATH_CLS):
+            return f"{path.bucket}/{path.path}"
+        return path
 
-        return blob_service
+    def open(
+        self, path_info, mode="r", **kwargs
+    ):  # pylint: disable=arguments-differ
+        return self.fs.open(self._with_bucket(path_info), mode=mode)
 
-    def get_etag(self, path_info):
-        blob_client = self.blob_service.get_blob_client(
-            path_info.bucket, path_info.path
-        )
-        etag = blob_client.get_blob_properties().etag
-        return etag.strip('"')
+    def exists(self, path_info, use_dvcignore=False):
+        return self.fs.exists(self._with_bucket(path_info))
 
-    def _generate_download_url(self, path_info, expires=3600):
-        from azure.storage.blob import (  # pylint:disable=no-name-in-module
-            BlobSasPermissions,
-            generate_blob_sas,
-        )
+    def _strip_bucket(self, entry):
+        _, entry = entry.split("/", 1)
+        return entry
 
-        expires_at = datetime.utcnow() + timedelta(seconds=expires)
-
-        blob_client = self.blob_service.get_blob_client(
-            path_info.bucket, path_info.path
-        )
-
-        sas_token = generate_blob_sas(
-            blob_client.account_name,
-            blob_client.container_name,
-            blob_client.blob_name,
-            account_key=blob_client.credential.account_key,
-            permission=BlobSasPermissions(read=True),
-            expiry=expires_at,
-        )
-        return blob_client.url + "?" + sas_token
-
-    def exists(self, path_info, use_dvcignore=True):
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
-
-    def _list_paths(self, bucket, prefix):
-        container_client = self.blob_service.get_container_client(bucket)
-        for blob in container_client.list_blobs(name_starts_with=prefix):
-            yield blob.name
-
-    def walk_files(self, path_info, **kwargs):
-        if not kwargs.pop("prefix", False):
-            path_info = path_info / ""
-        for fname in self._list_paths(
-            path_info.bucket, path_info.path, **kwargs
-        ):
-            if fname.endswith("/"):
-                continue
-
-            yield path_info.replace(path=fname)
+    def _strip_buckets(self, entries, detail, prefix=None):
+        for entry in entries:
+            if detail:
+                entry = entry.copy()
+                entry["name"] = self._strip_bucket(entry["name"])
+            else:
+                entry = self._strip_bucket(
+                    f"{prefix}/{entry}" if prefix else entry
+                )
+            yield entry
 
     def ls(
         self, path_info, detail=False, recursive=False
     ):  # pylint: disable=arguments-differ
-        assert recursive
+        path = self._with_bucket(path_info)
+        if recursive:
+            for root, _, files in self.fs.walk(path, detail=detail):
+                if detail:
+                    files = files.values()
+                yield from self._strip_buckets(files, detail, prefix=root)
+            return None
 
-        container_client = self.blob_service.get_container_client(
-            path_info.bucket
-        )
-        for blob in container_client.list_blobs(
-            name_starts_with=path_info.path
-        ):
-            if detail:
-                yield {
-                    "type": "file",
-                    "name": blob.name,
-                    "size": blob.size,
-                    "etag": blob.etag.strip('"'),
-                }
-            else:
-                yield blob.name
+        yield from self._strip_buckets(self.ls(path, detail=detail), detail)
+
+    def walk_files(self, path_info, **kwargs):
+        for file in self.ls(path_info, recursive=True):
+            yield path_info.replace(path=file)
 
     def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        logger.debug(f"Removing {path_info}")
-        self.blob_service.get_blob_client(
-            path_info.bucket, path_info.path
-        ).delete_blob()
+        self.fs.delete(self._with_bucket(path_info))
 
     def info(self, path_info):
-        blob_client = self.blob_service.get_blob_client(
-            path_info.bucket, path_info.path
-        )
-        properties = blob_client.get_blob_properties()
-        return {
-            "type": "file",
-            "size": properties.size,
-            "etag": properties.etag.strip('"'),
-        }
+        info = self.fs.info(self._with_bucket(path_info)).copy()
+        info["name"] = self._strip_bucket(info["name"])
+        return info
 
     def _upload_fobj(self, fobj, to_info):
-        blob_client = self.blob_service.get_blob_client(
-            to_info.bucket, to_info.path
-        )
-        blob_client.upload_blob(fobj, overwrite=True)
+        with self.open(to_info, "wb") as fdest:
+            shutil.copyfileobj(fobj, fdest)
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
         total = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
             self.upload_fobj(
                 fobj,
-                to_info,
+                self._with_bucket(to_info),
                 desc=name,
                 total=total,
                 no_progress_bar=no_progress_bar,
             )
+        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+        self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
     ):
-        blob_client = self.blob_service.get_blob_client(
-            from_info.bucket, from_info.path
-        )
-        total = blob_client.get_blob_properties().size
-        stream = blob_client.download_blob()
-        with open(to_file, "wb") as fobj:
+        total = self.getsize(self._with_bucket(from_info))
+        with self.open(from_info, "rb") as fobj:
             with Tqdm.wrapattr(
-                fobj, "write", desc=name, total=total, disable=no_progress_bar
+                fobj,
+                "read",
+                desc=name,
+                disable=no_progress_bar,
+                bytes=True,
+                total=total,
+                **pbar_args,
             ) as wrapped:
-                stream.readinto(wrapped)
+                with open(to_file, "wb") as fdest:
+                    shutil.copyfileobj(wrapped, fdest)

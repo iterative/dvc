@@ -179,7 +179,15 @@ SCHEMA = {
                     "webhdfs_alias": str,
                     **REMOTE_COMMON,
                 },
-                "azure": {"connection_string": str, **REMOTE_COMMON},
+                "azure": {
+                    "connection_string": str,
+                    "sas_token": str,
+                    "account_name": str,
+                    "tenant_id": str,
+                    "client_id": str,
+                    "client_secret": str,
+                    **REMOTE_COMMON,
+                },
                 "oss": {
                     "oss_key_id": str,
                     "oss_key_secret": str,
