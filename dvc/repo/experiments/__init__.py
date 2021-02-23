@@ -51,14 +51,12 @@ def scm_locked(f):
 def unlocked_repo(f):
     @wraps(f)
     def wrapper(exp, *args, **kwargs):
-        exp.repo.state.dump()
         exp.repo.lock.unlock()
         exp.repo._reset()  # pylint: disable=protected-access
         try:
             ret = f(exp, *args, **kwargs)
         finally:
             exp.repo.lock.lock()
-            exp.repo.state.load()
         return ret
 
     return wrapper

@@ -14,4 +14,5 @@ def _destroy_stages(repo):
 # which will cause issues on Windows, as `.dvc/lock` will be busy.
 def destroy(repo):
     _destroy_stages(repo)
+    repo.close()
     remove(repo.dvc_dir)

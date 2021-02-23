@@ -130,10 +130,6 @@ class BaseFileSystem:
             f"dependencies: {missing}. {hint}"
         )
 
-    @property
-    def odb(self):
-        return getattr(self.repo.odb, self.scheme)
-
     def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         if hasattr(self, "_generate_download_url"):
             # pylint:disable=no-member

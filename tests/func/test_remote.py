@@ -146,7 +146,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
-    from dvc.objects.stage import get_hash
+    from dvc.objects.stage import stage
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
@@ -158,7 +158,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch(
         "dvc.objects.stage._collect_dir", return_value=dir_info,
     ):
-        hash1 = get_hash(path_info, dvc.odb.local.fs, "md5")
+        hash1 = stage(dvc.odb.local, path_info, dvc.odb.local.fs).hash_info
 
     dir_info = DirInfo.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
@@ -166,7 +166,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     with patch(
         "dvc.objects.stage._collect_dir", return_value=dir_info,
     ):
-        hash2 = get_hash(path_info, dvc.odb.local.fs, "md5")
+        hash2 = stage(dvc.odb.local, path_info, dvc.odb.local.fs).hash_info
 
     assert hash1 == hash2
 

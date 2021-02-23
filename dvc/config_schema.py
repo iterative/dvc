@@ -213,8 +213,8 @@ SCHEMA = {
         )
     },
     "state": {
-        "row_limit": All(Coerce(int), Range(1)),
-        "row_cleanup_quota": All(Coerce(int), Range(0, 100)),
+        "row_limit": All(Coerce(int), Range(1)),  # obsoleted
+        "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
     },
     # section for experimental features
     "feature": {

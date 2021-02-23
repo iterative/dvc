@@ -33,7 +33,7 @@ def lock_repo(repo: "Repo"):
         if depth > 0:
             yield
         else:
-            with repo.lock, repo.state:
+            with repo.lock:
                 repo._reset()
                 yield
                 # Graph cache is no longer valid after we release the repo.lock
@@ -186,7 +186,7 @@ class Repo:
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self)
+            self.state = State(self.root_dir, self.tmp_dir)
             self.stage_cache = StageCache(self)
 
             self._ignore()
@@ -477,11 +477,10 @@ class Repo:
         fs = RepoFileSystem(self, subrepos=True)
         path = PathInfo(self.root_dir) / path
         try:
-            with self.state:
-                with fs.open(
-                    path, mode=mode, encoding=encoding, remote=remote,
-                ) as fobj:
-                    yield fobj
+            with fs.open(
+                path, mode=mode, encoding=encoding, remote=remote,
+            ) as fobj:
+                yield fobj
         except FileNotFoundError as exc:
             raise FileMissingError(path) from exc
         except IsADirectoryError as exc:
@@ -489,8 +488,10 @@ class Repo:
 
     def close(self):
         self.scm.close()
+        self.state.close()
 
     def _reset(self):
+        self.state.close()
         self.scm._reset()  # pylint: disable=protected-access
         self.__dict__.pop("outs_trie", None)
         self.__dict__.pop("outs_graph", None)

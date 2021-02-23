@@ -40,7 +40,6 @@ def test_no_cache_entry(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "second")
 
     remove(tmp_dir / ".dvc" / "cache")
-    (tmp_dir / ".dvc" / "tmp" / "state").unlink()
 
     dir_checksum = "5fb6b29836c388e093ca0715c872fe2a.dir"
 
@@ -131,6 +130,7 @@ def test_directories(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"2": "two"}}, commit="modify a file")
 
     (tmp_dir / "dir" / "2").unlink()
+    assert dvc.status() != {}  # sanity check
     dvc.add("dir")
     scm.add(["dir.dvc"])
     scm.commit("delete a file")

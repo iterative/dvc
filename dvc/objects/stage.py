@@ -27,22 +27,26 @@ def get_file_hash(path_info, fs, name):
     raise NotImplementedError
 
 
-def _calculate_hashes(file_infos, fs, name):
-    def _get_file_hash(path_info):
-        return get_file_hash(path_info, fs, name)
+def _calculate_hashes(path_info, fs, name, state, **kwargs):
+    def _get_file_hash(file_info):
+        hash_info = state.get(  # pylint: disable=assignment-from-none
+            file_info, fs,
+        )
+        if not hash_info:
+            hash_info = get_file_hash(file_info, fs, name)
+            state.save(file_info, fs, hash_info)
+        return file_info, hash_info
 
     with Tqdm(
-        total=len(file_infos),
-        unit="md5",
-        desc="Computing file/dir hashes (only done once)",
+        unit="md5", desc="Computing file/dir hashes (only done once)",
     ) as pbar:
         worker = pbar.wrap_fn(_get_file_hash)
         with ThreadPoolExecutor(max_workers=fs.hash_jobs) as executor:
-            hash_infos = executor.map(worker, file_infos)
-            return dict(zip(file_infos, hash_infos))
+            pairs = executor.map(worker, fs.walk_files(path_info, **kwargs))
+            return dict(pairs)
 
 
-def _iter_hashes(path_info, fs, name, **kwargs):
+def _iter_hashes(path_info, fs, name, state, **kwargs):
     if name in fs.DETAIL_FIELDS:
         for details in fs.ls(path_info, recursive=True, detail=True):
             file_info = path_info.replace(path=details["name"])
@@ -53,25 +57,14 @@ def _iter_hashes(path_info, fs, name, **kwargs):
 
         return None
 
-    file_infos = []
-    for file_info in fs.walk_files(path_info, **kwargs):
-        hash_info = fs.repo.state.get(  # pylint: disable=assignment-from-none
-            file_info, fs,
-        )
-        if not hash_info:
-            file_infos.append(file_info)
-            continue
-        assert hash_info.name == name
-        yield file_info, hash_info
-
-    yield from _calculate_hashes(file_infos, fs, name).items()
+    yield from _calculate_hashes(path_info, fs, name, state, **kwargs).items()
 
 
-def _collect_dir(path_info, fs, name, **kwargs):
+def _collect_dir(path_info, fs, name, state, **kwargs):
     from dvc.dir_info import DirInfo
 
     dir_info = DirInfo()
-    for fi, hi in _iter_hashes(path_info, fs, name, **kwargs):
+    for fi, hi in _iter_hashes(path_info, fs, name, state, **kwargs):
         if DvcIgnore.DVCIGNORE_FILE == fi.name:
             raise DvcIgnoreInCollectedDirError(fi.parent)
 
@@ -88,17 +81,17 @@ def _collect_dir(path_info, fs, name, **kwargs):
     return dir_info
 
 
-def get_dir_hash(path_info, fs, name, **kwargs):
+def get_dir_hash(path_info, fs, name, state, **kwargs):
     from . import Tree
 
-    dir_info = _collect_dir(path_info, fs, name, **kwargs)
+    dir_info = _collect_dir(path_info, fs, name, state, **kwargs)
     hash_info = Tree.save_dir_info(fs.repo.odb.local, dir_info)
     hash_info.size = dir_info.size
     hash_info.dir_info = dir_info
     return hash_info
 
 
-def get_hash(path_info, fs, name, **kwargs):
+def get_hash(path_info, fs, name, odb, **kwargs):
     assert path_info and (
         isinstance(path_info, str) or path_info.scheme == fs.scheme
     )
@@ -108,36 +101,36 @@ def get_hash(path_info, fs, name, **kwargs):
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    with fs.repo.state:
-        # pylint: disable=assignment-from-none
-        hash_info = fs.repo.state.get(path_info, fs)
+    state = odb.repo.state
+    # pylint: disable=assignment-from-none
+    hash_info = state.get(path_info, fs)
 
-        # If we have dir hash in state db, but dir cache file is lost,
-        # then we need to recollect the dir via .get_dir_hash() call below,
-        # see https://github.com/iterative/dvc/issues/2219 for context
-        if (
-            hash_info
-            and hash_info.isdir
-            and not fs.odb.fs.exists(fs.odb.hash_to_path_info(hash_info.value))
-        ):
-            hash_info = None
+    # If we have dir hash in state db, but dir cache file is lost,
+    # then we need to recollect the dir via .get_dir_hash() call below,
+    # see https://github.com/iterative/dvc/issues/2219 for context
+    if (
+        hash_info
+        and hash_info.isdir
+        and not odb.fs.exists(odb.hash_to_path_info(hash_info.value))
+    ):
+        hash_info = None
 
-        if hash_info:
-            if hash_info.isdir:
-                from . import Tree
+    if hash_info:
+        if hash_info.isdir:
+            from . import Tree
 
-                # NOTE: loading the fs will restore hash_info.dir_info
-                Tree.load(fs.odb, hash_info)
-            assert hash_info.name == name
-            return hash_info
+            # NOTE: loading the fs will restore hash_info.dir_info
+            Tree.load(odb, hash_info)
+        assert hash_info.name == name
+        return hash_info
 
-        if fs.isdir(path_info):
-            hash_info = get_dir_hash(path_info, fs, name, **kwargs)
-        else:
-            hash_info = get_file_hash(path_info, fs, name)
+    if fs.isdir(path_info):
+        hash_info = get_dir_hash(path_info, fs, name, state, **kwargs)
+    else:
+        hash_info = get_file_hash(path_info, fs, name)
 
-        if hash_info and fs.exists(path_info):
-            fs.repo.state.save(path_info, fs, hash_info)
+    if hash_info and fs.exists(path_info):
+        state.save(path_info, fs, hash_info)
 
     return hash_info
 

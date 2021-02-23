@@ -89,6 +89,7 @@ install_requires = [
     "typing_extensions>=3.7.4",
     "fsspec>=0.8.5",
     "dvclive>=0.0.1a0",
+    "diskcache>=5.2.1",
 ]
 
 
