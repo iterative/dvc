@@ -68,7 +68,7 @@ def exp_stage(tmp_dir, scm, dvc):
 
 @pytest.fixture
 def checkpoint_stage(tmp_dir, scm, dvc, mocker):
-    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", 0.01)
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     tmp_dir.gen("checkpoint.py", CHECKPOINT_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")

@@ -60,7 +60,7 @@ def live_stage(tmp_dir, scm, dvc, mocker):
     except ImportError:
         pytest.skip("no dvclive")
 
-    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", 0.01)
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(
         summary=True,
@@ -187,7 +187,7 @@ def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
     except ImportError:
         pytest.skip("no dvclive")
 
-    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", 0.01)
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
@@ -266,7 +266,7 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
 
     # make sure script takes more time to execute than one monitor sleep cycle
     monitor_await_time = 0.01
-    mocker.patch("dvc.stage.run.MonitorConfig.AWAIT", monitor_await_time)
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", monitor_await_time)
 
     script = dedent(
         """

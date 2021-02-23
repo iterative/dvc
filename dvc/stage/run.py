@@ -4,10 +4,12 @@ import os
 import signal
 import subprocess
 import threading
-from abc import ABC, abstractmethod
-from contextlib import ExitStack
 from dataclasses import dataclass
-from typing import Callable, ClassVar
+from typing import TYPE_CHECKING, Callable, List
+
+if TYPE_CHECKING:
+    from dvc.stage import Stage
+    from dvc.output import BaseOutput
 
 from funcy import first
 
@@ -103,34 +105,32 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        monitors = _get_monitors(stage, checkpoint_func, p)
+        tasks = _get_monitor_tasks(stage, checkpoint_func, p)
 
-        if monitors:
-            with ExitStack() as stack:
-                for m in monitors:
-                    stack.enter_context(m)
+        if tasks:
+            with Monitor(tasks):
                 p.communicate()
         else:
             p.communicate()
 
         if p.returncode != 0:
-            for m in monitors:
-                if m.config.killed.is_set():
-                    raise m.error_cls(cmd, p.returncode)
+            for t in tasks:
+                if t.killed.is_set():
+                    raise t.error_cls(cmd, p.returncode)
             raise StageCmdFailedError(cmd, p.returncode)
     finally:
         if old_handler:
             signal.signal(signal.SIGINT, old_handler)
 
 
-def _get_monitors(stage, checkpoint_func, proc):
+def _get_monitor_tasks(stage, checkpoint_func, proc):
     result = []
     if checkpoint_func:
-        result.append(CheckpointMonitor(stage, checkpoint_func, proc))
+        result.append(CheckpointTask(stage, checkpoint_func, proc))
 
     live = first((o for o in stage.outs if (o.live and o.live["html"])))
     if live:
-        result.append(LiveMonitor(live, proc))
+        result.append(LiveTask(stage, live, proc))
 
     return result
 
@@ -171,127 +171,124 @@ def run_stage(
 
 
 @dataclass
-class MonitorConfig:
-    name: str
-    stage: "Stage"  # type: ignore[name-defined] # noqa: F821
-    task: Callable
+class MonitorTask:
+    stage: "Stage"
+    execute: Callable
     proc: subprocess.Popen
-    done: threading.Event
-    killed: threading.Event
-    signal_path: str
-    AWAIT: ClassVar[float] = 1.0
-
-
-class Monitor(ABC):
-    def __init__(self, config: MonitorConfig):
-        self.config = config
-        self.monitor_thread = threading.Thread(
-            target=_monitor_loop, args=(self.config,),
-        )
-
-    def __enter__(self):
-        logger.debug(
-            "Monitoring stage '%s' with cmd process '%d'",
-            self.config.stage,
-            self.config.proc.pid,
-        )
-        self.monitor_thread.start()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.config.done.set()
-        self.monitor_thread.join()
+    done: threading.Event = threading.Event()
+    killed: threading.Event = threading.Event()
 
     @property
-    @abstractmethod
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @property
     def SIGNAL_FILE(self) -> str:
         raise NotImplementedError
 
     @property
-    @abstractmethod
-    def error_cls(self):
+    def error_cls(self) -> type:
         raise NotImplementedError
 
-    def signal_path(self, stage):
-        return os.path.join(stage.repo.tmp_dir, self.SIGNAL_FILE)
+    @property
+    def signal_path(self) -> str:
+        return os.path.join(self.stage.repo.tmp_dir, self.SIGNAL_FILE)
+
+    def after_run(self):
+        pass
 
 
-class CheckpointMonitor(Monitor):
+class CheckpointTask(MonitorTask):
+    name = "checkpoint"
     SIGNAL_FILE = "DVC_CHECKPOINT"
     error_cls = CheckpointKilledError
 
-    def __init__(self, stage, callback_func, proc):
+    def __init__(
+        self, stage: "Stage", callback_func: Callable, proc: subprocess.Popen
+    ):
         super().__init__(
-            MonitorConfig(
-                "checkpoint",
-                stage,
-                functools.partial(_run_callback, stage, callback_func),
-                proc,
-                threading.Event(),
-                threading.Event(),
-                self.signal_path(stage),
-            )
+            stage,
+            functools.partial(
+                CheckpointTask._run_callback, stage, callback_func
+            ),
+            proc,
         )
 
+    @staticmethod
+    @relock_repo
+    def _run_callback(stage, callback_func):
+        stage.save(allow_missing=True)
+        stage.commit(allow_missing=True)
+        logger.debug("Running checkpoint callback for stage '%s'", stage)
+        callback_func()
 
-class LiveMonitor(Monitor):
+
+class LiveTask(MonitorTask):
+    name = "live"
     SIGNAL_FILE = "DVC_LIVE"
     error_cls = LiveKilledError
 
-    def __init__(self, out, proc):
-        super().__init__(
-            MonitorConfig(
-                "live",
-                out.stage,
-                functools.partial(create_summary, out),
-                proc,
-                threading.Event(),
-                threading.Event(),
-                self.signal_path(out.stage),
-            )
+    def __init__(
+        self, stage: "Stage", out: "BaseOutput", proc: subprocess.Popen
+    ):
+        super().__init__(stage, functools.partial(create_summary, out), proc)
+
+    def after_run(self):
+        # make sure summary is prepared for all the data
+        self.execute()
+
+
+class Monitor:
+    AWAIT: float = 1.0
+
+    def __init__(self, tasks: List[MonitorTask]):
+        self.done = threading.Event()
+        self.tasks = tasks
+        self.monitor_thread = threading.Thread(
+            target=Monitor._loop, args=(self.tasks, self.done,),
         )
 
+    def __enter__(self):
+        self.monitor_thread.start()
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # make sure all data is visualied after training
-        self.config.task()
-        super().__exit__(exc_type, exc_val, exc_tb)
+        self.done.set()
+        self.monitor_thread.join()
+        for t in self.tasks:
+            t.after_run()
 
+    @staticmethod
+    def kill(proc):
+        if os.name == "nt":
+            return Monitor._kill_nt(proc)
+        proc.terminate()
+        proc.wait()
 
-def _monitor_loop(config: MonitorConfig):
-    while True:
-        if os.path.exists(config.signal_path):
-            try:
-                config.task()
-            except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    "Error running '%s' task, '%s' will be aborted",
-                    config.name,
-                    config.stage,
-                )
-                _kill(config.proc)
-                config.killed.set()
-            finally:
-                logger.debug("Remove checkpoint signal file")
-                os.remove(config.signal_path)
-        if config.done.wait(config.AWAIT):
-            return
+    @staticmethod
+    def _kill_nt(proc):
+        # windows stages are spawned with shell=True, proc is the shell process
+        # and not the actual stage process - we have to kill the entire tree
+        subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
 
-
-def _kill(proc):
-    if os.name == "nt":
-        return _kill_nt(proc)
-    proc.terminate()
-    proc.wait()
-
-
-def _kill_nt(proc):
-    # windows stages are spawned with shell=True, proc is the shell process and
-    # not the actual stage process - we have to kill the entire tree
-    subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
-
-
-@relock_repo
-def _run_callback(stage, callback_func):
-    stage.save(allow_missing=True)
-    stage.commit(allow_missing=True)
-    logger.debug("Running checkpoint callback for stage '%s'", stage)
-    callback_func()
+    @staticmethod
+    def _loop(tasks: List[MonitorTask], done: threading.Event):
+        while True:
+            for task in tasks:
+                if os.path.exists(task.signal_path):
+                    try:
+                        task.execute()
+                    except Exception:  # pylint: disable=broad-except
+                        logger.exception(
+                            "Error running '%s' task, '%s' will be aborted",
+                            task.name,
+                            task.stage,
+                        )
+                        Monitor.kill(task.proc)
+                        task.killed.set()
+                    finally:
+                        logger.debug(
+                            "Removing signal file for '%s' task", task.name
+                        )
+                        os.remove(task.signal_path)
+            if done.wait(Monitor.AWAIT):
+                return
