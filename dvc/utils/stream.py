@@ -1,6 +1,8 @@
 import hashlib
 import io
 
+from funcy import cached_property
+
 from dvc.hash_info import HashInfo
 from dvc.istextfile import istextblock
 from dvc.utils import dos2unix
@@ -61,17 +63,30 @@ class IterStream(io.RawIOBase):
         return self.leftover[:n]
 
 
-class HashedStreamReader:
+class HashedStreamReader(io.IOBase):
 
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, fobj):
+        self.fobj = fobj
         self.md5 = hashlib.md5()
         self.is_text_file = None
-        self.reader = fobj.read1 if hasattr(fobj, "read1") else fobj.read
+        super().__init__()
+
+    def readable(self):
+        return True
+
+    def tell(self):
+        return self.fobj.tell()
+
+    @cached_property
+    def _reader(self):
+        if hasattr(self.fobj, "read1"):
+            return self.fobj.read1
+        return self.fobj.read
 
     def read(self, n=-1):
-        chunk = self.reader(n)
+        chunk = self._reader(n)
         if self.is_text_file is None:
             self.is_text_file = istextblock(chunk)
 
