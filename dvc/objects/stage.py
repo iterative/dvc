@@ -76,7 +76,7 @@ def _collect_dir(path_info, fs, name, state, **kwargs):
         #
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
-        dir_info.trie[fi.relative_to(path_info).parts] = hi
+        dir_info.add(fi.relative_to(path_info).parts, hi)
 
     return dir_info
 

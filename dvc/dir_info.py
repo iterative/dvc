@@ -1,6 +1,7 @@
 import posixpath
 from operator import itemgetter
 
+from funcy import cached_property
 from pygtrie import Trie
 
 from .hash_info import HashInfo
@@ -48,28 +49,36 @@ class DirInfo:
     PARAM_RELPATH = "relpath"
 
     def __init__(self):
-        self.trie = Trie()
+        self._dict = {}
+
+    def as_dict(self):
+        return self._dict.copy()
+
+    def add(self, key, hash_info):
+        self.__dict__.pop("trie", None)
+        self._dict[key] = hash_info
+
+    def get(self, key, default=None):
+        return self._dict.get(key, default)
+
+    @cached_property
+    def trie(self):
+        return Trie(self._dict)
 
     @property
     def size(self):
         try:
-            return sum(
-                hash_info.size
-                for _, hash_info in self.trie.iteritems()  # noqa: B301
-            )
+            return sum(hash_info.size for _, hash_info in self._dict.items())
         except TypeError:
             return None
 
     @property
     def nfiles(self):
-        return len(self.trie)
+        return len(self._dict)
 
-    def items(self, path_info=None):
-        for key, hash_info in self.trie.iteritems():  # noqa: B301
-            path = posixpath.sep.join(key)
-            if path_info is not None:
-                path = path_info / path
-            yield path, hash_info
+    def items(self):
+        for key, hash_info in self._dict.items():
+            yield key, hash_info
 
     @classmethod
     def from_list(cls, lst):
@@ -78,7 +87,8 @@ class DirInfo:
             entry = _entry.copy()
             relpath = entry.pop(cls.PARAM_RELPATH)
             parts = tuple(relpath.split(posixpath.sep))
-            ret.trie[parts] = HashInfo.from_dict(entry)
+            hash_info = HashInfo.from_dict(entry)
+            ret.add(parts, hash_info)
         return ret
 
     def to_list(self):
@@ -91,12 +101,17 @@ class DirInfo:
                     hash_info.name: hash_info.value,
                     self.PARAM_RELPATH: posixpath.sep.join(parts),
                 }
-                for parts, hash_info in self.trie.iteritems()  # noqa: B301
+                for parts, hash_info in self._dict.items()  # noqa: B301
             ),
             key=itemgetter(self.PARAM_RELPATH),
         )
 
     def merge(self, ancestor, their):
+        merged_dict = _merge(
+            ancestor.as_dict(), self.as_dict(), their.as_dict(),
+        )
+
         merged = DirInfo()
-        merged.trie = _merge(ancestor.trie, self.trie, their.trie)
+        for key, hi in merged_dict.items():
+            merged.add(key, hi)
         return merged

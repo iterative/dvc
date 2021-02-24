@@ -177,7 +177,7 @@ def _checkout_file(
 def _remove_redundant_files(path_info, fs, dir_info, cache, force):
     existing_files = set(fs.walk_files(path_info))
 
-    needed_files = {info for info, _ in dir_info.items(path_info)}
+    needed_files = {path_info.joinpath(*key) for key, _ in dir_info.items()}
     redundant_files = existing_files - needed_files
     for path in redundant_files:
         _remove(path, fs, cache, force)
@@ -197,9 +197,9 @@ def _checkout_dir(
 
     logger.debug("Linking directory '%s'.", path_info)
 
-    for entry_info, entry_hash_info in obj.hash_info.dir_info.items(path_info):
+    for entry_key, entry_hash_info in obj.hash_info.dir_info.items():
         entry_modified = _checkout_file(
-            entry_info,
+            path_info.joinpath(*entry_key),
             fs,
             cache.get(entry_hash_info),
             cache,

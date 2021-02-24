@@ -1,11 +1,9 @@
 from operator import itemgetter
 
 import pytest
-from pygtrie import Trie
 
 from dvc.dir_info import DirInfo, _merge
 from dvc.hash_info import HashInfo
-from dvc.path_info import PosixPathInfo, WindowsPathInfo
 
 
 @pytest.mark.parametrize(
@@ -54,7 +52,7 @@ from dvc.path_info import PosixPathInfo, WindowsPathInfo
 )
 def test_list(lst, trie_dict):
     dir_info = DirInfo.from_list(lst)
-    assert dir_info.trie == Trie(trie_dict)
+    assert dir_info._dict == trie_dict
     assert dir_info.to_list() == sorted(lst, key=itemgetter("relpath"))
 
 
@@ -84,7 +82,7 @@ def test_list(lst, trie_dict):
 )
 def test_size(trie_dict, size):
     dir_info = DirInfo()
-    dir_info.trie = Trie(trie_dict)
+    dir_info._dict = trie_dict
     assert dir_info.size == size
 
 
@@ -114,92 +112,31 @@ def test_size(trie_dict, size):
 )
 def test_nfiles(trie_dict, nfiles):
     dir_info = DirInfo()
-    dir_info.trie = Trie(trie_dict)
+    dir_info._dict = trie_dict
     assert dir_info.nfiles == nfiles
 
 
 @pytest.mark.parametrize(
-    "trie_dict, items",
+    "trie_dict",
     [
-        ({}, []),
-        (
-            {
-                ("a",): HashInfo("md5", "abc"),
-                ("b",): HashInfo("md5", "def"),
-                ("c",): HashInfo("md5", "ghi"),
-                ("dir", "foo"): HashInfo("md5", "jkl"),
-                ("dir", "bar"): HashInfo("md5", "mno"),
-                ("dir", "baz"): HashInfo("md5", "pqr"),
-                ("dir", "subdir", "1"): HashInfo("md5", "stu"),
-                ("dir", "subdir", "2"): HashInfo("md5", "vwx"),
-                ("dir", "subdir", "3"): HashInfo("md5", "yz"),
-            },
-            [
-                ("a", HashInfo("md5", "abc")),
-                ("b", HashInfo("md5", "def")),
-                ("c", HashInfo("md5", "ghi")),
-                ("dir/foo", HashInfo("md5", "jkl")),
-                ("dir/bar", HashInfo("md5", "mno")),
-                ("dir/baz", HashInfo("md5", "pqr")),
-                ("dir/subdir/1", HashInfo("md5", "stu")),
-                ("dir/subdir/2", HashInfo("md5", "vwx")),
-                ("dir/subdir/3", HashInfo("md5", "yz")),
-            ],
-        ),
+        {},
+        {
+            ("a",): HashInfo("md5", "abc"),
+            ("b",): HashInfo("md5", "def"),
+            ("c",): HashInfo("md5", "ghi"),
+            ("dir", "foo"): HashInfo("md5", "jkl"),
+            ("dir", "bar"): HashInfo("md5", "mno"),
+            ("dir", "baz"): HashInfo("md5", "pqr"),
+            ("dir", "subdir", "1"): HashInfo("md5", "stu"),
+            ("dir", "subdir", "2"): HashInfo("md5", "vwx"),
+            ("dir", "subdir", "3"): HashInfo("md5", "yz"),
+        },
     ],
 )
-def test_items(trie_dict, items):
+def test_items(trie_dict):
     dir_info = DirInfo()
-    dir_info.trie = Trie(trie_dict)
-    assert list(dir_info.items()) == items
-
-
-@pytest.mark.parametrize(
-    "path_info, trie_dict, items",
-    [
-        (PosixPathInfo(), {}, []),
-        (WindowsPathInfo(), {}, []),
-        (
-            PosixPathInfo("/some/path"),
-            {
-                ("a",): HashInfo("md5", "abc"),
-                ("dir", "foo"): HashInfo("md5", "jkl"),
-                ("dir", "sub", "1"): HashInfo("md5", "stu"),
-            },
-            [
-                (PosixPathInfo("/some/path/a"), HashInfo("md5", "abc")),
-                (PosixPathInfo("/some/path/dir/foo"), HashInfo("md5", "jkl")),
-                (
-                    PosixPathInfo("/some/path/dir/sub/1"),
-                    HashInfo("md5", "stu"),
-                ),
-            ],
-        ),
-        (
-            WindowsPathInfo("C:\\some\\path"),
-            {
-                ("a",): HashInfo("md5", "abc"),
-                ("dir", "foo"): HashInfo("md5", "jkl"),
-                ("dir", "sub", "1"): HashInfo("md5", "stu"),
-            },
-            [
-                (WindowsPathInfo("C:\\some\\path\\a"), HashInfo("md5", "abc")),
-                (
-                    WindowsPathInfo("C:\\some\\path\\dir\\foo"),
-                    HashInfo("md5", "jkl"),
-                ),
-                (
-                    WindowsPathInfo("C:\\some\\path\\dir\\sub\\1"),
-                    HashInfo("md5", "stu"),
-                ),
-            ],
-        ),
-    ],
-)
-def test_items_with_path(path_info, trie_dict, items):
-    dir_info = DirInfo()
-    dir_info.trie = Trie(trie_dict)
-    assert list(dir_info.items(path_info)) == items
+    dir_info._dict = trie_dict
+    assert list(dir_info.items()) == list(trie_dict.items())
 
 
 @pytest.mark.parametrize(
@@ -268,6 +205,5 @@ def test_items_with_path(path_info, trie_dict, items):
     ],
 )
 def test_merge(ancestor_dict, our_dict, their_dict, merged_dict):
-    actual = _merge(Trie(ancestor_dict), Trie(our_dict), Trie(their_dict))
-    expected = Trie(merged_dict)
-    assert actual == expected
+    actual = _merge(ancestor_dict, our_dict, their_dict)
+    assert actual == merged_dict

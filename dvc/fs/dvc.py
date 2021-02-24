@@ -48,7 +48,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # NOTE: use string paths here for performance reasons
         key = tuple(relpath(path_info, out.path_info).split(os.sep))
         out.get_dir_cache(remote=remote)
-        file_hash = out.hash_info.dir_info.trie.get(key)
+        file_hash = out.hash_info.dir_info.get(key)
         if file_hash:
             return file_hash
         raise FileNotFoundError
@@ -145,7 +145,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         self._fetch_dir(out, **kwargs)
 
         base = out.path_info.parts
-        for key in out.dir_cache.trie.iterkeys():  # noqa: B301
+        for key, _ in out.dir_cache.items():  # noqa: B301
             trie[base + key] = None
 
     def _walk(self, root, trie, topdown=True, **kwargs):
