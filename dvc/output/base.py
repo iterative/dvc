@@ -551,11 +551,8 @@ class BaseOutput:
 
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
-        is_win = os.name == "nt"
-        for entry_relpath, entry_hash_info in self.dir_cache.items():
-            if is_win:
-                entry_relpath = entry_relpath.replace("/", os.sep)
-            entry_path = os.path.join(path, entry_relpath)
+        for entry_key, entry_hash_info in self.dir_cache.items():
+            entry_path = os.path.join(path, *entry_key)
             if (
                 not filter_path
                 or entry_path == filter_path

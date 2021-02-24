@@ -191,6 +191,9 @@ class URLInfo(_BasePath):
     def __div__(self, other):
         return self.replace(path=posixpath.join(self._spath, other))
 
+    def joinpath(self, *args):
+        return self.replace(path=posixpath.join(self._spath, *args))
+
     __truediv__ = __div__
 
     @property

@@ -87,11 +87,7 @@ class Tree(HashFile):
         return self.hash_info.dir_info.nfiles
 
     def __iter__(self):
-        for (
-            key,
-            hash_info,
-        ) in self.hash_info.dir_info.trie.iteritems():  # noqa: B301
-            yield (key, hash_info)
+        yield from self.hash_info.dir_info.items()
 
     @classmethod
     def save_dir_info(cls, odb, dir_info, hash_info=None):
@@ -168,17 +164,18 @@ class Tree(HashFile):
         hi = self.save_dir_info(
             odb, self.src_hash_info.dir_info, self.hash_info
         )
-        for entry_info, entry_hash in Tqdm(
-            hi.dir_info.items(self.src_path_info),
+        for entry_key, entry_hash in Tqdm(
+            hi.dir_info.items(),
             desc="Saving " + self.src_path_info.name,
             unit="file",
         ):
+            entry_info = self.src_path_info.joinpath(*entry_key)
             entry_obj = HashFile(entry_info, self.src_fs, entry_hash)
             entry_obj.save(odb, **kwargs)
         self.src_fs.repo.state.save(self.src_path_info, self.src_fs, hi)
 
     def filter(self, odb, prefix):
-        hash_info = self.hash_info.dir_info.trie.get(prefix)
+        hash_info = self.hash_info.dir_info.get(prefix)
         if hash_info:
             return load(odb, hash_info)
 
@@ -186,7 +183,7 @@ class Tree(HashFile):
         dir_info = DirInfo()
         try:
             for key, value in self.hash_info.dir_info.trie.items(prefix):
-                dir_info.trie[key[depth:]] = value
+                dir_info.add(key[depth:], value)
         except KeyError:
             return None
 
@@ -297,7 +294,7 @@ def _transfer_directory(odb, from_fs, from_info, jobs, no_progress_bar=False):
             (entry_tmp_info, entry_hash),
         ) in _transfer_directory_contents(odb, from_fs, from_info, jobs, pbar):
             odb.add(entry_tmp_info, odb.fs, entry_hash)
-            dir_info.trie[entry_info.parts] = entry_hash
+            dir_info.add(entry_info.parts, entry_hash)
 
     return Tree.save_dir_info(odb, dir_info)
 
