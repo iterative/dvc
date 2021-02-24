@@ -78,6 +78,10 @@ class AzureFileSystem(BaseFileSystem):
 
         for login_method, required_keys in [  # noqa
             ("connection string", ["connection_string"]),
+            (
+                "AD service principal",
+                ["tenant_id", "client_id", "client_secret"],
+            ),
             ("account key", ["account_name", "account_key"]),
             ("SAS token", ["account_name", "sas_token"]),
             ("anonymous login", ["account_name"]),
