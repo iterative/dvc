@@ -54,6 +54,11 @@ LIVE_CHECKPOINT_SCRIPT = dedent(
 
 @pytest.fixture
 def live_stage(tmp_dir, scm, dvc):
+    try:
+        import dvclive  # noqa, pylint:disable=unused-import
+    except ImportError:
+        pytest.skip("no dvclive")
+
     def make(summary=True, html=True, live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
         tmp_dir.gen("train.py", LIVE_SCRITP)
@@ -167,6 +172,11 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
 
 @pytest.fixture
 def live_checkpoint_stage(tmp_dir, scm, dvc):
+    try:
+        import dvclive  # noqa, pylint:disable=unused-import
+    except ImportError:
+        pytest.skip("no dvclive")
+
     def make(live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
 
