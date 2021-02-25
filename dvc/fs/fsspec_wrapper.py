@@ -31,10 +31,19 @@ class FSSpecWrapper(BaseFileSystem):
                 )
             yield entry
 
+    def isdir(self, path_info):
+        return self.fs.isdir(self._with_bucket(path_info))
+
+    def isfile(self, path_info):
+        return self.fs.isfile(self._with_bucket(path_info))
+
     def open(
         self, path_info, mode="r", **kwargs
     ):  # pylint: disable=arguments-differ
         return self.fs.open(self._with_bucket(path_info), mode=mode)
+
+    def copy(self, from_info, to_info):
+        self.fs.copy(self._with_bucket(from_info), self._with_bucket(to_info))
 
     def exists(self, path_info, use_dvcignore=False):
         return self.fs.exists(self._with_bucket(path_info))
