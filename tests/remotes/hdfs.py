@@ -45,7 +45,7 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
             file_info = _hdfs.get_file_info(self.path)
             return file_info.type != pyarrow.fs.FileType.NotFound
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
         assert mode == 0o777
         assert parents
 

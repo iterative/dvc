@@ -16,7 +16,7 @@ class HTTP(Base, HTTPURLInfo):
         dname = str(uuid.uuid4())
         return f"http://127.0.0.1:{port}/{dname}"
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
         assert mode == 0o777
         assert parents
 

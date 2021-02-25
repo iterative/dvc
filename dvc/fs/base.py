@@ -283,6 +283,9 @@ class BaseFileSystem:
         self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
     ):
         from_infos = list(self.walk_files(from_info, **kwargs))
+        if not from_infos:
+            makedirs(to_info, exist_ok=True)
+            return None
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )

@@ -358,3 +358,35 @@ def test_import_url_to_remote_absolute(
 def test_import_url_to_remote_invalid_combinations(dvc):
     with pytest.raises(InvalidArgumentError, match="--no-exec"):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)
+
+
+empty_xfail = pytest.mark.xfail(
+    reason="https://github.com/iterative/dvc/issues/5521"
+)
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("local_cloud"),
+        pytest.param(pytest.lazy_fixture("gs"), marks=empty_xfail),
+        pytest.param(pytest.lazy_fixture("azure"), marks=empty_xfail),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_import_url_empty_directory(tmp_dir, dvc, workspace):
+    workspace.gen({"empty_dir/": {}})
+
+    dvc.imp_url("remote://workspace/empty_dir/")
+
+    empty_dir = tmp_dir / "empty_dir"
+    assert empty_dir.is_dir()
+    assert tuple(empty_dir.iterdir()) == ()

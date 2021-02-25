@@ -8,7 +8,7 @@ from funcy import cached_property
 from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
-from .base import Base
+from .base import ObjectStorageBase
 
 TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
 
@@ -22,7 +22,7 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 
-class GCP(Base, CloudURLInfo):
+class GCP(ObjectStorageBase, CloudURLInfo):
     @staticmethod
     def should_test():
         do_test = env2bool("DVC_TEST_GCP", undefined=None)
@@ -75,10 +75,6 @@ class GCP(Base, CloudURLInfo):
 
     def exists(self):
         return self.is_file() or self.is_dir()
-
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
-        assert mode == 0o777
-        assert parents
 
     def write_bytes(self, contents):
         assert isinstance(contents, bytes)

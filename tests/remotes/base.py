@@ -16,7 +16,7 @@ class Base(URLInfo):
     def exists(self):
         raise NotImplementedError
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
         raise NotImplementedError
 
     def write_text(self, contents, encoding=None, errors=None):
@@ -40,7 +40,7 @@ class Base(URLInfo):
 
             if isinstance(contents, dict):
                 if not contents:
-                    path.mkdir(parents=True, exist_ok=True)
+                    path.mkdir(parents=True, exist_ok=True, empty=True)
                 else:
                     self._gen(contents, prefix=path)
             else:
@@ -71,3 +71,13 @@ class Base(URLInfo):
     @cached_property
     def config(self):
         return {"url": self.url}
+
+
+# pylint: disable=abstract-method
+class ObjectStorageBase(Base):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
+        assert mode == 0o777
+        assert parents
+
+        if empty:
+            self.write_text("")
