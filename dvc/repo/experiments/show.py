@@ -66,7 +66,8 @@ def _collect_experiment_branch(res, repo, branch, baseline, **kwargs):
                 exp.update(collected_exp)
         else:
             exp = collected_exp
-        res[rev] = exp
+        if rev not in res:
+            res[rev] = exp
         prev = rev
     if len(revs) > 1:
         res[prev]["checkpoint_parent"] = baseline
