@@ -183,6 +183,7 @@ SCHEMA = {
                     "connection_string": str,
                     "sas_token": str,
                     "account_name": str,
+                    "account_key": str,
                     "tenant_id": str,
                     "client_id": str,
                     "client_secret": str,
