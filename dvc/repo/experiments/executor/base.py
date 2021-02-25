@@ -248,6 +248,10 @@ class BaseExecutor(ABC):
 
         with cls._repro_dvc(dvc_dir, rel_cwd) as dvc:
             args, kwargs = cls._repro_args(dvc)
+            if args:
+                targets: Optional[Union[list, str]] = args[0]
+            else:
+                targets = kwargs.get("targets")
 
             repro_force = kwargs.get("force", False)
             logger.trace(  # type: ignore[attr-defined]
@@ -265,7 +269,14 @@ class BaseExecutor(ABC):
             #   be removed/does not yet exist) so that our executor workspace
             #   is not polluted with the (persistent) out from an unrelated
             #   experiment run
-            dvc_checkout(dvc, force=True, quiet=True, allow_missing=True)
+            dvc_checkout(
+                dvc,
+                targets=targets,
+                with_deps=targets is not None,
+                force=True,
+                quiet=True,
+                allow_missing=True,
+            )
 
             checkpoint_func = partial(
                 cls.checkpoint_callback, dvc.scm, name, repro_force
