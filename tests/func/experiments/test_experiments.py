@@ -612,3 +612,24 @@ def test_remove(tmp_dir, scm, dvc, exp_stage):
     removed = dvc.experiments.remove(queue=True)
     assert removed == 1
     assert len(dvc.experiments.stash) == 0
+
+
+def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
+    from dvc.utils.fs import remove
+
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"}, commit="add files")
+    stage = dvc.stage.add(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py", "foo"],
+        force=True,
+    )
+    remove("foo")
+    remove("bar")
+
+    dvc.experiments.run(stage.addressing, params=["foo=2"])
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert not (tmp_dir / "bar").exists()
