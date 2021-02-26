@@ -23,13 +23,18 @@ class FSSpecWrapper(BaseFileSystem):
     def _strip_buckets(self, entries, detail, prefix=None):
         for entry in entries:
             if detail:
-                entry = entry.copy()
+                entry = self._entry_hook(entry.copy())
                 entry["name"] = self._strip_bucket(entry["name"])
             else:
                 entry = self._strip_bucket(
                     f"{prefix}/{entry}" if prefix else entry
                 )
             yield entry
+
+    def _entry_hook(self, entry):
+        """Simple hook method to be overriden when wanted to process
+        entries within info() and ls(detail=True) calls"""
+        return entry
 
     def isdir(self, path_info):
         return self.fs.isdir(self._with_bucket(path_info))
@@ -70,6 +75,7 @@ class FSSpecWrapper(BaseFileSystem):
 
     def info(self, path_info):
         info = self.fs.info(self._with_bucket(path_info)).copy()
+        info = self._entry_hook(info)
         info["name"] = self._strip_bucket(info["name"])
         return info
 

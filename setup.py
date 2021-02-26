@@ -95,7 +95,7 @@ install_requires = [
 
 # Extra dependencies for remote integrations
 
-gs = ["gcsfs>=0.7"]
+gs = ["gcsfs @ git+https://github.com/isidentical/gcsfs@support-delete"]
 gdrive = ["pydrive2>=1.7.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["adlfs>=0.6.3", "azure.identity>=1.4.0", "knack"]

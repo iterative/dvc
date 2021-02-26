@@ -1,3 +1,4 @@
+import base64
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -28,6 +29,11 @@ class GSFileSystem(FSSpecWrapper):
         login_info["project"] = config.get("projectname")
         login_info["token"] = config.get("credentialpath")
         return login_info
+
+    def _entry_hook(self, entry):
+        if "md5Hash" in entry:
+            entry["md5"] = base64.b64decode(entry["md5Hash"]).hex()
+        return entry
 
     @wrap_prop(threading.Lock())
     @cached_property

@@ -42,13 +42,15 @@ def test_remote_without_hash_jobs_default(dvc):
     assert fs.hash_jobs == fs.HASH_JOBS
 
 
-@pytest.mark.parametrize("fs_cls", [GSFileSystem, S3FileSystem])
-def test_makedirs_not_create_for_top_level_path(fs_cls, dvc, mocker):
+@pytest.mark.parametrize(
+    "fs_name, fs_cls", [("fs", GSFileSystem), ("s3", S3FileSystem)]
+)
+def test_makedirs_not_create_for_top_level_path(fs_name, fs_cls, dvc, mocker):
     url = f"{fs_cls.scheme}://bucket/"
     fs = fs_cls(dvc, {"url": url})
     mocked_client = mocker.PropertyMock()
     # we use remote clients with same name as scheme to interact with remote
-    mocker.patch.object(fs_cls, fs.scheme, mocked_client)
+    mocker.patch.object(fs_cls, fs_name, mocked_client)
 
     fs.makedirs(fs.path_info)
     assert not mocked_client.called
