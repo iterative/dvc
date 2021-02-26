@@ -89,12 +89,13 @@ install_requires = [
     "typing_extensions>=3.7.4",
     "fsspec>=0.8.5",
     "diskcache>=5.2.1",
+    "google-cloud-storage==1.19.0",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["google-cloud-storage==1.19.0"]
+gs = ["gcsfs>=0.7"]
 gdrive = ["pydrive2>=1.7.3", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["adlfs>=0.6.3", "azure.identity>=1.4.0", "knack"]
