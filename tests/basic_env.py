@@ -220,6 +220,10 @@ class TestNexus3TempDir(TestDirFixture):
 
     file_info_storage = {}
 
+    def __init__(self):
+        self.file_info_storage = {}
+        super().__init__()
+
     def _add_to_storage(self, name, md5, size):
         import uuid
 
@@ -257,5 +261,6 @@ class TestNexus3TempDir(TestDirFixture):
         )
 
     def tearDown(self):
+        self.file_info_storage = {}
         self._saved_dir = self.root_dir
         super().tearDown()
