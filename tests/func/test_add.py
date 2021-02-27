@@ -1142,6 +1142,7 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
             ),
         ),
         pytest.lazy_fixture("http"),
+        pytest.lazy_fixture("nexus3"),
     ],
     indirect=True,
 )

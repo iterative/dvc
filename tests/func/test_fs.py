@@ -240,6 +240,7 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("http"),
+        pytest.lazy_fixture("nexus3"),
     ],
 )
 def test_fs_getsize(dvc, cloud):
@@ -264,6 +265,7 @@ def test_fs_getsize(dvc, cloud):
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("ssh"),
         pytest.lazy_fixture("webhdfs"),
+        pytest.lazy_fixture("nexus3"),
     ],
 )
 def test_fs_upload_fobj(dvc, tmp_dir, cloud):
@@ -317,6 +319,7 @@ def test_fs_ls(dvc, cloud):
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("webdav"),
         pytest.lazy_fixture("gdrive"),
+        pytest.lazy_fixture("nexus3"),
     ],
 )
 def test_fs_ls_recursive(dvc, cloud):

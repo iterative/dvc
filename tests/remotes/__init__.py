@@ -17,6 +17,14 @@ from .gs import (  # noqa: F401; noqa: F401
 from .hdfs import HDFS, hadoop, hdfs, hdfs_server, real_hdfs  # noqa: F401
 from .http import HTTP, http, http_server  # noqa: F401
 from .local import Local, local_cloud, local_remote  # noqa: F401
+from .nexus3 import (  # noqa: F401
+    Nexus3ClientMock,
+    Nexus3FileSystemMock,
+    RealLocalNexus3Backend,
+    mocked_nexus3_client,
+    nexus3,
+    real_nexus3,
+)
 from .oss import (  # noqa: F401
     OSS,
     TEST_OSS_REPO_BUCKET,

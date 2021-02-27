@@ -133,6 +133,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
             ),
         ),
         pytest.lazy_fixture("http"),
+        pytest.lazy_fixture("nexus3"),
     ],
     indirect=True,
 )
@@ -175,6 +176,11 @@ def test_import_url(tmp_dir, dvc, workspace):
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),
+        ),
+        (
+            pytest.lazy_fixture("nexus3"),
+            "ec0943f83357f702033c98e70b853c8c",
+            "e6dcd267966dc628d732874f94ef4280.dir",
         ),
     ],
     indirect=["workspace"],
@@ -263,6 +269,7 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
             ),
         ),
         pytest.lazy_fixture("http"),
+        pytest.lazy_fixture("nexus3"),
     ],
     indirect=True,
 )
@@ -298,6 +305,7 @@ def test_import_url_to_remote_single_file(
                 os.name == "nt", reason="disabled on windows"
             ),
         ),
+        pytest.lazy_fixture("nexus3"),
     ],
     indirect=True,
 )

@@ -8,6 +8,7 @@ from dvc.dependency.hdfs import HDFSDependency
 from dvc.dependency.http import HTTPDependency
 from dvc.dependency.https import HTTPSDependency
 from dvc.dependency.local import LocalDependency
+from dvc.dependency.nexus3 import Nexus3Dependency
 from dvc.dependency.param import ParamsDependency
 from dvc.dependency.s3 import S3Dependency
 from dvc.dependency.ssh import SSHDependency
@@ -32,6 +33,7 @@ DEP_MAP = {
     Schemes.WEBDAV: WebDAVDependency,
     Schemes.WEBDAVS: WebDAVSDependency,
     Schemes.WEBHDFS: WebHDFSDependency,
+    Schemes.NEXUS3: Nexus3Dependency,
 }
 
 

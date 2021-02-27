@@ -31,6 +31,7 @@ all_clouds = [
         "hdfs",
         "webdav",
         "webhdfs",
+        "nexus3",
     ]
 ] + [
     pytest.param(

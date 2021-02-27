@@ -207,3 +207,55 @@ class TestDvcGit(TestDvcGitFixture, TestCase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self._caplog = caplog
+
+
+class TestNexus3TempDir(TestDirFixture):
+    """
+    Temporary filesystem storage to imitate the storage
+    of a Nexus 3 RAW artifactory.
+
+    Used by the `Nexus3ClientMock` class.
+    Each artefact has its own id and a stored md5 value.
+    """
+
+    file_info_storage = {}
+
+    def _add_to_storage(self, name, md5, size):
+        import uuid
+
+        self.file_info_storage.update(
+            {name: {"id": str(uuid.uuid4()), "md5": md5, "size": size}}
+        )
+
+    def get_info_by_file_path(self, name):
+        return self.file_info_storage.get(name)
+
+    def get_file_path_by_id(self, file_id):
+        found_file_paths = [
+            file_path
+            for file_path, id_md5 in self.file_info_storage
+            if id_md5["id"] == file_id
+        ]
+        if len(found_file_paths) > 0:
+            return found_file_paths[0]
+        return None
+
+    def remove(self, name):
+        remove(f"{self.root_dir}/{name}")
+        del self.file_info_storage[name]
+
+    def list_all_files(self):
+        return self.file_info_storage.keys()
+
+    def create(self, name, contents):
+        super().create(f"{self.root_dir}/{name}", contents)
+        file_size = os.path.getsize(f"{self.root_dir}/{name}")
+        import hashlib
+
+        self._add_to_storage(
+            name, hashlib.md5(contents).hexdigest(), file_size
+        )
+
+    def tearDown(self):
+        self._saved_dir = self.root_dir
+        super().tearDown()

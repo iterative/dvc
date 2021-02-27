@@ -9,6 +9,7 @@ from .hdfs import HDFSFileSystem
 from .http import HTTPFileSystem
 from .https import HTTPSFileSystem
 from .local import LocalFileSystem
+from .nexus3 import Nexus3FileSystem
 from .oss import OSSFileSystem
 from .s3 import S3FileSystem
 from .ssh import SSHFileSystem
@@ -29,6 +30,7 @@ FS_MAP = {
     Schemes.OSS: OSSFileSystem,
     Schemes.WEBDAV: WebDAVFileSystem,
     Schemes.WEBDAVS: WebDAVSFileSystem,
+    Schemes.NEXUS3: Nexus3FileSystem,
     # NOTE: LocalFileSystem is the default
 }
 

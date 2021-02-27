@@ -126,6 +126,7 @@ SCHEMA = {
         "webhdfs": str,
         "ssh": str,
         "azure": str,
+        "nexus3": str,
         # This is for default local cache
         "dir": str,
         **LOCAL_COMMON,
@@ -209,6 +210,12 @@ SCHEMA = {
                 "https": {**HTTP_COMMON, **REMOTE_COMMON},
                 "webdav": {**WEBDAV_COMMON, **REMOTE_COMMON},
                 "webdavs": {**WEBDAV_COMMON, **REMOTE_COMMON},
+                "nexus3": {
+                    **HTTP_COMMON,
+                    **REMOTE_COMMON,
+                    "ssl_verify": Any(Bool, str),
+                    Optional("unsecure", default=False): Bool,
+                },
                 "remote": {str: object},  # Any of the above options are valid
             }
         )

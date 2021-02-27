@@ -39,6 +39,7 @@ class ODBManager:
         Schemes.SSH,
         Schemes.HDFS,
         Schemes.WEBHDFS,
+        Schemes.NEXUS3,
     ]
 
     def __init__(self, repo):

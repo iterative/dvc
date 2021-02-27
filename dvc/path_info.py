@@ -346,3 +346,24 @@ class WebDAVURLInfo(URLInfo):
         return "{}://{}{}".format(
             self.scheme.replace("webdav", "http"), self.netloc, self._spath
         )
+
+
+class Nexus3URLInfo(URLInfo):
+    def __init__(self, url):
+        if isinstance(url, Nexus3URLInfo):
+            url = url.url
+        super().__init__(url)
+
+    @cached_property
+    def url(self):
+        return "{}://{}{}".format(
+            self.scheme.replace("nexus3", "https"), self.netloc, self._spath
+        )
+
+
+class Nexus3UnsecureURLInfo(Nexus3URLInfo):
+    @cached_property
+    def url(self):
+        return "{}://{}{}".format(
+            self.scheme.replace("nexus3", "http"), self.netloc, self._spath
+        )

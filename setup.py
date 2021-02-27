@@ -106,12 +106,15 @@ ssh = ["paramiko[invoke]>=2.7.0"]
 hdfs = ["pyarrow>=2.0.0"]
 webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdavclient3>=3.14.5"]
+nexus3 = ["requests_toolbelt>=0.9,<1.0"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
+all_remotes = (
+    gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav + nexus3
+)
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -180,6 +183,7 @@ setup(
         "hdfs": hdfs,
         "webhdfs": webhdfs,
         "webdav": webdav,
+        "nexus3": nexus3,
         "tests": tests_requirements,
     },
     keywords="data-science data-version-control machine-learning git"

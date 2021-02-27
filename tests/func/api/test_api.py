@@ -21,6 +21,7 @@ cloud_names = [
     "hdfs",
     "webdav",
     "webhdfs",
+    "nexus3",
 ]
 clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
 all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
@@ -84,6 +85,7 @@ def test_open(tmp_dir, dvc, remote):
             "hdfs",
             "ssh",
             "webdav",
+            "nexus3",
         ]
     ],
 )
@@ -137,6 +139,7 @@ def test_open_granular(tmp_dir, dvc, remote):
             "http",
             "hdfs",
             "webdav",
+            "nexus3",
         ]
     ],
     indirect=True,

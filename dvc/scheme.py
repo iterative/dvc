@@ -12,3 +12,4 @@ class Schemes:
     OSS = "oss"
     WEBDAV = "webdav"
     WEBDAVS = "webdavs"
+    NEXUS3 = "nexus3"
