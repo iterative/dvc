@@ -177,11 +177,6 @@ def test_import_url(tmp_dir, dvc, workspace):
                 os.name == "nt", reason="disabled on windows"
             ),
         ),
-        (
-            pytest.lazy_fixture("nexus3"),
-            "ec0943f83357f702033c98e70b853c8c",
-            "e6dcd267966dc628d732874f94ef4280.dir",
-        ),
     ],
     indirect=["workspace"],
 )
@@ -305,7 +300,6 @@ def test_import_url_to_remote_single_file(
                 os.name == "nt", reason="disabled on windows"
             ),
         ),
-        pytest.lazy_fixture("nexus3"),
     ],
     indirect=True,
 )
