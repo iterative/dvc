@@ -1,11 +1,14 @@
 import os
+from typing import Dict
 
 import pytest
+from pydantic import parse_obj_as
 from voluptuous import Schema as _Schema
 
 from dvc import output
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.schema import SINGLE_PIPELINE_STAGE_SCHEMA
+from dvc.schema.dvc_yaml import StageDefinition
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import to_pipeline_file as _to_pipeline_file
 
@@ -17,6 +20,7 @@ def to_pipeline_file(stage):
     """Validate schema on each serialization."""
     e = _to_pipeline_file(stage)
     assert len(Schema(e)) == 1
+    parse_obj_as(Dict[str, StageDefinition], e)
     return e
 
 
