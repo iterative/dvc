@@ -186,7 +186,7 @@ def _reproduce_stages(
                 _repro_callback, checkpoint_func, unchanged
             )
 
-        from dvc.stage.run import CheckpointKilledError
+        from dvc.stage.monitor import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)

@@ -104,7 +104,7 @@ def make_checkpoint():
     from time import sleep
 
     from dvc.env import DVC_CHECKPOINT, DVC_ROOT
-    from dvc.stage.run import CheckpointTask
+    from dvc.stage.monitor import CheckpointTask
 
     if os.getenv(DVC_CHECKPOINT) is None:
         return

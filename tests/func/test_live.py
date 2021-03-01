@@ -1,5 +1,4 @@
 import os
-from contextlib import suppress
 from copy import deepcopy
 from textwrap import dedent
 
@@ -7,7 +6,7 @@ import pytest
 from funcy import first
 
 from dvc import stage as stage_module
-from dvc.exceptions import MetricDoesNotExistError, MetricsError
+from dvc.exceptions import MetricsError
 
 LIVE_SCRIPT = dedent(
     """
@@ -90,20 +89,11 @@ def live_stage(tmp_dir, scm, dvc, mocker):
     yield make
 
 
-@pytest.mark.parametrize("report", (True, False))
+@pytest.mark.parametrize("html", (True, False))
 @pytest.mark.parametrize("summary", (True, False))
-def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
+def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
     run_spy = mocker.spy(stage_module.run, "_run")
-    tmp_dir.gen("src", "dependency")
-    with suppress(MetricDoesNotExistError):
-        dvc.run(
-            cmd="mkdir logs && touch logs.json",
-            deps=["src"],
-            name="run_logger",
-            live="logs",
-            live_no_summary=not summary,
-            live_no_html=not report,
-        )
+    live_stage(summary=summary, html=html, live="logs")
 
     assert run_spy.call_count == 1
     _, kwargs = run_spy.call_args
@@ -115,22 +105,7 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
     assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
 
     assert "DVCLIVE_HTML" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_HTML"] == str(int(report))
-
-
-@pytest.mark.parametrize("summary", (True, False))
-def test_export_config(tmp_dir, dvc, mocker, summary, live_stage):
-    run_spy = mocker.spy(stage_module.run, "_run")
-    live_stage(summary=summary, live="logs")
-
-    assert run_spy.call_count == 1
-    _, kwargs = run_spy.call_args
-
-    assert "DVCLIVE_PATH" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
-
-    assert "DVCLIVE_SUMMARY" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
+    assert kwargs["env"]["DVCLIVE_HTML"] == str(int(html))
 
 
 def test_live_provides_metrics(tmp_dir, dvc, live_stage):
