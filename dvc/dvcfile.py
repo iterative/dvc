@@ -222,10 +222,10 @@ class PipelineFile(FileMixin):
     def validate_pyd(cls, d, fname=None):
         from pydantic import ValidationError
 
-        from dvc.schema.dvc_yaml import Schema
+        from dvc.schema.dvc_yaml import get_schema
 
         try:
-            Schema.parse_obj(d)
+            get_schema().parse_obj(d)
             return d
         except ValidationError as exc:
             raise StageFileFormatError(f"'{fname}' format error: {str(exc)}")

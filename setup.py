@@ -155,6 +155,7 @@ tests_requirements = [
     "wsgidav",
     "crc32c",
     "google-cloud-storage==1.19.0",
+    "pydantic",
     # pypi doesn't allow for direct dependencies
     #    "gdrivefs @ git+https://github.com/intake/gdrivefs.git",
 ]
