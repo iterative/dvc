@@ -112,4 +112,4 @@ class FSSpecWrapper(BaseFileSystem):
                 **pbar_args,
             ) as wrapped:
                 with open(to_file, "wb") as fdest:
-                    shutil.copyfileobj(wrapped, fdest)
+                    shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)

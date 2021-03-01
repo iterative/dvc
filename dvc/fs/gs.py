@@ -19,7 +19,7 @@ class GSFileSystem(FSSpecWrapper):
     def __init__(self, repo, config):
         super().__init__(repo, config)
 
-        url = config.get("url", "gs:///")
+        url = config.get("url", "gs://")
         self.path_info = self.PATH_CLS(url)
 
         self.login_info = self._prepare_credentials(config)
