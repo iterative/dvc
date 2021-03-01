@@ -1,8 +1,8 @@
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import Field, validator
 
-from dvc.types import OptStr, SingleOrListOf
+from dvc.types import OptStr
 
 from .base import BaseModel
 
@@ -67,10 +67,6 @@ VarsSpec = List[Union[VarImportSpec, Dict[LocalVarKey, LocalVarValue]]]
 ParamKey = str
 ParamsSpec = List[Union[ParamKey, Dict[FilePath, List[ParamKey]]]]
 
-_Entry = TypeVar("_Entry", covariant=True)
-_Flag = TypeVar("_Flag", covariant=True)
-EntryWithOptFlags = Union[Dict[_Entry, _Flag], _Entry]
-
 
 class WithDescription(BaseModel):
     desc: OptStr = Field(
@@ -81,7 +77,7 @@ class WithDescription(BaseModel):
 class StageDefinition(WithDescription, BaseModel):
     """This is the raw one, which could be parametrized."""
 
-    cmd: SingleOrListOf[str] = Field(
+    cmd: Union[str, List[str]] = Field(
         ..., description="Command to run", title="Command(s)"
     )  # required
     wdir: OptStr = Field(
@@ -109,22 +105,22 @@ class StageDefinition(WithDescription, BaseModel):
     always_changed: bool = Field(
         False, description="Assume stage as always changed"
     )
-    outs: List[EntryWithOptFlags[FilePath, OutProps]] = Field(
+    outs: List[Union[Dict[FilePath, OutProps], FilePath]] = Field(
         default_factory=list,
         description="Additional information/metadata",
         title="Outputs",
     )
     plots: List[
-        EntryWithOptFlags[FilePath, SingleOrListOf[PlotProps]]
+        Union[Dict[FilePath, Union[PlotProps, List[PlotProps]]], FilePath]
     ] = Field(
         default_factory=list, description="Plots of the stage", title="Plots"
     )
-    metrics: List[EntryWithOptFlags[FilePath, MetricProps]] = Field(
+    metrics: List[Union[Dict[FilePath, MetricProps], FilePath]] = Field(
         default_factory=list,
         description="Metrics of the stage",
         title="Metrics",
     )
-    live: EntryWithOptFlags[FilePath, LiveProps] = Field(
+    live: Union[Dict[FilePath, LiveProps], FilePath] = Field(
         default_factory=list,
         description="Declare output as dvclive",
         title="Dvclive",
