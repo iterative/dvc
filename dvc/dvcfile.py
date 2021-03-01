@@ -1,8 +1,7 @@
-import collections
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from voluptuous import MultipleInvalid
 
@@ -28,6 +27,8 @@ from dvc.utils.serialize import (
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
+
+# pylint: disable=abstract-method
 logger = logging.getLogger(__name__)
 
 DVC_FILE = "Dvcfile"
@@ -77,7 +78,7 @@ def check_dvc_filename(path):
 
 
 class FileMixin:
-    SCHEMA = None
+    SCHEMA: Callable
 
     def __init__(self, repo, path, verify=True, **kwargs):
         self.repo = repo
@@ -122,7 +123,7 @@ class FileMixin:
         if self._is_git_ignored():
             raise FileIsGitIgnored(self.path)
 
-    def _load(self):
+    def _load(self, use_pydantic: bool = False):
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC file
@@ -140,15 +141,26 @@ class FileMixin:
         with self.repo.fs.open(self.path, encoding="utf-8") as fd:
             stage_text = fd.read()
         d = parse_yaml(stage_text, self.path)
-        return self.validate(d, self.relpath), stage_text
+        return (
+            self.validate(d, self.relpath, use_pydantic=use_pydantic),
+            stage_text,
+        )
 
     @classmethod
-    def validate(cls, d, fname=None):
-        assert isinstance(cls.SCHEMA, collections.abc.Callable)
+    def validate(cls, d, fname=None, use_pydantic: bool = False):
+        if use_pydantic:
+            logger.debug("using experimental pydantic schema for %s", fname)
+            with contextlib.suppress(NotImplementedError):
+                return cls.validate_pyd(d, fname)
+
         try:
             return cls.SCHEMA(d)  # pylint: disable=not-callable
         except MultipleInvalid as exc:
             raise StageFileFormatError(f"'{fname}' format error: {exc}")
+
+    @classmethod
+    def validate_pyd(cls, d, fname=None):
+        raise NotImplementedError
 
     def remove(self, force=False):  # pylint: disable=unused-argument
         with contextlib.suppress(FileNotFoundError):
@@ -205,6 +217,18 @@ class PipelineFile(FileMixin):
 
     from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
     from dvc.stage.loader import StageLoader as LOADER
+
+    @classmethod
+    def validate_pyd(cls, d, fname=None):
+        from pydantic import ValidationError
+
+        from dvc.schema.dvc_yaml import Schema
+
+        try:
+            Schema.parse_obj(d)
+            return d
+        except ValidationError as exc:
+            raise StageFileFormatError(f"'{fname}' format error: {str(exc)}")
 
     @property
     def _lockfile(self):
@@ -329,7 +353,7 @@ def migrate_lock_v1_to_v2(d, version_info):
 
 class Lockfile(FileMixin):
     @classmethod
-    def validate(cls, d, fname=None):
+    def validate(cls, d, fname=None, use_pydantic: bool = False):
         schema = get_lockfile_schema(d)
         try:
             return schema(d)
@@ -339,9 +363,9 @@ class Lockfile(FileMixin):
     def _verify_filename(self):
         pass  # lockfile path is hardcoded, so no need to verify here
 
-    def _load(self):
+    def _load(self, use_pydantic: bool = False):
         try:
-            return super()._load()
+            return super()._load(use_pydantic=use_pydantic)
         except StageFileDoesNotExistError:
             # we still need to account for git-ignored dvc.lock file
             # even though it may not exist or have been .dvcignored

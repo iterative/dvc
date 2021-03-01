@@ -28,13 +28,13 @@ class NoRemoteError(ConfigError):
 def get_compiled_schema():
     from voluptuous import Schema
 
-    from .config_schema import SCHEMA
+    from .schema.config import SCHEMA
 
     return Schema(SCHEMA)
 
 
 def to_bool(value):
-    from .config_schema import Bool
+    from .schema.config import Bool
 
     return Bool(value)
 
@@ -191,7 +191,7 @@ class Config(dict):
         abs_conf_dir = os.path.abspath(os.path.dirname(filename))
 
         def resolve(path):
-            from .config_schema import RelPath
+            from dvc.schema.config import RelPath
 
             if os.path.isabs(path) or re.match(r"\w+://", path):
                 return path
@@ -207,9 +207,8 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
+        from dvc.schema.config import RelPath
         from dvc.utils import relpath
-
-        from .config_schema import RelPath
 
         if re.match(r"\w+://", path):
             return path

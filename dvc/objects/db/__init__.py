@@ -53,7 +53,7 @@ class ODBManager:
         elif "dir" not in config:
             settings = None
         else:
-            from dvc.config_schema import LOCAL_COMMON
+            from dvc.schema.config import LOCAL_COMMON
 
             settings = {"url": config["dir"]}
             for opt in LOCAL_COMMON.keys():

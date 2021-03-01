@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
 
 from dvc.path_info import PathInfo, URLInfo
 
@@ -10,4 +10,8 @@ DvcPath = Union[PathInfo, URLInfo]
 AnyPath = Union[str, DvcPath, StrPath]
 
 OptStr = Optional[str]
-TargetType = Union[List[str], str]
+
+_Element = TypeVar("_Element")
+SingleOrListOf = Union[_Element, List[_Element]]
+
+TargetType = SingleOrListOf[str]

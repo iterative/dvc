@@ -80,7 +80,7 @@ def _resolve_remote_refs(config, remote_conf):
 
 def get_cloud_fs(repo, **kwargs):
     from dvc.config import ConfigError
-    from dvc.config_schema import SCHEMA, Invalid
+    from dvc.schema.config import SCHEMA, Invalid
 
     remote_conf = get_fs_config(repo.config, **kwargs)
     try:
