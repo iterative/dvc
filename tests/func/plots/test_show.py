@@ -827,3 +827,13 @@ def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
 
     result = dvc.plots.show(targets=[p1])
     assert set(result.keys()) == {p1}
+
+
+def test_ignore_binary_file(tmp_dir, dvc, run_copy_metrics):
+    with open("file", "wb") as fobj:
+        fobj.write(b"\xc1")
+
+    run_copy_metrics("file", "plot_file", plots=["plot_file"])
+
+    with pytest.raises(NoMetricsParsedError):
+        dvc.plots.show()

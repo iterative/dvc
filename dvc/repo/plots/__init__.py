@@ -87,7 +87,23 @@ class Plots:
                             data[rev][repo_path]["data"] = fd.read()
                     except FileNotFoundError:
                         # This might happen simply because cache is absent
-                        pass
+                        logger.debug(
+                            (
+                                "Could not find '%s' on '%s'. "
+                                "File will not be plotted"
+                            ),
+                            path,
+                            rev,
+                        )
+                    except UnicodeDecodeError:
+                        logger.debug(
+                            (
+                                "'%s' at '%s' is binary file. It will not be "
+                                "plotted."
+                            ),
+                            path,
+                            rev,
+                        )
 
         return data
 
