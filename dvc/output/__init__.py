@@ -6,7 +6,6 @@ from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc.hash_info import HashInfo
 from dvc.output.base import BaseOutput
-from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
@@ -23,7 +22,6 @@ from ..fs.webhdfs import WebHDFSFileSystem
 OUTS_MAP = {
     Schemes.HDFS: HDFSOutput,
     Schemes.S3: S3Output,
-    Schemes.GS: GSOutput,
     Schemes.SSH: SSHOutput,
     Schemes.LOCAL: LocalOutput,
     Schemes.WEBHDFS: WebHDFSOutput,
@@ -37,7 +35,7 @@ CHECKSUM_SCHEMA = Any(
 
 # NOTE: currently there are only 3 possible checksum names:
 #
-#    1) md5 (LOCAL, SSH, GS);
+#    1) md5 (LOCAL, SSH);
 #    2) etag (S3);
 #    3) checksum (HDFS);
 #

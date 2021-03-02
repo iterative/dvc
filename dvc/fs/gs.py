@@ -13,8 +13,8 @@ class GSFileSystem(FSSpecWrapper):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"gcsfs": "gcsfs"}
-    PARAM_CHECKSUM = "md5"
-    DETAIL_FIELDS = frozenset(("md5", "size"))
+    PARAM_CHECKSUM = "etag"
+    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -31,8 +31,7 @@ class GSFileSystem(FSSpecWrapper):
         return login_info
 
     def _entry_hook(self, entry):
-        if "md5Hash" in entry:
-            entry["md5"] = base64.b64decode(entry["md5Hash"]).hex()
+        entry["etag"] = base64.b64decode(entry["etag"]).hex()
         return entry
 
     @wrap_prop(threading.Lock())
