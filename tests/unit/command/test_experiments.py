@@ -156,7 +156,15 @@ def test_experiments_branch(dvc, scm, mocker):
 
 def test_experiments_list(dvc, scm, mocker):
     cli_args = parse_args(
-        ["experiments", "list", "origin", "--rev", "foo", "--all"]
+        [
+            "experiments",
+            "list",
+            "origin",
+            "--rev",
+            "foo",
+            "--all",
+            "--names-only",
+        ]
     )
     assert cli_args.func == CmdExperimentsList
 

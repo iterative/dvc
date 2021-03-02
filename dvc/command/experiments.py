@@ -604,7 +604,7 @@ class CmdExperimentsBranch(CmdBase):
 
 class CmdExperimentsList(CmdBase):
     def run(self):
-
+        names_only = self.args.names_only
         exps = self.repo.experiments.ls(
             rev=self.args.rev,
             git_remote=self.args.git_remote,
@@ -617,9 +617,11 @@ class CmdExperimentsList(CmdBase):
                 if branch:
                     tag = branch.split("/")[-1]
             name = tag if tag else baseline[:7]
-            logger.info(f"{name}:")
+            if not names_only:
+                logger.info(f"{name}:")
             for exp_name in exps[baseline]:
-                logger.info(f"\t{exp_name}")
+                indent = "" if names_only else "\t"
+                logger.info(f"{indent}{exp_name}")
 
         return 0
 
@@ -1023,6 +1025,11 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_list_parser.add_argument(
         "--all", action="store_true", help="List all experiments.",
+    )
+    experiments_list_parser.add_argument(
+        "--names-only",
+        action="store_true",
+        help="Only output experiment names (without parent commits).",
     )
     experiments_list_parser.add_argument(
         "git_remote",
