@@ -33,7 +33,7 @@ from dvc.repo.experiments.base import (
 )
 from dvc.scm import SCM
 from dvc.stage import PipelineStage
-from dvc.stage.run import CheckpointKilledError
+from dvc.stage.monitor import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256
 from dvc.utils.fs import remove

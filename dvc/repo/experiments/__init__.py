@@ -13,7 +13,7 @@ from funcy import cached_property, first
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
-from dvc.stage.run import CheckpointKilledError
+from dvc.stage.monitor import CheckpointKilledError
 from dvc.utils import relpath
 
 from .base import (

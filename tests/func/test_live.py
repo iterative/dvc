@@ -8,7 +8,7 @@ from funcy import first
 from dvc import stage as stage_module
 from dvc.exceptions import MetricsError
 
-LIVE_SCRITP = dedent(
+LIVE_SCRIPT = dedent(
     """
         import dvclive
         import sys
@@ -53,15 +53,23 @@ LIVE_CHECKPOINT_SCRIPT = dedent(
 
 
 @pytest.fixture
-def live_stage(tmp_dir, scm, dvc):
+def live_stage(tmp_dir, scm, dvc, mocker):
     try:
         import dvclive  # noqa, pylint:disable=unused-import
     except ImportError:
         pytest.skip("no dvclive")
 
-    def make(summary=True, html=True, live=None, live_no_cache=None):
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
+
+    def make(
+        summary=True,
+        html=True,
+        live=None,
+        live_no_cache=None,
+        code=LIVE_SCRIPT,
+    ):
         assert bool(live) != bool(live_no_cache)
-        tmp_dir.gen("train.py", LIVE_SCRITP)
+        tmp_dir.gen("train.py", code)
         tmp_dir.gen("params.yaml", "foo: 1")
         stage = dvc.run(
             cmd="python train.py",
@@ -81,19 +89,11 @@ def live_stage(tmp_dir, scm, dvc):
     yield make
 
 
-@pytest.mark.parametrize("report", (True, False))
+@pytest.mark.parametrize("html", (True, False))
 @pytest.mark.parametrize("summary", (True, False))
-def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
+def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
     run_spy = mocker.spy(stage_module.run, "_run")
-    tmp_dir.gen("src", "dependency")
-    dvc.run(
-        cmd="mkdir logs && touch logs.json",
-        deps=["src"],
-        name="run_logger",
-        live="logs",
-        live_no_summary=not summary,
-        live_no_html=not report,
-    )
+    live_stage(summary=summary, html=html, live="logs")
 
     assert run_spy.call_count == 1
     _, kwargs = run_spy.call_args
@@ -105,22 +105,7 @@ def test_export_config_tmp(tmp_dir, dvc, mocker, summary, report):
     assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
 
     assert "DVCLIVE_HTML" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_HTML"] == str(int(report))
-
-
-@pytest.mark.parametrize("summary", (True, False))
-def test_export_config(tmp_dir, dvc, mocker, summary, live_stage):
-    run_spy = mocker.spy(stage_module.run, "_run")
-    live_stage(summary=summary, live="logs")
-
-    assert run_spy.call_count == 1
-    _, kwargs = run_spy.call_args
-
-    assert "DVCLIVE_PATH" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
-
-    assert "DVCLIVE_SUMMARY" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
+    assert kwargs["env"]["DVCLIVE_HTML"] == str(int(html))
 
 
 def test_live_provides_metrics(tmp_dir, dvc, live_stage):
@@ -171,11 +156,13 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
 
 
 @pytest.fixture
-def live_checkpoint_stage(tmp_dir, scm, dvc):
+def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
     try:
         import dvclive  # noqa, pylint:disable=unused-import
     except ImportError:
         pytest.skip("no dvclive")
+
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(live=None, live_no_cache=None):
         assert bool(live) != bool(live_no_cache)
@@ -247,3 +234,27 @@ def test_live_checkpoints_resume(
         4,
         2,
     ]
+
+
+def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
+    show_spy = mocker.spy(dvc.live, "show")
+
+    # make sure script takes more time to execute than one monitor sleep cycle
+    monitor_await_time = 0.01
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", monitor_await_time)
+
+    script = dedent(
+        """
+        import dvclive
+        import sys
+        import time
+        dvclive.log("loss", 1/2)
+        dvclive.log("accuracy", 1/2)
+        dvclive.next_step()
+        time.sleep({})""".format(
+            str(monitor_await_time * 2)
+        )
+    )
+    live_stage(summary=True, live="logs", code=script)
+
+    assert show_spy.call_count == 2
