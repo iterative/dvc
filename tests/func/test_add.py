@@ -312,7 +312,6 @@ def test_add_filtered_files_in_dir(
             "etag",
             "8c7dd922ad47494fc02c388e12c00eac",
         ),
-        (pytest.lazy_fixture("gs"), "md5", "8c7dd922ad47494fc02c388e12c00eac"),
         (
             pytest.lazy_fixture("hdfs"),
             "checksum",
@@ -367,11 +366,6 @@ def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
             pytest.lazy_fixture("s3"),
             "etag",
             "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
-        ),
-        (
-            pytest.lazy_fixture("gs"),
-            "md5",
-            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
         ),
     ],
     indirect=["workspace"],

@@ -6,7 +6,6 @@ from dvc.stage import Stage
 MARKERS = [pytest.mark.hdfs]
 TESTS = [
     ("s3://bucket/path", "s3"),
-    ("gs://bucket/path", "gs"),
     ("ssh://example.com:/dir/path", "ssh"),
     ("path/to/file", "local"),
     ("path\\to\\file", "local"),
