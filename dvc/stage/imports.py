@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 def _update_import_on_remote(stage, remote, jobs):
     if stage.is_repo_import:
         raise InvalidArgumentError(
-            "Can't update a repo import with --to-remote"
+            "Data imported from other DVC or Git repositories can't "
+            "be updated with --to-remote"
         )
 
     url = stage.deps[0].path_info.url
