@@ -7,6 +7,7 @@ from itertools import groupby
 from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
@@ -840,7 +841,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied.",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
     EXPERIMENTS_DIFF_HELP = (
@@ -855,12 +856,12 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_diff_parser.add_argument(
         "a_rev", nargs="?", help="Old experiment to compare (defaults to HEAD)"
-    )
+    ).complete = completion.EXPERIMENT
     experiments_diff_parser.add_argument(
         "b_rev",
         nargs="?",
         help="New experiment to compare (defaults to the current workspace)",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_diff_parser.add_argument(
         "--all",
         action="store_true",
@@ -924,7 +925,7 @@ def add_parser(subparsers, parent_parser):
             "or temp dir runs.)"
         ),
         metavar="<experiment_rev>",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_run_parser.add_argument(
         "--reset",
         action="store_true",
@@ -1097,7 +1098,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "experiment", help="Experiment to push.", metavar="<experiment>",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_push_parser.set_defaults(func=CmdExperimentsPush)
 
     EXPERIMENTS_PULL_HELP = "Pull an experiment from a Git remote."
