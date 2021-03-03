@@ -619,10 +619,10 @@ class CmdExperimentsList(CmdBase):
                     tag = branch.split("/")[-1]
             name = tag if tag else baseline[:7]
             if not names_only:
-                logger.info(f"{name}:")
+                print(f"{name}:")
             for exp_name in exps[baseline]:
                 indent = "" if names_only else "\t"
-                logger.info(f"{indent}{exp_name}")
+                print(f"{indent}{exp_name}")
 
         return 0
 
