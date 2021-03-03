@@ -110,11 +110,11 @@ jobs:
     - name: Build the package
       uses: snapcore/action-build@v1
       id: snapcraft
-    - name: Test the package
-      run: |
-        sudo snap install --dangerous --classic ${{ steps.snapcraft.outputs.snap }}
-        dvc version
-        sudo snap remove dvc
+#    - name: Test the package
+#      run: |
+#        sudo snap install --dangerous --classic ${{ steps.snapcraft.outputs.snap }}
+#        dvc version
+#        sudo snap remove dvc
     - name: Publish to the edge channel
       uses: snapcore/action-publish@v1
       if: github.event_name == 'push'
