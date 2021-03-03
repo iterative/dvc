@@ -89,7 +89,6 @@ install_requires = [
     "typing_extensions>=3.7.4",
     "fsspec>=0.8.5",
     "diskcache>=5.2.1",
-    "google-cloud-storage==1.19.0",
 ]
 
 
@@ -155,6 +154,7 @@ tests_requirements = [
     "mypy",
     "wsgidav",
     "crc32c",
+    "google-cloud-storage==1.19.0",
     # pypi doesn't allow for direct dependencies
     #    "gdrivefs @ git+https://github.com/intake/gdrivefs.git",
 ]
