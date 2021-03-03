@@ -7,6 +7,7 @@ from itertools import groupby
 from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
@@ -604,7 +605,7 @@ class CmdExperimentsBranch(CmdBase):
 
 class CmdExperimentsList(CmdBase):
     def run(self):
-
+        names_only = self.args.names_only
         exps = self.repo.experiments.ls(
             rev=self.args.rev,
             git_remote=self.args.git_remote,
@@ -617,9 +618,11 @@ class CmdExperimentsList(CmdBase):
                 if branch:
                     tag = branch.split("/")[-1]
             name = tag if tag else baseline[:7]
-            logger.info(f"{name}:")
+            if not names_only:
+                print(f"{name}:")
             for exp_name in exps[baseline]:
-                logger.info(f"\t{exp_name}")
+                indent = "" if names_only else "\t"
+                print(f"{indent}{exp_name}")
 
         return 0
 
@@ -838,7 +841,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_apply_parser.add_argument(
         "experiment", help="Experiment to be applied.",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
     EXPERIMENTS_DIFF_HELP = (
@@ -853,12 +856,12 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_diff_parser.add_argument(
         "a_rev", nargs="?", help="Old experiment to compare (defaults to HEAD)"
-    )
+    ).complete = completion.EXPERIMENT
     experiments_diff_parser.add_argument(
         "b_rev",
         nargs="?",
         help="New experiment to compare (defaults to the current workspace)",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_diff_parser.add_argument(
         "--all",
         action="store_true",
@@ -922,7 +925,7 @@ def add_parser(subparsers, parent_parser):
             "or temp dir runs.)"
         ),
         metavar="<experiment_rev>",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_run_parser.add_argument(
         "--reset",
         action="store_true",
@@ -1025,6 +1028,11 @@ def add_parser(subparsers, parent_parser):
         "--all", action="store_true", help="List all experiments.",
     )
     experiments_list_parser.add_argument(
+        "--names-only",
+        action="store_true",
+        help="Only output experiment names (without parent commits).",
+    )
+    experiments_list_parser.add_argument(
         "git_remote",
         nargs="?",
         default=None,
@@ -1090,7 +1098,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "experiment", help="Experiment to push.", metavar="<experiment>",
-    )
+    ).complete = completion.EXPERIMENT
     experiments_push_parser.set_defaults(func=CmdExperimentsPush)
 
     EXPERIMENTS_PULL_HELP = "Pull an experiment from a Git remote."
