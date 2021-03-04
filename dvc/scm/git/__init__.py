@@ -272,10 +272,19 @@ class Git(Base):
         self.files_to_track = set()
 
     def remind_to_track(self):
-        if self.quiet or not self.files_to_track:
+        def _filter(files):
+            if not files:
+                return set()
+            staged, unstaged, untracked = self.status()
+            return files.intersection(
+                staged.get("modify", []) + unstaged + untracked
+            )
+
+        files_to_track = _filter(self.files_to_track)
+        if self.quiet or not files_to_track:
             return
 
-        files = " ".join(shlex.quote(path) for path in self.files_to_track)
+        files = " ".join(shlex.quote(path) for path in sorted(files_to_track))
 
         logger.info(
             "\n"
