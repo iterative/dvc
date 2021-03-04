@@ -13,12 +13,14 @@ def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):
         return {}
 
     if a_rev:
-        old = _collect_experiment_commit(repo, a_rev)
+        rev = repo.scm.resolve_rev(a_rev)
+        old = _collect_experiment_commit(repo, rev)
     else:
         old = _collect_experiment_commit(repo, "HEAD")
 
     if b_rev:
-        new = _collect_experiment_commit(repo, b_rev)
+        rev = repo.scm.resolve_rev(b_rev)
+        new = _collect_experiment_commit(repo, rev)
     else:
         new = _collect_experiment_commit(repo, "workspace")
 
