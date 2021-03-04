@@ -284,7 +284,7 @@ class Git(Base):
         if self.quiet or not files_to_track:
             return
 
-        files = " ".join(shlex.quote(path) for path in files_to_track)
+        files = " ".join(shlex.quote(path) for path in sorted(files_to_track))
 
         logger.info(
             "\n"
