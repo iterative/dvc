@@ -22,7 +22,11 @@ def test_params_order(tmp_dir, dvc):
         dvc.stage.add(params=["p1"], cmd="cmd2", name="stage2")
 
     # params are sorted during dumping, therefore p1 is first
-    assert list(dvc.params.show()[""]) == ["p1.yaml", p2_path, "params.yaml"]
+    assert list(dvc.params.show()[""]) == [
+        "p1.yaml",
+        p2_path,
+        os.path.join("sub", "params.yaml"),
+    ]
 
 
 def test_repro_unicode(tmp_dir, dvc):
@@ -38,3 +42,14 @@ def test_repro_unicode(tmp_dir, dvc):
     dvc.remove(stage.name)
     assert not (tmp_dir / "dvc.yaml").exists()
     assert not (tmp_dir / "dvc.lock").exists()
+
+
+def test_used_params(tmp_dir, dvc):
+    tmp_dir.gen({"params.yaml": dumps_yaml({"s1": {"p1": 1}, "p2": 2})})
+
+    dvc.stage.add(
+        params=["s1.p1"], cmd="cmd1", name="stage1",
+    )
+
+    # params are sorted during dumping, therefore p1 is first
+    assert list(dvc.params.show()[""]) == ["params.yaml"]

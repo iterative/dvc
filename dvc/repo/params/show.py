@@ -1,10 +1,9 @@
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm.base import SCMError
@@ -27,7 +26,9 @@ def _is_params(dep: "BaseOutput"):
     return isinstance(dep, ParamsDependency)
 
 
-def _collect_configs(repo: "Repo", rev, targets=None) -> List["DvcPath"]:
+def _collect_configs(
+    repo: "Repo", rev, targets=None
+) -> Tuple[List["BaseOutput"], List["DvcPath"]]:
     params, path_infos = collect(
         repo,
         targets=targets or [],
@@ -35,33 +36,35 @@ def _collect_configs(repo: "Repo", rev, targets=None) -> List["DvcPath"]:
         output_filter=_is_params,
         rev=rev,
     )
-    path_infos.extend([p.path_info for p in params])
-    if not targets:
-        default_params = (
-            PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE
+    return params, path_infos
+
+
+def _read_path_info(fs, path_info, rev):
+    if not fs.exists(path_info):
+        return None
+
+    suffix = path_info.suffix.lower()
+    loader = LOADERS[suffix]
+    try:
+        return loader(path_info, fs=fs)
+    except ParseError:
+        logger.debug(
+            "failed to read '%s' on '%s'", path_info, rev, exc_info=True
         )
-        if default_params not in path_infos:
-            path_infos.append(default_params)
-    return list(path_infos)
+        return None
 
 
-def _read_params(repo, configs, rev):
-    res = {}
-    for config in configs:
-        if not repo.fs.exists(config):
-            continue
+def _read_params(repo, params, params_path_infos, rev):
+    res = defaultdict(dict)
+    for param in params:
+        res[str(param.path_info)].update(param.read_params())
 
-        suffix = config.suffix.lower()
-        loader = LOADERS[suffix]
-        try:
-            res[str(config)] = loader(config, fs=repo.fs)
-        except ParseError:
-            logger.debug(
-                "failed to read '%s' on '%s'", config, rev, exc_info=True
-            )
-            continue
+    for path_info in params_path_infos:
+        from_path = _read_path_info(repo.fs, path_info, rev)
+        if from_path:
+            res[str(path_info)] = from_path
 
-    return res
+    return dict(res)
 
 
 def _collect_vars(repo, params):
@@ -83,8 +86,8 @@ def show(repo, revs=None, targets=None):
     res = {}
 
     for branch in repo.brancher(revs=revs):
-        configs = _collect_configs(repo, branch, targets)
-        params = _read_params(repo, configs, branch)
+        params, params_path_infos = _collect_configs(repo, branch, targets)
+        params = _read_params(repo, params, params_path_infos, branch)
         vars_params = _collect_vars(repo, params)
 
         # NOTE: only those that are not added as a ParamDependency are included

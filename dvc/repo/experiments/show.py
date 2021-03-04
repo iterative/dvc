@@ -21,8 +21,8 @@ def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
             commit = repo.scm.resolve_commit(rev)
             res["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
-        configs = _collect_configs(repo, rev=rev)
-        params = _read_params(repo, configs, rev)
+        params, params_path_infos = _collect_configs(repo, rev=rev)
+        params = _read_params(repo, params, params_path_infos, rev)
         if params:
             res["params"] = params
 
