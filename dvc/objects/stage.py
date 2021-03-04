@@ -81,8 +81,17 @@ def _collect_dir(path_info, fs, name, state, **kwargs):
     return dir_info
 
 
-def get_dir_hash(path_info, fs, name, state, **kwargs):
+def get_dir_hash(path_info, fs, name, odb, state, **kwargs):
     from . import Tree
+
+    value = fs.info(path_info).get(name)
+    if value:
+        hash_info = HashInfo(name, value)
+        try:
+            Tree.load(odb, hash_info)
+            return hash_info
+        except FileNotFoundError:
+            pass
 
     dir_info = _collect_dir(path_info, fs, name, state, **kwargs)
     hash_info = Tree.save_dir_info(fs.repo.odb.local, dir_info)
@@ -125,7 +134,7 @@ def get_hash(path_info, fs, name, odb, **kwargs):
         return hash_info
 
     if fs.isdir(path_info):
-        hash_info = get_dir_hash(path_info, fs, name, state, **kwargs)
+        hash_info = get_dir_hash(path_info, fs, name, odb, state, **kwargs)
     else:
         hash_info = get_file_hash(path_info, fs, name)
 

@@ -4,9 +4,6 @@ from unittest.mock import call
 import pytest
 
 from dvc.external_repo import external_repo
-from dvc.objects import save
-from dvc.objects.stage import stage
-from dvc.path_info import PathInfo
 from tests.unit.fs.test_repo import make_subrepo
 
 
@@ -91,36 +88,3 @@ def test_subrepo_is_constructed_properly(
             assert repo.config["remote"]["auto-generated-upstream"][
                 "url"
             ] == str(main_cache)
-
-
-def test_fetch_external_repo_jobs(tmp_dir, scm, mocker, dvc, local_remote):
-    tmp_dir.dvc_gen(
-        {
-            "dir1": {
-                "file1": "file1",
-                "file2": "file2",
-                "file3": "file3",
-                "file4": "file4",
-            },
-        },
-        commit="init",
-    )
-
-    dvc.push()
-
-    with external_repo(str(tmp_dir)) as repo:
-        spy = mocker.spy(repo.cloud, "pull")
-
-        obj = stage(
-            dvc.odb.local,
-            PathInfo(repo.root_dir) / "dir1",
-            repo.repo_fs,
-            follow_subrepos=False,
-            jobs=3,
-        )
-        save(
-            dvc.odb.local, obj, jobs=3,
-        )
-
-        run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
-        assert run_jobs == 3

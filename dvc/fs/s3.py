@@ -261,8 +261,13 @@ class S3FileSystem(BaseFileSystem):
         return path_info.path in self._list_paths(path_info)
 
     def info(self, path_info):
+        # temporary workaround, will be removed when migrating to s3fs
+        if self.isdir(path_info):
+            return {"type": "directory"}
+
         with self._get_obj(path_info) as obj:
             return {
+                "type": "file",
                 "etag": obj.e_tag.strip('"'),
                 "size": obj.content_length,
             }
