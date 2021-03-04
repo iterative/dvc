@@ -78,6 +78,8 @@ class RepoDependency(LocalDependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
+        from dvc.config import NoRemoteError
+        from dvc.exceptions import NoOutputOrStageError
         from dvc.objects import save
         from dvc.objects.stage import stage
 
@@ -87,6 +89,10 @@ class RepoDependency(LocalDependency):
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
             path_info = PathInfo(repo.root_dir) / self.def_path
+            try:
+                repo.fetch([path_info.fspath], jobs=jobs, recursive=True)
+            except (NoOutputOrStageError, NoRemoteError):
+                pass
             obj = stage(
                 odb, path_info, repo.repo_fs, jobs=jobs, follow_subrepos=False,
             )
