@@ -61,7 +61,11 @@ def _track_stage(stage):
 
     stage.repo.scm.track_file(stage.dvcfile.relpath)
     for dep in stage.deps:
-        if not dep.use_scm_ignore and dep.is_in_repo:
+        if (
+            not dep.use_scm_ignore
+            and dep.is_in_repo
+            and not stage.repo.repo_fs.isdvc(dep.path_info)
+        ):
             stage.repo.scm.track_file(relpath(dep.path_info))
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
