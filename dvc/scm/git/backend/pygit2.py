@@ -338,6 +338,15 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         from dvc.scm.git import Stash
 
+        def _apply(index):
+            try:
+                self.repo.index.read(False)
+                self.repo.stash_apply(index)
+            except GitError as exc:
+                raise MergeConflictError(
+                    "Stash apply resulted in merge conflicts"
+                ) from exc
+
         # libgit2 stash apply only accepts refs/stash items by index. If rev is
         # not in refs/stash, we will push it onto the stash, and then pop it
         commit, _ref = self.repo.resolve_refish(rev)
@@ -345,21 +354,12 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if stash:
             for i, entry in enumerate(stash.log()):
                 if entry.oid_new == commit.id:
-                    try:
-                        self.repo.stash_apply(i)
-                        return
-                    except GitError as exc:
-                        raise MergeConflictError(
-                            "Stash apply resulted in merge conflicts"
-                        ) from exc
+                    _apply(i)
+                    return
 
         self.set_ref(Stash.DEFAULT_STASH, commit.id, message=commit.message)
         try:
-            self.repo.stash_apply()
-        except GitError as exc:
-            raise MergeConflictError(
-                "Stash apply resulted in merge conflicts"
-            ) from exc
+            _apply(0)
         finally:
             self.repo.stash_drop()
 
