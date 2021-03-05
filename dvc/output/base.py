@@ -131,7 +131,10 @@ class BaseOutput:
         self.repo = stage.repo if stage else None
         self.def_path = path
         self.hash_info = HashInfo.from_dict(info)
-        self._fs = fs
+        if fs:
+            self.fs = fs
+        else:
+            self.fs = self.FS_CLS(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -146,16 +149,6 @@ class BaseOutput:
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
-
-    @property
-    def fs(self):
-        if self._fs:
-            fs = self._fs
-        elif self.repo:
-            fs = self.repo.fs
-        else:
-            fs = self.FS_CLS(self.repo, {})
-        return fs
 
     def _parse_path(self, fs, path):
         if fs:

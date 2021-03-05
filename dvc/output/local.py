@@ -27,7 +27,7 @@ class LocalOutput(BaseOutput):
             and self.repo
             and isinstance(self.repo.fs, LocalFileSystem)
         ):
-            self._fs = self.repo.fs
+            self.fs = self.repo.fs
 
     def _parse_path(self, fs, path):
         parsed = urlparse(path)

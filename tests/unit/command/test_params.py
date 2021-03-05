@@ -15,6 +15,7 @@ def test_params_diff(dvc, mocker):
             "--targets",
             "target",
             "--all",
+            "--include-untracked",
             "--show-json",
             "--show-md",
             "--no-path",
@@ -33,6 +34,7 @@ def test_params_diff(dvc, mocker):
         b_rev="HEAD~1",
         targets=["target"],
         all=True,
+        include_untracked=True,
     )
 
 

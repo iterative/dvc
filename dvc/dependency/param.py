@@ -39,6 +39,7 @@ class ParamsDependency(LocalDependency):
             path
             or os.path.join(stage.repo.root_dir, self.DEFAULT_PARAMS_FILE),
             info=info,
+            fs=stage.repo.fs,
         )
 
     def dumpd(self):

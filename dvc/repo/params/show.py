@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from copy import copy
 from typing import TYPE_CHECKING, List, Tuple
 
 from dvc.dependency.param import ParamsDependency
@@ -54,17 +55,24 @@ def _read_path_info(fs, path_info, rev):
         return None
 
 
-def _read_params(repo, params, params_path_infos, rev):
+def _read_params(
+    repo, params, params_path_infos, rev, include_untracked=False
+):
     res = defaultdict(dict)
-    for param in params:
-        res[str(param.path_info)].update(param.read_params())
+    path_infos = copy(params_path_infos)
 
-    for path_info in params_path_infos:
+    if not include_untracked:
+        for param in params:
+            res[str(param.path_info)].update(param.read_params())
+    else:
+        path_infos += [param.path_info for param in params]
+
+    for path_info in path_infos:
         from_path = _read_path_info(repo.fs, path_info, rev)
         if from_path:
             res[str(path_info)] = from_path
 
-    return dict(res)
+    return res
 
 
 def _collect_vars(repo, params):
@@ -82,12 +90,14 @@ def _collect_vars(repo, params):
 
 
 @locked
-def show(repo, revs=None, targets=None):
+def show(repo, revs=None, targets=None, include_untracked=False):
     res = {}
 
     for branch in repo.brancher(revs=revs):
         params, params_path_infos = _collect_configs(repo, branch, targets)
-        params = _read_params(repo, params, params_path_infos, branch)
+        params = _read_params(
+            repo, params, params_path_infos, branch, include_untracked
+        )
         vars_params = _collect_vars(repo, params)
 
         # NOTE: only those that are not added as a ParamDependency are included

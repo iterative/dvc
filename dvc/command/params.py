@@ -40,6 +40,7 @@ class CmdParamsDiff(CmdBase):
                 b_rev=self.args.b_rev,
                 targets=self.args.targets,
                 all=self.args.all,
+                include_untracked=self.args.include_untracked,
             )
 
             if self.args.show_json:
@@ -110,6 +111,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show unchanged params as well.",
+    )
+    params_diff_parser.add_argument(
+        "-u",
+        "--include-untracked",
+        action="store_true",
+        default=False,
+        help="Show untracked params as well.",
     )
     params_diff_parser.add_argument(
         "--show-json",
