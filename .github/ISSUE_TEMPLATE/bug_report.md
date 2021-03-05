@@ -48,10 +48,10 @@ A clear and concise description of what you expect to happen.
 This is required to ensure that we can reproduce the bug.
 -->
 
-**Output of `dvc version`:**
+**Output of `dvc doctor`:**
 
 ```console
-$ dvc version
+$ dvc doctor
 ```
 
 **Additional Information (if any):**
