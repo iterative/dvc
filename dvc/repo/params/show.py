@@ -30,14 +30,13 @@ def _is_params(dep: "BaseOutput"):
 def _collect_configs(
     repo: "Repo", rev, targets=None
 ) -> Tuple[List["BaseOutput"], List["DvcPath"]]:
-    params, path_infos = collect(
+    return collect(
         repo,
         targets=targets or [],
         deps=True,
         output_filter=_is_params,
         rev=rev,
     )
-    return params, path_infos
 
 
 def _read_path_info(fs, path_info, rev):
@@ -63,7 +62,7 @@ def _read_params(
 
     if not include_untracked:
         for param in params:
-            res[str(param.path_info)].update(param.read_params())
+            res[str(param.path_info)].update(param.read_params_d())
     else:
         path_infos += [param.path_info for param in params]
 

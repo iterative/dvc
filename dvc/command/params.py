@@ -40,7 +40,8 @@ class CmdParamsDiff(CmdBase):
                 b_rev=self.args.b_rev,
                 targets=self.args.targets,
                 all=self.args.all,
-                include_untracked=self.args.include_untracked,
+                include_untracked=self.args.include_untracked
+                or bool(self.args.targets),
             )
 
             if self.args.show_json:

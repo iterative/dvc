@@ -36,7 +36,7 @@ def test_show_py(tmp_dir, dvc):
         single_stage=True,
     )
     assert dvc.params.show() == {
-        "": {"params.py": {"CONST": 1, "IS_DIR": True, "Config.foo": 42}}
+        "": {"params.py": {"CONST": 1, "IS_DIR": True, "Config": {"foo": 42}}}
     }
 
 

@@ -1,25 +1,38 @@
 import logging
 import textwrap
 
+import pytest
+
 from dvc.cli import parse_args
 from dvc.command.params import CmdParamsDiff, _show_diff
 
 
-def test_params_diff(dvc, mocker):
+@pytest.mark.parametrize(
+    "args,expected_kwargs",
+    [
+        (
+            ["--targets", "target"],
+            {"targets": ["target"], "include_untracked": True},
+        ),
+        (
+            ["--targets", "target", "--include-untracked"],
+            {"targets": ["target"], "include_untracked": True},
+        ),
+    ],
+)
+def test_params_diff(dvc, mocker, args, expected_kwargs):
     cli_args = parse_args(
         [
             "params",
             "diff",
             "HEAD~10",
             "HEAD~1",
-            "--targets",
-            "target",
             "--all",
-            "--include-untracked",
             "--show-json",
             "--show-md",
             "--no-path",
         ]
+        + args
     )
     assert cli_args.func == CmdParamsDiff
 
@@ -29,12 +42,26 @@ def test_params_diff(dvc, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
+        cmd.repo, a_rev="HEAD~10", b_rev="HEAD~1", all=True, **expected_kwargs
+    )
+
+
+def test_params_diff_from_cli(dvc, mocker):
+    cli_args = parse_args(["params", "diff"])
+    assert cli_args.func == CmdParamsDiff
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.params.diff.diff", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
         cmd.repo,
-        a_rev="HEAD~10",
-        b_rev="HEAD~1",
-        targets=["target"],
-        all=True,
-        include_untracked=True,
+        a_rev=None,
+        b_rev=None,
+        all=False,
+        targets=None,
+        include_untracked=False,
     )
 
 
