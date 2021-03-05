@@ -217,6 +217,7 @@ class GDriveFileSystem(BaseFileSystem):
         auth_settings = {
             "client_config_backend": "settings",
             "save_credentials": True,
+            "save_credentials_backend": "file",
             "save_credentials_file": self._gdrive_user_credentials_path,
             "get_refresh_token": True,
             "oauth_scope": [
@@ -226,13 +227,11 @@ class GDriveFileSystem(BaseFileSystem):
         }
 
         if self._use_service_account:
-            auth_settings["save_credentials_backend"] = "json"
             auth_settings["service_config"] = {
                 "client_user_email": self._service_account_user_email,
                 "client_json_file_path": self._service_account_json_file_path,
             }
         else:
-            auth_settings["save_credentials_backend"] = "file"
             auth_settings["client_config"] = {
                 "client_id": self._client_id or self.DEFAULT_GDRIVE_CLIENT_ID,
                 "client_secret": self._client_secret
