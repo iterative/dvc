@@ -352,7 +352,7 @@ class Git(Base):
         from .objects import GitTrie
 
         resolved = self.resolve_rev(rev)
-        tree_obj = self._backend_func("get_tree_obj", rev=resolved)
+        tree_obj = self.pygit2.get_tree_obj(rev=resolved)
         trie = GitTrie(tree_obj, resolved)
         return GitFileSystem(self.root_dir, trie, **kwargs)
 

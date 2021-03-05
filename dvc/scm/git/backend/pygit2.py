@@ -1,6 +1,7 @@
 import locale
 import logging
 import os
+import stat
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
@@ -31,6 +32,8 @@ class Pygit2Object(GitObject):
 
     @property
     def mode(self):
+        if not self.obj.filemode and self.obj.type_str == "tree":
+            return stat.S_IFDIR
         return self.obj.filemode
 
     def scandir(self) -> Iterable["Pygit2Object"]:
