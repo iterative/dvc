@@ -158,12 +158,6 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 errno.ENOENT, os.strerror(errno.ENOENT), path
             )
 
-    @property
-    def hash_jobs(self):  # pylint: disable=invalid-overridden-method
-        # NOTE: gitpython is not threadsafe. See
-        # https://github.com/iterative/dvc/issues/4079
-        return 1
-
     def walk_files(self, top):  # pylint: disable=arguments-differ
         for root, _, files in self.walk(top):
             for file in files:
