@@ -3,6 +3,7 @@ import logging
 import os
 import posixpath
 import re
+import tempfile
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
@@ -208,8 +209,17 @@ class GDriveFileSystem(BaseFileSystem):
         from pydrive2.auth import GoogleAuth
         from pydrive2.drive import GoogleDrive
 
-        if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA):
-            with open(self._gdrive_user_credentials_path, "w") as cred_file:
+        temporary_save_path = self._gdrive_user_credentials_path
+        is_credentials_temp = os.getenv(
+            GDriveFileSystem.GDRIVE_CREDENTIALS_DATA
+        )
+        if self._use_service_account:
+            temporary_save_path = os.path.join(
+                tempfile.gettempdir(), "google-creds.json"
+            )
+
+        if is_credentials_temp:
+            with open(temporary_save_path, "w") as cred_file:
                 cred_file.write(
                     os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
                 )
@@ -231,6 +241,9 @@ class GDriveFileSystem(BaseFileSystem):
                 "client_user_email": self._service_account_user_email,
                 "client_json_file_path": self._service_account_json_file_path,
             }
+            if is_credentials_temp:
+                auth_settings["service_config"] = temporary_save_path
+
         else:
             auth_settings["client_config"] = {
                 "client_id": self._client_id or self.DEFAULT_GDRIVE_CLIENT_ID,
@@ -266,8 +279,8 @@ class GDriveFileSystem(BaseFileSystem):
         except Exception as exc:
             raise GDriveAuthError(self.credentials_location) from exc
         finally:
-            if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA):
-                os.remove(self._gdrive_user_credentials_path)
+            if is_credentials_temp:
+                os.remove(temporary_save_path)
 
         return GoogleDrive(gauth)
 
