@@ -334,14 +334,21 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         return str(oid), False
 
     def _stash_apply(self, rev: str):
-        from pygit2 import GitError
+        from pygit2 import (
+            GIT_CHECKOUT_RECREATE_MISSING,
+            GIT_CHECKOUT_SAFE,
+            GitError,
+        )
 
         from dvc.scm.git import Stash
 
         def _apply(index):
             try:
                 self.repo.index.read(False)
-                self.repo.stash_apply(index)
+                self.repo.stash_apply(
+                    index,
+                    strategy=GIT_CHECKOUT_SAFE | GIT_CHECKOUT_RECREATE_MISSING,
+                )
             except GitError as exc:
                 raise MergeConflictError(
                     "Stash apply resulted in merge conflicts"
