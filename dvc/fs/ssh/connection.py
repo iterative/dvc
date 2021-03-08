@@ -40,7 +40,9 @@ class SSHConnection:
                 host=host, **kwargs
             )
         )
-        self.timeout = kwargs.get("timeout", 1800)
+
+        kwargs.setdefault("timeout", 1800)
+        self.timeout = kwargs["timeout"]
 
         self._ssh = paramiko.SSHClient()
 
