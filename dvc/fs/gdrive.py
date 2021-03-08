@@ -242,7 +242,9 @@ class GDriveFileSystem(BaseFileSystem):
                 "client_json_file_path": self._service_account_json_file_path,
             }
             if is_credentials_temp:
-                auth_settings["service_config"] = temporary_save_path
+                auth_settings["service_config"][
+                    "client_json_file_path"
+                ] = temporary_save_path
 
         else:
             auth_settings["client_config"] = {
