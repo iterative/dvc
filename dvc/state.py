@@ -76,7 +76,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not tmp_dir:
             return
 
-        config = {"eviction_policy": "least-recently-used"}
+        config = {
+            "eviction_policy": "least-recently-used",
+            "disk_pickle_protocol": 4,
+        }
         self.links = Cache(directory=os.path.join(tmp_dir, "links"), **config)
         self.md5s = Cache(directory=os.path.join(tmp_dir, "md5s"), **config)
 
