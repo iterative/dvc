@@ -249,8 +249,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_tracked(self, path):
         return bool(self.repo.git.ls_files(path))
 
-    def is_dirty(self, **kwargs):
-        return self.repo.is_dirty(**kwargs)
+    def is_dirty(self, untracked_files: bool = False) -> bool:
+        return self.repo.is_dirty(untracked_files=untracked_files)
 
     def active_branch(self):
         return self.repo.active_branch.name
@@ -495,16 +495,22 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 ) from exc
             raise SCMError("Could not apply stash") from exc
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        args = ["delete"]
-        if updateref:
-            args.append("--updateref")
-        if rewrite:
-            args.append("--rewrite")
-        args.append(ref)
-        self.git.reflog(*args)
+    def _stash_drop(self, ref: str, index: int):
+        from git.exc import GitCommandError
+
+        from dvc.scm.git import Stash
+
+        if ref == Stash.DEFAULT_STASH:
+            self.git.stash("drop", index)
+            return
+
+        self.git.reflog(
+            "delete", "--updateref", "--rewrite", f"{ref}@{{{index}}}"
+        )
+        try:
+            self.git.reflog("exists", ref)
+        except GitCommandError:
+            self.remove_ref(ref)
 
     def describe(
         self,

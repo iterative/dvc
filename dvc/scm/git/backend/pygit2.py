@@ -5,6 +5,8 @@ import stat
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
+from funcy import cached_property
+
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
@@ -64,11 +66,19 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         self._stashes: dict = {}
 
     def close(self):
+        if hasattr(self, "_refdb"):
+            del self._refdb
         self.repo.free()
 
     @property
     def root_dir(self) -> str:
         return self.repo.workdir
+
+    @cached_property
+    def _refdb(self):
+        from pygit2 import RefdbFsBackend
+
+        return RefdbFsBackend(self.repo)
 
     @staticmethod
     def clone(
@@ -136,7 +146,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_tracked(self, path: str) -> bool:
         raise NotImplementedError
 
-    def is_dirty(self, **kwargs) -> bool:
+    def is_dirty(self, untracked_files: bool = False) -> bool:
         raise NotImplementedError
 
     def active_branch(self) -> str:
@@ -213,12 +223,16 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if old_ref and old_ref != self.get_ref(name, follow=False):
             raise SCMError(f"Failed to set '{name}'")
 
-        if symbolic:
-            ref = self.repo.create_reference_symbolic(name, new_ref, True)
-        else:
-            ref = self.repo.create_reference_direct(name, new_ref, True)
         if message:
-            ref.set_target(new_ref, message)
+            self._refdb.ensure_log(name)
+        if symbolic:
+            self.repo.create_reference_symbolic(
+                name, new_ref, True, message=message
+            )
+        else:
+            self.repo.create_reference_direct(
+                name, new_ref, True, message=message
+            )
 
     def get_ref(self, name, follow: bool = True) -> Optional[str]:
         from pygit2 import GIT_REF_SYMBOLIC
@@ -305,15 +319,64 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        raise NotImplementedError
+        from dvc.scm.git import Stash
+
+        oid = self.repo.stash(
+            self.repo.default_signature,
+            message=message,
+            include_untracked=include_untracked,
+        )
+        commit = self.repo[oid]
+
+        if ref != Stash.DEFAULT_STASH:
+            self.set_ref(ref, commit.id, message=commit.message)
+            self.repo.stash_drop()
+        return str(oid), False
 
     def _stash_apply(self, rev: str):
-        raise NotImplementedError
+        from pygit2 import (
+            GIT_CHECKOUT_RECREATE_MISSING,
+            GIT_CHECKOUT_SAFE,
+            GitError,
+        )
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        raise NotImplementedError
+        from dvc.scm.git import Stash
+
+        def _apply(index):
+            try:
+                self.repo.index.read(False)
+                self.repo.stash_apply(
+                    index,
+                    strategy=GIT_CHECKOUT_SAFE | GIT_CHECKOUT_RECREATE_MISSING,
+                )
+            except GitError as exc:
+                raise MergeConflictError(
+                    "Stash apply resulted in merge conflicts"
+                ) from exc
+
+        # libgit2 stash apply only accepts refs/stash items by index. If rev is
+        # not in refs/stash, we will push it onto the stash, and then pop it
+        commit, _ref = self.repo.resolve_refish(rev)
+        stash = self.repo.references.get(Stash.DEFAULT_STASH)
+        if stash:
+            for i, entry in enumerate(stash.log()):
+                if entry.oid_new == commit.id:
+                    _apply(i)
+                    return
+
+        self.set_ref(Stash.DEFAULT_STASH, commit.id, message=commit.message)
+        try:
+            _apply(0)
+        finally:
+            self.repo.stash_drop()
+
+    def _stash_drop(self, ref: str, index: int):
+        from dvc.scm.git import Stash
+
+        if ref != Stash.DEFAULT_STASH:
+            raise NotImplementedError
+
+        self.repo.stash_drop(index)
 
     def describe(
         self,

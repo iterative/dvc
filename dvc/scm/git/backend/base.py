@@ -96,7 +96,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def is_dirty(self, **kwargs) -> bool:
+    def is_dirty(self, untracked_files: bool = False) -> bool:
         pass
 
     @abstractmethod
@@ -245,17 +245,21 @@ class BaseGitBackend(ABC):
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        """Push a commit onto the specified stash."""
+        """Push a commit onto the specified stash.
+
+        Returns a tuple of the form (rev, need_reset) where need_reset
+        indicates whether or not the workspace should be `reset --hard`
+        (some backends will not clean the workspace after creating a stash
+        commit).
+        """
 
     @abstractmethod
     def _stash_apply(self, rev: str):
         """Apply the specified stash revision."""
 
     @abstractmethod
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        """Delete the specified reflog entry."""
+    def _stash_drop(self, ref: str, index: int):
+        """Drop the specified stash revision."""
 
     @abstractmethod
     def describe(
