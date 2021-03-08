@@ -180,7 +180,10 @@ def makedirs(path, exist_ok=False, mode=None):
         if not exist_ok or not os.path.isdir(path):
             raise
 
-    os.chmod(path, mode)
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        logger.trace("failed to chmod '%o' '%s'", mode, path, exc_info=True)
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
