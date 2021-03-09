@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
 
-# pylint: disable=abstract-method
 logger = logging.getLogger(__name__)
 
 DVC_FILE = "Dvcfile"
@@ -211,6 +210,10 @@ class SingleStageFile(FileMixin):
         stage.merge(ancestor.stage, other.stage)
         self.dump(stage)
 
+    @classmethod
+    def validate_pyd(cls, d, fname=None):
+        raise NotImplementedError
+
 
 class PipelineFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
@@ -352,6 +355,10 @@ def migrate_lock_v1_to_v2(d, version_info):
 
 
 class Lockfile(FileMixin):
+    @classmethod
+    def validate_pyd(cls, d, fname=None):
+        raise NotImplementedError
+
     @classmethod
     def validate(cls, d, fname=None, use_pydantic: bool = False):
         schema = get_lockfile_schema(d)
