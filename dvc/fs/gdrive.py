@@ -3,7 +3,6 @@ import logging
 import os
 import posixpath
 import re
-import tempfile
 import threading
 from collections import defaultdict
 from contextlib import contextmanager
@@ -127,6 +126,9 @@ class GDriveFileSystem(BaseFileSystem):
         self._client_id = config.get("gdrive_client_id")
         self._client_secret = config.get("gdrive_client_secret")
         self._validate_config()
+        self._gdrive_service_credentials_path = tmp_fname(
+            os.path.join(self.repo.tmp_dir, "")
+        )
         self._gdrive_user_credentials_path = (
             tmp_fname(os.path.join(self.repo.tmp_dir, ""))
             if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
@@ -214,9 +216,7 @@ class GDriveFileSystem(BaseFileSystem):
             GDriveFileSystem.GDRIVE_CREDENTIALS_DATA
         )
         if self._use_service_account:
-            temporary_save_path = os.path.join(
-                tempfile.gettempdir(), "google-creds.json"
-            )
+            temporary_save_path = self._gdrive_service_credentials_path
 
         if is_credentials_temp:
             with open(temporary_save_path, "w") as cred_file:
