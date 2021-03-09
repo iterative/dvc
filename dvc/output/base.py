@@ -475,7 +475,7 @@ class BaseOutput:
             return 0
 
         return ilen(
-            filter_info.isin_or_eq(self.path_info / relpath)
+            filter_info.isin_or_eq(self.path_info.joinpath(*relpath))
             for relpath, _ in self.hash_info.dir_info.items()
         )
 
