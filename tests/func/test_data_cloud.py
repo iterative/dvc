@@ -537,3 +537,13 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
     dvc.fetch("copy-foo-bar")
     assert len(recurse_list_dir(dvc.odb.local.cache_dir)) == 1
+
+
+def test_pull_partial(tmp_dir, dvc, local_remote):
+    tmp_dir.dvc_gen({"foo": {"bar": {"baz": "baz"}, "spam": "spam"}})
+    dvc.push()
+    clean(["foo"], dvc)
+
+    stats = dvc.pull("foo/bar")
+    assert stats["fetched"] == 1
+    assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
