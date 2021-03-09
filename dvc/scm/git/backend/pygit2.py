@@ -100,14 +100,20 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
-        from pygit2 import GitError
+        from pygit2 import GIT_CHECKOUT_FORCE, GitError
+
+        checkout_strategy = GIT_CHECKOUT_FORCE if force else None
 
         if create_new:
             commit = self.repo.revparse_single("HEAD")
             new_branch = self.repo.branches.local.create(branch, commit)
-            self.repo.checkout(new_branch)
+            self.repo.checkout(new_branch, strategy=checkout_strategy)
         else:
             if branch == "-":
                 branch = "@{-1}"
@@ -115,7 +121,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 commit, ref = self.repo.resolve_refish(branch)
             except (KeyError, GitError):
                 raise RevError(f"unknown Git revision '{branch}'")
-            self.repo.checkout_tree(commit)
+            self.repo.checkout_tree(commit, strategy=checkout_strategy)
             detach = kwargs.get("detach", False)
             if ref and not detach:
                 self.repo.set_head(ref.name)
