@@ -544,6 +544,6 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     dvc.push()
     clean(["foo"], dvc)
 
-    stats = dvc.pull("foo/bar")
+    stats = dvc.pull(os.path.join("foo", "bar"))
     assert stats["fetched"] == 1
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
