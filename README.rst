@@ -222,6 +222,9 @@ Citation
 Iterative, *DVC: Data Version Control - Git for Data & Models* (2020)
 `DOI:10.5281/zenodo.012345 <https://doi.org/10.5281/zenodo.3677553>`_.
 
+Barrak, A., Eghan, E.E. and Adams, B. On the Co-evolution of ML Pipelines and Source Code - Empirical Study of DVC Projects, in Proceedings of the 28th IEEE International Conference on Software Analysis, Evolution, and Reengineering, SANER 2021. Hawaii, USA, to appear.
+
+
 .. |Banner| image:: https://dvc.org/img/logo-github-readme.png
    :target: https://dvc.org
    :alt: DVC logo
