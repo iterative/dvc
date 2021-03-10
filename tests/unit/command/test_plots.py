@@ -1,3 +1,5 @@
+import logging
+
 from dvc.cli import parse_args
 from dvc.command.plots import CmdPlotsDiff, CmdPlotsShow
 
@@ -55,7 +57,7 @@ def test_plots_diff(dvc, mocker):
     )
 
 
-def test_plots_show(dvc, mocker):
+def test_plots_show_vega(dvc, mocker):
     cli_args = parse_args(
         [
             "plots",
@@ -85,7 +87,7 @@ def test_plots_show(dvc, mocker):
     )
 
 
-def test_plots_show_vega(dvc, mocker, caplog):
+def test_plots_diff_vega(dvc, mocker, caplog):
     cli_args = parse_args(
         [
             "plots",
@@ -103,3 +105,39 @@ def test_plots_show_vega(dvc, mocker, caplog):
     )
     assert cmd.run() == 0
     assert "plothtml" in caplog.text
+
+
+def test_plots_diff_open(tmp_dir, dvc, mocker, caplog):
+    mocked_open = mocker.patch("webbrowser.open", return_value=True)
+    cli_args = parse_args(["plots", "diff", "--targets", "datafile", "--open"])
+    cmd = cli_args.func(cli_args)
+    mocker.patch(
+        "dvc.repo.plots.diff.diff", return_value={"datafile": "filledtemplate"}
+    )
+
+    assert cmd.run() == 0
+
+    expected_url = f"file://{tmp_dir}/plots.html"
+    assert expected_url in caplog.text
+
+    mocked_open.assert_called_once_with(expected_url)
+
+
+def test_plots_diff_open_failed(tmp_dir, dvc, mocker, caplog):
+    mocked_open = mocker.patch("webbrowser.open", return_value=False)
+    cli_args = parse_args(["plots", "diff", "--targets", "datafile", "--open"])
+    cmd = cli_args.func(cli_args)
+    mocker.patch(
+        "dvc.repo.plots.diff.diff", return_value={"datafile": "filledtemplate"}
+    )
+
+    assert cmd.run() == 1
+
+    expected_url = f"file://{tmp_dir}/plots.html"
+    mocked_open.assert_called_once_with(expected_url)
+
+    error_message = "Failed to open. Please try opening it manually."
+    assert caplog.record_tuples == [
+        ("dvc.command.plots", logging.INFO, expected_url),
+        ("dvc.command.plots", logging.ERROR, error_message),
+    ]
