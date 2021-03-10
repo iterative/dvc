@@ -319,6 +319,9 @@ class Experiments:
         **kwargs,
     ):
         """Reproduce and checkout a single experiment."""
+        if queue and not checkpoint_resume:
+            reset = True
+
         if reset:
             self.reset_checkpoints()
             kwargs["force"] = True
