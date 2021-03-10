@@ -117,7 +117,7 @@ def test_plots_diff_open(tmp_dir, dvc, mocker, caplog):
 
     assert cmd.run() == 0
 
-    expected_url = f"file://{tmp_dir}/plots.html"
+    expected_url = f"file://{tmp_dir / 'plots.html'}"
     assert expected_url in caplog.text
 
     mocked_open.assert_called_once_with(expected_url)
@@ -133,7 +133,7 @@ def test_plots_diff_open_failed(tmp_dir, dvc, mocker, caplog):
 
     assert cmd.run() == 1
 
-    expected_url = f"file://{tmp_dir}/plots.html"
+    expected_url = f"file://{tmp_dir / 'plots.html'}"
     mocked_open.assert_called_once_with(expected_url)
 
     error_message = "Failed to open. Please try opening it manually."
