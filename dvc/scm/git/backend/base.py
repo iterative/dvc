@@ -67,7 +67,11 @@ class BaseGitBackend(ABC):
 
     @abstractmethod
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
         pass
 

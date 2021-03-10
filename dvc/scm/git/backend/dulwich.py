@@ -189,7 +189,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Git commit failed") from exc
 
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError
 

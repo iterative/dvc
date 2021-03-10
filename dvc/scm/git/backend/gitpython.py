@@ -217,12 +217,16 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Git pre-commit hook failed") from exc
 
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
         if create_new:
-            self.repo.git.checkout("HEAD", b=branch, **kwargs)
+            self.repo.git.checkout("HEAD", b=branch, force=force, **kwargs)
         else:
-            self.repo.git.checkout(branch, **kwargs)
+            self.repo.git.checkout(branch, force=force, **kwargs)
 
     def pull(self, **kwargs):
         infos = self.repo.remote().pull(**kwargs)
