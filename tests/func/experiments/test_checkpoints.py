@@ -88,10 +88,6 @@ def test_reset_checkpoint(
         checkpoint_stage.addressing, name="foo", tmp_dir=not workspace,
     )
 
-    if workspace:
-        scm.reset(hard=True)
-        scm.gitpython.repo.git.clean(force=True)
-
     results = dvc.experiments.run(
         checkpoint_stage.addressing,
         params=["foo=2"],
