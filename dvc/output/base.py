@@ -408,6 +408,7 @@ class BaseOutput:
         relink=False,
         filter_info=None,
         allow_missing=False,
+        checkpoint_reset=False,
         **kwargs,
     ):
         if not self.use_cache:
@@ -420,6 +421,11 @@ class BaseOutput:
         obj = self.get_obj(filter_info=filter_info)
         if not obj and (filter_info and filter_info != self.path_info):
             # backward compatibility
+            return None
+
+        if self.checkpoint and checkpoint_reset:
+            if self.exists:
+                self.remove()
             return None
 
         added = not self.exists

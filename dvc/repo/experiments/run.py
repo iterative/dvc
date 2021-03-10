@@ -15,7 +15,6 @@ def run(
     run_all: bool = False,
     jobs: int = 1,
     tmp_dir: bool = False,
-    reset: bool = False,
     **kwargs,
 ) -> dict:
     """Reproduce the specified targets as an experiment.
@@ -25,10 +24,6 @@ def run(
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
-    if reset:
-        repo.experiments.reset_checkpoints()
-        kwargs["force"] = True
-
     if run_all:
         return repo.experiments.reproduce_queued(jobs=jobs)
 

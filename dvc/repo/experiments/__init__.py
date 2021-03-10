@@ -345,9 +345,14 @@ class Experiments:
         queue: bool = False,
         tmp_dir: bool = False,
         checkpoint_resume: Optional[str] = None,
+        reset: bool = False,
         **kwargs,
     ):
         """Reproduce and checkout a single experiment."""
+        if reset:
+            self.reset_checkpoints()
+            kwargs["force"] = True
+
         if not (queue or tmp_dir):
             staged, _, _ = self.scm.status()
             if staged:
@@ -370,7 +375,9 @@ class Experiments:
         else:
             checkpoint_resume = self._workspace_resume_rev()
 
-        stash_rev = self.new(checkpoint_resume=checkpoint_resume, **kwargs)
+        stash_rev = self.new(
+            checkpoint_resume=checkpoint_resume, reset=reset, **kwargs
+        )
         if queue:
             logger.info(
                 "Queued experiment '%s' for future execution.", stash_rev[:7],
