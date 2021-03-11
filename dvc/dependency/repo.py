@@ -55,6 +55,7 @@ class RepoDependency(LocalDependency):
                 self.repo.odb.local,
                 path_info,
                 repo.repo_fs,
+                self.repo.odb.local.fs.PARAM_CHECKSUM,
                 follow_subrepos=False,
             ).hash_info
 
@@ -94,7 +95,12 @@ class RepoDependency(LocalDependency):
             except (NoOutputOrStageError, NoRemoteError):
                 pass
             obj = stage(
-                odb, path_info, repo.repo_fs, jobs=jobs, follow_subrepos=False,
+                odb,
+                path_info,
+                repo.repo_fs,
+                odb.fs.PARAM_CHECKSUM,
+                jobs=jobs,
+                follow_subrepos=False,
             )
             save(odb, obj, jobs=jobs)
 

@@ -2,8 +2,9 @@ from operator import itemgetter
 
 import pytest
 
-from dvc.dir_info import DirInfo, _merge
 from dvc.hash_info import HashInfo
+from dvc.objects import HashFile
+from dvc.objects.tree import Tree, _merge
 
 
 @pytest.mark.parametrize(
@@ -18,10 +19,10 @@ from dvc.hash_info import HashInfo
                 {"md5": "456", "relpath": "bar"},
             ],
             {
-                ("zzz",): HashInfo("md5", "def"),
-                ("foo",): HashInfo("md5", "123"),
-                ("bar",): HashInfo("md5", "456"),
-                ("aaa",): HashInfo("md5", "abc"),
+                ("zzz",): HashFile(None, None, HashInfo("md5", "def")),
+                ("foo",): HashFile(None, None, HashInfo("md5", "123")),
+                ("bar",): HashFile(None, None, HashInfo("md5", "456")),
+                ("aaa",): HashFile(None, None, HashInfo("md5", "abc")),
             },
         ),
         (
@@ -37,23 +38,29 @@ from dvc.hash_info import HashInfo
                 {"md5": "pqr", "relpath": "dir/subdir/a"},
             ],
             {
-                ("dir", "b"): HashInfo("md5", "123"),
-                ("dir", "z"): HashInfo("md5", "456"),
-                ("dir", "a"): HashInfo("md5", "789"),
-                ("b",): HashInfo("md5", "abc"),
-                ("a",): HashInfo("md5", "def"),
-                ("z",): HashInfo("md5", "ghi"),
-                ("dir", "subdir", "b"): HashInfo("md5", "jkl"),
-                ("dir", "subdir", "z"): HashInfo("md5", "mno"),
-                ("dir", "subdir", "a"): HashInfo("md5", "pqr"),
+                ("dir", "b"): HashFile(None, None, HashInfo("md5", "123")),
+                ("dir", "z"): HashFile(None, None, HashInfo("md5", "456")),
+                ("dir", "a"): HashFile(None, None, HashInfo("md5", "789")),
+                ("b",): HashFile(None, None, HashInfo("md5", "abc")),
+                ("a",): HashFile(None, None, HashInfo("md5", "def")),
+                ("z",): HashFile(None, None, HashInfo("md5", "ghi")),
+                ("dir", "subdir", "b"): HashFile(
+                    None, None, HashInfo("md5", "jkl")
+                ),
+                ("dir", "subdir", "z"): HashFile(
+                    None, None, HashInfo("md5", "mno")
+                ),
+                ("dir", "subdir", "a"): HashFile(
+                    None, None, HashInfo("md5", "pqr")
+                ),
             },
         ),
     ],
 )
 def test_list(lst, trie_dict):
-    dir_info = DirInfo.from_list(lst)
-    assert dir_info._dict == trie_dict
-    assert dir_info.to_list() == sorted(lst, key=itemgetter("relpath"))
+    tree = Tree.from_list(lst)
+    assert tree._dict == trie_dict
+    assert tree.as_list() == sorted(lst, key=itemgetter("relpath"))
 
 
 @pytest.mark.parametrize(
@@ -81,9 +88,9 @@ def test_list(lst, trie_dict):
     ],
 )
 def test_size(trie_dict, size):
-    dir_info = DirInfo()
-    dir_info._dict = trie_dict
-    assert dir_info.size == size
+    tree = Tree(None, None, None)
+    tree._dict = trie_dict
+    assert tree.size == size
 
 
 @pytest.mark.parametrize(
@@ -111,9 +118,9 @@ def test_size(trie_dict, size):
     ],
 )
 def test_nfiles(trie_dict, nfiles):
-    dir_info = DirInfo()
-    dir_info._dict = trie_dict
-    assert dir_info.nfiles == nfiles
+    tree = Tree(None, None, None)
+    tree._dict = trie_dict
+    assert len(tree) == nfiles
 
 
 @pytest.mark.parametrize(
@@ -134,9 +141,9 @@ def test_nfiles(trie_dict, nfiles):
     ],
 )
 def test_items(trie_dict):
-    dir_info = DirInfo()
-    dir_info._dict = trie_dict
-    assert list(dir_info.items()) == list(trie_dict.items())
+    tree = Tree(None, None, None)
+    tree._dict = trie_dict
+    assert list(tree) == list(trie_dict.items())
 
 
 @pytest.mark.parametrize(

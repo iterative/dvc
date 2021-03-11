@@ -32,7 +32,7 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
 def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz_hash = bar.dir_cache.trie.get(("baz",))
+    baz_hash = bar.obj.trie.get(("baz",)).hash_info
     dvc.push()
     with remote.index:
         remote.index.clear()
@@ -49,7 +49,7 @@ def test_indexed_on_status(tmp_dir, dvc, tmp_path_factory, remote):
 def test_indexed_on_push(tmp_dir, dvc, tmp_path_factory, remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz_hash = bar.dir_cache.trie.get(("baz",))
+    baz_hash = bar.obj.trie.get(("baz",)).hash_info
 
     dvc.push()
     with remote.index:

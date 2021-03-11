@@ -4,7 +4,6 @@ from contextlib import _GeneratorContextManager as GCM
 from funcy import reraise
 
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.objects.stage import get_hash
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 
@@ -29,8 +28,8 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise OutputNotFoundError(path, repo)
 
         cloud = metadata.repo.cloud
-        hash_info = get_hash(path_info, _repo.repo_fs, "md5", _repo.odb)
-        return cloud.get_url_for(remote, checksum=hash_info.value)
+        md5 = metadata.repo.dvcfs.info(path_info)["md5"]
+        return cloud.get_url_for(remote, checksum=md5)
 
 
 def open(  # noqa, pylint: disable=redefined-builtin

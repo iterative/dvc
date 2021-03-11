@@ -13,12 +13,15 @@ class MemoryFileSystem(BaseFileSystem):
         self.fs = MemFS()
 
     def exists(self, path_info, use_dvcignore=True):
-        return self.fs.exists(path_info.path)
+        return self.fs.exists(path_info.fspath)
 
     def open(self, path_info, mode="r", encoding=None, **kwargs):
         return self.fs.open(
             path_info.fspath, mode=mode, encoding=encoding, **kwargs
         )
+
+    def info(self, path_info):
+        return self.fs.info(path_info.fspath)
 
     def stat(self, path_info):
         import os
