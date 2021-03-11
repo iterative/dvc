@@ -94,14 +94,3 @@ jobs:
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
-    - name: Post TAP
-      # Running custom fork with an option, that does not fail CI on error
-      uses: skshetry/flaky-service/packages/action@master
-      if: always() && github.ref == 'refs/heads/master'
-      with:
-        file-path: ${{github.workspace}}/testresults.tap
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        os: ${{runner.os}}
-        matrix: ${{toJson(matrix)}}
-        repo-description: ${{github.event.repository.description}}
-        fail_ci_if_error: false
