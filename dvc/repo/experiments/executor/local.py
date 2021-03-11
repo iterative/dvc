@@ -3,11 +3,21 @@ import os
 from tempfile import TemporaryDirectory
 from typing import Optional
 
-from dvc.utils.fs import remove
-
 from .base import BaseExecutor
 
 logger = logging.getLogger(__name__)
+
+
+class ExpTemporaryDirectory(TemporaryDirectory):
+    # Python's TemporaryDirectory cleanup shutil.rmtree wrapper does not handle
+    # git read-only dirs cleanly in Windows, so we use our own remove()
+    # see: https://github.com/iterative/dvc/pull/5425
+
+    @classmethod
+    def _rmtree(cls, name):
+        from dvc.utils.fs import remove
+
+        remove(name)
 
 
 class BaseLocalExecutor(BaseExecutor):
@@ -37,7 +47,7 @@ class TempDirExecutor(BaseLocalExecutor):
         cache_dir: Optional[str] = None,
         **kwargs,
     ):
-        self._tmp_dir = TemporaryDirectory(dir=tmp_dir)
+        self._tmp_dir = ExpTemporaryDirectory(dir=tmp_dir)
         kwargs["root_dir"] = self._tmp_dir.name
         super().__init__(*args, **kwargs)
         if cache_dir:
@@ -55,4 +65,4 @@ class TempDirExecutor(BaseLocalExecutor):
     def cleanup(self):
         super().cleanup()
         logger.debug("Removing tmpdir '%s'", self._tmp_dir)
-        remove(self._tmp_dir.name)
+        self._tmp_dir.cleanup()
