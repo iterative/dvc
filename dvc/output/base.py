@@ -647,6 +647,8 @@ class BaseOutput:
             )
 
     def merge(self, ancestor, other):
+        from dvc.objects.tree import merge
+
         assert other
 
         if ancestor:
@@ -658,6 +660,6 @@ class BaseOutput:
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        self.hash_info = objects.merge(
+        self.hash_info = merge(
             self.odb, ancestor_info, self.hash_info, other.hash_info
         )

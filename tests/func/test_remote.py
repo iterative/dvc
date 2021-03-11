@@ -145,8 +145,8 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
-    from dvc.objects import Tree
     from dvc.objects.stage import stage
+    from dvc.objects.tree import Tree
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
