@@ -10,14 +10,20 @@ logger = logging.getLogger(__name__)
 
 class ExpTemporaryDirectory(TemporaryDirectory):
     # Python's TemporaryDirectory cleanup shutil.rmtree wrapper does not handle
-    # git read-only dirs cleanly in Windows, so we use our own remove()
-    # see: https://github.com/iterative/dvc/pull/5425
+    # git read-only dirs cleanly in Windows on Python <3.8, so we use our own
+    # remove(). See:
+    # https://github.com/iterative/dvc/pull/5425
+    # https://bugs.python.org/issue26660
 
     @classmethod
     def _rmtree(cls, name):
         from dvc.utils.fs import remove
 
         remove(name)
+
+    def cleanup(self):
+        if self._finalizer.detach():
+            self._rmtree(self.name)
 
 
 class BaseLocalExecutor(BaseExecutor):
