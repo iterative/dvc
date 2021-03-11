@@ -418,6 +418,7 @@ class Stage(params.StageParams):
             and self.deps[0].fs.isdir(self.deps[0].path_info)
             and self.deps[0].fs.PARAM_CHECKSUM
             == self.outs[0].fs.PARAM_CHECKSUM
+            and not to_remote
         ):
             update_import_dir(self, rev=rev, jobs=jobs)
         else:
