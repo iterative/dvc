@@ -1,6 +1,7 @@
 import logging
 import os.path
 import threading
+from typing import Optional
 
 from funcy import cached_property, memoize, wrap_prop, wrap_with
 
@@ -146,10 +147,9 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         raise HTTPError(res.status_code, res.reason)
 
     def info(self, path_info):
-        url = path_info.url
-        headers = self._head(url).headers
-        etag = headers.get("ETag") or headers.get("Content-MD5")
-        size = int(headers.get("Content-Length"))
+        resp = self._head(path_info.url)
+        etag = resp.headers.get("ETag") or resp.headers.get("Content-MD5")
+        size = self._content_length(resp)
         return {"etag": etag, "size": size}
 
     def _upload_fobj(self, fobj, to_info):
@@ -195,6 +195,6 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             )
 
     @staticmethod
-    def _content_length(response):
+    def _content_length(response) -> Optional[int]:
         res = response.headers.get("Content-Length")
         return int(res) if res else None

@@ -1,7 +1,11 @@
+import io
+
 import pytest
+import requests
 
 from dvc.exceptions import HTTPError
 from dvc.fs.http import HTTPFileSystem
+from dvc.path_info import URLInfo
 
 
 def test_download_fails_on_error_code(dvc, http):
@@ -128,12 +132,6 @@ def test_http_method(dvc):
 
 
 def test_exists(mocker):
-    import io
-
-    import requests
-
-    from dvc.path_info import URLInfo
-
     res = requests.Response()
     # need to add `raw`, as `exists()` fallbacks to a streaming GET requests
     # on HEAD request failure.
@@ -153,3 +151,20 @@ def test_exists(mocker):
     res.status_code = 403
     with pytest.raises(HTTPError):
         fs.exists(url)
+
+
+@pytest.mark.parametrize(
+    "headers, expected_size", [({"Content-Length": "3"}, 3), ({}, None)]
+)
+def test_content_length(mocker, headers, expected_size):
+    res = requests.Response()
+    res.headers.update(headers)
+    res.status_code = 200
+
+    fs = HTTPFileSystem(None, {})
+    mocker.patch.object(fs, "request", return_value=res)
+
+    url = URLInfo("https://example.org/file.txt")
+
+    assert fs.info(url) == {"etag": None, "size": expected_size}
+    assert fs._content_length(res) == expected_size
