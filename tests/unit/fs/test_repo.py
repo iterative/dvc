@@ -483,7 +483,7 @@ def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     expected = "acbd18db4cc2f85cedef654fccc4a4d8"
     assert fs.info(PathInfo(tmp_dir) / "foo").get("md5") is None
     assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "foo", fs
+        dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5",
     ).hash_info == HashInfo("md5", expected,)
     (tmp_dir / "foo").unlink()
     assert fs.info(PathInfo(tmp_dir) / "foo")["md5"] == expected
@@ -497,13 +497,13 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     expected = "8761c4e9acad696bee718615e23e22db.dir"
     assert fs.info(PathInfo(tmp_dir) / "dir").get("md5") is None
     assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs
+        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5",
     ).hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir",)
 
     shutil.rmtree(tmp_dir / "dir")
     assert fs.info(PathInfo(tmp_dir) / "dir")["md5"] == expected
     assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs
+        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5",
     ).hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir",)
 
 
@@ -514,13 +514,13 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert fs.info(subdir).get("md5") is None
-    assert stage(dvc.odb.local, subdir, fs).hash_info == HashInfo(
+    assert stage(dvc.odb.local, subdir, fs, "md5").hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
     )
     assert fs.info(subdir / "data").get("md5") is None
-    assert stage(dvc.odb.local, subdir / "data", fs).hash_info == HashInfo(
-        "md5", "8d777f385d3dfec8815d20f7496026dc",
-    )
+    assert stage(
+        dvc.odb.local, subdir / "data", fs, "md5"
+    ).hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc",)
     (tmp_dir / "dir" / "subdir" / "data").unlink()
     assert (
         fs.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
@@ -540,7 +540,9 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
     tmp_dir.scm.commit("add dir")
 
     fs = RepoFileSystem(dvc)
-    actual = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs).hash_info
+    actual = stage(
+        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
+    ).hash_info
     expected = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
     assert actual == expected
 
@@ -551,7 +553,9 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 
     fs = RepoFileSystem(dvc)
     assert fs.info(PathInfo(tmp_dir) / "file").get("md5") is None
-    actual = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs).hash_info
+    actual = stage(
+        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
+    ).hash_info
     expected = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
     assert actual == expected
 
@@ -560,7 +564,9 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
         fs.info(PathInfo(tmp_dir) / "file")["md5"]
         == "8c7dd922ad47494fc02c388e12c00eac"
     )
-    actual = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs).hash_info
+    actual = stage(
+        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
+    ).hash_info
     expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
     assert actual == expected
 
@@ -570,10 +576,12 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     (tmp_dir / "dir" / "baz").write_text("baz")
 
     fs = RepoFileSystem(dvc)
-    actual = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs).hash_info
+    actual = stage(
+        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
+    ).hash_info
     expected = HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
     assert actual == expected
-    assert actual.dir_info.nfiles == 3
+    assert actual.nfiles == 3
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])

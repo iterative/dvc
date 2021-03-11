@@ -109,9 +109,10 @@ def test_add_directory(tmp_dir, dvc):
 
     hash_info = stage.outs[0].hash_info
 
-    dir_info = load(dvc.odb.local, hash_info).hash_info.dir_info
-    for path, _ in dir_info.trie.items():
-        assert "\\" not in path
+    obj = load(dvc.odb.local, hash_info)
+    for key, _ in obj:
+        for part in key:
+            assert "\\" not in part
 
 
 class TestAddDirectoryRecursive(TestDvc):
@@ -516,7 +517,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    get_dir_hash_counter = mocker.spy(dvc_module.objects.stage, "get_dir_hash")
+    counter = mocker.spy(dvc_module.objects.stage, "_get_tree_obj")
     ret = main(["add", "data"])
     assert ret == 0
 
@@ -525,7 +526,7 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
 
     ret = main(["status"])
     assert ret == 0
-    assert get_dir_hash_counter.mock.call_count == 1
+    assert counter.mock.call_count == 1
 
 
 class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):

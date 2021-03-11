@@ -1,13 +1,15 @@
 import itertools
 import json
 import logging
+import posixpath
 from concurrent import futures
 
-from dvc.dir_info import DirInfo
+from funcy import cached_property
+
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 
-from .stage import get_hash
+from .stage import get_file_hash
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,12 @@ class HashFile:
         self.fs = fs
         self.hash_info = hash_info
 
+    @property
+    def size(self):
+        if not (self.path_info and self.fs):
+            return None
+        return self.fs.getsize(self.path_info)
+
     def __len__(self):
         return 1
 
@@ -35,8 +43,19 @@ class HashFile:
     def __bool__(self):
         return bool(self.hash_info)
 
+    def __eq__(self, other):
+        if not isinstance(other, HashFile):
+            return False
+        return (
+            self.path_info == other.path_info
+            and self.fs == other.fs
+            and self.hash_info == other.hash_info
+        )
+
     def check(self, odb):
-        actual = get_hash(self.path_info, self.fs, odb.fs.PARAM_CHECKSUM, odb)
+        actual = get_file_hash(
+            self.path_info, self.fs, self.hash_info.name, odb.repo.state
+        )
 
         logger.trace(
             "cache '%s' expected '%s' actual '%s'",
@@ -53,87 +72,89 @@ class HashFile:
     def load(cls, odb, hash_info):
         return odb.get(hash_info)
 
-    def save(self, odb, **kwargs):
-        odb.add(self.path_info, self.fs, self.hash_info, **kwargs)
-
-
-class File(HashFile):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.src = None
-
-    @classmethod
-    def stage(cls, odb, path_info, fs, **kwargs):
-        hash_info = get_hash(
-            path_info, fs, odb.fs.PARAM_CHECKSUM, odb, **kwargs
-        )
-        raw = odb.get(hash_info)
-        obj = cls(raw.path_info, raw.fs, hash_info)
-        obj.src = HashFile(path_info, fs, hash_info)
-        return obj
-
-    def save(self, odb, **kwargs):
-        self.src.save(odb, **kwargs)
-
 
 class Tree(HashFile):
+    PARAM_RELPATH = "relpath"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.src_hash_info = None
-        self.src_path_info = None
-        self.src_fs = None
+        self._dict = {}
 
-    def __len__(self):
-        return self.hash_info.dir_info.nfiles
+    @cached_property
+    def trie(self):
+        from pygtrie import Trie
 
-    def __iter__(self):
-        yield from self.hash_info.dir_info.items()
+        return Trie(self._dict)
 
-    @classmethod
-    def save_dir_info(cls, odb, dir_info, hash_info=None):
-        if hash_info and hash_info.name == odb.fs.PARAM_CHECKSUM:
-            try:
-                odb.check(hash_info)
-                assert hash_info.dir_info == dir_info
-                return hash_info
-            except (FileNotFoundError, ObjectFormatError):
-                pass
+    @property
+    def size(self):
+        try:
+            return sum(obj.size for _, obj in self)
+        except TypeError:
+            return None
 
+    def add(self, key, obj):
+        self.__dict__.pop("trie", None)
+        self._dict[key] = obj
+
+    def digest(self):
         from dvc.fs.memory import MemoryFileSystem
         from dvc.path_info import PathInfo
         from dvc.utils import tmp_fname
 
-        fs = MemoryFileSystem(None, {})
+        memfs = MemoryFileSystem(None, {})
         path_info = PathInfo(tmp_fname(""))
-        with fs.open(path_info, "w") as fobj:
-            json.dump(dir_info.to_list(), fobj, sort_keys=True)
+        with memfs.open(path_info, "wb") as fobj:
+            fobj.write(self.as_bytes())
+        self.fs = memfs
+        self.path_info = path_info
+        self.hash_info = get_file_hash(path_info, memfs, "md5")
+        self.hash_info.value += ".dir"
+        self.hash_info.size = self.size
+        self.hash_info.nfiles = len(self)
 
-        tmp_info = odb.fs.path_info / tmp_fname("")
-        with fs.open(path_info, "rb") as fobj:
-            odb.fs.upload_fobj(fobj, tmp_info)
+    def __len__(self):
+        return len(self._dict)
 
-        hash_info = get_hash(tmp_info, odb.fs, odb.fs.PARAM_CHECKSUM, odb)
-        hash_info.value += odb.fs.CHECKSUM_DIR_SUFFIX
-        hash_info.dir_info = dir_info
-        hash_info.nfiles = dir_info.nfiles
+    def __iter__(self):
+        yield from self._dict.items()
 
-        odb.add(tmp_info, odb.fs, hash_info)
+    def as_dict(self):
+        return self._dict.copy()
 
-        return hash_info
+    def as_list(self):
+        from operator import itemgetter
+
+        # Sorting the list by path to ensure reproducibility
+        return sorted(
+            (
+                {
+                    # NOTE: not using hash_info.to_dict() because we don't want
+                    # size/nfiles fields at this point.
+                    obj.hash_info.name: obj.hash_info.value,
+                    self.PARAM_RELPATH: posixpath.sep.join(parts),
+                }
+                for parts, obj in self._dict.items()  # noqa: B301
+            ),
+            key=itemgetter(self.PARAM_RELPATH),
+        )
+
+    def as_bytes(self):
+        return json.dumps(self.as_list(), sort_keys=True).encode("utf-8")
 
     @classmethod
-    def stage(cls, odb, path_info, fs, **kwargs):
-        hash_info = get_hash(
-            path_info, fs, odb.fs.PARAM_CHECKSUM, odb, **kwargs
-        )
-        hi = cls.save_dir_info(odb, hash_info.dir_info, hash_info)
-        hi.size = hash_info.size
-        raw = odb.get(hi)
-        obj = cls(raw.path_info, raw.fs, hi)
-        obj.src_hash_info = hash_info
-        obj.src_path_info = path_info
-        obj.src_fs = fs
-        return obj
+    def from_list(cls, lst):
+        from dvc.hash_info import HashInfo
+
+        tree = cls(None, None, None)
+        for _entry in lst:
+            entry = _entry.copy()
+            relpath = entry.pop(cls.PARAM_RELPATH)
+            parts = tuple(relpath.split(posixpath.sep))
+            hash_info = HashInfo.from_dict(entry)
+            obj = HashFile(None, None, hash_info)
+            tree.add(parts, obj)
+        return tree
 
     @classmethod
     def load(cls, odb, hash_info):
@@ -153,69 +174,97 @@ class Tree(HashFile):
             )
             raise ObjectFormatError(f"{obj} is corrupted")
 
-        dir_info = DirInfo.from_list(raw)
-        hash_info.dir_info = dir_info
-        hash_info.nfiles = dir_info.nfiles
+        tree = cls.from_list(raw)
+        tree.path_info = obj.path_info
+        tree.fs = obj.fs
+        tree.hash_info = hash_info
 
-        return cls(obj.path_info, obj.fs, hash_info)
-
-    def save(self, odb, **kwargs):
-        assert self.src_hash_info.dir_info
-        hi = self.save_dir_info(
-            odb, self.src_hash_info.dir_info, self.hash_info
-        )
-        for entry_key, entry_hash in Tqdm(
-            hi.dir_info.items(),
-            desc="Saving " + self.src_path_info.name,
-            unit="file",
-        ):
-            entry_info = self.src_path_info.joinpath(*entry_key)
-            entry_obj = HashFile(entry_info, self.src_fs, entry_hash)
-            entry_obj.save(odb, **kwargs)
-        self.src_fs.repo.state.save(self.src_path_info, self.src_fs, hi)
+        return tree
 
     def filter(self, odb, prefix):
-        hash_info = self.hash_info.dir_info.get(prefix)
-        if hash_info:
-            return load(odb, hash_info)
+        obj = self._dict.get(prefix)
+        if obj:
+            return obj
 
         depth = len(prefix)
-        dir_info = DirInfo()
+        tree = Tree(None, None, None)
         try:
-            for key, value in self.hash_info.dir_info.trie.items(prefix):
-                dir_info.add(key[depth:], value)
+            for key, obj in self.trie.items(prefix):
+                tree.add(key[depth:], obj)
         except KeyError:
             return None
-
-        return load(odb, self.save_dir_info(odb, dir_info))
+        tree.digest()
+        odb.add(tree.path_info, tree.fs, tree.hash_info)
+        return tree
 
 
 def save(odb, obj, **kwargs):
-    obj.save(odb, **kwargs)
+    if isinstance(obj, Tree):
+        for _, entry in Tqdm(obj):
+            odb.add(entry.path_info, entry.fs, entry.hash_info, **kwargs)
+    odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 
 def check(odb, obj):
     odb.check(obj.hash_info)
 
     if isinstance(obj, Tree):
-        for _, hash_info in obj:
-            odb.check(hash_info)
+        for _, entry in obj:
+            odb.check(entry.hash_info)
 
 
 def load(odb, hash_info):
     if hash_info.isdir:
         return Tree.load(odb, hash_info)
-    return File.load(odb, hash_info)
+    return odb.get(hash_info)
 
 
-def _get_dir_size(odb, dir_info):
+def _get_dir_size(odb, tree):
     try:
         return sum(
-            odb.fs.getsize(odb.hash_to_path_info(hi.value))
-            for _, hi in dir_info.items()
+            odb.fs.getsize(odb.hash_to_path_info(obj.hash_info.value))
+            for _, obj in tree
         )
     except FileNotFoundError:
         return None
+
+
+def _diff(ancestor, other, allow_removed=False):
+    from dictdiffer import diff
+
+    from dvc.exceptions import MergeError
+
+    allowed = ["add"]
+    if allow_removed:
+        allowed.append("remove")
+
+    result = list(diff(ancestor, other))
+    for typ, _, _ in result:
+        if typ not in allowed:
+            raise MergeError(
+                "unable to auto-merge directories with diff that contains "
+                f"'{typ}'ed files"
+            )
+    return result
+
+
+def _merge(ancestor, our, their):
+    import copy
+
+    from dictdiffer import patch
+
+    our_diff = _diff(ancestor, our)
+    if not our_diff:
+        return copy.deepcopy(their)
+
+    their_diff = _diff(ancestor, their)
+    if not their_diff:
+        return copy.deepcopy(our)
+
+    # make sure there are no conflicting files
+    _diff(our, their, allow_removed=True)
+
+    return patch(our_diff + their_diff, ancestor)
 
 
 def merge(odb, ancestor_info, our_info, their_info):
@@ -223,15 +272,22 @@ def merge(odb, ancestor_info, our_info, their_info):
     assert their_info
 
     if ancestor_info:
-        ancestor = load(odb, ancestor_info).hash_info.dir_info
+        ancestor = load(odb, ancestor_info)
     else:
-        ancestor = DirInfo()
+        ancestor = Tree(None, None, None)
 
-    our = load(odb, our_info).hash_info.dir_info
-    their = load(odb, their_info).hash_info.dir_info
+    our = load(odb, our_info)
+    their = load(odb, their_info)
 
-    merged = our.merge(ancestor, their)
-    hash_info = Tree.save_dir_info(odb, merged)
+    merged_dict = _merge(ancestor.as_dict(), our.as_dict(), their.as_dict(),)
+
+    merged = Tree(None, None, None)
+    for key, hi in merged_dict.items():
+        merged.add(key, hi)
+    merged.digest()
+
+    odb.add(merged.path_info, merged.fs, merged.hash_info)
+    hash_info = merged.hash_info
     hash_info.size = _get_dir_size(odb, merged)
     return hash_info
 
@@ -286,17 +342,19 @@ def _transfer_directory_contents(odb, from_fs, from_info, jobs, pbar):
 
 
 def _transfer_directory(odb, from_fs, from_info, jobs, no_progress_bar=False):
-    dir_info = DirInfo()
+    tree = Tree(None, None, None)
 
     with Tqdm(total=1, unit="Files", disable=no_progress_bar) as pbar:
         for (
             entry_info,
             (entry_tmp_info, entry_hash),
         ) in _transfer_directory_contents(odb, from_fs, from_info, jobs, pbar):
-            odb.add(entry_tmp_info, odb.fs, entry_hash)
-            dir_info.add(entry_info.parts, entry_hash)
+            obj = HashFile(entry_tmp_info, odb.fs, entry_hash)
+            tree.add(entry_info.parts, obj)
 
-    return Tree.save_dir_info(odb, dir_info)
+    tree.digest()
+    save(odb, tree)
+    return tree.hash_info
 
 
 def transfer(odb, from_fs, from_info, jobs=None, no_progress_bar=False):

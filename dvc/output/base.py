@@ -18,7 +18,6 @@ from dvc.exceptions import (
 )
 from dvc.hash_info import HashInfo
 from dvc.objects.db import NamedCache
-from dvc.objects.stage import get_hash
 from dvc.objects.stage import stage as ostage
 
 from ..fs.base import BaseFileSystem
@@ -184,22 +183,20 @@ class BaseOutput:
         return getattr(self.repo.odb, self.scheme)
 
     @property
-    def dir_cache(self):
-        return self.hash_info.dir_info
-
-    @property
     def cache_path(self):
         return self.odb.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
         if not self.use_cache:
-            return get_hash(
+            return ostage(
+                self.repo.odb.local,
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
-                self.repo.odb.local,
-            )
-        return ostage(self.odb, self.path_info, self.fs).hash_info
+            ).hash_info
+        return ostage(
+            self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
+        ).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -307,7 +304,9 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = ostage(self.odb, self.path_info, self.fs)
+        self.obj = ostage(
+            self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
+        )
         self.hash_info = self.obj.hash_info
         self.isexec = self.isfile() and self.fs.isexec(self.path_info)
 
@@ -322,7 +321,12 @@ class BaseOutput:
         assert self.hash_info
 
         if self.use_cache:
-            obj = ostage(self.odb, filter_info or self.path_info, self.fs)
+            obj = ostage(
+                self.odb,
+                filter_info or self.path_info,
+                self.fs,
+                self.odb.fs.PARAM_CHECKSUM,
+            )
             objects.save(self.odb, obj)
             checkout(
                 filter_info or self.path_info,
@@ -460,8 +464,6 @@ class BaseOutput:
             self.repo.scm.ignore(self.fspath)
 
     def get_files_number(self, filter_info=None):
-        from funcy import ilen
-
         if not self.use_cache or not self.hash_info:
             return 0
 
@@ -471,13 +473,8 @@ class BaseOutput:
         if not filter_info or filter_info == self.path_info:
             return self.hash_info.nfiles or 0
 
-        if not self.hash_info.dir_info:
-            return 0
-
-        return ilen(
-            filter_info.isin_or_eq(self.path_info.joinpath(*relpath))
-            for relpath, _ in self.hash_info.dir_info.items()
-        )
+        obj = self.get_obj(filter_info=filter_info)
+        return len(obj) if obj else 0
 
     def unprotect(self):
         if self.exists:
@@ -498,12 +495,11 @@ class BaseOutput:
             )
 
         try:
-            objects.load(self.odb, self.hash_info)
-            assert self.hash_info.dir_info
+            self.obj = objects.load(self.odb, self.hash_info)
         except (objects.ObjectFormatError, FileNotFoundError):
-            self.hash_info.dir_info = None
+            self.obj = None
 
-        return self.dir_cache
+        return self.obj
 
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
@@ -551,14 +547,14 @@ class BaseOutput:
 
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
-        for entry_key, entry_hash_info in self.dir_cache.items():
+        for entry_key, entry_obj in self.obj:
             entry_path = os.path.join(path, *entry_key)
             if (
                 not filter_path
                 or entry_path == filter_path
                 or entry_path.startswith(filter_path + os.sep)
             ):
-                cache.add(self.scheme, entry_hash_info.value, entry_path)
+                cache.add(self.scheme, entry_obj.hash_info.value, entry_path)
 
         return cache
 

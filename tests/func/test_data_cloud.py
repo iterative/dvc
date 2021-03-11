@@ -287,7 +287,7 @@ def test_verify_hashes(
     remove("dir")
     remove(dvc.odb.local.cache_dir)
 
-    hash_spy = mocker.spy(dvc_module.objects.stage, "get_file_hash")
+    hash_spy = mocker.spy(dvc_module.objects.stage, "_get_file_hash")
 
     dvc.pull()
     assert hash_spy.call_count == 0

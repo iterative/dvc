@@ -464,6 +464,12 @@ class Repo:
         return self.DVC_DIR in path_parts
 
     @cached_property
+    def dvcfs(self):
+        from dvc.fs.dvc import DvcFileSystem
+
+        return DvcFileSystem(self)
+
+    @cached_property
     def repo_fs(self):
         from dvc.fs.repo import RepoFileSystem
 

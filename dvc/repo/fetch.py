@@ -115,6 +115,7 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
                     odb,
                     path_info,
                     repo.repo_fs,
+                    "md5",
                     jobs=jobs,
                     follow_subrepos=False,
                 )

@@ -205,6 +205,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             repo.odb.local,
             PathInfo(repo.root_dir) / "dir",
             repo.repo_fs,
+            "md5",
             follow_subrepos=False,
         )
         save(repo.odb.local, obj)

@@ -10,7 +10,7 @@ from dvc.exceptions import (
     DvcException,
 )
 from dvc.objects import ObjectFormatError, check, load
-from dvc.objects.stage import get_hash
+from dvc.objects.stage import stage
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
@@ -30,7 +30,7 @@ def _changed(path_info, fs, obj, cache):
         return True
 
     try:
-        actual = get_hash(path_info, fs, obj.hash_info.name, cache)
+        actual = stage(cache, path_info, fs, obj.hash_info.name).hash_info
     except FileNotFoundError:
         logger.debug("'%s' doesn't exist.", path_info)
         return True
@@ -56,7 +56,7 @@ def _remove(path_info, fs, cache, force=False):
         fs.remove(path_info)
         return
 
-    current = get_hash(path_info, fs, fs.PARAM_CHECKSUM, cache)
+    current = stage(cache, path_info, fs, fs.PARAM_CHECKSUM).hash_info
     try:
         obj = load(cache, current)
         check(cache, obj)
@@ -174,10 +174,10 @@ def _checkout_file(
     return modified
 
 
-def _remove_redundant_files(path_info, fs, dir_info, cache, force):
+def _remove_redundant_files(path_info, fs, obj, cache, force):
     existing_files = set(fs.walk_files(path_info))
 
-    needed_files = {path_info.joinpath(*key) for key, _ in dir_info.items()}
+    needed_files = {path_info.joinpath(*key) for key, _ in obj}
     redundant_files = existing_files - needed_files
     for path in redundant_files:
         _remove(path, fs, cache, force)
@@ -197,11 +197,11 @@ def _checkout_dir(
 
     logger.debug("Linking directory '%s'.", path_info)
 
-    for entry_key, entry_hash_info in obj.hash_info.dir_info.items():
+    for entry_key, entry_obj in obj:
         entry_modified = _checkout_file(
             path_info.joinpath(*entry_key),
             fs,
-            cache.get(entry_hash_info),
+            entry_obj,
             cache,
             force,
             progress_callback,
@@ -211,10 +211,7 @@ def _checkout_dir(
             modified = True
 
     modified = (
-        _remove_redundant_files(
-            path_info, fs, obj.hash_info.dir_info, cache, force
-        )
-        or modified
+        _remove_redundant_files(path_info, fs, obj, cache, force) or modified
     )
 
     fs.repo.state.save(path_info, fs, obj.hash_info)
