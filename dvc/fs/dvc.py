@@ -90,9 +90,9 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             cache_path = out.cache_path
         return open(cache_path, mode=mode, encoding=encoding)
 
-    def exists(self, path):  # pylint: disable=arguments-differ
+    def exists(self, path_info, use_dvcignore=True) -> bool:
         try:
-            self.metadata(path)
+            self.metadata(path_info)
             return True
         except FileNotFoundError:
             return False
