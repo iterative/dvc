@@ -145,10 +145,9 @@ tests_requirements = [
     "urllib3<1.26.0",
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
-    "pylint==2.5.3",
-    "astroid<2.5",  # temporary required for pylint, see #5469
-    "pylint-pytest>=0.3.0",
-    "pylint-plugin-utils",
+    "pylint==2.7.2",
+    "pylint-pytest==0.3.0",
+    "pylint-plugin-utils==0.6",
     "wget",
     "filelock",
     "mypy",
