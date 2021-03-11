@@ -1,6 +1,6 @@
 ---
 name: "\U0001F41B Bug Report"
-about: Create a bug report to help us improve DVC
+about: Create a bug report helping us improve DVC
 ---
 
 # Bug Report
@@ -57,5 +57,8 @@ $ dvc doctor
 **Additional Information (if any):**
 
 <!--
+Please check https://github.com/iterative/dvc/wiki/Debugging-DVC on ways to gather more information regarding the issue.
+
 If applicable, please also provide a `--verbose` output of the command, eg: `dvc add --verbose`.
+If the issue is regarding the performance, please attach the profiling information and the benchmark comparisons.
 -->
