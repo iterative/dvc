@@ -415,9 +415,9 @@ class Stage(params.StageParams):
             raise StageUpdateError(self.relpath)
         if (
             self.deps[0].path_info
-            and self.deps[0].tree.isdir(self.deps[0].path_info)
-            and self.deps[0].tree.PARAM_CHECKSUM
-            == self.outs[0].tree.PARAM_CHECKSUM
+            and self.deps[0].fs.isdir(self.deps[0].path_info)
+            and self.deps[0].fs.PARAM_CHECKSUM
+            == self.outs[0].fs.PARAM_CHECKSUM
         ):
             update_import_dir(self, rev=rev, jobs=jobs)
         else:

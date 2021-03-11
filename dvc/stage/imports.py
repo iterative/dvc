@@ -1,6 +1,7 @@
 import logging
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.objects.stage import get_file_hash
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +34,16 @@ def update_import(stage, rev=None, to_remote=False, remote=None, jobs=None):
 
 def get_dir_changes(stage):
     logger.debug(f"Getting changes from {stage.deps[0].path_info}")
-    deps_tree = stage.deps[0].tree
-    deps_path = stage.deps[0].path_info
-    outs_tree = stage.outs[0].tree
-    outs_path = stage.outs[0].path_info
+    dep = stage.deps[0]
+    out = stage.outs[0]
 
     deps_files_dict = {
-        deps_tree.get_file_hash(file).value: file
-        for file in deps_tree.walk_files(deps_path)
+        get_file_hash(file, dep.fs, dep.fs.PARAM_CHECKSUM).value: file
+        for file in dep.fs.walk_files(dep.path_info)
     }
     outs_files_dict = {
-        outs_tree.get_file_hash(file).value: file
-        for file in outs_tree.walk_files(outs_path)
+        get_file_hash(file, out.fs, out.fs.PARAM_CHECKSUM).value: file
+        for file in out.fs.walk_files(out.path_info)
     }
     deps_files_hashes = set(deps_files_dict.keys())
     outs_files_hashes = set(outs_files_dict.keys())
@@ -66,11 +65,11 @@ def update_import_dir(stage, rev=None, jobs=None):
     stage.save_deps()
 
     for file in files_to_rem:
-        stage.outs[0].tree.remove(file)
+        stage.outs[0].fs.remove(file)
 
     for file in files_to_down:
         filename = file.relative_to(stage.deps[0].path_info)
-        stage.deps[0].tree.download(
+        stage.deps[0].fs.download(
             file, stage.outs[0].path_info / filename, jobs=jobs
         )
 
