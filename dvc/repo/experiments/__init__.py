@@ -725,10 +725,14 @@ class Experiments:
                     rel_cwd=relpath(os.getcwd(), self.scm.root_dir),
                 )
 
-                if not exec_result.exp_hash or not exec_result.ref_info:
+                if not exec_result.exp_hash:
                     raise DvcException(
                         f"Failed to reproduce experiment '{rev[:7]}'"
                     )
+                if not exec_result.ref_info:
+                    # repro succeeded but result matches baseline
+                    # (no experiment generated or applied)
+                    return {}
                 exp_rev = self.scm.get_ref(str(exec_result.ref_info))
                 self.scm.set_ref(EXEC_APPLY, exp_rev)
                 return {exp_rev: exec_result.exp_hash}
