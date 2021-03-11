@@ -255,7 +255,8 @@ def _add_common_args(parser):
         "--checkpoints",
         action="append",
         default=[],
-        help=argparse.SUPPRESS,
+        help="Declare output file or directory that will be be handled as an "
+        "intermediate checkpoint upon exp run.",
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
