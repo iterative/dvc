@@ -19,6 +19,24 @@ def test_get_dir_changes(tmp_dir, dvc):
     assert tmp_dir / "out" / "foo" in files_to_rem
 
 
+def test_get_dir_changes_nested(tmp_dir, dvc):
+
+    imp = tmp_dir.gen(
+        {"data": {"file": "file", "folder": {"file1": "file1"}}}
+    )[0]
+
+    out = tmp_dir / "out"
+
+    stage = dvc.imp_url(str(imp), str(out))
+
+    (tmp_dir / "data" / "folder" / "file1").write_text("test")
+
+    files_to_down, files_to_rem = get_dir_changes(stage)
+
+    assert tmp_dir / "data" / "folder" / "file1" in files_to_down
+    assert tmp_dir / "out" / "folder" / "file1" in files_to_rem
+
+
 def test_update_import_dir(tmp_dir, dvc, mocker):
     imp = tmp_dir.gen({"data": {"file3": "foo", "file4": "bar"}})[0]
 
