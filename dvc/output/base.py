@@ -194,6 +194,8 @@ class BaseOutput:
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
+                self.repo.odb.local,
+                use_dvcignore=not self.IS_DEPENDENCY,
             ).hash_info
         return ostage(
             self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
@@ -205,7 +207,9 @@ class BaseOutput:
 
     @property
     def exists(self):
-        return self.fs.exists(self.path_info)
+        return self.fs.exists(
+            self.path_info, use_dvcignore=not self.IS_DEPENDENCY
+        )
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
@@ -620,7 +624,7 @@ class BaseOutput:
         if is_valid_filename(path):
             raise cls.IsStageFileError(path)
 
-        if stage:
+        if stage and not cls.IS_DEPENDENCY:
             abs_path = os.path.join(stage.wdir, path)
             if stage.repo.fs.dvcignore.is_ignored(abs_path):
                 check = stage.repo.fs.dvcignore.check_ignore(abs_path)

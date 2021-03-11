@@ -417,3 +417,9 @@ def test_ignored_output_nested(tmp_dir, scm, dvc, run_copy):
     run_copy("foo", "foo.log", name="copy", wdir="copy")
 
     assert Path("copy/foo.log").exists()
+
+
+def test_run_dvcignored_dep(tmp_dir, dvc, run_copy):
+    tmp_dir.gen({".dvcignore": "dir\n", "dir": {"foo": "foo"}})
+    run_copy(os.path.join("dir", "foo"), "bar", name="copy-foo-to-bar")
+    assert (tmp_dir / "bar").read_text() == "foo"

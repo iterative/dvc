@@ -137,7 +137,8 @@ def stage(odb, path_info, fs, name, **kwargs):
         isinstance(path_info, str) or path_info.scheme == fs.scheme
     )
 
-    if not fs.exists(path_info):
+    use_dvcignore = kwargs.get("use_dvcignore", True)
+    if not fs.exists(path_info, use_dvcignore=use_dvcignore):
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
