@@ -528,20 +528,10 @@ def test_reset(tmp_dir, scm, git):
     assert len(unstaged) == 2
 
 
-def test_remind_to_track(tmp_dir, scm, caplog):
-    files = ["fname with spaces.txt", "тест", "foo"]
-    tmp_dir.gen({name: "foo" for name in files})
-    scm.files_to_track.update(files)
-
+def test_remind_to_track(scm, caplog):
+    scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
     scm.remind_to_track()
-    assert "git add 'fname with spaces.txt' foo 'тест'" in caplog.text
-
-    scm.add(["foo"])
-    caplog.clear()
-
-    scm.remind_to_track()
-    assert "git add 'fname with spaces.txt' 'тест'" in caplog.text
-    assert "foo" not in caplog.text
+    assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text
 
 
 def test_add(tmp_dir, scm, git):
