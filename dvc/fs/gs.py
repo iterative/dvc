@@ -39,4 +39,4 @@ class GSFileSystem(FSSpecWrapper):
     def fs(self):
         from gcsfs import GCSFileSystem
 
-        return GCSFileSystem(**self.login_info)
+        return GCSFileSystem(**self.login_info, consistency=None)
