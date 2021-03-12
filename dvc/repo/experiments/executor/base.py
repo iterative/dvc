@@ -358,6 +358,8 @@ class BaseExecutor(ABC):
         if os.path.exists(args_path):
             args, kwargs = cls.unpack_repro_args(args_path)
             remove(args_path)
+            # explicitly git rm/unstage the args file
+            dvc.scm.add([args_path])
         else:
             args = []
             kwargs = {}
