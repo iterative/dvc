@@ -51,7 +51,3 @@ class HashFile:
         assert actual.name == self.hash_info.name
         if actual.value.split(".")[0] != self.hash_info.value.split(".")[0]:
             raise ObjectFormatError(f"{self} is corrupted")
-
-    @classmethod
-    def load(cls, odb, hash_info):
-        return odb.get(hash_info)
