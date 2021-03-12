@@ -77,7 +77,7 @@ def _iter_hashes(path_info, fs, name, state, **kwargs):
 
 
 def _build_tree(path_info, fs, name, state, **kwargs):
-    from . import HashFile
+    from .file import HashFile
     from .tree import Tree
 
     tree = Tree(None, None, None)
@@ -176,7 +176,7 @@ def stage(odb, path_info, fs, name, **kwargs):
     if fs.isdir(path_info):
         obj = _get_tree_obj(path_info, fs, name, odb, state, **kwargs)
     else:
-        from . import HashFile
+        from .file import HashFile
 
         hash_info = get_file_hash(path_info, fs, name, state)
         obj = HashFile(path_info, fs, hash_info)

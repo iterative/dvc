@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
+from dvc.objects.errors import ObjectFormatError
+from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
-
-from .. import HashFile, ObjectFormatError
 
 logger = logging.getLogger(__name__)
 

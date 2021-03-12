@@ -18,6 +18,7 @@ from dvc.exceptions import (
 )
 from dvc.hash_info import HashInfo
 from dvc.objects.db import NamedCache
+from dvc.objects.errors import ObjectFormatError
 from dvc.objects.stage import stage as ostage
 
 from ..fs.base import BaseFileSystem
@@ -220,7 +221,7 @@ class BaseOutput:
         try:
             objects.check(self.odb, obj)
             return False
-        except (FileNotFoundError, objects.ObjectFormatError):
+        except (FileNotFoundError, ObjectFormatError):
             return True
 
     def workspace_status(self):
@@ -487,7 +488,7 @@ class BaseOutput:
 
         try:
             objects.check(self.odb, self.odb.get(self.hash_info))
-        except (FileNotFoundError, objects.ObjectFormatError):
+        except (FileNotFoundError, ObjectFormatError):
             self.repo.cloud.pull(
                 NamedCache.make("local", self.hash_info.value, str(self)),
                 show_checksums=False,
@@ -496,7 +497,7 @@ class BaseOutput:
 
         try:
             self.obj = objects.load(self.odb, self.hash_info)
-        except (objects.ObjectFormatError, FileNotFoundError):
+        except (FileNotFoundError, ObjectFormatError):
             self.obj = None
 
         return self.obj
@@ -532,7 +533,7 @@ class BaseOutput:
 
         try:
             objects.check(self.odb, self.odb.get(self.hash_info))
-        except (FileNotFoundError, objects.ObjectFormatError):
+        except (FileNotFoundError, ObjectFormatError):
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
