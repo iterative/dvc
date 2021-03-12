@@ -259,17 +259,19 @@ class BaseExecutor(ABC):
                 "Executor repro with force = '%s'", str(repro_force)
             )
 
-            # NOTE: for checkpoint experiments we handle persist outs slightly
-            # differently than normal:
+            # NOTE: checkpoint outs are handled as a special type of persist
+            # out:
             #
             # - checkpoint out may not yet exist if this is the first time this
             #   experiment has been run, this is not an error condition for
             #   experiments
-            # - at the start of a repro run, we need to remove the persist out
-            #   and restore it to its last known (committed) state (which may
-            #   be removed/does not yet exist) so that our executor workspace
-            #   is not polluted with the (persistent) out from an unrelated
-            #   experiment run
+            # - if experiment was run with --reset, the checkpoint out will be
+            #   removed at the start of the experiment (regardless of any
+            #   dvc.lock entry for the checkpoint out)
+            # - if run without --reset, the checkpoint out will be checked out
+            #   using any hash present in dvc.lock (or removed if no entry
+            #   exists in dvc.lock)
+            checkpoint_reset = kwargs.pop("reset", False)
             dvc_checkout(
                 dvc,
                 targets=targets,
@@ -277,6 +279,7 @@ class BaseExecutor(ABC):
                 force=True,
                 quiet=True,
                 allow_missing=True,
+                checkpoint_reset=checkpoint_reset,
             )
 
             checkpoint_func = partial(

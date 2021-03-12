@@ -182,8 +182,6 @@ class Experiments:
                         )
                         self.scm.reset()
 
-                    self._prune_lockfiles()
-
                     # update experiment params from command line
                     if params:
                         self._update_params(params)
@@ -243,34 +241,6 @@ class Experiments:
                     self.scm.reset(hard=True)
 
         return stash_rev
-
-    def _prune_lockfiles(self):
-        from dvc.dvcfile import is_lock_file
-
-        # NOTE: dirty DVC lock files must be restored to index state to
-        # avoid checking out incorrect persist or checkpoint outs
-        fs = self.scm.get_fs("HEAD")
-        lock_files = [
-            str(fname)
-            for fname in fs.walk_files(self.scm.root_dir)
-            if is_lock_file(fname)
-        ]
-        if lock_files:
-
-            self.scm.reset(paths=lock_files)
-            self.scm.checkout_index(paths=lock_files, force=True)
-
-    def _prune_untracked_lockfiles(self):
-        from dvc.dvcfile import is_lock_file
-        from dvc.utils.fs import remove
-
-        untracked = [
-            fname
-            for fname in self.scm.untracked_files()
-            if is_lock_file(fname)
-        ]
-        for fname in untracked:
-            remove(fname)
 
     def _stash_msg(
         self,
@@ -345,9 +315,17 @@ class Experiments:
         queue: bool = False,
         tmp_dir: bool = False,
         checkpoint_resume: Optional[str] = None,
+        reset: bool = False,
         **kwargs,
     ):
         """Reproduce and checkout a single experiment."""
+        if queue and not checkpoint_resume:
+            reset = True
+
+        if reset:
+            self.reset_checkpoints()
+            kwargs["force"] = True
+
         if not (queue or tmp_dir):
             staged, _, _ = self.scm.status()
             if staged:
@@ -370,7 +348,9 @@ class Experiments:
         else:
             checkpoint_resume = self._workspace_resume_rev()
 
-        stash_rev = self.new(checkpoint_resume=checkpoint_resume, **kwargs)
+        stash_rev = self.new(
+            checkpoint_resume=checkpoint_resume, reset=reset, **kwargs
+        )
         if queue:
             logger.info(
                 "Queued experiment '%s' for future execution.", stash_rev[:7],
@@ -709,7 +689,6 @@ class Experiments:
         # result in conflict between workspace params and stashed CLI params).
         self.scm.reset(hard=True)
         with self.scm.detach_head(entry.rev):
-            self._prune_untracked_lockfiles()
             rev = self.stash.pop()
             self.scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
             if entry.branch:

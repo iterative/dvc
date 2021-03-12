@@ -418,28 +418,6 @@ def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
         assert fobj.read().strip() == "foo: 2"
 
 
-@pytest.mark.parametrize("workspace", [True, False])
-def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage, workspace):
-    from dvc.dvcfile import LockfileCorruptedError
-
-    tmp_dir.gen("dvc.lock", "foo")
-
-    with pytest.raises(LockfileCorruptedError):
-        dvc.reproduce(exp_stage.addressing)
-
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], tmp_dir=not workspace
-    )
-    exp = first(results)
-
-    fs = scm.get_fs(exp)
-    with fs.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 2"
-
-    if not workspace:
-        assert (tmp_dir / "dvc.lock").read_text() == "foo"
-
-
 def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
     from dvc.repo.experiments.executor.base import BaseExecutor
 

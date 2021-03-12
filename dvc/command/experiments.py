@@ -514,6 +514,11 @@ class CmdExperimentsRun(CmdRepro):
     def run(self):
         from dvc.command.metrics import _show_metrics
 
+        if self.args.reset and self.args.checkpoint_resume:
+            raise InvalidArgumentError(
+                "--reset and --rev are mutually exclusive."
+            )
+
         if self.args.reset:
             logger.info("Any existing checkpoints will be reset and re-run.")
 
