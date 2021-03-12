@@ -7,6 +7,9 @@ from dvc.path_info import URLInfo
 
 
 class Base(URLInfo):
+
+    IS_OBJECT_STORAGE = False
+
     def is_file(self):
         raise NotImplementedError
 

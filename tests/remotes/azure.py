@@ -22,6 +22,7 @@ TEST_AZURE_CONNECTION_STRING = (
 
 class Azure(Base, CloudURLInfo):
 
+    IS_OBJECT_STORAGE = True
     CONNECTION_STRING = None
 
     @cached_property

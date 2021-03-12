@@ -1,5 +1,6 @@
 import os
 import shutil
+from functools import lru_cache
 
 from dvc.progress import Tqdm
 
@@ -11,6 +12,7 @@ class FSSpecWrapper(BaseFileSystem):
     def fs(self):
         raise NotImplementedError
 
+    @lru_cache(512)
     def _with_bucket(self, path):
         if isinstance(path, self.PATH_CLS):
             return f"{path.bucket}/{path.path}"
@@ -37,10 +39,32 @@ class FSSpecWrapper(BaseFileSystem):
         return entry
 
     def isdir(self, path_info):
-        return self.fs.isdir(self._with_bucket(path_info))
+        if not self.exists(path_info):
+            return False
+
+        # Directory in object storages are interpreted differently
+        # among different fsspec providers, so this logic is a temporary
+        # measure for us to adapt as of now. It checks whether it is a
+        # directory (as in a prefix with contents) or whether it is an empty
+        # file where it's name ends with a forward slash
+        entry = self.info(path_info)
+        return entry["type"] == "directory" or (
+            entry["size"] == 0
+            and entry["type"] == "file"
+            and entry["name"].endswith("/")
+        )
 
     def isfile(self, path_info):
-        return self.fs.isfile(self._with_bucket(path_info))
+        if not self.exists(path_info):
+            return False
+
+        return not self.isdir(path_info)
+
+    def is_empty(self, path_info):
+        entry = self.info(path_info)
+        if entry["type"] == "directory":
+            return not self.fs.ls(self._with_bucket(path_info))
+        return entry["size"] == 0
 
     def open(
         self, path_info, mode="r", **kwargs
@@ -56,6 +80,9 @@ class FSSpecWrapper(BaseFileSystem):
     def ls(
         self, path_info, detail=False, recursive=False
     ):  # pylint: disable=arguments-differ
+        if self.isdir(path_info) and self.is_empty(path_info):
+            return None
+
         path = self._with_bucket(path_info)
         if recursive:
             for root, _, files in self.fs.walk(path, detail=detail):

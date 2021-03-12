@@ -16,6 +16,9 @@ EMULATOR_OSS_ACCESS_KEY_SECRET = "AccessKeySecret"
 
 
 class OSS(Base, CloudURLInfo):
+
+    IS_OBJECT_STORAGE = True
+
     @staticmethod
     def get_url():
         return f"oss://{TEST_OSS_REPO_BUCKET}/{uuid.uuid4()}"
