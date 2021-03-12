@@ -506,7 +506,7 @@ class Remote:
         return ret
 
     def transfer(self, from_fs, from_info, jobs=None, no_progress_bar=False):
-        from dvc.objects import transfer
+        from dvc.objects.transfer import transfer
 
         return transfer(
             self.odb,

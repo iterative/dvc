@@ -4,7 +4,8 @@ import posixpath
 
 from funcy import cached_property
 
-from . import HashFile, ObjectFormatError
+from .errors import ObjectFormatError
+from .file import HashFile
 from .stage import get_file_hash
 
 logger = logging.getLogger(__name__)

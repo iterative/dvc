@@ -9,7 +9,8 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcException,
 )
-from dvc.objects import ObjectFormatError, check, load
+from dvc.objects import check, load
+from dvc.objects.errors import ObjectFormatError
 from dvc.objects.stage import stage
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,

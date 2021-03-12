@@ -173,7 +173,7 @@ def _process_stages(
             )
         else:
             from dvc.fs import get_cloud_fs
-            from dvc.objects import transfer
+            from dvc.objects.transfer import transfer
 
             from_fs = get_cloud_fs(repo, url=target)
             out.hash_info = transfer(

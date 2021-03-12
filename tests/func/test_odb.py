@@ -7,8 +7,8 @@ import pytest
 
 from dvc.hash_info import HashInfo
 from dvc.main import main
-from dvc.objects import ObjectFormatError
 from dvc.objects.db import ODBManager
+from dvc.objects.errors import ObjectFormatError
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc
 
