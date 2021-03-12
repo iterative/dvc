@@ -37,6 +37,7 @@ def _collect_configs(
         output_filter=_is_params,
         rev=rev,
     )
+    # TODO rollback
 
 
 def _read_path_info(fs, path_info, rev):
@@ -54,13 +55,11 @@ def _read_path_info(fs, path_info, rev):
         return None
 
 
-def _read_params(
-    repo, params, params_path_infos, rev, include_untracked=False
-):
+def _read_params(repo, params, params_path_infos, rev, tracked=False):
     res = defaultdict(dict)
     path_infos = copy(params_path_infos)
 
-    if not include_untracked:
+    if tracked:
         for param in params:
             res[str(param.path_info)].update(param.read_params_d())
     else:
@@ -89,14 +88,12 @@ def _collect_vars(repo, params):
 
 
 @locked
-def show(repo, revs=None, targets=None, include_untracked=False):
+def show(repo, revs=None, targets=None, tracked=False):
     res = {}
 
     for branch in repo.brancher(revs=revs):
         params, params_path_infos = _collect_configs(repo, branch, targets)
-        params = _read_params(
-            repo, params, params_path_infos, branch, include_untracked
-        )
+        params = _read_params(repo, params, params_path_infos, branch, tracked)
         vars_params = _collect_vars(repo, params)
 
         # NOTE: only those that are not added as a ParamDependency are included

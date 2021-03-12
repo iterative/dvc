@@ -66,6 +66,7 @@ def test_experiments_show(dvc, scm, mocker):
             "--all-branches",
             "--all-commits",
             "--sha",
+            "--tracked-params",
             "-n",
             "1",
         ]
@@ -84,6 +85,7 @@ def test_experiments_show(dvc, scm, mocker):
         all_commits=True,
         sha_only=True,
         num=1,
+        tracked_params=True,
     )
 
 
