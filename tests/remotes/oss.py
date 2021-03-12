@@ -16,6 +16,7 @@ EMULATOR_OSS_ACCESS_KEY_SECRET = "AccessKeySecret"
 
 
 class OSS(Base, CloudURLInfo):
+
     IS_OBJECT_STORAGE = True
 
     @staticmethod
