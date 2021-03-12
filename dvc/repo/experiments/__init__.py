@@ -723,6 +723,7 @@ class Experiments:
                     rev,
                     name=entry.name,
                     rel_cwd=relpath(os.getcwd(), self.scm.root_dir),
+                    log_errors=False,
                 )
 
                 if not exec_result.exp_hash:
