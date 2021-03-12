@@ -218,6 +218,7 @@ class BaseExecutor(ABC):
         queue: Optional["Queue"] = None,
         rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
+        log_errors: bool = True,
         log_level: Optional[int] = None,
     ) -> "ExecutorResult":
         """Run dvc repro and return the result.
@@ -234,7 +235,7 @@ class BaseExecutor(ABC):
 
         if queue is not None:
             queue.put((rev, os.getpid()))
-        if log_level is not None:
+        if log_errors and log_level is not None:
             cls._set_log_level(log_level)
 
         def filter_pipeline(stages):
@@ -246,7 +247,7 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
-        with cls._repro_dvc(dvc_dir, rel_cwd) as dvc:
+        with cls._repro_dvc(dvc_dir, rel_cwd, log_errors) as dvc:
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -321,7 +322,9 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(cls, dvc_dir: Optional[str], rel_cwd: Optional[str]):
+    def _repro_dvc(
+        cls, dvc_dir: Optional[str], rel_cwd: Optional[str], log_errors: bool
+    ):
         from dvc.repo import Repo
 
         dvc = Repo(dvc_dir)
@@ -342,10 +345,12 @@ class BaseExecutor(ABC):
         except CheckpointKilledError:
             raise
         except DvcException:
-            logger.exception("")
+            if log_errors:
+                logger.exception("")
             raise
         except Exception:
-            logger.exception("unexpected error")
+            if log_errors:
+                logger.exception("unexpected error")
             raise
         finally:
             dvc.close()
