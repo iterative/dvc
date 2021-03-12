@@ -255,7 +255,8 @@ def _add_common_args(parser):
         "--checkpoints",
         action="append",
         default=[],
-        help=argparse.SUPPRESS,
+        help="Declare checkpoint output file or directory for 'dvc exp run'. "
+        "Not compatible with 'dvc repro'.",
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
