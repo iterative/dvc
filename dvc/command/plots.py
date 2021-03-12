@@ -45,12 +45,19 @@ class CmdPlots(CmdBase):
             path = os.path.join(os.getcwd(), path)
 
             write(path, plots)
-
-            logger.info(f"file://{path}")
-
+            url = f"file://{path}"
         except DvcException:
             logger.exception("")
             return 1
+
+        logger.info(url)
+        if self.args.open:
+            import webbrowser
+
+            opened = webbrowser.open(url)
+            if not opened:
+                logger.error("Failed to open. Please try opening it manually.")
+                return 1
 
         return 0
 
@@ -228,4 +235,10 @@ def _add_output_arguments(parser):
         action="store_true",
         default=False,
         help="Show output in Vega format.",
+    )
+    parser.add_argument(
+        "--open",
+        action="store_true",
+        default=False,
+        help="Open plot file directly in the browser.",
     )
