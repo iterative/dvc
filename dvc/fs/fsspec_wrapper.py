@@ -42,6 +42,11 @@ class FSSpecWrapper(BaseFileSystem):
         if not self.exists(path_info):
             return False
 
+        # Directory in object storages are interpreted differently
+        # among different fsspec providers, so this logic is a temporary
+        # measure for us to adapt as of now. It checks whether it is a
+        # directory (as in a prefix with contents) or whether it is an empty
+        # file where it's name ends with a forward slash
         entry = self.info(path_info)
         return entry["type"] == "directory" or (
             entry["size"] == 0
