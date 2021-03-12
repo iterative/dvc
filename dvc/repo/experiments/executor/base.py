@@ -181,16 +181,16 @@ class BaseExecutor(ABC):
                 refs.append(ref)
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
-            orig_rev = dest_scm.get_ref(orig_ref)
-            if dest_scm.diff(orig_rev, new_rev):
-                if force:
-                    logger.debug(
-                        "Replacing existing experiment '%s'", orig_ref,
-                    )
-                    return True
-                if on_diverged:
-                    checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
-                    on_diverged(orig_ref, checkpoint)
+            if force:
+                logger.debug(
+                    "Replacing existing experiment '%s'", orig_ref,
+                )
+                return True
+
+            checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
+            self._raise_ref_conflict(dest_scm, orig_ref, new_rev, checkpoint)
+            if on_diverged:
+                on_diverged(orig_ref, checkpoint)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
@@ -401,7 +401,7 @@ class BaseExecutor(ABC):
             logger.debug("No changes to commit")
             raise UnchangedExperimentError(rev)
 
-        check_exists = False
+        check_conflict = False
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
         if branch:
             old_ref = rev
@@ -414,33 +414,38 @@ class BaseExecutor(ABC):
             old_ref = None
             if scm.get_ref(branch):
                 if not force:
-                    check_exists = True
-                    logger.debug(
-                        "Reuse existing experiment branch '%s'", branch
-                    )
-                else:
-                    logger.debug(
-                        "Replace existing experiment branch '%s'", branch
-                    )
+                    check_conflict = True
+                logger.debug(
+                    "%s existing experiment branch '%s'",
+                    "Replace" if force else "Reuse",
+                    branch,
+                )
             else:
                 logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.add([], update=True)
         scm.commit(f"dvc: commit experiment {exp_hash}", no_verify=True)
         new_rev = scm.get_rev()
-        if check_exists:
-            orig_rev = scm.get_ref(branch)
-            if scm.diff(scm.get_ref(branch), new_rev):
-                if checkpoint:
-                    raise CheckpointExistsError(ref_info.name)
-                raise ExperimentExistsError(ref_info.name)
-            new_rev = orig_rev
+        if check_conflict:
+            new_rev = cls._raise_ref_conflict(scm, branch, new_rev, checkpoint)
         else:
             scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         if checkpoint:
             scm.set_ref(EXEC_CHECKPOINT, new_rev)
         return new_rev
+
+    @staticmethod
+    def _raise_ref_conflict(scm, ref, new_rev, checkpoint):
+        # If this commit is a duplicate of the existing commit at 'ref', return
+        # the existing commit. Otherwise, error out and require user to re-run
+        # with --force as needed
+        orig_rev = scm.get_ref(ref)
+        if scm.diff(orig_rev, new_rev):
+            if checkpoint:
+                raise CheckpointExistsError(ref)
+            raise ExperimentExistsError(ref)
+        return orig_rev
 
     @staticmethod
     def _set_log_level(level):
