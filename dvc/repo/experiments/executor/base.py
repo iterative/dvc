@@ -396,6 +396,7 @@ class BaseExecutor(ABC):
             logger.debug("No changes to commit")
             raise UnchangedExperimentError(rev)
 
+        check_exists = False
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
         if branch:
             old_ref = rev
@@ -406,16 +407,31 @@ class BaseExecutor(ABC):
             ref_info = ExpRefInfo(baseline_rev, name)
             branch = str(ref_info)
             old_ref = None
-            if not force and scm.get_ref(branch):
-                if checkpoint:
-                    raise CheckpointExistsError(ref_info.name)
-                raise ExperimentExistsError(ref_info.name)
-            logger.debug("Commit to new experiment branch '%s'", branch)
+            if scm.get_ref(branch):
+                if not force:
+                    check_exists = True
+                    logger.debug(
+                        "Reuse existing experiment branch '%s'", branch
+                    )
+                else:
+                    logger.debug(
+                        "Replace existing experiment branch '%s'", branch
+                    )
+            else:
+                logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.add([], update=True)
         scm.commit(f"dvc: commit experiment {exp_hash}", no_verify=True)
         new_rev = scm.get_rev()
-        scm.set_ref(branch, new_rev, old_ref=old_ref)
+        if check_exists:
+            orig_rev = scm.get_ref(branch)
+            if scm.diff(scm.get_ref(branch), new_rev):
+                if checkpoint:
+                    raise CheckpointExistsError(ref_info.name)
+                raise ExperimentExistsError(ref_info.name)
+            new_rev = orig_rev
+        else:
+            scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         if checkpoint:
             scm.set_ref(EXEC_CHECKPOINT, new_rev)
