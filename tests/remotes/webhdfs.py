@@ -32,7 +32,7 @@ class WebHDFS(Base, URLInfo):  # pylint: disable=abstract-method
         with self._webhdfs() as _hdfs:
             return _hdfs.status(self.path, strict=False) is not None
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         assert parents
 

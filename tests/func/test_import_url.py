@@ -370,7 +370,6 @@ empty_xfail = pytest.mark.xfail(
     [
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("local_cloud"),
         pytest.param(pytest.lazy_fixture("gs"), marks=empty_xfail),
         pytest.param(pytest.lazy_fixture("azure"), marks=empty_xfail),
         pytest.param(
@@ -383,7 +382,15 @@ empty_xfail = pytest.mark.xfail(
     indirect=True,
 )
 def test_import_url_empty_directory(tmp_dir, dvc, workspace):
-    workspace.gen({"empty_dir/": {}})
+    # prefix based storage services (e.g s3) doesn't have the real concept
+    # of directories. So instead we create an empty file that ends with a
+    # trailing slash in order to actually support this operation
+    if workspace.IS_OBJECT_STORAGE:
+        contents = ""
+    else:
+        contents = {}
+
+    workspace.gen({"empty_dir/": contents})
 
     dvc.imp_url("remote://workspace/empty_dir/")
 

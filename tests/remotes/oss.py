@@ -7,7 +7,7 @@ import pytest
 from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
-from .base import ObjectStorageBase
+from .base import Base
 
 TEST_OSS_REPO_BUCKET = "dvc-test"
 EMULATOR_OSS_ENDPOINT = "127.0.0.1:{port}"
@@ -15,7 +15,9 @@ EMULATOR_OSS_ACCESS_KEY_ID = "AccessKeyID"
 EMULATOR_OSS_ACCESS_KEY_SECRET = "AccessKeySecret"
 
 
-class OSS(ObjectStorageBase, CloudURLInfo):
+class OSS(Base, CloudURLInfo):
+    IS_OBJECT_STORAGE = True
+
     @staticmethod
     def get_url():
         return f"oss://{TEST_OSS_REPO_BUCKET}/{uuid.uuid4()}"

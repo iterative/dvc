@@ -8,7 +8,7 @@ from funcy import cached_property
 
 from dvc.path_info import CloudURLInfo
 
-from .base import ObjectStorageBase
+from .base import Base
 
 TEST_AZURE_CONTAINER = "tests"
 TEST_AZURE_CONNECTION_STRING = (
@@ -20,8 +20,9 @@ TEST_AZURE_CONNECTION_STRING = (
 )
 
 
-class Azure(ObjectStorageBase, CloudURLInfo):
+class Azure(Base, CloudURLInfo):
 
+    IS_OBJECT_STORAGE = True
     CONNECTION_STRING = None
 
     @cached_property
@@ -45,6 +46,10 @@ class Azure(ObjectStorageBase, CloudURLInfo):
     @property
     def blob_client(self):
         return self.service_client.get_blob_client(self.bucket, self.path)
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
 
     def write_bytes(self, contents):
         self.blob_client.upload_blob(contents, overwrite=True)

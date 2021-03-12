@@ -9,12 +9,15 @@ from moto import mock_s3
 from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
-from .base import ObjectStorageBase
+from .base import Base
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 
 
-class S3(ObjectStorageBase, CloudURLInfo):
+class S3(Base, CloudURLInfo):
+
+    IS_OBJECT_STORAGE = True
+
     @staticmethod
     def should_test():
         do_test = env2bool("DVC_TEST_AWS", undefined=None)
@@ -70,6 +73,10 @@ class S3(ObjectStorageBase, CloudURLInfo):
 
     def exists(self):
         return self.is_file() or self.is_dir()
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        assert mode == 0o777
+        assert parents
 
     def write_bytes(self, contents):
         self._s3.put_object(

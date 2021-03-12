@@ -32,7 +32,7 @@ class Webdav(Base, WebDAVURLInfo):
             }
         )
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         parent_dirs = list(reversed(self.parents))[1:] if parents else []
         for d in parent_dirs + [self]:

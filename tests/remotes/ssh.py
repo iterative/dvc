@@ -78,7 +78,7 @@ class SSHMocked(Base, URLInfo):
         with self._ssh() as _ssh:
             return _ssh.exists(self.path)
 
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         assert parents
 

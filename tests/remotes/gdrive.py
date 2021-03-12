@@ -96,7 +96,7 @@ class GDrive(Base, CloudURLInfo):
         )
 
     @_gdrive_retry
-    def mkdir(self, mode=0o777, parents=False, exist_ok=False, empty=False):
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         if not self.client.exists(self.path):
             self.client.mkdir(self.path)
 
