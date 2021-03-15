@@ -363,8 +363,8 @@ empty_xfail = pytest.mark.xfail(
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("hdfs"),
+        pytest.param(pytest.lazy_fixture("s3"), marks=empty_xfail),
         pytest.param(pytest.lazy_fixture("gs"), marks=empty_xfail),
         pytest.param(pytest.lazy_fixture("azure"), marks=empty_xfail),
         pytest.param(
