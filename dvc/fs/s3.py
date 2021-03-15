@@ -126,4 +126,4 @@ class S3FileSystem(FSSpecWrapper):
     def fs(self):
         from s3fs import S3FileSystem as _S3FileSystem
 
-        return _S3FileSystem(**self.login_info)
+        return _S3FileSystem(**self.login_info, skip_instance_cache=True)
