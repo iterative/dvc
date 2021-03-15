@@ -118,7 +118,7 @@ class S3FileSystem(FSSpecWrapper):
     def _entry_hook(self, entry):
         entry = entry.copy()
         if "ETag" in entry:
-            entry["etag"] = entry["ETag"]
+            entry["etag"] = entry["ETag"].strip('"')
         return entry
 
     @wrap_prop(threading.Lock())
