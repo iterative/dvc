@@ -1,10 +1,10 @@
 import locale
 import os
+import time
 import uuid
 
 import pytest
 from funcy import cached_property
-from moto import mock_s3
 
 from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
@@ -13,10 +13,17 @@ from .base import Base
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 
+TEST_AWS_S3_PORT = 5555
+TEST_AWS_ENDPOINT_URL = f"http://127.0.0.1:{TEST_AWS_S3_PORT}/"
+
 
 class S3(Base, CloudURLInfo):
 
     IS_OBJECT_STORAGE = True
+
+    @cached_property
+    def config(self):
+        return {"url": self.url, "endpointurl": TEST_AWS_ENDPOINT_URL}
 
     @staticmethod
     def should_test():
@@ -49,7 +56,7 @@ class S3(Base, CloudURLInfo):
     def _s3(self):
         import boto3
 
-        return boto3.client("s3")
+        return boto3.client("s3", endpoint_url=TEST_AWS_ENDPOINT_URL)
 
     def is_file(self):
         from botocore.exceptions import ClientError
@@ -94,15 +101,48 @@ class S3(Base, CloudURLInfo):
         return self.read_bytes().decode(encoding)
 
 
+# Due to moto being uncompatible with aioboto on wrapper
+# mode, we start the moto server as a subprocess (imitates
+# a real S3 service) and then create a client that uses
+# this server.
+#
+# Originally adopted from:
+# https://github.com/dask/s3fs/blob/main/s3fs/tests/test_s3fs.py#L66-L86
 @pytest.fixture
-def s3(test_config):
+def s3_server(test_config):
     test_config.requires("s3")
-    with mock_s3():
-        import boto3
 
-        boto3.client("s3").create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
+    import shlex
+    import subprocess
 
-        yield S3(S3.get_url())
+    import requests
+
+    proc = subprocess.Popen(
+        shlex.split(f"moto_server s3 -p {TEST_AWS_S3_PORT}")
+    )
+
+    timeout = 5
+    while timeout > 0:
+        try:
+            r = requests.get(TEST_AWS_ENDPOINT_URL)
+            if r.ok:
+                break
+        except requests.RequestException:
+            pass
+        timeout -= 0.1
+        time.sleep(0.1)
+
+    yield
+
+    proc.terminate()
+    proc.wait()
+
+
+@pytest.fixture
+def s3(s3_server):
+    workspace = S3(S3.get_url())
+    workspace._s3.create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
+    yield workspace
 
 
 @pytest.fixture
