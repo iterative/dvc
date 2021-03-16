@@ -2,6 +2,7 @@ import errno
 import os
 from concurrent.futures import ThreadPoolExecutor
 
+import doltcli as dolt
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
@@ -11,6 +12,7 @@ from dvc.utils import file_md5
 
 def get_file_hash(path_info, fs, name):
     info = fs.info(path_info)
+
     if name in info:
         assert not info[name].endswith(".dir")
         return HashInfo(name, info[name], size=info["size"])
@@ -19,9 +21,12 @@ def get_file_hash(path_info, fs, name):
     if func:
         return func(path_info)
 
+    if os.path.exists(os.path.join(path_info, ".dolt")):
+        db = dolt.Dolt(path_info)
+
     if name == "md5":
         return HashInfo(
-            name, file_md5(path_info, fs), size=fs.getsize(path_info)
+            name, file_md5(path_info, fs), size=fs.getsize(path_info),
         )
 
     raise NotImplementedError
@@ -97,6 +102,11 @@ def get_dir_hash(path_info, fs, name, odb, state, **kwargs):
     hash_info = Tree.save_dir_info(fs.repo.odb.local, dir_info)
     hash_info.size = dir_info.size
     hash_info.dir_info = dir_info
+
+    if os.path.exists(os.path.join(path_info, ".dolt")):
+        db = dolt.Dolt(path_info)
+        hash_info.dolt_head = db.head
+
     return hash_info
 
 
@@ -147,6 +157,9 @@ def get_hash(path_info, fs, name, odb, **kwargs):
 def stage(odb, path_info, fs, **kwargs):
     from . import File, Tree
 
+    #import pdb
+    #pdb.set_trace()
     if fs.isdir(path_info):
-        return Tree.stage(odb, path_info, fs, **kwargs)
+        info = Tree.stage(odb, path_info, fs, **kwargs)
+        return info
     return File.stage(odb, path_info, fs, **kwargs)

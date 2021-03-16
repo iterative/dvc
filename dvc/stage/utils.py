@@ -225,6 +225,7 @@ def get_dump(stage):
         for key, value in {
             stage.PARAM_DESC: stage.desc,
             stage.PARAM_MD5: stage.md5,
+            "dolt_head": getattr(stage, "dolt_head"),
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
             stage.PARAM_FROZEN: stage.frozen,

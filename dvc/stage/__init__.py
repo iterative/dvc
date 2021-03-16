@@ -137,6 +137,7 @@ class Stage(params.StageParams):
         dvcfile=None,
         desc: Optional[str] = None,
         meta=None,
+        dolt_head=None,
     ):
         if deps is None:
             deps = []
@@ -156,6 +157,7 @@ class Stage(params.StageParams):
         self._dvcfile = dvcfile
         self.desc: Optional[str] = desc
         self.meta = meta
+        self.dolt_head = dolt_head
         self.raw_data = RawData()
 
     @property

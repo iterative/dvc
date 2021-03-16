@@ -6,6 +6,7 @@ import re
 from abc import ABC, abstractmethod
 from urllib.parse import urlencode, urlunparse
 
+import doltcli as dolt
 from dvc.exceptions import DvcException
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
@@ -143,7 +144,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not value or value[0] != mtime or value[1] != size:
             return None
 
-        return HashInfo("md5", value[2], size=int(size))
+        dolt_head = None
+        if os.path.exists(os.path.join(path, ".dolt")):
+            db = dolt.Dolt(path_info)
+            dolt_head = db.head
+
+        return HashInfo("md5", value[2], size=int(size), dolt_head=dolt_head)
 
     def save_link(self, path_info, fs):
         """Adds the specified path to the list of links created by dvc. This
