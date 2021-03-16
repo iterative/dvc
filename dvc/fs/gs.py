@@ -31,7 +31,8 @@ class GSFileSystem(FSSpecWrapper):
         return login_info
 
     def _entry_hook(self, entry):
-        entry["etag"] = base64.b64decode(entry["etag"]).hex()
+        if "etag" in entry:
+            entry["etag"] = base64.b64decode(entry["etag"]).hex()
         return entry
 
     @wrap_prop(threading.Lock())
