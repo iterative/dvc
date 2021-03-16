@@ -272,7 +272,7 @@ def test_add_existing_level(caplog, dt):
         logger.trace2("TRACE2")
     assert len(caplog.records) == 1
 
-    record, = caplog.records
+    (record,) = caplog.records
     assert record.levelno == 4
     assert record.levelname == "TRACE2"
     assert record.message == "TRACE2"

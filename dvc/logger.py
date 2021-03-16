@@ -46,7 +46,7 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
         logging.log(levelNum, message, *args, **kwargs)
 
     # getLevelName resolves the numeric log level if already defined,
-    # otherwise returns a string 
+    # otherwise returns a string
     if not isinstance(logging.getLevelName(levelName), int):
         logging.addLevelName(levelNum, levelName)
 
