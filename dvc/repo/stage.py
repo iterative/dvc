@@ -376,6 +376,7 @@ class StageLoad:
         graph: "DiGraph" = None,
         accept_group: bool = False,
         glob: bool = False,
+        glob_stages: bool = False,
     ) -> List[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 
@@ -399,7 +400,7 @@ class StageLoad:
             return [StageInfo(stage) for stage in self.repo.stages]
 
         stages, file, _ = _collect_specific_target(
-            self, target, with_deps, recursive, accept_group, glob=glob
+            self, target, with_deps, recursive, accept_group, glob=glob_stages
         )
         if not stages:
             if not (recursive and self.fs.isdir(target)):

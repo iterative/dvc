@@ -92,7 +92,8 @@ def reproduce(
     from .graph import get_pipeline, get_pipelines
 
     glob = kwargs.pop("glob", False)
-    accept_group = not glob
+    glob_stages = kwargs.pop("glob_stages", False) and not glob
+    accept_group = not glob and not glob_stages
 
     if isinstance(targets, str):
         targets = [targets]
@@ -128,6 +129,7 @@ def reproduce(
                 recursive=recursive,
                 accept_group=accept_group,
                 glob=glob,
+                glob_stages=glob_stages,
             )
             stages.update([stage_info.stage for stage_info in granular_stages])
 

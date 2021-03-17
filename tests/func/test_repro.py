@@ -62,7 +62,7 @@ def test_repro_glob(tmp_dir, dvc, run_copy):
     run_copy("input", "copy_output", name="copy_stage")
     os.remove("copy_output")
 
-    res = dvc.reproduce(targets=["copy_*"], glob=True)
+    res = dvc.reproduce(targets=["copy_s*"], glob_stages=True)
     assert dvc.stage.from_target("copy_stage")[0] in res
 
 
@@ -74,11 +74,24 @@ def test_repro_by_outs(tmp_dir, dvc, run_copy):
     assert dvc.stage.from_target("copy_stage")[0] in res
 
 
-def test_repro_glob_by_outs(tmp_dir, dvc, run_copy):
+def test_repro_glob_by_out_name(tmp_dir, dvc, run_copy):
     tmp_dir.gen("input", "file content")
     run_copy("input", "copy_output", name="copy_stage")
     os.remove("copy_output")
-    res = dvc.reproduce(targets=["copy_o*"], glob=True)
+    res = dvc.reproduce(targets=["copy*"], glob=True)
+    assert dvc.stage.from_target("copy_stage")[0] in res
+
+
+def test_repro_glob_by_out_path(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("data/input", "file content")
+    run_copy("data/input", "data/copy_output", name="copy_stage")
+
+    os.remove("data/copy_output")
+    res = dvc.reproduce(targets=["**/copy_o*"], glob=True)
+    assert dvc.stage.from_target("copy_stage")[0] in res
+
+    os.remove("data/copy_output")
+    res = dvc.reproduce(targets=["data/*"], glob=True)
     assert dvc.stage.from_target("copy_stage")[0] in res
 
 

@@ -455,7 +455,7 @@ class Repo:
                 return True
 
             if glob:
-                return fnmatch.fnmatch(out.path_info.name, path)
+                return fnmatch.fnmatch(str(out.path_info), path)
 
             return False
 
