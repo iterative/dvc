@@ -32,7 +32,7 @@ class S3FileSystem(FSSpecWrapper):
         url = config.get("url", "s3://")
         self.path_info = self.PATH_CLS(url)
 
-        self.transfer_config = {}
+        self._open_args = {}
         self.login_info = self._prepare_credentials(config)
 
     def _split_s3_config(self, s3_config):
@@ -44,8 +44,8 @@ class S3FileSystem(FSSpecWrapper):
         config = {}
         for key, value in s3_config.items():
             if key in {"multipart_chunksize", "multipart_threshold"}:
-                self.transfer_config[
-                    key
+                self._open_args[
+                    "block_size"
                 ] = conversions.human_readable_to_bytes(value)
             else:
                 config[key] = value
@@ -90,7 +90,7 @@ class S3FileSystem(FSSpecWrapper):
         # encryptions
         additional = login_info["s3_additional_kwargs"]
         additional["ServerSideEncryption"] = config.get("sse")
-        additional["sse_kms_key_id"] = config.get("sse_kms_key_id")
+        additional["SSEKMSKeyId"] = config.get("sse_kms_key_id")
         additional["ACL"] = config.get("acl")
         for grant_option, grant_key in self._GRANTS.items():
             if config.get(grant_option):
@@ -127,3 +127,10 @@ class S3FileSystem(FSSpecWrapper):
         from s3fs import S3FileSystem as _S3FileSystem
 
         return _S3FileSystem(**self.login_info, skip_instance_cache=True)
+
+    def open(
+        self, path_info, mode="r", **kwargs
+    ):  # pylint: disable=arguments-differ
+        return self.fs.open(
+            self._with_bucket(path_info), mode=mode, **self._open_args
+        )
