@@ -104,11 +104,14 @@ def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
         var = "USERPROFILE"
     else:
         var = "HOME"
-    monkeypatch.setenv(var, str(tmp_dir))
 
-    # Fresh import to see the effects of changing HOME variable
-    s3_mod = importlib.reload(sys.modules[S3FileSystem.__module__])
-    fs = s3_mod.S3FileSystem(dvc, s3.config)
+    with monkeypatch.context() as m:
+        m.setenv(var, str(tmp_dir))
+        # Fresh import to see the effects of changing HOME variable
+        s3_mod = importlib.reload(sys.modules[S3FileSystem.__module__])
+        fs = s3_mod.S3FileSystem(dvc, s3.config)
+
+    importlib.reload(sys.modules[S3FileSystem.__module__])
 
     s3_config = fs.login_info["config_kwargs"]["s3"]
     assert s3_config["use_accelerate_endpoint"]
