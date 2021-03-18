@@ -80,8 +80,6 @@ def test_dolt_dir_add(tmp_dir, dvc, doltdb):
     assert hash_info.dolt_head == doltdb.head
 
 def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):
-    from dvc.objects import load
-
     first_commit = doltdb.head
 
     #switch to new branch, add commit
@@ -105,15 +103,37 @@ def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):
     assert second_commit == doltdb.head
 
 def test_dolt_dir_status(tmp_dir, dvc, doltdb):
-    pass
+    # mismatch between working and stored head
 
+    first_commit = doltdb.head
+
+    #switch to new branch, add commit
+    doltdb.checkout("tmp_br", checkout_branch=True)
+    doltdb.sql("insert into t1 values ('bob', '0'), ('sally', 1)")
+    doltdb.add("t1")
+    doltdb.commit("Add rows")
+
+    # dvc file for new branch
+    (stage,) = tmp_dir.dvc_add(doltdb.repo_dir)
+
+    status = dvc.status(targets=["test_db"])
+    assert status == {}
+
+    # switch back to master
+    doltdb.checkout("master")
+    assert first_commit == doltdb.head
+
+    # expect dvc status highlight the difference between
+    # the saved version (tmp_br) and working (master)
+    # full diff not necessary : dolt diff <commit> <commit> --summary
+    status = dvc.status(targets=["test_db"])
+    assert status == {'test_db.dvc': [{'changed outs': {'test_db': 'modified'}}]}
 
 def test_dolt_dir_commit(tmp_dir, dvc, doltdb):
     pass
 
 def test_dolt_dir_remove(tmp_dir, dvc, doltdb):
     pass
-
 
 def test_dolt_dir_list(tmp_dir, dvc, doltdb):
     pass

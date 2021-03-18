@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from voluptuous import Any
 
+import doltcli as dolt
 import dvc.objects as objects
 import dvc.prompt as prompt
 from dvc.checkout import checkout
@@ -147,6 +148,12 @@ class BaseOutput:
         if self.use_cache and self.odb is None:
             raise RemoteCacheRequiredError(self.path_info)
 
+        if getattr(self.hash_info, "dolt_head", None) is not None:
+            self.hash_info.is_dolt = True
+            self.use_cache = False
+        else:
+            self.is_dolt = False
+
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
 
@@ -210,6 +217,9 @@ class BaseOutput:
         return self.fs.exists(self.path_info)
 
     def changed_checksum(self):
+        if hasattr(self.hash_info, "dolt_head"):
+            db = dolt.Dolt(self.path_info)
+            return db.head != self.hash_info.dolt_head
         return self.hash_info != self.get_hash()
 
     def changed_cache(self, filter_info=None):
@@ -405,7 +415,7 @@ class BaseOutput:
         allow_missing=False,
         **kwargs,
     ):
-        if not self.use_cache:
+        if not self.use_cache and not self.is_dolt:
             if progress_callback:
                 progress_callback(
                     str(self.path_info), self.get_files_number(filter_info)

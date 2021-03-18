@@ -221,16 +221,28 @@ def _checkout_dir(
 
     fs.repo.state.save(path_info, fs, obj.hash_info)
 
-    if os.path.exists(os.path.join(path_info, ".dolt")):
-        if hasattr(obj.hash_info, "dolt_head"):
-            db = dolt.Dolt(path_info)
-            db.sql(query=f"set `@@{db.repo_name}_head` = '{obj.hash_info.dolt_head}'")
-            print("found dolt hash", obj.hash_info.dolt_head)
-        else:
-            print("failed to find hash", obj.hash_info)
-
     # relink is not modified, assume it as nochange
     return modified and not relink
+
+
+def _checkout_dolt(
+    path_info, fs, obj, cache, force, progress_callback=None, relink=False,
+):
+    db = dolt.Dolt(path_info)
+    prev_head = db.head
+    new_head = obj.hash_info.dolt_head
+    if prev_head != new_head:
+        branches = dolt.read_rows_sql(db, f"select name, hash from dolt_branches where hash = '{new_head}'")
+        if len(branches) == 0:
+            print("no headless support yet")
+        else:
+            branch = branches[0]["name"]
+        # db.sql(query=f"set `@@{db.repo_name}_head` = '{new_head}'")
+        db.checkout(branch)
+        print("new hashof", db.sql("select HASHOF('HEAD') as head"))
+        return True
+    else:
+        return False
 
 
 def _checkout(
@@ -245,6 +257,10 @@ def _checkout(
     if not obj.hash_info.isdir:
         ret = _checkout_file(
             path_info, fs, obj, cache, force, progress_callback, relink
+        )
+    elif hasattr(obj.hash_info, "dolt_head"):
+        ret = _checkout_dolt(
+            path_info, fs, obj, cache, force, progress_callback, relink,
         )
     else:
         ret = _checkout_dir(
@@ -283,7 +299,7 @@ def checkout(
     elif not relink and not _changed(path_info, fs, obj, cache):
         logger.trace("Data '%s' didn't change.", path_info)
         skip = True
-    else:
+    elif getattr(obj.hash_info, "dolt_head", None) is None:
         try:
             check(cache, obj)
         except (FileNotFoundError, ObjectFormatError):
