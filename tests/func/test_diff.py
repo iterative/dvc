@@ -423,3 +423,129 @@ def test_targets_single_file_in_dir_with_file(tmp_dir, scm, dvc):
         "not in cache": [],
         "renamed": [],
     }
+
+
+@pytest.mark.parametrize("commit_last", [True, False])
+def test_diff_add_similar_files(tmp_dir, scm, dvc, commit_last):
+    if commit_last:
+        last_commit_msg = "commit #2"
+        a_rev = "HEAD~1"
+    else:
+        last_commit_msg = None
+        a_rev = "HEAD"
+
+    tmp_dir.dvc_gen(
+        {"dir": {"file": "text1", "subdir": {"file2": "text2"}}},
+        commit="commit #1",
+    )
+    tmp_dir.dvc_gen(
+        {"dir2": {"file": "text1", "subdir": {"file2": "text2"}}},
+        commit=last_commit_msg,
+    )
+    assert dvc.diff(a_rev) == {
+        "added": [
+            {
+                "path": os.path.join("dir2", ""),
+                "hash": "cb58ee07cb01044db229e4d6121a0dfc.dir",
+            },
+            {
+                "path": os.path.join("dir2", "file"),
+                "hash": "cef7ccd89dacf1ced6f5ec91d759953f",
+            },
+            {
+                "path": os.path.join("dir2", "subdir", "file2"),
+                "hash": "fe6123a759017e4a2af4a2d19961ed71",
+            },
+        ],
+        "deleted": [],
+        "modified": [],
+        "renamed": [],
+        "not in cache": [],
+    }
+
+
+@pytest.mark.parametrize("commit_last", [True, False])
+def test_diff_rename_folder(tmp_dir, scm, dvc, commit_last):
+    if commit_last:
+        last_commit_msg = "commit #2"
+        a_rev = "HEAD~1"
+    else:
+        last_commit_msg = None
+        a_rev = "HEAD"
+
+    tmp_dir.dvc_gen(
+        {"dir": {"file": "text1", "subdir": {"file2": "text2"}}},
+        commit="commit #1",
+    )
+    (tmp_dir / "dir").replace(tmp_dir / "dir2")
+    tmp_dir.dvc_add("dir2", commit=last_commit_msg)
+    assert dvc.diff(a_rev) == {
+        "added": [],
+        "deleted": [],
+        "modified": [],
+        "renamed": [
+            {
+                "path": {
+                    "old": os.path.join("dir", ""),
+                    "new": os.path.join("dir2", ""),
+                },
+                "hash": "cb58ee07cb01044db229e4d6121a0dfc.dir",
+            },
+            {
+                "path": {
+                    "old": os.path.join("dir", "file"),
+                    "new": os.path.join("dir2", "file"),
+                },
+                "hash": "cef7ccd89dacf1ced6f5ec91d759953f",
+            },
+            {
+                "path": {
+                    "old": os.path.join("dir", "subdir", "file2"),
+                    "new": os.path.join("dir2", "subdir", "file2"),
+                },
+                "hash": "fe6123a759017e4a2af4a2d19961ed71",
+            },
+        ],
+        "not in cache": [],
+    }
+
+
+@pytest.mark.parametrize("commit_last", [True, False])
+def test_diff_rename_file(tmp_dir, scm, dvc, commit_last):
+    if commit_last:
+        last_commit_msg = "commit #2"
+        a_rev = "HEAD~1"
+    else:
+        last_commit_msg = None
+        a_rev = "HEAD"
+
+    paths = tmp_dir.gen(
+        {"dir": {"file": "text1", "subdir": {"file2": "text2"}}}
+    )
+    tmp_dir.dvc_add(paths, commit="commit #1")
+    (tmp_dir / "dir" / "file").replace(tmp_dir / "dir" / "subdir" / "file3")
+
+    tmp_dir.dvc_add(paths, commit=last_commit_msg)
+    assert dvc.diff(a_rev) == {
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {
+                "path": os.path.join("dir", ""),
+                "hash": {
+                    "old": "cb58ee07cb01044db229e4d6121a0dfc.dir",
+                    "new": "a4ac9c339aacc60b6a3152e362c319c8.dir",
+                },
+            }
+        ],
+        "renamed": [
+            {
+                "path": {
+                    "old": os.path.join("dir", "file"),
+                    "new": os.path.join("dir", "subdir", "file3"),
+                },
+                "hash": "cef7ccd89dacf1ced6f5ec91d759953f",
+            }
+        ],
+        "not in cache": [],
+    }
