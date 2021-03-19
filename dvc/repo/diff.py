@@ -199,7 +199,7 @@ def _calculate_renamed(new, old, added, deleted):
         old_inverted[path_hash].append(path)
 
     renamed = []
-    for path in sorted(added, key=len):
+    for path in added:
         path_hash = new[path]
         old_paths = old_inverted[path_hash]
         try:
