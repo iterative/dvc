@@ -349,3 +349,23 @@ def test_fs_ls_with_etag(dvc, cloud):
             fs.info(path_info.replace(path=details["name"]))["etag"]
             == details["etag"]
         )
+
+
+@pytest.mark.parametrize(
+    "cloud", [pytest.lazy_fixture("azure"), pytest.lazy_fixture("gs")]
+)
+def test_fs_fsspec_path_management(dvc, cloud):
+    cloud.gen({"foo": "foo", "data": {"bar": "bar", "baz": {"foo": "foo"}}})
+    fs = get_cloud_fs(dvc, **cloud.config)
+
+    root = cloud.parents[len(cloud.parents) - 1]
+    bucket_details = fs.info(root)
+
+    # special conditions: name always points to the bucket name
+    assert bucket_details["name"] == root.bucket
+    assert bucket_details["type"] == "directory"
+
+    data = cloud / "data"
+    data_details = fs.info(data)
+    assert data_details["name"].rstrip("/") == data.path
+    assert data_details["type"] == "directory"

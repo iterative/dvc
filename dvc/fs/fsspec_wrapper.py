@@ -19,8 +19,14 @@ class FSSpecWrapper(BaseFileSystem):
         return path
 
     def _strip_bucket(self, entry):
-        _, entry = entry.split("/", 1)
-        return entry
+        try:
+            bucket, path = entry.split("/", 1)
+        except ValueError:
+            # If there is no path attached, only returns
+            # the bucket (top-level).
+            bucket, path = entry, None
+
+        return path or bucket
 
     def _strip_buckets(self, entries, detail, prefix=None):
         for entry in entries:
