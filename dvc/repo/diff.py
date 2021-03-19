@@ -1,5 +1,7 @@
 import logging
 import os
+from collections import defaultdict
+from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
 from dvc.objects.stage import get_file_hash
@@ -190,26 +192,19 @@ def _targets_to_path_infos(repo_fs, targets):
 
 
 def _calculate_renamed(new, old, added, deleted):
-    old_inverted = {}
+    old_inverted: Dict[str, List[str]] = defaultdict(list)
     # It is needed to be dict of lists to cover cases
     # when repo has paths with same hash
     for path, path_hash in old.items():
-        bucket = old_inverted.get(path_hash, None)
-        if bucket is None:
-            old_inverted[path_hash] = [path]
-        else:
-            bucket.append(path)
+        old_inverted[path_hash].append(path)
 
     renamed = []
     for path in sorted(added, key=len):
         path_hash = new[path]
-        old_paths = old_inverted.get(path_hash, None)
-        if not old_paths:
-            continue
-
+        old_paths = old_inverted[path_hash]
         try:
             iterator = enumerate(old_paths)
-            index = next((idx for idx, path in iterator if path in deleted))
+            index = next(idx for idx, path in iterator if path in deleted)
         except StopIteration:
             continue
 
