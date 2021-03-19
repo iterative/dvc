@@ -201,18 +201,19 @@ def _calculate_renamed(new, old, added, deleted):
             bucket.append(path)
 
     renamed = []
-    for path in added:
+    for path in sorted(added, key=len):
         path_hash = new[path]
         old_paths = old_inverted.get(path_hash, None)
         if not old_paths:
             continue
-        old_path = None
-        for tmp_old_path in old_paths:
-            if tmp_old_path in deleted:
-                old_path = tmp_old_path
-                break
-        if not old_path:
+
+        try:
+            iterator = enumerate(old_paths)
+            index = next((idx for idx, path in iterator if path in deleted))
+        except StopIteration:
             continue
+
+        old_path = old_paths.pop(index)
         renamed.append(
             {"path": {"old": old_path, "new": path}, "hash": path_hash}
         )
