@@ -708,7 +708,7 @@ def test_show_from_subdir(tmp_dir, dvc, caplog):
     with subdir.chdir(), caplog.at_level(logging.INFO, "dvc"):
         assert main(["plots", "show", "metric.json"]) == 0
 
-    assert f"file://{str(subdir)}" in caplog.text
+    assert subdir.as_uri() in caplog.text
     assert (subdir / "plots.html").exists()
 
 
