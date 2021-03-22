@@ -140,3 +140,20 @@ class FSSpecWrapper(BaseFileSystem):
             ) as wrapped:
                 with open(to_file, "wb") as fdest:
                     shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)
+
+
+class AsyncFSSpecWrapper(FSSpecWrapper):
+    IS_ASYNC = True
+
+    def invalidate_async_fs(self):
+        if hasattr(self, "_fs"):
+            del self._fs
+
+    async def _download_file(self, from_info, to_file, *args, **kwargs):
+        os.makedirs(to_file.parent, exist_ok=True)
+        async_fs = await self._get_async_fs()
+        await async_fs._get_file(self._with_bucket(from_info), to_file)
+
+    async def _upload(self, from_file, to_info, *args, **kwargs):
+        async_fs = await self._get_async_fs()
+        await async_fs._put_file(from_file, self._with_bucket(to_info))

@@ -1,3 +1,4 @@
+import asyncio
 import errno
 import hashlib
 import itertools
@@ -33,6 +34,27 @@ def _log_exceptions(func, operation):
     def wrapper(from_info, to_info, *args, **kwargs):
         try:
             func(from_info, to_info, *args, **kwargs)
+            return 0
+        except Exception as exc:  # pylint: disable=broad-except
+            # NOTE: this means we ran out of file descriptors and there is no
+            # reason to try to proceed, as we will hit this error anyways.
+            # pylint: disable=no-member
+            if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+                raise
+
+            logger.exception(
+                "failed to %s '%s' to '%s'", operation, from_info, to_info
+            )
+            return 1
+
+    return wrapper
+
+
+def _async_log_exceptions(func, operation):
+    @wraps(func)
+    async def wrapper(from_info, to_info, *args, **kwargs):
+        try:
+            await func(from_info, to_info, *args, **kwargs)
             return 0
         except Exception as exc:  # pylint: disable=broad-except
             # NOTE: this means we ran out of file descriptors and there is no
@@ -308,12 +330,17 @@ class Remote:
             )
         )
 
+        if self.fs.IS_ASYNC:
+            exception_logger = _async_log_exceptions
+        else:
+            exception_logger = _log_exceptions
+
         if download:
-            func = _log_exceptions(self.fs.download, "download")
+            func = exception_logger(self.fs._download_file, "download")
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = _log_exceptions(self.fs.upload, "upload")
+            func = exception_logger(self.fs._upload, "upload")
             status = STATUS_NEW
             desc = "Uploading"
 
@@ -338,7 +365,7 @@ class Remote:
             return 0
 
         with Tqdm(total=total, unit="file", desc=desc) as pbar:
-            func = pbar.wrap_fn(func)
+            # func = pbar.wrap_fn(func)
             self._process_plans(
                 download,
                 dir_plans,
@@ -347,6 +374,7 @@ class Remote:
                 missing_files,
                 jobs,
                 func,
+                pbar,
             )
 
         return total
@@ -360,22 +388,40 @@ class Remote:
         missing_files,
         jobs,
         func,
+        pbar,
     ):
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            processor = partial(self._create_tasks, executor, jobs, func)
-            processor.transfer_func = func
-            if download:
-                self._download_plans(dir_plans, file_plans, processor)
-            else:
-                self._upload_plans(
-                    dir_plans,
-                    file_plans,
-                    dir_contents,
-                    missing_files,
-                    processor,
-                )
+        if self.fs.IS_ASYNC:
+            executor = None
+            runner = self._create_async_tasks
 
-    def _create_tasks(self, executor, jobs, func, file_plans):
+            def transfer_func(*args, func=func, **kwargs):
+                res = asyncio.run(func(*args, **kwargs))
+                self.fs.invalidate_async_fs()
+                return res
+
+        else:
+            executor = ThreadPoolExecutor(max_workers=jobs)
+            runner = self._create_tasks
+            transfer_func = func
+
+        processor = partial(runner, executor, jobs, func, pbar)
+        processor.transfer_func = transfer_func
+        if download:
+            self._download_plans(dir_plans, file_plans, processor)
+        else:
+            self._upload_plans(
+                dir_plans,
+                file_plans,
+                dir_contents,
+                missing_files,
+                processor,
+                pbar,
+            )
+
+        if executor is not None:
+            executor.shutdown()
+
+    def _create_tasks(self, executor, jobs, func, pbar, file_plans):
         fails = 0
         file_plan_iterator = iter(file_plans)
 
@@ -396,6 +442,32 @@ class Remote:
             tasks.update(create_taskset(len(done)))
         return fails
 
+    def _create_async_tasks(self, executor, jobs, func, pbar, file_plans):
+        fails = 0
+        jobs *= 4
+        file_plan_iterator = iter(file_plans)
+
+        def create_taskset(amount):
+            return [
+                func(from_info, to_info, name)
+                for from_info, to_info, name, _ in itertools.islice(
+                    file_plan_iterator, amount
+                )
+            ]
+
+        async def runner(func=func, file_plans=file_plans):
+            fails = 0
+            tasks = create_taskset(jobs)
+            while tasks:
+                fails += sum(await asyncio.gather(*tasks))
+                pbar.update(len(tasks))
+                tasks = create_taskset(jobs)
+            return fails
+
+        fails = asyncio.run(runner())
+        self.fs.invalidate_async_fs()
+        return fails
+
     def _download_plans(self, dir_plans, file_plans, processor):
         plans = [*zip(*dir_plans), *zip(*file_plans)]
         fails = processor(plans)
@@ -404,7 +476,13 @@ class Remote:
             raise DownloadError(fails)
 
     def _upload_plans(
-        self, dir_plans, file_plans, dir_contents, missing_files, processor
+        self,
+        dir_plans,
+        file_plans,
+        dir_contents,
+        missing_files,
+        processor,
+        pbar,
     ):
         total_fails = 0
         succeeded_dir_hashes = []

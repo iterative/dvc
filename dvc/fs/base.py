@@ -211,6 +211,9 @@ class BaseFileSystem:
     def reflink(self, from_info, to_info):
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
+    def invalidate_async_fs(self):
+        return None
+
     # pylint: enable=unused-argument
 
     @classmethod
@@ -322,7 +325,7 @@ class BaseFileSystem:
                         raise exc
 
     def _download_file(
-        self, from_info, to_info, name, no_progress_bar,
+        self, from_info, to_info, name=None, no_progress_bar=False
     ):
         makedirs(to_info.parent, exist_ok=True)
 

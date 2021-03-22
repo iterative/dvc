@@ -7,12 +7,12 @@ from funcy import cached_property, wrap_prop
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import FSSpecWrapper
+from .fsspec_wrapper import AsyncFSSpecWrapper
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
-class S3FileSystem(FSSpecWrapper):
+class S3FileSystem(AsyncFSSpecWrapper):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"s3fs": "s3fs"}
@@ -127,6 +127,18 @@ class S3FileSystem(FSSpecWrapper):
         from s3fs import S3FileSystem as _S3FileSystem
 
         return _S3FileSystem(**self.login_info, skip_instance_cache=True)
+
+    async def _get_async_fs(self):
+        if hasattr(self, "_fs"):
+            return self._fs
+
+        from s3fs import S3FileSystem as _S3FileSystem
+
+        self._fs = _S3FileSystem(
+            **self.login_info, asynchronous=True, skip_instance_cache=True
+        )
+        await self._fs._connect()
+        return self._fs
 
     def open(
         self, path_info, mode="r", **kwargs
