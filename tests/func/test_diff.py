@@ -549,3 +549,49 @@ def test_diff_rename_file(tmp_dir, scm, dvc, commit_last):
         ],
         "not in cache": [],
     }
+
+
+def test_rename_multiple_files_same_hashes(tmp_dir, scm, dvc):
+    """Test diff by renaming >=2 instances of file with same hashes.
+
+    DVC should be able to detect that they are renames, and should not include
+    them in either of the `added` or the `deleted` section.
+    """
+    tmp_dir.dvc_gen(
+        {"dir": {"foo": "foo", "subdir": {"foo": "foo"}}}, commit="commit #1",
+    )
+    remove(tmp_dir / "dir")
+    # changing foo and subdir/foo to bar and subdir/bar respectively
+    tmp_dir.dvc_gen(
+        {"dir": {"bar": "foo", "subdir": {"bar": "foo"}}}, commit="commit #2"
+    )
+    assert dvc.diff("HEAD~") == {
+        "added": [],
+        "deleted": [],
+        "modified": [
+            {
+                "hash": {
+                    "new": "31b36b3ea5f4485e27f10578c47183b0.dir",
+                    "old": "c7684c8b3b0d28cf80d5305e2d856bfc.dir",
+                },
+                "path": os.path.join("dir", ""),
+            }
+        ],
+        "not in cache": [],
+        "renamed": [
+            {
+                "hash": "acbd18db4cc2f85cedef654fccc4a4d8",
+                "path": {
+                    "new": os.path.join("dir", "bar"),
+                    "old": os.path.join("dir", "foo"),
+                },
+            },
+            {
+                "hash": "acbd18db4cc2f85cedef654fccc4a4d8",
+                "path": {
+                    "new": os.path.join("dir", "subdir", "bar"),
+                    "old": os.path.join("dir", "subdir", "foo"),
+                },
+            },
+        ],
+    }
