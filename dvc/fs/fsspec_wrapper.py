@@ -9,6 +9,11 @@ from .base import BaseFileSystem
 
 # pylint: disable=no-member
 class FSSpecWrapper(BaseFileSystem):
+    def __init__(self, repo, config):
+        super().__init__(repo, config)
+        self.fs_args = {"skip_instance_cache": True}
+        self.fs_args.update(self._prepare_credentials(config))
+
     def fs(self):
         raise NotImplementedError
 
@@ -37,6 +42,11 @@ class FSSpecWrapper(BaseFileSystem):
         """Simple hook method to be overriden when wanted to process
         entries within info() and ls(detail=True) calls"""
         return entry
+
+    def _prepare_credentials(self, config):  # pylint: disable=unused-argument
+        """Prepare the arguments for authentication to the
+        host filesystem"""
+        return {}
 
     def isdir(self, path_info):
         if not self.exists(path_info):

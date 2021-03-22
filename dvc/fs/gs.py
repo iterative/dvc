@@ -22,10 +22,8 @@ class GSFileSystem(FSSpecWrapper):
         url = config.get("url", "gs://")
         self.path_info = self.PATH_CLS(url)
 
-        self.login_info = self._prepare_credentials(config)
-
     def _prepare_credentials(self, config):
-        login_info = {}
+        login_info = {"consistency": None}
         login_info["project"] = config.get("projectname")
         login_info["token"] = config.get("credentialpath")
         return login_info
@@ -40,4 +38,4 @@ class GSFileSystem(FSSpecWrapper):
     def fs(self):
         from gcsfs import GCSFileSystem
 
-        return GCSFileSystem(**self.login_info, consistency=None)
+        return GCSFileSystem(**self.fs_args)
