@@ -48,8 +48,6 @@ class AzureFileSystem(FSSpecWrapper):
         self.path_info = self.PATH_CLS(url)
         self.bucket = self.path_info.bucket
 
-        self.login_method, self.login_info = self._prepare_credentials(config)
-
     def _prepare_credentials(self, config):
         from azure.identity.aio import DefaultAzureCredential
 
@@ -90,7 +88,8 @@ class AzureFileSystem(FSSpecWrapper):
         else:
             login_method = None
 
-        return login_method, login_info
+        self.login_method = login_method
+        return login_info
 
     @cached_property
     def _az_config(self):
@@ -111,7 +110,7 @@ class AzureFileSystem(FSSpecWrapper):
         from azure.core.exceptions import AzureError
 
         try:
-            file_system = AzureBlobFileSystem(**self.login_info)
+            file_system = AzureBlobFileSystem(**self.fs_args)
             if self.bucket not in [
                 container.rstrip("/") for container in file_system.ls("/")
             ]:
