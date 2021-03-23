@@ -366,6 +366,10 @@ class Stage(params.StageParams):
                 out.unprotect()
                 continue
 
+            if os.path.exists(os.path.join(out.path_info, ".dolt")):
+                logger.debug("Cannot remove dolt output programmatically.")
+                return
+
             logger.debug(f"Removing output '{out}' of {self}.")
             out.remove(ignore_remove=ignore_remove)
 

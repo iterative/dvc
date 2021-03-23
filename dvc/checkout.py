@@ -54,6 +54,9 @@ def _remove(path_info, fs, cache, force=False):
     if not fs.exists(path_info):
         return
 
+    if os.path.exists(os.path.join(path_info), ".dolt"):
+        return
+
     if force:
         fs.remove(path_info)
         return
