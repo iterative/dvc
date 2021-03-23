@@ -25,6 +25,11 @@ jobs:
         gem install --no-document fpm
     - name: Build deb
       run: python scripts/build.py deb
+    - name: Upload deb artifact
+      uses: actions/upload-artifact@v2
+      with:
+        path: scripts/fpm/dvc*.deb
+        if-no-files-found: error
     - name: Publish deb
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
@@ -54,6 +59,11 @@ jobs:
         gem install --no-document fpm
     - name: Build rpm
       run: python scripts/build.py rpm
+    - name: Upload rpm artifact
+      uses: actions/upload-artifact@v2
+      with:
+        path: scripts/fpm/dvc*.rpm
+        if-no-files-found: error
     - name: Publish rpm
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
@@ -83,6 +93,11 @@ jobs:
         gem install --no-document fpm
     - name: Build
       run: python scripts/build.py osxpkg
+    - name: Upload osxpkg artifact
+      uses: actions/upload-artifact@v2
+      with:
+        path: scripts/fpm/dvc*.pkg
+        if-no-files-found: error
     - name: Publish
       if: github.event_name == 'release'
       uses: actions/upload-release-asset@v1.0.1
@@ -111,6 +126,11 @@ jobs:
     - name: Build
       run: python scripts\build.py exe
       shell: cmd
+    - name: Upload exe artifact
+      uses: actions/upload-artifact@v2
+      with:
+        path: scripts/innosetup/dvc*.exe
+        if-no-files-found: error
     - name: Publish
       if: github.event_name == 'release'
       env:
