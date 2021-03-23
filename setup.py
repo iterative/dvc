@@ -1,5 +1,6 @@
 import importlib.util
 import os
+from pathlib import Path
 
 from setuptools import find_packages, setup
 from setuptools.command.build_py import build_py as _build_py
@@ -113,49 +114,9 @@ webdav = ["webdavclient3>=3.14.5"]
 ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
-# Extra dependecies to run tests
-tests_requirements = [
-    "wheel>=0.31.1",
-    # Test requirements:
-    "pytest>=6.0.1,<6.2.2",
-    "pytest-docker>=0.7.2",
-    "pytest-timeout>=1.3.3",
-    "pytest-cov>=2.6.1",
-    "pytest-xdist>=1.26.1",
-    "pytest-mock==1.11.2",
-    "pytest-lazy-fixture",
-    "pytest-tap",
-    "flaky>=3.5.3",
-    "mock>=3.0.0",
-    "xmltodict>=0.11.0",
-    "google-compute-engine==2.8.13",
-    "Pygments",  # required by collective.checkdocs,
-    "collective.checkdocs",
-    "psutil",
-    "pydocstyle<4.0",
-    "jaraco.windows==3.9.2",
-    "mock-ssh-server>=0.8.2",
-    "moto==1.3.16.dev122",
-    # moto's indirect dependency that is causing problems with flufl.lock's
-    # dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
-    "aws-sam-translator<1.29.0",
-    # for moto's indirect dependency.
-    # See https://github.com/iterative/dvc/pull/4879
-    "urllib3<1.26.0",
-    "rangehttpserver==1.2.0",
-    "beautifulsoup4==4.4.0",
-    "pylint==2.7.2",
-    "pylint-pytest==1.0.3",
-    "pylint-plugin-utils==0.6",
-    "wget",
-    "filelock",
-    "mypy",
-    "wsgidav",
-    "crc32c",
-    "google-cloud-storage==1.19.0",
-    # pypi doesn't allow for direct dependencies
-    #    "gdrivefs @ git+https://github.com/intake/gdrivefs.git",
-]
+tests_requirements = (
+    Path("test_requirements.txt").read_text().strip().splitlines()
+)
 
 setup(
     name="dvc",
