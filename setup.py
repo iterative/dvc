@@ -145,7 +145,7 @@ tests_requirements = [
     "rangehttpserver==1.2.0",
     "beautifulsoup4==4.4.0",
     "pylint==2.7.2",
-    "pylint-pytest==0.3.0",
+    "pylint-pytest==1.0.3",
     "pylint-plugin-utils==0.6",
     "wget",
     "filelock",
