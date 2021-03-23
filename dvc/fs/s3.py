@@ -132,13 +132,6 @@ class BaseS3FileSystem(FSSpecWrapper):
 
         return _S3FileSystem(**self.login_info, skip_instance_cache=True)
 
-    def open(
-        self, path_info, mode="r", **kwargs
-    ):  # pylint: disable=arguments-differ
-        return self.fs.open(
-            self._with_bucket(path_info), mode=mode, **self._open_args
-        )
-
 
 class S3FileSystem(BaseS3FileSystem):
     @wrap_prop(threading.Lock())
@@ -222,6 +215,7 @@ class S3FileSystem(BaseS3FileSystem):
                     Callback=pbar.update,
                     ExtraArgs=self.login_info.get("s3_additional_kwargs"),
                 )
+        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args

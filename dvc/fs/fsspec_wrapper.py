@@ -91,7 +91,9 @@ class FSSpecWrapper(BaseFileSystem):
         self.fs.copy(self._with_bucket(from_info), self._with_bucket(to_info))
 
     def exists(self, path_info, use_dvcignore=False):
-        return self.fs.exists(self._with_bucket(path_info))
+        return self._with_bucket(path_info) in self.fs.ls(
+            self._with_bucket(path_info.parent)
+        )
 
     def ls(
         self, path_info, detail=False, recursive=False
@@ -107,7 +109,7 @@ class FSSpecWrapper(BaseFileSystem):
                 yield from self._strip_buckets(files, detail, prefix=root)
             return None
 
-        yield from self._strip_buckets(self.ls(path, detail=detail), detail)
+        yield from self._strip_buckets(self.fs.ls(path, detail=detail), detail)
 
     def walk_files(self, path_info, **kwargs):
         for file in self.ls(path_info, recursive=True):
