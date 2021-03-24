@@ -1,3 +1,7 @@
+import os
+
+import doltcli as dolt
+
 from ..utils import glob_targets
 from . import locked
 
@@ -38,4 +42,21 @@ def push(
         revs=revs,
     )
 
-    return len(used_run_cache) + self.cloud.push(used, jobs, remote=remote)
+    dolt_pushed = 0
+    remote_conf = None
+    for t in expanded_targets:
+        if os.path.exists(os.path.join(t, ".dolt")):
+            if not remote_conf:
+                remotes = self.config.get("remote", None)
+                if not remotes:
+                    break
+                remote_conf = remotes.get(remote, None)
+                if not remote_conf:
+                    break
+            db = dolt.Dolt(t)
+            remote_url = remote_conf.get("url")
+            db.remote(name=remote, url="file://" + remote_url, add=True)
+            db.push(remote=remote, set_upstream=True, refspec="master")
+            dolt_pushed += 1
+
+    return len(used_run_cache) + self.cloud.push(used, jobs, remote=remote) + dolt_pushed

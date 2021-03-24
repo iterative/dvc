@@ -26,6 +26,9 @@ from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
+from dvc.remote.base import Remote
+from dvc.remote.index import RemoteIndex
+from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
@@ -39,10 +42,12 @@ from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 
+
 def match_files(files, expected_files):
     left = {(f["path"], f["isout"], f["isdir"]) for f in files}
     right = {(os.path.join(*args), isout, isdir) for (args, isout, isdir) in expected_files}
     assert left == right
+
 
 @pytest.fixture
 def empty_doltdb(tmp_dir):
@@ -50,6 +55,7 @@ def empty_doltdb(tmp_dir):
     dolt.Dolt.init(db_path)
     db = dolt.Dolt(db_path)
     return db
+
 
 @pytest.fixture()
 def doltdb(empty_doltdb):
@@ -84,6 +90,7 @@ def test_dolt_dir_add(tmp_dir, dvc, doltdb):
 
     assert hash_info.dolt_head == doltdb.head
 
+
 def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):
     first_commit = doltdb.head
 
@@ -105,6 +112,7 @@ def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):
     dvc.checkout(force=True)
 
     assert second_commit == doltdb.head
+
 
 def test_dolt_dir_status(tmp_dir, dvc, doltdb):
     # mismatch between working and stored head
@@ -133,11 +141,13 @@ def test_dolt_dir_status(tmp_dir, dvc, doltdb):
     status = dvc.status(targets=["test_db"])
     assert status == {'test_db.dvc': [{'changed outs': {'test_db': 'modified'}}]}
 
+
 def test_dolt_dir_commit(tmp_dir, dvc, doltdb):
     # noop?
     # Record changes to files or directories tracked by DVC by storing the current versions in the cache.
     #switch to new branch, add commit
     pass
+
 
 def test_dolt_dir_remove(tmp_dir, dvc, doltdb):
     # this should just work
@@ -164,6 +174,7 @@ def test_dolt_dir_remove(tmp_dir, dvc, doltdb):
     )
     match_files(files, exp)
 
+
 def test_dolt_dir_list(tmp_dir, dvc, doltdb):
     doltdb.checkout("tmp_br", checkout_branch=True)
     doltdb.sql("insert into t1 values ('bob', '1'), ('sally', 2)")
@@ -181,17 +192,55 @@ def test_dolt_dir_list(tmp_dir, dvc, doltdb):
     )
     match_files(files, exp)
 
+
 def test_dolt_dir_stage(tmp_dir, dvc, doltdb):
     pass
 
-def test_dolt_dir_push(tmp_dir, dvc, doltdb):
-    pass
 
-def test_dolt_dir_pull(tmp_dir, dvc, doltdb):
-    pass
+@pytest.fixture(scope="function")
+def remote(tmp_dir, dvc, tmp_path_factory, mocker):
+    url = os.fspath(tmp_path_factory.mktemp("upstream"))
+    dvc.config["remote"]["upstream"] = {"url": url}
+    dvc.config["core"]["remote"] = "upstream"
+
+    # patch hashes_exist since the LocalRemote normally overrides
+    # BaseFileSystem.hashes_exist.
+    def hashes_exist(self, *args, **kwargs):
+        return Remote.hashes_exist(self, *args, **kwargs)
+
+    mocker.patch.object(LocalRemote, "hashes_exist", hashes_exist)
+
+    # patch index class since LocalRemote normally overrides index class
+    mocker.patch.object(LocalRemote, "INDEX_CLS", RemoteIndex)
+
+    return dvc.cloud.get_remote("upstream")
+
+
+def test_dolt_dir_push(tmp_dir, dvc, doltdb, remote):
+    remote_url = remote.fs.config.get("url")
+
+    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    dvc.push(targets=["test_db"], remote="upstream")
+
+    assert os.path.exists(os.path.join(remote_url, "manifest"))
+    assert os.path.exists(os.path.join(remote_url, "lock"))
+
+
+def test_dolt_dir_pull(tmp_dir, dvc, doltdb, remote):
+    remote_url = remote.fs.config.get("url")
+
+    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    dvc.push(targets=["test_db"], remote="upstream")
+
+    shutil.rmtree(os.path.join(tmp_dir, "test_db"))
+    dvc.pull(targets=["test_db"], remote="upstream")
+
+    assert os.path.exists(os.path.join(tmp_dir, "test_db", ".dolt"))
+
 
 def test_dolt_dir_import(tmp_dir, dvc, doltdb):
     pass
+
 
 def test_dolt_dir_run(tmp_dir, dvc, doltdb):
 

@@ -1,6 +1,8 @@
 import logging
 import os
 
+import doltcli as dolt
+
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, NoOutputOrStageError
 
@@ -75,6 +77,32 @@ def fetch(
 
     if failed:
         raise DownloadError(failed)
+
+    remote_url = None
+    for t in targets:
+        from .stage import StageLoad
+        # stages = StageLoad(self).load_file(t+".dvc")
+        outs = self.find_outs_by_path(t, strict=False)
+        if len(outs) != 1:
+            continue
+        out = outs[0]
+        if not out:
+            continue
+        if getattr(out.hash_info, "dolt_head", None) is not None:
+            if not remote_url:
+                remotes = self.config.get("remote", None)
+                if not remotes:
+                    break
+                remote_conf = remotes.get(remote, None)
+                if not remote_conf:
+                    break
+                remote_url = "file://" + remote_conf.get("url")
+            if not os.path.exists(t):
+                dolt.Dolt.clone(remote_url=remote_url, new_dir=t)
+                downloaded += 1
+            else:
+                db = dolt.Dolt(t)
+                db.pull(remote=remote, refspec="master")
 
     return downloaded
 
