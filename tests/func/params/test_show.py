@@ -97,7 +97,7 @@ def test_pipeline_params(tmp_dir, scm, dvc, run_copy):
         "params.yaml", "foo: qux\nxyz: val\nabc: ignore", commit="qux"
     )
 
-    assert dvc.params.show(revs=["master"], tracked=True) == {
+    assert dvc.params.show(revs=["master"], deps=True) == {
         "master": {"params.yaml": {"foo": "qux", "xyz": "val"}}
     }
     assert dvc.params.show(revs=["master"]) == {
