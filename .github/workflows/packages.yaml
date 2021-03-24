@@ -88,7 +88,10 @@ jobs:
         ruby-version: 2.4
     - name: Install deps
       run: |
-        pip install .[all]
+        # available lxml (webdav dependency) wheels are built with an old
+        # SDK, which breaks osxpkg notarization. Building from scratch
+        # instead.
+        pip install .[all] --no-binary lxml
         pip install -r scripts/build-requirements.txt
         gem install --no-document fpm
     - name: Build
