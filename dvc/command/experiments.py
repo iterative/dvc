@@ -471,6 +471,7 @@ class CmdExperimentsDiff(CmdBase):
                 a_rev=self.args.a_rev,
                 b_rev=self.args.b_rev,
                 all=self.args.all,
+                param_deps=self.args.param_deps,
             )
 
             if self.args.show_json:
@@ -872,6 +873,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show unchanged metrics/params as well.",
+    )
+    experiments_diff_parser.add_argument(
+        "--param-deps",
+        action="store_true",
+        default=False,
+        help="Show only those params that are dependencies of stages.",
     )
     experiments_diff_parser.add_argument(
         "--show-json",
