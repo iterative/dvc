@@ -92,11 +92,11 @@ class FSSpecWrapper(BaseFileSystem):
 
     def exists(self, path_info, use_dvcignore=False):
         # Some implementations don't use ls under the hood
-        # which is not an efficient behavior on DVC considering that
-        # we usually to a lot of stat calls. For increasing the cache
-        # construction, we will first try to see whether that directory
-        # exists by doing an ls() on it's parent, and if that fails we
-        # would fall back to the original implementation.
+        # which is not an efficient behavior when considering that DVC
+        # does a lot of existence checks. For increasing the efficiency
+        # we will first try to infer the existence by looking at the parent
+        # directory's contents, and if that fails we will fallback to using
+        # normal exists() call.
         raw_path = self._with_bucket(path_info)
         try:
             return raw_path in self.fs.ls(self._with_bucket(path_info.parent))
