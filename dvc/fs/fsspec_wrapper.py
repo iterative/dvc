@@ -91,9 +91,17 @@ class FSSpecWrapper(BaseFileSystem):
         self.fs.copy(self._with_bucket(from_info), self._with_bucket(to_info))
 
     def exists(self, path_info, use_dvcignore=False):
-        return self._with_bucket(path_info) in self.fs.ls(
-            self._with_bucket(path_info.parent)
-        )
+        # Some implementations don't use ls under the hood
+        # which is not an efficient behavior on DVC considering that
+        # we usually to a lot of stat calls. For increasing the cache
+        # construction, we will first try to see whether that directory
+        # exists by doing an ls() on it's parent, and if that fails we
+        # would fall back to the original implementation.
+        raw_path = self._with_bucket(path_info)
+        try:
+            return raw_path in self.fs.ls(self._with_bucket(path_info.parent))
+        except OSError:
+            return self.fs.exists(raw_path)
 
     def ls(
         self, path_info, detail=False, recursive=False
