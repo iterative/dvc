@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 from dvc.dependency.param import ParamsDependency
 from dvc.exceptions import DvcException
+from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm.base import SCMError
@@ -30,14 +31,21 @@ def _is_params(dep: "BaseOutput"):
 def _collect_configs(
     repo: "Repo", rev, targets=None
 ) -> Tuple[List["BaseOutput"], List["DvcPath"]]:
-    return collect(
+    params, path_infos = collect(
         repo,
         targets=targets or [],
         deps=True,
         output_filter=_is_params,
         rev=rev,
     )
-    # TODO rollback
+    all_path_infos = path_infos + [p.path_info for p in params]
+    if not targets:
+        default_params = (
+            PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE
+        )
+        if default_params not in all_path_infos:
+            path_infos.append(default_params)
+    return params, path_infos
 
 
 def _read_path_info(fs, path_info, rev):
