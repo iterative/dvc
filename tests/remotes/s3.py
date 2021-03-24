@@ -101,6 +101,31 @@ class S3(Base, CloudURLInfo):
         return self.read_bytes().decode(encoding)
 
 
+@pytest.fixture
+def s3_fake_creds_file(monkeypatch):
+    # https://github.com/spulec/moto#other-caveats
+    import pathlib
+
+    aws_dir = pathlib.Path("~").expanduser() / ".aws"
+    aws_dir.mkdir(exist_ok=True)
+
+    aws_creds = aws_dir / "credentials"
+    exists = aws_creds.exists()
+
+    if not exists:
+        aws_creds.touch()
+
+    with monkeypatch.context() as m:
+        m.setenv("AWS_ACCESS_KEY_ID", "testing")
+        m.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+        m.setenv("AWS_SECURITY_TOKEN", "testing")
+        m.setenv("AWS_SESSION_TOKEN", "testing")
+        yield
+
+    if not exists:
+        aws_creds.unlink()
+
+
 # Due to moto being uncompatible with aioboto on wrapper
 # mode, we start the moto server as a subprocess (imitates
 # a real S3 service) and then create a client that uses
@@ -139,7 +164,7 @@ def s3_server(test_config):
 
 
 @pytest.fixture
-def s3(s3_server):
+def s3(s3_server, s3_fake_creds_file):
     workspace = S3(S3.get_url())
     workspace._s3.create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
     yield workspace
