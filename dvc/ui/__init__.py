@@ -7,9 +7,6 @@ from funcy import cached_property
 from dvc.progress import Tqdm
 from dvc.utils import colorize
 
-NEWLINE = "\n"
-SEP = " "
-
 
 class Formatter:
     def __init__(self, theme: Dict = None, defaults: Dict = None) -> None:
@@ -30,14 +27,17 @@ class Console:
         formatter: Formatter = None,
         output: TextIO = None,
         error: TextIO = None,
-        disable: bool = False,
+        enable: bool = False,
     ) -> None:
         self._input: TextIO = sys.stdin
         self._output: TextIO = output or sys.stdout
         self._error: TextIO = error or sys.stderr
 
         self.formatter: Formatter = formatter or Formatter()
-        self.disabled: bool = disable
+        self._enabled: bool = enable
+
+    def enable(self):
+        self._enabled = True
 
     def success(self, message: str) -> None:
         self.write(message, style="success")
@@ -52,8 +52,8 @@ class Console:
         self,
         *objects: Any,
         style: str = None,
-        sep: str = SEP,
-        end: str = NEWLINE,
+        sep: str = None,
+        end: str = None,
         flush: bool = False,
     ) -> None:
         return self.write(
@@ -69,12 +69,12 @@ class Console:
         self,
         *objects: Any,
         style: str = None,
-        sep: str = SEP,
-        end: str = NEWLINE,
+        sep: str = None,
+        end: str = None,
         file: TextIO = None,
         flush: bool = False,
     ) -> None:
-        if self.disabled:
+        if not self._enabled:
             return
 
         file = file or self._output
@@ -152,9 +152,11 @@ class Console:
         self.write(ret)
 
 
-if __name__ == "__main__":
-    ui = Console()
+ui = Console()
 
+
+if __name__ == "__main__":
+    ui.enable()
     ui.write("No default remote set")
     ui.success("Everything is up to date.")
     ui.warn("Run queued experiments will be removed.")

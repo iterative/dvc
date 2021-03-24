@@ -44,6 +44,8 @@ class CmdDataStatus(CmdDataBase):
                 self._show(value, indent + 1)
 
     def run(self):
+        from dvc.ui import ui
+
         indent = 1 if self.args.cloud else 0
         try:
             st = self.repo.status(
@@ -68,14 +70,14 @@ class CmdDataStatus(CmdDataBase):
             elif st:
                 self._show(st, indent)
             elif not self.repo.stages:
-                logger.info(self.EMPTY_PROJECT_MSG)
+                ui.write(self.EMPTY_PROJECT_MSG)
             elif self.args.cloud or self.args.remote:
                 remote = self.args.remote or self.repo.config["core"].get(
                     "remote"
                 )
-                logger.info(self.IN_SYNC_MSG.format(remote=remote))
+                ui.write(self.IN_SYNC_MSG.format(remote=remote))
             else:
-                logger.info(self.UP_TO_DATE_MSG)
+                ui.write(self.UP_TO_DATE_MSG)
 
         except DvcException:
             logger.exception("")
