@@ -101,7 +101,7 @@ class S3(Base, CloudURLInfo):
         return self.read_bytes().decode(encoding)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def s3_fake_creds_file(monkeypatch):
     # https://github.com/spulec/moto#other-caveats
     import pathlib
