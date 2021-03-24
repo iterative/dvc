@@ -42,7 +42,7 @@ def test_grants(dvc):
     }
     fs = S3FileSystem(dvc, config)
 
-    extra_args = fs.login_info["s3_additional_kwargs"]
+    extra_args = fs.fs_args["s3_additional_kwargs"]
     assert (
         extra_args["GrantRead"]
         == "id=read-permission-id,id=other-read-permission-id"
@@ -62,7 +62,7 @@ def test_grants_mutually_exclusive_acl_error(dvc, grants):
 
 def test_sse_kms_key_id(dvc):
     fs = S3FileSystem(dvc, {"url": url, "sse_kms_key_id": "key"})
-    assert fs.login_info["s3_additional_kwargs"]["SSEKMSKeyId"] == "key"
+    assert fs.fs_args["s3_additional_kwargs"]["SSEKMSKeyId"] == "key"
 
 
 def test_key_id_and_secret(dvc):
@@ -75,9 +75,9 @@ def test_key_id_and_secret(dvc):
             "session_token": session_token,
         },
     )
-    assert fs.login_info["key"] == key_id
-    assert fs.login_info["secret"] == key_secret
-    assert fs.login_info["token"] == session_token
+    assert fs.fs_args["key"] == key_id
+    assert fs.fs_args["secret"] == key_secret
+    assert fs.fs_args["token"] == session_token
 
 
 KB = 1024
@@ -93,6 +93,9 @@ def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
             """\
     [default]
     s3 =
+      max_concurrent_requests = 20000
+      max_queue_size = 1000
+      multipart_threshold = 1000KiB
       multipart_chunksize = 64MB
       use_accelerate_endpoint = true
       addressing_style = path
@@ -113,10 +116,15 @@ def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
 
     importlib.reload(sys.modules[S3FileSystem.__module__])
 
-    s3_config = fs.login_info["config_kwargs"]["s3"]
+    s3_config = fs.fs_args["config_kwargs"]["s3"]
     assert s3_config["use_accelerate_endpoint"]
     assert s3_config["addressing_style"] == "path"
-    assert fs._open_args["block_size"] == 64 * MB
+
+    transfer_config = fs._transfer_config
+    assert transfer_config.max_io_queue_size == 1000
+    assert transfer_config.multipart_chunksize == 64 * MB
+    assert transfer_config.multipart_threshold == 1000 * KB
+    assert transfer_config.max_request_concurrency == 20000
 
 
 def test_s3_aws_config_different_profile(tmp_dir, dvc, s3, monkeypatch):
@@ -141,7 +149,9 @@ def test_s3_aws_config_different_profile(tmp_dir, dvc, s3, monkeypatch):
     monkeypatch.setenv("AWS_CONFIG_FILE", config_file)
 
     fs = S3FileSystem(dvc, {**s3.config, "profile": "dev"})
-    s3_config = fs.login_info["config_kwargs"]["s3"]
-    assert "use_accelerate_endpoint" not in s3_config
+
+    s3_config = fs.fs_args["config_kwargs"]["s3"]
     assert s3_config["addressing_style"] == "virtual"
-    assert fs._open_args["block_size"] == 2 * GB
+
+    transfer_config = fs._transfer_config
+    assert transfer_config.multipart_threshold == 2 * GB

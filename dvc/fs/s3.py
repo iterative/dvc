@@ -33,10 +33,6 @@ class BaseS3FileSystem(FSSpecWrapper):
         url = config.get("url", "s3://")
         self.path_info = self.PATH_CLS(url)
 
-        self._open_args = {}
-        self._transfer_config = None
-        self.login_info = self._prepare_credentials(config)
-
     _TRANSFER_CONFIG_ALIASES = {
         "max_queue_size": "max_io_queue",
         "max_concurrent_requests": "max_concurrency",
@@ -65,12 +61,15 @@ class BaseS3FileSystem(FSSpecWrapper):
             else:
                 config[key] = value
 
+        # pylint: disable=attribute-defined-outside-init
         self._transfer_config = TransferConfig(**transfer_config)
         return config
 
     def _load_aws_config_file(self, profile):
         from botocore.configloader import load_config
 
+        # pylint: disable=attribute-defined-outside-init
+        self._transfer_config = None
         config_path = os.environ.get("AWS_CONFIG_FILE", _AWS_CONFIG_PATH)
         if not os.path.exists(config_path):
             return None
@@ -142,7 +141,7 @@ class BaseS3FileSystem(FSSpecWrapper):
     def fs(self):
         from s3fs import S3FileSystem as _S3FileSystem
 
-        return _S3FileSystem(**self.login_info, skip_instance_cache=True)
+        return _S3FileSystem(**self.fs_args)
 
 
 class S3FileSystem(BaseS3FileSystem):
@@ -151,7 +150,7 @@ class S3FileSystem(BaseS3FileSystem):
     def s3(self):
         import boto3
 
-        login_info = self.login_info
+        login_info = self.fs_args
         client_kwargs = login_info.get("client_kwargs", {})
         session_opts = {
             "profile_name": login_info.get("profile"),
@@ -197,7 +196,7 @@ class S3FileSystem(BaseS3FileSystem):
             obj.upload_file(
                 from_file,
                 Callback=pbar.update,
-                ExtraArgs=self.login_info.get("s3_additional_kwargs"),
+                ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
                 Config=self._transfer_config,
             )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
