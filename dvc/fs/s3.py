@@ -1,15 +1,12 @@
 import os
 import threading
 from collections import defaultdict
-from contextlib import contextmanager
 
 from funcy import cached_property, wrap_prop
 
-from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
-from dvc.utils import error_link
 
 from .fsspec_wrapper import FSSpecWrapper
 
@@ -37,23 +34,38 @@ class BaseS3FileSystem(FSSpecWrapper):
         self.path_info = self.PATH_CLS(url)
 
         self._open_args = {}
+        self._transfer_config = None
         self.login_info = self._prepare_credentials(config)
+
+    _TRANSFER_CONFIG_ALIASES = {
+        "max_queue_size": "max_io_queue",
+        "max_concurrent_requests": "max_concurrency",
+        "multipart_threshold": "multipart_threshold",
+        "multipart_chunksize": "multipart_chunksize",
+    }
 
     def _split_s3_config(self, s3_config):
         """Splits the general s3 config into 2 different config
         objects, one for transfer.TransferConfig and other is the
         general session config"""
+
+        from boto3.s3.transfer import TransferConfig
+
         from dvc.utils import conversions
 
-        config = {}
+        config, transfer_config = {}, {}
         for key, value in s3_config.items():
-            if key in {"multipart_chunksize", "multipart_threshold"}:
-                self._open_args[
-                    "block_size"
-                ] = conversions.human_readable_to_bytes(value)
+            if key in self._TRANSFER_CONFIG_ALIASES:
+                if key in {"multipart_chunksize", "multipart_threshold"}:
+                    # cast human readable sizes (like 24MiB) to integers
+                    value = conversions.human_readable_to_bytes(value)
+                else:
+                    value = int(value)
+                transfer_config[self._TRANSFER_CONFIG_ALIASES[key]] = value
             else:
                 config[key] = value
 
+        self._transfer_config = TransferConfig(**transfer_config)
         return config
 
     def _load_aws_config_file(self, profile):
@@ -154,78 +166,51 @@ class S3FileSystem(BaseS3FileSystem):
             session_opts["aws_session_token"] = login_info["token"]
 
         session = boto3.session.Session(**session_opts)
-        # pylint: disable=attribute-defined-outside-init
-        self.endpoint_url = client_kwargs.get("endpoint_url")
+
         return session.resource(
             "s3",
-            endpoint_url=self.endpoint_url,
+            endpoint_url=client_kwargs.get("endpoint_url"),
             use_ssl=login_info["use_ssl"],
         )
 
-    @contextmanager
-    def _get_s3(self):
-        from botocore.exceptions import (
-            EndpointConnectionError,
-            NoCredentialsError,
-        )
-
-        try:
-            yield self.s3
-        except NoCredentialsError as exc:
-            link = error_link("no-credentials")
-            raise DvcException(
-                f"Unable to find AWS credentials. {link}"
-            ) from exc
-        except EndpointConnectionError as exc:
-            link = error_link("connection-error")
-            name = self.endpoint_url or "AWS S3"
-            raise DvcException(
-                f"Unable to connect to '{name}'. {link}"
-            ) from exc
-
-    @contextmanager
-    def _get_bucket(self, bucket):
-        with self._get_s3() as s3:
-            try:
-                yield s3.Bucket(bucket)
-            except s3.meta.client.exceptions.NoSuchBucket as exc:
-                link = error_link("no-bucket")
-                raise DvcException(
-                    f"Bucket '{bucket}' does not exist. {link}"
-                ) from exc
-
-    @contextmanager
     def _get_obj(self, path_info):
-        with self._get_bucket(path_info.bucket) as bucket:
-            try:
-                yield bucket.Object(path_info.path)
-            except bucket.meta.client.exceptions.NoSuchKey as exc:
-                raise DvcException(f"{path_info.url} does not exist") from exc
+        try:
+            bucket = self.s3.Bucket(path_info.bucket)
+            return bucket.Object(path_info.path)
+        except Exception as exc:
+            from s3fs.errors import translate_boto_error
+
+            raise translate_boto_error(exc)
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
     ):
-        with self._get_obj(to_info) as obj:
-            total = os.path.getsize(from_file)
-            with Tqdm(
-                disable=no_progress_bar, total=total, bytes=True, desc=name
-            ) as pbar:
-                obj.upload_file(
-                    from_file,
-                    Callback=pbar.update,
-                    ExtraArgs=self.login_info.get("s3_additional_kwargs"),
-                )
+        total = os.path.getsize(from_file)
+        with Tqdm(
+            disable=no_progress_bar,
+            total=total,
+            bytes=True,
+            desc=name,
+            **pbar_args,
+        ) as pbar:
+            obj = self._get_obj(to_info)
+            obj.upload_file(
+                from_file,
+                Callback=pbar.update,
+                ExtraArgs=self.login_info.get("s3_additional_kwargs"),
+                Config=self._transfer_config,
+            )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
     ):
-        with self._get_obj(from_info) as obj:
-            with Tqdm(
-                disable=no_progress_bar,
-                total=obj.content_length,
-                bytes=True,
-                desc=name,
-                **pbar_args,
-            ) as pbar:
-                obj.download_file(to_file, Callback=pbar.update)
+        obj = self._get_obj(from_info)
+        with Tqdm(
+            disable=no_progress_bar,
+            total=obj.content_length,
+            bytes=True,
+            desc=name,
+            **pbar_args,
+        ) as pbar:
+            obj.download_file(to_file, Callback=pbar.update)
