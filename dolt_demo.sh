@@ -57,13 +57,12 @@ dvc pull -r upstream dolt_source \
     && ls -al dolt_source/.dolt
 
 #run with dolt source & target
-$SCRIPT=$TMP/script.py
+SCRIPT=$TMP/script.py
 cat <<EOF > $SCRIPT
 import sys
 import doltcli as dolt
 _, source, target = sys.argv
 
-print(source, target)
 source_db = dolt.Dolt(source)
 target_db = dolt.Dolt(target)
 rows = source_db.sql("select * from t1", result_format="csv")
@@ -78,9 +77,10 @@ dvc run -n dolt_single_stage \
     -o dolt_target \
     python $SCRIPT dolt_source dolt_target
 
-echo "dolt single-stage pipeline"
-cat dolt_target.dvc
+echo "dolt single-stage pipeline:"
+cat dvc.yaml
+cat dvc.lock
 
 cd dolt_target \
-    && dolt -r csv -q "select * from t2" \
+    && dolt sql -q "select * from t2" \
     && cd $TMP

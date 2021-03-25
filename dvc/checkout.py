@@ -45,6 +45,14 @@ def _changed(path_info, fs, obj, cache):
             path_info,
         )
         return True
+    elif fs.isdolt(path_info):
+        db = dolt.Dolt(path_info)
+        if not db.status().is_clean:
+            logger.debug(
+                "working head for dolt dependency is unclean: '%s'.",
+                path_info,
+            )
+            return True
 
     logger.trace("'%s' hasn't changed.", path_info)
     return False

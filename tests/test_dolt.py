@@ -91,7 +91,7 @@ def test_dolt_dir_add(tmp_dir, dvc, doltdb):
     assert hash_info.value == f"{doltdb.head}.dolt"
 
 
-def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):
+def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb):
     first_commit = doltdb.head
 
     #switch to new branch, add commit
@@ -113,6 +113,27 @@ def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):
 
     assert second_commit == doltdb.head
 
+
+def test_dolt_dir_checkout_state(tmp_dir, dvc, doltdb):
+    first_commit = doltdb.head
+
+    #switch to new branch, add commit
+    doltdb.checkout("tmp_br", checkout_branch=True)
+    doltdb.sql("insert into t1 values ('bob', '1'), ('sally', 2)")
+    doltdb.add("t1")
+    doltdb.commit("Add rows")
+    second_commit = doltdb.head
+
+    # dvc file for new branch
+    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+
+    # switch back to master
+    doltdb.sql("drop table t1")
+    # expect dvc checkout to restore table
+    dvc.checkout(force=True)
+
+    res = doltdb.sql("select * from t1", result_format="csv")
+    assert [d for d in res if d["name"] == "connie"][0]["id"] == "0"
 
 def test_dolt_dir_status(tmp_dir, dvc, doltdb):
     # mismatch between working and stored head
