@@ -1,3 +1,4 @@
+import functools
 import os
 import threading
 from collections import defaultdict
@@ -144,6 +145,19 @@ class BaseS3FileSystem(FSSpecWrapper):
         return _S3FileSystem(**self.fs_args)
 
 
+def _translate_exceptions(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except Exception as exc:
+            from s3fs.errors import translate_boto_error
+
+            raise translate_boto_error(exc)
+
+    return wrapper
+
+
 class S3FileSystem(BaseS3FileSystem):
     @wrap_prop(threading.Lock())
     @cached_property
@@ -173,14 +187,10 @@ class S3FileSystem(BaseS3FileSystem):
         )
 
     def _get_obj(self, path_info):
-        try:
-            bucket = self.s3.Bucket(path_info.bucket)
-            return bucket.Object(path_info.path)
-        except Exception as exc:
-            from s3fs.errors import translate_boto_error
+        bucket = self.s3.Bucket(path_info.bucket)
+        return bucket.Object(path_info.path)
 
-            raise translate_boto_error(exc)
-
+    @_translate_exceptions
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
     ):
@@ -201,6 +211,7 @@ class S3FileSystem(BaseS3FileSystem):
             )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
+    @_translate_exceptions
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
     ):

@@ -91,17 +91,7 @@ class FSSpecWrapper(BaseFileSystem):
         self.fs.copy(self._with_bucket(from_info), self._with_bucket(to_info))
 
     def exists(self, path_info, use_dvcignore=False):
-        # Some implementations don't use ls under the hood
-        # which is not an efficient behavior when considering that DVC
-        # does a lot of existence checks. For increasing the efficiency
-        # we will first try to infer the existence by looking at the parent
-        # directory's contents, and if that fails we will fallback to using
-        # normal exists() call.
-        raw_path = self._with_bucket(path_info)
-        try:
-            return raw_path in self.fs.ls(self._with_bucket(path_info.parent))
-        except OSError:
-            return self.fs.exists(raw_path)
+        return self.fs.exists(self._with_bucket(path_info))
 
     def ls(
         self, path_info, detail=False, recursive=False
@@ -117,7 +107,7 @@ class FSSpecWrapper(BaseFileSystem):
                 yield from self._strip_buckets(files, detail, prefix=root)
             return None
 
-        yield from self._strip_buckets(self.fs.ls(path, detail=detail), detail)
+        yield from self._strip_buckets(self.ls(path, detail=detail), detail)
 
     def walk_files(self, path_info, **kwargs):
         for file in self.ls(path_info, recursive=True):
