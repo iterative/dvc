@@ -88,7 +88,7 @@ def test_dolt_dir_add(tmp_dir, dvc, doltdb):
     for path, _ in dir_info.trie.items():
         assert "\\" not in path
 
-    assert hash_info.dolt_head == doltdb.head
+    assert hash_info.value == f"{doltdb.head}.dolt"
 
 
 def test_dolt_dir_checkout(tmp_dir, dvc, doltdb):

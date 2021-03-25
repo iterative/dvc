@@ -233,7 +233,7 @@ def _checkout_dolt(
 ):
     db = dolt.Dolt(path_info)
     prev_head = db.head
-    new_head = obj.hash_info.dolt_head
+    new_head = obj.hash_info.value.split(".dolt")[0]
     status = db.status()
     if not status.is_clean:
         db.reset(tables=[], hard=True)
@@ -259,7 +259,7 @@ def _checkout(
     progress_callback=None,
     relink=False,
 ):
-    if ".dolt" in obj.hash_info.value:
+    if obj.hash_info.value is not None and ".dolt" in obj.hash_info.value:
         ret = _checkout_dolt(
             path_info, fs, obj, cache, force, progress_callback, relink,
         )
@@ -304,7 +304,7 @@ def checkout(
     elif not relink and not _changed(path_info, fs, obj, cache):
         logger.trace("Data '%s' didn't change.", path_info)
         skip = True
-    elif getattr(obj.hash_info, "dolt_head", None) is None:
+    else:
         try:
             check(cache, obj)
         except (FileNotFoundError, ObjectFormatError):

@@ -26,7 +26,6 @@ DATA_SCHEMA = {
     Required("path"): str,
     HashInfo.PARAM_SIZE: int,
     HashInfo.PARAM_NFILES: int,
-    HashInfo.PARAM_DOLT_HEAD: Any(str, None),
     BaseOutput.PARAM_ISEXEC: bool,
 }
 LOCK_FILE_STAGE_SCHEMA = {

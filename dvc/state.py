@@ -144,12 +144,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not value or value[0] != mtime or value[1] != size:
             return None
 
-        dolt_head = None
-        if os.path.exists(os.path.join(path, ".dolt")):
+        if fs.isdolt(path_info):
             db = dolt.Dolt(path_info)
-            dolt_head = db.head
+            return HashInfo("md5", f"{db.head}.dolt", size=int(size))
 
-        return HashInfo("md5", value[2], size=int(size), dolt_head=dolt_head)
+        return HashInfo("md5", value[2], size=int(size))
 
     def save_link(self, path_info, fs):
         """Adds the specified path to the list of links created by dvc. This

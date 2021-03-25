@@ -58,7 +58,6 @@ SCHEMA[BaseOutput.PARAM_PERSIST] = bool
 SCHEMA[BaseOutput.PARAM_CHECKPOINT] = bool
 SCHEMA[HashInfo.PARAM_SIZE] = int
 SCHEMA[HashInfo.PARAM_NFILES] = int
-SCHEMA[HashInfo.PARAM_DOLT_HEAD] = Any(str, None)
 SCHEMA[BaseOutput.PARAM_DESC] = str
 SCHEMA[BaseOutput.PARAM_ISEXEC] = bool
 

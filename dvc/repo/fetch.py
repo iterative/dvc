@@ -80,15 +80,13 @@ def fetch(
 
     remote_url = None
     for t in targets:
-        from .stage import StageLoad
-        # stages = StageLoad(self).load_file(t+".dvc")
         outs = self.find_outs_by_path(t, strict=False)
         if len(outs) != 1:
             continue
         out = outs[0]
         if not out:
             continue
-        if getattr(out.hash_info, "dolt_head", None) is not None:
+        if out.hash_info.value is not None and ".dolt" in out.hash_info.value:
             if not remote_url:
                 remotes = self.config.get("remote", None)
                 if not remotes:
