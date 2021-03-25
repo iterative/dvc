@@ -148,14 +148,9 @@ class BaseOutput:
         if self.use_cache and self.odb is None:
             raise RemoteCacheRequiredError(self.path_info)
 
-        if getattr(self.hash_info, "dolt_head", None) is not None:
-            self.is_dolt = True
+        if self.fs.isdolt(path) or (self.hash_info and ".dolt" in self.hash_info.value):
             self.use_cache = False
-        elif os.path.exists(os.path.join(path, ".dolt")):
             self.is_dolt = True
-            self.use_cache = False
-        else:
-            self.is_dolt = False
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
@@ -220,9 +215,9 @@ class BaseOutput:
         return self.fs.exists(self.path_info)
 
     def changed_checksum(self):
-        if getattr(self.hash_info, "dolt_head", None) is not None:
-            db = dolt.Dolt(self.path_info)
-            return db.head != self.hash_info.dolt_head
+        # if getattr(self.hash_info, "dolt_head", None) is not None:
+        #     db = dolt.Dolt(self.path_info)
+        #     return db.head != self.hash_info.dolt_head
         return self.hash_info != self.get_hash()
 
     def changed_cache(self, filter_info=None):

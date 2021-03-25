@@ -104,6 +104,9 @@ class ObjectDB:
                 obj.path_info,
             )
             return
+        elif ".dolt" in hash_info.value:
+            return
+
 
         try:
             obj.check(self)

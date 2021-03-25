@@ -73,6 +73,13 @@ class LocalFileSystem(BaseFileSystem):
             return False
         return not (use_dvcignore and self.dvcignore.is_ignored_dir(path_info))
 
+    def isdolt(
+        self, path_info, use_dvcignore=True
+    ):  # pylint: disable=arguments-differ
+        if not os.path.exists(os.path.join(path_info, ".dolt")):
+            return False
+        return not (use_dvcignore and self.dvcignore.is_ignored_dir(path_info))
+
     def iscopy(self, path_info):
         return not (
             System.is_symlink(path_info) or System.is_hardlink(path_info)

@@ -54,7 +54,7 @@ def _remove(path_info, fs, cache, force=False):
     if not fs.exists(path_info):
         return
 
-    if os.path.exists(os.path.join(path_info), ".dolt"):
+    if os.path.exists(os.path.join(path_info, ".dolt")):
         return
 
     if force:
@@ -259,13 +259,13 @@ def _checkout(
     progress_callback=None,
     relink=False,
 ):
-    if not obj.hash_info.isdir:
-        ret = _checkout_file(
-            path_info, fs, obj, cache, force, progress_callback, relink
-        )
-    elif hasattr(obj.hash_info, "dolt_head"):
+    if ".dolt" in obj.hash_info.value:
         ret = _checkout_dolt(
             path_info, fs, obj, cache, force, progress_callback, relink,
+        )
+    elif not obj.hash_info.isdir:
+        ret = _checkout_file(
+            path_info, fs, obj, cache, force, progress_callback, relink
         )
     else:
         ret = _checkout_dir(

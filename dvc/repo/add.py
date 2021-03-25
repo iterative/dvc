@@ -191,8 +191,6 @@ def _process_stages(
         disable=len(stages) == 1,
     ) as pbar_stages:
         for stage in stages:
-            if stage.is_data_source and len(stage.outs) == 1 and hasattr(stage.outs[0].hash_info, "dolt_head"):
-                no_commit = True
             try:
                 stage.save()
             except OutputDoesNotExistError:

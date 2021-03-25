@@ -85,6 +85,21 @@ def _collect_dir(path_info, fs, name, state, **kwargs):
 
     return dir_info
 
+def get_dolt_hash(path_info, fs, name, odb, state, **kwargs):
+    # hash_info = get_dir_hash(path_info, fs, name, odb, state, **kwargs)
+    # hash_info = Tree.save_dir_info(fs.repo.odb.local, dir_info)
+
+    db = dolt.Dolt(path_info)
+    value = f"{db.head}.dolt"
+
+    hash_info = HashInfo(name, value)
+    dir_info = _collect_dir(path_info, fs, name, state, **kwargs)
+
+    hash_info.size = dir_info.size
+    hash_info.dir_info = dir_info
+    hash_info.dolt_head = db.head
+
+    return hash_info
 
 def get_dir_hash(path_info, fs, name, odb, state, **kwargs):
     from . import Tree
@@ -102,10 +117,6 @@ def get_dir_hash(path_info, fs, name, odb, state, **kwargs):
     hash_info = Tree.save_dir_info(fs.repo.odb.local, dir_info)
     hash_info.size = dir_info.size
     hash_info.dir_info = dir_info
-
-    if os.path.exists(os.path.join(path_info, ".dolt")):
-        db = dolt.Dolt(path_info)
-        hash_info.dolt_head = db.head
 
     return hash_info
 
@@ -134,6 +145,10 @@ def get_hash(path_info, fs, name, odb, **kwargs):
     ):
         hash_info = None
 
+    # if os.path.exists(os.path.join(path_info, ".dolt")):
+    if fs.isdolt(path_info):
+        hash_info = None
+
     if hash_info:
         if hash_info.isdir:
             from . import Tree
@@ -143,7 +158,9 @@ def get_hash(path_info, fs, name, odb, **kwargs):
         assert hash_info.name == name
         return hash_info
 
-    if fs.isdir(path_info):
+    if fs.isdolt(path_info):
+        hash_info = get_dolt_hash(path_info, fs, name, odb, state, **kwargs)
+    elif fs.isdir(path_info):
         hash_info = get_dir_hash(path_info, fs, name, odb, state, **kwargs)
     else:
         hash_info = get_file_hash(path_info, fs, name)
@@ -157,9 +174,6 @@ def get_hash(path_info, fs, name, odb, **kwargs):
 def stage(odb, path_info, fs, **kwargs):
     from . import File, Tree
 
-    #import pdb
-    #pdb.set_trace()
     if fs.isdir(path_info):
-        info = Tree.stage(odb, path_info, fs, **kwargs)
-        return info
+        return Tree.stage(odb, path_info, fs, **kwargs)
     return File.stage(odb, path_info, fs, **kwargs)
