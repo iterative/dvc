@@ -234,13 +234,15 @@ def _checkout_dolt(
     db = dolt.Dolt(path_info)
     prev_head = db.head
     new_head = obj.hash_info.dolt_head
+    status = db.status()
+    if not status.is_clean:
+        db.reset(tables=[], hard=True)
     if prev_head != new_head:
         branches = dolt.read_rows_sql(db, f"select name, hash from dolt_branches where hash = '{new_head}'")
         if len(branches) == 0:
             print("no headless support yet")
         else:
             branch = branches[0]["name"]
-        # db.sql(query=f"set `@@{db.repo_name}_head` = '{new_head}'")
         db.checkout(branch)
         print("new hashof", db.sql("select HASHOF('HEAD') as head"))
         return True

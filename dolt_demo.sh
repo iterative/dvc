@@ -3,7 +3,7 @@
 set -xeou pipefail
 
 DIR=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
-BASE=$DIR/..
+BASE=$DIR
 TMP=$BASE/tmp
 
 rm -rf $TMP \
@@ -12,20 +12,24 @@ rm -rf $TMP \
 cd $TMP
 
 # make the dolt directories
-dolt init dolt_source \
+mkdir -p dolt_source \
     && cd dolt_source \
+    && dolt init \
     && dolt sql -q "create table t1 (a int primary key, b int)" \
     && dolt sql -q "insert into t1 values (0,0), (1,1)" \
     && dolt commit -am "Initialize source table" \
     && cd $TMP
 
-dolt init dolt_target \
+mkdir -p dolt_target \
     && cd dolt_target \
+    && dolt init \
     && dolt sql -q "create table t2 (a int primary key, b int)" \
     && dolt commit -am "Initialize target table" \
     && cd $TMP
 
 # add the input data source
+git init
+dvc init
 dvc add dolt_source
 echo "dolt metadata in dolt_source.dvc:"
 cat dolt_source.dvc
@@ -43,12 +47,13 @@ dvc checkout dolt_source \
 
 # remotes with dolt
 UPSTREAM=$TMP/upstream
-dvc add remote upstream $UPSTREAM \
-    && dvc push upstream dolt_source \
-    && rm -rf dolt_source \
-    && ls -al dolt_source
+mkdir -p $UPSTREAM
+dvc remote add upstream $UPSTREAM \
+    && dvc push -r upstream dolt_source \
+    && rm -rf dolt_source
+    #&& ls -al dolt_source 2> /dev/null
 
-dvc pull upstream dolt_source \
+dvc pull -r upstream dolt_source \
     && ls -al dolt_source/.dolt
 
 #run with dolt source & target
