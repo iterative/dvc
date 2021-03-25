@@ -44,7 +44,8 @@ class CmdPlots(CmdBase):
 
             rel: str = self.args.out or "plots.html"
             path = (Path.cwd() / rel).resolve()
-            write(path, plots)
+            write(path, plots=plots, template_path=self.args.html_template)
+
         except DvcException:
             logger.exception("")
             return 1
@@ -242,4 +243,10 @@ def _add_output_arguments(parser):
         action="store_true",
         default=False,
         help="Open plot file directly in the browser.",
+    )
+    parser.add_argument(
+        "--html-template",
+        default=None,
+        help="Custom HTML template for VEGA visualization.",
+        metavar="<path>",
     )
