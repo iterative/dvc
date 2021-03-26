@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, cast
 
 from rich.style import StyleType
 from rich.table import Column as RichColumn
@@ -66,19 +66,20 @@ class Table(RichTable):
         """
         widths = super()._calculate_column_widths(console, max_width)
         last_collapsed = -1
-        for i in range(len(self.columns) - 1, -1, -1):
-            if widths[i] == 1 and self.columns[i].collapse:
+        columns = cast(List[Column], self.columns)
+        for i in range(len(columns) - 1, -1, -1):
+            if widths[i] == 1 and columns[i].collapse:
                 if last_collapsed >= 0:
                     del widths[last_collapsed]
-                    del self.columns[last_collapsed]
+                    del columns[last_collapsed]
                     if self.box:
                         max_width += 1
-                    for column in self.columns[last_collapsed:]:
+                    for column in columns[last_collapsed:]:
                         column._index -= 1
                 last_collapsed = i
                 padding = self._get_padding_width(i)
                 if (
-                    self.columns[i].overflow == "ellipsis"
+                    columns[i].overflow == "ellipsis"
                     and (sum(widths) + padding) <= max_width
                 ):
                     # Set content width to 1 (plus padding) if we can fit a
@@ -88,7 +89,7 @@ class Table(RichTable):
                 last_collapsed = -1
         return widths
 
-    def _collapse_widths(
+    def _collapse_widths(  # type: ignore[override]
         self, widths: List[int], wrapable: List[bool], max_width: int,
     ) -> List[int]:
         """Collapse columns right-to-left if possible to fit table into
@@ -97,7 +98,8 @@ class Table(RichTable):
         If table is still too wide after collapsing, rich's automatic overflow
         handling will be used.
         """
-        collapsible = [column.collapse for column in self.columns]
+        columns = cast(List[Column], self.columns)
+        collapsible = [column.collapse for column in columns]
         total_width = sum(widths)
         excess_width = total_width - max_width
         if any(collapsible):
