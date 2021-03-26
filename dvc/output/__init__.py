@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Optional
 from urllib.parse import urlparse
 
 from funcy import collecting, project
@@ -60,6 +59,7 @@ SCHEMA[HashInfo.PARAM_SIZE] = int
 SCHEMA[HashInfo.PARAM_NFILES] = int
 SCHEMA[BaseOutput.PARAM_DESC] = str
 SCHEMA[BaseOutput.PARAM_ISEXEC] = bool
+
 
 def _get(
     stage,

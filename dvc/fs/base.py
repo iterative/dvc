@@ -150,6 +150,11 @@ class BaseFileSystem:
         """
         return False
 
+    def isdolt(self, path_info):
+        """Optional: Overwrite only if the remote supports dolt databases.
+        """
+        return False
+
     def isfile(self, path_info):
         """Optional: Overwrite only if the remote has a way to distinguish
         between a directory and a file.

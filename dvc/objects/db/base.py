@@ -107,7 +107,6 @@ class ObjectDB:
         elif ".dolt" in hash_info.value:
             return
 
-
         try:
             obj.check(self)
         except ObjectFormatError:
