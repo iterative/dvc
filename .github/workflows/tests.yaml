@@ -27,7 +27,9 @@ jobs:
       with:
         python-version: 3.8
     - name: Install requirements
-      run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+      run: |
+        pip install wheel
+        pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
