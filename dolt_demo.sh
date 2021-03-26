@@ -84,3 +84,15 @@ cat dvc.lock
 cd dolt_target \
     && dolt sql -q "select * from t2" \
     && cd $TMP
+
+# change and repro
+cd dolt_source \
+    && dolt sql -q "insert into t1 values (2,2)" \
+    && dolt commit -am "Change source table" \
+    && cd $TMP
+
+dvc repro
+
+cd dolt_target \
+    && dolt sql -q "select * from t2" \
+    && cd $TMP

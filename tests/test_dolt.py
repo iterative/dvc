@@ -51,13 +51,18 @@ def test_dolt_dir_add(tmp_dir, dvc, doltdb):
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
-    assert hash_info.value == f"{doltdb.head}.dolt"
+    sql = (
+        f"select @@{doltdb.repo_name}_working as working, " +
+        f"@@{doltdb.repo_name}_staging as staging"
+    )
+    res = doltdb.sql(sql, result_format="csv")
+    working = res[0]["working"]
+    staging = res[0]["staging"]
+    assert hash_info.value == f"{doltdb.head}-{working}-{staging}.dolt"
 
     dir_info = load(dvc.odb.local, hash_info).hash_info.dir_info
     for path, _ in dir_info.trie.items():
         assert "\\" not in path
-
-    assert hash_info.value == f"{doltdb.head}.dolt"
 
 
 def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb):

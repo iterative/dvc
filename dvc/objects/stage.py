@@ -83,7 +83,14 @@ def _collect_dir(path_info, fs, name, state, **kwargs):
 
 def get_dolt_hash(path_info, fs, name, odb, state, **kwargs):
     db = dolt.Dolt(path_info)
-    value = f"{db.head}.dolt"
+    sql = (
+        f"select @@{db.repo_name}_working as working, " +
+        f"@@{db.repo_name}_staging as staging"
+    )
+    res = db.sql(sql, result_format="csv")
+    working = res[0]["working"]
+    staging = res[0]["staging"]
+    value = f"{db.head}-{working}-{staging}.dolt"
 
     hash_info = HashInfo(name, value)
     dir_info = _collect_dir(path_info, fs, name, state, **kwargs)

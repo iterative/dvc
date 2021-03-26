@@ -45,14 +45,6 @@ def _changed(path_info, fs, obj, cache):
             path_info,
         )
         return True
-    elif fs.isdolt(path_info):
-        db = dolt.Dolt(path_info)
-        if not db.status().is_clean:
-            logger.debug(
-                "working head for dolt dependency is unclean: '%s'.",
-                path_info,
-            )
-            return True
 
     logger.trace("'%s' hasn't changed.", path_info)
     return False
@@ -241,18 +233,18 @@ def _checkout_dolt(
 ):
     db = dolt.Dolt(path_info)
     prev_head = db.head
-    new_head = obj.hash_info.value.split(".dolt")[0]
-    status = db.status()
-    if not status.is_clean:
+    heads = obj.hash_info.value.split(".dolt")[0]
+    new_head, _, _ = heads.split("-")
+    if not db.status().is_clean:
         db.reset(tables=[], hard=True)
     if prev_head != new_head:
         branches = dolt.read_rows_sql(db, f"select name, hash from dolt_branches where hash = '{new_head}'")
         if len(branches) == 0:
-            print("no headless support yet")
+            branch = f"detached_HEAD_at_{new_head[:5]}"
+            db.checkout(start_point=new_head, branch=branch, checkout_branch=True)
         else:
             branch = branches[0]["name"]
-        db.checkout(branch)
-        print("new hashof", db.sql("select HASHOF('HEAD') as head"))
+            db.checkout(branch)
         return True
     else:
         return False

@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 from voluptuous import Any
 
-import doltcli as dolt
 import dvc.objects as objects
 import dvc.prompt as prompt
 from dvc.checkout import checkout
