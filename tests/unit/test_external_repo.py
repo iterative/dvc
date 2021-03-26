@@ -68,7 +68,7 @@ def test_subrepo_is_constructed_properly(
 
         list(repo.repo_fs.walk(repo.root_dir))  # drain
         assert spy.call_count == 1
-        subrepo = spy.return_value
+        subrepo = spy.spy_return
 
         assert repo.url == str(tmp_dir)
         assert repo.config["cache"]["dir"] == str(cache_dir)
