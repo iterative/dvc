@@ -32,7 +32,7 @@ urllib3<1.26.0
 Pygments==2.8.1
 collective.checkdocs==0.2
 pydocstyle==6.0.0
-jaraco.windows==3.9.2
+jaraco.windows==5.5.0
 
 # pylint requirements
 pylint==2.7.2
