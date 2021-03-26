@@ -8,7 +8,6 @@ pytest-mock==1.11.2
 pytest-lazy-fixture==0.6.3
 pytest-timeout==1.4.2
 pytest-docker==0.10.1
-pytest-tap==3.2
 
 flaky==3.7.0
 mock==4.0.3
