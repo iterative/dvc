@@ -9,7 +9,7 @@ jobs:
   deb:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.1.4
       with:
@@ -38,7 +38,7 @@ jobs:
   rpm:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.1.4
       with:
@@ -67,7 +67,7 @@ jobs:
   osxpkg:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.1.4
       with:
@@ -99,7 +99,7 @@ jobs:
   exe:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.1.4
       with:
@@ -127,7 +127,7 @@ jobs:
   pip:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.7
       uses: actions/setup-python@v2.1.4
       with:
@@ -145,7 +145,7 @@ jobs:
   snap:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Build the package
       uses: snapcore/action-build@v1
       id: snapcraft
