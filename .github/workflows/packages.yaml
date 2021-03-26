@@ -27,7 +27,7 @@ jobs:
       run: python scripts/build.py deb
     - name: Publish deb
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -56,7 +56,7 @@ jobs:
       run: python scripts/build.py rpm
     - name: Publish rpm
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -88,7 +88,7 @@ jobs:
       run: python scripts/build.py osxpkg
     - name: Publish
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -118,7 +118,7 @@ jobs:
       if: github.event_name == 'release'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: scripts/innosetup/dvc-${{ github.event.release.tag_name }}.exe
