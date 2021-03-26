@@ -1,46 +1,14 @@
-import errno
-import filecmp
-import logging
 import os
 import shutil
-import stat
-import textwrap
-import time
 
-import colorama
 import pytest
-from mock import call, patch
 
 import doltcli as dolt
-import dvc as dvc_module
-from dvc.dvcfile import DVC_FILE_SUFFIX
-from dvc.exceptions import (
-    DvcException,
-    InvalidArgumentError,
-    OutputDuplicationError,
-    OverlappingOutputPathsError,
-    RecursiveAddingWhileUsingFilename,
-)
-from dvc.fs.local import LocalFileSystem
-from dvc.hash_info import HashInfo
-from dvc.main import main
-from dvc.objects.db import ODBManager
-from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
+
 from dvc.remote.base import Remote
 from dvc.remote.index import RemoteIndex
 from dvc.remote.local import LocalRemote
 from dvc.repo import Repo as DvcRepo
-from dvc.stage import Stage
-from dvc.stage.exceptions import (
-    StageExternalOutputsError,
-    StagePathNotFoundError,
-)
-from dvc.system import System
-from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
-from dvc.utils.fs import path_isin
-from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
-from tests.basic_env import TestDvc
-from tests.utils import get_gitignore_content
 
 
 def match_files(files, expected_files):
@@ -83,6 +51,7 @@ def test_dolt_dir_add(tmp_dir, dvc, doltdb):
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
+    assert hash_info.value == f"{doltdb.head}.dolt"
 
     dir_info = load(dvc.odb.local, hash_info).hash_info.dir_info
     for path, _ in dir_info.trie.items():
@@ -115,14 +84,11 @@ def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb):
 
 
 def test_dolt_dir_checkout_state(tmp_dir, dvc, doltdb):
-    first_commit = doltdb.head
-
     #switch to new branch, add commit
     doltdb.checkout("tmp_br", checkout_branch=True)
     doltdb.sql("insert into t1 values ('bob', '1'), ('sally', 2)")
     doltdb.add("t1")
     doltdb.commit("Add rows")
-    second_commit = doltdb.head
 
     # dvc file for new branch
     (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
@@ -156,24 +122,11 @@ def test_dolt_dir_status(tmp_dir, dvc, doltdb):
     doltdb.checkout("master")
     assert first_commit == doltdb.head
 
-    # expect dvc status highlight the difference between
-    # the saved version (tmp_br) and working (master)
-    # full diff not necessary : dolt diff <commit> <commit> --summary
     status = dvc.status(targets=["test_db"])
     assert status == {'test_db.dvc': [{'changed outs': {'test_db': 'modified'}}]}
 
 
-def test_dolt_dir_commit(tmp_dir, dvc, doltdb):
-    # noop?
-    # Record changes to files or directories tracked by DVC by storing the current versions in the cache.
-    #switch to new branch, add commit
-    pass
-
-
 def test_dolt_dir_remove(tmp_dir, dvc, doltdb):
-    # this should just work
-    # Remove stages from dvc.yaml and/or stop tracking files or directories.
-    # mismatch between working and stored head
 
     # dvc file for new branch
     (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
@@ -248,8 +201,6 @@ def test_dolt_dir_push(tmp_dir, dvc, doltdb, remote):
 
 
 def test_dolt_dir_pull(tmp_dir, dvc, doltdb, remote):
-    remote_url = remote.fs.config.get("url")
-
     (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
     dvc.push(targets=["test_db"], remote="upstream")
 
@@ -264,7 +215,6 @@ def test_dolt_dir_import(tmp_dir, dvc, doltdb):
 
 
 def test_dolt_dir_run(tmp_dir, dvc, doltdb):
-
     # target db
     target_path = os.path.join(tmp_dir, "target_db")
     os.makedirs(target_path)
@@ -287,7 +237,6 @@ import sys
 import doltcli as dolt
 _, source, target = sys.argv
 
-print(source, target)
 source_db = dolt.Dolt(source)
 target_db = dolt.Dolt(target)
 rows = source_db.sql("select * from t1", result_format="csv")
@@ -300,7 +249,6 @@ dolt.write_rows(target_db, "t2", rows, commit=True, commit_message="Automated ro
 
     # dvc add dependencies
     (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
-    # (_,) = tmp_dir.dvc_add(target_db)
     (_,) = tmp_dir.dvc_add(script_path)
 
     # create single-stage run
