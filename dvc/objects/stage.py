@@ -143,7 +143,6 @@ def get_hash(path_info, fs, name, odb, **kwargs):
     ):
         hash_info = None
 
-    # if os.path.exists(os.path.join(path_info, ".dolt")):
     if fs.isdolt(path_info):
         hash_info = None
 
