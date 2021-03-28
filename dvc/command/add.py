@@ -27,7 +27,6 @@ class CmdAdd(CmdBase):
                 glob=self.args.glob,
                 desc=self.args.desc,
                 out=self.args.out,
-                remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 jobs=self.args.jobs,
             )
@@ -86,14 +85,10 @@ def add_parser(subparsers, parent_parser):
     )
     parser.add_argument(
         "--to-remote",
-        action="store_true",
+        nargs="?",
         default=False,
+        const=True,
         help="Download it directly to the remote",
-    )
-    parser.add_argument(
-        "-r",
-        "--remote",
-        help="Remote storage to download to",
         metavar="<name>",
     )
     parser.add_argument(

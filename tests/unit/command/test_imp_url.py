@@ -31,7 +31,6 @@ def test_import_url(mocker):
         out="out",
         fname="file",
         no_exec=False,
-        remote=None,
         to_remote=False,
         desc="description",
         jobs=4,
@@ -78,7 +77,6 @@ def test_import_url_no_exec(mocker):
         out="out",
         fname="file",
         no_exec=True,
-        remote=None,
         to_remote=False,
         desc="description",
         jobs=None,
@@ -92,7 +90,6 @@ def test_import_url_to_remote(mocker):
             "s3://bucket/foo",
             "bar",
             "--to-remote",
-            "--remote",
             "remote",
             "--desc",
             "description",
@@ -110,8 +107,7 @@ def test_import_url_to_remote(mocker):
         out="bar",
         fname=None,
         no_exec=False,
-        remote="remote",
-        to_remote=True,
+        to_remote="remote",
         desc="description",
         jobs=None,
     )
@@ -124,7 +120,6 @@ def test_import_url_to_remote_invalid_combination(mocker, caplog):
             "s3://bucket/foo",
             "bar",
             "--to-remote",
-            "--remote",
             "remote",
             "--no-exec",
         ]
@@ -135,14 +130,4 @@ def test_import_url_to_remote_invalid_combination(mocker, caplog):
     with caplog.at_level(logging.ERROR, logger="dvc"):
         assert cmd.run() == 1
         expected_msg = "--no-exec can't be combined with --to-remote"
-        assert expected_msg in caplog.text
-
-    cli_args = parse_args(
-        ["import-url", "s3://bucket/foo", "bar", "--remote", "remote"]
-    )
-
-    cmd = cli_args.func(cli_args)
-    with caplog.at_level(logging.ERROR, logger="dvc"):
-        assert cmd.run() == 1
-        expected_msg = "--remote can't be used without --to-remote"
         assert expected_msg in caplog.text

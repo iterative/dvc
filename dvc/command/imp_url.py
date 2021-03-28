@@ -16,7 +16,6 @@ class CmdImportUrl(CmdBase):
                 out=self.args.out,
                 fname=self.args.file,
                 no_exec=self.args.no_exec,
-                remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 desc=self.args.desc,
                 jobs=self.args.jobs,
@@ -73,14 +72,10 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "--to-remote",
-        action="store_true",
+        nargs="?",
         default=False,
+        const=True,
         help="Download it directly to the remote",
-    )
-    import_parser.add_argument(
-        "-r",
-        "--remote",
-        help="Remote storage to download to",
         metavar="<name>",
     )
     import_parser.add_argument(

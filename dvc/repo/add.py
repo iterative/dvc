@@ -56,9 +56,7 @@ def add(  # noqa: C901
             invalid_opt = "--external option"
     else:
         message = "{option} can't be used without --to-remote"
-        if kwargs.get("remote"):
-            invalid_opt = "--remote"
-        elif kwargs.get("jobs"):
+        if kwargs.get("jobs"):
             invalid_opt = "--jobs"
 
     if invalid_opt is not None:
@@ -165,11 +163,9 @@ def _process_stages(
         (out,) = stage.outs
 
         if to_remote:
+            remote = None if to_remote is True else to_remote
             out.hash_info = repo.cloud.transfer(
-                target,
-                jobs=kwargs.get("jobs"),
-                remote=kwargs.get("remote"),
-                command="add",
+                target, jobs=kwargs.get("jobs"), remote=remote, command="add",
             )
         else:
             from dvc.fs import get_cloud_fs

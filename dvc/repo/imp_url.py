@@ -18,7 +18,6 @@ def imp_url(
     erepo=None,
     frozen=True,
     no_exec=False,
-    remote=None,
     to_remote=False,
     desc=None,
     jobs=None,
@@ -28,17 +27,12 @@ def imp_url(
 
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(
-        self, out, always_local=to_remote and not out
+        self, out, always_local=to_remote is not False and not out
     )
 
     if to_remote and no_exec:
         raise InvalidArgumentError(
             "--no-exec can't be combined with --to-remote"
-        )
-
-    if not to_remote and remote:
-        raise InvalidArgumentError(
-            "--remote can't be used without --to-remote"
         )
 
     # NOTE: when user is importing something from within their own repository
@@ -74,6 +68,7 @@ def imp_url(
     if no_exec:
         stage.ignore_outs()
     elif to_remote:
+        remote = None if to_remote is True else to_remote
         stage.outs[0].hash_info = self.cloud.transfer(
             url, jobs=jobs, remote=remote, command="import-url"
         )
