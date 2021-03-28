@@ -5,7 +5,7 @@ import pathlib
 import sys
 from subprocess import STDOUT, check_call
 
-if sys.platform != "Darwin":
+if sys.platform != "darwin":
     raise NotImplementedError
 
 parser = argparse.ArgumentParser()
