@@ -3,6 +3,7 @@ import logging
 from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime
+from fnmatch import fnmatch
 from itertools import groupby
 from typing import Dict, Iterable, Optional
 
@@ -43,7 +44,9 @@ def _filter_name(names, label, filter_strs):
                     matches = [
                         name
                         for name in possible_names
-                        if name[:length] == group
+                        if all(
+                            fnmatch(n, g) for n, g in zip(name[:length], group)
+                        )
                     ]
                     if not matches:
                         name = ".".join(group)
@@ -103,7 +106,6 @@ def _collect_names(all_experiments, **kwargs):
         for exp in experiments.values():
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
-
     metric_names = _filter_names(
         metric_names,
         "metrics",

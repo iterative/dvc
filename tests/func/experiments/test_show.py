@@ -5,8 +5,10 @@ from datetime import datetime
 import pytest
 from funcy import first
 
+from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.repo.experiments.base import ExpRefInfo
+from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
@@ -157,8 +159,32 @@ def test_show_checkpoint_branch(
     assert f"({branch_rev[:7]})" in cap.out
 
 
-def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
+def test_show_filter(tmp_dir, scm, dvc, capsys):
     capsys.readouterr()
+    div = "│" if os.name == "nt" else "┃"
+
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1\nbar: 1\ntrain/foo: 1\ntrain/bar: 1")
+
+    dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
     assert (
         main(
             [
@@ -174,7 +200,6 @@ def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
     )
     cap = capsys.readouterr()
 
-    div = "│" if os.name == "nt" else "┃"
     assert f"{div} foo {div} foo {div}" in cap.out
 
     assert (
@@ -193,11 +218,66 @@ def test_show_filter(tmp_dir, scm, dvc, exp_stage, capsys):
     cap = capsys.readouterr()
 
     assert f"{div} foo {div}" not in cap.out
+    assert f"{div} bar {div}" in cap.out
+
+    assert (
+        main(
+            [
+                "exp",
+                "show",
+                "--no-pager",
+                "--no-timestamp",
+                "--include-metrics=train/*",
+                "--include-params=train/*",
+            ]
+        )
+        == 0
+    )
+    cap = capsys.readouterr()
+
+    assert f"{div} train/foo {div}" in cap.out
+    assert f"{div} train/bar {div}" in cap.out
+
+    assert (
+        main(
+            [
+                "exp",
+                "show",
+                "--no-pager",
+                "--no-timestamp",
+                "--exclude-metrics=train/*",
+                "--exclude-params=train/*",
+            ]
+        )
+        == 0
+    )
+    cap = capsys.readouterr()
+
+    assert f"{div} train/foo {div}" not in cap.out
+    assert f"{div} train/bar {div}" not in cap.out
+
+    assert (
+        main(
+            [
+                "exp",
+                "show",
+                "--no-pager",
+                "--no-timestamp",
+                "--include-metrics=train/*",
+                "--include-params=train/*",
+                "--exclude-metrics=*foo",
+                "--exclude-params=*foo",
+            ]
+        )
+        == 0
+    )
+    cap = capsys.readouterr()
+
+    assert f"{div} train/foo {div}" not in cap.out
+    assert f"{div} train/bar {div}" in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
-    from dvc.exceptions import InvalidArgumentError
-
     init_rev = scm.get_rev()
     tmp_dir.scm_gen("file", "file", "commit")
     next_rev = scm.get_rev()
