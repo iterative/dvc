@@ -15,6 +15,7 @@ default_arguments = {
     "force_downstream": False,
     "pull": False,
     "glob": False,
+    "glob_stages": False,
     "targets": [],
 }
 

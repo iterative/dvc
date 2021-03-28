@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 class CmdRepro(CmdBase):
     def run(self):
+        if self.args.glob and self.args.glob_stages:
+            raise ValueError(
+                "--glob and --glob-stages options are mutually exclusive."
+            )
         stages = self.repo.reproduce(**self._repro_kwargs)
         if len(stages) == 0:
             logger.info(CmdDataStatus.UP_TO_DATE_MSG)
@@ -42,6 +46,7 @@ class CmdRepro(CmdBase):
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
             "glob": self.args.glob,
+            "glob_stages": self.args.glob_stages,
         }
 
 
@@ -150,7 +155,19 @@ def add_arguments(repro_parser):
         "--glob",
         action="store_true",
         default=False,
-        help="Allows targets containing shell-style wildcards.",
+        help=(
+            "Allows targets containing shell-style wildcards to match out "
+            "files.",
+        ),
+    )
+    repro_parser.add_argument(
+        "--glob-stages",
+        action="store_true",
+        default=False,
+        help=(
+            "Allows targets containing shell-style wildcards to match stage "
+            "names.",
+        ),
     )
 
 
