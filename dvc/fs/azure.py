@@ -69,8 +69,8 @@ class AzureFileSystem(FSSpecWrapper):
         login_info["client_id"] = config.get("client_id")
         login_info["client_secret"] = config.get("client_secret")
 
-        if not any(login_info.values()):
-            login_info["credentials"] = DefaultAzureCredential()
+        if not any([a in login_info and a is not None for a in ["connection_string", "account_key", "sas_token", "client_secret"]]):
+            login_info["credential"] = DefaultAzureCredential(exclude_interactive_browser_credential=False)
 
         for login_method, required_keys in [  # noqa
             ("connection string", ["connection_string"]),
