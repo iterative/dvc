@@ -25,6 +25,7 @@ for root, _, fnames in os.walk(dvc):
             [
                 "codesign",
                 "--force",
+                "--verbose",
                 "-s",
                 args.application_id,
                 "-o",
@@ -34,4 +35,5 @@ for root, _, fnames in os.walk(dvc):
                 fpath,
             ],
             stderr=STDOUT,
+            timeout=5,
         )
