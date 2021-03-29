@@ -787,7 +787,7 @@ def add_parser(subparsers, parent_parser):
         "--param-deps",
         action="store_true",
         default=False,
-        help="Show only those params that are dependencies of stages.",
+        help="Show only params that are stage dependencies.",
     )
     experiments_show_parser.add_argument(
         "--sort-by",
