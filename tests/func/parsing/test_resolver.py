@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 
 import pytest
@@ -65,6 +66,16 @@ def test_load_vars_from_file(tmp_dir, dvc):
     expected = deepcopy(DATA)
     expected.update(datasets)
     assert resolver.context == expected
+
+
+def test_load_vars_with_relpath(tmp_dir, dvc):
+    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
+
+    subdir = tmp_dir / "subdir"
+    d = {"vars": [os.path.relpath(tmp_dir / DEFAULT_PARAMS_FILE, subdir)]}
+    resolver = DataResolver(dvc, subdir, d)
+
+    assert resolver.context == deepcopy(DATA)
 
 
 def test_partial_vars_doesnot_exist(tmp_dir, dvc):
