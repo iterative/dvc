@@ -69,7 +69,8 @@ class AzureFileSystem(FSSpecWrapper):
         login_info["client_id"] = config.get("client_id")
         login_info["client_secret"] = config.get("client_secret")
 
-        if not any([a in login_info and a is not None for a in ["connection_string", "account_key", "sas_token", "client_secret"]]):
+        non_cred_auth_methods = ["connection_string", "client_secret", "account_key", "sas_token"]
+        if not any([login_info.get(a, None) is not None for a in non_cred_auth_methods]):
             login_info["credential"] = DefaultAzureCredential(exclude_interactive_browser_credential=False)
 
         for login_method, required_keys in [  # noqa
@@ -80,8 +81,8 @@ class AzureFileSystem(FSSpecWrapper):
             ),
             ("account key", ["account_name", "account_key"]),
             ("SAS token", ["account_name", "sas_token"]),
+            (f"default credentials ({_DEFAULT_CREDS_STEPS})", ["account_name", "credential"]),
             ("anonymous login", ["account_name"]),
-            (f"default credentials ({_DEFAULT_CREDS_STEPS})", ["credentials"]),
         ]:
             if all(login_info.get(key) is not None for key in required_keys):
                 break
