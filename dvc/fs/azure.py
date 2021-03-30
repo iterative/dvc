@@ -50,6 +50,8 @@ class AzureFileSystem(FSSpecWrapper):
 
     def _prepare_credentials(self, config):
         from azure.identity.aio import DefaultAzureCredential
+        # Disable spam from failed cred types for DefaultAzureCredential
+        logging.getLogger("azure.identity.aio").setLevel(logging.ERROR)
 
         login_info = {}
         login_info["connection_string"] = config.get(
