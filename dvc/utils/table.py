@@ -8,6 +8,7 @@ from rich.table import Table as RichTable
 if TYPE_CHECKING:
     from rich.console import (
         Console,
+        ConsoleOptions,
         JustifyMethod,
         OverflowMethod,
         RenderableType,
@@ -56,7 +57,7 @@ class Table(RichTable):
         self.columns.append(column)
 
     def _calculate_column_widths(
-        self, console: "Console", max_width: int
+        self, console: "Console", options: "ConsoleOptions"
     ) -> List[int]:
         """Calculate the widths of each column, including padding, not
         including borders.
@@ -64,7 +65,7 @@ class Table(RichTable):
         Adjacent collapsed columns will be removed until there is only a single
         truncated column remaining.
         """
-        widths = super()._calculate_column_widths(console, max_width)
+        widths = super()._calculate_column_widths(console, options)
         last_collapsed = -1
         columns = cast(List[Column], self.columns)
         for i in range(len(columns) - 1, -1, -1):
@@ -73,14 +74,14 @@ class Table(RichTable):
                     del widths[last_collapsed]
                     del columns[last_collapsed]
                     if self.box:
-                        max_width += 1
+                        options.max_width += 1
                     for column in columns[last_collapsed:]:
                         column._index -= 1
                 last_collapsed = i
                 padding = self._get_padding_width(i)
                 if (
                     columns[i].overflow == "ellipsis"
-                    and (sum(widths) + padding) <= max_width
+                    and (sum(widths) + padding) <= options.max_width
                 ):
                     # Set content width to 1 (plus padding) if we can fit a
                     # single unicode ellipsis in this column
