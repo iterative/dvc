@@ -29,12 +29,18 @@ class Console:
         error: TextIO = None,
         enable: bool = False,
     ) -> None:
-        self._input: TextIO = sys.stdin
-        self._output: TextIO = output or sys.stdout
-        self._error: TextIO = error or sys.stderr
-
+        self._output: Optional[TextIO] = output
+        self._error: Optional[TextIO] = error
         self.formatter: Formatter = formatter or Formatter()
         self._enabled: bool = enable
+
+    @property
+    def output(self) -> TextIO:
+        return self._output or sys.stdout
+
+    @property
+    def error_output(self) -> TextIO:
+        return self._error or sys.stderr
 
     def enable(self):
         self._enabled = True
@@ -61,7 +67,7 @@ class Console:
             style=style,
             sep=sep,
             end=end,
-            file=self._error,
+            file=self.error_output,
             flush=flush,
         )
 
@@ -77,12 +83,12 @@ class Console:
         if not self._enabled:
             return
 
-        file = file or self._output
+        file = file or self.output
         values = (self.formatter.format(obj, style=style) for obj in objects)
         return print(*values, sep=sep, end=end, file=file, flush=flush)
 
     def progress(self, *args, **kwargs) -> Tqdm:
-        kwargs.setdefault("file", self._error)
+        kwargs.setdefault("file", self.error_output)
         return Tqdm(*args, **kwargs)
 
     def prompt(
@@ -125,7 +131,7 @@ class Console:
         """rich_console is only set to stdout for now."""
         from rich import console
 
-        return console.Console(file=self._output)
+        return console.Console(file=self.output)
 
     def rich_table(self, pager: bool = True):
         pass
