@@ -8,6 +8,7 @@ from funcy import first
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.repo.experiments.base import ExpRefInfo
+from dvc.utils.serialize import dump_yaml
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -159,12 +160,108 @@ def test_show_checkpoint_branch(
     assert f"({branch_rev[:7]})" in cap.out
 
 
-def test_show_filter(tmp_dir, scm, dvc, capsys):
+@pytest.mark.parametrize(
+    "i_metrics,i_params,e_metrics,e_params,included,excluded",
+    [
+        (
+            "foo",
+            "foo",
+            None,
+            None,
+            ["foo"],
+            ["bar", "train/foo", "nested.foo"],
+        ),
+        (
+            None,
+            None,
+            "foo",
+            "foo",
+            ["bar", "train/foo", "nested.foo"],
+            ["foo"],
+        ),
+        (
+            "foo,bar",
+            "foo,bar",
+            None,
+            None,
+            ["foo", "bar"],
+            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
+        ),
+        (
+            "train/*",
+            "train/*",
+            None,
+            None,
+            ["train/foo", "train/bar"],
+            ["foo", "bar", "nested.foo", "nested.bar"],
+        ),
+        (
+            None,
+            None,
+            "train/*",
+            "train/*",
+            ["foo", "bar", "nested.foo", "nested.bar"],
+            ["train/foo", "train/bar"],
+        ),
+        (
+            "train/*",
+            "train/*",
+            "*foo",
+            "*foo",
+            ["train/bar"],
+            ["train/foo", "foo", "bar", "nested.foo", "nested.bar"],
+        ),
+        (
+            "nested",
+            "nested",
+            None,
+            None,
+            ["nested.foo", "nested.bar"],
+            ["foo", "bar", "train/foo", "train/bar"],
+        ),
+        (
+            None,
+            None,
+            "nested",
+            "nested",
+            ["foo", "bar", "train/foo", "train/bar"],
+            ["nested.foo", "nested.bar"],
+        ),
+        (
+            "*.*",
+            "*.*",
+            "*.bar",
+            "*.bar",
+            ["nested.foo"],
+            ["foo", "bar", "nested.bar", "train/foo", "train/bar"],
+        ),
+    ],
+)
+def test_show_filter(
+    tmp_dir,
+    scm,
+    dvc,
+    capsys,
+    i_metrics,
+    i_params,
+    e_metrics,
+    e_params,
+    included,
+    excluded,
+):
     capsys.readouterr()
     div = "│" if os.name == "nt" else "┃"
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1\nbar: 1\ntrain/foo: 1\ntrain/bar: 1")
+    params_file = tmp_dir / "params.yaml"
+    params_data = {
+        "foo": 1,
+        "bar": 1,
+        "train/foo": 1,
+        "train/bar": 1,
+        "nested": {"foo": 1, "bar": 1},
+    }
+    dump_yaml(params_file, params_data)
 
     dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -185,96 +282,23 @@ def test_show_filter(tmp_dir, scm, dvc, capsys):
     )
     scm.commit("init")
 
-    assert (
-        main(
-            [
-                "exp",
-                "show",
-                "--no-pager",
-                "--no-timestamp",
-                "--include-metrics=foo",
-                "--include-params=foo",
-            ]
-        )
-        == 0
-    )
+    command = ["exp", "show", "--no-pager", "--no-timestamp"]
+    if i_metrics is not None:
+        command.append(f"--include-metrics={i_metrics}")
+    if i_params is not None:
+        command.append(f"--include-params={i_params}")
+    if e_metrics is not None:
+        command.append(f"--exclude-metrics={e_metrics}")
+    if e_params is not None:
+        command.append(f"--exclude-params={e_params}")
+
+    assert main(command) == 0
     cap = capsys.readouterr()
 
-    assert f"{div} foo {div} foo {div}" in cap.out
-
-    assert (
-        main(
-            [
-                "exp",
-                "show",
-                "--no-pager",
-                "--no-timestamp",
-                "--exclude-metrics=foo",
-                "--exclude-params=foo",
-            ]
-        )
-        == 0
-    )
-    cap = capsys.readouterr()
-
-    assert f"{div} foo {div}" not in cap.out
-    assert f"{div} bar {div}" in cap.out
-
-    assert (
-        main(
-            [
-                "exp",
-                "show",
-                "--no-pager",
-                "--no-timestamp",
-                "--include-metrics=train/*",
-                "--include-params=train/*",
-            ]
-        )
-        == 0
-    )
-    cap = capsys.readouterr()
-
-    assert f"{div} train/foo {div}" in cap.out
-    assert f"{div} train/bar {div}" in cap.out
-
-    assert (
-        main(
-            [
-                "exp",
-                "show",
-                "--no-pager",
-                "--no-timestamp",
-                "--exclude-metrics=train/*",
-                "--exclude-params=train/*",
-            ]
-        )
-        == 0
-    )
-    cap = capsys.readouterr()
-
-    assert f"{div} train/foo {div}" not in cap.out
-    assert f"{div} train/bar {div}" not in cap.out
-
-    assert (
-        main(
-            [
-                "exp",
-                "show",
-                "--no-pager",
-                "--no-timestamp",
-                "--include-metrics=train/*",
-                "--include-params=train/*",
-                "--exclude-metrics=*foo",
-                "--exclude-params=*foo",
-            ]
-        )
-        == 0
-    )
-    cap = capsys.readouterr()
-
-    assert f"{div} train/foo {div}" not in cap.out
-    assert f"{div} train/bar {div}" in cap.out
+    for i in included:
+        assert f"{div} {i} {div}" in cap.out
+    for e in excluded:
+        assert f"{div} {e} {div}" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
