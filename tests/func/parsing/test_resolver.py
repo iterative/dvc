@@ -5,7 +5,7 @@ import pytest
 
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver, ResolveError
 from dvc.parsing.context import Context
-from dvc.utils.serialize import dump_json, dump_yaml
+from dvc.utils.serialize import dump_json, dump_yaml, dumps_yaml
 
 from . import CONTEXT_DATA, RESOLVED_DVC_YAML_DATA, TEMPLATED_DVC_YAML_DATA
 
@@ -68,14 +68,17 @@ def test_load_vars_from_file(tmp_dir, dvc):
     assert resolver.context == expected
 
 
-def test_load_vars_with_relpath(tmp_dir, dvc):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
+def test_load_vars_with_relpath(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen(DEFAULT_PARAMS_FILE, dumps_yaml(DATA), commit="add params")
 
     subdir = tmp_dir / "subdir"
     d = {"vars": [os.path.relpath(tmp_dir / DEFAULT_PARAMS_FILE, subdir)]}
-    resolver = DataResolver(dvc, subdir, d)
 
-    assert resolver.context == deepcopy(DATA)
+    revisions = ["HEAD", "workspace"]
+    for rev in dvc.brancher(revs=["HEAD"]):
+        assert rev == revisions.pop()
+        resolver = DataResolver(dvc, subdir, d)
+        assert resolver.context == deepcopy(DATA)
 
 
 def test_partial_vars_doesnot_exist(tmp_dir, dvc):
