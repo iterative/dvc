@@ -83,7 +83,7 @@ install_requires = [
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
     "shtab>=1.3.4,<2",
-    "rich>=9.0.0,<10",
+    "rich>=10.0.0",
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",

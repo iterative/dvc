@@ -408,7 +408,9 @@ class CmdExperimentsShow(CmdBase):
                 # NOTE: rich does not have native support for unlimited width
                 # via pager. we override rich table compression by setting
                 # console width to the full width of the table
-                measurement = table.__rich_measure__(console, SHOW_MAX_WIDTH)
+                console_options = console.options
+                console_options.max_width = SHOW_MAX_WIDTH
+                measurement = table.__rich_measure__(console, console_options)
                 console._width = (  # pylint: disable=protected-access
                     measurement.maximum
                 )
