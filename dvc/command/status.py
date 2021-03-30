@@ -44,21 +44,27 @@ class CmdDataStatus(CmdDataBase):
                 self._show(value, indent + 1)
 
     def run(self):
+        from dvc.repo import lock_repo
         from dvc.ui import ui
 
         indent = 1 if self.args.cloud else 0
-        try:
-            st = self.repo.status(
-                targets=self.args.targets,
-                jobs=self.args.jobs,
-                cloud=self.args.cloud,
-                remote=self.args.remote,
-                all_branches=self.args.all_branches,
-                all_tags=self.args.all_tags,
-                all_commits=self.args.all_commits,
-                with_deps=self.args.with_deps,
-                recursive=self.args.recursive,
-            )
+
+        with lock_repo(self.repo):
+            try:
+                st = self.repo.status(
+                    targets=self.args.targets,
+                    jobs=self.args.jobs,
+                    cloud=self.args.cloud,
+                    remote=self.args.remote,
+                    all_branches=self.args.all_branches,
+                    all_tags=self.args.all_tags,
+                    all_commits=self.args.all_commits,
+                    with_deps=self.args.with_deps,
+                    recursive=self.args.recursive,
+                )
+            except DvcException:
+                logger.exception("")
+                return 1
 
             if self.args.quiet:
                 return bool(st)
@@ -67,9 +73,14 @@ class CmdDataStatus(CmdDataBase):
                 import json
 
                 logger.info(json.dumps(st))
-            elif st:
+                return 0
+
+            if st:
                 self._show(st, indent)
-            elif not self.repo.stages:
+                return 0
+
+            # additional hints for the user
+            if not self.repo.stages:
                 ui.write(self.EMPTY_PROJECT_MSG)
             elif self.args.cloud or self.args.remote:
                 remote = self.args.remote or self.repo.config["core"].get(
@@ -79,7 +90,4 @@ class CmdDataStatus(CmdDataBase):
             else:
                 ui.write(self.UP_TO_DATE_MSG)
 
-        except DvcException:
-            logger.exception("")
-            return 1
         return 0
