@@ -112,7 +112,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert (
         DvcIgnorePatterns(
             *merge_patterns(
-                _to_pattern_info_list([".hg/", ".git/", ".dvc/"]),
+                _to_pattern_info_list([".hg/", ".git/", ".git", ".dvc/"]),
                 os.fspath(tmp_dir),
                 _to_pattern_info_list([os.path.basename(dname)]),
                 top_ignore_path,
@@ -344,7 +344,7 @@ def test_pattern_trie_fs(tmp_dir, dvc):
     )
 
     base_pattern = (
-        _to_pattern_info_list([".hg/", ".git/", ".dvc/"]),
+        _to_pattern_info_list([".hg/", ".git/", ".git", ".dvc/"]),
         os.fspath(tmp_dir),
     )
     first_pattern = merge_patterns(
