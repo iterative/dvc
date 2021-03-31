@@ -41,7 +41,7 @@ def _filter_name(names, label, filter_strs):
                 ]
                 if not matches:
                     raise InvalidArgumentError(
-                        f"{f} does not match any known {label}"
+                        f"'{f}' does not match any known {label}"
                     )
                 ret[match_path].update({match: None for match in matches})
 
