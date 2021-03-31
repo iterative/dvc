@@ -65,6 +65,29 @@ def test_add_to_remote(mocker):
     )
 
 
+def test_add_target_after_to_remote_takes_default_remote(mocker):
+    cli_args = parse_args(["add", "--to-remote", "s3://bucket/foo"])
+    assert cli_args.func == CmdAdd
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(cmd.repo, "add", autospec=True)
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        ["s3://bucket/foo"],
+        recursive=False,
+        no_commit=False,
+        glob=False,
+        fname=None,
+        external=False,
+        out=None,
+        to_remote=True,
+        desc=None,
+        jobs=None,
+    )
+
+
 def test_add_to_remote_invalid_combinations(mocker, caplog):
     cli_args = parse_args(
         ["add", "s3://bucket/foo", "s3://bucket/bar", "--to-remote"]

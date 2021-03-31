@@ -11,6 +11,7 @@ class CmdAdd(CmdBase):
     def run(self):
         from dvc.exceptions import (
             DvcException,
+            InvalidArgumentError,
             RecursiveAddingWhileUsingFilename,
         )
 
@@ -18,8 +19,22 @@ class CmdAdd(CmdBase):
             if len(self.args.targets) > 1 and self.args.file:
                 raise RecursiveAddingWhileUsingFilename()
 
+            # Workaround to give priority to target over --to-remote.
+            targets = self.args.targets
+            to_remote = self.args.to_remote
+            if len(targets) == 0:
+                # --to-remote has captured the target as its own
+                # argument, so we move it to the target.
+                if isinstance(to_remote, str):
+                    targets = [to_remote]
+                    to_remote = True
+                else:
+                    raise InvalidArgumentError(
+                        "the following arguments are required: targets"
+                    )
+
             self.repo.add(
-                self.args.targets,
+                targets,
                 recursive=self.args.recursive,
                 no_commit=self.args.no_commit,
                 fname=self.args.file,
@@ -27,7 +42,7 @@ class CmdAdd(CmdBase):
                 glob=self.args.glob,
                 desc=self.args.desc,
                 out=self.args.out,
-                to_remote=self.args.to_remote,
+                to_remote=to_remote,
                 jobs=self.args.jobs,
             )
 
@@ -112,6 +127,6 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     parser.add_argument(
-        "targets", nargs="+", help="Input files/directories to add.",
+        "targets", nargs="*", help="Input files/directories to add.",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdAdd)
