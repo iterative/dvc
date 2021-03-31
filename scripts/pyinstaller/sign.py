@@ -35,5 +35,5 @@ for root, _, fnames in os.walk(dvc):
                 fpath,
             ],
             stderr=STDOUT,
-            timeout=10,
+            timeout=30,
         )
