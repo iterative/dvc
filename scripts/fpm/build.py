@@ -69,7 +69,7 @@ bash_completion = check_output(
 )
 (bash_dir / "dvc").write_text(bash_completion)
 
-zsh_dir = install / "share" / "zsh" / "site-funtions"
+zsh_dir = install / "share" / "zsh" / "site-functions"
 zsh_dir.mkdir(parents=True)
 zsh_completion = check_output(
     [lib / "dvc" / "dvc", "completion", "-s", "zsh"], text=True
