@@ -38,7 +38,7 @@ class S3FileSystem(BaseFileSystem):
         self.endpoint_url = config.get("endpointurl")
 
         self.use_ssl = config.get("use_ssl", True)
-        self.verify_ssl = config.get("verify_ssl", True)
+        self.ssl_verify = config.get("ssl_verify", True)
 
         self.extra_args = {}
 
@@ -137,7 +137,7 @@ class S3FileSystem(BaseFileSystem):
         return session.resource(
             "s3",
             endpoint_url=self.endpoint_url,
-            verify=self.verify_ssl,
+            verify=self.ssl_verify,
             use_ssl=self.use_ssl,
             config=boto3.session.Config(
                 signature_version="s3v4", s3=s3_config
