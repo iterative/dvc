@@ -117,7 +117,7 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             )
 
         # Check whether connection is valid (root should always exist)
-        if not client.check("/"):
+        if not client.check(self.path_info.path):
             raise WebDAVConnectionError(self.hostname)
 
         return client
@@ -213,7 +213,7 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     # Creates directories
     def makedirs(self, path_info):
         # Terminate recursion
-        if path_info.path == "/" or self.exists(path_info):
+        if path_info.path == self.path_info.path or self.exists(path_info):
             return
 
         # Recursively descent to root
