@@ -188,6 +188,14 @@ def test_show_checkpoint_branch(
             ["train/foo", "train/bar", "nested.foo", "nested.bar"],
         ),
         (
+            "metrics.yaml:foo,bar",
+            "params.yaml:foo,bar",
+            None,
+            None,
+            ["foo", "bar"],
+            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
+        ),
+        (
             "train/*",
             "train/*",
             None,
@@ -212,8 +220,8 @@ def test_show_checkpoint_branch(
             ["train/foo", "foo", "bar", "nested.foo", "nested.bar"],
         ),
         (
-            "nested",
-            "nested",
+            "nested.*",
+            "nested.*",
             None,
             None,
             ["nested.foo", "nested.bar"],
@@ -222,8 +230,8 @@ def test_show_checkpoint_branch(
         (
             None,
             None,
-            "nested",
-            "nested",
+            "nested.*",
+            "nested.*",
             ["foo", "bar", "train/foo", "train/bar"],
             ["nested.foo", "nested.bar"],
         ),
