@@ -29,6 +29,29 @@ def test_init(dvc):
     assert fs.path_info == url
 
 
+def test_verify_ssl_default_param(dvc):
+    config = {
+        "url": url,
+    }
+    fs = S3FileSystem(dvc, config)
+
+    assert fs.verify_ssl
+
+
+def test_verify_ssl_bool_param(dvc):
+    config = {"url": url, "verify_ssl": False}
+    fs = S3FileSystem(dvc, config)
+
+    assert fs.verify_ssl == config["verify_ssl"]
+
+
+def test_verify_ssl_str_param(dvc):
+    config = {"url": url, "verify_ssl": "path/to/certs"}
+    fs = S3FileSystem(dvc, config)
+
+    assert fs.verify_ssl == config["verify_ssl"]
+
+
 def test_grants(dvc):
     config = {
         "url": url,
