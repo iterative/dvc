@@ -4,7 +4,6 @@ from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime
 from fnmatch import fnmatch
-from itertools import groupby
 from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
@@ -35,21 +34,16 @@ def _filter_name(names, label, filter_strs):
             match_paths = [path]
         else:
             match_paths = names.keys()
-
         for match_path in match_paths:
             for f in filters:
                 matches = [
-                    name
-                    for name in names[match_path]
-                    if fnmatch(name, f)
+                    name for name in names[match_path] if fnmatch(name, f)
                 ]
                 if not matches:
                     raise InvalidArgumentError(
                         f"{f} does not match any known {label}"
                     )
-                ret[match_path].update(
-                    {match: None for match in matches}
-                )
+                ret[match_path].update({match: None for match in matches})
 
     return ret
 
