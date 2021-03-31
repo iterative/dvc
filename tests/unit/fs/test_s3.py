@@ -2,7 +2,7 @@ import pytest
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
-from dvc.fs.s3 import S3FileSystem, process_ssl_verify_param
+from dvc.fs.s3 import S3FileSystem
 
 bucket_name = "bucket-name"
 prefix = "some/prefix"
@@ -40,13 +40,6 @@ def test_verify_ssl_default_param(dvc):
 
 def test_ssl_verify_bool_param(dvc):
     config = {"url": url, "ssl_verify": False}
-    fs = S3FileSystem(dvc, config)
-
-    assert fs.ssl_verify == config["ssl_verify"]
-
-
-def test_ssl_verify_str_param(dvc):
-    config = {"url": url, "ssl_verify": "path/to/certs"}
     fs = S3FileSystem(dvc, config)
 
     assert fs.ssl_verify == config["ssl_verify"]
@@ -135,20 +128,3 @@ def test_get_bucket():
     with pytest.raises(DvcException, match="Bucket 'mybucket' does not exist"):
         with fs._get_bucket("mybucket") as bucket:
             raise bucket.meta.client.exceptions.NoSuchBucket({}, None)
-
-
-@pytest.mark.parametrize(
-    "ssl_verify_value, expected_output",
-    [
-        (True, True),
-        (False, False),
-        ("True", True),
-        ("true", True),
-        ("false", False),
-        ("False", False),
-        ("path/to/cert", "path/to/cert"),
-        ("someString", "someString"),
-    ],
-)
-def test_process_ssl_verify_param(ssl_verify_value, expected_output):
-    assert process_ssl_verify_param(ssl_verify_value) == expected_output

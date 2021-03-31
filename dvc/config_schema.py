@@ -145,7 +145,7 @@ SCHEMA = {
                     "session_token": str,
                     Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
-                    Optional("ssl_verify", default="true"): str,
+                    Optional("ssl_verify", default=True): bool,
                     "sse": str,
                     "sse_kms_key_id": str,
                     "acl": str,

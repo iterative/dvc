@@ -2,7 +2,6 @@ import logging
 import os
 import threading
 from contextlib import contextmanager
-from distutils.util import strtobool
 
 from funcy import cached_property, wrap_prop
 
@@ -19,19 +18,6 @@ from .base import BaseFileSystem
 logger = logging.getLogger(__name__)
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
-
-
-def process_ssl_verify_param(ssl_verify_config_value):
-    """
-    Checks the type of the input parameter and returns the
-    boolean or certPath based on the input
-    """
-    if isinstance(ssl_verify_config_value, bool):
-        return ssl_verify_config_value
-    try:
-        return strtobool(ssl_verify_config_value)
-    except ValueError:
-        return ssl_verify_config_value
 
 
 class S3FileSystem(BaseFileSystem):
@@ -52,9 +38,7 @@ class S3FileSystem(BaseFileSystem):
         self.endpoint_url = config.get("endpointurl")
 
         self.use_ssl = config.get("use_ssl", True)
-        self.ssl_verify = process_ssl_verify_param(
-            config.get("ssl_verify", True)
-        )
+        self.ssl_verify = config.get("ssl_verify", True)
 
         self.extra_args = {}
 
