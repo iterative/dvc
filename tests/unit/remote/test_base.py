@@ -70,7 +70,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
     # large remote, large local
     object_exists.reset_mock()
     traverse.reset_mock()
-    odb.fs.JOBS = 16
+    odb.fs._JOBS = 16
     with mock.patch.object(odb, "list_hashes", return_value=list(range(256))):
         hashes = list(range(1000000))
         odb.hashes_exist(hashes)
@@ -94,7 +94,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     odb.fs.path_info = PathInfo("foo")
 
     # parallel traverse
-    size = 256 / odb.fs.JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
+    size = 256 / odb.fs._JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
     list(odb.list_hashes_traverse(size, {0}))
     for i in range(1, 16):
         list_hashes.assert_any_call(

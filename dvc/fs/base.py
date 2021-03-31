@@ -38,7 +38,7 @@ class BaseFileSystem:
     scheme = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
     PATH_CLS = URLInfo  # type: Any
-    JOBS = 4 * cpu_count()
+    _JOBS = 4 * cpu_count()
 
     CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
@@ -67,7 +67,7 @@ class BaseFileSystem:
         return (
             self.config.get("jobs")
             or (self.repo and self.repo.config["core"].get("jobs"))
-            or self.JOBS
+            or self._JOBS
         )
 
     @cached_property
