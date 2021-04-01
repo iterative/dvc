@@ -268,7 +268,8 @@ def _extend_row(row, names, items, precision):
     from rich.text import Text
 
     if not items:
-        row.extend(["-"] * len(names))
+        for keys in names.values():
+            row.extend(["-"] * len(keys))
         return
 
     for fname, item in items:
