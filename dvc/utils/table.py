@@ -69,7 +69,7 @@ class Table(RichTable):
         last_collapsed = -1
         columns = cast(List[Column], self.columns)
         for i in range(len(columns) - 1, -1, -1):
-            if widths[i] == 1 and columns[i].collapse:
+            if widths[i] == 0 and columns[i].collapse:
                 if last_collapsed >= 0:
                     del widths[last_collapsed]
                     del columns[last_collapsed]
