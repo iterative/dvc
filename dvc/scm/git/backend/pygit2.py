@@ -80,6 +80,15 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         return RefdbFsBackend(self.repo)
 
+    @property
+    def default_signature(self):
+        try:
+            return self.repo.default_signature
+        except KeyError as exc:
+            raise SCMError(
+                "Git username and email must be configured"
+            ) from exc
+
     @staticmethod
     def clone(
         url: str,
@@ -328,7 +337,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         from dvc.scm.git import Stash
 
         oid = self.repo.stash(
-            self.repo.default_signature,
+            self.default_signature,
             message=message,
             include_untracked=include_untracked,
         )
@@ -503,7 +512,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             raise MergeConflictError("Merge contained conflicts")
 
         if commit:
-            user = self.repo.default_signature
+            user = self.default_signature
             tree = self.repo.index.write_tree()
             merge_commit = self.repo.create_commit(
                 "HEAD", user, user, msg, tree, [self.repo.head.target, rev]

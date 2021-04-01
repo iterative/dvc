@@ -182,11 +182,16 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def commit(self, msg: str, no_verify: bool = False):
         from dulwich.errors import CommitError
         from dulwich.porcelain import commit
+        from dulwich.repo import InvalidUserIdentity
 
         try:
             commit(self.root_dir, message=msg, no_verify=no_verify)
         except CommitError as exc:
             raise SCMError("Git commit failed") from exc
+        except InvalidUserIdentity as exc:
+            raise SCMError(
+                "Git username and email must be configured"
+            ) from exc
 
     def checkout(
         self,
@@ -528,6 +533,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
+        from dulwich.repo import InvalidUserIdentity
+
         from dvc.scm.git import Stash
 
         if include_untracked or ref == Stash.DEFAULT_STASH:
@@ -537,7 +544,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         stash = self._get_stash(ref)
         message_b = message.encode("utf-8") if message else None
-        rev = stash.push(message=message_b)
+        try:
+            rev = stash.push(message=message_b)
+        except InvalidUserIdentity as exc:
+            raise SCMError(
+                "Git username and email must be configured"
+            ) from exc
         return os.fsdecode(rev), True
 
     def _stash_apply(self, rev: str):
