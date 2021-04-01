@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, NoOutputOrStageError
 from dvc.main import main
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -32,10 +32,29 @@ def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
     assert not (tmp_dir / ".gitignore").exists()
 
 
+def test_remove_file_as_target(tmp_dir, scm, dvc):
+    dvc.run(
+        name="my",
+        cmd='echo "hello" > foo && echo "hello" > bar',
+        deps=[],
+        outs=["foo", "bar"],
+    )
+
+    assert "/foo" in get_gitignore_content()
+    assert "/bar" in get_gitignore_content()
+
+    dvc.remove("foo")
+    assert "/foo" not in get_gitignore_content()
+    assert "/bar" in get_gitignore_content()
+
+    dvc.remove("bar")
+    assert not (tmp_dir / ".gitignore").exists()
+
+
 def test_remove_non_existent_file(tmp_dir, dvc):
     with pytest.raises(StageFileDoesNotExistError):
         dvc.remove("non_existent_dvc_file.dvc")
-    with pytest.raises(StageFileDoesNotExistError):
+    with pytest.raises(NoOutputOrStageError):
         dvc.remove("non_existent_stage_name")
 
 

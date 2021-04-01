@@ -11,9 +11,16 @@ logger = logging.getLogger(__name__)
 
 @locked
 def remove(self: "Repo", target: str, outs: bool = False):
-    stages = self.stage.from_target(target)
+    stages_info = self.stage.collect_granular(target)
 
-    for stage in stages:
-        stage.remove(remove_outs=outs, force=outs)
+    for stage_info in stages_info:
+        stage = stage_info.stage
+        filter_info = stage_info.filter_info
+        if filter_info is not None:
+            # target is a specific output file
+            for out in stage.filter_outs(filter_info):
+                out.remove(True)
+        else:
+            stage.remove(remove_outs=outs, force=outs)
 
-    return stages
+    return [x.stage for x in stages_info]
