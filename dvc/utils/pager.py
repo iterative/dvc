@@ -46,7 +46,7 @@ def find_pager():
     return pydoc.plainpager
 
 
-def pager(text):
+def pager(text: str) -> None:
     find_pager()(text)
 
 
