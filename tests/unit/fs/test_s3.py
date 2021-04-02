@@ -38,14 +38,14 @@ def test_verify_ssl_default_param(dvc):
     }
     fs = S3FileSystem(dvc, config)
 
-    assert fs.fs_args["client_kwargs"]["ssl_verify"]
+    assert fs.fs_args["client_kwargs"]["verify"]
 
 
 def test_ssl_verify_bool_param(dvc):
     config = {"url": url, "ssl_verify": False}
     fs = S3FileSystem(dvc, config)
 
-    assert fs.fs_args["client_kwargs"]["ssl_verify"] == config["ssl_verify"]
+    assert fs.fs_args["client_kwargs"]["verify"] == config["ssl_verify"]
 
 
 def test_grants(dvc):
