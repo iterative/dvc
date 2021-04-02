@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -23,6 +22,8 @@ class CmdPlots(CmdBase):
         return {k: v for k, v in props.items() if v is not None}
 
     def run(self):
+        from pathlib import Path
+
         if self.args.show_vega:
             if not self.args.targets:
                 logger.error("please specify a target for `--show-vega`")
@@ -41,20 +42,20 @@ class CmdPlots(CmdBase):
                 logger.info(plots[target])
                 return 0
 
-            path = self.args.out or "plots.html"
-            path = os.path.join(os.getcwd(), path)
-
+            rel: str = self.args.out or "plots.html"
+            path = (Path.cwd() / rel).resolve()
             write(path, plots)
-            url = f"file://{path}"
         except DvcException:
             logger.exception("")
             return 1
 
+        assert path.is_absolute()  # as_uri throws ValueError if not absolute
+        url = path.as_uri()
         logger.info(url)
         if self.args.open:
             import webbrowser
 
-            opened = webbrowser.open(url)
+            opened = webbrowser.open(rel)
             if not opened:
                 logger.error("Failed to open. Please try opening it manually.")
                 return 1

@@ -7,9 +7,6 @@ from funcy import cached_property
 from dvc.progress import Tqdm
 from dvc.utils import colorize
 
-NEWLINE = "\n"
-SEP = " "
-
 
 class Formatter:
     def __init__(self, theme: Dict = None, defaults: Dict = None) -> None:
@@ -30,14 +27,23 @@ class Console:
         formatter: Formatter = None,
         output: TextIO = None,
         error: TextIO = None,
-        disable: bool = False,
+        enable: bool = False,
     ) -> None:
-        self._input: TextIO = sys.stdin
-        self._output: TextIO = output or sys.stdout
-        self._error: TextIO = error or sys.stderr
-
+        self._output: Optional[TextIO] = output
+        self._error: Optional[TextIO] = error
         self.formatter: Formatter = formatter or Formatter()
-        self.disabled: bool = disable
+        self._enabled: bool = enable
+
+    @property
+    def output(self) -> TextIO:
+        return self._output or sys.stdout
+
+    @property
+    def error_output(self) -> TextIO:
+        return self._error or sys.stderr
+
+    def enable(self):
+        self._enabled = True
 
     def success(self, message: str) -> None:
         self.write(message, style="success")
@@ -52,8 +58,8 @@ class Console:
         self,
         *objects: Any,
         style: str = None,
-        sep: str = SEP,
-        end: str = NEWLINE,
+        sep: str = None,
+        end: str = None,
         flush: bool = False,
     ) -> None:
         return self.write(
@@ -61,7 +67,7 @@ class Console:
             style=style,
             sep=sep,
             end=end,
-            file=self._error,
+            file=self.error_output,
             flush=flush,
         )
 
@@ -69,20 +75,20 @@ class Console:
         self,
         *objects: Any,
         style: str = None,
-        sep: str = SEP,
-        end: str = NEWLINE,
+        sep: str = None,
+        end: str = None,
         file: TextIO = None,
         flush: bool = False,
     ) -> None:
-        if self.disabled:
+        if not self._enabled:
             return
 
-        file = file or self._output
+        file = file or self.output
         values = (self.formatter.format(obj, style=style) for obj in objects)
         return print(*values, sep=sep, end=end, file=file, flush=flush)
 
     def progress(self, *args, **kwargs) -> Tqdm:
-        kwargs.setdefault("file", self._error)
+        kwargs.setdefault("file", self.error_output)
         return Tqdm(*args, **kwargs)
 
     def prompt(
@@ -125,7 +131,7 @@ class Console:
         """rich_console is only set to stdout for now."""
         from rich import console
 
-        return console.Console(file=self._output)
+        return console.Console(file=self.output)
 
     def rich_table(self, pager: bool = True):
         pass
@@ -152,9 +158,11 @@ class Console:
         self.write(ret)
 
 
-if __name__ == "__main__":
-    ui = Console()
+ui = Console()
 
+
+if __name__ == "__main__":
+    ui.enable()
     ui.write("No default remote set")
     ui.success("Everything is up to date.")
     ui.warn("Run queued experiments will be removed.")

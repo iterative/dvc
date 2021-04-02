@@ -9,9 +9,9 @@ jobs:
   deb:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: 3.8
     - name: Set up Ruby 2.4
@@ -25,14 +25,9 @@ jobs:
         gem install --no-document fpm
     - name: Build deb
       run: python scripts/build.py deb
-    - name: Upload deb artifact
-      uses: actions/upload-artifact@v2
-      with:
-        path: scripts/fpm/dvc*.deb
-        if-no-files-found: error
     - name: Publish deb
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -43,9 +38,9 @@ jobs:
   rpm:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: 3.8
     - name: Set up Ruby 2.4
@@ -59,14 +54,9 @@ jobs:
         gem install --no-document fpm
     - name: Build rpm
       run: python scripts/build.py rpm
-    - name: Upload rpm artifact
-      uses: actions/upload-artifact@v2
-      with:
-        path: scripts/fpm/dvc*.rpm
-        if-no-files-found: error
     - name: Publish rpm
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -77,9 +67,9 @@ jobs:
   osxpkg:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: 3.8
     - name: Set up Ruby 2.4
@@ -88,19 +78,17 @@ jobs:
         ruby-version: 2.4
     - name: Install deps
       run: |
-        pip install .[all]
+        # available lxml (webdav dependency) wheels are built with an old
+        # SDK, which breaks osxpkg notarization. Building from scratch
+        # instead.
+        pip install .[all] --no-binary lxml
         pip install -r scripts/build-requirements.txt
         gem install --no-document fpm
     - name: Build
       run: python scripts/build.py osxpkg
-    - name: Upload osxpkg artifact
-      uses: actions/upload-artifact@v2
-      with:
-        path: scripts/fpm/dvc*.pkg
-        if-no-files-found: error
     - name: Publish
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -111,9 +99,9 @@ jobs:
   exe:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: 3.8
     - name: Install deps
@@ -126,16 +114,11 @@ jobs:
     - name: Build
       run: python scripts\build.py exe
       shell: cmd
-    - name: Upload exe artifact
-      uses: actions/upload-artifact@v2
-      with:
-        path: scripts/innosetup/dvc*.exe
-        if-no-files-found: error
     - name: Publish
       if: github.event_name == 'release'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       with:
         upload_url: ${{ github.event.release.upload_url }}
         asset_path: scripts/innosetup/dvc-${{ github.event.release.tag_name }}.exe
@@ -144,9 +127,9 @@ jobs:
   pip:
     runs-on: ubuntu-16.04
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.7
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: 3.7
     - name: Install
@@ -162,7 +145,7 @@ jobs:
   snap:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Build the package
       uses: snapcore/action-build@v1
       id: snapcraft

@@ -45,6 +45,11 @@ def main(argv=None):  # noqa: C901
 
         logger.trace(args)
 
+        if not args.quiet:
+            from dvc.ui import ui
+
+            ui.enable()
+
         with debugtools(args):
             cmd = args.func(args)
             ret = cmd.run()

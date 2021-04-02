@@ -309,7 +309,7 @@ class Remote:
         )
 
         if download:
-            func = _log_exceptions(self.fs.download, "download")
+            func = _log_exceptions(self.fs.download_file, "download")
             status = STATUS_DELETED
             desc = "Downloading"
         else:

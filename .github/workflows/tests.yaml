@@ -21,13 +21,15 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: 3.8
     - name: Install requirements
-      run: pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+      run: |
+        pip install wheel
+        pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -51,9 +53,9 @@ jobs:
             pyv: "3.9"
 
     steps:
-    - uses: actions/checkout@v2.3.2
+    - uses: actions/checkout@v2.3.4
     - name: Set up Python
-      uses: actions/setup-python@v2.1.4
+      uses: actions/setup-python@v2.2.1
       with:
         python-version: ${{ matrix.pyv }}
     - name: get pip cache dir
@@ -62,7 +64,7 @@ jobs:
         echo "::set-output name=dir::$(pip cache dir)"
     - name: set pip cache
       id: pip-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.4
       with:
         path: ${{ steps.pip-cache-dir.outputs.dir }}
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
@@ -88,9 +90,9 @@ jobs:
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
     - name: run tests
-      run: python -m tests --all --cov-report=xml --cov-report=term --tap-combined -n=4
+      run: python -m tests --all --cov-report=xml --cov-report=term -n=4
     - name: upload coverage report
-      uses: codecov/codecov-action@v1.0.13
+      uses: codecov/codecov-action@v1.3.1
       with:
         file: ./coverage.xml
         fail_ci_if_error: false

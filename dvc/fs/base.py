@@ -1,6 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial
+from functools import partial, partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
@@ -258,6 +258,7 @@ class BaseFileSystem:
         name=None,
         no_progress_bar=False,
         jobs=None,
+        _only_file=False,
         **kwargs,
     ):
         if not hasattr(self, "_download"):
@@ -273,11 +274,13 @@ class BaseFileSystem:
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        if self.isdir(from_info):
+        if not _only_file and self.isdir(from_info):
             return self._download_dir(
                 from_info, to_info, name, no_progress_bar, jobs, **kwargs,
             )
         return self._download_file(from_info, to_info, name, no_progress_bar,)
+
+    download_file = partialmethod(download, _only_file=True)
 
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,

@@ -17,7 +17,7 @@ from ..base import RemoteCmdError
 try:
     import paramiko
 except ImportError:
-    paramiko = None
+    paramiko = None  # type: ignore
 
 
 logger = logging.getLogger(__name__)
