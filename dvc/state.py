@@ -146,14 +146,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         if fs.isdolt(path_info):
             db = dolt.Dolt(path_info)
-            sql = (
-                    f"select @@{db.repo_name}_working as working, " +
-                    f"@@{db.repo_name}_staging as staging"
-            )
+            sql = (f"select @@{db.repo_name}_working as working")
             res = db.sql(sql, result_format="csv")
             working = res[0]["working"]
-            staging = res[0]["staging"]
-            value = f"{db.head}-{working}-{staging}.dolt"
+            value = f"{db.head}-{working}.dolt"
             return HashInfo("md5", value, size=int(size))
 
         return HashInfo("md5", value[2], size=int(size))

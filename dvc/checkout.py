@@ -234,7 +234,7 @@ def _checkout_dolt(
     db = dolt.Dolt(path_info)
     prev_head = db.head
     heads = obj.hash_info.value.split(".dolt")[0]
-    new_head, _, _ = heads.split("-")
+    new_head, _ = heads.split("-")
     if not db.status().is_clean:
         db.reset(tables=[], hard=True)
     if prev_head != new_head:

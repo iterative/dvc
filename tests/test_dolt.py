@@ -16,12 +16,15 @@ def match_files(files, expected_files):
     right = {(os.path.join(*args), isout, isdir) for (args, isout, isdir) in expected_files}
     assert left == right
 
+@pytest.fixture
+def dolt_path(tmp_dir):
+    os.makedirs(os.path.join(tmp_dir, "data"))
+    return os.path.join(tmp_dir, "data", "test_db")
 
 @pytest.fixture
-def empty_doltdb(tmp_dir):
-    db_path = os.path.join(tmp_dir, "test_db")
-    dolt.Dolt.init(db_path)
-    db = dolt.Dolt(db_path)
+def empty_doltdb(dolt_path):
+    dolt.Dolt.init(dolt_path)
+    db = dolt.Dolt(dolt_path)
     return db
 
 
@@ -41,31 +44,49 @@ def doltdb(empty_doltdb):
     return empty_doltdb
 
 
-def test_dolt_dir_add(tmp_dir, dvc, doltdb):
+def test_dolt_dir_add(tmp_dir, dvc, doltdb, dolt_path):
     from dvc.objects import load
 
-    (stage,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    (stage,) = tmp_dir.dvc_add(dolt_path)
 
     assert stage is not None
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
-    sql = (
-        f"select @@{doltdb.repo_name}_working as working, " +
-        f"@@{doltdb.repo_name}_staging as staging"
-    )
+    sql = f"select @@{doltdb.repo_name}_working as working"
     res = doltdb.sql(sql, result_format="csv")
     working = res[0]["working"]
-    staging = res[0]["staging"]
-    assert hash_info.value == f"{doltdb.head}-{working}-{staging}.dolt"
+    assert hash_info.value == f"{doltdb.head}-{working}.dolt"
 
     dir_info = load(dvc.odb.local, hash_info).hash_info.dir_info
     for path, _ in dir_info.trie.items():
         assert "\\" not in path
 
 
-def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb):
+@pytest.mark.xfail(strict=True)
+def test_dolt_dir_add_dirty_state(tmp_dir, dvc, doltdb, dolt_path):
+    from dvc.objects import load
+
+    doltdb.sql("insert into t1 values ('jack', 1)")
+    (stage,) = tmp_dir.dvc_add(dolt_path)
+
+    assert stage is not None
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    hash_info = stage.outs[0].hash_info
+    sql = (f"select @@{doltdb.repo_name}_working as working")
+    res = doltdb.sql(sql, result_format="csv")
+    working = res[0]["working"]
+    assert hash_info.value == f"{db.head}-{working}.dolt"
+
+    dir_info = load(dvc.odb.local, hash_info).hash_info.dir_info
+    for path, _ in dir_info.trie.items():
+        assert "\\" not in path
+
+
+def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb, dolt_path):
     first_commit = doltdb.head
 
     #switch to new branch, add commit
@@ -76,7 +97,7 @@ def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb):
     second_commit = doltdb.head
 
     # dvc file for new branch
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    (_,) = tmp_dir.dvc_add(dolt_path)
 
     # switch back to master
     doltdb.checkout("master")
@@ -88,7 +109,7 @@ def test_dolt_dir_checkout_branch(tmp_dir, dvc, doltdb):
     assert second_commit == doltdb.head
 
 
-def test_dolt_dir_checkout_state(tmp_dir, dvc, doltdb):
+def test_dolt_dir_checkout_state(tmp_dir, dvc, doltdb, dolt_path):
     #switch to new branch, add commit
     doltdb.checkout("tmp_br", checkout_branch=True)
     doltdb.sql("insert into t1 values ('bob', '1'), ('sally', 2)")
@@ -96,7 +117,7 @@ def test_dolt_dir_checkout_state(tmp_dir, dvc, doltdb):
     doltdb.commit("Add rows")
 
     # dvc file for new branch
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    (_,) = tmp_dir.dvc_add(dolt_path)
 
     # switch back to master
     doltdb.sql("drop table t1")
@@ -106,7 +127,7 @@ def test_dolt_dir_checkout_state(tmp_dir, dvc, doltdb):
     res = doltdb.sql("select * from t1", result_format="csv")
     assert [d for d in res if d["name"] == "connie"][0]["id"] == "0"
 
-def test_dolt_dir_status(tmp_dir, dvc, doltdb):
+def test_dolt_dir_status(tmp_dir, dvc, doltdb, dolt_path):
     # mismatch between working and stored head
 
     first_commit = doltdb.head
@@ -118,54 +139,51 @@ def test_dolt_dir_status(tmp_dir, dvc, doltdb):
     doltdb.commit("Add rows")
 
     # dvc file for new branch
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    (_,) = tmp_dir.dvc_add(dolt_path)
 
-    status = dvc.status(targets=["test_db"])
+    status = dvc.status(targets=["data/test_db"])
     assert status == {}
 
     # switch back to master
     doltdb.checkout("master")
     assert first_commit == doltdb.head
 
-    status = dvc.status(targets=["test_db"])
-    assert status == {'test_db.dvc': [{'changed outs': {'test_db': 'modified'}}]}
+    status = dvc.status(targets=["data/test_db"])
+    assert status == {'data/test_db.dvc': [{'changed outs': {'data/test_db': 'modified'}}]}
 
 
-def test_dolt_dir_remove(tmp_dir, dvc, doltdb):
+def test_dolt_dir_remove(tmp_dir, dvc, doltdb, dolt_path):
 
     # dvc file for new branch
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    (_,) = tmp_dir.dvc_add(dolt_path)
 
-    files = DvcRepo.ls(os.fspath(tmp_dir))
+    files = DvcRepo.ls(os.fspath(tmp_dir), os.path.join(tmp_dir, "data"))
     exp = (
-        ((".dvcignore",), False, False),
         (("test_db",), False, True),
         (("test_db.dvc",), False, False),
     )
     match_files(files, exp)
 
-    dvc.remove(doltdb.repo_dir + ".dvc", outs=True)
+    dvc.remove(dolt_path + ".dvc", outs=True)
 
-    files = DvcRepo.ls(os.fspath(tmp_dir))
+    files = DvcRepo.ls(os.fspath(tmp_dir), os.path.join(tmp_dir, "data"))
     exp = (
         (("test_db",), False, True),
-        ((".dvcignore",), False, False),
     )
     match_files(files, exp)
 
 
-def test_dolt_dir_list(tmp_dir, dvc, doltdb):
+def test_dolt_dir_list(tmp_dir, dvc, doltdb, dolt_path):
     doltdb.checkout("tmp_br", checkout_branch=True)
     doltdb.sql("insert into t1 values ('bob', '1'), ('sally', 2)")
     doltdb.add("t1")
     doltdb.commit("Add rows")
 
     # dvc file for new branch
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
+    (_,) = tmp_dir.dvc_add(dolt_path)
 
-    files = DvcRepo.ls(os.fspath(tmp_dir))
+    files = DvcRepo.ls(os.fspath(tmp_dir), os.path.join(tmp_dir, "data"))
     exp = (
-        ((".dvcignore",), False, False),
         (("test_db",), False, True),
         (("test_db.dvc",), False, False),
     )
@@ -195,24 +213,24 @@ def remote(tmp_dir, dvc, tmp_path_factory, mocker):
     return dvc.cloud.get_remote("upstream")
 
 
-def test_dolt_dir_push(tmp_dir, dvc, doltdb, remote):
+def test_dolt_dir_push(tmp_dir, dvc, doltdb, dolt_path, remote):
     remote_url = remote.fs.config.get("url")
 
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
-    dvc.push(targets=["test_db"], remote="upstream")
+    (_,) = tmp_dir.dvc_add(dolt_path)
+    dvc.push(targets=["data/test_db"], remote="upstream")
 
     assert os.path.exists(os.path.join(remote_url, "manifest"))
     assert os.path.exists(os.path.join(remote_url, "lock"))
 
 
-def test_dolt_dir_pull(tmp_dir, dvc, doltdb, remote):
-    (_,) = tmp_dir.dvc_add(doltdb.repo_dir)
-    dvc.push(targets=["test_db"], remote="upstream")
+def test_dolt_dir_pull(tmp_dir, dvc, doltdb, remote, dolt_path):
+    (_,) = tmp_dir.dvc_add(dolt_path)
+    dvc.push(targets=["data/test_db"], remote="upstream")
 
-    shutil.rmtree(os.path.join(tmp_dir, "test_db"))
-    dvc.pull(targets=["test_db"], remote="upstream")
+    shutil.rmtree(dolt_path)
+    dvc.pull(targets=["data/test_db"], remote="upstream")
 
-    assert os.path.exists(os.path.join(tmp_dir, "test_db", ".dolt"))
+    assert os.path.exists(os.path.join(dolt_path, ".dolt"))
 
 
 def test_dolt_dir_import(tmp_dir, dvc, doltdb):

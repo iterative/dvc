@@ -76,7 +76,7 @@ class LocalFileSystem(BaseFileSystem):
     def isdolt(
         self, path_info, use_dvcignore=True
     ):  # pylint: disable=arguments-differ
-        if not os.path.exists(os.path.join(path_info, ".dolt")):
+        if not os.path.exists(os.path.join(str(path_info), ".dolt")):
             return False
         return not (use_dvcignore and self.dvcignore.is_ignored_dir(path_info))
 
