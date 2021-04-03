@@ -100,7 +100,7 @@ gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
 azure = ["adlfs>=0.7.0", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
-oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
+oss = ["oss2==2.6.1", "pycryptodome>=3.10"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
