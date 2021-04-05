@@ -51,7 +51,8 @@ def test_remove_file_as_target(tmp_dir, scm, dvc):
 def test_remove_file_in_subdir_as_target(tmp_dir, scm, dvc):
     dvc.run(
         name="my",
-        cmd='mkdir -p "foo" && echo "hello" > foo/file1 && echo "hello" > foo/file2',
+        cmd='mkdir -p "foo" && '
+        'echo "hello" > foo/file1 && echo "hello" > foo/file2',
         deps=[],
         outs=["foo"],
     )
