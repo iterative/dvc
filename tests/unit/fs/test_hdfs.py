@@ -2,6 +2,7 @@ import os
 
 from dvc.fs.hdfs import _hadoop_fs_checksum
 from dvc.path_info import URLInfo
+from dvc.utils import fix_env
 
 
 def test_hadoop_fs_checksum(mocker):
@@ -22,7 +23,7 @@ def test_hadoop_fs_checksum(mocker):
         shell=True,
         close_fds=os.name != "nt",
         executable=os.getenv("SHELL") if os.name != "nt" else None,
-        env=os.environ,
+        env=fix_env(os.environ),
         stdin=-1,
         stdout=-1,
         stderr=-1,
