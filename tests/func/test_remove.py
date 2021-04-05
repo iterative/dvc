@@ -48,6 +48,20 @@ def test_remove_file_as_target(tmp_dir, scm, dvc):
     assert not (tmp_dir / ".gitignore").exists()
 
 
+def test_remove_file_in_subdir_as_target(tmp_dir, scm, dvc):
+    dvc.run(
+        name="my",
+        cmd='mkdir -p "foo" && echo "hello" > foo/file1 && echo "hello" > foo/file2',
+        deps=[],
+        outs=["foo"],
+    )
+
+    dvc.remove("foo/file1")
+    assert "/foo" in  get_gitignore_content()
+    dvc.remove("foo/file2")
+    assert not (tmp_dir / ".gitignore").exists()
+
+
 def test_remove_non_existent_file(tmp_dir, dvc):
     with pytest.raises(StageFileDoesNotExistError):
         dvc.remove("non_existent_dvc_file.dvc")
