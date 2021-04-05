@@ -40,11 +40,15 @@ class OutputIsNotFileOrDirError(DvcException):
 
 class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
-        msg = f""" output '{path}' is already tracked by SCM (e.g. Git).
+        msg = f""" output '{path}' is already tracked by SCM (e.g. Git) but\
+ was not ignored by dvc.
     You can remove it from Git, then add to DVC.
         To stop tracking from Git:
             git rm -r --cached '{path}'
-            git commit -m "stop tracking {path}" """
+            git commit -m "stop tracking {path}"
+    Or add it to .dockerignore, then add to DVC.
+        To make dvc ignore this file. Add this line to the end of .dvcignore:
+            {path}"""
         super().__init__(msg)
 
 
@@ -149,6 +153,13 @@ class BaseOutput:
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
+        self.git_tracked_files = list(
+            self.repo.scm.backends.backends["dulwich"]().repo.open_index()
+        )
+        self.git_tracked_files = [
+            os.path.abspath(each.decode("utf-8"))
+            for each in self.git_tracked_files
+        ]
 
     def _parse_path(self, fs, path):
         if fs:
@@ -264,7 +275,14 @@ class BaseOutput:
             return
 
         if self.repo.scm.is_tracked(self.fspath):
-            raise OutputAlreadyTrackedError(self)
+            related_tracked_files = [
+                each
+                for each in self.git_tracked_files
+                if each.startswith(self.fspath)
+            ]
+            for file in related_tracked_files:
+                if not self.stage.repo.fs.dvcignore.is_ignored_file(file):
+                    raise OutputAlreadyTrackedError(os.path.relpath(file))
 
         self.repo.scm.ignore(self.fspath)
 

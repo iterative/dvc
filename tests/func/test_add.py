@@ -163,17 +163,42 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
 
 
-def test_add_tracked_file(tmp_dir, scm, dvc):
+def test_add_tracked_file_not_ignored(tmp_dir, scm, dvc):
     path = "tracked_file"
     tmp_dir.scm_gen(path, "...", commit="add tracked file")
-    msg = f""" output '{path}' is already tracked by SCM \\(e.g. Git\\).
+    msg = f""" output '{path}' is already tracked by SCM \\(e.g. Git\\) but\
+ was not ignored by dvc.
     You can remove it from Git, then add to DVC.
         To stop tracking from Git:
             git rm -r --cached '{path}'
-            git commit -m "stop tracking {path}" """
+            git commit -m "stop tracking {path}"
+    Or add it to .dockerignore, then add to DVC.
+        To make dvc ignore this file. Add this line to the end of .dvcignore:
+            {path}"""
 
     with pytest.raises(OutputAlreadyTrackedError, match=msg):
         dvc.add(path)
+
+
+def test_add_tracked_file_dvc_ignored(tmp_dir, scm, dvc, caplog):
+    tmp_dir.scm_gen(
+        "foo/tracked_file_dvc_ignored.useless",
+        "...",
+        commit="add tracked useless file",
+    )
+    tmp_dir.gen("foo/tracked_file_dvc_ignored.useful", "...")
+    tmp_dir.scm_gen(
+        ".dvcignore", "**/*.useless\n", commit="add dvc ignore file"
+    )
+    with caplog.at_level(logging.WARNING):
+        dvc.add(
+            [
+                "foo/tracked_file_dvc_ignored.useless",
+                "foo/tracked_file_dvc_ignored.useful",
+            ]
+        )
+    warning = "foo/tracked_file_dvc_ignored.useless was ignored by dvc"
+    assert warning in caplog.text
 
 
 class TestAddDirWithExistingCache(TestDvc):

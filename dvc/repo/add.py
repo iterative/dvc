@@ -11,6 +11,7 @@ from ..exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
+from ..output.base import OutputIsIgnoredError
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
 from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
@@ -89,15 +90,23 @@ def add(  # noqa: C901
                     )
                 )
 
-            stages = _create_stages(
-                repo,
-                sub_targets,
-                fname,
-                pbar=pbar,
-                transfer=to_remote or to_cache,
-                **kwargs,
-            )
-
+            stages = None
+            try:
+                stages = _create_stages(
+                    repo,
+                    sub_targets,
+                    fname,
+                    pbar=pbar,
+                    transfer=to_remote or to_cache,
+                    **kwargs,
+                )
+            except OutputIsIgnoredError as ex:
+                if num_targets == 1:
+                    raise ex
+                else:
+                    logger.warning(f"{target} was ignored by dvc")
+                pbar.total -= 1
+                continue
             try:
                 repo.check_modified_graph(stages)
             except OverlappingOutputPathsError as exc:
