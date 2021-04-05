@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def remove(self: "Repo", target: str, outs: bool = False):
     stages_info = self.stage.collect_granular(target)
 
-    for stage_info in stages_info:
+    for stage, filter_info in stages_info:
         stage = stage_info.stage
         filter_info = stage_info.filter_info
         if filter_info is not None:
