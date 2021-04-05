@@ -3,7 +3,7 @@ import logging
 from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime
-from itertools import groupby
+from fnmatch import fnmatch
 from typing import Dict, Iterable, Optional
 
 import dvc.prompt as prompt
@@ -27,32 +27,23 @@ def _filter_name(names, label, filter_strs):
 
     for filter_s in filter_strs:
         path, _, name = filter_s.rpartition(":")
-        path_filters[path].append(tuple(name.split(".")))
+        path_filters[path].append(name)
 
     for path, filters in path_filters.items():
         if path:
             match_paths = [path]
         else:
             match_paths = names.keys()
-        for length, groups in groupby(filters, len):
-            for group in groups:
-                for match_path in match_paths:
-                    possible_names = [
-                        tuple(name.split(".")) for name in names[match_path]
-                    ]
-                    matches = [
-                        name
-                        for name in possible_names
-                        if name[:length] == group
-                    ]
-                    if not matches:
-                        name = ".".join(group)
-                        raise InvalidArgumentError(
-                            f"'{name}' does not match any known {label}"
-                        )
-                    ret[match_path].update(
-                        {".".join(match): None for match in matches}
+        for match_path in match_paths:
+            for f in filters:
+                matches = [
+                    name for name in names[match_path] if fnmatch(name, f)
+                ]
+                if not matches:
+                    raise InvalidArgumentError(
+                        f"'{f}' does not match any known {label}"
                     )
+                ret[match_path].update({match: None for match in matches})
 
     return ret
 
@@ -103,7 +94,6 @@ def _collect_names(all_experiments, **kwargs):
         for exp in experiments.values():
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
-
     metric_names = _filter_names(
         metric_names,
         "metrics",
