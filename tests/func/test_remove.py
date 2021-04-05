@@ -40,9 +40,6 @@ def test_remove_file_as_target(tmp_dir, scm, dvc):
         outs=["foo", "bar"],
     )
 
-    assert "/foo" in get_gitignore_content()
-    assert "/bar" in get_gitignore_content()
-
     dvc.remove("foo")
     assert "/foo" not in get_gitignore_content()
     assert "/bar" in get_gitignore_content()
