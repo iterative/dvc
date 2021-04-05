@@ -4,6 +4,7 @@ from copy import copy
 from typing import Type
 from urllib.parse import urlparse
 
+from dulwich.errors import NoIndexPresent
 from voluptuous import Any
 
 import dvc.objects as objects
@@ -20,7 +21,7 @@ from dvc.hash_info import HashInfo
 from dvc.objects.db import NamedCache
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.stage import stage as ostage
-from dvc.scm.base import NoSCMError
+from dvc.scm.base import SCMError
 
 from ..fs.base import BaseFileSystem
 
@@ -162,7 +163,7 @@ class BaseOutput:
                 os.path.abspath(each.decode("utf-8"))
                 for each in self.git_tracked_files
             ]
-        except NoSCMError:
+        except (SCMError, AttributeError, NoIndexPresent):
             self.git_tracked_files = []
 
     def _parse_path(self, fs, path):
