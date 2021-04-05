@@ -20,6 +20,7 @@ from dvc.hash_info import HashInfo
 from dvc.objects.db import NamedCache
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.stage import stage as ostage
+from dvc.scm.base import NoSCMError
 
 from ..fs.base import BaseFileSystem
 
@@ -153,13 +154,16 @@ class BaseOutput:
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
-        self.git_tracked_files = list(
-            self.repo.scm.backends.backends["dulwich"]().repo.open_index()
-        )
-        self.git_tracked_files = [
-            os.path.abspath(each.decode("utf-8"))
-            for each in self.git_tracked_files
-        ]
+        try:
+            self.git_tracked_files = list(
+                self.repo.scm.backends.backends["dulwich"]().repo.open_index()
+            )
+            self.git_tracked_files = [
+                os.path.abspath(each.decode("utf-8"))
+                for each in self.git_tracked_files
+            ]
+        except NoSCMError:
+            self.git_tracked_files = []
 
     def _parse_path(self, fs, path):
         if fs:
