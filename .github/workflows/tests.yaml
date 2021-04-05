@@ -36,7 +36,7 @@ jobs:
         pip install git+https://github.com/isidentical/pydata-google-auth@service-account
     - name: Check README
       run: python setup.py checkdocs
-    - uses: pre-commit/action@v2.0.0
+    - uses: pre-commit/action@v2.0.1
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
