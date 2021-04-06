@@ -17,6 +17,7 @@ from typing import (
 
 from dvc.exceptions import (
     DvcException,
+    InvalidArgumentError,
     NoOutputOrStageError,
     OutputNotFoundError,
 )
@@ -396,6 +397,11 @@ class StageLoad:
 
             (see `collect()` for other arguments)
         """
+        if glob and glob_stages:
+            raise InvalidArgumentError(
+                "--glob and --glob-stages options are mutually exclusive."
+            )
+
         if not target:
             return [StageInfo(stage) for stage in self.repo.stages]
 

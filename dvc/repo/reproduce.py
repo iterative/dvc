@@ -92,7 +92,7 @@ def reproduce(
     from .graph import get_pipeline, get_pipelines
 
     glob = kwargs.pop("glob", False)
-    glob_stages = kwargs.pop("glob_stages", False) and not glob
+    glob_stages = kwargs.pop("glob_stages", False)
     accept_group = not glob and not glob_stages
 
     if isinstance(targets, str):
