@@ -142,17 +142,3 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
-
-      uses: snapcore/action-publish@v1
-      if: github.event_name == 'push'
-      with:
-        store_login: ${{ secrets.STORE_LOGIN }}
-        snap: ${{ steps.snapcraft.outputs.snap }}
-        release: edge,v2/edge
-    - name: Publish to the stable channel
-      uses: snapcore/action-publish@v1
-      if: ${{ github.event_name == 'release' && github.event.release.released }}
-      with:
-        store_login: ${{ secrets.STORE_LOGIN }}
-        snap: ${{ steps.snapcraft.outputs.snap }}
-        release: stable,v2/stable
