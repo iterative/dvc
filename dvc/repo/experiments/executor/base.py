@@ -271,7 +271,7 @@ class BaseExecutor(ABC):
             # - if run without --reset, the checkpoint out will be checked out
             #   using any hash present in dvc.lock (or removed if no entry
             #   exists in dvc.lock)
-            checkpoint_reset = kwargs.pop("reset", False)
+            checkpoint_reset: bool = kwargs.pop("reset", False)
             dvc_checkout(
                 dvc,
                 targets=targets,
@@ -283,7 +283,10 @@ class BaseExecutor(ABC):
             )
 
             checkpoint_func = partial(
-                cls.checkpoint_callback, dvc.scm, name, repro_force
+                cls.checkpoint_callback,
+                dvc.scm,
+                name,
+                repro_force or checkpoint_reset,
             )
             stages = dvc_reproduce(
                 dvc,
@@ -295,12 +298,18 @@ class BaseExecutor(ABC):
 
             exp_hash = cls.hash_exp(stages)
             try:
+                is_checkpoint = any(stage.is_checkpoint for stage in stages)
+                if is_checkpoint and checkpoint_reset:
+                    # For reset checkpoint stages, we need to force overwriting
+                    # existing checkpoint refs even though repro may not have
+                    # actually been run with --force
+                    repro_force = True
                 cls.commit(
                     dvc.scm,
                     exp_hash,
                     exp_name=name,
                     force=repro_force,
-                    checkpoint=any(stage.is_checkpoint for stage in stages),
+                    checkpoint=is_checkpoint,
                 )
             except UnchangedExperimentError:
                 pass

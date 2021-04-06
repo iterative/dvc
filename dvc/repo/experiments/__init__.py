@@ -324,7 +324,6 @@ class Experiments:
 
         if reset:
             self.reset_checkpoints()
-            kwargs["force"] = True
 
         if not (queue or tmp_dir):
             staged, _, _ = self.scm.status()
