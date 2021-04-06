@@ -58,7 +58,7 @@ def test_remove_file_in_subdir_as_target(tmp_dir, scm, dvc):
     )
 
     dvc.remove("foo/file1")
-    # TODO: discuss granular remove
+    # TODO: #5772 discuss granular remove
     assert not (tmp_dir / ".gitignore").exists()
 
 
