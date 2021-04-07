@@ -31,20 +31,20 @@ from dvc.utils.serialize import modify_yaml
     ],
 )
 def test_modify_override_floats(tmp_dir, val):
-    source = textwrap.dedent(
-        f"""
-        threshold: {val}
+    source_fmt = textwrap.dedent(
+        """\
+        threshold: {}
         epochs: 10
     """
     )
     param_file = tmp_dir / "params.py"
-    param_file.write_text(source)
+    param_file.write_text(source_fmt.format(val))
 
     with modify_yaml(param_file) as d:
         d["threshold"] = 1e3
-    assert "threshold: 1000.0" in param_file.read_text()
+    assert source_fmt.format("1000.0") == param_file.read_text()
 
     parsed = float(val)
     with modify_yaml(param_file) as d:
         d["threshold"] = parsed
-    assert f"threshold: {parsed}" in param_file.read_text()
+    assert source_fmt.format(str(parsed)) == param_file.read_text()
