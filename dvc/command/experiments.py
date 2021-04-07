@@ -965,6 +965,7 @@ def add_parser(subparsers, parent_parser):
         help="Keep experiments derived from all Git tags.",
     )
     experiments_gc_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
