@@ -50,7 +50,7 @@ def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help="Stages to reproduce. 'dvc.yaml' by default.",
+        help="Stages or output files to reproduce. 'dvc.yaml' by default.",
     ).complete = completion.DVCFILES_AND_STAGE
     repro_parser.add_argument(
         "-f",
