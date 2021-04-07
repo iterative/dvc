@@ -194,7 +194,6 @@ class BaseOutput:
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
-                self.repo.odb.local,
                 use_dvcignore=not self.IS_DEPENDENCY,
             ).hash_info
         return ostage(

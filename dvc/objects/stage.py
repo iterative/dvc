@@ -27,7 +27,7 @@ def _get_file_hash(path_info, fs, name):
     raise NotImplementedError
 
 
-def get_file_hash(path_info, fs, name, state=None):
+def get_file_hash(path_info, fs, name, state=None, use_dvcignore=True):
     if state:
         hash_info = state.get(  # pylint: disable=assignment-from-none
             path_info, fs,
@@ -35,7 +35,7 @@ def get_file_hash(path_info, fs, name, state=None):
         if hash_info:
             return hash_info
 
-    if not fs.exists(path_info):
+    if not fs.exists(path_info, use_dvcignore=use_dvcignore):
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
@@ -179,7 +179,9 @@ def stage(odb, path_info, fs, name, **kwargs):
     else:
         from .file import HashFile
 
-        hash_info = get_file_hash(path_info, fs, name, state)
+        hash_info = get_file_hash(
+            path_info, fs, name, state, use_dvcignore=use_dvcignore
+        )
         obj = HashFile(path_info, fs, hash_info)
 
     if obj.hash_info and fs.exists(path_info):
