@@ -97,7 +97,8 @@ install_requires = [
 
 gs = ["gcsfs>=0.7.2"]
 gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
-s3 = ["s3fs>=0.5.2", "boto3==1.16.52"]
+# temporary dependency to fetch from master
+s3 = ["https://github.com/dask/s3fs.git", "boto3==1.16.52"]
 azure = ["adlfs>=0.6.3", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
 oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
