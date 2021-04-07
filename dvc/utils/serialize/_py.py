@@ -168,7 +168,7 @@ def _ast_assign_to_dict(
         v = assign.value
         offsets = slice(v.col_offset, v.end_col_offset)
         lno = assign.lineno - 1
-        segment = src_lines.get(lno, []).get(offsets)
+        segment = src_lines[lno][offsets] if len(src_lines) > lno else None
         result[name] = {"lineno": lno, "value": value, "segment": segment}
     else:
         result[name] = value
