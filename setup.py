@@ -88,20 +88,20 @@ install_requires = [
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
-    "fsspec>=0.8.5",
+    "fsspec==0.8.7",
     "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["gcsfs>=0.7.2"]
+gs = ["gcsfs==0.7.2"]
 gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
 # temporary dependency to fetch from master
-s3 = ["https://github.com/dask/s3fs.git", "boto3==1.16.52"]
-azure = ["adlfs>=0.6.3", "azure-identity>=1.4.0", "knack"]
+s3 = ["s3fs @ git+https://github.com/dask/s3fs.git", "boto3==1.16.52"]
+azure = ["adlfs==0.7.0", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
-oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
+oss = ["oss2==2.6.1", "pycryptodome>=3.10"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9

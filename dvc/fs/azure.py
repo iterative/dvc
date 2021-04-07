@@ -51,6 +51,9 @@ class AzureFileSystem(FSSpecWrapper):
     def _prepare_credentials(self, config):
         from azure.identity.aio import DefaultAzureCredential
 
+        # Disable spam from failed cred types for DefaultAzureCredential
+        logging.getLogger("azure.identity.aio").setLevel(logging.ERROR)
+
         login_info = {}
         login_info["connection_string"] = config.get(
             "connection_string",
@@ -69,8 +72,12 @@ class AzureFileSystem(FSSpecWrapper):
         login_info["client_id"] = config.get("client_id")
         login_info["client_secret"] = config.get("client_secret")
 
-        if not any(login_info.values()):
-            login_info["credentials"] = DefaultAzureCredential()
+        if not any(
+            value for key, value in login_info.items() if key != "account_name"
+        ):
+            login_info["credential"] = DefaultAzureCredential(
+                exclude_interactive_browser_credential=False
+            )
 
         for login_method, required_keys in [  # noqa
             ("connection string", ["connection_string"]),
@@ -80,8 +87,11 @@ class AzureFileSystem(FSSpecWrapper):
             ),
             ("account key", ["account_name", "account_key"]),
             ("SAS token", ["account_name", "sas_token"]),
+            (
+                f"default credentials ({_DEFAULT_CREDS_STEPS})",
+                ["account_name", "credential"],
+            ),
             ("anonymous login", ["account_name"]),
-            (f"default credentials ({_DEFAULT_CREDS_STEPS})", ["credentials"]),
         ]:
             if all(login_info.get(key) is not None for key in required_keys):
                 break
