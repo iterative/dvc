@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException, NoOutputOrStageError
+from dvc.exceptions import DvcException, InvalidArgumentError, NoOutputOrStageError
 from dvc.main import main
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -57,9 +57,8 @@ def test_remove_file_in_subdir_as_target(tmp_dir, scm, dvc):
         outs=["foo"],
     )
 
-    dvc.remove("foo/file1")
-    # TODO: #5772 discuss granular remove
-    assert not (tmp_dir / ".gitignore").exists()
+    with pytest.raises(InvalidArgumentError):
+        dvc.remove("foo/file1")
 
 
 def test_remove_non_existent_file(tmp_dir, dvc):
