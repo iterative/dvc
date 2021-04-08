@@ -1213,6 +1213,7 @@ def _add_run_common(parser):
         "-j",
         "--jobs",
         type=int,
+        default=1,
         help="Run the specified number of experiments at a time in parallel.",
         metavar="<number>",
     )
