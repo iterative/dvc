@@ -2,7 +2,11 @@ import os
 
 import pytest
 
-from dvc.exceptions import DvcException, InvalidArgumentError, NoOutputOrStageError
+from dvc.exceptions import (
+    DvcException,
+    InvalidArgumentError,
+    NoOutputOrStageError,
+)
 from dvc.main import main
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System

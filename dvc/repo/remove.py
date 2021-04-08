@@ -1,8 +1,9 @@
 import logging
 import typing
 
-from . import locked
 from dvc.exceptions import InvalidArgumentError
+
+from . import locked
 
 if typing.TYPE_CHECKING:
     from dvc.repo import Repo
