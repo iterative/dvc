@@ -64,10 +64,10 @@ class SSHObjectDB(ObjectDB):
                 return self.batch_exists(chunks, callback=pbar.update_msg)
 
             with ThreadPoolExecutor(
-                max_workers=jobs or self.fs.JOBS
+                max_workers=jobs or self.fs.jobs
             ) as executor:
                 path_infos = [self.hash_to_path_info(x) for x in hashes]
-                chunks = to_chunks(path_infos, num_chunks=self.fs.JOBS)
+                chunks = to_chunks(path_infos, num_chunks=self.fs.jobs)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(hashes, in_remote))

@@ -318,7 +318,7 @@ class Remote:
             desc = "Uploading"
 
         if jobs is None:
-            jobs = self.fs.JOBS
+            jobs = self.fs.jobs
 
         dir_status, file_status, dir_contents = self._status(
             cache,
