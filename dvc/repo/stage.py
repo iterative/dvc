@@ -399,7 +399,7 @@ class StageLoad:
         """
         if glob and glob_stages:
             raise InvalidArgumentError(
-                "--glob and --glob-stages options are mutually exclusive."
+                "The --glob and --glob-stages options are mutually exclusive."
             )
 
         if not target:
