@@ -116,7 +116,7 @@ def add_parser(subparsers, parent_parser):
         "--deps",
         action="store_true",
         default=False,
-        help="Show only those params that are dependencies of stages.",
+        help="Show only params that are stage dependencies.",
     )
     params_diff_parser.add_argument(
         "--show-json",
