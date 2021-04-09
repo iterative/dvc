@@ -153,8 +153,8 @@ def add_arguments(repro_parser):
         action="store_true",
         default=False,
         help=(
-            "Allows targets containing shell-style wildcards to match out "
-            "files."
+            "Allows targets containing shell-style wildcards to match stage "
+            "outputs."
         ),
     )
     glob_group.add_argument(
