@@ -1,11 +1,21 @@
 import sys
 from collections import defaultdict
-from typing import Any, Dict, Iterable, Optional, TextIO
-
-from funcy import cached_property
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Optional,
+    Sequence,
+    TextIO,
+    Union,
+)
 
 from dvc.progress import Tqdm
 from dvc.utils import colorize
+
+if TYPE_CHECKING:
+    from dvc.ui.table import Headers, Styles, TableData
 
 
 class Formatter:
@@ -42,7 +52,7 @@ class Console:
     def error_output(self) -> TextIO:
         return self._error or sys.stderr
 
-    def enable(self):
+    def enable(self) -> None:
         self._enabled = True
 
     def success(self, message: str) -> None:
@@ -79,8 +89,9 @@ class Console:
         end: str = None,
         file: TextIO = None,
         flush: bool = False,
+        force: bool = False,
     ) -> None:
-        if not self._enabled:
+        if not self._enabled and not force:
             return
 
         file = file or self.output
@@ -126,36 +137,50 @@ class Console:
             return False
         return answer.startswith("y")
 
-    @cached_property
+    @property
     def rich_console(self):
         """rich_console is only set to stdout for now."""
         from rich import console
 
+        # FIXME: Getting IO Operation on closed file error
+        #  when testing with capsys, therefore we are creating
+        #  one instance each time as a temporary workaround.
         return console.Console(file=self.output)
 
-    def rich_table(self, pager: bool = True):
-        pass
+    def table(
+        self,
+        data: "TableData",
+        headers: "Headers" = None,
+        markdown: bool = False,
+        rich_table: bool = False,
+        force: bool = True,
+        pager: bool = False,
+        header_styles: Sequence["Styles"] = None,
+        row_styles: Sequence["Styles"] = None,
+        borders: Union[bool, str] = False,
+    ) -> None:
+        from dvc.ui import table as t
 
-    def table(self, header, rows, markdown: bool = False):
-        from tabulate import tabulate
+        if not data and not markdown:
+            return
 
-        if not rows and not markdown:
-            return ""
+        if not markdown and rich_table:
+            if force or self._enabled:
+                return t.rich_table(
+                    self,
+                    data,
+                    headers,
+                    pager=pager,
+                    header_styles=header_styles,
+                    row_styles=row_styles,
+                    borders=borders,
+                )
 
-        ret = tabulate(
-            rows,
-            header,
-            tablefmt="github" if markdown else "plain",
-            disable_numparse=True,
-            # None will be shown as "" by default, overriding
-            missingval="—",
+            return
+
+        return t.plain_table(
+            self, data, headers, markdown=markdown, pager=pager, force=force,
         )
-
-        if markdown:
-            # NOTE: md table is incomplete without the trailing newline
-            ret += "\n"
-
-        self.write(ret)
 
 
 ui = Console()
@@ -163,12 +188,13 @@ ui = Console()
 
 if __name__ == "__main__":
     ui.enable()
+
     ui.write("No default remote set")
     ui.success("Everything is up to date.")
     ui.warn("Run queued experiments will be removed.")
     ui.error("too few arguments.")
 
-    ui.table("keys", {"Path": ["scores.json"], "auc": ["0.5674"]})
+    ui.table([("scores.json", "0.5674")], headers=["Path", "auc"])
     ui.table(
-        "keys", {"Path": ["scores.json"], "auc": ["0.5674"]}, markdown=True
+        [("scores.json", "0.5674")], headers=["Path", "auc"], markdown=True
     )

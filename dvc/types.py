@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from dvc.path_info import PathInfo, URLInfo
 
@@ -11,3 +11,5 @@ AnyPath = Union[str, DvcPath, StrPath]
 
 OptStr = Optional[str]
 TargetType = Union[List[str], str]
+DictStrAny = Dict[str, Any]
+DictAny = Dict[Any, Any]
