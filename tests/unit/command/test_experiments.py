@@ -93,7 +93,7 @@ def test_experiments_run(dvc, scm, mocker):
         "name": None,
         "queue": False,
         "run_all": False,
-        "jobs": None,
+        "jobs": 1,
         "tmp_dir": False,
         "checkpoint_resume": None,
         "reset": False,
