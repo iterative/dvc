@@ -6,19 +6,24 @@ from functools import partial
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
-from dvc.objects.file import HashFile, StreamFile
+from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
 from dvc.utils import file_md5
 
 
 def _upload_file(path_info, fs, odb):
     from dvc.utils import tmp_fname
+    from dvc.utils.stream import HashedStreamReader
 
-    obj = StreamFile(odb.fs.path_info / tmp_fname(), odb.fs, path_info)
+    tmp_info = odb.fs.path_info / tmp_fname()
     with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
-        obj.sync(stream, total=fs.getsize(path_info), desc=path_info.name)
+        stream = HashedStreamReader(stream)
+        odb.fs.upload_fobj(
+            stream, tmp_info, desc=path_info.name, total=fs.getsize(path_info)
+        )
 
-    return obj
+    obj = HashFile(tmp_info, odb.fs, stream.hash_info)
+    return path_info, obj
 
 
 def _get_file_hash(path_info, fs, name, odb, upload):
@@ -39,10 +44,10 @@ def _get_file_hash(path_info, fs, name, odb, upload):
     else:
         raise NotImplementedError
 
-    return HashFile(path_info, fs, hash_info)
+    return path_info, HashFile(path_info, fs, hash_info)
 
 
-def get_file(
+def _get_file_obj(
     path_info, fs, name, odb=None, state=None, upload=False, **kwargs
 ):
     if state:
@@ -50,25 +55,27 @@ def get_file(
             path_info, fs,
         )
         if hash_info:
-            return HashFile(path_info, fs, hash_info)
+            return path_info, HashFile(path_info, fs, hash_info)
 
     if not fs.exists(path_info):
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    obj = _get_file_hash(path_info, fs, name, odb=odb, upload=upload)
+    target_info, obj = _get_file_hash(
+        path_info, fs, name, odb=odb, upload=upload
+    )
 
     hash_info = obj.hash_info
     if state:
         assert ".dir" not in hash_info.value
         state.save(obj.path_info, obj.fs, obj.hash_info)
 
-    return obj
+    return target_info, obj
 
 
 def get_file_hash(*args, **kwargs):
-    obj = get_file(*args, **kwargs)
+    _, obj = _get_file_obj(*args, **kwargs)
     return obj.hash_info
 
 
@@ -78,7 +85,7 @@ def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
     ) as pbar:
         worker = pbar.wrap_fn(
             partial(
-                get_file,
+                _get_file_obj,
                 fs=fs,
                 name=name,
                 odb=odb,
@@ -97,7 +104,7 @@ def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):
             hash_info = HashInfo(
                 name, details[name], size=details.get("size"),
             )
-            yield HashFile(file_info, fs, hash_info)
+            yield file_info, HashFile(file_info, fs, hash_info)
 
         return None
 
@@ -110,10 +117,9 @@ def _build_tree(path_info, fs, name, odb, state, upload, **kwargs):
     from .tree import Tree
 
     tree = Tree(None, None, None)
-    for obj in _iter_objects(
+    for file_info, obj in _iter_objects(
         path_info, fs, name, odb, state, upload, **kwargs
     ):
-        file_info = getattr(obj, "target_info", obj.path_info)
         if DvcIgnore.DVCIGNORE_FILE == file_info.name:
             raise DvcIgnoreInCollectedDirError(file_info.parent)
 
@@ -206,7 +212,9 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
     if fs.isdir(path_info):
         obj = _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs)
     else:
-        obj = get_file(path_info, fs, name, odb, state, upload, **kwargs)
+        _, obj = _get_file_obj(
+            path_info, fs, name, odb, state, upload, **kwargs
+        )
 
     if obj.hash_info and fs.exists(path_info):
         state.save(path_info, fs, obj.hash_info)
