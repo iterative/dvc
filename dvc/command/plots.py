@@ -5,7 +5,6 @@ from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.utils import format_link
-from dvc.utils.html import write
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,9 @@ class CmdPlots(CmdBase):
 
             rel: str = self.args.out or "plots.html"
             path = (Path.cwd() / rel).resolve()
-            write(path, plots=plots, template_path=self.args.html_template)
+            self.repo.plots.write_html(
+                path, plots=plots, html_template_path=self.args.html_template
+            )
 
         except DvcException:
             logger.exception("")

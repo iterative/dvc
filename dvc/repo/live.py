@@ -14,14 +14,13 @@ if TYPE_CHECKING:
 
 
 def create_summary(out):
-    from dvc.utils.html import write
-
     assert out.live and out.live["html"]
 
     metrics, plots = out.repo.live.show(str(out.path_info))
 
     html_path = out.path_info.with_suffix(".html")
-    write(html_path, plots, metrics)
+
+    out.repo.plots.write_html(html_path, plots, metrics)
     logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
 
