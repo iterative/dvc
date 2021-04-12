@@ -17,7 +17,7 @@ _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 class BaseS3FileSystem(FSSpecWrapper):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
-    REQUIRES = {"s3fs": "s3fs"}
+    REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
