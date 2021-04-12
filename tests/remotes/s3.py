@@ -110,9 +110,9 @@ def s3_fake_creds_file(monkeypatch):
     aws_dir.mkdir(exist_ok=True)
 
     aws_creds = aws_dir / "credentials"
-    exists = aws_creds.exists()
+    initially_exists = aws_creds.exists()
 
-    if not exists:
+    if not initially_exists:
         aws_creds.touch()
 
     with monkeypatch.context() as m:
@@ -122,7 +122,7 @@ def s3_fake_creds_file(monkeypatch):
         m.setenv("AWS_SESSION_TOKEN", "testing")
         yield
 
-    if not exists:
+    if aws_creds.exists() and not initially_exists:
         aws_creds.unlink()
 
 
