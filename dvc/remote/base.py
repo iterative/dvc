@@ -8,6 +8,8 @@ from functools import partial, wraps
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
+from dvc.objects import save
+from dvc.objects.stage import stage
 
 from ..progress import Tqdm
 from .index import RemoteIndex, RemoteIndexNoop
@@ -506,15 +508,17 @@ class Remote:
         return ret
 
     def transfer(self, from_fs, from_info, jobs=None, no_progress_bar=False):
-        from dvc.objects.transfer import transfer
-
-        return transfer(
+        obj = stage(
             self.odb,
-            from_fs,
             from_info,
+            from_fs,
+            "md5",
+            upload=True,
             jobs=jobs,
             no_progress_bar=no_progress_bar,
         )
+        save(self.odb, obj)
+        return obj.hash_info
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):
