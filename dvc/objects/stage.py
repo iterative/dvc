@@ -74,8 +74,8 @@ def _get_file_obj(
     return target_info, obj
 
 
-def get_file_hash(*args, **kwargs):
-    _, obj = _get_file_obj(*args, **kwargs)
+def get_file_hash(path_info, fs, name, state=None, **kwargs):
+    _, obj = _get_file_obj(path_info, fs, name, state=state, **kwargs)
     return obj.hash_info
 
 
