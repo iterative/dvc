@@ -12,7 +12,9 @@ from dvc.scm.base import SCMError
 logger = logging.getLogger(__name__)
 
 
-def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
+def _collect_experiment_commit(
+    repo, rev, stash=False, sha_only=True, param_deps=False
+):
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[rev]):
         if rev == "workspace":
@@ -21,8 +23,10 @@ def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
             commit = repo.scm.resolve_commit(rev)
             res["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
-        configs = _collect_configs(repo, rev=rev)
-        params = _read_params(repo, configs, rev)
+        params, params_path_infos = _collect_configs(repo, rev=rev)
+        params = _read_params(
+            repo, params, params_path_infos, rev, deps=param_deps
+        )
         if params:
             res["params"] = params
 
@@ -83,6 +87,7 @@ def show(
     all_commits=False,
     sha_only=False,
     num=1,
+    param_deps=False,
 ):
     res = defaultdict(OrderedDict)
 
@@ -110,7 +115,7 @@ def show(
 
     for rev in revs:
         res[rev]["baseline"] = _collect_experiment_commit(
-            repo, rev, sha_only=sha_only
+            repo, rev, sha_only=sha_only, param_deps=param_deps
         )
 
         if rev == "workspace":
@@ -127,14 +132,19 @@ def show(
             ref_info = ExpRefInfo.from_ref(exp_ref)
             assert ref_info.baseline_sha == rev
             _collect_experiment_branch(
-                res[rev], repo, exp_ref, rev, sha_only=sha_only
+                res[rev],
+                repo,
+                exp_ref,
+                rev,
+                sha_only=sha_only,
+                param_deps=param_deps,
             )
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():
         if entry.baseline_rev in revs:
             experiment = _collect_experiment_commit(
-                repo, stash_rev, stash=True
+                repo, stash_rev, stash=True, param_deps=param_deps
             )
             res[entry.baseline_rev][stash_rev] = experiment
 

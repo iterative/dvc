@@ -6,23 +6,28 @@ from dvc.utils.serialize import dumps_yaml
 def test_params_order(tmp_dir, dvc):
     tmp_dir.gen(
         {
-            "params.yaml": dumps_yaml({"p1": 1}),
-            "p1.yaml": dumps_yaml({"p2": 1}),
-            "sub": {"p2.yaml": dumps_yaml({"p3": 1})},
+            "params.yaml": dumps_yaml({"p": 1}),
+            "params1.yaml": dumps_yaml({"p1": 1}),
+            "sub": {"params2.yaml": dumps_yaml({"p2": 1})},
         }
     )
 
-    p2_path = os.path.join("sub", "p2.yaml")
+    params_path = os.path.join("..", "params.yaml")
+    p2_path = os.path.join("sub", "params2.yaml")
     dvc.stage.add(
-        params=[{p2_path: ["p3"]}, {"p1.yaml": ["p2"]}],
+        params=[{p2_path: ["p2"]}, {"params1.yaml": ["p1"]}],
         cmd="cmd1",
         name="stage1",
     )
     with (tmp_dir / "sub").chdir():
-        dvc.stage.add(params=["p1"], cmd="cmd2", name="stage2")
+        dvc.stage.add(params=[{params_path: ["p"]}], cmd="cmd2", name="stage2")
 
     # params are sorted during dumping, therefore p1 is first
-    assert list(dvc.params.show()[""]) == ["p1.yaml", p2_path, "params.yaml"]
+    assert list(dvc.params.show()[""]) == [
+        "params1.yaml",
+        p2_path,
+        "params.yaml",
+    ]
 
 
 def test_repro_unicode(tmp_dir, dvc):

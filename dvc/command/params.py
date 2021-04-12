@@ -40,6 +40,7 @@ class CmdParamsDiff(CmdBase):
                 b_rev=self.args.b_rev,
                 targets=self.args.targets,
                 all=self.args.all,
+                deps=self.args.deps,
             )
 
             if self.args.show_json:
@@ -110,6 +111,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show unchanged params as well.",
+    )
+    params_diff_parser.add_argument(
+        "--deps",
+        action="store_true",
+        default=False,
+        help="Show only params that are stage dependencies.",
     )
     params_diff_parser.add_argument(
         "--show-json",

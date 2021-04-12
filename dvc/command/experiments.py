@@ -365,6 +365,7 @@ class CmdExperimentsShow(CmdBase):
                 all_commits=self.args.all_commits,
                 sha_only=self.args.sha,
                 num=self.args.num,
+                param_deps=self.args.param_deps,
             )
 
             if self.args.show_json:
@@ -470,6 +471,7 @@ class CmdExperimentsDiff(CmdBase):
                 a_rev=self.args.a_rev,
                 b_rev=self.args.b_rev,
                 all=self.args.all,
+                param_deps=self.args.param_deps,
             )
 
             if self.args.show_json:
@@ -782,6 +784,12 @@ def add_parser(subparsers, parent_parser):
         metavar="<params_list>",
     )
     experiments_show_parser.add_argument(
+        "--param-deps",
+        action="store_true",
+        default=False,
+        help="Show only params that are stage dependencies.",
+    )
+    experiments_show_parser.add_argument(
         "--sort-by",
         help="Sort related experiments by the specified metric or param.",
         metavar="<metric/param>",
@@ -865,6 +873,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show unchanged metrics/params as well.",
+    )
+    experiments_diff_parser.add_argument(
+        "--param-deps",
+        action="store_true",
+        default=False,
+        help="Show only params that are stage dependencies.",
     )
     experiments_diff_parser.add_argument(
         "--show-json",

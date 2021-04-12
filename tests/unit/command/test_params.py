@@ -18,6 +18,7 @@ def test_params_diff(dvc, mocker):
             "--show-json",
             "--show-md",
             "--no-path",
+            "--deps",
         ]
     )
     assert cli_args.func == CmdParamsDiff
@@ -33,6 +34,21 @@ def test_params_diff(dvc, mocker):
         b_rev="HEAD~1",
         targets=["target"],
         all=True,
+        deps=True,
+    )
+
+
+def test_params_diff_from_cli(dvc, mocker):
+    cli_args = parse_args(["params", "diff"])
+    assert cli_args.func == CmdParamsDiff
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.params.diff.diff", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo, a_rev=None, b_rev=None, all=False, targets=None, deps=False,
     )
 
 
