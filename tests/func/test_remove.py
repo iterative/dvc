@@ -44,8 +44,8 @@ def test_remove_added_file_as_target(tmp_dir, scm, dvc):
     dvc.remove("foo")
 
     assert not (tmp_dir / ".gitignore").exists()
-    assert not (tmp_dir / "foo").exists()
     assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "foo").exists()
 
 
 def test_remove_added_dir_as_target(tmp_dir, scm, dvc):
@@ -57,8 +57,8 @@ def test_remove_added_dir_as_target(tmp_dir, scm, dvc):
     dvc.remove("foo")
 
     assert not (tmp_dir / ".gitignore").exists()
-    assert not (tmp_dir / "foo").exists()
     assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "foo").exists()
 
 
 def test_remove_added_file_in_subdir_as_target(tmp_dir, scm, dvc):

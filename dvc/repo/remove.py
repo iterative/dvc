@@ -46,7 +46,7 @@ def remove(self: "Repo", target: str, outs: bool = False):
                             parent=stage.outs[0].path_info, child=filter_info
                         )
                     )
-                stage.remove(remove_outs=True, force=True)
+                stage.remove(remove_outs=outs, force=outs)
         # target is stage name or `.dvc` file
         else:
             stage.remove(remove_outs=outs, force=outs)
