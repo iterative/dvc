@@ -39,6 +39,7 @@ class ParamsDependency(LocalDependency):
             path
             or os.path.join(stage.repo.root_dir, self.DEFAULT_PARAMS_FILE),
             info=info,
+            fs=stage.repo.fs,
         )
 
     def dumpd(self):
@@ -84,18 +85,33 @@ class ParamsDependency(LocalDependency):
     def status(self):
         return self.workspace_status()
 
-    def read_params(self):
+    def _read(self):
         if not self.exists:
             return {}
 
         suffix = self.path_info.suffix.lower()
         loader = LOADERS[suffix]
         try:
-            config = loader(self.path_info, fs=self.repo.fs)
+            return loader(self.path_info, fs=self.repo.fs)
         except ParseError as exc:
             raise BadParamFileError(
                 f"Unable to read parameters from '{self}'"
             ) from exc
+
+    def read_params_d(self):
+        config = self._read()
+
+        ret = {}
+        for param in self.params:
+            dpath.util.merge(
+                ret,
+                dpath.util.search(config, param, separator="."),
+                separator=".",
+            )
+        return ret
+
+    def read_params(self):
+        config = self._read()
 
         ret = {}
         for param in self.params:

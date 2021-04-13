@@ -38,6 +38,7 @@ def test_experiments_diff(dvc, scm, mocker):
             "HEAD~10",
             "HEAD~1",
             "--all",
+            "--param-deps",
             "--show-json",
             "--show-md",
             "--old",
@@ -53,7 +54,7 @@ def test_experiments_diff(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, a_rev="HEAD~10", b_rev="HEAD~1", all=True
+        cmd.repo, a_rev="HEAD~10", b_rev="HEAD~1", all=True, param_deps=True
     )
 
 
@@ -66,6 +67,7 @@ def test_experiments_show(dvc, scm, mocker):
             "--all-branches",
             "--all-commits",
             "--sha",
+            "--param-deps",
             "-n",
             "1",
         ]
@@ -84,6 +86,7 @@ def test_experiments_show(dvc, scm, mocker):
         all_commits=True,
         sha_only=True,
         num=1,
+        param_deps=True,
     )
 
 

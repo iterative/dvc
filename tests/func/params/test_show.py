@@ -80,19 +80,30 @@ def test_show_branch(tmp_dir, scm, dvc):
     }
 
 
-def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
+def test_pipeline_params(tmp_dir, scm, dvc, run_copy):
     from dvc.dvcfile import PIPELINE_FILE
 
-    tmp_dir.gen({"foo": "foo", "params.yaml": "foo: bar\nxyz: val"})
+    tmp_dir.gen(
+        {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
+    )
     run_copy("foo", "bar", name="copy-foo-bar", params=["foo,xyz"])
     scm.add(["params.yaml", PIPELINE_FILE])
     scm.commit("add stage")
 
-    tmp_dir.scm_gen("params.yaml", "foo: baz\nxyz: val", commit="baz")
-    tmp_dir.scm_gen("params.yaml", "foo: qux\nxyz: val", commit="qux")
+    tmp_dir.scm_gen(
+        "params.yaml", "foo: baz\nxyz: val\nabc: ignore", commit="baz"
+    )
+    tmp_dir.scm_gen(
+        "params.yaml", "foo: qux\nxyz: val\nabc: ignore", commit="qux"
+    )
 
-    assert dvc.params.show(revs=["master"]) == {
+    assert dvc.params.show(revs=["master"], deps=True) == {
         "master": {"params.yaml": {"foo": "qux", "xyz": "val"}}
+    }
+    assert dvc.params.show(revs=["master"]) == {
+        "master": {
+            "params.yaml": {"foo": "qux", "xyz": "val", "abc": "ignore"}
+        }
     }
 
 
