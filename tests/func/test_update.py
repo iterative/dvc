@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+import dvc as dvc_module
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
 from tests.unit.fs.test_repo import make_subrepo
@@ -358,8 +359,10 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
     indirect=True,
 )
 def test_update_import_url_to_remote_directory(
-    tmp_dir, dvc, workspace, local_remote
+    mocker, tmp_dir, dvc, workspace, local_remote
 ):
+    upload_file_mock = mocker.spy(dvc_module.objects.stage, "_upload_file")
+
     workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
     stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
@@ -371,4 +374,45 @@ def test_update_import_url_to_remote_directory(
         "foo": "foo",
         "foo2": "foo2",
         "bar": {"baz": "baz", "baz2": "baz2"},
+    }
+    assert upload_file_mock.mock.call_count == 4
+
+
+def test_update_import_url_to_remote_directory_changed_contents(
+    tmp_dir, dvc, local_cloud, local_remote
+):
+    local_cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
+    stage = dvc.imp_url("remote://upstream/data", to_remote=True)
+
+    local_cloud.gen(
+        {"data": {"foo": "not_foo", "foo2": "foo", "bar": {"baz2": "baz2"}}}
+    )
+    stage = dvc.update(stage.path, to_remote=True)
+
+    dvc.pull("data")
+    assert (tmp_dir / "data").read_text() == {
+        "foo": "not_foo",
+        "foo2": "foo",
+        "bar": {"baz": "baz", "baz2": "baz2"},
+    }
+
+
+def test_update_import_url_to_remote_directory_same_hash(
+    tmp_dir, dvc, local_cloud, local_remote
+):
+    local_cloud.gen(
+        {"data": {"foo": "foo", "bar": {"baz": "baz"}, "same": "same"}}
+    )
+    stage = dvc.imp_url("remote://upstream/data", to_remote=True)
+
+    local_cloud.gen(
+        {"data": {"foo": "baz", "bar": {"baz": "foo"}, "same": "same"}}
+    )
+    stage = dvc.update(stage.path, to_remote=True)
+
+    dvc.pull("data")
+    assert (tmp_dir / "data").read_text() == {
+        "foo": "baz",
+        "bar": {"baz": "foo"},
+        "same": "same",
     }

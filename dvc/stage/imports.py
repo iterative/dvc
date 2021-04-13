@@ -14,7 +14,7 @@ def _update_import_on_remote(stage, remote, jobs):
 
     url = stage.deps[0].def_path
     stage.outs[0].hash_info = stage.repo.cloud.transfer(
-        url, jobs=jobs, remote=remote, command="update"
+        url, jobs=jobs, update=True, remote=remote, command="update"
     )
 
 

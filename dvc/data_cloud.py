@@ -92,12 +92,15 @@ class DataCloud:
             show_checksums=show_checksums,
         )
 
-    def transfer(self, source, jobs=None, remote=None, command=None):
+    def transfer(
+        self, source, jobs=None, update=False, remote=None, command=None
+    ):
         """Transfer data items in a cloud-agnostic way.
 
         Args:
             source (str): url for the source location.
             jobs (int): number of jobs that can be running simultaneously.
+            update (bool): whether to update existing data or sync fully
             remote (dvc.remote.base.BaseRemote): optional remote to compare
                 cache to. By default remote from core.remote config option
                 is used.
@@ -108,7 +111,9 @@ class DataCloud:
 
         from_fs = get_cloud_fs(self.repo, url=source)
         remote = self.get_remote(remote, command)
-        return remote.transfer(from_fs, from_fs.path_info, jobs=jobs)
+        return remote.transfer(
+            from_fs, from_fs.path_info, jobs=jobs, update=update
+        )
 
     def status(
         self,

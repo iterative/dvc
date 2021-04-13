@@ -507,7 +507,24 @@ class Remote:
 
         return ret
 
-    def transfer(self, from_fs, from_info, jobs=None, no_progress_bar=False):
+    def transfer(
+        self,
+        from_fs,
+        from_info,
+        jobs=None,
+        update=False,
+        no_progress_bar=False,
+    ):
+        if update and from_fs.isdir(from_info):
+            stage(
+                self.odb,
+                from_info,
+                from_fs,
+                "md5",
+                jobs=jobs,
+                no_progress_bar=no_progress_bar,
+            )
+
         obj = stage(
             self.odb,
             from_info,
@@ -517,6 +534,7 @@ class Remote:
             jobs=jobs,
             no_progress_bar=no_progress_bar,
         )
+
         save(self.odb, obj)
         return obj.hash_info
 
