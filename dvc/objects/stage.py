@@ -93,7 +93,9 @@ def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
                 upload=upload,
             )
         )
-        with ThreadPoolExecutor(max_workers=fs.hash_jobs) as executor:
+        with ThreadPoolExecutor(
+            max_workers=kwargs.pop("jobs", fs.hash_jobs)
+        ) as executor:
             yield from executor.map(worker, fs.walk_files(path_info, **kwargs))
 
 
