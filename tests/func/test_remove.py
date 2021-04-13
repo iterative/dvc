@@ -163,3 +163,15 @@ def test_cmd_remove_gitignore_multistage(tmp_dir, scm, dvc, run_copy):
     assert main(["remove", stage1.addressing]) == 0
     assert main(["remove", stage.addressing]) == 0
     assert not (tmp_dir / ".gitignore").exists()
+
+
+def test_cmd_remove_multiple_files(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    tmp_dir.gen("bar", "bar")
+
+    dvc.add("foo")
+    dvc.add("bar")
+    assert main(["remove", "foo", "bar"]) == 0
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert not (tmp_dir / "bar.dvc").exists()
+    assert not (tmp_dir / ".gitignore").exists()
