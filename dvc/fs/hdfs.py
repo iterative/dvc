@@ -100,6 +100,7 @@ class HDFSFileSystem(BaseFileSystem):
             path_info.host,
             path_info.port,
             user=path_info.user,
+            kerb_ticket=path_info.kerb_ticket
         )
 
     @contextmanager

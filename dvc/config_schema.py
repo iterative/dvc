@@ -172,7 +172,11 @@ SCHEMA = {
                     "allow_agent": Bool,
                     **REMOTE_COMMON,
                 },
-                "hdfs": {"user": str, **REMOTE_COMMON},
+                "hdfs": {
+                    "user": str, 
+                    "kerb_ticket": str,
+                    **REMOTE_COMMON,
+                },
                 "webhdfs": {
                     "hdfscli_config": str,
                     "webhdfs_token": str,
