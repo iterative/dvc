@@ -81,7 +81,9 @@ def get_file_hash(path_info, fs, name, state=None, **kwargs):
 
 def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
     with Tqdm(
-        unit="md5", desc="Computing file/dir hashes (only done once)",
+        unit="md5",
+        desc="Computing file/dir hashes (only done once)",
+        disable=kwargs.pop("no_progress_bar", False),
     ) as pbar:
         worker = pbar.wrap_fn(
             partial(
