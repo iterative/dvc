@@ -129,7 +129,11 @@ Conda (Anaconda)
 
 .. code-block:: bash
 
-   conda install -c conda-forge dvc
+   conda install -c conda-forge mamba # installs much faster than conda
+   mamba install -c conda-forge dvc
+
+Depending on the remote storage type you plan to use to keep and share your data, you might need to
+install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
 
 pip (PyPI)
 ----------
