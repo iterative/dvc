@@ -350,7 +350,6 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
