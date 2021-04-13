@@ -515,22 +515,22 @@ class Remote:
         update=False,
         no_progress_bar=False,
     ):
-        if update and from_fs.isdir(from_info):
-            stage(
-                self.odb,
-                from_info,
-                from_fs,
-                "md5",
-                jobs=jobs,
-                no_progress_bar=no_progress_bar,
-            )
+        # When running import-url --to-remote / add --to-remote/-o ... we
+        # assume that it is unlikely that the odb will contain majority of the
+        # hashes, so we transfer everything as is (even if that file might
+        # already be in the cache) and don't waste an upload to scan the layout
+        # of the source location. But when doing update --to-remote, there is
+        # a high probability that the odb might contain some of the hashes, so
+        # we first calculate all the hashes (but don't transfer anything) and
+        # then only update the missing cache files.
 
+        upload = not (update and from_fs.isdir(from_info))
         obj = stage(
             self.odb,
             from_info,
             from_fs,
             "md5",
-            upload=True,
+            upload=upload,
             jobs=jobs,
             no_progress_bar=no_progress_bar,
         )

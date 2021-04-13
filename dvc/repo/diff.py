@@ -161,6 +161,7 @@ def _dir_output_paths(repo_fs, output, targets=None):
             if targets is None or any(
                 fname.isin_or_eq(target) for target in targets
             ):
+                # pylint: disable=no-member
                 yield str(fname), get_file_hash(fname, repo_fs, "md5").value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)

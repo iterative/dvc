@@ -2,7 +2,6 @@ import os
 
 import pytest
 
-import dvc as dvc_module
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
 from tests.unit.fs.test_repo import make_subrepo
@@ -361,12 +360,25 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
 def test_update_import_url_to_remote_directory(
     mocker, tmp_dir, dvc, workspace, local_remote
 ):
-    upload_file_mock = mocker.spy(dvc_module.objects.stage, "_upload_file")
+    upload_file_mock = mocker.spy(type(dvc.odb.local.fs), "upload_fobj")
 
     workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
     stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
-    workspace.gen({"data": {"foo2": "foo2", "bar": {"baz2": "baz2"}}})
+    workspace.gen(
+        {
+            "data": {
+                "foo2": "foo2",
+                "bar": {"baz2": "baz2"},
+                "repeated_hashes": {
+                    "foo": "foo",
+                    "baz": "baz",
+                    "foo_with_different_name": "foo",
+                },
+            }
+        }
+    )
+
     stage = dvc.update(stage.path, to_remote=True)
 
     dvc.pull("data")
@@ -374,8 +386,14 @@ def test_update_import_url_to_remote_directory(
         "foo": "foo",
         "foo2": "foo2",
         "bar": {"baz": "baz", "baz2": "baz2"},
+        "repeated_hashes": {
+            "foo": "foo",
+            "baz": "baz",
+            "foo_with_different_name": "foo",
+        },
     }
-    assert upload_file_mock.mock.call_count == 4
+    # 4 unique hashes (foo, foo2, foo2, baz2) + 2 .dir hashes
+    assert upload_file_mock.mock.call_count == 6
 
 
 def test_update_import_url_to_remote_directory_changed_contents(
