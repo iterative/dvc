@@ -142,29 +142,3 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
-  snap:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2.3.4
-    - name: Build the package
-      uses: snapcore/action-build@v1
-      id: snapcraft
-#    - name: Test the package
-#      run: |
-#        sudo snap install --dangerous --classic ${{ steps.snapcraft.outputs.snap }}
-#        dvc version
-#        sudo snap remove dvc
-    - name: Publish to the edge channel
-      uses: snapcore/action-publish@v1
-      if: github.event_name == 'push'
-      with:
-        store_login: ${{ secrets.STORE_LOGIN }}
-        snap: ${{ steps.snapcraft.outputs.snap }}
-        release: edge,v2/edge
-    - name: Publish to the stable channel
-      uses: snapcore/action-publish@v1
-      if: ${{ github.event_name == 'release' && github.event.release.released }}
-      with:
-        store_login: ${{ secrets.STORE_LOGIN }}
-        snap: ${{ steps.snapcraft.outputs.snap }}
-        release: stable,v2/stable

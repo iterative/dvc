@@ -229,7 +229,7 @@ class ObjectDB:
         keeping all of it in memory.
         """
         num_pages = remote_size / self.fs.LIST_OBJECT_PAGE_SIZE
-        if num_pages < 256 / self.fs.JOBS:
+        if num_pages < 256 / self.fs.jobs:
             # Fetching prefixes in parallel requires at least 255 more
             # requests, for small enough remotes it will be faster to fetch
             # entire cache without splitting it into prefixes.
@@ -263,7 +263,7 @@ class ObjectDB:
                 )
 
             with ThreadPoolExecutor(
-                max_workers=jobs or self.fs.JOBS
+                max_workers=jobs or self.fs.jobs
             ) as executor:
                 in_remote = executor.map(list_with_update, traverse_prefixes,)
                 yield from itertools.chain.from_iterable(in_remote)
@@ -331,7 +331,7 @@ class ObjectDB:
                 return ret
 
             with ThreadPoolExecutor(
-                max_workers=jobs or self.fs.JOBS
+                max_workers=jobs or self.fs.jobs
             ) as executor:
                 path_infos = map(self.hash_to_path_info, hashes)
                 in_remote = executor.map(exists_with_progress, path_infos)

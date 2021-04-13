@@ -33,7 +33,7 @@ def ask_password(host, user, port):
 class SSHFileSystem(BaseFileSystem):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
-    JOBS = 4
+    _JOBS = 4
 
     PARAM_CHECKSUM = "md5"
     # At any given time some of the connections will go over network and

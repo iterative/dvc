@@ -64,19 +64,6 @@ def test_diff_deleted(tmp_dir, scm, dvc):
     }
 
 
-def test_diff_deleted_config(tmp_dir, scm, dvc):
-    tmp_dir.gen("params.yaml", "foo: bar")
-    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
-    scm.add(["params.yaml", "Dvcfile"])
-    scm.commit("bar")
-
-    (tmp_dir / "params.yaml").unlink()
-
-    assert dvc.params.diff() == {
-        "params.yaml": {"foo": {"old": "bar", "new": None}}
-    }
-
-
 def test_diff_list(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo:\n- bar\n- baz")
     dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
