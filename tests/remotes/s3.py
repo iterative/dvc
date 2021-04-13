@@ -113,15 +113,16 @@ def s3_fake_creds_file(monkeypatch):
     if not initially_exists:
         aws_creds.touch()
 
-    with monkeypatch.context() as m:
-        m.setenv("AWS_ACCESS_KEY_ID", "testing")
-        m.setenv("AWS_SECRET_ACCESS_KEY", "testing")
-        m.setenv("AWS_SECURITY_TOKEN", "testing")
-        m.setenv("AWS_SESSION_TOKEN", "testing")
-        yield
-
-    if aws_creds.exists() and not initially_exists:
-        aws_creds.unlink()
+    try:
+        with monkeypatch.context() as m:
+            m.setenv("AWS_ACCESS_KEY_ID", "testing")
+            m.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+            m.setenv("AWS_SECURITY_TOKEN", "testing")
+            m.setenv("AWS_SESSION_TOKEN", "testing")
+            yield
+    finally:
+        if aws_creds.exists() and not initially_exists:
+            aws_creds.unlink()
 
 
 @pytest.fixture(scope="session")

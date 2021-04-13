@@ -9,7 +9,7 @@ services:
   motoserver:
     image: motoserver/moto
     ports:
-      - "5000:5000"
+      - "5000"
   oss:
     image: rkuprieiev/oss-emulator
     ports:
