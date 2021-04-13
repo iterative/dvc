@@ -6,6 +6,10 @@ services:
     command: azurite -L -l /data --blobHost 0.0.0.0 --queueHost 0.0.0.0
     ports:
       - "10000"
+  motoserver:
+    image: motoserver/moto
+    ports:
+      - "5000:5000"
   oss:
     image: rkuprieiev/oss-emulator
     ports:
