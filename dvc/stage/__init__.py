@@ -490,7 +490,7 @@ class Stage(params.StageParams):
         if link_failures:
             raise CacheLinkError(link_failures)
 
-    @rwlocked(read=["deps","outs"])
+    @rwlocked(read=["deps", "outs"])
     def run(
         self,
         dry=False,
@@ -504,16 +504,16 @@ class Stage(params.StageParams):
 
         if not self.frozen and self.is_import:
             jobs = kwargs.get("jobs", None)
-            self.sync_import(self, dry, force, jobs)
+            self._sync_import(dry, force, jobs)
         elif not self.frozen and self.cmd:
-            self.run_stage(self, dry, force, **kwargs)
+            self._run_stage(dry, force, **kwargs)
         else:
             args = (
                 ("outputs", "frozen ") if self.frozen else ("data sources", "")
             )
             logger.info("Verifying %s in %s%s", *args, self)
             if not dry:
-                self.check_missing_outputs(self)
+                self._check_missing_outputs()
 
         if not dry:
             if kwargs.get("checkpoint_func", None):
@@ -527,7 +527,7 @@ class Stage(params.StageParams):
         return run_stage(self, dry, force, **kwargs)
 
     @rwlocked(read=["deps"], write=["outs"])
-    def _sync_import(self, dry, force, jobs)
+    def _sync_import(self, dry, force, jobs):
         sync_import(self, dry, force, jobs)
 
     @rwlocked(read=["outs"])
