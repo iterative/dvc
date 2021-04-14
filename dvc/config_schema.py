@@ -173,7 +173,7 @@ SCHEMA = {
                     **REMOTE_COMMON,
                 },
                 "hdfs": {
-                    "user": str, 
+                    "user": str,
                     "kerb_ticket": str,
                     **REMOTE_COMMON,
                 },
