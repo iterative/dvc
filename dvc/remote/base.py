@@ -535,7 +535,7 @@ class Remote:
             no_progress_bar=no_progress_bar,
         )
 
-        save(self.odb, obj)
+        save(self.odb, obj, move=False)
         return obj.hash_info
 
     @staticmethod

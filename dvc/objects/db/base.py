@@ -42,7 +42,7 @@ class ObjectDB:
             hash_info,
         )
 
-    def add(self, path_info, fs, hash_info, **kwargs):
+    def add(self, path_info, fs, hash_info, move=True, **kwargs):
         try:
             self.check(hash_info)
             return
@@ -53,7 +53,10 @@ class ObjectDB:
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
         if isinstance(fs, type(self.fs)):
-            self.fs.move(path_info, cache_info)
+            if move:
+                self.fs.move(path_info, cache_info)
+            else:
+                self.fs.copy(path_info, cache_info)
         else:
             with fs.open(path_info, mode="rb") as fobj:
                 self.fs.upload_fobj(fobj, cache_info)
