@@ -310,6 +310,7 @@ class Stage(params.StageParams):
 
         return self._changed_deps()
 
+    @rwlocked(read=["deps"])
     def _changed_deps(self):
         for dep in self.deps:
             status = dep.status()
@@ -323,6 +324,7 @@ class Stage(params.StageParams):
                 return True
         return False
 
+    @rwlocked(read=["outs"])
     def changed_outs(self):
         for out in self.outs:
             status = out.status()
@@ -385,7 +387,6 @@ class Stage(params.StageParams):
         if purge:
             self.dvcfile.remove_stage(self)
 
-    @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
         if not (kwargs.get("force", False) or self.changed()):
             if not isinstance(self, PipelineStage) and self.is_data_source:
