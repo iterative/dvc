@@ -52,11 +52,8 @@ class ObjectDB:
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
-        if isinstance(fs, type(self.fs)):
-            if move:
-                self.fs.move(path_info, cache_info)
-            else:
-                self.fs.copy(path_info, cache_info)
+        if isinstance(fs, type(self.fs)) and move:
+            self.fs.move(path_info, cache_info)
         else:
             with fs.open(path_info, mode="rb") as fobj:
                 self.fs.upload_fobj(fobj, cache_info)

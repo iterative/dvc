@@ -350,6 +350,7 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
 @pytest.mark.parametrize(
     "workspace",
     [
+        pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("hdfs"),
@@ -359,8 +360,6 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
 def test_update_import_url_to_remote_directory(
     mocker, tmp_dir, dvc, workspace, local_remote
 ):
-    upload_file_mock = mocker.spy(type(dvc.odb.local.fs), "upload_fobj")
-
     workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
     stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
@@ -378,6 +377,7 @@ def test_update_import_url_to_remote_directory(
         }
     )
 
+    upload_file_mock = mocker.spy(type(dvc.odb.local.fs), "upload_fobj")
     stage = dvc.update(stage.path, to_remote=True)
 
     dvc.pull("data")
@@ -391,8 +391,8 @@ def test_update_import_url_to_remote_directory(
             "foo_with_different_name": "foo",
         },
     }
-    # 4 unique hashes (foo, foo2, foo2, baz2) + 2 .dir hashes
-    assert upload_file_mock.mock.call_count == 6
+    # 2 new hashes (foo2, baz2) + 1 .dir hash
+    assert upload_file_mock.mock.call_count == 3
 
 
 def test_update_import_url_to_remote_directory_changed_contents(

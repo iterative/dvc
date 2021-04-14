@@ -185,7 +185,7 @@ def _process_stages(
                 upload=True,
                 jobs=kwargs.get("jobs"),
             )
-            osave(out.odb, obj)
+            osave(out.odb, obj, move=False)
             out.hash_info = obj.hash_info
             out.checkout()
 

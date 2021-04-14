@@ -26,57 +26,55 @@ def _upload_file(path_info, fs, odb):
     return path_info, obj
 
 
-def _get_file_hash(path_info, fs, name, odb, upload):
-    if upload:
-        assert odb and name == "md5"
-        return _upload_file(path_info, fs, odb)
-
+def _get_file_hash(path_info, fs, name):
     info = fs.info(path_info)
     if name in info:
         assert not info[name].endswith(".dir")
-        hash_info = HashInfo(name, info[name], size=info["size"])
-    elif hasattr(fs, name):
-        hash_info = getattr(fs, name)(path_info)
-    elif name == "md5":
-        hash_info = HashInfo(
+        return HashInfo(name, info[name], size=info["size"])
+
+    func = getattr(fs, name, None)
+    if func:
+        return func(path_info)
+
+    if name == "md5":
+        return HashInfo(
             name, file_md5(path_info, fs), size=fs.getsize(path_info)
         )
-    else:
-        raise NotImplementedError
 
-    return path_info, HashFile(path_info, fs, hash_info)
+    raise NotImplementedError
 
 
-def _get_file_obj(
-    path_info, fs, name, odb=None, state=None, upload=False, **kwargs
-):
+def get_file_hash(path_info, fs, name, state=None):
     if state:
         hash_info = state.get(  # pylint: disable=assignment-from-none
             path_info, fs,
         )
         if hash_info:
-            return path_info, HashFile(path_info, fs, hash_info)
+            return hash_info
 
     if not fs.exists(path_info):
         raise FileNotFoundError(
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    target_info, obj = _get_file_hash(
-        path_info, fs, name, odb=odb, upload=upload
-    )
+    hash_info = _get_file_hash(path_info, fs, name)
 
-    hash_info = obj.hash_info
     if state:
         assert ".dir" not in hash_info.value
-        state.save(obj.path_info, obj.fs, obj.hash_info)
+        state.save(path_info, fs, hash_info)
 
-    return target_info, obj
+    return hash_info
 
 
-def get_file_hash(path_info, fs, name, state=None, **kwargs):
-    _, obj = _get_file_obj(path_info, fs, name, state=state, **kwargs)
-    return obj.hash_info
+def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
+    if upload:
+        assert odb and name == "md5"
+        return _upload_file(path_info, fs, odb)
+
+    obj = HashFile(
+        path_info, fs, get_file_hash(path_info, fs, name, state=state)
+    )
+    return path_info, obj
 
 
 def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
@@ -216,9 +214,7 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
     if fs.isdir(path_info):
         obj = _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs)
     else:
-        _, obj = _get_file_obj(
-            path_info, fs, name, odb, state, upload, **kwargs
-        )
+        _, obj = _get_file_obj(path_info, fs, name, odb, state, upload)
 
     if obj.hash_info and fs.exists(path_info):
         state.save(path_info, fs, obj.hash_info)
