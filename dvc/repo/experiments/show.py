@@ -13,11 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_experiment_commit(
-    repo, rev, stash=False, sha_only=True, param_deps=False
+    repo, exp_rev, stash=False, sha_only=True, param_deps=False
 ):
     res = defaultdict(dict)
-    for rev in repo.brancher(revs=[rev]):
+    for rev in repo.brancher(revs=[exp_rev]):
         if rev == "workspace":
+            if exp_rev != "workspace":
+                continue
             res["timestamp"] = None
         else:
             commit = repo.scm.resolve_commit(rev)
