@@ -123,7 +123,7 @@ class HDFSFileSystem(BaseFileSystem):
                 raise FileNotFoundError(*e.args)
             raise
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         assert not isinstance(path_info, list)
         assert path_info.scheme == "hdfs"
         with self.hdfs(path_info) as hdfs:

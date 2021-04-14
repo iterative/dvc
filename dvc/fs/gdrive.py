@@ -517,7 +517,7 @@ class GDriveFileSystem(BaseFileSystem):
         assert not create
         raise FileMissingError(path_info, hint)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         try:
             self._get_item_id(path_info)
         except FileMissingError:

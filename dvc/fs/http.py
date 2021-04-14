@@ -138,7 +138,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         return response
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         res = self._head(path_info.url)
         if res.status_code == 404:
             return False

@@ -142,7 +142,7 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return io.TextIOWrapper(fobj, encoding=encoding)
 
     # Checks whether file/directory exists at remote
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         # Use webdav check to test for file existence
         return self._client.check(path_info.path)
 

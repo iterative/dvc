@@ -139,7 +139,7 @@ class BaseFileSystem:
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
-    def exists(self, path_info, use_dvcignore=True) -> bool:
+    def exists(self, path_info) -> bool:
         raise NotImplementedError
 
     # pylint: disable=unused-argument

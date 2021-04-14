@@ -108,8 +108,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         from dvc.repo import Repo
 
         repo_path = os.path.join(dir_path, Repo.DVC_DIR)
-        # dvcignore will ignore subrepos, therefore using `use_dvcignore=False`
-        return self._main_repo.fs.isdir(repo_path, use_dvcignore=False)
+        return self._main_repo.fs.isdir(repo_path)
 
     def _get_fs_pair(
         self, path
@@ -142,19 +141,17 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         return dvc_fs.open(path_info, mode=mode, encoding=encoding, **kwargs)
 
-    def exists(
-        self, path, use_dvcignore=True
-    ):  # pylint: disable=arguments-differ
-        fs, dvc_fs = self._get_fs_pair(path)
+    def exists(self, path_info) -> bool:
+        fs, dvc_fs = self._get_fs_pair(path_info)
 
         if not dvc_fs:
-            return fs.exists(path)
+            return fs.exists(path_info)
 
-        if fs.exists(path):
+        if fs.exists(path_info):
             return True
 
         try:
-            meta = dvc_fs.metadata(path)
+            meta = dvc_fs.metadata(path_info)
         except FileNotFoundError:
             return False
 

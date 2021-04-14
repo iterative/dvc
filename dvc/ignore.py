@@ -159,26 +159,6 @@ def _no_match(path):
     return CheckIgnoreResult(path, False, ["::"])
 
 
-class DvcIgnoreFilterNoop:
-    def __init__(self, fs, root_dir):
-        pass
-
-    def __call__(self, root, dirs, files, **kwargs):
-        return dirs, files
-
-    def is_ignored_dir(self, _):
-        return False
-
-    def is_ignored_file(self, _):
-        return False
-
-    def check_ignore(self, path):
-        return _no_match(path)
-
-    def is_ignored(self, _):
-        return False
-
-
 class DvcIgnoreFilter:
     def __init__(self, fs, root_dir):
         from dvc.repo import Repo
@@ -206,9 +186,7 @@ class DvcIgnoreFilter:
         matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
 
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if not matches and self.fs.exists(
-            ignore_file_path, use_dvcignore=False
-        ):
+        if not matches and self.fs.exists(ignore_file_path):
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.fs
             )

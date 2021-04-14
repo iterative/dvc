@@ -12,7 +12,7 @@ class MemoryFileSystem(BaseFileSystem):
 
         self.fs = MemFS()
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         return self.fs.exists(path_info.fspath)
 
     def open(self, path_info, mode="r", encoding=None, **kwargs):

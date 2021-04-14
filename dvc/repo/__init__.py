@@ -157,13 +157,10 @@ class Repo:
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
         )
 
-        fs_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:
-            self._fs = scm.get_fs(rev, **fs_kwargs)
+            self._fs = scm.get_fs(rev)
         else:
-            self._fs = LocalFileSystem(
-                self, {"url": self.root_dir}, **fs_kwargs
-            )
+            self._fs = LocalFileSystem(self, {"url": self.root_dir})
 
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
@@ -240,6 +237,13 @@ class Repo:
                 # used in `params/metrics/plots/live` targets
                 return SCM(self.root_dir, no_scm=True)
             raise
+
+    @cached_property
+    def dvcignore(self):
+        from dvc.ignore import DvcIgnoreFilter
+
+        root = self.root_dir
+        return DvcIgnoreFilter(self.fs, root)
 
     def get_rev(self):
         from dvc.fs.local import LocalFileSystem
@@ -506,6 +510,7 @@ class Repo:
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
+        self.__dict__.pop("dvcignore", None)
 
     def __enter__(self):
         return self

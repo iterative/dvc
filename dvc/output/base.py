@@ -659,8 +659,8 @@ class BaseOutput:
 
         if stage:
             abs_path = os.path.join(stage.wdir, path)
-            if stage.repo.fs.dvcignore.is_ignored(abs_path):
-                check = stage.repo.fs.dvcignore.check_ignore(abs_path)
+            if stage.repo.dvcignore.is_ignored(abs_path):
+                check = stage.repo.dvcignore.check_ignore(abs_path)
                 raise cls.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
