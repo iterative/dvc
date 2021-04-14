@@ -490,6 +490,7 @@ class Stage(params.StageParams):
         if link_failures:
             raise CacheLinkError(link_failures)
 
+    @rwlocked(read=["deps","outs"])
     def run(
         self,
         dry=False,
