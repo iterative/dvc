@@ -177,15 +177,16 @@ def _process_stages(
             from dvc.objects.stage import stage as ostage
 
             from_fs = get_cloud_fs(repo, url=target)
+            jobs = kwargs.get("jobs", min((from_fs.jobs, out.odb.fs.jobs)))
             obj = ostage(
                 out.odb,
                 from_fs.path_info,
                 from_fs,
                 "md5",
                 upload=True,
-                jobs=kwargs.get("jobs"),
+                jobs=jobs,
             )
-            osave(out.odb, obj, move=False)
+            osave(out.odb, obj, jobs=jobs, move=False)
             out.hash_info = obj.hash_info
             out.checkout()
 
