@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dvc.progress import Tqdm
 
@@ -7,10 +8,22 @@ from .tree import Tree
 logger = logging.getLogger(__name__)
 
 
-def save(odb, obj, **kwargs):
+def save(odb, obj, jobs=None, **kwargs):
     if isinstance(obj, Tree):
-        for _, entry in Tqdm(obj):
-            odb.add(entry.path_info, entry.fs, entry.hash_info, **kwargs)
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            tasks = [
+                executor.submit(
+                    odb.add,
+                    entry.path_info,
+                    entry.fs,
+                    entry.hash_info,
+                    **kwargs
+                )
+                for _, entry in obj
+            ]
+            progress = Tqdm(total=len(tasks), unit="files")
+            for _ in as_completed(tasks):
+                progress.update(1)
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 

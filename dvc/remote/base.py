@@ -525,6 +525,7 @@ class Remote:
         # then only update the missing cache files.
 
         upload = not (update and from_fs.isdir(from_info))
+        jobs = jobs or min((from_fs.jobs, self.odb.fs.jobs))
         obj = stage(
             self.odb,
             from_info,
@@ -535,7 +536,7 @@ class Remote:
             no_progress_bar=no_progress_bar,
         )
 
-        save(self.odb, obj, move=False)
+        save(self.odb, obj, jobs=jobs, move=upload)
         return obj.hash_info
 
     @staticmethod
