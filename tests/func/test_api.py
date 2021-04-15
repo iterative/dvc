@@ -182,6 +182,15 @@ def test_open_not_cached(dvc):
         api.read(metric_file)
 
 
+def test_open_rev(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("foo", "foo", commit="foo")
+
+    (tmp_dir / "foo").write_text("bar")
+
+    with api.open("foo", rev="master") as fobj:
+        assert fobj.read() == "foo"
+
+
 @pytest.mark.parametrize("as_external", [True, False])
 @pytest.mark.parametrize("remote", [pytest.lazy_fixture("ssh")], indirect=True)
 @pytest.mark.parametrize(
