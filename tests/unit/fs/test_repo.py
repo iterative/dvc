@@ -324,7 +324,7 @@ def test_subrepos(tmp_dir, scm, dvc):
         {"lorem": "lorem", "dir2": {"ipsum": "ipsum"}}, commit="BAR"
     )
 
-    dvc.fs._reset()
+    dvc._reset()
     fs = RepoFileSystem(dvc, subrepos=True)
 
     def assert_fs_belongs_to_repo(ret_val):
@@ -402,7 +402,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     )
 
     # using fs that does not have dvcignore
-    dvc.fs._reset()
+    dvc._reset()
     fs = RepoFileSystem(dvc, subrepos=True)
     expected = [
         PathInfo("dir") / "repo",
@@ -445,7 +445,7 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
     subrepo.scm_gen({"ipsum": "ipsum"}, commit="BAR")
 
     # using fs that does not have dvcignore
-    dvc.fs._reset()
+    dvc._reset()
     fs = RepoFileSystem(dvc, subrepos=False)
     expected = [
         tmp_dir / ".dvcignore",

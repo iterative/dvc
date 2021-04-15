@@ -144,7 +144,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir}, use_dvcignore=True)
+        fs = LocalFileSystem(None, {"url": self._root_dir})
         self.assertWalkEqual(
             fs.walk("."),
             [
@@ -196,13 +196,11 @@ def test_cleanfs_subrepo(tmp_dir, dvc, scm, monkeypatch):
 
     path = PathInfo(subrepo_dir)
 
-    assert dvc.fs.use_dvcignore
     assert not dvc.fs.exists(path / "foo")
     assert not dvc.fs.isfile(path / "foo")
     assert not dvc.fs.exists(path / "dir")
     assert not dvc.fs.isdir(path / "dir")
 
-    assert subrepo.fs.use_dvcignore
     assert subrepo.fs.exists(path / "foo")
     assert subrepo.fs.isfile(path / "foo")
     assert subrepo.fs.exists(path / "dir")
@@ -219,8 +217,8 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     scm.commit("Add subrepo")
 
     dvc_fs = dvc.fs
-    dvc_fs._reset()
-    scm_fs = scm.get_fs("HEAD", use_dvcignore=True)
+    dvc._reset()
+    scm_fs = scm.get_fs("HEAD")
     path = os.fspath(tmp_dir)
     get_dirs = itemgetter(1)
 

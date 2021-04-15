@@ -239,9 +239,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
          ignore_subrepos is set to False.
         """
         fs, dvc_fs = self._get_fs_pair(dir_path)
-        fs_walk = fs.walk(
-            dir_path, topdown=True, ignore_subrepos=not self._traverse_subrepos
-        )
+        fs_walk = fs.walk(dir_path, topdown=True)
         if dvc_fs:
             dvc_walk = dvc_fs.walk(dir_path, topdown=True, **kwargs)
         else:
@@ -304,13 +302,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
 
     def walk(
-        self,
-        top,
-        topdown=True,
-        onerror=None,
-        dvcfiles=False,
-        follow_subrepos=None,
-        **kwargs
+        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
     ):  # pylint: disable=arguments-differ
         """Walk and merge both DVC and repo fss.
 
@@ -337,18 +329,9 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
-        ignore_subrepos = not self._traverse_subrepos
-        if follow_subrepos is not None:
-            ignore_subrepos = not follow_subrepos
-
         fs, dvc_fs = self._get_fs_pair(top)
         repo_exists = fs.exists(top)
-        repo_walk = fs.walk(
-            top,
-            topdown=topdown,
-            onerror=onerror,
-            ignore_subrepos=ignore_subrepos,
-        )
+        repo_walk = fs.walk(top, topdown=topdown, onerror=onerror,)
 
         if not dvc_fs or (repo_exists and dvc_fs.isdvc(top)):
             yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)

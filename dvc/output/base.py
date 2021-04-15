@@ -206,6 +206,12 @@ class BaseOutput:
 
     @property
     def exists(self):
+        if self.scheme == "local":
+            dvcignore = getattr(self.repo, "dvcignore", None)
+            if dvcignore:
+                if dvcignore.is_ignored(self.path_info):
+                    return False
+
         return self.fs.exists(self.path_info)
 
     def changed_checksum(self):

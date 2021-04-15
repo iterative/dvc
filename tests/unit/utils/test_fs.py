@@ -28,7 +28,7 @@ from tests.basic_env import TestDir
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        fs = LocalFileSystem(None, {"url": self.root_dir}, use_dvcignore=True)
+        fs = LocalFileSystem(None, {"url": self.root_dir})
         file_time, file_size = get_mtime_and_size(self.DATA, fs)
         dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, fs)
 
@@ -129,7 +129,7 @@ def test_path_object_and_str_are_valid_types_get_mtime_and_size(tmp_dir):
     tmp_dir.gen(
         {"dir": {"dir_file": "dir file content"}, "file": "file_content"}
     )
-    fs = LocalFileSystem(None, {"url": os.fspath(tmp_dir)}, use_dvcignore=True)
+    fs = LocalFileSystem(None, {"url": os.fspath(tmp_dir)})
 
     time, size = get_mtime_and_size("dir", fs)
     object_time, object_size = get_mtime_and_size(PathInfo("dir"), fs)
