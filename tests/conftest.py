@@ -19,7 +19,7 @@ REMOTES = {
     "hdfs": False,
     "http": True,
     "oss": False,
-    "s3": True,
+    "s3": False,
     "ssh": True,
     "webdav": True,
 }
