@@ -144,7 +144,7 @@ def _cached_clone(url, rev, for_write=False):
     revision checked out. If for_write is set prevents reusing this dir via
     cache.
     """
-    from distutils.dir_util import copy_tree
+    from shutil import copytree
 
     # even if we have already cloned this repo, we may need to
     # fetch/fast-forward to get specified rev
@@ -156,7 +156,7 @@ def _cached_clone(url, rev, for_write=False):
     # Copy to a new dir to keep the clone clean
     repo_path = tempfile.mkdtemp("dvc-erepo")
     logger.debug("erepo: making a copy of %s clone", url)
-    copy_tree(clone_path, repo_path)
+    copytree(clone_path, repo_path, dirs_exist_ok=True)
 
     # Check out the specified revision
     if for_write:
