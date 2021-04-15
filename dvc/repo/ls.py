@@ -35,7 +35,7 @@ def ls(
         if path:
             path_info /= path
 
-        ret = _ls(repo.repo_fs, path_info, recursive, dvc_only)
+        ret = _ls(repo, repo.repo_fs, path_info, recursive, dvc_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, dvc_only=dvc_only)
@@ -48,7 +48,7 @@ def ls(
         return ret_list
 
 
-def _ls(fs, path_info, recursive=None, dvc_only=False):
+def _ls(repo, fs, path_info, recursive=None, dvc_only=False):
     def onerror(exc):
         raise exc
 
@@ -57,6 +57,8 @@ def _ls(fs, path_info, recursive=None, dvc_only=False):
         for root, dirs, files in fs.walk(
             path_info.fspath, onerror=onerror, dvcfiles=True
         ):
+            if fs.scheme == "local":
+                dirs[:], files[:] = repo.dvcignore(root, dirs, files)
             entries = chain(files, dirs) if not recursive else files
             infos.extend(PathInfo(root) / entry for entry in entries)
             if not recursive:

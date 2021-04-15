@@ -19,6 +19,10 @@ def _to_pattern_info_list(str_list):
     return [PatternInfo(a, "") for a in str_list]
 
 
+def get_path_list_from_ls(ls_list: list, relative_path: PathInfo) -> list:
+    return [relative_path / entry["path"] for entry in ls_list]
+
+
 def test_ignore(tmp_dir, dvc, monkeypatch):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
@@ -27,7 +31,10 @@ def test_ignore(tmp_dir, dvc, monkeypatch):
 
     path = PathInfo(tmp_dir)
 
-    assert set(dvc.fs.walk_files(path / "dir")) == {path / "dir" / "other"}
+    path_list = get_path_list_from_ls(
+        dvc.ls(path, "dir", recursive=True), path / "dir"
+    )
+    assert set(path_list) == {path / "dir" / "other"}
 
 
 def test_ignore_unicode(tmp_dir, dvc):
@@ -35,7 +42,11 @@ def test_ignore_unicode(tmp_dir, dvc):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/тест")
     dvc._reset()
     path = PathInfo(tmp_dir)
-    assert set(dvc.fs.walk_files(path / "dir")) == {path / "dir" / "other"}
+
+    path_list = get_path_list_from_ls(
+        dvc.ls(path, "dir", recursive=True), path / "dir"
+    )
+    assert set(path_list) == {path / "dir" / "other"}
 
 
 def test_rename_ignored_file(tmp_dir, dvc):
