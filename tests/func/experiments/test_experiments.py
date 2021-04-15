@@ -611,3 +611,16 @@ def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
     assert not (tmp_dir / "bar").exists()
+
+
+@pytest.mark.parametrize("tail", ["", "~1", "^"])
+def test_fix_exp_head(tmp_dir, scm, tail):
+    from dvc.repo.experiments.base import EXEC_BASELINE
+    from dvc.repo.experiments.utils import fix_exp_head
+
+    head = "HEAD" + tail
+    assert head == fix_exp_head(scm, head)
+
+    scm.set_ref(EXEC_BASELINE, "refs/heads/master")
+    assert EXEC_BASELINE + tail == fix_exp_head(scm, head)
+    assert "foo" + tail == fix_exp_head(scm, "foo" + tail)
