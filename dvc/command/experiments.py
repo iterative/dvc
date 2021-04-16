@@ -509,10 +509,16 @@ class CmdExperimentsRun(CmdRepro):
     def run(self):
         from dvc.command.metrics import _show_metrics
 
-        if self.args.reset and self.args.checkpoint_resume:
-            raise InvalidArgumentError(
-                "--reset and --rev are mutually exclusive."
-            )
+        if self.args.checkpoint_resume:
+            if self.args.reset:
+                raise InvalidArgumentError(
+                    "--reset and --rev are mutually exclusive."
+                )
+            if not (self.args.queue or self.args.tmp_dir):
+                raise InvalidArgumentError(
+                    "--rev can only be used in conjunction with "
+                    "--queue or --temp."
+                )
 
         if self.args.reset:
             logger.info("Any existing checkpoints will be reset and re-run.")
@@ -932,9 +938,8 @@ def add_parser(subparsers, parent_parser):
         type=str,
         dest="checkpoint_resume",
         help=(
-            "Continue the specified checkpoint experiment. "
-            "(Only required for explicitly resuming checkpoints in queued "
-            "or temp dir runs.)"
+            "Continue the specified checkpoint experiment. Can only be used "
+            "in conjunction with --queue or --temp."
         ),
         metavar="<experiment_rev>",
     ).complete = completion.EXPERIMENT
