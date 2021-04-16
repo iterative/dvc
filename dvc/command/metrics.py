@@ -219,6 +219,7 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all tags.",
     )
     metrics_show_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
