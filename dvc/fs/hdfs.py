@@ -86,8 +86,7 @@ class HDFSFileSystem(BaseFileSystem):
 
         self.kerb_ticket = config.get("kerb_ticket")
 
-    @staticmethod
-    def hdfs(path_info, kerb_ticket=None):
+    def hdfs(self, path_info):
         import pyarrow.fs
 
         # NOTE: HadoopFileSystem is not meant to be closed by us and doesn't
@@ -102,7 +101,7 @@ class HDFSFileSystem(BaseFileSystem):
             path_info.host,
             path_info.port,
             user=path_info.user,
-            kerb_ticket=kerb_ticket,
+            kerb_ticket=self.kerb_ticket,
         )
 
     @contextmanager
@@ -110,7 +109,7 @@ class HDFSFileSystem(BaseFileSystem):
         assert mode in {"r", "rt", "rb"}
 
         try:
-            with self.hdfs(path_info, self.kerb_ticket) as hdfs, closing(
+            with self.hdfs(path_info) as hdfs, closing(
                 hdfs.open_input_stream(path_info.path)
             ) as fd:
                 if mode == "rb":
@@ -127,7 +126,7 @@ class HDFSFileSystem(BaseFileSystem):
     def exists(self, path_info, use_dvcignore=True):
         assert not isinstance(path_info, list)
         assert path_info.scheme == "hdfs"
-        with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             import pyarrow.fs
 
             file_info = hdfs.get_file_info(path_info.path)
@@ -164,7 +163,7 @@ class HDFSFileSystem(BaseFileSystem):
         if not self.isdir(path_info):
             return
 
-        with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             for root, dnames, fnames in self._walk(
                 hdfs, path_info.path, **kwargs
             ):
@@ -180,7 +179,7 @@ class HDFSFileSystem(BaseFileSystem):
 
         if self.exists(path_info):
             logger.debug(f"Removing {path_info.path}")
-            with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+            with self.hdfs(path_info) as hdfs:
                 import pyarrow.fs
 
                 file_info = hdfs.get_file_info(path_info.path)
@@ -190,13 +189,13 @@ class HDFSFileSystem(BaseFileSystem):
                     hdfs.delete_file(path_info.path)
 
     def makedirs(self, path_info):
-        with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             # NOTE: fs.create_dir creates parents by default
             hdfs.create_dir(path_info.path)
 
     def copy(self, from_info, to_info, **_kwargs):
         # NOTE: hdfs.copy_file is not supported yet in pyarrow
-        with self.hdfs(to_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(to_info) as hdfs:
             # NOTE: this is how `hadoop fs -cp` works too: it copies through
             # your local machine.
             with closing(hdfs.open_input_stream(from_info.path)) as from_fobj:
@@ -212,21 +211,21 @@ class HDFSFileSystem(BaseFileSystem):
                     raise
 
     def isfile(self, path_info):
-        with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             import pyarrow.fs
 
             file_info = hdfs.get_file_info(path_info.path)
             return file_info.type == pyarrow.fs.FileType.File
 
     def isdir(self, path_info):
-        with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             import pyarrow.fs
 
             file_info = hdfs.get_file_info(path_info.path)
             return file_info.type == pyarrow.fs.FileType.Directory
 
     def info(self, path_info):
-        with self.hdfs(path_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(path_info) as hdfs:
             finfo = hdfs.get_file_info(path_info.path)
             return {"size": finfo.size}
 
@@ -238,14 +237,14 @@ class HDFSFileSystem(BaseFileSystem):
         )
 
     def _upload_fobj(self, fobj, to_info):
-        with self.hdfs(to_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(to_info) as hdfs:
             with hdfs.open_output_stream(to_info.path) as fdest:
                 shutil.copyfileobj(fobj, fdest)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        with self.hdfs(to_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(to_info) as hdfs:
             tmp_file = tmp_fname(to_info.path)
             total = os.path.getsize(from_file)
             with open(from_file, "rb") as fobj:
@@ -263,7 +262,7 @@ class HDFSFileSystem(BaseFileSystem):
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
-        with self.hdfs(from_info, self.kerb_ticket) as hdfs:
+        with self.hdfs(from_info) as hdfs:
             file_info = hdfs.get_file_info(from_info.path)
             total = file_info.size
             with open(to_file, "wb+") as fobj:
