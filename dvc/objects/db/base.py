@@ -52,11 +52,18 @@ class ObjectDB:
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
-        if isinstance(fs, type(self.fs)) and move:
-            self.fs.move(path_info, cache_info)
-        else:
-            with fs.open(path_info, mode="rb") as fobj:
-                self.fs.upload_fobj(fobj, cache_info)
+        try:
+            if isinstance(fs, type(self.fs)) and move:
+                self.fs.move(path_info, cache_info)
+            else:
+                with fs.open(path_info, mode="rb") as fobj:
+                    self.fs.upload_fobj(fobj, cache_info)
+        except OSError as exc:
+            if isinstance(exc, FileExistsError) or self.fs.exists(cache_info):
+                logger.debug("'%s' file already exists, skipping", path_info)
+            else:
+                raise
+
         self.protect(cache_info)
         self.fs.repo.state.save(cache_info, self.fs, hash_info)
 

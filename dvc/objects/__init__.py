@@ -11,19 +11,22 @@ logger = logging.getLogger(__name__)
 def save(odb, obj, jobs=None, **kwargs):
     if isinstance(obj, Tree):
         with ThreadPoolExecutor(max_workers=jobs) as executor:
-            tasks = [
-                executor.submit(
-                    odb.add,
-                    entry.path_info,
-                    entry.fs,
-                    entry.hash_info,
-                    **kwargs
-                )
-                for _, entry in obj
-            ]
-            progress = Tqdm(total=len(tasks), unit="files")
-            for _ in as_completed(tasks):
-                progress.update(1)
+            for future in Tqdm(
+                as_completed(
+                    executor.submit(
+                        odb.add,
+                        entry.path_info,
+                        entry.fs,
+                        entry.hash_info,
+                        **kwargs
+                    )
+                    for _, entry in obj
+                ),
+                total=len(obj),
+                unit="file",
+            ):
+                future.result()
+
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 
