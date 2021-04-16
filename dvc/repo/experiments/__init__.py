@@ -194,8 +194,8 @@ class Experiments:
                         if branch:
                             branch_name = ExpRefInfo.from_ref(branch).name
                         else:
-                            branch_name = ""
-                        if self.scm.is_dirty():
+                            branch_name = f"{resume_rev[:7]}"
+                        if self.scm.is_dirty() or not branch:
                             logger.info(
                                 "Modified checkpoint experiment based on "
                                 "'%s' will be created",
@@ -447,22 +447,34 @@ class Experiments:
         """
         assert resume_rev
 
-        allow_multiple = "params" in kwargs
-        branch: Optional[str] = self.get_branch_by_rev(
-            resume_rev, allow_multiple=allow_multiple
-        )
-        if not branch:
-            raise DvcException(
-                "Could not find checkpoint experiment " f"'{resume_rev[:7]}'"
+        branch: Optional[str] = None
+        try:
+            allow_multiple = bool(kwargs.get("params", None))
+            branch = self.get_branch_by_rev(
+                resume_rev, allow_multiple=allow_multiple
             )
+            if not branch:
+                raise DvcException(
+                    "Could not find checkpoint experiment "
+                    f"'{resume_rev[:7]}'"
+                )
+            baseline_rev = self._get_baseline(branch)
+        except MultipleBranchError as exc:
+            baselines = {
+                info.baseline_sha
+                for info in exc.ref_infos
+                if info.baseline_sha
+            }
+            if len(baselines) == 1:
+                baseline_rev = baselines.pop()
+            else:
+                raise
 
-        baseline_rev = self._get_baseline(branch)
         logger.debug(
-            "Resume from checkpoint '%s' with baseline '%s'",
-            resume_rev,
+            "Checkpoint run from '%s' with baseline '%s'",
+            resume_rev[:7],
             baseline_rev,
         )
-
         return self._stash_exp(
             *args,
             resume_rev=resume_rev,
@@ -797,7 +809,10 @@ class Experiments:
         if not ref_infos:
             return None
         if len(ref_infos) > 1 and not allow_multiple:
-            raise MultipleBranchError(rev)
+            for ref_info in ref_infos:
+                if self.scm.get_ref(str(ref_info)) == rev:
+                    return str(ref_info)
+            raise MultipleBranchError(rev, ref_infos)
         return str(ref_infos[0])
 
     def get_exact_name(self, rev: str):

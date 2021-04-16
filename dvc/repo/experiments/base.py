@@ -74,12 +74,13 @@ class InvalidExpRevError(InvalidArgumentError):
 
 
 class MultipleBranchError(DvcException):
-    def __init__(self, rev):
+    def __init__(self, rev, ref_infos):
         super().__init__(
             f"Ambiguous commit '{rev[:7]}' belongs to multiple experiment "
             "branches."
         )
         self.rev = rev
+        self.ref_infos = ref_infos
 
 
 class ApplyConflictError(InvalidArgumentError):
