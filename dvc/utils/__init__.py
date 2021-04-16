@@ -323,10 +323,10 @@ def relpath(path, start=os.curdir):
 
     # Windows path on different drive than curdir doesn't have relpath
     if os.name == "nt":
-        # Since python 3.8 os.realpath resolves network shares to their UNC path
-        # Also realpath resolves a relative path against the current directory
-        # So, to be certain that relative paths correctly captured, we need to resolve
-        # relative path first and then move to UNC path
+        # Since python 3.8 os.realpath resolves network shares to their UNC
+        # path. Also realpath resolves a relative path against the current
+        # directory. So, to be certain that relative paths correctly captured,
+        # we need to resolve relative path first and then move to UNC path.
         path = os.path.realpath(os.path.join(start, path))
         start = os.path.realpath(start)
         if not os.path.commonprefix([start, os.path.abspath(path)]):
