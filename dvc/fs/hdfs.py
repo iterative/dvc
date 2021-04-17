@@ -84,8 +84,9 @@ class HDFSFileSystem(BaseFileSystem):
             path=parsed.path,
         )
 
-    @staticmethod
-    def hdfs(path_info):
+        self.kerb_ticket = config.get("kerb_ticket")
+
+    def hdfs(self, path_info):
         import pyarrow.fs
 
         # NOTE: HadoopFileSystem is not meant to be closed by us and doesn't
@@ -100,6 +101,7 @@ class HDFSFileSystem(BaseFileSystem):
             path_info.host,
             path_info.port,
             user=path_info.user,
+            kerb_ticket=self.kerb_ticket,
         )
 
     @contextmanager
