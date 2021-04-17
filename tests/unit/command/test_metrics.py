@@ -122,7 +122,7 @@ def test_metrics_show(dvc, mocker):
     m2 = mocker.patch(
         "dvc.command.metrics._show_metrics",
         spec=_show_metrics,
-        return_value={},
+        return_value="",
     )
 
     assert cmd.run() == 0
