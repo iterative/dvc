@@ -111,22 +111,37 @@ def test_metrics_show(dvc, mocker):
             "--all-commits",
             "target1",
             "target2",
+            "--precision",
+            "8",
         ]
     )
     assert cli_args.func == CmdMetricsShow
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.metrics.show.show", return_value={})
+    m1 = mocker.patch("dvc.repo.metrics.show.show", return_value={})
+    m2 = mocker.patch(
+        "dvc.command.metrics._show_metrics",
+        spec=_show_metrics,
+        return_value={},
+    )
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(
+    m1.assert_called_once_with(
         cmd.repo,
         ["target1", "target2"],
         recursive=True,
         all_tags=True,
         all_branches=True,
         all_commits=True,
+    )
+    m2.assert_called_once_with(
+        {},
+        markdown=False,
+        all_tags=True,
+        all_branches=True,
+        all_commits=True,
+        precision=8,
     )
 
 
