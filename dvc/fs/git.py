@@ -9,6 +9,8 @@ from .base import BaseFileSystem
 class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
+    HIDDEN_DIRS = {".git", ".hg", ".dvc"}
+
     def __init__(self, root_dir, trie):
         super().__init__(None, {})
         self._fs_root = root_dir
@@ -87,6 +89,7 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         key = self._get_key(top)
         for prefix, dirs, files in self.trie.walk(key, topdown=topdown):
+            dirs[:] = list(filter(lambda i: i not in self.HIDDEN_DIRS, dirs))
             if prefix:
                 root = os.path.join(self.fs_root, os.sep.join(prefix))
             else:

@@ -6,6 +6,7 @@ import stat
 import sys
 
 from dvc.exceptions import DvcException
+from dvc.scheme import Schemes
 from dvc.system import System
 from dvc.utils import dict_md5
 
@@ -37,6 +38,9 @@ def get_mtime_and_size(path, fs):
         size = 0
         files_mtimes = {}
         for file_path in fs.walk_files(path):
+            if fs.scheme == Schemes.LOCAL and fs.repo:
+                if fs.repo.dvcignore.is_ignored(file_path):
+                    continue
             try:
                 stats = fs.stat(file_path)
             except OSError as exc:
