@@ -1,3 +1,6 @@
+from dvc.repo.experiments.utils import fix_exp_head
+
+
 def _revisions(repo, revs, experiment):
     revisions = revs or []
     if experiment and len(revisions) == 1:
@@ -6,7 +9,7 @@ def _revisions(repo, revs, experiment):
             revisions.append(baseline[:7])
     if len(revisions) <= 1:
         if len(revisions) == 0 and repo.scm.is_dirty():
-            revisions.append("HEAD")
+            revisions.append(fix_exp_head(repo.scm, "HEAD"))
         revisions.append("workspace")
     return revisions
 

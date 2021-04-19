@@ -1,9 +1,14 @@
-from typing import TYPE_CHECKING, Generator, Iterable, Set
+from typing import Generator, Iterable, Optional, Set
 
-from .base import EXEC_NAMESPACE, EXPS_NAMESPACE, EXPS_STASH, ExpRefInfo
+from dvc.scm.git import Git
 
-if TYPE_CHECKING:
-    from dvc.scm.git import Git
+from .base import (
+    EXEC_BASELINE,
+    EXEC_NAMESPACE,
+    EXPS_NAMESPACE,
+    EXPS_STASH,
+    ExpRefInfo,
+)
 
 
 def exp_refs(scm: "Git") -> Generator["ExpRefInfo", None, None]:
@@ -102,3 +107,11 @@ def remove_exp_refs(scm: "Git", ref_infos: Iterable["ExpRefInfo"]):
         if exec_checkpoint and exec_checkpoint == ref:
             scm.remove_ref(EXEC_CHECKPOINT)
         scm.remove_ref(str(ref_info))
+
+
+def fix_exp_head(scm: "Git", ref: Optional[str]) -> Optional[str]:
+    if ref:
+        name, tail = Git.split_ref_pattern(ref)
+        if name == "HEAD" and scm.get_ref(EXEC_BASELINE):
+            return "".join((EXEC_BASELINE, tail))
+    return ref
