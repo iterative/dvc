@@ -22,6 +22,7 @@ def save(odb, obj, jobs=None, **kwargs):
                     )
                     for _, entry in obj
                 ),
+                desc="Saving files",
                 total=len(obj),
                 unit="file",
             ):
