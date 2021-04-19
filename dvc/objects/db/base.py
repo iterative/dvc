@@ -1,5 +1,6 @@
 import itertools
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
@@ -52,15 +53,29 @@ class ObjectDB:
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
+        use_move = isinstance(fs, type(self.fs)) and move
         try:
-            if isinstance(fs, type(self.fs)) and move:
+            if use_move:
                 self.fs.move(path_info, cache_info)
             else:
                 with fs.open(path_info, mode="rb") as fobj:
                     self.fs.upload_fobj(fobj, cache_info)
         except OSError as exc:
-            if isinstance(exc, FileExistsError) or self.fs.exists(cache_info):
+            # If the target file already exists, we are going to simply
+            # ignore the exception (#4992).
+            #
+            # On Windows, it is not always guaranteed that you'll get
+            # FileExistsError (it might be PermissionError or a bare OSError)
+            # but all of those exceptions raised from the original
+            # FileExistsError so we have a separate check for that.
+            if isinstance(exc, FileExistsError) or (
+                os.name == "nt"
+                and exc.__context__
+                and isinstance(exc.__context__, FileExistsError)
+            ):
                 logger.debug("'%s' file already exists, skipping", path_info)
+                if use_move:
+                    fs.remove(path_info)
             else:
                 raise
 
