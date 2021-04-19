@@ -95,6 +95,7 @@ class CmdMetricsShow(CmdMetricsBase):
                     self.args.all_branches,
                     self.args.all_tags,
                     self.args.all_commits,
+                    self.args.precision,
                 )
                 if table:
                     logger.info(table)
