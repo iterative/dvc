@@ -112,7 +112,7 @@ def test_relpath():
 
     assert relpath(path) == relpath(path_info)
 
-
+@pytest.mark.skipif(os.name != "nt", reason="Windows specific")
 def test_relpath_windows(monkeypatch):
     """test that relpath correctly generated when run on a
     windows network share. The drive mapped path is mapped
@@ -121,12 +121,11 @@ def test_relpath_windows(monkeypatch):
     def dummy_realpath(path):
         return path.replace("x:", "\\\\server\\share")
 
-    if os.name == "nt":
-        monkeypatch.setattr(os.path, "realpath", dummy_realpath)
-        assert (
-            relpath("x:\\dir1\\dir2\\file.txt", "\\\\server\\share\\dir1")
-            == "dir2\\file.txt"
-        )
+    monkeypatch.setattr(os.path, "realpath", dummy_realpath)
+    assert (
+        relpath("x:\\dir1\\dir2\\file.txt", "\\\\server\\share\\dir1")
+        == "dir2\\file.txt"
+    )
 
 
 @pytest.mark.parametrize(

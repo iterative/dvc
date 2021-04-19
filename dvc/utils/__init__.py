@@ -325,8 +325,8 @@ def relpath(path, start=os.curdir):
         # we need to resolve to UNC path first. We resolve only the drive
         # name so that we don't follow any 'real' symlinks on the path
         def resolve_network_drive_windows(path_to_resolve):
-            drive, upper_path = os.path.splitdrive(path_to_resolve)
-            return os.path.join(os.path.realpath(drive), upper_path)
+            drive, tail = os.path.splitdrive(path_to_resolve)
+            return os.path.join(os.path.realpath(drive), tail)
 
         path = resolve_network_drive_windows(os.path.abspath(path))
         start = resolve_network_drive_windows(start)
