@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dvc.exceptions import DvcIgnoreInCollectedDirError
+from dvc.exceptions import DvcIgnoreInCollectedDirError, PathMissingError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.output.base import OutputIsIgnoredError
 from dvc.path_info import PathInfo
@@ -255,9 +255,14 @@ def test_ignore_file_in_parent_path(
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
     dvc._reset()
     path = PathInfo(tmp_dir)
-    assert _get_pathinfo_set(dvc, path / "dir") == {
-        path / relpath for relpath in result_set
-    }
+    #  temporary solution before #5841 fixed
+    if not result_set:
+        with pytest.raises(PathMissingError):
+            _get_pathinfo_set(dvc, path / "dir")
+    else:
+        assert _get_pathinfo_set(dvc, path / "dir") == {
+            path / relpath for relpath in result_set
+        }
 
 
 # If there is a separator at the end of the pattern then the pattern
@@ -395,7 +400,8 @@ def test_ignore_in_added_dir(tmp_dir, dvc):
     dvc._reset()
 
     ignored_path = tmp_dir / "dir" / "sub" / "ignored"
-    assert not dvc.fs.exists(PathInfo(ignored_path))
+    with pytest.raises(PathMissingError):
+        _get_pathinfo_set(dvc, PathInfo(ignored_path))
     assert ignored_path.exists()
 
     dvc.add("dir")

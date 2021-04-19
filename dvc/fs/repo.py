@@ -346,8 +346,11 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 
-    def walk_files(self, top, **kwargs):  # pylint: disable=arguments-differ
-        for root, _, files in self.walk(top, **kwargs):
+    def walk_files(self, path_info, **kwargs):
+        ignore_filter = kwargs.pop("ignore_filter", None)
+        for root, dirs, files in self.walk(path_info):
+            if ignore_filter:
+                dirs, files = ignore_filter(root, dirs, files)
             for fname in files:
                 yield PathInfo(root) / fname
 

@@ -128,61 +128,9 @@ class BaseS3FileSystem(FSSpecWrapper):
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
 
-<<<<<<< HEAD
         config_path = config.get("configpath")
         if config_path:
             os.environ.setdefault("AWS_CONFIG_FILE", config_path)
-=======
-    def exists(self, path_info) -> bool:
-        """Check if the blob exists. If it does not exist,
-        it could be a part of a directory path.
-
-        eg: if `data/file.txt` exists, check for `data` should return True
-        """
-        return self.isfile(path_info) or self.isdir(path_info)
-
-    def isdir(self, path_info):
-        # S3 doesn't have a concept for directories.
-        #
-        # Using `head_object` with a path pointing to a directory
-        # will throw a 404 error.
-        #
-        # A reliable way to know if a given path is a directory is by
-        # checking if there are more files sharing the same prefix
-        # with a `list_objects` call.
-        #
-        # We need to make sure that the path ends with a forward slash,
-        # since we can end with false-positives like the following example:
-        #
-        #       bucket
-        #       └── data
-        #          ├── alice
-        #          └── alpha
-        #
-        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
-        # While `data/al/` will return nothing.
-        #
-        dir_path = path_info / ""
-        return bool(list(self._list_paths(dir_path, max_items=1)))
-
-    def isfile(self, path_info):
-        if path_info.path.endswith("/"):
-            return False
-
-        return path_info.path in self._list_paths(path_info)
-
-    def info(self, path_info):
-        # temporary workaround, will be removed when migrating to s3fs
-        if self.isdir(path_info):
-            return {"type": "directory"}
-
-        with self._get_obj(path_info) as obj:
-            return {
-                "type": "file",
-                "etag": obj.e_tag.strip('"'),
-                "size": obj.content_length,
-            }
->>>>>>> 109331d6 (Decoupling dvcignore and fs)
 
         return unflatten(
             {

@@ -122,8 +122,8 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 errno.ENOENT, os.strerror(errno.ENOENT), path
             )
 
-    def walk_files(self, top):  # pylint: disable=arguments-differ
-        for root, _, files in self.walk(top):
+    def walk_files(self, path_info, **kwargs):
+        for root, _, files in self.walk(path_info):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"

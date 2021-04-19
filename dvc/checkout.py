@@ -176,7 +176,11 @@ def _checkout_file(
 
 
 def _remove_redundant_files(path_info, fs, obj, cache, force):
-    existing_files = set(fs.walk_files(path_info))
+    if fs.repo:
+        ignore_filter = fs.repo.dvcignore
+    else:
+        ignore_filter = None
+    existing_files = set(fs.walk_files(path_info, ignore_filter=ignore_filter))
 
     needed_files = {path_info.joinpath(*key) for key, _ in obj}
     redundant_files = existing_files - needed_files

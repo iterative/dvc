@@ -73,6 +73,8 @@ def add(  # noqa: C901
             pbar.bar_format = "Adding..."
             pbar.refresh()
         for target in targets:
+            if repo.dvcignore.is_ignored(target):
+                continue
             sub_targets = _find_all_targets(repo, target, recursive)
             pbar.total += len(sub_targets) - 1
 
@@ -206,10 +208,11 @@ def _find_all_targets(repo, target, recursive):
     from dvc.dvcfile import is_dvc_file
 
     if os.path.isdir(target) and recursive:
+
         return [
             os.fspath(path)
             for path in Tqdm(
-                repo.fs.walk_files(target),
+                repo.fs.walk_files(target, ignore_filter=repo.dvcignore),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",

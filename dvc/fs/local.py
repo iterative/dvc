@@ -68,7 +68,10 @@ class LocalFileSystem(BaseFileSystem):
             yield os.path.normpath(root), dirs, files
 
     def walk_files(self, path_info, **kwargs):
-        for root, _, files in self.walk(path_info):
+        ignore_filter = kwargs.get("ignore_filter", None)
+        for root, dirs, files in self.walk(path_info):
+            if ignore_filter:
+                dirs, files = ignore_filter(root, dirs, files)
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield PathInfo(f"{root}{os.sep}{file}")
