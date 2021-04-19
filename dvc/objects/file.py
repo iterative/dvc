@@ -1,7 +1,6 @@
 import logging
 
 from .errors import ObjectFormatError
-from .stage import get_file_hash
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +36,8 @@ class HashFile:
         )
 
     def check(self, odb):
+        from .stage import get_file_hash
+
         actual = get_file_hash(
             self.path_info, self.fs, self.hash_info.name, odb.repo.state
         )
