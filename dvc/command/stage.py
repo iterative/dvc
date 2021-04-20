@@ -84,7 +84,7 @@ class CmdStageList(CmdBase):
         return dict.fromkeys(collected).keys()
 
     def run(self):
-        from dvc.utils.diff import table
+        from dvc.ui import ui
 
         def log_error(relpath: str, exc: Exception):
             if self.args.fail:
@@ -98,8 +98,7 @@ class CmdStageList(CmdBase):
         names_only = self.args.names_only
 
         data = prepare_stages_data(stages, description=not names_only)
-        if data:
-            print(table(header=(), rows=data.items()))
+        ui.table(data.items())
 
         return 0
 
