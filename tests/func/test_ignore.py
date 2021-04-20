@@ -134,16 +134,13 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     path = PathInfo(tmp_dir)
 
     assert set(_get_pathinfo_set(dvc, path)) == {
-        "foo",
-        "bar",
-        DvcIgnore.DVCIGNORE_FILE,
+        path / "foo",
+        path / "bar",
+        path / DvcIgnore.DVCIGNORE_FILE,
     }
 
     dvc.fs = scm.get_fs("branch")
-    assert set(_get_pathinfo_set(dvc, path)) == {
-        DvcIgnore.DVCIGNORE_FILE,
-        "bar",
-    }
+    dvc.dvcignore.is_ignored(path / "foo")
 
 
 def test_match_nested(tmp_dir, dvc):
