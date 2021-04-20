@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Dict, List
+import os
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from funcy import cached_property, first, project
 
@@ -9,6 +10,7 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
+from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
@@ -218,6 +220,26 @@ class Plots:
         from .template import PlotTemplates
 
         return PlotTemplates(self.repo.dvc_dir)
+
+    def write_html(
+        self,
+        path: StrPath,
+        plots: Dict[str, Dict],
+        metrics: Optional[Dict[str, Dict]] = None,
+        html_template_path: Optional[StrPath] = None,
+    ):
+        if not html_template_path:
+            html_template_path = self.repo.config.get("plots", {}).get(
+                "html_template", None
+            )
+            if html_template_path and not os.path.isabs(html_template_path):
+                html_template_path = os.path.join(
+                    self.repo.dvc_dir, html_template_path
+                )
+
+        from dvc.utils.html import write
+
+        write(path, plots, metrics, html_template_path)
 
 
 def _is_plot(out: "BaseOutput") -> bool:

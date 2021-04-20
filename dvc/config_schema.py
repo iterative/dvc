@@ -223,4 +223,5 @@ SCHEMA = {
         # enabled by default. It's of no use, kept for backward compatibility.
         Optional("parametrization", default=True): Bool
     },
+    "plots": {"html_template": str},
 }
