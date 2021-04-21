@@ -112,6 +112,7 @@ def test_relpath():
 
     assert relpath(path) == relpath(path_info)
 
+
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")
 def test_relpath_windows(monkeypatch):
     """test that relpath correctly generated when run on a
@@ -125,6 +126,11 @@ def test_relpath_windows(monkeypatch):
     assert (
         relpath("x:\\dir1\\dir2\\file.txt", "\\\\server\\share\\dir1")
         == "dir2\\file.txt"
+    )
+
+    assert (
+        relpath("y:\\dir1\\dir2\\file.txt", "\\\\server\\share\\dir1")
+        == "y:\\dir1\\dir2\\file.txt"
     )
 
 
