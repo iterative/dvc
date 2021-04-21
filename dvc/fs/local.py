@@ -19,7 +19,6 @@ class LocalFileSystem(BaseFileSystem):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
-    HIDDEN_DIRS = {".git", ".hg", ".dvc"}
 
     def __init__(self, repo, config):
         super().__init__(repo, config)
@@ -64,14 +63,10 @@ class LocalFileSystem(BaseFileSystem):
         for root, dirs, files in os.walk(
             top, topdown=topdown, onerror=onerror
         ):
-            dirs[:] = list(filter(lambda i: i not in self.HIDDEN_DIRS, dirs))
             yield os.path.normpath(root), dirs, files
 
     def walk_files(self, path_info, **kwargs):
-        ignore_filter = kwargs.get("ignore_filter", None)
-        for root, dirs, files in self.walk(path_info):
-            if ignore_filter:
-                dirs, files = ignore_filter(root, dirs, files)
+        for root, _, files in self.walk(path_info):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield PathInfo(f"{root}{os.sep}{file}")

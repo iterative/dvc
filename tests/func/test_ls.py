@@ -536,8 +536,8 @@ def test_subrepo(dvc_top_level, erepo):
             if hasattr(repo, "dvc"):
                 repo.dvc_gen(dvc_files, commit=f"dvc track for {repo}")
 
-    def _list_files(path=None):
-        return set(map(itemgetter("path"), Repo.ls(os.fspath(erepo), path)))
+    def _list_files(repo, path=None):
+        return set(map(itemgetter("path"), Repo.ls(os.fspath(repo), path)))
 
     extras = {".dvcignore", ".gitignore"}
     git_tracked_outputs = {"bar.txt", "scm_dir"}
@@ -547,12 +547,14 @@ def test_subrepo(dvc_top_level, erepo):
     top_level_outputs = (
         common_outputs if dvc_top_level else git_tracked_outputs
     )
-    assert _list_files() == top_level_outputs | {"subrepo"}
-    assert _list_files("subrepo") == common_outputs
-
-    assert _list_files("scm_dir") == {"ipsum"}
-    assert _list_files("subrepo/scm_dir") == {"ipsum"}
-
+    assert _list_files(erepo) == top_level_outputs
+    assert _list_files(erepo, "scm_dir") == {"ipsum"}
     if dvc_top_level:
-        assert _list_files("dvc_dir") == {"lorem"}
-    assert _list_files("subrepo/dvc_dir") == {"lorem"}
+        assert _list_files(erepo, "dvc_dir") == {"lorem"}
+
+    with pytest.raises(PathMissingError):
+        _list_files(erepo, "subrepo")
+
+    assert _list_files(subrepo, ".") == common_outputs
+    assert _list_files(subrepo, "scm_dir") == {"ipsum"}
+    assert _list_files(subrepo, "dvc_dir") == {"lorem"}

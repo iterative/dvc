@@ -78,6 +78,11 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
 
 
 def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
+    use_dvcignore = kwargs.get("use_dvcignore", False)
+    if use_dvcignore:
+        walk_iterator = fs.repo.dvcignore(fs.walk(path_info), walk_files=True)
+    else:
+        walk_iterator = fs.walk_files(path_info)
     with Tqdm(
         unit="md5",
         desc="Computing file/dir hashes (only done once)",
@@ -96,7 +101,7 @@ def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
         with ThreadPoolExecutor(
             max_workers=kwargs.pop("jobs", fs.hash_jobs)
         ) as executor:
-            yield from executor.map(worker, fs.walk_files(path_info, **kwargs))
+            yield from executor.map(worker, walk_iterator)
 
 
 def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):

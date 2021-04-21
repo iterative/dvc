@@ -233,16 +233,22 @@ class DvcIgnoreFilter:
         else:
             self.ignores_trie_fs[root] = new_pattern
 
-    def __call__(self, root, dirs, files, ignore_subrepos=True):
-        for dname in dirs:
-            self._update_sub_repo(os.path.join(root, dname))
+    def __call__(self, walk_iterator, ignore_subrepos=True, walk_files=False):
+        for root, dirs, files in walk_iterator:
+            for dname in dirs:
+                self._update_sub_repo(os.path.join(root, dname))
 
-        ignore_pattern = self._get_trie_pattern(root)
-        if ignore_pattern:
-            dirs, files = ignore_pattern(root, dirs, files)
-            if not ignore_subrepos:
-                dirs.extend(self._ignored_subrepos.get(root, []))
-        return dirs, files
+            ignore_pattern = self._get_trie_pattern(root)
+            if ignore_pattern:
+                dirs[:], files[:] = ignore_pattern(root, dirs, files)
+                if not ignore_subrepos:
+                    dirs.extend(self._ignored_subrepos.get(root, []))
+            if walk_files:
+                for file in files:
+                    # NOTE: os.path.join is ~5.5 times slower
+                    yield PathInfo(f"{root}{os.sep}{file}")
+            else:
+                yield root, dirs, files
 
     def _get_trie_pattern(self, dirname):
         ignore_pattern = self.ignores_trie_fs.get(dirname)

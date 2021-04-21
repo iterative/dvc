@@ -145,8 +145,12 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
         fs = LocalFileSystem(None, {"url": self._root_dir})
+        walk_result = []
+        for root, dirs, files in fs.walk("."):
+            dirs[:] = [i for i in dirs if i != ".git"]
+            walk_result.append((root, dirs, files))
         self.assertWalkEqual(
-            fs.walk("."),
+            walk_result,
             [
                 (".", ["data_dir"], ["bar", "тест", "code.py", "foo"]),
                 (join("data_dir"), ["data_sub_dir"], ["data"]),
@@ -196,10 +200,10 @@ def test_cleanfs_subrepo(tmp_dir, dvc, scm, monkeypatch):
 
     path = PathInfo(subrepo_dir)
 
-    assert not dvc.fs.exists(path / "foo")
-    assert not dvc.fs.isfile(path / "foo")
-    assert not dvc.fs.exists(path / "dir")
-    assert not dvc.fs.isdir(path / "dir")
+    assert dvc.fs.exists(path / "foo")
+    assert dvc.fs.isfile(path / "foo")
+    assert dvc.fs.exists(path / "dir")
+    assert dvc.fs.isdir(path / "dir")
 
     assert subrepo.fs.exists(path / "foo")
     assert subrepo.fs.isfile(path / "foo")
@@ -222,12 +226,8 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     path = os.fspath(tmp_dir)
     get_dirs = itemgetter(1)
 
-    assert get_dirs(next(dvc_fs.walk(path))) == []
-    assert get_dirs(next(scm_fs.walk(path))) == []
-
-    kw = {"ignore_subrepos": False}
-    assert get_dirs(next(dvc_fs.walk(path, **kw))) == ["subdir"]
-    assert get_dirs(next(scm_fs.walk(path, **kw))) == ["subdir"]
+    assert set(get_dirs(next(dvc_fs.walk(path)))) == {".dvc", "subdir", ".git"}
+    assert set(get_dirs(next(scm_fs.walk(path)))) == {".dvc", "subdir"}
 
 
 @pytest.mark.parametrize(

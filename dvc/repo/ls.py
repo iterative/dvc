@@ -55,11 +55,12 @@ def _ls(repo, fs, path_info, recursive=None, dvc_only=False):
 
     infos = []
     try:
-        for root, dirs, files in fs.walk(
+        walk_iterator = fs.walk(
             path_info.fspath, onerror=onerror, dvcfiles=True
-        ):
-            if fs.scheme == Schemes.LOCAL:
-                dirs[:], files[:] = repo.dvcignore(root, dirs, files)
+        )
+        if fs.scheme == Schemes.LOCAL:
+            walk_iterator = repo.dvcignore(walk_iterator)
+        for root, dirs, files in walk_iterator:
             entries = chain(files, dirs) if not recursive else files
             infos.extend(PathInfo(root) / entry for entry in entries)
             if not recursive:

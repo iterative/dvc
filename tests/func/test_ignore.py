@@ -179,7 +179,9 @@ def test_ignore_subrepo(tmp_dir, scm, dvc):
     dvc._reset()
 
     subrepo_dir = tmp_dir / "subdir"
-    assert not dvc.fs.exists(PathInfo(subrepo_dir / "foo"))
+
+    with pytest.raises(PathMissingError):
+        _get_pathinfo_set(dvc, PathInfo(subrepo_dir))
 
     with subrepo_dir.chdir():
         subrepo = Repo.init(subdir=True)
@@ -201,10 +203,11 @@ def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
 
     dirs = ["subdir"]
     files = ["foo"]
-    assert dvc.dvcignore(os.fspath(tmp_dir), dirs, files) == ([], files)
-    assert dvc.dvcignore(
-        os.fspath(tmp_dir), dirs, files, ignore_subrepos=False
-    ) == (dirs, files)
+    root = os.fspath(tmp_dir)
+    assert list(dvc.dvcignore([(root, dirs, files)])) == [(root, [], files)]
+    assert list(
+        dvc.dvcignore([(root, dirs, files)], ignore_subrepos=False)
+    ) == [(root, dirs, files)]
 
     assert dvc.dvcignore.is_ignored_dir(os.fspath(subrepo_dir))
     assert not dvc.dvcignore.is_ignored_dir(

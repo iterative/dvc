@@ -208,11 +208,10 @@ def _find_all_targets(repo, target, recursive):
     from dvc.dvcfile import is_dvc_file
 
     if os.path.isdir(target) and recursive:
-
         return [
             os.fspath(path)
             for path in Tqdm(
-                repo.fs.walk_files(target, ignore_filter=repo.dvcignore),
+                repo.dvcignore(repo.fs.walk(target), walk_files=True),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",
