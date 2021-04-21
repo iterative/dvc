@@ -186,6 +186,10 @@ class Experiments:
                     if params:
                         self._update_params(params)
 
+                    # DVC commit data deps to preserve state across workspace
+                    # & tempdir runs
+                    self._stash_commit_deps(*args, **kwargs)
+
                     if resume_rev:
                         if branch:
                             branch_name = ExpRefInfo.from_ref(branch).name
@@ -241,6 +245,25 @@ class Experiments:
                     self.scm.reset(hard=True)
 
         return stash_rev
+
+    def _stash_commit_deps(self, *args, **kwargs):
+        if len(args):
+            targets = args[0]
+        else:
+            targets = kwargs.get("targets")
+        if targets is None:
+            targets = [None]
+        elif isinstance(targets, str):
+            targets = [targets]
+        for target in targets:
+            self.repo.commit(
+                target,
+                with_deps=True,
+                recursive=kwargs.get("recursive", False),
+                force=True,
+                allow_missing=True,
+                data_only=True,
+            )
 
     def _stash_msg(
         self,
