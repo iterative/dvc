@@ -74,7 +74,7 @@ def imp_url(
     if no_exec:
         stage.ignore_outs()
     elif to_remote:
-        stage.outs[0].hash_info = self.cloud.transfer(
+        stage.outs[0].transfer(
             url, jobs=jobs, remote=remote, command="import-url"
         )
     else:

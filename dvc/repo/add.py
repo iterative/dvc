@@ -165,7 +165,7 @@ def _process_stages(
         (out,) = stage.outs
 
         if to_remote:
-            out.hash_info = repo.cloud.transfer(
+            out.transfer(
                 target,
                 jobs=kwargs.get("jobs"),
                 remote=kwargs.get("remote"),
