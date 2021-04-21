@@ -624,3 +624,47 @@ def test_fix_exp_head(tmp_dir, scm, tail):
     scm.set_ref(EXEC_BASELINE, "refs/heads/master")
     assert EXEC_BASELINE + tail == fix_exp_head(scm, head)
     assert "foo" + tail == fix_exp_head(scm, "foo" + tail)
+
+
+@pytest.mark.parametrize("workspace", [True, False])
+def test_modified_data_dep(tmp_dir, scm, dvc, workspace):
+    tmp_dir.dvc_gen("data", "data")
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    exp_stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py", "data"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            "data.dvc",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
+    tmp_dir.gen("params.yaml", "foo: 2")
+    tmp_dir.gen("data", "modified")
+
+    results = dvc.experiments.run(exp_stage.addressing, tmp_dir=not workspace)
+    exp = first(results)
+
+    for rev in dvc.brancher(revs=[exp]):
+        if rev != exp:
+            continue
+        with dvc.repo_fs.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == "foo: 2"
+        with dvc.repo_fs.open(tmp_dir / "data") as fobj:
+            assert fobj.read().strip() == "modified"
+
+    if workspace:
+        assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
+        assert (tmp_dir / "data").read_text().strip() == "modified"
