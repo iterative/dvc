@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import stat
@@ -627,10 +628,10 @@ def test_fix_exp_head(tmp_dir, scm, tail):
 
 
 @pytest.mark.parametrize(
-    "workspace, params",
-    [(True, "foo: 1"), (True, "foo: 2"), (False, "foo: 1"), (False, "foo: 2")],
+    "workspace, params, target",
+    itertools.product((True, False), ("foo: 1", "foo: 2"), (True, False)),
 )
-def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params):
+def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
     tmp_dir.dvc_gen("data", "data")
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
@@ -657,7 +658,9 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params):
     tmp_dir.gen("params.yaml", params)
     tmp_dir.gen("data", "modified")
 
-    results = dvc.experiments.run(exp_stage.addressing, tmp_dir=not workspace)
+    results = dvc.experiments.run(
+        exp_stage.addressing if target else None, tmp_dir=not workspace
+    )
     exp = first(results)
 
     for rev in dvc.brancher(revs=[exp]):

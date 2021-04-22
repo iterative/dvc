@@ -251,10 +251,10 @@ class Experiments:
             targets = args[0]
         else:
             targets = kwargs.get("targets")
-        if targets is None:
-            targets = [None]
-        elif isinstance(targets, str):
+        if isinstance(targets, str):
             targets = [targets]
+        elif not targets:
+            targets = [None]
         for target in targets:
             self.repo.commit(
                 target,
