@@ -1,4 +1,6 @@
+import errno
 import logging
+import os
 
 from .errors import ObjectFormatError
 
@@ -35,8 +37,16 @@ class HashFile:
             and self.hash_info == other.hash_info
         )
 
-    def check(self, odb):
+    def check(self, odb, check_hash=True):
         from .stage import get_file_hash
+
+        if not check_hash:
+            if not self.fs.exists(self.path_info):
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
+                )
+            else:
+                return None
 
         actual = get_file_hash(
             self.path_info, self.fs, self.hash_info.name, odb.repo.state

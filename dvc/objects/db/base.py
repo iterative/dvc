@@ -45,7 +45,7 @@ class ObjectDB:
 
     def add(self, path_info, fs, hash_info, move=True, **kwargs):
         try:
-            self.check(hash_info)
+            self.check(hash_info, check_hash=self.verify)
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
@@ -106,8 +106,10 @@ class ObjectDB:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def check(self, hash_info):
-        """Compare the given hash with the (corresponding) actual one.
+    def check(self, hash_info, check_hash=True):
+        """Compare the given hash with the (corresponding) actual one if
+        check_hash is specified, or just verify the existence of the cache
+        files on the filesystem.
 
         - Use `State` as a cache for computed hashes
             + The entries are invalidated by taking into account the following:
@@ -128,7 +130,7 @@ class ObjectDB:
             return
 
         try:
-            obj.check(self)
+            obj.check(self, check_hash=check_hash)
         except ObjectFormatError:
             logger.warning("corrupted cache file '%s'.", obj.path_info)
             self.fs.remove(obj.path_info)
