@@ -626,8 +626,11 @@ def test_fix_exp_head(tmp_dir, scm, tail):
     assert "foo" + tail == fix_exp_head(scm, "foo" + tail)
 
 
-@pytest.mark.parametrize("workspace", [True, False])
-def test_modified_data_dep(tmp_dir, scm, dvc, workspace):
+@pytest.mark.parametrize(
+    "workspace, params",
+    [(True, "foo: 1"), (True, "foo: 2"), (False, "foo: 1"), (False, "foo: 2")],
+)
+def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params):
     tmp_dir.dvc_gen("data", "data")
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
@@ -651,7 +654,7 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace):
     )
     scm.commit("init")
 
-    tmp_dir.gen("params.yaml", "foo: 2")
+    tmp_dir.gen("params.yaml", params)
     tmp_dir.gen("data", "modified")
 
     results = dvc.experiments.run(exp_stage.addressing, tmp_dir=not workspace)
@@ -661,10 +664,10 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace):
         if rev != exp:
             continue
         with dvc.repo_fs.open(tmp_dir / "metrics.yaml") as fobj:
-            assert fobj.read().strip() == "foo: 2"
+            assert fobj.read().strip() == params
         with dvc.repo_fs.open(tmp_dir / "data") as fobj:
             assert fobj.read().strip() == "modified"
 
     if workspace:
-        assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
+        assert (tmp_dir / "metrics.yaml").read_text().strip() == params
         assert (tmp_dir / "data").read_text().strip() == "modified"
