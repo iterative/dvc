@@ -8,8 +8,6 @@ from functools import partial, wraps
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
-from dvc.objects import save
-from dvc.objects.stage import stage
 
 from ..progress import Tqdm
 from .index import RemoteIndex, RemoteIndexNoop
@@ -506,38 +504,6 @@ class Remote:
                     cache.protect(cache_file)
 
         return ret
-
-    def transfer(
-        self,
-        from_fs,
-        from_info,
-        jobs=None,
-        update=False,
-        no_progress_bar=False,
-    ):
-        # When running import-url --to-remote / add --to-remote/-o ... we
-        # assume that it is unlikely that the odb will contain majority of the
-        # hashes, so we transfer everything as is (even if that file might
-        # already be in the cache) and don't waste an upload to scan the layout
-        # of the source location. But when doing update --to-remote, there is
-        # a high probability that the odb might contain some of the hashes, so
-        # we first calculate all the hashes (but don't transfer anything) and
-        # then only update the missing cache files.
-
-        upload = not (update and from_fs.isdir(from_info))
-        jobs = jobs or min((from_fs.jobs, self.odb.fs.jobs))
-        obj = stage(
-            self.odb,
-            from_info,
-            from_fs,
-            "md5",
-            upload=upload,
-            jobs=jobs,
-            no_progress_bar=no_progress_bar,
-        )
-
-        save(self.odb, obj, jobs=jobs, move=upload)
-        return obj.hash_info
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):
