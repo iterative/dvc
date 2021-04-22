@@ -13,9 +13,8 @@ def _update_import_on_remote(stage, remote, jobs):
         )
 
     url = stage.deps[0].def_path
-    stage.outs[0].transfer(
-        url, jobs=jobs, update=True, remote=remote, command="update"
-    )
+    remote = stage.repo.cloud.get_remote(remote, "update")
+    stage.outs[0].transfer(url, odb=remote.odb, jobs=jobs, update=True)
 
 
 def update_import(stage, rev=None, to_remote=False, remote=None, jobs=None):

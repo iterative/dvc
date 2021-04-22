@@ -74,9 +74,8 @@ def imp_url(
     if no_exec:
         stage.ignore_outs()
     elif to_remote:
-        stage.outs[0].transfer(
-            url, jobs=jobs, remote=remote, command="import-url"
-        )
+        remote = self.cloud.get_remote(remote, "import-url")
+        stage.outs[0].transfer(url, odb=remote.odb, jobs=jobs)
     else:
         stage.run(jobs=jobs)
 

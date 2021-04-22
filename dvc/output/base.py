@@ -472,18 +472,12 @@ class BaseOutput:
             self.repo.scm.ignore(self.fspath)
 
     def transfer(
-        self,
-        source,
-        jobs=None,
-        update=False,
-        remote=None,
-        command=None,
-        no_progress_bar=False,
+        self, source, odb=None, jobs=None, update=False, no_progress_bar=False,
     ):
         from dvc.fs import get_cloud_fs
 
-        remote = self.repo.cloud.get_remote(remote, command)
-        odb = remote.odb
+        if odb is None:
+            odb = self.odb
 
         from_fs = get_cloud_fs(self.repo, url=source)
         from_info = from_fs.path_info
