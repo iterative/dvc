@@ -9,6 +9,7 @@ from funcy import cached_property
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
+from dvc.scheme import Schemes
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
@@ -92,7 +93,6 @@ class BaseFileSystem:
         return missing
 
     def _check_requires(self):
-        from ..scheme import Schemes
         from ..utils import format_link
         from ..utils.pkg import PKG
 
@@ -165,6 +165,11 @@ class BaseFileSystem:
     def iscopy(self, path_info):
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
+
+    def walk(self, path_info, **kwargs):
+        """Return a generator with (root, dirs, files).
+        """
+        raise NotImplementedError
 
     def walk_files(self, path_info, **kwargs):
         """Return a generator with `PathInfo`s to all the files.
@@ -288,7 +293,17 @@ class BaseFileSystem:
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
     ):
-        from_infos = list(self.walk_files(from_info, **kwargs))
+        if self.scheme == Schemes.LOCAL and self.repo:
+            follow_subrepos = not kwargs.pop("follow_subrepos", True)
+            from_infos = list(
+                self.repo.dvcignore(
+                    self.walk(from_info, **kwargs),
+                    ignore_subrepos=follow_subrepos,
+                    walk_files=True,
+                )
+            )
+        else:
+            from_infos = list(self.walk_files(from_info, **kwargs))
         if not from_infos:
             makedirs(to_info, exist_ok=True)
             return None

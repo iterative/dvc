@@ -15,6 +15,7 @@ from dvc.objects.stage import stage
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
+from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
@@ -176,9 +177,11 @@ def _checkout_file(
 
 
 def _remove_redundant_files(path_info, fs, obj, cache, force):
-    existing_files = set(
-        fs.repo.dvcignore(fs.walk(path_info), walk_files=True)
-    )
+    if fs.scheme == Schemes.LOCAL and fs.repo:
+        walk_files = fs.repo.dvcignore(fs.walk(path_info), walk_files=True)
+    else:
+        walk_files = fs.walk_files(path_info)
+    existing_files = set(walk_files)
 
     needed_files = {path_info.joinpath(*key) for key, _ in obj}
     redundant_files = existing_files - needed_files
