@@ -206,12 +206,35 @@ class Experiments:
                             not branch
                             or self.scm.get_ref(branch) != resume_rev
                         ):
-                            raise DvcException(
-                                f"Nothing to do for unchanged checkpoint "
-                                f"'{resume_rev[:7]}'. To resume from the head "
-                                "of this experiment, use "
-                                f"'dvc exp apply {branch_name}'."
-                            )
+                            msg = [
+                                (
+                                    "Nothing to do for unchanged checkpoint "
+                                    f"'{resume_rev[:7]}'. "
+                                )
+                            ]
+                            if branch:
+                                msg.append(
+                                    "To resume from the head of this "
+                                    "experiment, use "
+                                    f"'dvc exp apply {branch_name}'."
+                                )
+                            else:
+                                names = [
+                                    ref_info.name
+                                    for ref_info in exp_refs_by_rev(
+                                        self.scm, resume_rev
+                                    )
+                                ]
+                                if len(names) > 3:
+                                    names[3:] = [
+                                        f"... ({len(names) - 3} more)"
+                                    ]
+                                msg.append(
+                                    "To resume an experiment containing this "
+                                    "checkpoint, apply one of these heads:\n"
+                                    "\t{}".format(", ".join(names))
+                                )
+                            raise DvcException("".join(msg))
                         else:
                             logger.info(
                                 "Existing checkpoint experiment '%s' will be "
