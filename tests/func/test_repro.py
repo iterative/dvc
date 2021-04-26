@@ -914,6 +914,7 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         self.assertEqual(0, ret)
 
         self._caplog.clear()
+        self._capsys.readouterr()  # clearing the buffer
 
         from dvc.dvcfile import DVC_FILE_SUFFIX
 
@@ -923,7 +924,8 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         self.assertEqual(0, ret)
 
         expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
-        self.assertIn(expected_metrics_display, self._caplog.text)
+        actual, _ = self._capsys.readouterr()
+        self.assertIn(expected_metrics_display, actual)
 
 
 @pytest.fixture

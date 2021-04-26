@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from itertools import chain, repeat, zip_longest
 from operator import itemgetter
 from typing import (
@@ -167,3 +168,131 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
     def as_dict(self):
         keys = self.keys()
         return [dict(zip(keys, row)) for row in self]
+
+
+def _format_field(val: Any, precision: int = None) -> str:
+    def _format(_val):
+        if isinstance(_val, float) and precision:
+            fmt = f"{{:.{precision}f}}"
+            return float(fmt.format(_val))
+        if isinstance(_val, Mapping):
+            return {k: _format(v) for k, v in _val.items()}
+        if isinstance(_val, list):
+            return [_format(x) for x in _val]
+        return _val
+
+    return str(_format(val))
+
+
+def diff_table(
+    diff,
+    title: str,
+    old: bool = True,
+    no_path: bool = False,
+    precision: int = None,
+    on_empty_diff: str = None,
+) -> TabularData:
+    headers: List[str] = ["Path", title, "Old", "New", "Change"]
+    fill_value = "-"
+    td = TabularData(headers, fill_value=fill_value)
+
+    for fname, diff_in_file in diff.items():
+        for item, change in sorted(diff_in_file.items()):
+            old_value = with_value(change.get("old"), fill_value)
+            new_value = with_value(change.get("new"), fill_value)
+            diff_value = with_value(
+                change.get("diff", on_empty_diff), fill_value
+            )
+            td.append(
+                [
+                    fname,
+                    str(item),
+                    _format_field(old_value, precision),
+                    _format_field(new_value, precision),
+                    _format_field(diff_value, precision),
+                ]
+            )
+
+    if no_path:
+        td.drop("Path")
+
+    if not old:
+        td.drop("Old")
+        td.rename("New", "Value")
+
+    return td
+
+
+def show_diff(
+    diff,
+    title: str,
+    old: bool = True,
+    no_path: bool = False,
+    precision: int = None,
+    on_empty_diff: str = None,
+    markdown: bool = False,
+) -> None:
+    td = diff_table(
+        diff,
+        title=title,
+        old=old,
+        no_path=no_path,
+        precision=precision,
+        on_empty_diff=on_empty_diff,
+    )
+    td.render(markdown=markdown)
+
+
+def metrics_table(
+    metrics,
+    all_branches: bool = False,
+    all_tags: bool = False,
+    all_commits: bool = False,
+    precision: int = None,
+):
+    from dvc.utils.diff import format_dict
+    from dvc.utils.flatten import flatten
+
+    td = TabularData(["Revision", "Path"], fill_value="-")
+
+    for branch, val in metrics.items():
+        for fname, metric in val.items():
+            row_data: Dict[str, str] = {
+                "Revision": branch,
+                "Path": fname,
+            }
+            flattened = (
+                flatten(format_dict(metric))
+                if isinstance(metric, dict)
+                else {"": metric}
+            )
+            row_data.update(
+                {k: _format_field(v, precision) for k, v in flattened.items()}
+            )
+            td.row_from_dict(row_data)
+
+    rev, path, *metrics_headers = td.keys()
+    td.project(rev, path, *sorted(metrics_headers))
+
+    if not any([all_branches, all_tags, all_commits]):
+        td.drop("Revision")
+
+    return td
+
+
+def show_metrics(
+    metrics,
+    markdown: bool = False,
+    all_branches: bool = False,
+    all_tags: bool = False,
+    all_commits: bool = False,
+    precision: int = None,
+) -> None:
+    td = metrics_table(
+        metrics,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+        precision=precision,
+    )
+    td.render(markdown=markdown)

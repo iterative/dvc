@@ -11,64 +11,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_PRECISION = 5
 
 
-def _show_metrics(
-    metrics,
-    markdown=False,
-    all_branches=False,
-    all_tags=False,
-    all_commits=False,
-    precision=None,
-):
-    from dvc.utils.diff import format_dict, table
-    from dvc.utils.flatten import flatten
-
-    # When `metrics` contains a `None` key, it means that some files
-    # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
-    missing = metrics.pop(None, None)
-    with_rev = any([all_branches, all_tags, all_commits])
-    header_set = set()
-    rows = []
-
-    if precision is None:
-        precision = DEFAULT_PRECISION
-
-    def _round(val):
-        if isinstance(val, float):
-            return round(val, precision)
-        return val
-
-    for _branch, val in metrics.items():
-        for _fname, metric in val.items():
-            if not isinstance(metric, dict):
-                header_set.add("")
-                continue
-            for key, _val in flatten(format_dict(metric)).items():
-                header_set.add(key)
-    header = sorted(header_set)
-    for branch, val in metrics.items():
-        for fname, metric in val.items():
-            row = []
-            if with_rev:
-                row.append(branch)
-            row.append(fname)
-            if not isinstance(metric, dict):
-                row.append(str(metric))
-                rows.append(row)
-                continue
-            flattened_val = flatten(format_dict(metric))
-
-            for i in header:
-                row.append(_round(flattened_val.get(i)))
-            rows.append(row)
-    header.insert(0, "Path")
-    if with_rev:
-        header.insert(0, "Revision")
-
-    if missing:
-        raise BadMetricError(missing)
-    return table(header, rows, markdown)
-
-
 class CmdMetricsBase(CmdBase):
     UNINITIALIZED = True
 
@@ -83,60 +25,34 @@ class CmdMetricsShow(CmdMetricsBase):
                 all_commits=self.args.all_commits,
                 recursive=self.args.recursive,
             )
-
-            if self.args.show_json:
-                import json
-
-                logger.info(json.dumps(metrics))
-            else:
-                table = _show_metrics(
-                    metrics,
-                    self.args.show_md,
-                    self.args.all_branches,
-                    self.args.all_tags,
-                    self.args.all_commits,
-                    self.args.precision,
-                )
-                if table:
-                    logger.info(table)
         except DvcException:
             logger.exception("")
             return 1
 
+        if self.args.show_json:
+            import json
+
+            logger.info(json.dumps(metrics))
+        else:
+            from dvc.compare import show_metrics
+
+            # When `metrics` contains a `None` key, it means that some files
+            # specified as `targets` in `repo.metrics.show` didn't contain any
+            # metrics.
+            missing = metrics.pop(None, None)
+            if missing:
+                raise BadMetricError(missing)
+
+            show_metrics(
+                metrics,
+                markdown=self.args.show_md,
+                all_branches=self.args.all_branches,
+                all_tags=self.args.all_tags,
+                all_commits=self.args.all_commits,
+                precision=self.args.precision,
+            )
+
         return 0
-
-
-def _show_diff(diff, markdown=False, no_path=False, precision=None):
-    from collections import OrderedDict
-
-    from dvc.utils.diff import table
-
-    if precision is None:
-        precision = DEFAULT_PRECISION
-
-    def _round(val):
-        if isinstance(val, float):
-            return round(val, precision)
-
-        return val
-
-    rows = []
-    for fname, mdiff in diff.items():
-        sorted_mdiff = OrderedDict(sorted(mdiff.items()))
-        for metric, change in sorted_mdiff.items():
-            row = [] if no_path else [fname]
-            row.append(metric)
-            row.append(_round(change.get("old")))
-            row.append(_round(change["new"]))
-            row.append(_round(change.get("diff")))
-            rows.append(row)
-
-    header = [] if no_path else ["Path"]
-    header.append("Metric")
-    header.extend(["Old", "New"])
-    header.append("Change")
-
-    return table(header, rows, markdown)
 
 
 class CmdMetricsDiff(CmdMetricsBase):
@@ -149,24 +65,24 @@ class CmdMetricsDiff(CmdMetricsBase):
                 recursive=self.args.recursive,
                 all=self.args.all,
             )
-
-            if self.args.show_json:
-                import json
-
-                logger.info(json.dumps(diff))
-            else:
-                table = _show_diff(
-                    diff,
-                    self.args.show_md,
-                    self.args.no_path,
-                    precision=self.args.precision,
-                )
-                if table:
-                    logger.info(table)
-
         except DvcException:
             logger.exception("failed to show metrics diff")
             return 1
+
+        if self.args.show_json:
+            import json
+
+            logger.info(json.dumps(diff))
+        else:
+            from dvc.compare import show_diff
+
+            show_diff(
+                diff,
+                title="Metric",
+                markdown=self.args.show_md,
+                no_path=self.args.no_path,
+                precision=self.args.precision or DEFAULT_PRECISION,
+            )
 
         return 0
 

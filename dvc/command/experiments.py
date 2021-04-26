@@ -426,43 +426,6 @@ class CmdExperimentsApply(CmdBase):
         return 0
 
 
-def _show_diff(
-    diff,
-    title="",
-    markdown=False,
-    no_path=False,
-    old=False,
-    precision=DEFAULT_PRECISION,
-):
-    from dvc.utils.diff import table
-
-    rows = []
-    for fname, diff_ in diff.items():
-        sorted_diff = OrderedDict(sorted(diff_.items()))
-        for item, change in sorted_diff.items():
-            row = [] if no_path else [fname]
-            row.append(item)
-            if old:
-                row.append(_format_field(change.get("old"), precision))
-            row.append(_format_field(change["new"], precision))
-            row.append(
-                _format_field(
-                    change.get("diff", "diff not supported"), precision
-                )
-            )
-            rows.append(row)
-
-    header = [] if no_path else ["Path"]
-    header.append(title)
-    if old:
-        header.extend(["Old", "New"])
-    else:
-        header.append("Value")
-    header.append("Change")
-
-    return table(header, rows, markdown)
-
-
 class CmdExperimentsDiff(CmdBase):
     def run(self):
 
@@ -473,41 +436,38 @@ class CmdExperimentsDiff(CmdBase):
                 all=self.args.all,
                 param_deps=self.args.param_deps,
             )
-
-            if self.args.show_json:
-                import json
-
-                logger.info(json.dumps(diff))
-            else:
-                if self.args.precision is None:
-                    precision = DEFAULT_PRECISION
-                else:
-                    precision = self.args.precision
-
-                diffs = [("metrics", "Metric"), ("params", "Param")]
-                for key, title in diffs:
-                    table = _show_diff(
-                        diff[key],
-                        title=title,
-                        markdown=self.args.show_md,
-                        no_path=self.args.no_path,
-                        old=self.args.old,
-                        precision=precision,
-                    )
-                    if table:
-                        logger.info(table)
-                        logger.info("")
-
         except DvcException:
             logger.exception("failed to show experiments diff")
             return 1
+
+        if self.args.show_json:
+            import json
+
+            logger.info(json.dumps(diff))
+        else:
+            from dvc.compare import show_diff
+
+            diffs = [("metrics", "Metric"), ("params", "Param")]
+            for idx, (key, title) in enumerate(diffs):
+                if idx:
+                    logger.info("")
+
+                show_diff(
+                    diff[key],
+                    title=title,
+                    markdown=self.args.show_md,
+                    no_path=self.args.no_path,
+                    old=self.args.old,
+                    on_empty_diff="diff not supported",
+                    precision=self.args.precision or DEFAULT_PRECISION,
+                )
 
         return 0
 
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        from dvc.command.metrics import _show_metrics
+        from dvc.compare import show_metrics
 
         if self.args.checkpoint_resume:
             if self.args.reset:
@@ -538,7 +498,7 @@ class CmdExperimentsRun(CmdRepro):
         if self.args.metrics and results:
             metrics = self.repo.metrics.show(revs=list(results))
             metrics.pop("workspace", None)
-            logger.info(_show_metrics(metrics))
+            logger.info(show_metrics(metrics))
 
         return 0
 
