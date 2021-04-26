@@ -4,7 +4,7 @@ wheel==0.36.2
 pytest==6.2.3
 pytest-cov==2.11.1
 pytest-xdist==2.2.1
-pytest-mock==3.5.1
+pytest-mock==3.6.0
 pytest-lazy-fixture==0.6.3
 pytest-timeout==1.4.2
 pytest-docker==0.10.1
