@@ -49,7 +49,7 @@ class CmdMetricsShow(CmdMetricsBase):
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
-                precision=self.args.precision,
+                precision=self.args.precision or DEFAULT_PRECISION,
             )
 
         return 0
