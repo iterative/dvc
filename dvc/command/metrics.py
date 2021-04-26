@@ -50,6 +50,7 @@ class CmdMetricsShow(CmdMetricsBase):
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
                 precision=self.args.precision or DEFAULT_PRECISION,
+                tabview=True,
             )
 
         return 0

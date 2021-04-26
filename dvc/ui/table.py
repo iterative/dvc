@@ -117,3 +117,13 @@ def rich_table(
     with console_width(table, console, SHOW_MAX_WIDTH):
         with console.pager(pager=DvcPager(), styles=True):
             console.print(table)
+
+
+def tabview_table(data: TableData, headers: Headers = None) -> None:
+    import tabview
+
+    d = list(data)
+    if headers:
+        d.insert(0, headers)
+
+    tabview.view(d)

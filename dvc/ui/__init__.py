@@ -158,10 +158,15 @@ class Console:
         header_styles: Sequence["Styles"] = None,
         row_styles: Sequence["Styles"] = None,
         borders: Union[bool, str] = False,
+        tabview: bool = False,
     ) -> None:
         from dvc.ui import table as t
 
         if not data and not markdown:
+            return
+
+        if tabview:
+            t.tabview_table(data, headers=headers)
             return
 
         if not markdown and rich_table:

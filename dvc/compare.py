@@ -291,6 +291,7 @@ def metrics_table(
 def show_metrics(
     metrics,
     markdown: bool = False,
+    tabview: bool = False,
     all_branches: bool = False,
     all_tags: bool = False,
     all_commits: bool = False,
@@ -303,4 +304,4 @@ def show_metrics(
         all_commits=all_commits,
         precision=precision,
     )
-    td.render(markdown=markdown)
+    td.render(markdown=markdown, tabview=tabview)

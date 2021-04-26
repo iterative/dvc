@@ -339,6 +339,8 @@ def show_experiments(
     include_params = _parse_filter_list(kwargs.pop("include_params", []))
     exclude_params = _parse_filter_list(kwargs.pop("exclude_params", []))
 
+    tabview = kwargs.get("tabview", False)
+
     metric_names, param_names = _collect_names(
         all_experiments,
         include_metrics=include_metrics,
@@ -390,7 +392,11 @@ def show_experiments(
     td.drop("is_baseline")
 
     merge_headers = ["Experiment", "queued", "ident_guide", "parent"]
-    td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
+
+    if not tabview:
+        td.column("Experiment")[:] = map(
+            prepare_exp_id, td.as_dict(merge_headers)
+        )
     td.drop(*merge_headers[1:])
 
     td.render(
@@ -399,6 +405,7 @@ def show_experiments(
         rich_table=True,
         header_styles=styles,
         row_styles=row_styles,
+        tabview=tabview,
     )
 
 
@@ -450,6 +457,7 @@ class CmdExperimentsShow(CmdBase):
                 sort_order=self.args.sort_order,
                 precision=self.args.precision or DEFAULT_PRECISION,
                 pager=not self.args.no_pager,
+                tabview=True,
             )
         return 0
 
