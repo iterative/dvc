@@ -409,3 +409,13 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return fs.info(path_info)
         except FileNotFoundError:
             return dvc_fs.info(path_info)
+
+    def _get_file_list(self, from_info: PathInfo, **kwargs) -> list:
+        repo = self._get_repo(os.path.abspath(from_info))
+        if repo:
+            return list(
+                repo.dvcignore(
+                    self.walk(from_info, **kwargs), walk_files=True,
+                )
+            )
+        return list(self.walk_files(from_info, **kwargs))

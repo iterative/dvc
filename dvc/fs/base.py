@@ -293,26 +293,16 @@ class BaseFileSystem:
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
     ):
-        if self.scheme == Schemes.LOCAL and self.repo:
-            follow_subrepos = not kwargs.pop("follow_subrepos", True)
-            from_infos = list(
-                self.repo.dvcignore(
-                    self.walk(from_info, **kwargs),
-                    ignore_subrepos=follow_subrepos,
-                    walk_files=True,
-                )
-            )
-        else:
-            from_infos = list(self.walk_files(from_info, **kwargs))
-        if not from_infos:
+        from_file_list = self._get_file_list(from_info)
+        if not from_file_list:
             makedirs(to_info, exist_ok=True)
             return None
         to_infos = (
-            to_info / info.relative_to(from_info) for info in from_infos
+            to_info / info.relative_to(from_info) for info in from_file_list
         )
 
         with Tqdm(
-            total=len(from_infos),
+            total=len(from_file_list),
             desc="Downloading directory",
             unit="Files",
             disable=no_progress_bar,
@@ -324,7 +314,7 @@ class BaseFileSystem:
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [
                     executor.submit(download_files, from_info, to_info)
-                    for from_info, to_info in zip(from_infos, to_infos)
+                    for from_info, to_info in zip(from_file_list, to_infos)
                 ]
 
                 # NOTE: unlike pulling/fetching cache, where we need to
@@ -357,3 +347,12 @@ class BaseFileSystem:
         )
 
         move(tmp_file, to_info)
+
+    def _get_file_list(self, from_info, **kwargs):
+        if self.repo and self.scheme == Schemes.LOCAL:
+            return list(
+                self.repo.dvcignore(
+                    self.walk(from_info, **kwargs), walk_files=True,
+                )
+            )
+        return list(self.walk_files(from_info, **kwargs))
