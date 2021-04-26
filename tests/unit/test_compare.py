@@ -49,6 +49,17 @@ def test_no_path():
     ]
 
 
+def test_do_not_show_changes():
+    td = diff_table(
+        {"metrics.json": {"a.b.c": {"old": 1, "new": 2, "diff": 3}}},
+        title="Metric",
+        show_changes=False,
+    )
+    assert td.as_dict() == [
+        {"Path": "metrics.json", "Metric": "a.b.c", "Old": "1", "New": "2"}
+    ]
+
+
 def test_diff_table_precision():
     diff = {
         "metrics.json": {
@@ -182,6 +193,7 @@ def test_diff_mocked(mocker, markdown):
         no_path=False,
         precision=None,
         on_empty_diff=None,
+        show_changes=True,
     )
     ret.render.assert_called_once_with(markdown=markdown)
 

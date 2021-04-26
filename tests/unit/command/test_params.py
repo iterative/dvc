@@ -53,7 +53,7 @@ def test_params_diff_from_cli(dvc, mocker):
         cmd.repo, a_rev=None, b_rev=None, all=False, targets=None, deps=False,
     )
     show_diff_mock.assert_called_once_with(
-        {}, title="Param", markdown=False, no_path=False
+        {}, title="Param", markdown=False, no_path=False, show_changes=False
     )
 
 

@@ -174,7 +174,7 @@ def _format_field(val: Any, precision: int = None) -> str:
     def _format(_val):
         if isinstance(_val, float) and precision:
             fmt = f"{{:.{precision}f}}"
-            return float(fmt.format(_val))
+            return fmt.format(_val)
         if isinstance(_val, Mapping):
             return {k: _format(v) for k, v in _val.items()}
         if isinstance(_val, list):
@@ -189,6 +189,7 @@ def diff_table(
     title: str,
     old: bool = True,
     no_path: bool = False,
+    show_changes: bool = True,
     precision: int = None,
     on_empty_diff: str = None,
 ) -> TabularData:
@@ -216,6 +217,9 @@ def diff_table(
     if no_path:
         td.drop("Path")
 
+    if not show_changes:
+        td.drop("Change")
+
     if not old:
         td.drop("Old")
         td.rename("New", "Value")
@@ -228,6 +232,7 @@ def show_diff(
     title: str,
     old: bool = True,
     no_path: bool = False,
+    show_changes: bool = True,
     precision: int = None,
     on_empty_diff: str = None,
     markdown: bool = False,
@@ -237,6 +242,7 @@ def show_diff(
         title=title,
         old=old,
         no_path=no_path,
+        show_changes=show_changes,
         precision=precision,
         on_empty_diff=on_empty_diff,
     )
