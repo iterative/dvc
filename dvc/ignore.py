@@ -289,9 +289,9 @@ class DvcIgnoreFilter:
 
     def is_ignored_dir(self, path, ignore_subrepos=True):
         path = os.path.abspath(path)
-        if not ignore_subrepos:
-            return not self._is_subrepo(path)
-        if path == self.root_dir:
+        if path == self.root_dir or (
+            not ignore_subrepos and self._is_subrepo(path)
+        ):
             return False
 
         return self._is_ignored(path, True)
@@ -330,13 +330,13 @@ class DvcIgnoreFilter:
                     return CheckIgnoreResult(target, True, matches)
         return _no_match(target)
 
-    def is_ignored(self, path):
+    def is_ignored(self, path, ignore_subrepos=True):
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555
         if os.path.isfile(path):
             return self.is_ignored_file(path)
         if os.path.isdir(path):
-            return self.is_ignored_dir(path)
+            return self.is_ignored_dir(path, ignore_subrepos)
         return self.is_ignored_file(path) or self.is_ignored_dir(path)
 
 

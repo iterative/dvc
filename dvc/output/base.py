@@ -214,7 +214,7 @@ class BaseOutput:
         if self.scheme == Schemes.LOCAL and self.IS_DEPENDENCY is False:
             dvcignore = getattr(self.repo, "dvcignore", None)
             if dvcignore:
-                if dvcignore.is_ignored(path):
+                if dvcignore.is_ignored(path, ignore_subrepos=False):
                     return True
         return False
 
