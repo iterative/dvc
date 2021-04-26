@@ -426,7 +426,7 @@ class Git(Base):
             commit = self.resolve_commit(parent)
 
     @contextmanager
-    def detach_head(self, rev: Optional[str] = None):
+    def detach_head(self, rev: Optional[str] = None, force: bool = False):
         """Context manager for performing detached HEAD SCM operations.
 
         Detaches and restores HEAD similar to interactive git rebase.
@@ -440,7 +440,7 @@ class Git(Base):
             rev = "HEAD"
         orig_head = self.get_ref("HEAD", follow=False)
         logger.debug("Detaching HEAD at '%s'", rev)
-        self.checkout(rev, detach=True)
+        self.checkout(rev, detach=True, force=force)
         try:
             yield self.get_ref("HEAD")
         finally:
