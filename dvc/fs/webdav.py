@@ -151,33 +151,30 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # Use webdav is_dir to test whether path points to a directory
         return self._client.is_dir(path_info.path)
 
-    # Yields path info to all files
     def walk_files(self, path_info, **kwargs):
-        # Check whether directory exists
         if not self.exists(path_info):
             return
 
-        # Collect directories
-        dirs = deque([path_info.path])
+        for file in self.find(path_info):
+            yield path_info.replace(path=file)
 
-        # Iterate all directories found so far
-        while dirs:
-            # Iterate directory content
-            for entry in self._client.list(dirs.pop(), get_info=True):
-                # Construct path_info to entry
-                info = path_info.replace(path=entry["path"])
-
-                # Check whether entry is a directory
+    def ls(self, path_info, detail=False):
+        for entry in self._client.list(path_info.path):
+            path = entry["path"]
+            if detail:
                 if entry["isdir"]:
-                    # Append new found directory to directory list
-                    dirs.append(info.path)
+                    yield {"type": "directory", "name": path}
                 else:
-                    # Yield path info to non directory
-                    yield info
+                    yield {
+                        "type": "file",
+                        "name": path,
+                        "size": entry["size"],
+                        "etag": entry["etag"],
+                    }
+            else:
+                yield path
 
-    def ls(
-        self, path_info, detail=False, recursive=False
-    ):  # pylint: disable=arguments-differ
+    def find(self, path_info, detail=False):
         dirs = deque([path_info.path])
 
         while dirs:
@@ -196,14 +193,6 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                     }
                 else:
                     yield path
-
-            if not recursive:
-                for entry in dirs:
-                    if detail:
-                        yield {"type": "directory", "name": entry}
-                    else:
-                        yield entry
-                return None
 
     # Removes file/directory
     def remove(self, path_info):

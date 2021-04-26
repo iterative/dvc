@@ -293,11 +293,7 @@ class S3FileSystem(BaseFileSystem):
 
             yield path_info.replace(path=fname)
 
-    def ls(
-        self, path_info, detail=False, recursive=False
-    ):  # pylint: disable=arguments-differ
-        assert recursive
-
+    def find(self, path_info, detail=False):
         with self._get_bucket(path_info.bucket) as bucket:
             for obj_summary in bucket.objects.filter(Prefix=path_info.path):
                 if detail:

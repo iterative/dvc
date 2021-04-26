@@ -33,15 +33,13 @@ class FSSpecWrapper(BaseFileSystem):
 
         return path or bucket
 
-    def _strip_buckets(self, entries, detail, prefix=None):
+    def _strip_buckets(self, entries, detail=False):
         for entry in entries:
             if detail:
                 entry = self._entry_hook(entry.copy())
                 entry["name"] = self._strip_bucket(entry["name"])
             else:
-                entry = self._strip_bucket(
-                    f"{prefix}/{entry}" if prefix else entry
-                )
+                entry = self._strip_bucket(entry)
             yield entry
 
     def _entry_hook(self, entry):
@@ -93,24 +91,29 @@ class FSSpecWrapper(BaseFileSystem):
     def exists(self, path_info, use_dvcignore=False):
         return self.fs.exists(self._with_bucket(path_info))
 
-    def ls(
-        self, path_info, detail=False, recursive=False
-    ):  # pylint: disable=arguments-differ
-        if self.isdir(path_info) and self.is_empty(path_info):
-            return None
-
+    def ls(self, path_info, detail=False):
         path = self._with_bucket(path_info)
-        if recursive:
-            for root, _, files in self.fs.walk(path, detail=detail):
-                if detail:
-                    files = files.values()
-                yield from self._strip_buckets(files, detail, prefix=root)
+        files = self.fs.ls(path, detail=detail)
+        yield from self._strip_buckets(files, detail=detail)
+
+    def find(self, path_info, detail=False):
+        path = self._with_bucket(path_info)
+        files = self.fs.find(path, detail=detail)
+        if detail:
+            files = files.values()
+
+        # When calling find() on a file, it returns the same file in a list.
+        # For object-based storages, the same behavior applies to empty
+        # directories since they are represented as files. This condition
+        # checks whether we should yield an empty list (if it is an empty
+        # directory) or just yield the file itself.
+        if len(files) == 1 and files[0] == path and self.isdir(path_info):
             return None
 
-        yield from self._strip_buckets(self.ls(path, detail=detail), detail)
+        yield from self._strip_buckets(files, detail=detail)
 
     def walk_files(self, path_info, **kwargs):
-        for file in self.ls(path_info, recursive=True):
+        for file in self.find(path_info):
             yield path_info.replace(path=file)
 
     def remove(self, path_info):
