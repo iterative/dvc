@@ -195,13 +195,23 @@ class Experiments:
                             branch_name = ExpRefInfo.from_ref(branch).name
                         else:
                             branch_name = f"{resume_rev[:7]}"
-                        if self.scm.is_dirty() or not branch:
+                        if self.scm.is_dirty():
                             logger.info(
                                 "Modified checkpoint experiment based on "
                                 "'%s' will be created",
                                 branch_name,
                             )
                             branch = None
+                        elif (
+                            not branch
+                            or self.scm.get_ref(branch) != resume_rev
+                        ):
+                            raise DvcException(
+                                f"Nothing to do for unchanged checkpoint "
+                                f"'{resume_rev[:7]}'. To resume from the head "
+                                "of this experiment, use "
+                                f"'dvc exp apply {branch_name}'."
+                            )
                         else:
                             logger.info(
                                 "Existing checkpoint experiment '%s' will be "
@@ -237,11 +247,15 @@ class Experiments:
                         baseline_rev[:7],
                     )
                 finally:
-                    # Reset any of our changes before prior unstashing
                     if resume_rev:
+                        # NOTE: this set_ref + reset() is equivalent to
+                        # `git reset orig_head` (our SCM reset() only operates
+                        # on HEAD rather than any arbitrary commit)
                         self.scm.set_ref(
                             "HEAD", orig_head, message="dvc: restore HEAD"
                         )
+                        self.scm.reset()
+                    # Revert any of our changes before prior unstashing
                     self.scm.reset(hard=True)
 
         return stash_rev
@@ -719,10 +733,10 @@ class Experiments:
 
         # NOTE: the stash commit to be popped already contains all the current
         # workspace changes plus CLI modifed --params changes.
-        # `reset --hard` here will not lose any data (pop without reset would
-        # result in conflict between workspace params and stashed CLI params).
-        self.scm.reset(hard=True)
-        with self.scm.detach_head(entry.rev):
+        # `checkout --force` here will not lose any data (popping stash commit
+        # will result in conflict between workspace params and stashed CLI
+        # params, but we always want the stashed version).
+        with self.scm.detach_head(entry.rev, force=True):
             rev = self.stash.pop()
             self.scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
             if entry.branch:
