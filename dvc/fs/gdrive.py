@@ -532,7 +532,7 @@ class GDriveFileSystem(BaseFileSystem):
         query = f"({query}) and trashed=false"
         return self._gdrive_list(query)
 
-    def _ls_recursive(self, path_info, detail=False):
+    def find(self, path_info, detail=False):
         root_path = path_info.path
         seen_paths = set()
 
@@ -569,13 +569,7 @@ class GDriveFileSystem(BaseFileSystem):
                 else:
                     yield item_path
 
-    def ls(
-        self, path_info, detail=False, recursive=False
-    ):  # pylint: disable=arguments-differ
-        if recursive:
-            yield from self._ls_recursive(path_info, detail=detail)
-            return None
-
+    def ls(self, path_info, detail=False):
         cached = path_info.path in self._ids_cache["dirs"]
         if cached:
             dir_ids = self._ids_cache["dirs"][path_info.path]
@@ -605,8 +599,8 @@ class GDriveFileSystem(BaseFileSystem):
             self._cache_path_id(root_path, *dir_ids)
 
     def walk_files(self, path_info, **kwargs):
-        for filename in self.ls(path_info, recursive=True):
-            yield path_info.replace(path=filename)
+        for file in self.find(path_info):
+            yield path_info.replace(path=file)
 
     def remove(self, path_info):
         item_id = self._get_item_id(path_info)
