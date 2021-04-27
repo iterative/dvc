@@ -507,12 +507,16 @@ def test_import_complete_repo(tmp_dir, dvc, erepo_dir):
         subrepo.dvc_gen({"dir": {"bar": "bar"}}, commit="files in subrepo")
 
     dvc.imp(os.fspath(erepo_dir), "subrepo", out="out_sub")
-    assert (tmp_dir / "out_sub" / ".gitignore").read_text() == "/dir\n"
-    assert (tmp_dir / "out_sub" / "dir").read_text() == {"bar": "bar"}
+    assert (tmp_dir / "out_sub").read_text() == {
+        ".gitignore": "/dir\n",
+        "dir": {"bar": "bar"},
+    }
 
     dvc.imp(os.fspath(erepo_dir), os.curdir, out="out")
-    assert (tmp_dir / "out" / ".gitignore").read_text() == "/foo\n"
-    assert (tmp_dir / "out" / "foo").read_text() == "foo"
+    assert (tmp_dir / "out").read_text() == {
+        ".gitignore": "/foo\n",
+        "foo": "foo",
+    }
 
 
 def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
