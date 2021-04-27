@@ -1,33 +1,11 @@
 import argparse
 import logging
-from collections import OrderedDict
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
-
-
-def _show_diff(diff, markdown=False, no_path=False):
-    from dvc.utils.diff import table
-
-    rows = []
-    for fname, pdiff in diff.items():
-        sorted_pdiff = OrderedDict(sorted(pdiff.items()))
-        for param, change in sorted_pdiff.items():
-            row = [] if no_path else [fname]
-            row.append(param)
-            row.append(change["old"])
-            row.append(change["new"])
-            rows.append(row)
-
-    header = [] if no_path else ["Path"]
-    header.append("Param")
-    header.append("Old")
-    header.append("New")
-
-    return table(header, rows, markdown)
 
 
 class CmdParamsDiff(CmdBase):
@@ -42,19 +20,24 @@ class CmdParamsDiff(CmdBase):
                 all=self.args.all,
                 deps=self.args.deps,
             )
-
-            if self.args.show_json:
-                import json
-
-                logger.info(json.dumps(diff))
-            else:
-                table = _show_diff(diff, self.args.show_md, self.args.no_path)
-                if table:
-                    logger.info(table)
-
         except DvcException:
             logger.exception("failed to show params diff")
             return 1
+
+        if self.args.show_json:
+            import json
+
+            logger.info(json.dumps(diff))
+        else:
+            from dvc.compare import show_diff
+
+            show_diff(
+                diff,
+                title="Param",
+                markdown=self.args.show_md,
+                no_path=self.args.no_path,
+                show_changes=False,
+            )
 
         return 0
 

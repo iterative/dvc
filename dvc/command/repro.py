@@ -3,7 +3,6 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.command.metrics import _show_metrics
 from dvc.command.status import CmdDataStatus
 
 logger = logging.getLogger(__name__)
@@ -20,8 +19,10 @@ class CmdRepro(CmdBase):
             )
 
         if self.args.metrics:
+            from dvc.compare import show_metrics
+
             metrics = self.repo.metrics.show()
-            logger.info(_show_metrics(metrics))
+            show_metrics(metrics)
 
         return 0
 
