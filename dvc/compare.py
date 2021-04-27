@@ -165,9 +165,11 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         ui.table(self, headers=self.keys(), **kwargs)
 
-    def as_dict(self):
-        keys = self.keys()
-        return [dict(zip(keys, row)) for row in self]
+    def as_dict(self, cols: Iterable[str] = None) -> Iterable[Dict[str, str]]:
+        keys = self.keys() if cols is None else set(cols)
+        return [
+            {k: self._columns[k][i] for k in keys} for i in range(len(self))
+        ]
 
 
 def _format_field(val: Any, precision: int = None) -> str:

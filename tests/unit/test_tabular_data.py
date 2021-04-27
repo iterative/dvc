@@ -107,6 +107,7 @@ def test_dict_like_interfaces():
         {"col-1": "foo", "col-2": "bar"},
         {"col-1": "foobar", "col-2": "foobar"},
     ]
+    assert td.as_dict(["col-1"]) == [{"col-1": "foo"}, {"col-1": "foobar"}]
 
 
 def test_fill_value():
