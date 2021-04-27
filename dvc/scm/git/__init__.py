@@ -151,7 +151,9 @@ class Git(Base):
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
         if not path_isin(os.path.realpath(gitignore), self.root_dir):
-            raise FileNotInRepoError(path)
+            raise FileNotInRepoError(
+                f"'{path}' is outside of git repository '{self.root_dir}'"
+            )
 
         return entry, gitignore
 
