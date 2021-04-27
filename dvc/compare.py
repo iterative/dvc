@@ -173,7 +173,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 def _format_field(val: Any, precision: int = None) -> str:
     def _format(_val):
         if isinstance(_val, float) and precision:
-            fmt = f"{{:.{precision}f}}"
+            fmt = f"{{:.{precision}g}}"
             return fmt.format(_val)
         if isinstance(_val, Mapping):
             return {k: _format(v) for k, v in _val.items()}

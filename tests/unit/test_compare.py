@@ -71,9 +71,9 @@ def test_diff_table_precision():
         {
             "Path": "metrics.json",
             "Metric": "a.b.c",
-            "Old": "1.123",
-            "New": "2.235",
-            "Change": "3.346",
+            "Old": "1.12",
+            "New": "2.23",
+            "Change": "3.35",
         }
     ]
 
@@ -375,9 +375,9 @@ def test_metrics_show_precision():
         {
             "Revision": "branch_1",
             "Path": "metrics.json",
-            "a": "1.0988",
-            "b.ad": "1.5343",
-            "b.bc": "2.9877",
+            "a": "1.099",
+            "b.ad": "1.534",
+            "b.bc": "2.988",
         }
     ]
 
@@ -386,9 +386,9 @@ def test_metrics_show_precision():
         {
             "Revision": "branch_1",
             "Path": "metrics.json",
-            "a": "1.0987654",
-            "b.ad": "1.5342673",
-            "b.bc": "2.9877255",
+            "a": "1.098765",
+            "b.ad": "1.534267",
+            "b.bc": "2.987726",
         }
     ]
 

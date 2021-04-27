@@ -189,8 +189,8 @@ def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
 
     captured = capsys.readouterr()
     assert captured.out == (
-        "Path    Metric    Old      New      Change\n"
-        "m.yaml  foo       1.23457  3.45679  2.22222\n"
+        "Path    Metric    Old     New     Change\n"
+        "m.yaml  foo       1.2346  3.4568  2.2222\n"
     )
 
 
