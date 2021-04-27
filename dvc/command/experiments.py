@@ -1,10 +1,11 @@
 import argparse
 import logging
 from collections import Counter, OrderedDict, defaultdict
-from collections.abc import Mapping
 from datetime import date, datetime
 from fnmatch import fnmatch
-from typing import Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, Optional
+
+from funcy import constantly, iffy, lmap
 
 import dvc.prompt as prompt
 from dvc.command import completion
@@ -15,10 +16,15 @@ from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.utils.flatten import flatten
 
+if TYPE_CHECKING:
+    from dvc.compare import TabularData
+
+
 logger = logging.getLogger(__name__)
 
 
 SHOW_MAX_WIDTH = 1024
+FILL_VALUE = "-"
 
 
 def _filter_name(names, label, filter_strs):
@@ -101,7 +107,7 @@ def _collect_names(all_experiments, **kwargs):
         kwargs.get("exclude_metrics"),
     )
     param_names = _filter_names(
-        (param_names),
+        param_names,
         "params",
         kwargs.get("include_params"),
         kwargs.get("exclude_params"),
@@ -116,7 +122,6 @@ def _collect_rows(
     metric_names,
     param_names,
     precision=DEFAULT_PRECISION,
-    no_timestamp=False,
     sort_by=None,
     sort_order=None,
 ):
@@ -133,8 +138,6 @@ def _collect_rows(
 
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
-        row = []
-        style = None
         queued = "*" if exp.get("queued", False) else ""
 
         tip = exp.get("checkpoint_tip")
@@ -144,9 +147,7 @@ def _collect_rows(
                 name_rev = base_rev[:7]
             else:
                 name_rev = base_rev
-            name = exp.get("name", name_rev)
-            row.append(f"{name}")
-            style = "bold"
+            text = exp.get("name", name_rev)
         else:
             if tip:
                 parent_rev = exp.get("checkpoint_parent", "")
@@ -172,17 +173,15 @@ def _collect_rows(
                     tree = "└──"
                 new_checkpoint = True
             name = exp.get("name", rev[:7])
-            row.append(f"{tree} {queued}{name}{parent}")
+            text = f"{tree} {queued}{name}{parent}"
 
-        if not no_timestamp:
-            row.append(_format_time(exp.get("timestamp")))
-
+        row = [text, _format_time(exp.get("timestamp")), rev == "baseline"]
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
         )
         _extend_row(row, param_names, exp.get("params", {}).items(), precision)
 
-        yield row, style
+        yield row
 
 
 def _sort_column(sort_by, metric_names, param_names):
@@ -223,7 +222,7 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
             return _sort((tip, experiments[tip]))
         data = exp.get(typ, {}).get(sort_path, {})
         val = flatten(data).get(sort_name)
-        return (val is None, val)
+        return val is None, val
 
     ret = OrderedDict()
     if "baseline" in experiments:
@@ -235,7 +234,7 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
 
 def _format_time(timestamp):
     if timestamp is None:
-        return "-"
+        return FILL_VALUE
     if timestamp.date() == date.today():
         fmt = "%I:%M %p"
     else:
@@ -243,43 +242,23 @@ def _format_time(timestamp):
     return timestamp.strftime(fmt)
 
 
-def _format_field(val, precision=DEFAULT_PRECISION):
-    if isinstance(val, float):
-        fmt = f"{{:.{precision}g}}"
-        return fmt.format(val)
-    if isinstance(val, Mapping):
-        return {k: _format_field(v) for k, v in val.items()}
-    if isinstance(val, list):
-        return [_format_field(x) for x in val]
-    return str(val)
-
-
 def _extend_row(row, names, items, precision):
     from rich.text import Text
 
+    from dvc.compare import _format_field, with_value
+
     if not items:
-        for keys in names.values():
-            row.extend(["-"] * len(keys))
+        row.extend(FILL_VALUE for keys in names.values() for _ in keys)
         return
 
     for fname, item in items:
-        if isinstance(item, dict):
-            item = flatten(item)
-        else:
-            item = {fname: item}
+        item = flatten(item) if isinstance(item, dict) else {fname: item}
         for name in names[fname]:
-            if name in item:
-                value = item[name]
-                if value is None:
-                    text = "-"
-                else:
-                    # wrap field data in rich.Text, otherwise rich may
-                    # interpret unescaped braces from list/dict types as rich
-                    # markup tags
-                    text = Text(str(_format_field(value, precision)))
-                row.append(text)
-            else:
-                row.append("-")
+            value = with_value(item.get(name), FILL_VALUE)
+            # wrap field data in rich.Text, otherwise rich may
+            # interpret unescaped braces from list/dict types as rich
+            # markup tags
+            row.append(Text(str(_format_field(value, precision))))
 
 
 def _parse_filter_list(param_list):
@@ -293,9 +272,42 @@ def _parse_filter_list(param_list):
     return ret
 
 
-def _experiments_table(all_experiments, **kwargs):
-    from dvc.utils.table import Table
+def experiments_table(
+    all_experiments,
+    metric_headers,
+    metric_names,
+    param_headers,
+    param_names,
+    sort_by=None,
+    sort_order=None,
+    precision=DEFAULT_PRECISION,
+) -> "TabularData":
+    from funcy import lconcat
 
+    from dvc.compare import TabularData
+
+    headers = ["Experiment", "Created", "is_baseline"]
+    td = TabularData(
+        lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
+    )
+    for base_rev, experiments in all_experiments.items():
+        rows = _collect_rows(
+            base_rev,
+            experiments,
+            metric_names,
+            param_names,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            precision=precision,
+        )
+        td.extend(rows)
+
+    return td
+
+
+def show_experiments(
+    all_experiments, pager=True, no_timestamp=False, **kwargs
+):
     include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
     exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
     include_params = _parse_filter_list(kwargs.pop("include_params", []))
@@ -308,44 +320,67 @@ def _experiments_table(all_experiments, **kwargs):
         include_params=include_params,
         exclude_params=exclude_params,
     )
+    metric_headers = _normalize_headers(metric_names)
+    param_headers = _normalize_headers(param_names)
 
-    table = Table()
-    table.add_column(
-        "Experiment", no_wrap=True, header_style="black on grey93"
-    )
-    if not kwargs.get("no_timestamp", False):
-        table.add_column("Created", header_style="black on grey93")
-    _add_data_columns(
-        table,
+    td = experiments_table(
+        all_experiments,
+        metric_headers,
         metric_names,
-        justify="right",
-        no_wrap=True,
-        header_style="black on cornsilk1",
+        param_headers,
+        param_names,
+        kwargs.get("sort_by"),
+        kwargs.get("sort_order"),
+        kwargs.get("precision"),
     )
-    _add_data_columns(
-        table, param_names, justify="left", header_style="black on light_cyan1"
+    styles = [
+        {"no_wrap": True, "header_style": "black on grey93"},
+        {"header_style": "black on grey93"},
+        *[
+            {
+                "justify": "right",
+                "header_style": "black on cornsilk1",
+                "no_wrap": True,
+                "collapse": idx != 0,
+            }
+            for idx, _ in enumerate(metric_headers)
+        ],
+        *[
+            {
+                "justify": "left",
+                "header_style": "black on light_cyan1",
+                "collapse": idx != 0,
+            }
+            for idx, _ in enumerate(param_headers)
+        ],
+    ]
+
+    if no_timestamp:
+        td.drop("Created")
+        styles.pop(1)
+
+    baseline_styler = iffy(constantly({"style": "bold"}), default={})
+    row_styles = lmap(baseline_styler, td.column("is_baseline"))
+    td.drop("is_baseline")
+
+    td.render(
+        pager=pager,
+        borders=True,
+        rich_table=True,
+        header_styles=styles,
+        row_styles=row_styles,
     )
 
-    for base_rev, experiments in all_experiments.items():
-        for row, _, in _collect_rows(
-            base_rev, experiments, metric_names, param_names, **kwargs,
-        ):
-            table.add_row(*row)
 
-    return table
-
-
-def _add_data_columns(table, names, **kwargs):
+def _normalize_headers(names):
     count = Counter(
         name for path in names for name in names[path] for path in names
     )
-    first = True
-    for path in names:
-        for name in names[path]:
-            col_name = name if count[name] == 1 else f"{path}:{name}"
-            kwargs["collapse"] = False if first else True
-            table.add_column(col_name, **kwargs)
-            first = False
+    return [
+        name if count[name] == 1 else f"{path}:{name}"
+        for path in names
+        for name in names[path]
+    ]
 
 
 def _format_json(item):
@@ -356,8 +391,6 @@ def _format_json(item):
 
 class CmdExperimentsShow(CmdBase):
     def run(self):
-        from rich.console import Console
-
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -367,19 +400,16 @@ class CmdExperimentsShow(CmdBase):
                 num=self.args.num,
                 param_deps=self.args.param_deps,
             )
+        except DvcException:
+            logger.exception("failed to show experiments")
+            return 1
 
-            if self.args.show_json:
-                import json
+        if self.args.show_json:
+            import json
 
-                logger.info(json.dumps(all_experiments, default=_format_json))
-                return 0
-
-            if self.args.precision is None:
-                precision = DEFAULT_PRECISION
-            else:
-                precision = self.args.precision
-
-            table = _experiments_table(
+            logger.info(json.dumps(all_experiments, default=_format_json))
+        else:
+            show_experiments(
                 all_experiments,
                 include_metrics=self.args.include_metrics,
                 exclude_metrics=self.args.exclude_metrics,
@@ -388,31 +418,9 @@ class CmdExperimentsShow(CmdBase):
                 no_timestamp=self.args.no_timestamp,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
-                precision=precision,
+                precision=self.args.precision or DEFAULT_PRECISION,
+                pager=not self.args.no_pager,
             )
-
-            console = Console()
-            if self.args.no_pager:
-                console.print(table)
-            else:
-                from dvc.utils.pager import DvcPager
-
-                # NOTE: rich does not have native support for unlimited width
-                # via pager. we override rich table compression by setting
-                # console width to the full width of the table
-                console_options = console.options
-                console_options.max_width = SHOW_MAX_WIDTH
-                measurement = table.__rich_measure__(console, console_options)
-                console._width = (  # pylint: disable=protected-access
-                    measurement.maximum
-                )
-                with console.pager(pager=DvcPager(), styles=True):
-                    console.print(table)
-
-        except DvcException:
-            logger.exception("failed to show experiments")
-            return 1
-
         return 0
 
 
