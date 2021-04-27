@@ -5,6 +5,8 @@ from datetime import date, datetime
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
+from funcy import constantly, iffy, lmap
+
 import dvc.prompt as prompt
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -357,10 +359,8 @@ def show_experiments(
         td.drop("Created")
         styles.pop(1)
 
-    row_styles = [
-        {"style": "bold" if is_baseline else None}
-        for is_baseline in td.column("is_baseline")
-    ]
+    baseline_styler = iffy(constantly({"style": "bold"}), default={})
+    row_styles = lmap(baseline_styler, td.column("is_baseline"))
     td.drop("is_baseline")
 
     td.render(
