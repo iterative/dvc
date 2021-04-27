@@ -447,6 +447,7 @@ class CmdExperimentsDiff(CmdBase):
         else:
             from dvc.compare import show_diff
 
+            precision = self.args.precision or DEFAULT_PRECISION
             diffs = [("metrics", "Metric"), ("params", "Param")]
             for idx, (key, title) in enumerate(diffs):
                 if idx:
@@ -459,7 +460,7 @@ class CmdExperimentsDiff(CmdBase):
                     no_path=self.args.no_path,
                     old=self.args.old,
                     on_empty_diff="diff not supported",
-                    precision=self.args.precision or DEFAULT_PRECISION,
+                    precision=precision if key == "metrics" else None,
                 )
 
         return 0
