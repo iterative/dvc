@@ -451,7 +451,11 @@ class CmdExperimentsDiff(CmdBase):
             diffs = [("metrics", "Metric"), ("params", "Param")]
             for idx, (key, title) in enumerate(diffs):
                 if idx:
-                    logger.info("")
+                    from dvc.ui import ui
+
+                    # we are printing tables even in `--quiet` mode
+                    # so we should also be printing the "table" separator
+                    ui.write(force=True)
 
                 show_diff(
                     diff[key],
