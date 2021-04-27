@@ -123,8 +123,6 @@ def _collect_rows(
     sort_by=None,
     sort_order=None,
 ):
-    from rich.text import Text
-
     from dvc.scm.git import Git
 
     if sort_by:
@@ -147,8 +145,7 @@ def _collect_rows(
                 name_rev = base_rev[:7]
             else:
                 name_rev = base_rev
-            name = exp.get("name", name_rev)
-            text = Text(name, style="bold")
+            text = exp.get("name", name_rev)
         else:
             if tip:
                 parent_rev = exp.get("checkpoint_parent", "")
@@ -176,7 +173,7 @@ def _collect_rows(
             name = exp.get("name", rev[:7])
             text = f"{tree} {queued}{name}{parent}"
 
-        row = [text, _format_time(exp.get("timestamp"))]
+        row = [text, _format_time(exp.get("timestamp")), rev == "baseline"]
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
         )
@@ -287,7 +284,7 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = ["Experiment", "Created"]
+    headers = ["Experiment", "Created", "is_baseline"]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -360,7 +357,19 @@ def show_experiments(
         td.drop("Created")
         styles.pop(1)
 
-    td.render(pager=pager, borders=True, rich_table=True, header_styles=styles)
+    row_styles = [
+        {"style": "bold" if is_baseline else None}
+        for is_baseline in td.column("is_baseline")
+    ]
+    td.drop("is_baseline")
+
+    td.render(
+        pager=pager,
+        borders=True,
+        rich_table=True,
+        header_styles=styles,
+        row_styles=row_styles,
+    )
 
 
 def _normalize_headers(names):
