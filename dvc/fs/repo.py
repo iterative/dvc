@@ -71,7 +71,6 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         Otherwise, it collects the repos that might be in the path's parents
         and then returns the appropriate one.
         """
-        print(path)
         repo = self._subrepos_trie.get(path)
         if repo:
             return repo
@@ -331,7 +330,6 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return
 
         repo = self._get_repo(os.path.abspath(top))
-        print(repo, os.path.abspath(top))
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
         if repo:
             yield from repo.dvcignore(
