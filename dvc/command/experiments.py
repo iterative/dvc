@@ -138,16 +138,16 @@ def _collect_rows(
 
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
-        queued = "*" if exp.get("queued", False) else ""
-
+        queued = str(exp.get("queued") or "")
         tip = exp.get("checkpoint_tip")
         parent = ""
+        tree = ""
         if rev == "baseline":
             if Git.is_sha(base_rev):
                 name_rev = base_rev[:7]
             else:
                 name_rev = base_rev
-            text = exp.get("name", name_rev)
+            name = exp.get("name", name_rev)
         else:
             if tip:
                 parent_rev = exp.get("checkpoint_parent", "")
@@ -164,7 +164,7 @@ def _collect_rows(
                         tree = "├─╨"
                     else:
                         tree = "│ ╟"
-                        parent = f" ({parent_rev[:7]})"
+                        parent = parent_rev[:7]
                     new_checkpoint = True
             else:
                 if i < len(experiments) - 1:
@@ -173,9 +173,15 @@ def _collect_rows(
                     tree = "└──"
                 new_checkpoint = True
             name = exp.get("name", rev[:7])
-            text = f"{tree} {queued}{name}{parent}"
 
-        row = [text, _format_time(exp.get("timestamp")), rev == "baseline"]
+        row = [
+            name,
+            queued,
+            tree,
+            _format_time(exp.get("timestamp")),
+            rev == "baseline",
+            parent,
+        ]
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
         )
@@ -286,7 +292,14 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = ["Experiment", "Created", "is_baseline"]
+    headers = [
+        "Experiment",
+        "queued",
+        "ident_guide",
+        "Created",
+        "is_baseline",
+        "parent",
+    ]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -303,6 +316,19 @@ def experiments_table(
         td.extend(rows)
 
     return td
+
+
+def prepare_exp_id(kwargs):
+    exp_name = kwargs["Experiment"]
+    ident = kwargs.get("ident_guide")
+    queued = kwargs.get("queued")
+    parent = kwargs.get("parent")
+    return "{}{}{}{}".format(
+        f"{ident} " if ident else "",
+        "*" if queued else "",
+        exp_name,
+        f" ({parent})" if parent else "",
+    )
 
 
 def show_experiments(
@@ -362,6 +388,10 @@ def show_experiments(
     baseline_styler = iffy(constantly({"style": "bold"}), default={})
     row_styles = lmap(baseline_styler, td.column("is_baseline"))
     td.drop("is_baseline")
+
+    merge_headers = ["Experiment", "queued", "ident_guide", "parent"]
+    td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
+    td.drop(*merge_headers[1:])
 
     td.render(
         pager=pager,
