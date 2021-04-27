@@ -403,7 +403,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
 
     # using fs that does not have dvcignore
     dvc._reset()
-    fs = RepoFileSystem(dvc, subrepos=True)
+    fs = RepoFileSystem(dvc)
     expected = [
         PathInfo("dir") / "repo",
         PathInfo("dir") / "repo.txt",
@@ -420,7 +420,9 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
 
     actual = []
     for root, dirs, files in fs.walk(
-        os.path.join(fs.root_dir, "dir"), dvcfiles=dvcfiles
+        os.path.join(fs.root_dir, "dir"),
+        dvcfiles=dvcfiles,
+        ignore_subrepos=False,
     ):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
@@ -446,7 +448,7 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
 
     # using fs that does not have dvcignore
     dvc._reset()
-    fs = RepoFileSystem(dvc, subrepos=False)
+    fs = RepoFileSystem(dvc)
     expected = [
         tmp_dir / ".dvcignore",
         tmp_dir / ".gitignore",
@@ -464,17 +466,6 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
     expected = [str(path) for path in expected]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
-
-    assert fs.isfile(tmp_dir / "lorem") is True
-    assert fs.isfile(tmp_dir / "dir" / "repo" / "foo") is False
-    assert fs.isdir(tmp_dir / "dir" / "repo") is False
-    assert fs.isdir(tmp_dir / "dir") is True
-
-    assert fs.isdvc(tmp_dir / "lorem") is True
-    assert fs.isdvc(tmp_dir / "dir" / "repo" / "dir1") is False
-
-    assert fs.exists(tmp_dir / "dir" / "repo.txt") is True
-    assert fs.exists(tmp_dir / "repo" / "ipsum") is False
 
 
 def test_get_hash_cached_file(tmp_dir, dvc, mocker):
@@ -629,7 +620,9 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
         expected[str(tmp_dir / "subrepo1")].add("subrepo3")
 
     actual = {}
-    fs = RepoFileSystem(dvc, subrepos=traverse_subrepos)
-    for root, dirs, files in fs.walk(str(tmp_dir)):
+    fs = RepoFileSystem(dvc)
+    for root, dirs, files in fs.walk(
+        str(tmp_dir), ignore_subrepos=not traverse_subrepos
+    ):
         actual[root] = set(dirs + files)
     assert expected == actual

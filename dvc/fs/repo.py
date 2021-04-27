@@ -63,7 +63,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._dvcfss[repo.root_dir] = DvcFileSystem(repo)
 
-    def _get_repo(self, path) -> Optional["Repo"]:
+    def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
 
         If the path is already tracked/collected, it just returns the repo.
@@ -71,6 +71,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         Otherwise, it collects the repos that might be in the path's parents
         and then returns the appropriate one.
         """
+        print(path)
         repo = self._subrepos_trie.get(path)
         if repo:
             return repo
@@ -329,6 +330,45 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
+        repo = self._get_repo(os.path.abspath(top))
+        print(repo, os.path.abspath(top))
+        ignore_subrepos = kwargs.pop("ignore_subrepos", True)
+        if repo:
+            yield from repo.dvcignore(
+                self.walk_fs(
+                    top,
+                    topdown=topdown,
+                    onerror=onerror,
+                    dvcfiles=dvcfiles,
+                    **kwargs
+                ),
+                ignore_subrepos=ignore_subrepos,
+            )
+        else:
+            yield from self.walk_fs(
+                top,
+                topdown=topdown,
+                onerror=onerror,
+                dvcfiles=dvcfiles,
+                **kwargs
+            )
+
+    def walk_fs(
+        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
+    ):  # pylint: disable=arguments-differ
+        """Walk and merge both DVC and repo fss.
+
+        Args:
+            top: path to walk from
+            topdown: if True, fs will be walked from top down.
+            onerror: if set, onerror function will be called if an error
+                occurs (by default errors are ignored).
+            dvcfiles: if True, dvcfiles will be included in the files list
+                for walked directories.
+
+        Any kwargs will be passed into methods used for fetching and/or
+        streaming DVC outs from remotes.
+        """
         fs, dvc_fs = self._get_fs_pair(top)
         repo_exists = fs.exists(top)
         repo_walk = fs.walk(top, topdown=topdown, onerror=onerror,)
@@ -409,13 +449,3 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return fs.info(path_info)
         except FileNotFoundError:
             return dvc_fs.info(path_info)
-
-    def _get_file_list(self, from_info: PathInfo, **kwargs) -> list:
-        repo = self._get_repo(os.path.abspath(from_info))
-        if repo:
-            return list(
-                repo.dvcignore(
-                    self.walk(from_info, **kwargs), walk_files=True,
-                )
-            )
-        return list(self.walk_files(from_info, **kwargs))
