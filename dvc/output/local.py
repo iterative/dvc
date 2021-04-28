@@ -48,7 +48,11 @@ class LocalOutput(BaseOutput):
         return self.FS_CLS.PATH_CLS(abs_p)
 
     def __str__(self):
-        if not self.repo or not self.is_in_repo:
+        if (
+            not self.repo
+            or urlparse(self.def_path).scheme == "remote"
+            or os.path.isabs(self.def_path)
+        ):
             return str(self.def_path)
 
         cur_dir = os.getcwd()
@@ -63,8 +67,15 @@ class LocalOutput(BaseOutput):
 
     @property
     def is_in_repo(self):
-        def_scheme = urlparse(self.def_path).scheme
-        return def_scheme != "remote" and not os.path.isabs(self.def_path)
+        if urlparse(self.def_path).scheme == "remote":
+            return False
+
+        if os.path.isabs(self.def_path):
+            return False
+
+        if self.repo and not self.path_info.isin(self.repo.root_dir):
+            return False
+        return True
 
     def dumpd(self):
         ret = super().dumpd()
