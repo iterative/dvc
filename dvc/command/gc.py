@@ -97,6 +97,7 @@ def add_parser(subparsers, parent_parser):
         help="Keep data files for all Git tags.",
     )
     gc_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,

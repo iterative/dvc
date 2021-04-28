@@ -319,14 +319,13 @@ def test_fs_ls(dvc, cloud):
         pytest.lazy_fixture("gdrive"),
     ],
 )
-def test_fs_ls_recursive(dvc, cloud):
+def test_fs_find_recursive(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
     fs = get_cloud_fs(dvc, **cloud.config)
     path_info = fs.path_info
 
     assert {
-        os.path.basename(file_key)
-        for file_key in fs.ls(path_info / "data", recursive=True)
+        os.path.basename(file_key) for file_key in fs.find(path_info / "data")
     } == {"foo", "baz", "quux"}
 
 
@@ -339,12 +338,12 @@ def test_fs_ls_recursive(dvc, cloud):
         pytest.lazy_fixture("webdav"),
     ],
 )
-def test_fs_ls_with_etag(dvc, cloud):
+def test_fs_find_with_etag(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
     fs = get_cloud_fs(dvc, **cloud.config)
     path_info = fs.path_info
 
-    for details in fs.ls(path_info / "data", recursive=True, detail=True):
+    for details in fs.find(path_info / "data", detail=True):
         assert (
             fs.info(path_info.replace(path=details["name"]))["etag"]
             == details["etag"]

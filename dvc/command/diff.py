@@ -18,9 +18,9 @@ def _digest(checksum):
 
 
 def _show_md(diff, show_hash=False, hide_missing=False):
-    from dvc.utils.diff import table
+    from dvc.ui import ui
 
-    header = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
+    headers = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
     statuses = ["added", "deleted", "renamed", "modified"]
     if not hide_missing:
@@ -39,7 +39,7 @@ def _show_md(diff, show_hash=False, hide_missing=False):
             else:
                 rows.append([status, path])
 
-    return table(header, rows, True)
+    ui.table(rows, headers=headers, markdown=True)
 
 
 class CmdDiff(CmdBase):

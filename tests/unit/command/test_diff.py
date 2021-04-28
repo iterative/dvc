@@ -229,11 +229,7 @@ def test_no_changes(mocker, caplog):
     assert not info()
 
 
-def test_show_md_empty():
-    assert _show_md({}) == ("| Status   | Path   |\n|----------|--------|\n")
-
-
-def test_show_md():
+def test_show_md(capsys):
     diff = {
         "deleted": [
             {"path": "zoo"},
@@ -246,7 +242,10 @@ def test_show_md():
         "renamed": [{"path": {"old": "file_old", "new": "file_new"}}],
         "not in cache": [{"path": "file2"}],
     }
-    assert _show_md(diff) == (
+
+    _show_md(diff)
+    out, _ = capsys.readouterr()
+    assert out == (
         "| Status       | Path                 |\n"
         "|--------------|----------------------|\n"
         "| added        | file                 |\n"
@@ -257,10 +256,11 @@ def test_show_md():
         "| renamed      | file_old -> file_new |\n"
         "| modified     | file                 |\n"
         "| not in cache | file2                |\n"
+        "\n"
     ).format(sep=os.path.sep)
 
 
-def test_show_md_with_hash():
+def test_show_md_with_hash(capsys):
     diff = {
         "deleted": [
             {"path": "zoo", "hash": "22222"},
@@ -280,7 +280,11 @@ def test_show_md_with_hash():
         ],
         "not in cache": [{"path": "file2", "hash": "12345678"}],
     }
-    assert _show_md(diff, show_hash=True) == (
+
+    _show_md(diff, show_hash=True)
+
+    out, _ = capsys.readouterr()
+    assert out == (
         "| Status       | Hash               | Path                 |\n"
         "|--------------|--------------------|----------------------|\n"
         "| added        | 00000000           | file                 |\n"
@@ -291,10 +295,11 @@ def test_show_md_with_hash():
         "| renamed      | 11111111           | file_old -> file_new |\n"
         "| modified     | AAAAAAAA..BBBBBBBB | file                 |\n"
         "| not in cache | 12345678           | file2                |\n"
+        "\n"
     ).format(sep=os.path.sep)
 
 
-def test_show_md_hide_missing():
+def test_show_md_hide_missing(capsys):
     diff = {
         "deleted": [
             {"path": "zoo"},
@@ -307,7 +312,11 @@ def test_show_md_hide_missing():
         "renamed": [{"path": {"old": "file_old", "new": "file_new"}}],
         "not in cache": [{"path": "file2"}],
     }
-    assert _show_md(diff, hide_missing=True) == (
+
+    _show_md(diff, hide_missing=True)
+
+    out, _ = capsys.readouterr()
+    assert out == (
         "| Status   | Path                 |\n"
         "|----------|----------------------|\n"
         "| added    | file                 |\n"
@@ -317,6 +326,7 @@ def test_show_md_hide_missing():
         "| deleted  | data{sep}bar             |\n"
         "| renamed  | file_old -> file_new |\n"
         "| modified | file                 |\n"
+        "\n"
     ).format(sep=os.path.sep)
 
 

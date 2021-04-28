@@ -7,7 +7,7 @@ import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Dict, Iterable, List, Optional, Set, Type
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Type
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -77,6 +77,7 @@ class Git(Base):
     GIT_DIR = ".git"
     LOCAL_BRANCH_PREFIX = "refs/heads/"
     RE_HEXSHA = re.compile(r"^[0-9A-Fa-f]{4,40}$")
+    BAD_REF_CHARS_RE = re.compile("[\177\\s~^:?*\\[]")
 
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
@@ -122,6 +123,11 @@ class Git(Base):
     @classmethod
     def is_sha(cls, rev):
         return rev and cls.RE_HEXSHA.search(rev)
+
+    @classmethod
+    def split_ref_pattern(cls, ref: str) -> Tuple[str, str]:
+        name = cls.BAD_REF_CHARS_RE.split(ref, maxsplit=1)[0]
+        return name, ref[len(name) :]
 
     @staticmethod
     def _get_git_dir(root_dir):

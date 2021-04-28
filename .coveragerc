@@ -13,3 +13,4 @@ exclude_lines =
     raise NotImplementedError
     # pragma: no cover
     #  pragma: no cover
+    \.\.\.$

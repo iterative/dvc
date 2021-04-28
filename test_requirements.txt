@@ -4,7 +4,7 @@ wheel==0.36.2
 pytest==6.2.3
 pytest-cov==2.11.1
 pytest-xdist==2.2.1
-pytest-mock==3.5.1
+pytest-mock==3.6.0
 pytest-lazy-fixture==0.6.3
 pytest-timeout==1.4.2
 pytest-docker==0.10.1
@@ -20,7 +20,7 @@ wsgidav==3.1.0
 crc32c==2.2
 xmltodict==0.12.0
 google-compute-engine==2.8.13
-google-cloud-storage==1.37.1
+google-cloud-storage==1.38.0
 
 urllib3==1.26.4
 
@@ -31,7 +31,7 @@ pydocstyle==6.0.0
 jaraco.windows==5.5.0
 
 # pylint requirements
-pylint==2.7.4
+pylint==2.8.2
 # we use this to suppress pytest-related false positives in our tests.
 pylint-pytest==1.0.3
 # we use this to suppress some messages in tests, eg: foo/bar naming,

@@ -1,5 +1,6 @@
 import itertools
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
@@ -42,9 +43,9 @@ class ObjectDB:
             hash_info,
         )
 
-    def add(self, path_info, fs, hash_info, **kwargs):
+    def add(self, path_info, fs, hash_info, move=True, **kwargs):
         try:
-            self.check(hash_info)
+            self.check(hash_info, check_hash=self.verify)
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
@@ -52,11 +53,32 @@ class ObjectDB:
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
         self.makedirs(cache_info.parent)
-        if isinstance(fs, type(self.fs)):
-            self.fs.move(path_info, cache_info)
-        else:
-            with fs.open(path_info, mode="rb") as fobj:
-                self.fs.upload_fobj(fobj, cache_info)
+        use_move = isinstance(fs, type(self.fs)) and move
+        try:
+            if use_move:
+                self.fs.move(path_info, cache_info)
+            else:
+                with fs.open(path_info, mode="rb") as fobj:
+                    self.fs.upload_fobj(fobj, cache_info)
+        except OSError as exc:
+            # If the target file already exists, we are going to simply
+            # ignore the exception (#4992).
+            #
+            # On Windows, it is not always guaranteed that you'll get
+            # FileExistsError (it might be PermissionError or a bare OSError)
+            # but all of those exceptions raised from the original
+            # FileExistsError so we have a separate check for that.
+            if isinstance(exc, FileExistsError) or (
+                os.name == "nt"
+                and exc.__context__
+                and isinstance(exc.__context__, FileExistsError)
+            ):
+                logger.debug("'%s' file already exists, skipping", path_info)
+                if use_move:
+                    fs.remove(path_info)
+            else:
+                raise
+
         self.protect(cache_info)
         self.fs.repo.state.save(cache_info, self.fs, hash_info)
 
@@ -84,8 +106,10 @@ class ObjectDB:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def check(self, hash_info):
-        """Compare the given hash with the (corresponding) actual one.
+    def check(self, hash_info, check_hash=True):
+        """Compare the given hash with the (corresponding) actual one if
+        check_hash is specified, or just verify the existence of the cache
+        files on the filesystem.
 
         - Use `State` as a cache for computed hashes
             + The entries are invalidated by taking into account the following:
@@ -106,7 +130,7 @@ class ObjectDB:
             return
 
         try:
-            obj.check(self)
+            obj.check(self, check_hash=check_hash)
         except ObjectFormatError:
             logger.warning("corrupted cache file '%s'.", obj.path_info)
             self.fs.remove(obj.path_info)

@@ -259,6 +259,8 @@ class BaseExecutor(ABC):
                 "Executor repro with force = '%s'", str(repro_force)
             )
 
+            repro_dry = kwargs.get("dry")
+
             # NOTE: checkpoint outs are handled as a special type of persist
             # out:
             #
@@ -272,15 +274,16 @@ class BaseExecutor(ABC):
             #   using any hash present in dvc.lock (or removed if no entry
             #   exists in dvc.lock)
             checkpoint_reset: bool = kwargs.pop("reset", False)
-            dvc_checkout(
-                dvc,
-                targets=targets,
-                with_deps=targets is not None,
-                force=True,
-                quiet=True,
-                allow_missing=True,
-                checkpoint_reset=checkpoint_reset,
-            )
+            if not repro_dry:
+                dvc_checkout(
+                    dvc,
+                    targets=targets,
+                    with_deps=targets is not None,
+                    force=True,
+                    quiet=True,
+                    allow_missing=True,
+                    checkpoint_reset=checkpoint_reset,
+                )
 
             checkpoint_func = partial(
                 cls.checkpoint_callback,
@@ -297,35 +300,38 @@ class BaseExecutor(ABC):
             )
 
             exp_hash = cls.hash_exp(stages)
-            try:
-                is_checkpoint = any(stage.is_checkpoint for stage in stages)
-                if is_checkpoint and checkpoint_reset:
-                    # For reset checkpoint stages, we need to force overwriting
-                    # existing checkpoint refs even though repro may not have
-                    # actually been run with --force
-                    repro_force = True
-                cls.commit(
-                    dvc.scm,
-                    exp_hash,
-                    exp_name=name,
-                    force=repro_force,
-                    checkpoint=is_checkpoint,
-                )
-            except UnchangedExperimentError:
-                pass
-            ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-            if ref:
-                exp_ref = ExpRefInfo.from_ref(ref)
-            if cls.WARN_UNTRACKED:
-                untracked = dvc.scm.untracked_files()
-                if untracked:
-                    logger.warning(
-                        "The following untracked files were present in the "
-                        "experiment directory after reproduction but will "
-                        "not be included in experiment commits:\n"
-                        "\t%s",
-                        ", ".join(untracked),
+            if not repro_dry:
+                try:
+                    is_checkpoint = any(
+                        stage.is_checkpoint for stage in stages
                     )
+                    if is_checkpoint and checkpoint_reset:
+                        # For reset checkpoint stages, we need to force
+                        # overwriting existing checkpoint refs even though
+                        # repro may not have actually been run with --force
+                        repro_force = True
+                    cls.commit(
+                        dvc.scm,
+                        exp_hash,
+                        exp_name=name,
+                        force=repro_force,
+                        checkpoint=is_checkpoint,
+                    )
+                except UnchangedExperimentError:
+                    pass
+                ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+                if ref:
+                    exp_ref = ExpRefInfo.from_ref(ref)
+                if cls.WARN_UNTRACKED:
+                    untracked = dvc.scm.untracked_files()
+                    if untracked:
+                        logger.warning(
+                            "The following untracked files were present in "
+                            "the experiment directory after reproduction but "
+                            "will not be included in experiment commits:\n"
+                            "\t%s",
+                            ", ".join(untracked),
+                        )
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across

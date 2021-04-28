@@ -5,6 +5,7 @@ from datetime import datetime
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.experiments.base import ExpRefInfo
+from dvc.repo.experiments.utils import fix_exp_head
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
 from dvc.scm.base import SCMError
@@ -13,11 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_experiment_commit(
-    repo, rev, stash=False, sha_only=True, param_deps=False
+    repo, exp_rev, stash=False, sha_only=True, param_deps=False
 ):
     res = defaultdict(dict)
-    for rev in repo.brancher(revs=[rev]):
+    for rev in repo.brancher(revs=[exp_rev]):
         if rev == "workspace":
+            if exp_rev != "workspace":
+                continue
             res["timestamp"] = None
         else:
             commit = repo.scm.resolve_commit(rev)
@@ -98,7 +101,8 @@ def show(
         revs = []
         for n in range(num):
             try:
-                revs.append(repo.scm.resolve_rev(f"HEAD~{n}"))
+                head = fix_exp_head(repo.scm, f"HEAD~{n}")
+                revs.append(repo.scm.resolve_rev(head))
             except SCMError:
                 break
 

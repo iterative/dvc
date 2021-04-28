@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from itertools import zip_longest
-from typing import TYPE_CHECKING, Iterator, List, Sequence, Union
+from typing import TYPE_CHECKING, Iterator, Sequence, Union
 
 from dvc.types import DictStrAny
 
@@ -17,7 +17,7 @@ SHOW_MAX_WIDTH = 1024
 
 CellT = Union[str, "Text"]  # Text is mostly compatible with str
 Row = Sequence[CellT]
-TableData = List[Row]
+TableData = Sequence[Row]
 Headers = Sequence[str]
 Styles = DictStrAny
 

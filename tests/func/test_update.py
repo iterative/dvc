@@ -358,12 +358,26 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
     indirect=True,
 )
 def test_update_import_url_to_remote_directory(
-    tmp_dir, dvc, workspace, local_remote
+    mocker, tmp_dir, dvc, workspace, local_remote
 ):
     workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
     stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
-    workspace.gen({"data": {"foo2": "foo2", "bar": {"baz2": "baz2"}}})
+    workspace.gen(
+        {
+            "data": {
+                "foo2": "foo2",
+                "bar": {"baz2": "baz2"},
+                "repeated_hashes": {
+                    "foo": "foo",
+                    "baz": "baz",
+                    "foo_with_different_name": "foo",
+                },
+            }
+        }
+    )
+
+    upload_file_mock = mocker.spy(type(dvc.odb.local.fs), "upload_fobj")
     stage = dvc.update(stage.path, to_remote=True)
 
     dvc.pull("data")
@@ -371,4 +385,51 @@ def test_update_import_url_to_remote_directory(
         "foo": "foo",
         "foo2": "foo2",
         "bar": {"baz": "baz", "baz2": "baz2"},
+        "repeated_hashes": {
+            "foo": "foo",
+            "baz": "baz",
+            "foo_with_different_name": "foo",
+        },
+    }
+    # 2 new hashes (foo2, baz2) + 1 .dir hash
+    assert upload_file_mock.mock.call_count == 3
+
+
+def test_update_import_url_to_remote_directory_changed_contents(
+    tmp_dir, dvc, local_cloud, local_remote
+):
+    local_cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
+    stage = dvc.imp_url("remote://upstream/data", to_remote=True)
+
+    local_cloud.gen(
+        {"data": {"foo": "not_foo", "foo2": "foo", "bar": {"baz2": "baz2"}}}
+    )
+    stage = dvc.update(stage.path, to_remote=True)
+
+    dvc.pull("data")
+    assert (tmp_dir / "data").read_text() == {
+        "foo": "not_foo",
+        "foo2": "foo",
+        "bar": {"baz": "baz", "baz2": "baz2"},
+    }
+
+
+def test_update_import_url_to_remote_directory_same_hash(
+    tmp_dir, dvc, local_cloud, local_remote
+):
+    local_cloud.gen(
+        {"data": {"foo": "foo", "bar": {"baz": "baz"}, "same": "same"}}
+    )
+    stage = dvc.imp_url("remote://upstream/data", to_remote=True)
+
+    local_cloud.gen(
+        {"data": {"foo": "baz", "bar": {"baz": "foo"}, "same": "same"}}
+    )
+    stage = dvc.update(stage.path, to_remote=True)
+
+    dvc.pull("data")
+    assert (tmp_dir / "data").read_text() == {
+        "foo": "baz",
+        "bar": {"baz": "foo"},
+        "same": "same",
     }
