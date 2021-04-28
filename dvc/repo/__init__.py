@@ -9,6 +9,7 @@ from funcy import cached_property, cat
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
+from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.utils.fs import path_isin
 
@@ -239,8 +240,7 @@ class Repo:
             raise
 
     @cached_property
-    def dvcignore(self):
-        from dvc.ignore import DvcIgnoreFilter
+    def dvcignore(self) -> DvcIgnoreFilter:
 
         root = self.root_dir
         return DvcIgnoreFilter(self.fs, root)

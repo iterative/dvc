@@ -145,8 +145,8 @@ class FileMixin:
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
         if not self.exists():
-            is_ignored = self.repo.fs.exists(self.path)
-            raise StageFileDoesNotExistError(self.path, dvc_ignored=is_ignored)
+            file_exist = self.repo.fs.exists(self.path)
+            raise StageFileDoesNotExistError(self.path, dvc_ignored=file_exist)
 
         self._verify_filename()
         if not self.repo.fs.isfile(self.path):

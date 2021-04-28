@@ -353,20 +353,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def walk_fs(
         self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
-    ):  # pylint: disable=arguments-differ
-        """Walk and merge both DVC and repo fss.
-
-        Args:
-            top: path to walk from
-            topdown: if True, fs will be walked from top down.
-            onerror: if set, onerror function will be called if an error
-                occurs (by default errors are ignored).
-            dvcfiles: if True, dvcfiles will be included in the files list
-                for walked directories.
-
-        Any kwargs will be passed into methods used for fetching and/or
-        streaming DVC outs from remotes.
-        """
+    ):
         fs, dvc_fs = self._get_fs_pair(top)
         repo_exists = fs.exists(top)
         repo_walk = fs.walk(top, topdown=topdown, onerror=onerror,)

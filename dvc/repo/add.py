@@ -73,8 +73,6 @@ def add(  # noqa: C901
             pbar.bar_format = "Adding..."
             pbar.refresh()
         for target in targets:
-            if repo.dvcignore.is_ignored(target):
-                continue
             sub_targets = _find_all_targets(repo, target, recursive)
             pbar.total += len(sub_targets) - 1
 

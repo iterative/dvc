@@ -2,7 +2,6 @@ from itertools import chain
 
 from dvc.exceptions import PathMissingError
 from dvc.path_info import PathInfo
-from dvc.scheme import Schemes
 
 
 def ls(
@@ -36,7 +35,7 @@ def ls(
         if path:
             path_info /= path
 
-        ret = _ls(repo, repo.repo_fs, path_info, recursive, dvc_only)
+        ret = _ls(repo.repo_fs, path_info, recursive, dvc_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, dvc_only=dvc_only)
@@ -49,18 +48,15 @@ def ls(
         return ret_list
 
 
-def _ls(repo, fs, path_info, recursive=None, dvc_only=False):
+def _ls(fs, path_info, recursive=None, dvc_only=False):
     def onerror(exc):
         raise exc
 
     infos = []
     try:
-        walk_iterator = fs.walk(
+        for root, dirs, files in fs.walk(
             path_info.fspath, onerror=onerror, dvcfiles=True
-        )
-        if fs.scheme == Schemes.LOCAL:
-            walk_iterator = repo.dvcignore(walk_iterator)
-        for root, dirs, files in walk_iterator:
+        ):
             entries = chain(files, dirs) if not recursive else files
             infos.extend(PathInfo(root) / entry for entry in entries)
             if not recursive:

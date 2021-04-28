@@ -211,11 +211,13 @@ class BaseOutput:
         return self.hash_info.isdir
 
     def is_ignored(self, path) -> bool:
-        if self.scheme == Schemes.LOCAL and self.IS_DEPENDENCY is False:
-            dvcignore = getattr(self.repo, "dvcignore", None)
-            if dvcignore:
-                if dvcignore.is_ignored(path, ignore_subrepos=False):
-                    return True
+        if (
+            self.scheme == Schemes.LOCAL
+            and self.IS_DEPENDENCY is False
+            and self.repo
+        ):
+            if self.repo.dvcignore.is_ignored(path, ignore_subrepos=False):
+                return True
         return False
 
     @property

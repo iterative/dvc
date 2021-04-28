@@ -552,9 +552,6 @@ def test_subrepo(dvc_top_level, erepo):
     if dvc_top_level:
         assert _list_files(erepo, "dvc_dir") == {"lorem"}
 
-    with pytest.raises(PathMissingError):
-        _list_files(erepo, "subrepo")
-
     assert _list_files(subrepo, ".") == common_outputs
     assert _list_files(subrepo, "scm_dir") == {"ipsum"}
     assert _list_files(subrepo, "dvc_dir") == {"lorem"}
