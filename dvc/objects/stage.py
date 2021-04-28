@@ -101,7 +101,7 @@ def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
 
 def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):
     if not upload and name in fs.DETAIL_FIELDS:
-        for details in fs.ls(path_info, recursive=True, detail=True):
+        for details in fs.find(path_info, detail=True):
             file_info = path_info.replace(path=details["name"])
             hash_info = HashInfo(
                 name, details[name], size=details.get("size"),
