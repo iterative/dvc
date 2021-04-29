@@ -11,10 +11,10 @@ from .base import BaseFileSystem
 
 # pylint: disable=no-member
 class FSSpecWrapper(BaseFileSystem):
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.fs_args = {"skip_instance_cache": True}
-        self.fs_args.update(self._prepare_credentials(config))
+        self.fs_args.update(self._prepare_credentials(**kwargs))
 
     @cached_property
     def fs(self):
@@ -50,7 +50,9 @@ class FSSpecWrapper(BaseFileSystem):
         entries within info() and ls(detail=True) calls"""
         return entry
 
-    def _prepare_credentials(self, config):  # pylint: disable=unused-argument
+    def _prepare_credentials(
+        self, **config
+    ):  # pylint: disable=unused-argument
         """Prepare the arguments for authentication to the
         host filesystem"""
         return {}

@@ -19,20 +19,20 @@ def test_url(dvc):
     url = f"ssh://{user}@{host}:{port}{path}"
     config = {"url": url}
 
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
     assert fs.path_info == url
 
     # SCP-like URL ssh://[user@]host.xz:/absolute/path
     url = f"ssh://{user}@{host}:{path}"
     config = {"url": url}
 
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
     assert fs.path_info == url
 
 
 def test_no_path(dvc):
     config = {"url": "ssh://127.0.0.1"}
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
     assert fs.path_info.path == ""
 
 
@@ -66,7 +66,7 @@ else:
 def test_ssh_host_override_from_config(
     mock_file, mock_exists, dvc, config, expected_host
 ):
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
 
     mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
     mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
@@ -94,7 +94,7 @@ def test_ssh_host_override_from_config(
     read_data=mock_ssh_config,
 )
 def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
 
     mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
     mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
@@ -119,7 +119,7 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
     read_data=mock_ssh_config,
 )
 def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
 
     mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
     mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
@@ -154,7 +154,7 @@ def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
     read_data=mock_ssh_config,
 )
 def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
 
     mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
     mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
@@ -176,7 +176,7 @@ def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
     read_data=mock_ssh_config,
 )
 def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
 
     mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
     mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
@@ -201,7 +201,7 @@ def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
 def test_ssh_allow_agent(
     mock_file, mock_exists, dvc, config, expected_allow_agent
 ):
-    fs = SSHFileSystem(dvc, config)
+    fs = SSHFileSystem(**config)
 
     mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
     mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
@@ -209,7 +209,7 @@ def test_ssh_allow_agent(
 
 
 def test_hardlink_optimization(dvc, tmp_dir, ssh):
-    fs = SSHFileSystem(dvc, ssh.config)
+    fs = SSHFileSystem(**ssh.config)
 
     from_info = fs.path_info / "empty"
     to_info = fs.path_info / "link"

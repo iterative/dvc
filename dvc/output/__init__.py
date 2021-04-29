@@ -77,7 +77,8 @@ def _get(
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        fs = get_cloud_fs(stage.repo, name=parsed.netloc)
+        cls, config = get_cloud_fs(stage.repo, name=parsed.netloc)
+        fs = cls(**config)
         return OUTS_MAP[fs.scheme](
             stage,
             p,

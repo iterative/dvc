@@ -22,11 +22,11 @@ class LocalObjectDB(ObjectDB):
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, fs):
-        super().__init__(fs)
-        self.cache_dir = fs.config.get("url")
+    def __init__(self, fs, **config):
+        super().__init__(fs, **config)
+        self.cache_dir = config.get("url")
 
-        shared = fs.config.get("shared")
+        shared = config.get("shared")
         if shared:
             self._file_mode = 0o664
             self._dir_mode = 0o2775

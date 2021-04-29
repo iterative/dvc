@@ -20,7 +20,7 @@ def test_init_env_var(monkeypatch, dvc):
     monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
 
     config = {"url": "azure://"}
-    fs = AzureFileSystem(dvc, config)
+    fs = AzureFileSystem(**config)
     assert fs.path_info == "azure://" + container_name
 
 
@@ -28,14 +28,14 @@ def test_init(dvc):
     prefix = "some/prefix"
     url = f"azure://{container_name}/{prefix}"
     config = {"url": url, "connection_string": connection_string}
-    fs = AzureFileSystem(dvc, config)
+    fs = AzureFileSystem(**config)
     assert fs.path_info == url
 
 
 def test_info(tmp_dir, azure):
     tmp_dir.gen("foo", "foo")
 
-    fs = AzureFileSystem(None, azure.config)
+    fs = AzureFileSystem(**azure.config)
     to_info = azure
     fs.upload(PathInfo("foo"), to_info)
     assert fs.exists(to_info)

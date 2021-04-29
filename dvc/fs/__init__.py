@@ -98,4 +98,9 @@ def get_cloud_fs(repo, **kwargs):
         if checksum_jobs:
             remote_conf["checksum_jobs"] = checksum_jobs
 
-    return get_fs_cls(remote_conf)(repo, remote_conf)
+    cls = get_fs_cls(remote_conf)
+
+    if isinstance(cls, GDriveFileSystem):
+        remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
+
+    return cls, remote_conf

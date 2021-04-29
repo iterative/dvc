@@ -67,19 +67,17 @@ class Remote:
 
     INDEX_CLS = RemoteIndex
 
-    def __init__(self, fs):
+    def __init__(self, fs, tmp_dir, **config):
         from dvc.objects.db import get_odb
 
         self.fs = fs
-        self.repo = fs.repo
-        self.odb = get_odb(self.fs)
+        self.odb = get_odb(self.fs, **config)
 
-        config = fs.config
         url = config.get("url")
         if url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
             self.index = self.INDEX_CLS(
-                self.repo, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
+                tmp_dir, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
             )
         else:
             self.index = RemoteIndexNoop()
@@ -476,7 +474,7 @@ class Remote:
                 cache_file = self.odb.hash_to_path_info(checksum)
                 if self.fs.exists(cache_file):
                     hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
-                    self.fs.repo.state.save(cache_file, self.fs, hash_info)
+                    self.odb.state.save(cache_file, self.fs, hash_info)
                     self.odb.protect(cache_file)
 
         return ret
@@ -500,7 +498,7 @@ class Remote:
                     # during download will not be moved from tmp_file
                     # (see `BaseFileSystem.download()`)
                     hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
-                    cache.fs.repo.state.save(cache_file, cache.fs, hash_info)
+                    cache.state.save(cache_file, cache.fs, hash_info)
                     cache.protect(cache_file)
 
         return ret

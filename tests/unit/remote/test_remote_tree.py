@@ -87,21 +87,25 @@ def test_walk_files(remote):
     assert list(remote.fs.walk_files(remote.fs.path_info / "data")) == files
 
 
-@pytest.mark.parametrize("remote", [pytest.lazy_fixture("s3")], indirect=True)
-def test_copy_preserve_etag_across_buckets(remote, dvc):
-    s3 = remote.fs
+@pytest.mark.parametrize("cloud", [pytest.lazy_fixture("s3")])
+def test_copy_preserve_etag_across_buckets(cloud, dvc):
+    cloud.gen(FILE_WITH_CONTENTS)
+    rem = get_remote(dvc, **cloud.config)
+    s3 = rem.fs
     s3.fs.mkdir("another/")
 
-    another = S3FileSystem(
-        dvc, {**remote.fs.config, "url": "s3://another", "region": "us-east-1"}
-    )
+    config = cloud.config.copy()
+    config["url"] = "s3://another"
+    config["region"] = "us-east-1"
 
-    from_info = remote.fs.path_info / "foo"
+    another = S3FileSystem(**config)
+
+    from_info = rem.fs.path_info / "foo"
     to_info = another.path_info / "foo"
 
-    remote.fs.copy(from_info, to_info)
+    rem.fs.copy(from_info, to_info)
 
-    from_hash = remote.fs.info(from_info)["etag"]
+    from_hash = rem.fs.info(from_info)["etag"]
     to_hash = another.info(to_info)["etag"]
 
     assert from_hash == to_hash

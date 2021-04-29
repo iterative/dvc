@@ -87,7 +87,7 @@ def test_fix_env_pyenv(path, orig):
 def test_file_md5(tmp_dir):
     tmp_dir.gen("foo", "foo content")
 
-    fs = LocalFileSystem(None, {})
+    fs = LocalFileSystem()
     assert file_md5("foo", fs) == file_md5(PathInfo("foo"), fs)
 
 

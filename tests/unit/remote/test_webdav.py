@@ -12,7 +12,7 @@ password = "password"
 # Test minimum requiered configuration (url)
 def test_init(dvc):
     config = {"url": url}
-    fs = WebDAVFileSystem(dvc, config)
+    fs = WebDAVFileSystem(**config)
 
     assert fs.path_info == url
 
@@ -22,7 +22,7 @@ def test_init(dvc):
     "config", [{"url": url, "user": user}, {"url": userurl}]
 )
 def test_user(dvc, config):
-    fs = WebDAVFileSystem(dvc, config)
+    fs = WebDAVFileSystem(**config)
 
     assert fs.user == user
 
@@ -30,7 +30,7 @@ def test_user(dvc, config):
 # Test username extraction from url
 def test_userurl(dvc):
     config = {"url": userurl}
-    fs = WebDAVFileSystem(dvc, config)
+    fs = WebDAVFileSystem(**config)
 
     assert fs.path_info == userurl
     assert fs.user == user
@@ -40,6 +40,6 @@ def test_userurl(dvc):
 # test password from config
 def test_password(dvc):
     config = {"url": url, "user": user, "password": password}
-    fs = WebDAVFileSystem(dvc, config)
+    fs = WebDAVFileSystem(**config)
 
     assert fs.password == password

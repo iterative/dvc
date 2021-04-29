@@ -15,7 +15,7 @@ from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 class TestLocalFileSystem(TestDir):
     def setUp(self):
         super().setUp()
-        self.fs = LocalFileSystem(None, {})
+        self.fs = LocalFileSystem()
 
     def test_open(self):
         with self.fs.open(self.FOO) as fd:
@@ -116,7 +116,7 @@ class AssertWalkEqualMixin:
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir})
+        fs = LocalFileSystem()
         self.assertWalkEqual(
             fs.walk(self._root_dir),
             [
@@ -135,7 +135,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir})
+        fs = LocalFileSystem()
         self.assertWalkEqual(
             fs.walk(join("data_dir", "data_sub_dir")),
             [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
@@ -144,7 +144,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir})
+        fs = LocalFileSystem(url=self._root_dir)
         walk_result = []
         for root, dirs, files in fs.walk("."):
             dirs[:] = [i for i in dirs if i != ".git"]
@@ -244,7 +244,8 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
 )
 def test_fs_getsize(dvc, cloud):
     cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
     path_info = fs.path_info
 
     assert fs.getsize(path_info / "baz") == 7
@@ -269,7 +270,8 @@ def test_fs_getsize(dvc, cloud):
 )
 def test_fs_upload_fobj(dvc, tmp_dir, cloud):
     tmp_dir.gen("foo", "foo")
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     from_info = tmp_dir / "foo"
     to_info = fs.path_info / "foo"
@@ -295,7 +297,8 @@ def test_fs_ls(dvc, cloud):
             }
         }
     )
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
     path_info = cloud / "directory"
 
     assert {os.path.basename(file_key) for file_key in fs.ls(path_info)} == {
@@ -324,7 +327,8 @@ def test_fs_ls(dvc, cloud):
 )
 def test_fs_find_recursive(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
     path_info = fs.path_info
 
     assert {
@@ -345,7 +349,8 @@ def test_fs_find_recursive(dvc, cloud):
 )
 def test_fs_find_with_etag(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
     path_info = fs.path_info
 
     for details in fs.find(path_info / "data", detail=True):
@@ -366,7 +371,8 @@ def test_fs_find_with_etag(dvc, cloud):
 )
 def test_fs_fsspec_path_management(dvc, cloud):
     cloud.gen({"foo": "foo", "data": {"bar": "bar", "baz": {"foo": "foo"}}})
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     root = cloud.parents[len(cloud.parents) - 1]
     bucket_details = fs.info(root)

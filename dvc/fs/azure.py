@@ -78,8 +78,8 @@ class AzureFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         "azure-identity": "azure.identity",
     }
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
         url = config.get("url")
         self.path_info = self.PATH_CLS(url)
@@ -92,7 +92,7 @@ class AzureFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         self.path_info = self.PATH_CLS(url)
         self.bucket = self.path_info.bucket
 
-    def _prepare_credentials(self, config):
+    def _prepare_credentials(self, **config):
         from azure.identity.aio import DefaultAzureCredential
 
         # Disable spam from failed cred types for DefaultAzureCredential

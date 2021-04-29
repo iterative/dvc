@@ -40,7 +40,7 @@ class Tree(HashFile):
         from dvc.path_info import PathInfo
         from dvc.utils import tmp_fname
 
-        memfs = MemoryFileSystem(None, {})
+        memfs = MemoryFileSystem()
         path_info = PathInfo(tmp_fname(""))
         with memfs.open(path_info, "wb") as fobj:
             fobj.write(self.as_bytes())

@@ -72,7 +72,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.tmp_dir = tmp_dir
         self.root_dir = root_dir
         self.dvcignore = dvcignore
-        self.fs = LocalFileSystem(None, {"url": self.root_dir})
+        self.fs = LocalFileSystem()
 
         if not tmp_dir:
             return

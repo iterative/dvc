@@ -36,8 +36,8 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     REQUEST_TIMEOUT = 60
     CHUNK_SIZE = 2 ** 16
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
         url = config.get("url")
         if url:

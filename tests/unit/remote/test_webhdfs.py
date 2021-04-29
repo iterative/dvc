@@ -16,7 +16,7 @@ def test_init(dvc):
         "user": user,
     }
 
-    fs = WebHDFSFileSystem(dvc, config)
+    fs = WebHDFSFileSystem(**config)
     assert fs.path_info == url
     assert fs.token == webhdfs_token
     assert fs.alias == webhdfs_alias

@@ -46,9 +46,9 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
     # Constructor
-    def __init__(self, repo, config):
+    def __init__(self, **config):
         # Call BaseFileSystem constructor
-        super().__init__(repo, config)
+        super().__init__(**config)
 
         # Get username from configuration
         self.user = config.get("user", None)

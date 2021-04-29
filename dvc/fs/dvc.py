@@ -26,8 +26,9 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
-    def __init__(self, repo):
-        super().__init__(repo, {"url": repo.root_dir})
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.repo = kwargs["repo"]
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)

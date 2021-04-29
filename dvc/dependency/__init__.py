@@ -50,7 +50,8 @@ SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 def _get(stage, p, info):
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
-        fs = get_cloud_fs(stage.repo, name=parsed.netloc)
+        cls, config = get_cloud_fs(stage.repo, name=parsed.netloc)
+        fs = cls(**config)
         return DEP_MAP[fs.scheme](stage, p, info, fs=fs)
 
     if info and info.get(RepoDependency.PARAM_REPO):

@@ -36,7 +36,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.fs = LocalFileSystem(self, {"url": self.root_dir})
+    self.fs = LocalFileSystem(url=self.root_dir)
     yield "workspace"
 
     if revs and "workspace" in revs:

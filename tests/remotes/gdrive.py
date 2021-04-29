@@ -124,6 +124,8 @@ def gdrive(test_config, make_tmp_dir):
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
 
     ret = GDrive(GDrive.get_url())
-    fs = GDriveFileSystem(tmp_dir.dvc, ret.config)
+    fs = GDriveFileSystem(
+        gdrive_credentials_tmp_dir=tmp_dir.dvc.tmp_dir, **ret.config
+    )
     fs._gdrive_create_dir("root", fs.path_info.path)
     yield ret

@@ -49,7 +49,7 @@ class HashFile:
                 return None
 
         actual = get_file_hash(
-            self.path_info, self.fs, self.hash_info.name, odb.repo.state
+            self.path_info, self.fs, self.hash_info.name, odb.state
         )
 
         logger.trace(

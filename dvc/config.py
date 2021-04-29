@@ -79,7 +79,7 @@ class Config(dict):
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
-        self.wfs = LocalFileSystem(None, {"url": self.dvc_dir})
+        self.wfs = LocalFileSystem(url=self.dvc_dir)
         self.fs = fs or self.wfs
 
         self.load(validate=validate, config=config)

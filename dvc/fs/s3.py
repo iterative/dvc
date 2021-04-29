@@ -28,8 +28,8 @@ class BaseS3FileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         "grant_write_acp": "GrantWriteACP",
     }
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
         url = config.get("url", "s3://")
         self.path_info = self.PATH_CLS(url)
@@ -83,7 +83,7 @@ class BaseS3FileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         s3_config = profile_config.get("s3", {})
         return self._split_s3_config(s3_config)
 
-    def _prepare_credentials(self, config):
+    def _prepare_credentials(self, **config):
         from dvc.config import ConfigError
         from dvc.utils.flatten import flatten, unflatten
 
