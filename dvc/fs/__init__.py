@@ -87,4 +87,15 @@ def get_cloud_fs(repo, **kwargs):
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
         raise ConfigError(str(exc)) from None
+
+    if "jobs" not in remote_conf:
+        jobs = repo.config["core"].get("jobs")
+        if jobs:
+            remote_conf["jobs"] = jobs
+
+    if "checksum_jobs" not in remote_conf:
+        checksum_jobs = repo.config["core"].get("checksum_jobs")
+        if checksum_jobs:
+            remote_conf["checksum_jobs"] = checksum_jobs
+
     return get_fs_cls(remote_conf)(repo, remote_conf)

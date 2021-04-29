@@ -65,19 +65,11 @@ class BaseFileSystem:
 
     @cached_property
     def jobs(self):
-        return (
-            self.config.get("jobs")
-            or (self.repo and self.repo.config["core"].get("jobs"))
-            or self._JOBS
-        )
+        return self.config.get("jobs") or self._JOBS
 
     @cached_property
     def hash_jobs(self):
-        return (
-            self.config.get("checksum_jobs")
-            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
-            or self.HASH_JOBS
-        )
+        return self.config.get("checksum_jobs") or self.HASH_JOBS
 
     @classmethod
     def get_missing_deps(cls):
