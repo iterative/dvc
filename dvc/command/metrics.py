@@ -50,6 +50,7 @@ class CmdMetricsShow(CmdMetricsBase):
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
                 precision=self.args.precision or DEFAULT_PRECISION,
+                round_digits=True,
             )
 
         return 0
@@ -82,6 +83,7 @@ class CmdMetricsDiff(CmdMetricsBase):
                 markdown=self.args.show_md,
                 no_path=self.args.no_path,
                 precision=self.args.precision or DEFAULT_PRECISION,
+                round_digits=True,
             )
 
         return 0
