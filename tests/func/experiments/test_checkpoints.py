@@ -160,3 +160,27 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     assert branch_rev == dvc.experiments.scm.gitpython.repo.git.merge_base(
         checkpoint_a, checkpoint_b
     )
+
+
+@pytest.mark.parametrize("workspace", [True, False])
+def test_resume_non_head_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, workspace
+):
+    orig_head = scm.get_rev()
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
+    )
+    checkpoint_head = first(results)
+    orig_branch = dvc.experiments.get_branch_by_rev(checkpoint_head)
+
+    rev = list(scm.branch_revs(checkpoint_head, orig_head))[-1]
+    dvc.experiments.apply(rev)
+
+    with pytest.raises(DvcException):
+        dvc.experiments.run(checkpoint_stage.addressing, tmp_dir=not workspace)
+
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=100"], tmp_dir=not workspace
+    )
+    new_head = first(results)
+    assert orig_branch != dvc.experiments.get_branch_by_rev(new_head)

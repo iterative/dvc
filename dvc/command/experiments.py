@@ -139,40 +139,43 @@ def _collect_rows(
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
         queued = str(exp.get("queued") or "")
-        tip = exp.get("checkpoint_tip")
-        parent = ""
-        tree = ""
-        if rev == "baseline":
-            if Git.is_sha(base_rev):
-                name_rev = base_rev[:7]
-            else:
-                name_rev = base_rev
-            name = exp.get("name", name_rev)
+        is_baseline = rev == "baseline"
+
+        if is_baseline:
+            name_rev = base_rev[:7] if Git.is_sha(base_rev) else base_rev
         else:
-            if tip:
-                parent_rev = exp.get("checkpoint_parent", "")
-                parent_exp = experiments.get(parent_rev, {})
-                parent_tip = parent_exp.get("checkpoint_tip")
-                if tip == parent_tip:
-                    if new_checkpoint:
-                        tree = "│ ╓"
-                    else:
-                        tree = "│ ╟"
-                    new_checkpoint = False
-                else:
-                    if parent_rev == base_rev:
-                        tree = "├─╨"
-                    else:
-                        tree = "│ ╟"
-                        parent = parent_rev[:7]
-                    new_checkpoint = True
+            name_rev = rev[:7]
+
+        exp_name = exp.get("name", "")
+        if is_baseline:
+            name = exp_name or name_rev
+        elif exp_name:
+            name = f"{rev[:7]} [[bold]{exp['name']}[/]]"
+        else:
+            name = name_rev
+
+        tip = exp.get("checkpoint_tip")
+
+        parent_rev = exp.get("checkpoint_parent", "")
+        parent_exp = experiments.get(parent_rev, {})
+        parent_tip = parent_exp.get("checkpoint_tip")
+
+        parent = ""
+        if is_baseline:
+            tree = ""
+        elif tip:
+            if tip == parent_tip:
+                tree = "│ ╓" if new_checkpoint else "│ ╟"
+            elif parent_rev == base_rev:
+                tree = "├─╨"
             else:
-                if i < len(experiments) - 1:
-                    tree = "├──"
-                else:
-                    tree = "└──"
-                new_checkpoint = True
-            name = exp.get("name", rev[:7])
+                tree = "│ ╟"
+                parent = parent_rev[:7]
+        else:
+            tree = "├──" if i < len(experiments) - 1 else "└──"
+
+        if not is_baseline:
+            new_checkpoint = not (tip and tip == parent_tip)
 
         row = [
             name,
