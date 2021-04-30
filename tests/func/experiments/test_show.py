@@ -111,6 +111,7 @@ def test_show_checkpoint(
     for i, rev in enumerate(checkpoints):
         if i == 0:
             name = dvc.experiments.get_exact_name(rev)
+            name = f"{rev[:7]} [{name}]"
             fs = "╓"
         elif i == len(checkpoints) - 1:
             name = rev[:7]
@@ -155,7 +156,7 @@ def test_show_checkpoint_branch(
     for rev in (checkpoint_a, checkpoint_b):
         ref = dvc.experiments.get_branch_by_rev(rev)
         ref_info = ExpRefInfo.from_ref(ref)
-        name = ref_info.name
+        name = f"{rev[:7]} [{ref_info.name}]"
         assert f"╓ {name}" in cap.out
     assert f"({branch_rev[:7]})" in cap.out
 

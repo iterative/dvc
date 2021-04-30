@@ -172,7 +172,10 @@ def _collect_rows(
                 else:
                     tree = "└──"
                 new_checkpoint = True
-            name = exp.get("name", rev[:7])
+            if "name" in exp:
+                name = f"{rev[:7]} [[bold]{exp['name']}[/]]"
+            else:
+                name = rev[:7]
 
         row = [
             name,
