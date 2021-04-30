@@ -362,31 +362,9 @@ def show_experiments(
         kwargs.get("sort_order"),
         kwargs.get("precision"),
     )
-    styles = [
-        {"no_wrap": True, "header_style": "black on grey93"},
-        {"header_style": "black on grey93"},
-        *[
-            {
-                "justify": "right",
-                "header_style": "black on cornsilk1",
-                "no_wrap": True,
-                "collapse": idx != 0,
-            }
-            for idx, _ in enumerate(metric_headers)
-        ],
-        *[
-            {
-                "justify": "left",
-                "header_style": "black on light_cyan1",
-                "collapse": idx != 0,
-            }
-            for idx, _ in enumerate(param_headers)
-        ],
-    ]
 
     if no_timestamp:
         td.drop("Created")
-        styles.pop(1)
 
     baseline_styler = iffy(constantly({"style": "bold"}), default={})
     row_styles = lmap(baseline_styler, td.column("is_baseline"))
@@ -395,6 +373,25 @@ def show_experiments(
     merge_headers = ["Experiment", "queued", "ident_guide", "parent"]
     td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
     td.drop(*merge_headers[1:])
+
+    headers = {"metrics": metric_headers, "params": param_headers}
+    styles = {
+        "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
+        "Created": {"header_style": "black on grey93"},
+    }
+    header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
+    styles.update(
+        {
+            header: {
+                "justify": "left" if typ == "metrics" else "params",
+                "header_style": f"black on {header_bg_colors[typ]}",
+                "collapse": idx != 0,
+                "no_wrap": typ == "metrics",
+            }
+            for typ, hs in headers.items()
+            for idx, header in enumerate(hs)
+        }
+    )
 
     td.render(
         pager=pager,
