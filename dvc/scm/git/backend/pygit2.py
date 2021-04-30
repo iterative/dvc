@@ -2,6 +2,7 @@ import locale
 import logging
 import os
 import stat
+from contextlib import contextmanager
 from io import BytesIO, StringIO
 from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
@@ -89,6 +90,17 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 "Git username and email must be configured"
             ) from exc
 
+    # Workaround to force git_backend_odb_pack to release open file handles
+    # in DVC's mixed git-backend environment.
+    # See https://github.com/iterative/dvc/issues/5641
+    @contextmanager
+    def release_odb_handles(self):
+        yield
+        # It is safe to free the libgit2 repo context multiple times - free
+        # just forces libgit/pygit to release git ODB related contexts which
+        # can be reacquired later as needed.
+        self.repo.free()
+
     @staticmethod
     def clone(
         url: str,
@@ -119,23 +131,24 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         checkout_strategy = GIT_CHECKOUT_FORCE if force else None
 
-        if create_new:
-            commit = self.repo.revparse_single("HEAD")
-            new_branch = self.repo.branches.local.create(branch, commit)
-            self.repo.checkout(new_branch, strategy=checkout_strategy)
-        else:
-            if branch == "-":
-                branch = "@{-1}"
-            try:
-                commit, ref = self.repo.resolve_refish(branch)
-            except (KeyError, GitError):
-                raise RevError(f"unknown Git revision '{branch}'")
-            self.repo.checkout_tree(commit, strategy=checkout_strategy)
-            detach = kwargs.get("detach", False)
-            if ref and not detach:
-                self.repo.set_head(ref.name)
+        with self.release_odb_handles():
+            if create_new:
+                commit = self.repo.revparse_single("HEAD")
+                new_branch = self.repo.branches.local.create(branch, commit)
+                self.repo.checkout(new_branch, strategy=checkout_strategy)
             else:
-                self.repo.set_head(commit.id)
+                if branch == "-":
+                    branch = "@{-1}"
+                try:
+                    commit, ref = self.repo.resolve_refish(branch)
+                except (KeyError, GitError):
+                    raise RevError(f"unknown Git revision '{branch}'")
+                self.repo.checkout_tree(commit, strategy=checkout_strategy)
+                detach = kwargs.get("detach", False)
+                if ref and not detach:
+                    self.repo.set_head(ref.name)
+                else:
+                    self.repo.set_head(commit.id)
 
     def pull(self, **kwargs):
         raise NotImplementedError
@@ -459,24 +472,26 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 ]
         else:
             path_list = None
-        self.repo.checkout_index(
-            index=index, paths=path_list, strategy=strategy,
-        )
 
-        if index.conflicts and (ours or theirs):
-            for ancestor, ours_entry, theirs_entry in index.conflicts:
-                if not ancestor:
-                    continue
-                if ours:
-                    entry = ours_entry
-                    index.add(ours_entry)
-                else:
-                    entry = theirs_entry
-                path = os.path.join(self.root_dir, entry.path)
-                with open(path, "wb") as fobj:
-                    fobj.write(self.repo.get(entry.id).read_raw())
-                index.add(entry.path)
-            index.write()
+        with self.release_odb_handles():
+            self.repo.checkout_index(
+                index=index, paths=path_list, strategy=strategy,
+            )
+
+            if index.conflicts and (ours or theirs):
+                for ancestor, ours_entry, theirs_entry in index.conflicts:
+                    if not ancestor:
+                        continue
+                    if ours:
+                        entry = ours_entry
+                        index.add(ours_entry)
+                    else:
+                        entry = theirs_entry
+                    path = os.path.join(self.root_dir, entry.path)
+                    with open(path, "wb") as fobj:
+                        fobj.write(self.repo.get(entry.id).read_raw())
+                    index.add(entry.path)
+                index.write()
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         raise NotImplementedError
@@ -501,25 +516,26 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if commit and not msg:
             raise SCMError("Merge commit message is required")
 
-        try:
-            self.repo.index.read(False)
-            self.repo.merge(rev)
-            self.repo.index.write()
-        except GitError as exc:
-            raise SCMError("Merge failed") from exc
+        with self.release_odb_handles():
+            try:
+                self.repo.index.read(False)
+                self.repo.merge(rev)
+                self.repo.index.write()
+            except GitError as exc:
+                raise SCMError("Merge failed") from exc
 
-        if self.repo.index.conflicts:
-            raise MergeConflictError("Merge contained conflicts")
+            if self.repo.index.conflicts:
+                raise MergeConflictError("Merge contained conflicts")
 
-        if commit:
-            user = self.default_signature
-            tree = self.repo.index.write_tree()
-            merge_commit = self.repo.create_commit(
-                "HEAD", user, user, msg, tree, [self.repo.head.target, rev]
-            )
-            return str(merge_commit)
-        if squash:
-            self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
-            self.repo.state_cleanup()
-            self.repo.index.write()
+            if commit:
+                user = self.default_signature
+                tree = self.repo.index.write_tree()
+                merge_commit = self.repo.create_commit(
+                    "HEAD", user, user, msg, tree, [self.repo.head.target, rev]
+                )
+                return str(merge_commit)
+            if squash:
+                self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
+                self.repo.state_cleanup()
+                self.repo.index.write()
         return None
