@@ -7,6 +7,7 @@ from dvc.progress import Tqdm
 from .base import BaseFileSystem
 
 
+# pylint: disable=no-member
 class FSSpecWrapper(BaseFileSystem):
     def __init__(self, repo, config):
         super().__init__(repo, config)
