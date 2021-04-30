@@ -66,6 +66,8 @@ def find_pager():
                     format_link("https://man.dvc.org/pipeline/show")
                 )
             )
+        else:
+            pager = DEFAULT_PAGER
 
     if pager == DEFAULT_PAGER:
         # if pager is less (i.e. default), regardless of `$LESS`, apply `-RS`.
