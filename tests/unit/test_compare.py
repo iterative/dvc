@@ -66,7 +66,7 @@ def test_diff_table_precision():
             "a.b.c": {"old": 1.1234, "new": 2.2345, "diff": 3.3456}
         }
     }
-    td = diff_table(diff, title="Metric", precision=3,)
+    td = diff_table(diff, title="Metric", precision=3)
     assert td.as_dict() == [
         {
             "Path": "metrics.json",
@@ -74,6 +74,24 @@ def test_diff_table_precision():
             "Old": "1.12",
             "New": "2.23",
             "Change": "3.35",
+        }
+    ]
+
+
+def test_diff_table_rounding():
+    diff = {
+        "metrics.json": {
+            "a.b.c": {"old": 1.1234, "new": 2.2345, "diff": 3.3456}
+        }
+    }
+    td = diff_table(diff, title="Metric", precision=3, round_digits=True)
+    assert td.as_dict() == [
+        {
+            "Path": "metrics.json",
+            "Metric": "a.b.c",
+            "Old": "1.123",
+            "New": "2.235",
+            "Change": "3.346",
         }
     ]
 
@@ -194,6 +212,7 @@ def test_diff_mocked(mocker, markdown):
         precision=None,
         on_empty_diff=None,
         show_changes=True,
+        round_digits=False,
     )
     ret.render.assert_called_once_with(markdown=markdown)
 
@@ -381,6 +400,19 @@ def test_metrics_show_precision():
         }
     ]
 
+    td = metrics_table(
+        metrics, all_branches=True, precision=4, round_digits=True
+    )
+    assert td.as_dict() == [
+        {
+            "Revision": "branch_1",
+            "Path": "metrics.json",
+            "a": "1.0988",
+            "b.ad": "1.5343",
+            "b.bc": "2.9877",
+        }
+    ]
+
     td = metrics_table(metrics, all_branches=True, precision=7)
     assert td.as_dict() == [
         {
@@ -406,6 +438,7 @@ def test_metrics_show_mocked(mocker, markdown):
         all_tags=False,
         all_commits=False,
         precision=None,
+        round_digits=False,
     )
     ret.render.assert_called_once_with(markdown=markdown)
 

@@ -41,7 +41,12 @@ def test_metrics_diff(dvc, mocker, capsys):
         all=True,
     )
     show_diff_mock.assert_called_once_with(
-        diff, title="Metric", no_path=True, precision=5, markdown=True,
+        diff,
+        title="Metric",
+        no_path=True,
+        precision=5,
+        markdown=True,
+        round_digits=True,
     )
 
 
@@ -125,6 +130,7 @@ def test_metrics_show(dvc, mocker):
         all_branches=True,
         all_commits=True,
         precision=8,
+        round_digits=True,
     )
 
 

@@ -172,11 +172,17 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         ]
 
 
-def _format_field(val: Any, precision: int = None) -> str:
+def _normalize_float(val: float, precision: int):
+    return f"{val:.{precision}g}"
+
+
+def _format_field(
+    val: Any, precision: int = None, round_digits: bool = False
+) -> str:
     def _format(_val):
         if isinstance(_val, float) and precision:
-            fmt = f"{{:.{precision}g}}"
-            return fmt.format(_val)
+            func = round if round_digits else _normalize_float
+            return func(_val, precision)
         if isinstance(_val, Mapping):
             return {k: _format(v) for k, v in _val.items()}
         if isinstance(_val, list):
@@ -193,6 +199,7 @@ def diff_table(
     no_path: bool = False,
     show_changes: bool = True,
     precision: int = None,
+    round_digits: bool = False,
     on_empty_diff: str = None,
 ) -> TabularData:
     headers: List[str] = ["Path", title, "Old", "New", "Change"]
@@ -210,9 +217,9 @@ def diff_table(
                 [
                     fname,
                     str(item),
-                    _format_field(old_value, precision),
-                    _format_field(new_value, precision),
-                    _format_field(diff_value, precision),
+                    _format_field(old_value, precision, round_digits),
+                    _format_field(new_value, precision, round_digits),
+                    _format_field(diff_value, precision, round_digits),
                 ]
             )
 
@@ -236,6 +243,7 @@ def show_diff(
     no_path: bool = False,
     show_changes: bool = True,
     precision: int = None,
+    round_digits: bool = False,
     on_empty_diff: str = None,
     markdown: bool = False,
 ) -> None:
@@ -246,6 +254,7 @@ def show_diff(
         no_path=no_path,
         show_changes=show_changes,
         precision=precision,
+        round_digits=round_digits,
         on_empty_diff=on_empty_diff,
     )
     td.render(markdown=markdown)
@@ -257,6 +266,7 @@ def metrics_table(
     all_tags: bool = False,
     all_commits: bool = False,
     precision: int = None,
+    round_digits: bool = False,
 ):
     from dvc.utils.diff import format_dict
     from dvc.utils.flatten import flatten
@@ -275,7 +285,10 @@ def metrics_table(
                 else {"": metric}
             )
             row_data.update(
-                {k: _format_field(v, precision) for k, v in flattened.items()}
+                {
+                    k: _format_field(v, precision, round_digits)
+                    for k, v in flattened.items()
+                }
             )
             td.row_from_dict(row_data)
 
@@ -295,6 +308,7 @@ def show_metrics(
     all_tags: bool = False,
     all_commits: bool = False,
     precision: int = None,
+    round_digits: bool = False,
 ) -> None:
     td = metrics_table(
         metrics,
@@ -302,5 +316,6 @@ def show_metrics(
         all_tags=all_tags,
         all_commits=all_commits,
         precision=precision,
+        round_digits=round_digits,
     )
     td.render(markdown=markdown)
