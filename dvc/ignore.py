@@ -10,7 +10,7 @@ from pathspec.util import normalize_file
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.system import System
-from dvc.types import Optional
+from dvc.types import List, Optional
 from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
 
@@ -68,7 +68,7 @@ class DvcIgnorePatterns(DvcIgnore):
 
         return cls(path_spec_lines, dirname)
 
-    def __call__(self, root, dirs, files):
+    def __call__(self, root: List[str], dirs: List[str], files: List[str]):
         files = [f for f in files if not self.matches(root, f)]
         dirs = [d for d in dirs if not self.matches(root, d, True)]
 
@@ -219,7 +219,7 @@ class DvcIgnoreFilter:
         self,
         dirname: str,
         ignore_trie: PathStringTrie,
-        dnames: Optional["list"],
+        dnames: Optional["List"],
         ignore_subrepos: bool,
     ) -> None:
         self._update_trie(dirname, ignore_trie)
@@ -277,7 +277,7 @@ class DvcIgnoreFilter:
                 yield root, dirs, files
 
     def _get_trie_pattern(
-        self, dirname, dnames: Optional["list"] = None, ignore_subrepos=True
+        self, dirname, dnames: Optional["List"] = None, ignore_subrepos=True
     ) -> Optional["DvcIgnorePatterns"]:
         if ignore_subrepos:
             ignores_trie = self.ignores_trie_fs
