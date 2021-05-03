@@ -76,7 +76,7 @@ def create_stage(cls, repo, path, external=False, **kwargs):
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     path = os.path.abspath(path)
-    check_dvc_filename(path)
+    check_dvc_filename(repo, path)
     check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
     check_stage_path(repo, os.path.dirname(path))
 
