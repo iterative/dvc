@@ -30,7 +30,7 @@ def ask_password(host, user, port):
     )
 
 
-class SSHFileSystem(BaseFileSystem):
+class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
     _JOBS = 4

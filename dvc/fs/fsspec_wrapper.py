@@ -2,6 +2,8 @@ import os
 import shutil
 from functools import lru_cache
 
+from funcy import cached_property
+
 from dvc.progress import Tqdm
 
 from .base import BaseFileSystem
@@ -14,7 +16,7 @@ class FSSpecWrapper(BaseFileSystem):
         self.fs_args = {"skip_instance_cache": True}
         self.fs_args.update(self._prepare_credentials(config))
 
-    @property
+    @cached_property
     def fs(self):
         raise NotImplementedError
 

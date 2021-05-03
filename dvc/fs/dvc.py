@@ -168,21 +168,23 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         for dname in dirs:
             yield from self._walk(root / dname, trie)
 
-    def walk(self, top, topdown=True, onerror=None, **kwargs):
+    def walk(self, path_info, **kwargs):
         from pygtrie import Trie
 
+        topdown = kwargs.pop("topdown", True)
+        onerror = kwargs.pop("onerror", None)
         assert topdown
-        root = PathInfo(os.path.abspath(top))
+        root = PathInfo(os.path.abspath(path_info))
         try:
             meta = self.metadata(root)
         except FileNotFoundError:
             if onerror is not None:
-                onerror(FileNotFoundError(top))
+                onerror(FileNotFoundError(path_info))
             return
 
         if not meta.isdir:
             if onerror is not None:
-                onerror(NotADirectoryError(top))
+                onerror(NotADirectoryError(path_info))
             return
 
         trie = Trie()

@@ -64,28 +64,28 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         key = self._get_key(path_info)
         return self.trie.isfile(key)
 
-    def walk(
-        self, top, topdown=True, onerror=None,
-    ):
+    def walk(self, path_info, **kwargs):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
         """
-        if not self.isdir(top):
+        topdown = kwargs.pop("topdown", True)
+        onerror = kwargs.pop("onerror", None)
+        if not self.isdir(path_info):
             if onerror:
-                if self.exists(top):
+                if self.exists(path_info):
                     exc = NotADirectoryError(
-                        errno.ENOTDIR, os.strerror(errno.ENOTDIR), top
+                        errno.ENOTDIR, os.strerror(errno.ENOTDIR), path_info
                     )
                 else:
                     exc = FileNotFoundError(
-                        errno.ENOENT, os.strerror(errno.ENOENT), top
+                        errno.ENOENT, os.strerror(errno.ENOENT), path_info
                     )
                 onerror(exc)
             return []
 
-        key = self._get_key(top)
+        key = self._get_key(path_info)
         for prefix, dirs, files in self.trie.walk(key, topdown=topdown):
             if prefix:
                 root = os.path.join(self.fs_root, os.sep.join(prefix))

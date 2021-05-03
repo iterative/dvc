@@ -85,7 +85,7 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
-class GDriveFileSystem(BaseFileSystem):
+class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
     PARAM_CHECKSUM = "checksum"
