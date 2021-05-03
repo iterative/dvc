@@ -30,7 +30,7 @@ def update_pbar(pbar, total):
     return update
 
 
-class WebHDFSFileSystem(BaseFileSystem):
+class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}

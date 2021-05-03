@@ -52,16 +52,16 @@ class LocalFileSystem(BaseFileSystem):
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk(
-        self, top, topdown=True, onerror=None,
-    ):
+    def walk(self, path_info, **kwargs):
         """Directory fs generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
         """
+        topdown = kwargs.pop("topdown", True)
+        onerror = kwargs.pop("onerror", None)
         for root, dirs, files in os.walk(
-            top, topdown=topdown, onerror=onerror
+            path_info, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
 
