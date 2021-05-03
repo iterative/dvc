@@ -264,11 +264,12 @@ class DvcIgnoreFilter:
 
     def __call__(self, walk_iterator, ignore_subrepos=True, walk_files=False):
         for root, dirs, files in walk_iterator:
+            abs_root = os.path.abspath(root)
             ignore_pattern = self._get_trie_pattern(
-                root, dnames=dirs, ignore_subrepos=ignore_subrepos
+                abs_root, dnames=dirs, ignore_subrepos=ignore_subrepos
             )
             if ignore_pattern:
-                dirs[:], files[:] = ignore_pattern(root, dirs, files)
+                dirs[:], files[:] = ignore_pattern(abs_root, dirs, files)
             if walk_files:
                 for file in files:
                     # NOTE: os.path.join is ~5.5 times slower

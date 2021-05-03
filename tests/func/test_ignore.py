@@ -40,23 +40,20 @@ def test_rename_ignored_file(tmp_dir, dvc):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored*")
     dvc._reset()
 
-    root_path = PathInfo(tmp_dir)
-
-    mtime, size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    mtime, size = get_mtime_and_size("dir", dvc.fs)
 
     shutil.move("dir/ignored", "dir/ignored_new")
-    new_mtime, new_size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.fs)
 
     assert new_mtime == mtime and new_size == size
 
 
 def test_rename_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    root_path = PathInfo(tmp_dir)
-    mtime, size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    mtime, size = get_mtime_and_size("dir", dvc.fs)
 
     shutil.move("dir/foo", "dir/foo_new")
-    new_mtime, new_size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.fs)
 
     assert new_mtime != mtime and new_size == size
 
@@ -65,23 +62,21 @@ def test_remove_ignored_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "...", "other": "text"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
     dvc._reset()
-    root_path = PathInfo(tmp_dir)
 
-    mtime, size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    mtime, size = get_mtime_and_size("dir", dvc.fs)
 
     os.remove("dir/ignored")
-    new_mtime, new_size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.fs)
 
     assert new_mtime == mtime and new_size == size
 
 
 def test_remove_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    root_path = PathInfo(tmp_dir)
-    mtime, size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    mtime, size = get_mtime_and_size("dir", dvc.fs)
 
     os.remove("dir/foo")
-    new_mtime, new_size = get_mtime_and_size(root_path / "dir", dvc.fs)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.fs)
 
     assert new_mtime != mtime and new_size != size
 
