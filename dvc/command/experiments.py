@@ -120,10 +120,10 @@ def _collect_names(all_experiments, **kwargs):
 
 experiment_types = {
     "checkpoint_tip": "│ ╓",
-    "mid_checkpoint": "│ ╟",
+    "checkpoint_commit": "│ ╟",
     "checkpoint_base": "├─╨",
-    "experiment_base": "├──",
-    "mid_experiment": "├──",
+    "branch_commit": "├──",
+    "branch_base": "└──",
     "baseline": "",
 }
 
@@ -170,16 +170,18 @@ def _collect_rows(
             typ = "baseline"
         elif tip:
             if tip == parent_tip:
-                typ = "checkpoint_tip" if new_checkpoint else "mid_checkpoint"
+                typ = (
+                    "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
+                )
             elif parent_rev == base_rev:
                 typ = "checkpoint_base"
             else:
-                typ = "mid_checkpoint"
+                typ = "checkpoint_commit"
                 parent = parent_rev[:7]
         elif i < len(experiments) - 1:
-            typ = "mid_experiment"
+            typ = "branch_commit"
         else:
-            typ = "experiment_base"
+            typ = "branch_base"
 
         if not is_baseline:
             new_checkpoint = not (tip and tip == parent_tip)
