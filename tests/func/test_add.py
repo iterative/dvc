@@ -1178,11 +1178,11 @@ def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
 
 
 def test_add_ignored(tmp_dir, scm, dvc):
-    from dvc.stage.exceptions import StageFileBadNameError
+    from dvc.stage.exceptions import StageFileIgnoredError
 
     tmp_dir.gen({"dir": {"subdir": {"file": "content"}}, ".gitignore": "dir/"})
-    with pytest.raises(StageFileBadNameError) as exc:
+    with pytest.raises(StageFileIgnoredError) as exc:
         dvc.add(targets=[os.path.join("dir", "subdir")])
-    assert str(exc.value) == (
-        "bad DVC file name '{}' would be gitignored."
-    ).format(os.path.join("dir", "subdir.dvc"))
+    assert str(exc.value) == ("bad DVC file name '{}' is git-ignored.").format(
+        os.path.join("dir", "subdir.dvc")
+    )

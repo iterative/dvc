@@ -13,6 +13,7 @@ from dvc.stage.exceptions import (
     StageFileBadNameError,
     StageFileDoesNotExistError,
     StageFileFormatError,
+    StageFileIgnoredError,
     StageFileIsNotDvcFileError,
 )
 from dvc.types import AnyPath
@@ -88,9 +89,7 @@ def check_dvc_filename(repo, path):
         )
 
     if is_git_ignored(repo, path):
-        raise StageFileBadNameError(
-            "bad DVC file name '{}' would be gitignored.".format(relpath(path))
-        )
+        raise StageFileIgnoredError(relpath(path))
 
 
 class FileMixin:

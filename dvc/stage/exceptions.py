@@ -44,6 +44,11 @@ class StageFileBadNameError(DvcException):
     pass
 
 
+class StageFileIgnoredError(StageFileBadNameError):
+    def __init__(self, path):
+        super().__init__(f"bad DVC file name '{path}' is git-ignored.")
+
+
 class StagePathOutsideError(DvcException):
     pass
 
