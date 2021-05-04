@@ -15,7 +15,7 @@ rangehttpserver==1.2.0
 mock-ssh-server==0.9.0
 # moto's indirect dependency that is causing problems with flufl.lock's
 # dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
-moto==2.0.5
+moto==2.0.6
 beautifulsoup4==4.9.3
 wget==3.2
 filelock==3.0.12
