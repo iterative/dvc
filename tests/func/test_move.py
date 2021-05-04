@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.main import main
@@ -211,3 +213,24 @@ def test_should_move_to_dir_on_non_default_stage_file(tmp_dir, dvc):
     dvc.move("file", "directory")
 
     assert os.path.exists(os.path.join("directory", "file"))
+
+
+def test_move_gitignored(tmp_dir, scm, dvc):
+    from dvc.dvcfile import FileIsGitIgnored
+
+    tmp_dir.dvc_gen({"foo": "foo"})
+
+    os.mkdir("dir")
+    (tmp_dir / "dir").gen(".gitignore", "*")
+
+    with pytest.raises(FileIsGitIgnored):
+        dvc.move("foo", "dir")
+
+
+def test_move_output_overlap(tmp_dir, dvc):
+    from dvc.exceptions import OverlappingOutputPathsError
+
+    tmp_dir.dvc_gen({"foo": "foo", "dir": {"bar": "bar"}})
+
+    with pytest.raises(OverlappingOutputPathsError):
+        dvc.move("foo", "dir")
