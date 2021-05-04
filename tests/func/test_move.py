@@ -226,6 +226,11 @@ def test_move_gitignored(tmp_dir, scm, dvc):
     with pytest.raises(FileIsGitIgnored):
         dvc.move("foo", "dir")
 
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "foo.dvc").exists()
+    assert not (tmp_dir / "dir" / "foo").exists()
+    assert not (tmp_dir / "dir" / "foo.dvc").exists()
+
 
 def test_move_output_overlap(tmp_dir, dvc):
     from dvc.exceptions import OverlappingOutputPathsError
@@ -234,3 +239,8 @@ def test_move_output_overlap(tmp_dir, dvc):
 
     with pytest.raises(OverlappingOutputPathsError):
         dvc.move("foo", "dir")
+
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "foo.dvc").exists()
+    assert not (tmp_dir / "dir" / "foo").exists()
+    assert not (tmp_dir / "dir" / "foo.dvc").exists()
