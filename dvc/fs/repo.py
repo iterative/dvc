@@ -301,9 +301,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             elif dirname in repo_set:
                 yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
 
-    def walk(
-        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
-    ):  # pylint: disable=arguments-differ
+    def walk(self, path_info, **kwargs):
         """Walk and merge both DVC and repo fss.
 
         Args:
@@ -317,39 +315,33 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         Any kwargs will be passed into methods used for fetching and/or
         streaming DVC outs from remotes.
         """
+        topdown = kwargs.pop("topdown", True)
         assert topdown
 
-        if not self.exists(top):
+        onerror = kwargs.pop("onerror", None)
+        if not self.exists(path_info):
             if onerror is not None:
-                onerror(FileNotFoundError(top))
+                onerror(FileNotFoundError(path_info))
             return
 
-        if not self.isdir(top):
+        if not self.isdir(path_info):
             if onerror is not None:
-                onerror(NotADirectoryError(top))
+                onerror(NotADirectoryError(path_info))
             return
 
-        repo = self._get_repo(os.path.abspath(top))
+        repo = self._get_repo(os.path.abspath(path_info))
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
-        if repo:
-            yield from repo.dvcignore(
-                self.walk_fs(
-                    top,
-                    topdown=topdown,
-                    onerror=onerror,
-                    dvcfiles=dvcfiles,
-                    **kwargs
-                ),
-                ignore_subrepos=ignore_subrepos,
-            )
-        else:
-            yield from self.walk_fs(
-                top,
+        dvcfiles = kwargs.pop("dvcfiles", False)
+        yield from repo.dvcignore.walk(
+            self._walk_fs(
+                path_info,
                 topdown=topdown,
                 onerror=onerror,
                 dvcfiles=dvcfiles,
                 **kwargs
-            )
+            ),
+            ignore_subrepos=ignore_subrepos,
+        )
 
     def _walk_fs(
         self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
@@ -372,7 +364,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 
     def walk_files(self, path_info, **kwargs):
-        for root, _, files in self.walk(path_info):
+        for root, _, files in self.walk(path_info, **kwargs):
             for fname in files:
                 yield PathInfo(root) / fname
 

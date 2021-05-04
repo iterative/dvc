@@ -80,8 +80,8 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
 
 def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
     use_dvcignore = kwargs.get("use_dvcignore", False)
-    if use_dvcignore and fs.scheme == Schemes.LOCAL and fs.repo:
-        walk_iterator = fs.repo.dvcignore(fs.walk(path_info), walk_files=True)
+    if use_dvcignore and fs.scheme == Schemes.LOCAL and odb.repo:
+        walk_iterator = odb.repo.dvcignore.walk_files(fs.walk(path_info))
     else:
         walk_iterator = fs.walk_files(path_info)
     with Tqdm(

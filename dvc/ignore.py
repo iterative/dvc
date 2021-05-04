@@ -262,20 +262,27 @@ class DvcIgnoreFilter:
         else:
             ignore_trie[root] = new_pattern
 
-    def __call__(self, walk_iterator, ignore_subrepos=True, walk_files=False):
+    def __call__(self, root, dirs, files, ignore_subrepos=True):
+        abs_root = os.path.abspath(root)
+        ignore_pattern = self._get_trie_pattern(
+            abs_root, dnames=dirs, ignore_subrepos=ignore_subrepos
+        )
+        if ignore_pattern:
+            dirs, files = ignore_pattern(abs_root, dirs, files)
+        return dirs, files
+
+    def walk(self, walk_iterator, ignore_subrepos=True):
         for root, dirs, files in walk_iterator:
-            abs_root = os.path.abspath(root)
-            ignore_pattern = self._get_trie_pattern(
-                abs_root, dnames=dirs, ignore_subrepos=ignore_subrepos
+            dirs[:], files[:] = self(
+                root, dirs, files, ignore_subrepos=ignore_subrepos
             )
-            if ignore_pattern:
-                dirs[:], files[:] = ignore_pattern(abs_root, dirs, files)
-            if walk_files:
-                for file in files:
-                    # NOTE: os.path.join is ~5.5 times slower
-                    yield PathInfo(f"{root}{os.sep}{file}")
-            else:
-                yield root, dirs, files
+            yield root, dirs, files
+
+    def walk_files(self, walk_iterator, ignore_subrepos=True):
+        for root, _, files in self.walk(walk_iterator, ignore_subrepos):
+            for file in files:
+                # NOTE: os.path.join is ~5.5 times slower
+                yield PathInfo(f"{root}{os.sep}{file}")
 
     def _get_trie_pattern(
         self, dirname, dnames: Optional["List"] = None, ignore_subrepos=True

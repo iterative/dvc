@@ -209,7 +209,7 @@ def _find_all_targets(repo, target, recursive):
         return [
             os.fspath(path)
             for path in Tqdm(
-                repo.dvcignore(repo.fs.walk(target), walk_files=True),
+                repo.dvcignore.walk_files(repo.fs.walk(target)),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",

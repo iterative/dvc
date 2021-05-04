@@ -12,7 +12,7 @@ def test_state(tmp_dir, dvc):
     path_info = PathInfo(path)
     hash_info = HashInfo("md5", file_md5(path, dvc.fs))
 
-    state = State(dvc.root_dir, dvc.tmp_dir)
+    state = State(dvc, dvc.root_dir, dvc.tmp_dir)
 
     state.save(path_info, dvc.fs, hash_info)
     assert state.get(path_info, dvc.fs) == hash_info
