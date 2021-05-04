@@ -122,4 +122,4 @@ def test_try_loading_dvcfile_that_is_gitignored(tmp_dir, dvc, scm, file):
     with pytest.raises(FileIsGitIgnored) as exc_info:
         dvcfile._load()
 
-    assert str(exc_info.value) == f"'{file}' is git-ignored."
+    assert str(exc_info.value) == f"bad DVC file name '{file}' is git-ignored."
