@@ -94,7 +94,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: python -m tests --all --cov-report=xml --cov-report=term -n=4
     - name: upload coverage report
-      uses: codecov/codecov-action@v1.4.1
+      uses: codecov/codecov-action@v1.5.0
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
