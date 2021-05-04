@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 import threading
+from contextlib import contextmanager
 
 from funcy import cached_property, wrap_prop
 
@@ -17,6 +19,32 @@ _DEFAULT_CREDS_STEPS = (
     "azure-identity/1.4.0/azure.identity.html#azure.identity"
     ".DefaultAzureCredential"
 )
+
+
+@contextmanager
+def _temp_event_loop():
+    """When trying to initalize azure filesystem instances
+    with DefaultCredentials, the authentication process requires
+    to have an access to a separate event loop. The normal calls
+    are run in a separate loop managed by the fsspec, but the
+    DefaultCredentials assumes that the callee is managing their
+    own event loop. This function checks whether is there any
+    event loop set, and if not it creates a temporary event loop
+    and set it. After the context is finalized, it restores the
+    original event loop back (if there is any)."""
+
+    try:
+        original_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        original_loop = None
+
+    loop = original_loop or asyncio.new_event_loop()
+
+    try:
+        asyncio.set_event_loop(loop)
+        yield
+    finally:
+        asyncio.set_event_loop(original_loop)
 
 
 class AzureAuthError(DvcException):
@@ -120,11 +148,12 @@ class AzureFileSystem(FSSpecWrapper):
         from azure.core.exceptions import AzureError
 
         try:
-            file_system = AzureBlobFileSystem(**self.fs_args)
-            if self.bucket not in [
-                container.rstrip("/") for container in file_system.ls("/")
-            ]:
-                file_system.mkdir(self.bucket)
+            with _temp_event_loop():
+                file_system = AzureBlobFileSystem(**self.fs_args)
+                if self.bucket not in [
+                    container.rstrip("/") for container in file_system.ls("/")
+                ]:
+                    file_system.mkdir(self.bucket)
         except (ValueError, AzureError) as e:
             raise AzureAuthError(
                 f"Authentication to Azure Blob Storage via {self.login_method}"
