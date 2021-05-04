@@ -305,7 +305,8 @@ def scm(tmp_dir):
 
 @pytest.fixture
 def dvc(tmp_dir):
-    return tmp_dir.dvc
+    with tmp_dir.dvc as _dvc:
+        yield _dvc
 
 
 def git_init(path):
