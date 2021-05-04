@@ -163,7 +163,9 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("webhdfs"),
         pytest.param(
@@ -331,7 +333,9 @@ def test_update_import_to_remote(tmp_dir, dvc, erepo_dir, local_remote):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
     ],
     indirect=True,
@@ -352,7 +356,9 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
     ],
     indirect=True,
