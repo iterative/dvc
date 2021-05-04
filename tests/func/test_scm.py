@@ -1,7 +1,7 @@
 import os
+import sys
 
 import pytest
-from flaky.flaky_decorator import flaky
 from git import Repo
 
 from dvc.scm import SCM, Git, NoSCM
@@ -243,10 +243,22 @@ def test_git_stash_drop(tmp_dir, scm, ref):
     assert len(stash) == 1
 
 
-# libgit2 stash_save() is flaky on linux when run inside pytest, see:
-# https://github.com/iterative/dvc/pull/5286#issuecomment-792574294
-@flaky(max_runs=5, min_passes=1)
-@pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
+reason = """libgit2 stash_save() is flaky on linux when run inside pytest
+    https://github.com/iterative/dvc/pull/5286#issuecomment-792574294"""
+
+
+@pytest.mark.parametrize(
+    "ref",
+    [
+        pytest.param(
+            None,
+            marks=pytest.mark.xfail(
+                sys.platform == "linux", raises=AssertionError, reason=reason,
+            ),
+        ),
+        "refs/foo/stash",
+    ],
+)
 def test_git_stash_pop(tmp_dir, scm, ref):
     from dvc.scm.git import Stash
 
