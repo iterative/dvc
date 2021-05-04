@@ -13,7 +13,6 @@ from dvc.stage.exceptions import (
     StageFileBadNameError,
     StageFileDoesNotExistError,
     StageFileFormatError,
-    StageFileIgnoredError,
     StageFileIsNotDvcFileError,
 )
 from dvc.types import AnyPath
@@ -38,8 +37,12 @@ PIPELINE_LOCK = "dvc.lock"
 
 
 class FileIsGitIgnored(DvcException):
-    def __init__(self, path):
-        super().__init__(f"'{path}' is git-ignored.")
+    def __init__(self, path, pipeline_file=False):
+        super().__init__(
+            "{}'{}' is git-ignored.".format(
+                "bad DVC file name " if pipeline_file else "", path,
+            )
+        )
 
 
 class LockfileCorruptedError(DvcException):
@@ -79,7 +82,7 @@ def is_git_ignored(repo, path):
         return False
 
 
-def check_dvc_filename(repo, path):
+def check_dvcfile_path(repo, path):
     if not is_valid_filename(path):
         raise StageFileBadNameError(
             "bad DVC file name '{}'. DVC files should be named "
@@ -89,7 +92,7 @@ def check_dvc_filename(repo, path):
         )
 
     if is_git_ignored(repo, path):
-        raise StageFileIgnoredError(relpath(path))
+        raise FileIsGitIgnored(relpath(path), True)
 
 
 class FileMixin:
@@ -128,7 +131,7 @@ class FileMixin:
 
     def _verify_filename(self):
         if self.verify:
-            check_dvc_filename(self.repo, self.path)
+            check_dvcfile_path(self.repo, self.path)
 
     def _check_gitignored(self):
         if self._is_git_ignored():
@@ -193,7 +196,7 @@ class SingleStageFile(FileMixin):
 
         assert not isinstance(stage, PipelineStage)
         if self.verify:
-            check_dvc_filename(self.repo, self.path)
+            check_dvcfile_path(self.repo, self.path)
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
@@ -230,7 +233,7 @@ class PipelineFile(FileMixin):
 
         assert isinstance(stage, PipelineStage)
         if self.verify:
-            check_dvc_filename(self.repo, self.path)
+            check_dvcfile_path(self.repo, self.path)
 
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)

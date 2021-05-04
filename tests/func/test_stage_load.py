@@ -4,14 +4,13 @@ from operator import itemgetter
 import pytest
 from funcy import raiser
 
-from dvc.dvcfile import PIPELINE_FILE
+from dvc.dvcfile import PIPELINE_FILE, FileIsGitIgnored
 from dvc.exceptions import NoOutputOrStageError
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileFormatError,
-    StageFileIgnoredError,
     StageNameUnspecified,
     StageNotFound,
 )
@@ -492,5 +491,5 @@ def test_gitignored_file_try_collect_granular_for_dvc_yaml_files(
     scm.ignore(tmp_dir / "dvc.yaml")
     scm._reset()
 
-    with pytest.raises(StageFileIgnoredError):
+    with pytest.raises(FileIsGitIgnored):
         dvc.stage.collect_granular("bar")

@@ -4,6 +4,7 @@ from dvc.dvcfile import (
     PIPELINE_FILE,
     PIPELINE_LOCK,
     Dvcfile,
+    FileIsGitIgnored,
     PipelineFile,
     SingleStageFile,
 )
@@ -11,7 +12,6 @@ from dvc.stage import PipelineStage
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
     StageFileFormatError,
-    StageFileIgnoredError,
     StageFileIsNotDvcFileError,
 )
 from dvc.utils.fs import remove
@@ -119,7 +119,7 @@ def test_try_loading_dvcfile_that_is_gitignored(tmp_dir, dvc, scm, file):
     scm._reset()
 
     dvcfile = Dvcfile(dvc, file)
-    with pytest.raises(StageFileIgnoredError) as exc_info:
+    with pytest.raises(FileIsGitIgnored) as exc_info:
         dvcfile._load()
 
     assert str(exc_info.value) == f"bad DVC file name '{file}' is git-ignored."

@@ -1178,10 +1178,10 @@ def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
 
 
 def test_add_ignored(tmp_dir, scm, dvc):
-    from dvc.stage.exceptions import StageFileIgnoredError
+    from dvc.dvcfile import FileIsGitIgnored
 
     tmp_dir.gen({"dir": {"subdir": {"file": "content"}}, ".gitignore": "dir/"})
-    with pytest.raises(StageFileIgnoredError) as exc:
+    with pytest.raises(FileIsGitIgnored) as exc:
         dvc.add(targets=[os.path.join("dir", "subdir")])
     assert str(exc.value) == ("bad DVC file name '{}' is git-ignored.").format(
         os.path.join("dir", "subdir.dvc")
