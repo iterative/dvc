@@ -351,7 +351,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 **kwargs
             )
 
-    def walk_fs(
+    def _walk_fs(
         self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
     ):
         fs, dvc_fs = self._get_fs_pair(top)
