@@ -1146,7 +1146,9 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
