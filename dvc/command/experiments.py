@@ -5,7 +5,7 @@ from datetime import date, datetime
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
-from funcy import constantly, iffy, lmap
+from funcy import lmap
 
 import dvc.prompt as prompt
 from dvc.command import completion
@@ -17,6 +17,8 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.utils.flatten import flatten
 
 if TYPE_CHECKING:
+    from rich.text import Text
+
     from dvc.compare import TabularData
 
 
@@ -116,6 +118,16 @@ def _collect_names(all_experiments, **kwargs):
     return metric_names, param_names
 
 
+experiment_types = {
+    "checkpoint_tip": "│ ╓",
+    "checkpoint_commit": "│ ╟",
+    "checkpoint_base": "├─╨",
+    "branch_commit": "├──",
+    "branch_base": "└──",
+    "baseline": "",
+}
+
+
 def _collect_rows(
     base_rev,
     experiments,
@@ -147,13 +159,6 @@ def _collect_rows(
             name_rev = rev[:7]
 
         exp_name = exp.get("name", "")
-        if is_baseline:
-            name = exp_name or name_rev
-        elif exp_name:
-            name = f"{rev[:7]} [[bold]{exp['name']}[/]]"
-        else:
-            name = name_rev
-
         tip = exp.get("checkpoint_tip")
 
         parent_rev = exp.get("checkpoint_parent", "")
@@ -162,27 +167,31 @@ def _collect_rows(
 
         parent = ""
         if is_baseline:
-            tree = ""
+            typ = "baseline"
         elif tip:
             if tip == parent_tip:
-                tree = "│ ╓" if new_checkpoint else "│ ╟"
+                typ = (
+                    "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
+                )
             elif parent_rev == base_rev:
-                tree = "├─╨"
+                typ = "checkpoint_base"
             else:
-                tree = "│ ╟"
+                typ = "checkpoint_commit"
                 parent = parent_rev[:7]
+        elif i < len(experiments) - 1:
+            typ = "branch_commit"
         else:
-            tree = "├──" if i < len(experiments) - 1 else "└──"
+            typ = "branch_base"
 
         if not is_baseline:
             new_checkpoint = not (tip and tip == parent_tip)
 
         row = [
-            name,
+            exp_name,
+            name_rev,
             queued,
-            tree,
+            typ,
             _format_time(exp.get("timestamp")),
-            rev == "baseline",
             parent,
         ]
         _extend_row(
@@ -297,10 +306,10 @@ def experiments_table(
 
     headers = [
         "Experiment",
+        "rev",
         "queued",
-        "ident_guide",
+        "typ",
         "Created",
-        "is_baseline",
         "parent",
     ]
     td = TabularData(
@@ -321,17 +330,30 @@ def experiments_table(
     return td
 
 
-def prepare_exp_id(kwargs):
+def prepare_exp_id(kwargs) -> "Text":
+    from rich.text import Text
+
     exp_name = kwargs["Experiment"]
-    ident = kwargs.get("ident_guide")
-    queued = kwargs.get("queued")
+    rev = kwargs["rev"]
+    typ = kwargs.get("typ", "baseline")
+
+    if typ == "baseline" or not exp_name:
+        text = Text(exp_name or rev)
+    else:
+        text = Text.assemble(rev, " [", (exp_name, "bold"), "]")
+
     parent = kwargs.get("parent")
-    return "{}{}{}{}".format(
-        f"{ident} " if ident else "",
-        "*" if queued else "",
-        exp_name,
-        f" ({parent})" if parent else "",
-    )
+    suff = f" ({parent})" if parent else ""
+    text.append(suff)
+
+    tree = experiment_types[typ]
+    queued = "*" if kwargs.get("queued") else ""
+    pref = (f"{tree} " if tree else "") + queued
+    return Text(pref) + text
+
+
+def baseline_styler(typ):
+    return {"style": "bold"} if typ == "baseline" else {}
 
 
 def show_experiments(
@@ -362,39 +384,34 @@ def show_experiments(
         kwargs.get("sort_order"),
         kwargs.get("precision"),
     )
-    styles = [
-        {"no_wrap": True, "header_style": "black on grey93"},
-        {"header_style": "black on grey93"},
-        *[
-            {
-                "justify": "right",
-                "header_style": "black on cornsilk1",
-                "no_wrap": True,
-                "collapse": idx != 0,
-            }
-            for idx, _ in enumerate(metric_headers)
-        ],
-        *[
-            {
-                "justify": "left",
-                "header_style": "black on light_cyan1",
-                "collapse": idx != 0,
-            }
-            for idx, _ in enumerate(param_headers)
-        ],
-    ]
 
     if no_timestamp:
         td.drop("Created")
-        styles.pop(1)
 
-    baseline_styler = iffy(constantly({"style": "bold"}), default={})
-    row_styles = lmap(baseline_styler, td.column("is_baseline"))
-    td.drop("is_baseline")
+    row_styles = lmap(baseline_styler, td.column("typ"))
 
-    merge_headers = ["Experiment", "queued", "ident_guide", "parent"]
+    merge_headers = ["Experiment", "rev", "queued", "typ", "parent"]
     td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
     td.drop(*merge_headers[1:])
+
+    headers = {"metrics": metric_headers, "params": param_headers}
+    styles = {
+        "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
+        "Created": {"header_style": "black on grey93"},
+    }
+    header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
+    styles.update(
+        {
+            header: {
+                "justify": "left" if typ == "metrics" else "params",
+                "header_style": f"black on {header_bg_colors[typ]}",
+                "collapse": idx != 0,
+                "no_wrap": typ == "metrics",
+            }
+            for typ, hs in headers.items()
+            for idx, header in enumerate(hs)
+        }
+    )
 
     td.render(
         pager=pager,

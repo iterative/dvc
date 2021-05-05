@@ -823,7 +823,7 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
     tmp_dir.gen({"dir": {"file2": "file2 content"}})
 
     with pytest.raises(OverlappingOutputPathsError) as e:
-        dvc.add(os.path.join("dir", "file2"))
+        dvc.add(os.path.join("dir", "file2"), fname="file2.dvc")
     assert str(e.value) == (
         "Cannot add '{out}', because it is overlapping with other DVC "
         "tracked output: 'dir'.\n"
@@ -1146,7 +1146,9 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
@@ -1175,3 +1177,14 @@ def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
     foo.unlink()
     dvc.checkout(str(foo))
     assert foo.read_text() == "foo"
+
+
+def test_add_ignored(tmp_dir, scm, dvc):
+    from dvc.dvcfile import FileIsGitIgnored
+
+    tmp_dir.gen({"dir": {"subdir": {"file": "content"}}, ".gitignore": "dir/"})
+    with pytest.raises(FileIsGitIgnored) as exc:
+        dvc.add(targets=[os.path.join("dir", "subdir")])
+    assert str(exc.value) == ("bad DVC file name '{}' is git-ignored.").format(
+        os.path.join("dir", "subdir.dvc")
+    )

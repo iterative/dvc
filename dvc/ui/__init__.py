@@ -155,7 +155,7 @@ class Console:
         rich_table: bool = False,
         force: bool = True,
         pager: bool = False,
-        header_styles: Sequence["Styles"] = None,
+        header_styles: Union[Dict[str, "Styles"], Sequence["Styles"]] = None,
         row_styles: Sequence["Styles"] = None,
         borders: Union[bool, str] = False,
     ) -> None:

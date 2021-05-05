@@ -119,6 +119,7 @@ def test_rich_border(capsys: CaptureFixture[str]):
     "extra_opts",
     [
         {"header_styles": [{"style": Style(bold=True)}]},
+        {"header_styles": {"first": {"style": Style(bold=True)}}},
         {"row_styles": [{"style": Style(bold=True)}]},
     ],
 )

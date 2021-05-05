@@ -32,6 +32,7 @@ def remote(request, dvc):
     return get_remote(dvc, **cloud.config)
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_isdir(remote):
     test_cases = [
@@ -49,6 +50,7 @@ def test_isdir(remote):
         assert remote.fs.isdir(remote.fs.path_info / path) == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_exists(remote):
     test_cases = [
@@ -69,6 +71,7 @@ def test_exists(remote):
         assert remote.fs.exists(remote.fs.path_info / path) == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_walk_files(remote):
     files = [
@@ -104,6 +107,7 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
     assert from_hash == to_hash
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_isfile(remote):
     test_cases = [
@@ -126,6 +130,7 @@ def test_isfile(remote):
         assert remote.fs.isfile(remote.fs.path_info / path) == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")

@@ -53,18 +53,22 @@ def move(self, from_path, to_path):
     stage_name = os.path.splitext(os.path.basename(stage.path))[0]
     from_name = os.path.basename(from_out.fspath)
     if stage_name == from_name:
-        os.unlink(stage.path)
-
-        stage.path = os.path.join(
+        new_fname = os.path.join(
             os.path.dirname(to_path),
             os.path.basename(to_path) + DVC_FILE_SUFFIX,
         )
-
-        stage.wdir = os.path.abspath(
+        new_wdir = os.path.abspath(
             os.path.join(os.curdir, os.path.dirname(to_path))
         )
+        to_path = os.path.relpath(to_path, new_wdir)
+        new_stage = self.stage.create(
+            single_stage=True, fname=new_fname, wdir=new_wdir, outs=[to_path],
+        )
 
-    to_path = os.path.relpath(to_path, stage.wdir)
+        os.unlink(stage.path)
+        stage = new_stage
+    else:
+        to_path = os.path.relpath(to_path, stage.wdir)
 
     to_out = Output.loads_from(stage, [to_path], out.use_cache, out.metric)[0]
 

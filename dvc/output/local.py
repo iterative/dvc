@@ -73,9 +73,9 @@ class LocalOutput(BaseOutput):
         if os.path.isabs(self.def_path):
             return False
 
-        if self.repo and not self.path_info.isin(self.repo.root_dir):
-            return False
-        return True
+        return self.repo and path_isin(
+            os.path.realpath(self.path_info), self.repo.root_dir
+        )
 
     def dumpd(self):
         ret = super().dumpd()
