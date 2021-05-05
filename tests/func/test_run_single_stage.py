@@ -898,6 +898,8 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         super().setUp()
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
+        self.dvc.close()
+
         self.dvc = DvcRepo(".")
 
     def test(self):

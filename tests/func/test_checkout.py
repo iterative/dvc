@@ -19,7 +19,6 @@ from dvc.exceptions import (
 )
 from dvc.fs.local import LocalFileSystem
 from dvc.main import main
-from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -92,7 +91,8 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
-        self.dvc = DvcRepo(".")
+        self.dvc.config.load()
+
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         self.assertEqual(len(stages[0].outs), 1)

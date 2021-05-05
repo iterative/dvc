@@ -165,6 +165,10 @@ class TestDvcGitFixture(TestGitFixture):
         self.dvc = DvcRepo.init(self.root_dir)
         self.dvc.scm.commit("init dvc")
 
+    def tearDown(self):
+        self.dvc.close()
+        super().tearDown()
+
 
 # NOTE: Inheritance order in the classes below is important.
 

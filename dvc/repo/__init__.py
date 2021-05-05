@@ -304,8 +304,9 @@ class Repo:
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         from dvc.repo.init import init
 
-        init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
-        return Repo(root_dir)
+        return init(
+            root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir
+        )
 
     def unprotect(self, target):
         return self.odb.local.unprotect(PathInfo(target))
@@ -511,3 +512,4 @@ class Repo:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._reset()
+        self.scm.close()

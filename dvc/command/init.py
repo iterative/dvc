@@ -39,14 +39,14 @@ class CmdInit(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            self.repo = Repo.init(
+            with Repo.init(
                 ".",
                 no_scm=self.args.no_scm,
                 force=self.args.force,
                 subdir=self.args.subdir,
-            )
-            self.config = self.repo.config
-            _welcome_message()
+            ) as repo:
+                self.config = repo.config
+                _welcome_message()
         except InitError:
             logger.exception("failed to initiate DVC")
             return 1
