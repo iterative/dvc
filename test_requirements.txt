@@ -1,7 +1,7 @@
 wheel==0.36.2
 
 # Test requirements
-pytest==6.2.3
+pytest==6.2.4
 pytest-cov==2.11.1
 pytest-xdist==2.2.1
 pytest-mock==3.6.0
