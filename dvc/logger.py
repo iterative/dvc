@@ -196,7 +196,17 @@ def disable_other_loggers():
 
 def setup(level=logging.INFO):
     colorama.init()
-    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
+    if level >= logging.DEBUG:
+        # Unclosed session errors for asyncio/aiohttp are only available
+        # on the tracing mode for extensive debug purposes. They are really
+        # noisy, and this is potentially somewhere in the client library
+        # not managing their own session. Even though it is the best practice
+        # for them to do so, we can be assured that these errors raised when
+        # the object is getting deallocated, so no need to take any extensive
+        # action.
+        logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+        logging.getLogger("aiohttp").setLevel(logging.CRITICAL)
 
     addLoggingLevel("TRACE", logging.DEBUG - 5)
     logging.config.dictConfig(
