@@ -98,3 +98,18 @@ jobs:
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+  notify:
+    if: github.ref == 'refs/heads/master' && failure()
+    needs:
+      - lint
+      - tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Slack Notification
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_COLOR: ${{ job.status }}
+        SLACK_MESSAGE: 'CI Failed on master :boom:'
+        SLACK_TITLE: CI Status
+        SLACK_USERNAME: DVC-CI
