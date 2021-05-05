@@ -196,6 +196,7 @@ def disable_other_loggers():
 
 def setup(level=logging.INFO):
     colorama.init()
+    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
     addLoggingLevel("TRACE", logging.DEBUG - 5)
     logging.config.dictConfig(

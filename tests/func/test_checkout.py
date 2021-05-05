@@ -856,7 +856,7 @@ def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
     # was attempted without force, dvc checks if it's present in its cache
     # before asking user to remove it.
     workspace.gen("foo", "foo")
-    dvc.add(str(workspace / "foo"), external=True)
+    dvc.add("remote://workspace/foo", external=True)
     scm.add(["foo.dvc"])
     scm.commit("add foo")
 
