@@ -44,6 +44,8 @@ def _temp_event_loop():
         asyncio.set_event_loop(loop)
         yield
     finally:
+        if original_loop is None:
+            loop.close()
         asyncio.set_event_loop(original_loop)
 
 
@@ -162,3 +164,9 @@ class AzureFileSystem(FSSpecWrapper):
             ) from e
 
         return file_system
+
+    def open(
+        self, path_info, mode="r", **kwargs
+    ):  # pylint: disable=arguments-differ
+        with _temp_event_loop():
+            return self.fs.open(self._with_bucket(path_info), mode=mode)
