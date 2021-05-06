@@ -78,9 +78,9 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
 
 
 def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
-    use_dvcignore = kwargs.get("use_dvcignore", False)
-    if use_dvcignore:
-        walk_iterator = odb.repo.dvcignore.walk_files(fs, path_info)
+    dvcignore = kwargs.get("dvcignore", None)
+    if dvcignore:
+        walk_iterator = dvcignore.walk_files(fs, path_info)
     else:
         walk_iterator = fs.walk_files(path_info)
     with Tqdm(

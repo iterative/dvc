@@ -196,14 +196,14 @@ class BaseOutput:
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
-                use_dvcignore=not self.IS_DEPENDENCY,
+                dvcignore=self.dvcignore,
             ).hash_info
         return ostage(
             self.odb,
             self.path_info,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
-            use_dvcignore=not self.IS_DEPENDENCY,
+            dvcignore=self.dvcignore,
         ).hash_info
 
     @property
@@ -266,6 +266,10 @@ class BaseOutput:
         status = self.status()
         logger.debug(str(status))
         return bool(status)
+
+    @property
+    def dvcignore(self):
+        return None
 
     @property
     def is_empty(self):
@@ -334,7 +338,7 @@ class BaseOutput:
             self.path_info,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
-            use_dvcignore=not self.IS_DEPENDENCY,
+            dvcignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
         self.isexec = self.isfile() and self.fs.isexec(self.path_info)
@@ -355,7 +359,7 @@ class BaseOutput:
                 filter_info or self.path_info,
                 self.fs,
                 self.odb.fs.PARAM_CHECKSUM,
-                use_dvcignore=not self.IS_DEPENDENCY,
+                dvcignore=self.dvcignore,
             )
             objects.save(self.odb, obj)
             checkout(
