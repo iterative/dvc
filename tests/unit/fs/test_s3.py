@@ -1,4 +1,5 @@
 import importlib
+import os
 import sys
 import textwrap
 
@@ -39,6 +40,31 @@ def test_verify_ssl_default_param(dvc):
     fs = S3FileSystem(dvc, config)
 
     assert fs.fs_args["client_kwargs"]["verify"]
+
+
+def test_s3_config_credentialpath(dvc, monkeypatch):
+    environment = {}
+    monkeypatch.setattr(os, "environ", environment)
+
+    config = {"url": url, "credentialpath": "somewhere"}
+    S3FileSystem(dvc, config)
+    assert environment["AWS_SHARED_CREDENTIALS_FILE"] == "somewhere"
+    environment.clear()
+
+    config = {"url": url, "configpath": "somewhere"}
+    S3FileSystem(dvc, config)
+    assert environment["AWS_CONFIG_FILE"] == "somewhere"
+    environment.clear()
+
+    config = {
+        "url": url,
+        "credentialpath": "somewhere",
+        "configpath": "elsewhere",
+    }
+    S3FileSystem(dvc, config)
+    assert environment["AWS_SHARED_CREDENTIALS_FILE"] == "somewhere"
+    assert environment["AWS_CONFIG_FILE"] == "elsewhere"
+    environment.clear()
 
 
 def test_ssl_verify_bool_param(dvc):
