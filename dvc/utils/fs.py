@@ -17,9 +17,9 @@ umask = os.umask(0)
 os.umask(umask)
 
 
-def fs_copy(src, dst):
+def fs_copy(src, dst, ignore=None):
     if os.path.isdir(src):
-        shutil.copytree(src, dst)
+        shutil.copytree(src, dst, ignore=ignore)
     else:
         shutil.copy2(src, dst)
 
