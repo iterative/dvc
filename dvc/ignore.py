@@ -7,10 +7,12 @@ from itertools import groupby, takewhile
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 
+from dvc.fs.base import BaseFileSystem
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
+from dvc.scheme import Schemes
 from dvc.system import System
-from dvc.types import List, Optional
+from dvc.types import AnyPath, List, Optional
 from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
 
@@ -271,18 +273,25 @@ class DvcIgnoreFilter:
             dirs, files = ignore_pattern(abs_root, dirs, files)
         return dirs, files
 
-    def walk(self, walk_iterator, ignore_subrepos=True):
-        for root, dirs, files in walk_iterator:
-            dirs[:], files[:] = self(
-                root, dirs, files, ignore_subrepos=ignore_subrepos
-            )
-            yield root, dirs, files
+    def walk(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
+        ignore_subrepos = kwargs.pop("ignore_subrepos", True)
+        if fs.scheme == Schemes.LOCAL:
+            for root, dirs, files in fs.walk(path_info, **kwargs):
+                dirs[:], files[:] = self(
+                    root, dirs, files, ignore_subrepos=ignore_subrepos
+                )
+                yield root, dirs, files
+        else:
+            yield from fs.walk(path_info)
 
-    def walk_files(self, walk_iterator, ignore_subrepos=True):
-        for root, _, files in self.walk(walk_iterator, ignore_subrepos):
-            for file in files:
-                # NOTE: os.path.join is ~5.5 times slower
-                yield PathInfo(f"{root}{os.sep}{file}")
+    def walk_files(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
+        if fs.scheme == Schemes.LOCAL:
+            for root, _, files in self.walk(fs, path_info, **kwargs):
+                for file in files:
+                    # NOTE: os.path.join is ~5.5 times slower
+                    yield PathInfo(f"{root}{os.sep}{file}")
+        else:
+            yield from fs.walk_files(path_info)
 
     def _get_trie_pattern(
         self, dirname, dnames: Optional["List"] = None, ignore_subrepos=True

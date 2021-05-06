@@ -37,7 +37,7 @@ def get_mtime_and_size(path, fs, dvcignore=None):
         size = 0
         files_mtimes = {}
         if dvcignore:
-            walk_iterator = dvcignore.walk_files(fs.walk(path))
+            walk_iterator = dvcignore.walk_files(fs, path)
         else:
             walk_iterator = fs.walk_files(path)
         for file_path in walk_iterator:

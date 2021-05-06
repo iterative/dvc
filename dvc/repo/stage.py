@@ -466,7 +466,7 @@ class StageLoad:
 
         stages = []
         for root, dirs, files in self.repo.dvcignore.walk(
-            self.fs.walk(self.repo.root_dir)
+            self.fs, self.repo.root_dir
         ):
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
             for file in filter(dvcfile_filter, files):

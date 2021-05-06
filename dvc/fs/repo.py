@@ -330,36 +330,26 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return
 
         repo = self._get_repo(os.path.abspath(path_info))
-        ignore_subrepos = kwargs.pop("ignore_subrepos", True)
         dvcfiles = kwargs.pop("dvcfiles", False)
-        yield from repo.dvcignore.walk(
-            self._walk_fs(
-                path_info,
-                topdown=topdown,
-                onerror=onerror,
-                dvcfiles=dvcfiles,
-                **kwargs
-            ),
-            ignore_subrepos=ignore_subrepos,
+
+        fs, dvc_fs = self._get_fs_pair(path_info)
+        repo_exists = fs.exists(path_info)
+
+        repo_walk = repo.dvcignore.walk(
+            fs, path_info, topdown=topdown, onerror=onerror, **kwargs
         )
+        print(fs)
 
-    def _walk_fs(
-        self, top, topdown=True, onerror=None, dvcfiles=False, **kwargs
-    ):
-        fs, dvc_fs = self._get_fs_pair(top)
-        repo_exists = fs.exists(top)
-        repo_walk = fs.walk(top, topdown=topdown, onerror=onerror,)
-
-        if not dvc_fs or (repo_exists and dvc_fs.isdvc(top)):
+        if not dvc_fs or (repo_exists and dvc_fs.isdvc(path_info)):
             yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
             return
 
         if not repo_exists:
-            yield from dvc_fs.walk(top, topdown=topdown, **kwargs)
+            yield from dvc_fs.walk(path_info, topdown=topdown, **kwargs)
 
         dvc_walk = None
-        if dvc_fs.exists(top):
-            dvc_walk = dvc_fs.walk(top, topdown=topdown, **kwargs)
+        if dvc_fs.exists(path_info):
+            dvc_walk = dvc_fs.walk(path_info, topdown=topdown, **kwargs)
 
         yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 

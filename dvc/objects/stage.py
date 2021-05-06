@@ -8,7 +8,6 @@ from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
-from dvc.scheme import Schemes
 from dvc.utils import file_md5
 
 
@@ -80,8 +79,8 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
 
 def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
     use_dvcignore = kwargs.get("use_dvcignore", False)
-    if use_dvcignore and fs.scheme == Schemes.LOCAL and odb.repo:
-        walk_iterator = odb.repo.dvcignore.walk_files(fs.walk(path_info))
+    if use_dvcignore:
+        walk_iterator = odb.repo.dvcignore.walk_files(fs, path_info)
     else:
         walk_iterator = fs.walk_files(path_info)
     with Tqdm(
