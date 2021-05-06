@@ -124,6 +124,14 @@ class BaseS3FileSystem(FSSpecWrapper):
             login_info["profile"]
         )
 
+        shared_creds = config.get("credentialpath")
+        if shared_creds:
+            os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
+
+        config_path = config.get("configpath")
+        if config_path:
+            os.environ.setdefault("AWS_CONFIG_FILE", config_path)
+
         return unflatten(
             {
                 key: value
