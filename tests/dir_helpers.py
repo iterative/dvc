@@ -264,12 +264,30 @@ CACHE = {}
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
     def make(name, *, scm=False, dvc=False, subdir=False):
+        from shutil import ignore_patterns
+
         from dvc.repo import Repo
         from dvc.scm.git import Git
+        from dvc.utils.fs import fs_copy
 
+        cache = CACHE.get((scm, dvc, subdir))
+        if not cache:
+            cache = tmp_path_factory.mktemp("dvc-test-cache" + worker_id)
+            TmpDir(cache).init(scm=scm, dvc=dvc, subdir=subdir)
+            CACHE[(scm, dvc, subdir)] = os.fspath(cache)
         path = tmp_path_factory.mktemp(name) if isinstance(name, str) else name
+
+        # ignore sqlite files from .dvc/tmp. We might not be closing the cache
+        # connection resulting in PermissionErrors in Windows.
+        ignore = ignore_patterns("cache.db*")
+        for entry in os.listdir(cache):
+            # shutil.copytree's dirs_exist_ok is only available in >=3.8
+            fs_copy(
+                os.path.join(cache, entry),
+                os.path.join(path, entry),
+                ignore=ignore,
+            )
         new_dir = TmpDir(path)
-        new_dir.init(scm=scm, dvc=dvc, subdir=subdir)
         str_path = os.fspath(new_dir)
         if dvc:
             new_dir.dvc = Repo(str_path)
