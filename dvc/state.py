@@ -9,7 +9,6 @@ from urllib.parse import urlencode, urlunparse
 from dvc.exceptions import DvcException
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
-from dvc.scheme import Schemes
 from dvc.utils import relpath
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
@@ -65,14 +64,14 @@ class StateNoop(StateBase):
 
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, repo, root_dir=None, tmp_dir=None):
+    def __init__(self, root_dir=None, tmp_dir=None, dvcignore=None):
         from diskcache import Cache
 
         super().__init__()
 
         self.tmp_dir = tmp_dir
         self.root_dir = root_dir
-        self.repo = repo
+        self.dvcignore = dvcignore
         self.fs = LocalFileSystem(None, {"url": self.root_dir})
 
         if not tmp_dir:
@@ -88,12 +87,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     def close(self):
         self.md5s.close()
         self.links.close()
-
-    @property
-    def dvcignore(self):
-        if self.fs.scheme == Schemes.LOCAL:
-            return self.repo.dvcignore
-        return None
 
     def save(self, path_info, fs, hash_info):
         """Save hash for the specified path info.

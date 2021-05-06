@@ -216,6 +216,8 @@ def test_parent_repo_collect_stages(tmp_dir, scm, dvc):
         deep_subrepo_dir.gen("subrepo_file", "subrepo file content")
         deep_subrepo.add("subrepo_file")
 
+    dvc._reset()
+
     stages = dvc.stage.collect(None)
     subrepo_stages = subrepo.stage.collect(None)
     deep_subrepo_stages = deep_subrepo.stage.collect(None)
