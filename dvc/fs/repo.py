@@ -301,7 +301,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             elif dirname in repo_set:
                 yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
 
-    def walk(self, path_info, **kwargs):
+    def walk(self, top, topdown=True, onerror=None, **kwargs):
         """Walk and merge both DVC and repo fss.
 
         Args:
@@ -315,41 +315,42 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         Any kwargs will be passed into methods used for fetching and/or
         streaming DVC outs from remotes.
         """
-        topdown = kwargs.pop("topdown", True)
         assert topdown
 
-        onerror = kwargs.pop("onerror", None)
-        if not self.exists(path_info):
+        if not self.exists(top):
             if onerror is not None:
-                onerror(FileNotFoundError(path_info))
+                onerror(FileNotFoundError(top))
             return
 
-        if not self.isdir(path_info):
+        if not self.isdir(top):
             if onerror is not None:
-                onerror(NotADirectoryError(path_info))
+                onerror(NotADirectoryError(top))
             return
 
-        repo = self._get_repo(os.path.abspath(path_info))
+        repo = self._get_repo(os.path.abspath(top))
         dvcfiles = kwargs.pop("dvcfiles", False)
 
-        fs, dvc_fs = self._get_fs_pair(path_info)
-        repo_exists = fs.exists(path_info)
+        fs, dvc_fs = self._get_fs_pair(top)
+        repo_exists = fs.exists(top)
 
         repo_walk = repo.dvcignore.walk(
-            fs, path_info, topdown=topdown, onerror=onerror, **kwargs
+            fs, top, topdown=topdown, onerror=onerror, **kwargs
         )
-        print(fs)
 
-        if not dvc_fs or (repo_exists and dvc_fs.isdvc(path_info)):
+        if not dvc_fs or (repo_exists and dvc_fs.isdvc(top)):
             yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
             return
 
         if not repo_exists:
-            yield from dvc_fs.walk(path_info, topdown=topdown, **kwargs)
+            yield from dvc_fs.walk(
+                top, topdown=topdown, onerror=onerror, **kwargs
+            )
 
         dvc_walk = None
-        if dvc_fs.exists(path_info):
-            dvc_walk = dvc_fs.walk(path_info, topdown=topdown, **kwargs)
+        if dvc_fs.exists(top):
+            dvc_walk = dvc_fs.walk(
+                top, topdown=topdown, onerror=onerror, **kwargs
+            )
 
         yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
 
