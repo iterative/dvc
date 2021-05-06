@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: '5 1 * * *'  # every day at 01:05
 
 env:
   DVC_TEST: "true"
@@ -87,12 +89,21 @@ jobs:
       run: |
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
+    - name: disable gdrive tests
+      if: >-
+        github.event_name != 'schedule' &&
+        (matrix.pyv != '3.8' || matrix.os != 'ubuntu-18.04')
+      run: |
+        echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
       env:
         GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: python -m tests --all --cov-report=xml --cov-report=term -n=4
+      run: >-
+        python -m tests -n=4
+        --cov-report=xml --cov-report=term
+        --all ${{ env.extra_test_args }}
     - name: upload coverage report
       uses: codecov/codecov-action@v1.5.0
       with:
