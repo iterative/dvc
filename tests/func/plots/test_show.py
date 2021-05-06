@@ -828,6 +828,11 @@ def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
     result = dvc.plots.show(targets=[p1])
     assert set(result.keys()) == {p1}
 
+    remove(dvc.odb.local.cache_dir)
+    remove(subdir)
+    with pytest.raises(NoMetricsParsedError):
+        dvc.plots.show()
+
 
 def test_ignore_binary_file(tmp_dir, dvc, run_copy_metrics):
     with open("file", "wb") as fobj:
