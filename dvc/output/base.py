@@ -368,6 +368,7 @@ class BaseOutput:
                 obj,
                 self.odb,
                 relink=True,
+                dvcignore=self.dvcignore,
             )
             self.set_exec()
 

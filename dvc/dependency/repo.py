@@ -98,7 +98,7 @@ class RepoDependency(LocalDependency):
             )
             save(odb, obj, jobs=jobs)
 
-        checkout(to.path_info, to.fs, obj, odb)
+        checkout(to.path_info, to.fs, obj, odb, dvcignore=None)
 
     def update(self, rev=None):
         if rev:
