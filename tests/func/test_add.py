@@ -25,7 +25,6 @@ from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageExternalOutputsError,
@@ -414,7 +413,7 @@ class TestAddLocalRemoteFile(TestDvc):
         ret = main(["remote", "add", remote, cwd])
         self.assertEqual(ret, 0)
 
-        self.dvc = DvcRepo()
+        self.dvc.config.load()
 
         foo = f"remote://{remote}/{self.FOO}"
         ret = main(["add", foo])

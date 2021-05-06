@@ -31,34 +31,32 @@ def get_dvc_info():
     ]
 
     try:
-        repo = Repo()
+        with Repo() as repo:
+            # cache_dir might not exist yet (e.g. after `dvc init`), and we
+            # can't auto-create it, as it might cause issues if the user
+            # later decides to enable shared cache mode with
+            # `dvc config cache.shared group`.
+            if os.path.exists(repo.odb.local.cache_dir):
+                info.append(
+                    "Cache types: {}".format(_get_linktype_support_info(repo))
+                )
+                fs_type = get_fs_type(repo.odb.local.cache_dir)
+                info.append(f"Cache directory: {fs_type}")
+            else:
+                info.append("Cache types: " + error_link("no-dvc-cache"))
 
-        # cache_dir might not exist yet (e.g. after `dvc init`), and we
-        # can't auto-create it, as it might cause issues if the user
-        # later decides to enable shared cache mode with
-        # `dvc config cache.shared group`.
-        if os.path.exists(repo.odb.local.cache_dir):
-            info.append(
-                "Cache types: {}".format(_get_linktype_support_info(repo))
-            )
-            fs_type = get_fs_type(repo.odb.local.cache_dir)
-            info.append(f"Cache directory: {fs_type}")
-        else:
-            info.append("Cache types: " + error_link("no-dvc-cache"))
+            info.append(f"Caches: {_get_caches(repo.odb)}")
+            info.append(f"Remotes: {_get_remotes(repo.config)}")
 
-        info.append(f"Caches: {_get_caches(repo.odb)}")
-
-        info.append(f"Remotes: {_get_remotes(repo.config)}")
-
+            root_directory = repo.root_dir
+            fs_root = get_fs_type(os.path.abspath(root_directory))
+            info.append(f"Workspace directory: {fs_root}")
+            info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
     except NotDvcRepoError:
         pass
     except SCMError:
         info.append("Repo: dvc, git (broken)")
-    else:
-        root_directory = repo.root_dir
-        fs_root = get_fs_type(os.path.abspath(root_directory))
-        info.append(f"Workspace directory: {fs_root}")
-        info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
+
     return "\n".join(info)
 
 
