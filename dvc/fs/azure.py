@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import sys
 import threading
 from contextlib import contextmanager
 
@@ -35,8 +36,20 @@ def _temp_event_loop():
 
     try:
         original_loop = asyncio.get_event_loop()
+        original_policy = asyncio.get_event_loop_policy()
     except RuntimeError:
         original_loop = None
+        original_policy = None
+
+    # From 3.8>= and onwards, asyncio changed the default
+    # loop policy for windows to use proactor loops instead
+    # of selector based ones. Due to that, proxied connections
+    # doesn't work with the aiohttp and this is most likely an
+    # upstream bug that needs to be solved outside of DVC. Until
+    # such issue is resolved, we need to manage this;
+    # https://github.com/aio-libs/aiohttp/issues/4536
+    if sys.version_info >= (3, 8) and os.name == "nt":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     loop = original_loop or asyncio.new_event_loop()
 
@@ -47,6 +60,7 @@ def _temp_event_loop():
         if original_loop is None:
             loop.close()
         asyncio.set_event_loop(original_loop)
+        asyncio.set_event_loop_policy(original_policy)
 
 
 class AzureAuthError(DvcException):
