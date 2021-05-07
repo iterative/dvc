@@ -124,8 +124,8 @@ class FileMixin:
         return relpath(self.path)
 
     def exists(self):
-        is_ignored = not self.repo.dvcignore.is_ignored(self.path)
-        return self.repo.fs.exists(self.path) and is_ignored
+        is_ignored = self.repo.dvcignore.is_ignored(self.path)
+        return self.repo.fs.exists(self.path) and not is_ignored
 
     def _is_git_ignored(self):
         return is_git_ignored(self.repo, self.path)
