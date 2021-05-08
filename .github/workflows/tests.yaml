@@ -89,12 +89,6 @@ jobs:
       run: |
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
-    - name: disable gdrive tests
-      if: >-
-        github.event_name != 'schedule' &&
-        (matrix.pyv != '3.8' || matrix.os != 'ubuntu-18.04')
-      run: |
-        echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
       env:
         GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
