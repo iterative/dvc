@@ -164,21 +164,14 @@ def _process_stages(
         (target,) = sub_targets
         (out,) = stage.outs
 
+        odb = None
         if to_remote:
-            out.hash_info = repo.cloud.transfer(
-                target,
-                jobs=kwargs.get("jobs"),
-                remote=kwargs.get("remote"),
-                command="add",
-            )
-        else:
-            from dvc.fs import get_cloud_fs
-            from dvc.objects.transfer import transfer
+            remote = repo.cloud.get_remote(kwargs.get("remote"), "add")
+            odb = remote.odb
 
-            from_fs = get_cloud_fs(repo, url=target)
-            out.hash_info = transfer(
-                out.odb, from_fs, from_fs.path_info, jobs=kwargs.get("jobs"),
-            )
+        out.transfer(target, odb=odb, jobs=kwargs.get("jobs"))
+
+        if to_cache:
             out.checkout()
 
         Dvcfile(repo, stage.path).dump(stage)

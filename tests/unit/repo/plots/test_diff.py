@@ -14,7 +14,9 @@ from dvc.repo.plots.diff import _revisions
 )
 def test_revisions(mocker, arg_revisions, is_dirty, expected_revisions):
     mock_scm = mocker.Mock()
-    mock_scm.configure_mock(**{"is_dirty.return_value": is_dirty})
+    mock_scm.configure_mock(
+        **{"is_dirty.return_value": is_dirty, "get_ref.return_value": None}
+    )
     mock_repo = mocker.Mock(scm=mock_scm)
     assert _revisions(mock_repo, arg_revisions, False) == expected_revisions
 
@@ -32,7 +34,9 @@ def test_revisions_experiment(
     mocker, arg_revisions, baseline, expected_revisions
 ):
     mock_scm = mocker.Mock()
-    mock_scm.configure_mock(**{"is_dirty.return_value": False})
+    mock_scm.configure_mock(
+        **{"is_dirty.return_value": False, "get_ref.return_value": None}
+    )
     mock_experiments = mocker.Mock()
     mock_experiments.configure_mock(**{"get_baseline.return_value": baseline})
     mock_repo = mocker.Mock(scm=mock_scm, experiments=mock_experiments)

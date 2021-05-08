@@ -42,6 +42,7 @@ all_clouds = [
 ]
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
@@ -136,6 +137,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     assert status_dir == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_cloud_cli(tmp_dir, dvc, remote):
     args = ["-v", "-j", "2"]
@@ -231,7 +233,7 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
 
 def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_hash = mocker.spy(dvc_module.objects.stage, "get_file_hash")
+    test_get_file_hash = mocker.spy(dvc_module.objects.stage, "_get_file_hash")
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])

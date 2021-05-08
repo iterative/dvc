@@ -32,6 +32,7 @@ def remote(request, dvc):
     return get_remote(dvc, **cloud.config)
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_isdir(remote):
     test_cases = [
@@ -49,6 +50,7 @@ def test_isdir(remote):
         assert remote.fs.isdir(remote.fs.path_info / path) == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_exists(remote):
     test_cases = [
@@ -69,6 +71,7 @@ def test_exists(remote):
         assert remote.fs.exists(remote.fs.path_info / path) == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_walk_files(remote):
     files = [
@@ -86,10 +89,12 @@ def test_walk_files(remote):
 
 @pytest.mark.parametrize("remote", [pytest.lazy_fixture("s3")], indirect=True)
 def test_copy_preserve_etag_across_buckets(remote, dvc):
-    s3 = remote.fs.s3
-    s3.Bucket("another").create()
+    s3 = remote.fs
+    s3.fs.mkdir("another/")
 
-    another = S3FileSystem(dvc, {"url": "s3://another", "region": "us-east-1"})
+    another = S3FileSystem(
+        dvc, {**remote.fs.config, "url": "s3://another", "region": "us-east-1"}
+    )
 
     from_info = remote.fs.path_info / "foo"
     to_info = another.path_info / "foo"
@@ -102,29 +107,7 @@ def test_copy_preserve_etag_across_buckets(remote, dvc):
     assert from_hash == to_hash
 
 
-@pytest.mark.parametrize(
-    "remote",
-    [
-        pytest.lazy_fixture("s3"),
-        pytest.param(
-            pytest.lazy_fixture("gs"),
-            marks=pytest.mark.xfail(
-                reason="https://github.com/iterative/dvc/issues/5521"
-            ),
-        ),
-    ],
-    indirect=True,
-)
-def test_makedirs(remote):
-    fs = remote.fs
-    empty_dir = remote.fs.path_info / "empty_dir" / ""
-    fs.remove(empty_dir)
-    assert not fs.exists(empty_dir)
-    fs.makedirs(empty_dir)
-    assert fs.exists(empty_dir)
-    assert fs.isdir(empty_dir)
-
-
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_isfile(remote):
     test_cases = [
@@ -147,6 +130,7 @@ def test_isfile(remote):
         assert remote.fs.isfile(remote.fs.path_info / path) == expected
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")

@@ -60,31 +60,42 @@ class TestRun(TestDvc):
                 arg2,
             ]
         )
-
-        self.assertIsInstance(args.func(args), CmdRun)
+        cmd_cls = args.func(args)
+        self.assertIsInstance(cmd_cls, CmdRun)
         self.assertEqual(args.deps, [dep1, dep2])
         self.assertEqual(args.outs, [out1, out2])
         self.assertEqual(args.outs_no_cache, [out_no_cache1, out_no_cache2])
         self.assertEqual(args.file, fname)
         self.assertEqual(args.cmd, [cmd, arg1, arg2])
 
+        cmd_cls.repo.close()
+
 
 class TestPull(TestDvc):
     def test(self):
         args = parse_args(["pull"])
-        self.assertIsInstance(args.func(args), CmdDataPull)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdDataPull)
+
+        cmd.repo.close()
 
 
 class TestPush(TestDvc):
     def test(self):
         args = parse_args(["push"])
-        self.assertIsInstance(args.func(args), CmdDataPush)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdDataPush)
+
+        cmd.repo.close()
 
 
 class TestStatus(TestDvc):
     def test(self):
         args = parse_args(["status"])
-        self.assertIsInstance(args.func(args), CmdDataStatus)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdDataStatus)
+
+        cmd.repo.close()
 
 
 class TestRepro(TestDvc):
@@ -96,10 +107,13 @@ class TestRepro(TestDvc):
             ["repro", target1, target2, "-f", "--force", "-s", "--single-item"]
         )
 
-        self.assertIsInstance(args.func(args), CmdRepro)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdRepro)
         self.assertEqual(args.targets, [target1, target2])
         self.assertEqual(args.force, True)
         self.assertEqual(args.single_item, True)
+
+        cmd.repo.close()
 
 
 class TestRemove(TestDvc):
@@ -109,8 +123,11 @@ class TestRemove(TestDvc):
 
         args = parse_args(["remove", target1, target2])
 
-        self.assertIsInstance(args.func(args), CmdRemove)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdRemove)
         self.assertEqual(args.targets, [target1, target2])
+
+        cmd.repo.close()
 
 
 class TestAdd(TestDvc):
@@ -120,23 +137,32 @@ class TestAdd(TestDvc):
 
         args = parse_args(["add", target1, target2])
 
-        self.assertIsInstance(args.func(args), CmdAdd)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdAdd)
         self.assertEqual(args.targets, [target1, target2])
+
+        cmd.repo.close()
 
 
 class TestGC(TestDvc):
     def test(self):
         args = parse_args(["gc"])
-        self.assertIsInstance(args.func(args), CmdGC)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdGC)
+
+        cmd.repo.close()
 
 
 class TestGCMultipleDvcRepos(TestDvc):
     def test(self):
         args = parse_args(["gc", "-p", "/tmp/asdf", "/tmp/xyz"])
 
-        self.assertIsInstance(args.func(args), CmdGC)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdGC)
 
         self.assertEqual(args.repos, ["/tmp/asdf", "/tmp/xyz"])
+
+        cmd.repo.close()
 
 
 class TestConfig(TestDvc):
@@ -146,7 +172,8 @@ class TestConfig(TestDvc):
 
         args = parse_args(["config", "-u", "--unset", name, value])
 
-        self.assertIsInstance(args.func(args), CmdConfig)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdConfig)
         self.assertEqual(args.unset, True)
         self.assertEqual(args.name, (False, "section", "option"))
         self.assertEqual(args.value, value)
@@ -162,7 +189,10 @@ class TestConfig(TestDvc):
 class TestCheckout(TestDvc):
     def test(self):
         args = parse_args(["checkout"])
-        self.assertIsInstance(args.func(args), CmdCheckout)
+        cmd = args.func(args)
+        self.assertIsInstance(cmd, CmdCheckout)
+
+        cmd.repo.close()
 
 
 class TestFindRoot(TestDvc):

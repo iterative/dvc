@@ -141,6 +141,7 @@ class Repo:
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
         from dvc.repo.stage import StageLoad
+        from dvc.scm import SCM
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
 
@@ -148,6 +149,9 @@ class Repo:
         self._fs_conf = {
             "repo_factory": repo_factory,
         }
+
+        if rev and not scm:
+            scm = SCM(root_dir or os.curdir)
 
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
@@ -205,22 +209,19 @@ class Repo:
         return self.url or self.root_dir
 
     @staticmethod
-    @contextmanager
     def open(url, *args, **kwargs):
         if url is None:
             url = os.getcwd()
 
         if os.path.exists(url):
             try:
-                yield Repo(url, *args, **kwargs)
-                return
+                return Repo(url, *args, **kwargs)
             except NotDvcRepoError:
                 pass  # fallthrough to external_repo
 
         from dvc.external_repo import external_repo
 
-        with external_repo(url, *args, **kwargs) as repo:
-            yield repo
+        return external_repo(url, *args, **kwargs)
 
     @cached_property
     def scm(self):
@@ -303,8 +304,9 @@ class Repo:
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         from dvc.repo.init import init
 
-        init(root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir)
-        return Repo(root_dir)
+        return init(
+            root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir
+        )
 
     def unprotect(self, target):
         return self.odb.local.unprotect(PathInfo(target))
@@ -504,3 +506,10 @@ class Repo:
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._reset()
+        self.scm.close()

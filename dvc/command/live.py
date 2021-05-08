@@ -4,7 +4,6 @@ import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, fix_subparsers
-from dvc.utils.html import write
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,7 @@ class CmdLive(CmdBase):
         metrics, plots = self.repo.live.show(target=target, revs=revs)
 
         html_path = self.args.target + ".html"
-        write(html_path, plots, metrics)
+        self.repo.plots.write_html(html_path, plots, metrics)
 
         logger.info(f"\nfile://{os.path.abspath(html_path)}")
 

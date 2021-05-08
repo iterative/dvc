@@ -88,16 +88,16 @@ install_requires = [
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
-    "fsspec==0.9.0",
+    "fsspec==2021.4.0",
     "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["gcsfs==0.8.0"]
+gs = ["gcsfs==2021.4.0"]
 gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
-s3 = ["boto3>=1.9.201"]
+s3 = ["s3fs==2021.4.0", "boto3==1.16.52"]
 azure = ["adlfs==0.7.1", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
 oss = ["oss2==2.6.1", "pycryptodome>=3.10"]

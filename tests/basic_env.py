@@ -154,6 +154,10 @@ class TestDvcFixture(TestDirFixture):
         super().setUp()
         self.dvc = DvcRepo.init(self.root_dir, no_scm=True)
 
+    def tearDown(self):
+        self.dvc.close()
+        super().tearDown()
+
 
 class TestDvcGitFixture(TestGitFixture):
     def setUp(self):
@@ -162,7 +166,7 @@ class TestDvcGitFixture(TestGitFixture):
         self.dvc.scm.commit("init dvc")
 
     def tearDown(self):
-        self.dvc.scm.close()
+        self.dvc.close()
         super().tearDown()
 
 
@@ -192,10 +196,12 @@ class TestDvc(TestDvcFixture, TestCase):
         TestDvcFixture.__init__(self)
         TestCase.__init__(self, methodName)
         self._caplog = None
+        self._capsys = None
 
     @pytest.fixture(autouse=True)
-    def inject_fixtures(self, caplog):
+    def inject_fixtures(self, caplog, capsys):
         self._caplog = caplog
+        self._capsys = capsys
 
 
 class TestDvcGit(TestDvcGitFixture, TestCase):

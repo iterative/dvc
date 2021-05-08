@@ -45,6 +45,10 @@ class CmdBase(ABC):
             updater = Updater(self.repo.tmp_dir, hardlink_lock=hardlink_lock)
             updater.check()
 
+    def do_run(self):
+        with self.repo:
+            return self.run()
+
     @abstractmethod
     def run(self):
         pass
@@ -55,3 +59,6 @@ class CmdBaseNoRepo(CmdBase):
         self.args = args
 
         os.chdir(args.cd)
+
+    def do_run(self):
+        return self.run()

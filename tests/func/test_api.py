@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from flaky.flaky_decorator import flaky
 from funcy import first, get_in
 
 from dvc import api
@@ -28,6 +27,7 @@ all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
 # `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", clouds, indirect=True)
 def test_get_url(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
@@ -36,6 +36,7 @@ def test_get_url(tmp_dir, dvc, remote):
     assert api.get_url("foo") == expected_url
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("cloud", clouds)
 def test_get_url_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
@@ -58,6 +59,7 @@ def test_get_url_requires_dvc(tmp_dir, scm):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo-text")
@@ -70,6 +72,7 @@ def test_open(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize(
     "cloud",
     [
@@ -110,7 +113,7 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
     assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
-@flaky(max_runs=3, min_passes=1)
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open_granular(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
@@ -123,6 +126,7 @@ def test_open_granular(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize(
     "remote",
     [
@@ -180,6 +184,15 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+def test_open_rev(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("foo", "foo", commit="foo")
+
+    (tmp_dir / "foo").write_text("bar")
+
+    with api.open("foo", rev="master") as fobj:
+        assert fobj.read() == "foo"
 
 
 @pytest.mark.parametrize("as_external", [True, False])

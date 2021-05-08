@@ -1,6 +1,7 @@
+from collections import abc
 from contextlib import contextmanager
 from itertools import zip_longest
-from typing import TYPE_CHECKING, Iterator, List, Sequence, Union
+from typing import TYPE_CHECKING, Dict, Iterator, Sequence, Union
 
 from dvc.types import DictStrAny
 
@@ -17,7 +18,7 @@ SHOW_MAX_WIDTH = 1024
 
 CellT = Union[str, "Text"]  # Text is mostly compatible with str
 Row = Sequence[CellT]
-TableData = List[Row]
+TableData = Sequence[Row]
 Headers = Sequence[str]
 Styles = DictStrAny
 
@@ -81,7 +82,7 @@ def rich_table(
     data: TableData,
     headers: Headers = None,
     pager: bool = False,
-    header_styles: Sequence[Styles] = None,
+    header_styles: Union[Dict[str, Styles], Sequence[Styles]] = None,
     row_styles: Sequence[Styles] = None,
     borders: Union[bool, str] = False,
 ) -> None:
@@ -97,12 +98,16 @@ def rich_table(
     }
 
     table = Table(box=border_style[borders])
-    hs: Sequence[Styles] = header_styles or []
+
+    if isinstance(header_styles, abc.Sequence):
+        hs: Dict[str, Styles] = dict(zip(headers or [], header_styles))
+    else:
+        hs = header_styles or {}
+
+    for header in headers or []:
+        table.add_column(header, **hs.get(header, {}))
+
     rs: Sequence[Styles] = row_styles or []
-
-    for header, style in zip_longest(headers or [], hs):
-        table.add_column(header, **(style or {}))
-
     for row, style in zip_longest(data, rs):
         table.add_row(*row, **(style or {}))
 

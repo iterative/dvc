@@ -72,11 +72,11 @@ class RawData:
 
 
 def create_stage(cls, repo, path, external=False, **kwargs):
-    from dvc.dvcfile import check_dvc_filename
+    from dvc.dvcfile import check_dvcfile_path
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     path = os.path.abspath(path)
-    check_dvc_filename(path)
+    check_dvcfile_path(repo, path)
     check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
     check_stage_path(repo, os.path.dirname(path))
 
@@ -434,15 +434,21 @@ class Stage(params.StageParams):
         return m
 
     def save(self, allow_missing=False):
-        self.save_deps()
+        self.save_deps(allow_missing=allow_missing)
         self.save_outs(allow_missing=allow_missing)
         self.md5 = self.compute_md5()
 
         self.repo.stage_cache.save(self)
 
-    def save_deps(self):
+    def save_deps(self, allow_missing=False):
+        from dvc.dependency.base import DependencyDoesNotExistError
+
         for dep in self.deps:
-            dep.save()
+            try:
+                dep.save()
+            except DependencyDoesNotExistError:
+                if not allow_missing:
+                    raise
 
     def save_outs(self, allow_missing=False):
         from dvc.output.base import OutputDoesNotExistError

@@ -25,7 +25,6 @@ from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
 from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageExternalOutputsError,
@@ -347,6 +346,24 @@ def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
     assert dvc.status() == {}
 
 
+def test_add_external_relpath(tmp_dir, dvc, local_cloud):
+    (fpath,) = local_cloud.gen("file", "file")
+    rel = os.path.relpath(fpath)
+
+    with pytest.raises(StageExternalOutputsError):
+        dvc.add(rel)
+
+    dvc.add(rel, external=True)
+    assert (tmp_dir / "file.dvc").read_text() == (
+        "outs:\n"
+        "- md5: 8c7dd922ad47494fc02c388e12c00eac\n"
+        "  size: 4\n"
+        f"  path: {rel}\n"
+    )
+    assert fpath.read_text() == "file"
+    assert dvc.status() == {}
+
+
 @pytest.mark.parametrize(
     "workspace, hash_name, hash_value",
     [
@@ -396,7 +413,7 @@ class TestAddLocalRemoteFile(TestDvc):
         ret = main(["remote", "add", remote, cwd])
         self.assertEqual(ret, 0)
 
-        self.dvc = DvcRepo()
+        self.dvc.config.load()
 
         foo = f"remote://{remote}/{self.FOO}"
         ret = main(["add", foo])
@@ -805,7 +822,7 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
     tmp_dir.gen({"dir": {"file2": "file2 content"}})
 
     with pytest.raises(OverlappingOutputPathsError) as e:
-        dvc.add(os.path.join("dir", "file2"))
+        dvc.add(os.path.join("dir", "file2"), fname="file2.dvc")
     assert str(e.value) == (
         "Cannot add '{out}', because it is overlapping with other DVC "
         "tracked output: 'dir'.\n"
@@ -1128,7 +1145,9 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
@@ -1157,3 +1176,14 @@ def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
     foo.unlink()
     dvc.checkout(str(foo))
     assert foo.read_text() == "foo"
+
+
+def test_add_ignored(tmp_dir, scm, dvc):
+    from dvc.dvcfile import FileIsGitIgnored
+
+    tmp_dir.gen({"dir": {"subdir": {"file": "content"}}, ".gitignore": "dir/"})
+    with pytest.raises(FileIsGitIgnored) as exc:
+        dvc.add(targets=[os.path.join("dir", "subdir")])
+    assert str(exc.value) == ("bad DVC file name '{}' is git-ignored.").format(
+        os.path.join("dir", "subdir.dvc")
+    )

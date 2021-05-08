@@ -7,7 +7,7 @@ import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Dict, Iterable, List, Optional, Set, Type
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Type
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -77,6 +77,7 @@ class Git(Base):
     GIT_DIR = ".git"
     LOCAL_BRANCH_PREFIX = "refs/heads/"
     RE_HEXSHA = re.compile(r"^[0-9A-Fa-f]{4,40}$")
+    BAD_REF_CHARS_RE = re.compile("[\177\\s~^:?*\\[]")
 
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
@@ -123,6 +124,11 @@ class Git(Base):
     def is_sha(cls, rev):
         return rev and cls.RE_HEXSHA.search(rev)
 
+    @classmethod
+    def split_ref_pattern(cls, ref: str) -> Tuple[str, str]:
+        name = cls.BAD_REF_CHARS_RE.split(ref, maxsplit=1)[0]
+        return name, ref[len(name) :]
+
     @staticmethod
     def _get_git_dir(root_dir):
         return os.path.join(root_dir, Git.GIT_DIR)
@@ -145,7 +151,9 @@ class Git(Base):
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
         if not path_isin(os.path.realpath(gitignore), self.root_dir):
-            raise FileNotInRepoError(path)
+            raise FileNotInRepoError(
+                f"'{path}' is outside of git repository '{self.root_dir}'"
+            )
 
         return entry, gitignore
 
@@ -418,7 +426,7 @@ class Git(Base):
             commit = self.resolve_commit(parent)
 
     @contextmanager
-    def detach_head(self, rev: Optional[str] = None):
+    def detach_head(self, rev: Optional[str] = None, force: bool = False):
         """Context manager for performing detached HEAD SCM operations.
 
         Detaches and restores HEAD similar to interactive git rebase.
@@ -432,7 +440,7 @@ class Git(Base):
             rev = "HEAD"
         orig_head = self.get_ref("HEAD", follow=False)
         logger.debug("Detaching HEAD at '%s'", rev)
-        self.checkout(rev, detach=True)
+        self.checkout(rev, detach=True, force=force)
         try:
             yield self.get_ref("HEAD")
         finally:

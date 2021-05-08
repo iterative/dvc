@@ -7,15 +7,13 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: '5 1 * * *'  # every day at 01:05
 
 env:
   DVC_TEST: "true"
   HOMEBREW_NO_AUTO_UPDATE: 1
   SHELL: /bin/bash
-  GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  GS_CREDS_JSON: ${{ secrets.GS_CREDS_JSON }}
 
 jobs:
   lint:
@@ -36,7 +34,7 @@ jobs:
         pip install git+https://github.com/isidentical/pydata-google-auth@service-account
     - name: Check README
       run: python setup.py checkdocs
-    - uses: pre-commit/action@v2.0.2
+    - uses: pre-commit/action@v2.0.3
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -85,14 +83,44 @@ jobs:
         git config --global user.name "DVC Tester"
     - name: setup gs creds
       shell: bash
+      env:
+        GS_CREDS_JSON: ${{ secrets.GS_CREDS_JSON }}
       if: env.GS_CREDS_JSON != ''
       run: |
         mkdir -p scripts/ci
         echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
+    - name: disable gdrive tests
+      if: >-
+        github.event_name != 'schedule' &&
+        (matrix.pyv != '3.8' || matrix.os != 'ubuntu-18.04')
+      run: |
+        echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
-      run: python -m tests --all --cov-report=xml --cov-report=term -n=4
+      env:
+        GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: >-
+        python -m tests -n=4
+        --cov-report=xml --cov-report=term
+        --all ${{ env.extra_test_args }}
     - name: upload coverage report
-      uses: codecov/codecov-action@v1.3.2
+      uses: codecov/codecov-action@v1.5.0
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+  notify:
+    if: github.ref == 'refs/heads/master' && failure()
+    needs:
+      - lint
+      - tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Slack Notification
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_COLOR: ${{ job.status }}
+        SLACK_MESSAGE: 'CI Failed on master :boom:'
+        SLACK_TITLE: CI Status
+        SLACK_USERNAME: DVC-CI

@@ -172,7 +172,7 @@ SCHEMA = {
                     "allow_agent": Bool,
                     **REMOTE_COMMON,
                 },
-                "hdfs": {"user": str, **REMOTE_COMMON},
+                "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
                 "webhdfs": {
                     "hdfscli_config": str,
                     "webhdfs_token": str,
@@ -223,4 +223,5 @@ SCHEMA = {
         # enabled by default. It's of no use, kept for backward compatibility.
         Optional("parametrization", default=True): Bool
     },
+    "plots": {"html_template": str},
 }

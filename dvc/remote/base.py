@@ -505,17 +505,6 @@ class Remote:
 
         return ret
 
-    def transfer(self, from_fs, from_info, jobs=None, no_progress_bar=False):
-        from dvc.objects.transfer import transfer
-
-        return transfer(
-            self.odb,
-            from_fs,
-            from_info,
-            jobs=jobs,
-            no_progress_bar=no_progress_bar,
-        )
-
     @staticmethod
     def _log_missing_caches(hash_info_dict):
         missing_caches = [

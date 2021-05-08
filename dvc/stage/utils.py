@@ -330,7 +330,7 @@ def validate_state(
 def validate_kwargs(single_stage: bool = False, fname: str = None, **kwargs):
     """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
-    if not cmd:
+    if not cmd and not single_stage:
         raise InvalidArgumentError("command is not specified")
 
     stage_name = kwargs.get("name")

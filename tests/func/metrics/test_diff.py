@@ -1,5 +1,4 @@
 import json
-import logging
 
 from dvc.main import main
 from dvc.utils.serialize import dump_yaml
@@ -185,15 +184,13 @@ def test_metrics_diff_cli(tmp_dir, scm, dvc, run_copy_metrics, caplog, capsys):
     _gen(3.45678910111213)
 
     caplog.clear()
+    capsys.readouterr()  # clearing the buffer
     assert main(["metrics", "diff", "HEAD~2"]) == 0
-    (info,) = [
-        msg
-        for name, level, msg in caplog.record_tuples
-        if name.startswith("dvc") and level == logging.INFO
-    ]
-    assert info == (
+
+    captured = capsys.readouterr()
+    assert captured.out == (
         "Path    Metric    Old      New      Change\n"
-        "m.yaml  foo       1.23457  3.45679  2.22222"
+        "m.yaml  foo       1.23457  3.45679  2.22222\n"
     )
 
 

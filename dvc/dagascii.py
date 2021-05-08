@@ -3,50 +3,12 @@
 import logging
 import math
 import os
-import pydoc
-import sys
 
 from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import EdgeViewer, route_with_lines
 
-from dvc.env import DVC_PAGER
-from dvc.utils import format_link
-
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_PAGER = "less"
-DEFAULT_PAGER_FORMATTED = "{} --chop-long-lines --clear-screen".format(
-    DEFAULT_PAGER
-)
-
-
-def make_pager(cmd):
-    def pager(text):
-        return pydoc.tempfilepager(pydoc.plain(text), cmd)
-
-    return pager
-
-
-def find_pager():
-    if not sys.stdout.isatty():
-        return pydoc.plainpager
-
-    env_pager = os.getenv(DVC_PAGER)
-    if env_pager:
-        return make_pager(env_pager)
-
-    if os.system(f"({DEFAULT_PAGER}) 2>{os.devnull}") == 0:
-        return make_pager(DEFAULT_PAGER_FORMATTED)
-
-    logger.warning(
-        "Unable to find `less` in the PATH. Check out "
-        "{} for more info.".format(
-            format_link("https://man.dvc.org/pipeline/show")
-        )
-    )
-    return pydoc.plainpager
 
 
 class VertexViewer:

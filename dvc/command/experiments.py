@@ -1,10 +1,11 @@
 import argparse
 import logging
 from collections import Counter, OrderedDict, defaultdict
-from collections.abc import Mapping
 from datetime import date, datetime
 from fnmatch import fnmatch
-from typing import Dict, Iterable, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, Optional
+
+from funcy import lmap
 
 import dvc.prompt as prompt
 from dvc.command import completion
@@ -15,10 +16,17 @@ from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.utils.flatten import flatten
 
+if TYPE_CHECKING:
+    from rich.text import Text
+
+    from dvc.compare import TabularData
+
+
 logger = logging.getLogger(__name__)
 
 
 SHOW_MAX_WIDTH = 1024
+FILL_VALUE = "-"
 
 
 def _filter_name(names, label, filter_strs):
@@ -101,7 +109,7 @@ def _collect_names(all_experiments, **kwargs):
         kwargs.get("exclude_metrics"),
     )
     param_names = _filter_names(
-        (param_names),
+        param_names,
         "params",
         kwargs.get("include_params"),
         kwargs.get("exclude_params"),
@@ -110,13 +118,22 @@ def _collect_names(all_experiments, **kwargs):
     return metric_names, param_names
 
 
+experiment_types = {
+    "checkpoint_tip": "│ ╓",
+    "checkpoint_commit": "│ ╟",
+    "checkpoint_base": "├─╨",
+    "branch_commit": "├──",
+    "branch_base": "└──",
+    "baseline": "",
+}
+
+
 def _collect_rows(
     base_rev,
     experiments,
     metric_names,
     param_names,
     precision=DEFAULT_PRECISION,
-    no_timestamp=False,
     sort_by=None,
     sort_order=None,
 ):
@@ -133,56 +150,56 @@ def _collect_rows(
 
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
-        row = []
-        style = None
-        queued = "*" if exp.get("queued", False) else ""
+        queued = str(exp.get("queued") or "")
+        is_baseline = rev == "baseline"
 
-        tip = exp.get("checkpoint_tip")
-        parent = ""
-        if rev == "baseline":
-            if Git.is_sha(base_rev):
-                name_rev = base_rev[:7]
-            else:
-                name_rev = base_rev
-            name = exp.get("name", name_rev)
-            row.append(f"{name}")
-            style = "bold"
+        if is_baseline:
+            name_rev = base_rev[:7] if Git.is_sha(base_rev) else base_rev
         else:
-            if tip:
-                parent_rev = exp.get("checkpoint_parent", "")
-                parent_exp = experiments.get(parent_rev, {})
-                parent_tip = parent_exp.get("checkpoint_tip")
-                if tip == parent_tip:
-                    if new_checkpoint:
-                        tree = "│ ╓"
-                    else:
-                        tree = "│ ╟"
-                    new_checkpoint = False
-                else:
-                    if parent_rev == base_rev:
-                        tree = "├─╨"
-                    else:
-                        tree = "│ ╟"
-                        parent = f" ({parent_rev[:7]})"
-                    new_checkpoint = True
+            name_rev = rev[:7]
+
+        exp_name = exp.get("name", "")
+        tip = exp.get("checkpoint_tip")
+
+        parent_rev = exp.get("checkpoint_parent", "")
+        parent_exp = experiments.get(parent_rev, {})
+        parent_tip = parent_exp.get("checkpoint_tip")
+
+        parent = ""
+        if is_baseline:
+            typ = "baseline"
+        elif tip:
+            if tip == parent_tip:
+                typ = (
+                    "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
+                )
+            elif parent_rev == base_rev:
+                typ = "checkpoint_base"
             else:
-                if i < len(experiments) - 1:
-                    tree = "├──"
-                else:
-                    tree = "└──"
-                new_checkpoint = True
-            name = exp.get("name", rev[:7])
-            row.append(f"{tree} {queued}{name}{parent}")
+                typ = "checkpoint_commit"
+                parent = parent_rev[:7]
+        elif i < len(experiments) - 1:
+            typ = "branch_commit"
+        else:
+            typ = "branch_base"
 
-        if not no_timestamp:
-            row.append(_format_time(exp.get("timestamp")))
+        if not is_baseline:
+            new_checkpoint = not (tip and tip == parent_tip)
 
+        row = [
+            exp_name,
+            name_rev,
+            queued,
+            typ,
+            _format_time(exp.get("timestamp")),
+            parent,
+        ]
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
         )
         _extend_row(row, param_names, exp.get("params", {}).items(), precision)
 
-        yield row, style
+        yield row
 
 
 def _sort_column(sort_by, metric_names, param_names):
@@ -223,7 +240,7 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
             return _sort((tip, experiments[tip]))
         data = exp.get(typ, {}).get(sort_path, {})
         val = flatten(data).get(sort_name)
-        return (val is None, val)
+        return val is None, val
 
     ret = OrderedDict()
     if "baseline" in experiments:
@@ -235,7 +252,7 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
 
 def _format_time(timestamp):
     if timestamp is None:
-        return "-"
+        return FILL_VALUE
     if timestamp.date() == date.today():
         fmt = "%I:%M %p"
     else:
@@ -243,43 +260,23 @@ def _format_time(timestamp):
     return timestamp.strftime(fmt)
 
 
-def _format_field(val, precision=DEFAULT_PRECISION):
-    if isinstance(val, float):
-        fmt = f"{{:.{precision}g}}"
-        return fmt.format(val)
-    if isinstance(val, Mapping):
-        return {k: _format_field(v) for k, v in val.items()}
-    if isinstance(val, list):
-        return [_format_field(x) for x in val]
-    return str(val)
-
-
 def _extend_row(row, names, items, precision):
     from rich.text import Text
 
+    from dvc.compare import _format_field, with_value
+
     if not items:
-        for keys in names.values():
-            row.extend(["-"] * len(keys))
+        row.extend(FILL_VALUE for keys in names.values() for _ in keys)
         return
 
     for fname, item in items:
-        if isinstance(item, dict):
-            item = flatten(item)
-        else:
-            item = {fname: item}
+        item = flatten(item) if isinstance(item, dict) else {fname: item}
         for name in names[fname]:
-            if name in item:
-                value = item[name]
-                if value is None:
-                    text = "-"
-                else:
-                    # wrap field data in rich.Text, otherwise rich may
-                    # interpret unescaped braces from list/dict types as rich
-                    # markup tags
-                    text = Text(str(_format_field(value, precision)))
-                row.append(text)
-            else:
-                row.append("-")
+            value = with_value(item.get(name), FILL_VALUE)
+            # wrap field data in rich.Text, otherwise rich may
+            # interpret unescaped braces from list/dict types as rich
+            # markup tags
+            row.append(Text(str(_format_field(value, precision))))
 
 
 def _parse_filter_list(param_list):
@@ -293,9 +290,75 @@ def _parse_filter_list(param_list):
     return ret
 
 
-def _experiments_table(all_experiments, **kwargs):
-    from dvc.utils.table import Table
+def experiments_table(
+    all_experiments,
+    metric_headers,
+    metric_names,
+    param_headers,
+    param_names,
+    sort_by=None,
+    sort_order=None,
+    precision=DEFAULT_PRECISION,
+) -> "TabularData":
+    from funcy import lconcat
 
+    from dvc.compare import TabularData
+
+    headers = [
+        "Experiment",
+        "rev",
+        "queued",
+        "typ",
+        "Created",
+        "parent",
+    ]
+    td = TabularData(
+        lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
+    )
+    for base_rev, experiments in all_experiments.items():
+        rows = _collect_rows(
+            base_rev,
+            experiments,
+            metric_names,
+            param_names,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            precision=precision,
+        )
+        td.extend(rows)
+
+    return td
+
+
+def prepare_exp_id(kwargs) -> "Text":
+    from rich.text import Text
+
+    exp_name = kwargs["Experiment"]
+    rev = kwargs["rev"]
+    typ = kwargs.get("typ", "baseline")
+
+    if typ == "baseline" or not exp_name:
+        text = Text(exp_name or rev)
+    else:
+        text = Text.assemble(rev, " [", (exp_name, "bold"), "]")
+
+    parent = kwargs.get("parent")
+    suff = f" ({parent})" if parent else ""
+    text.append(suff)
+
+    tree = experiment_types[typ]
+    queued = "*" if kwargs.get("queued") else ""
+    pref = (f"{tree} " if tree else "") + queued
+    return Text(pref) + text
+
+
+def baseline_styler(typ):
+    return {"style": "bold"} if typ == "baseline" else {}
+
+
+def show_experiments(
+    all_experiments, pager=True, no_timestamp=False, **kwargs
+):
     include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
     exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
     include_params = _parse_filter_list(kwargs.pop("include_params", []))
@@ -308,44 +371,66 @@ def _experiments_table(all_experiments, **kwargs):
         include_params=include_params,
         exclude_params=exclude_params,
     )
+    metric_headers = _normalize_headers(metric_names)
+    param_headers = _normalize_headers(param_names)
 
-    table = Table()
-    table.add_column(
-        "Experiment", no_wrap=True, header_style="black on grey93"
-    )
-    if not kwargs.get("no_timestamp", False):
-        table.add_column("Created", header_style="black on grey93")
-    _add_data_columns(
-        table,
+    td = experiments_table(
+        all_experiments,
+        metric_headers,
         metric_names,
-        justify="right",
-        no_wrap=True,
-        header_style="black on cornsilk1",
+        param_headers,
+        param_names,
+        kwargs.get("sort_by"),
+        kwargs.get("sort_order"),
+        kwargs.get("precision"),
     )
-    _add_data_columns(
-        table, param_names, justify="left", header_style="black on light_cyan1"
+
+    if no_timestamp:
+        td.drop("Created")
+
+    row_styles = lmap(baseline_styler, td.column("typ"))
+
+    merge_headers = ["Experiment", "rev", "queued", "typ", "parent"]
+    td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
+    td.drop(*merge_headers[1:])
+
+    headers = {"metrics": metric_headers, "params": param_headers}
+    styles = {
+        "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
+        "Created": {"header_style": "black on grey93"},
+    }
+    header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
+    styles.update(
+        {
+            header: {
+                "justify": "left" if typ == "metrics" else "params",
+                "header_style": f"black on {header_bg_colors[typ]}",
+                "collapse": idx != 0,
+                "no_wrap": typ == "metrics",
+            }
+            for typ, hs in headers.items()
+            for idx, header in enumerate(hs)
+        }
     )
 
-    for base_rev, experiments in all_experiments.items():
-        for row, _, in _collect_rows(
-            base_rev, experiments, metric_names, param_names, **kwargs,
-        ):
-            table.add_row(*row)
+    td.render(
+        pager=pager,
+        borders=True,
+        rich_table=True,
+        header_styles=styles,
+        row_styles=row_styles,
+    )
 
-    return table
 
-
-def _add_data_columns(table, names, **kwargs):
+def _normalize_headers(names):
     count = Counter(
         name for path in names for name in names[path] for path in names
     )
-    first = True
-    for path in names:
-        for name in names[path]:
-            col_name = name if count[name] == 1 else f"{path}:{name}"
-            kwargs["collapse"] = False if first else True
-            table.add_column(col_name, **kwargs)
-            first = False
+    return [
+        name if count[name] == 1 else f"{path}:{name}"
+        for path in names
+        for name in names[path]
+    ]
 
 
 def _format_json(item):
@@ -356,8 +441,6 @@ def _format_json(item):
 
 class CmdExperimentsShow(CmdBase):
     def run(self):
-        from rich.console import Console
-
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -367,19 +450,16 @@ class CmdExperimentsShow(CmdBase):
                 num=self.args.num,
                 param_deps=self.args.param_deps,
             )
+        except DvcException:
+            logger.exception("failed to show experiments")
+            return 1
 
-            if self.args.show_json:
-                import json
+        if self.args.show_json:
+            import json
 
-                logger.info(json.dumps(all_experiments, default=_format_json))
-                return 0
-
-            if self.args.precision is None:
-                precision = DEFAULT_PRECISION
-            else:
-                precision = self.args.precision
-
-            table = _experiments_table(
+            logger.info(json.dumps(all_experiments, default=_format_json))
+        else:
+            show_experiments(
                 all_experiments,
                 include_metrics=self.args.include_metrics,
                 exclude_metrics=self.args.exclude_metrics,
@@ -388,31 +468,9 @@ class CmdExperimentsShow(CmdBase):
                 no_timestamp=self.args.no_timestamp,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
-                precision=precision,
+                precision=self.args.precision or DEFAULT_PRECISION,
+                pager=not self.args.no_pager,
             )
-
-            console = Console()
-            if self.args.no_pager:
-                console.print(table)
-            else:
-                from dvc.utils.pager import DvcPager
-
-                # NOTE: rich does not have native support for unlimited width
-                # via pager. we override rich table compression by setting
-                # console width to the full width of the table
-                console_options = console.options
-                console_options.max_width = SHOW_MAX_WIDTH
-                measurement = table.__rich_measure__(console, console_options)
-                console._width = (  # pylint: disable=protected-access
-                    measurement.maximum
-                )
-                with console.pager(pager=DvcPager(), styles=True):
-                    console.print(table)
-
-        except DvcException:
-            logger.exception("failed to show experiments")
-            return 1
-
         return 0
 
 
@@ -426,43 +484,6 @@ class CmdExperimentsApply(CmdBase):
         return 0
 
 
-def _show_diff(
-    diff,
-    title="",
-    markdown=False,
-    no_path=False,
-    old=False,
-    precision=DEFAULT_PRECISION,
-):
-    from dvc.utils.diff import table
-
-    rows = []
-    for fname, diff_ in diff.items():
-        sorted_diff = OrderedDict(sorted(diff_.items()))
-        for item, change in sorted_diff.items():
-            row = [] if no_path else [fname]
-            row.append(item)
-            if old:
-                row.append(_format_field(change.get("old"), precision))
-            row.append(_format_field(change["new"], precision))
-            row.append(
-                _format_field(
-                    change.get("diff", "diff not supported"), precision
-                )
-            )
-            rows.append(row)
-
-    header = [] if no_path else ["Path"]
-    header.append(title)
-    if old:
-        header.extend(["Old", "New"])
-    else:
-        header.append("Value")
-    header.append("Change")
-
-    return table(header, rows, markdown)
-
-
 class CmdExperimentsDiff(CmdBase):
     def run(self):
 
@@ -473,46 +494,54 @@ class CmdExperimentsDiff(CmdBase):
                 all=self.args.all,
                 param_deps=self.args.param_deps,
             )
-
-            if self.args.show_json:
-                import json
-
-                logger.info(json.dumps(diff))
-            else:
-                if self.args.precision is None:
-                    precision = DEFAULT_PRECISION
-                else:
-                    precision = self.args.precision
-
-                diffs = [("metrics", "Metric"), ("params", "Param")]
-                for key, title in diffs:
-                    table = _show_diff(
-                        diff[key],
-                        title=title,
-                        markdown=self.args.show_md,
-                        no_path=self.args.no_path,
-                        old=self.args.old,
-                        precision=precision,
-                    )
-                    if table:
-                        logger.info(table)
-                        logger.info("")
-
         except DvcException:
             logger.exception("failed to show experiments diff")
             return 1
+
+        if self.args.show_json:
+            import json
+
+            logger.info(json.dumps(diff))
+        else:
+            from dvc.compare import show_diff
+
+            precision = self.args.precision or DEFAULT_PRECISION
+            diffs = [("metrics", "Metric"), ("params", "Param")]
+            for idx, (key, title) in enumerate(diffs):
+                if idx:
+                    from dvc.ui import ui
+
+                    # we are printing tables even in `--quiet` mode
+                    # so we should also be printing the "table" separator
+                    ui.write(force=True)
+
+                show_diff(
+                    diff[key],
+                    title=title,
+                    markdown=self.args.show_md,
+                    no_path=self.args.no_path,
+                    old=self.args.old,
+                    on_empty_diff="diff not supported",
+                    precision=precision if key == "metrics" else None,
+                )
 
         return 0
 
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        from dvc.command.metrics import _show_metrics
+        from dvc.compare import show_metrics
 
-        if self.args.reset and self.args.checkpoint_resume:
-            raise InvalidArgumentError(
-                "--reset and --rev are mutually exclusive."
-            )
+        if self.args.checkpoint_resume:
+            if self.args.reset:
+                raise InvalidArgumentError(
+                    "--reset and --rev are mutually exclusive."
+                )
+            if not (self.args.queue or self.args.tmp_dir):
+                raise InvalidArgumentError(
+                    "--rev can only be used in conjunction with "
+                    "--queue or --temp."
+                )
 
         if self.args.reset:
             logger.info("Any existing checkpoints will be reset and re-run.")
@@ -532,7 +561,7 @@ class CmdExperimentsRun(CmdRepro):
         if self.args.metrics and results:
             metrics = self.repo.metrics.show(revs=list(results))
             metrics.pop("workspace", None)
-            logger.info(_show_metrics(metrics))
+            logger.info(show_metrics(metrics))
 
         return 0
 
@@ -932,9 +961,8 @@ def add_parser(subparsers, parent_parser):
         type=str,
         dest="checkpoint_resume",
         help=(
-            "Continue the specified checkpoint experiment. "
-            "(Only required for explicitly resuming checkpoints in queued "
-            "or temp dir runs.)"
+            "Continue the specified checkpoint experiment. Can only be used "
+            "in conjunction with --queue or --temp."
         ),
         metavar="<experiment_rev>",
     ).complete = completion.EXPERIMENT
@@ -979,6 +1007,7 @@ def add_parser(subparsers, parent_parser):
         help="Keep experiments derived from all Git tags.",
     )
     experiments_gc_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
