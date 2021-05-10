@@ -282,7 +282,7 @@ class DvcIgnoreFilter:
                 )
                 yield root, dirs, files
         else:
-            yield from fs.walk(path_info)
+            yield from fs.walk(path_info, **kwargs)
 
     def walk_files(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
         if fs.scheme == Schemes.LOCAL:
