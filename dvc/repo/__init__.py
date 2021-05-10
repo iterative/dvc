@@ -242,8 +242,7 @@ class Repo:
     @cached_property
     def dvcignore(self) -> DvcIgnoreFilter:
 
-        root = self.root_dir
-        return DvcIgnoreFilter(self.fs, root)
+        return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
         from dvc.fs.local import LocalFileSystem
