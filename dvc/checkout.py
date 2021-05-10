@@ -203,11 +203,11 @@ def _checkout_dir(
     relink=False,
     dvcignore: Optional[DvcIgnoreFilter] = None,
 ):
-    modified = False, False
+    modified = False
     # Create dir separately so that dir is created
     # even if there are no files in it
     if not fs.exists(path_info):
-        modified = True  # type: ignore
+        modified = True
         fs.makedirs(path_info)
 
     logger.debug("Linking directory '%s'.", path_info)
@@ -223,14 +223,14 @@ def _checkout_dir(
             relink,
         )
         if entry_modified:
-            modified = True  # type: ignore
+            modified = True
 
     modified = (
         _remove_redundant_files(
             path_info, fs, obj, cache, force, dvcignore=dvcignore
         )
-        or modified,
-    )  # type: ignore
+        or modified
+    )
 
     fs.repo.state.save(path_info, fs, obj.hash_info)
 
