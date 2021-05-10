@@ -210,7 +210,7 @@ class BaseOutput:
     def is_dir_checksum(self):
         return self.hash_info.isdir
 
-    def check_path_dvcignore(self, path) -> bool:
+    def _check_path_dvcignore(self, path) -> bool:
         if (
             self.scheme == Schemes.LOCAL
             and self.IS_DEPENDENCY is False
@@ -222,7 +222,7 @@ class BaseOutput:
 
     @property
     def exists(self):
-        if self.check_path_dvcignore(self.path_info):
+        if self._check_path_dvcignore(self.path_info):
             return False
 
         return self.fs.exists(self.path_info)
@@ -276,12 +276,12 @@ class BaseOutput:
         return self.fs.is_empty(self.path_info)
 
     def isdir(self):
-        if self.check_path_dvcignore(self.path_info):
+        if self._check_path_dvcignore(self.path_info):
             return False
         return self.fs.isdir(self.path_info)
 
     def isfile(self):
-        if self.check_path_dvcignore(self.path_info):
+        if self._check_path_dvcignore(self.path_info):
             return False
         return self.fs.isfile(self.path_info)
 
@@ -691,7 +691,7 @@ class BaseOutput:
 
         if stage:
             abs_path = os.path.join(stage.wdir, path)
-            if self.check_path_dvcignore(abs_path):
+            if self._check_path_dvcignore(abs_path):
                 check = stage.repo.dvcignore.check_ignore(abs_path)
                 raise self.IsIgnoredError(check)
 
