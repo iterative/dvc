@@ -120,7 +120,7 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             )
 
     def walk_files(self, path_info, **kwargs):
-        for root, _, files in self.walk(path_info):
+        for root, _, files in self.walk(path_info, **kwargs):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"
