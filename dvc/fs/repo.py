@@ -147,6 +147,9 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if not dvc_fs:
             return fs.exists(path_info)
 
+        if dvc_fs.repo.dvcignore.is_ignored(fs, path_info):
+            return False
+
         if fs.exists(path_info):
             return True
 
@@ -163,6 +166,9 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def isdir(self, path):  # pylint: disable=arguments-differ
         fs, dvc_fs = self._get_fs_pair(path)
+
+        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(path):
+            return False
 
         try:
             st = fs.stat(path)
@@ -191,6 +197,9 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def isfile(self, path):  # pylint: disable=arguments-differ
         fs, dvc_fs = self._get_fs_pair(path)
+
+        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(path):
+            return False
 
         try:
             st = fs.stat(path)

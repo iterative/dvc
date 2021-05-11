@@ -467,6 +467,17 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
+    assert fs.isfile(tmp_dir / "lorem") is True
+    assert fs.isfile(tmp_dir / "dir" / "repo" / "foo") is False
+    assert fs.isdir(tmp_dir / "dir" / "repo") is False
+    assert fs.isdir(tmp_dir / "dir") is True
+
+    assert fs.isdvc(tmp_dir / "lorem") is True
+    assert fs.isdvc(tmp_dir / "dir" / "repo" / "dir1") is False
+
+    assert fs.exists(tmp_dir / "dir" / "repo.txt") is True
+    assert fs.exists(tmp_dir / "repo" / "ipsum") is False
+
 
 def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen({"foo": "foo"})
