@@ -77,7 +77,9 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
     return path_info, obj
 
 
-def _build_objects(path_info, fs, name, odb, state, upload, dvcignore=None, **kwargs):
+def _build_objects(
+    path_info, fs, name, odb, state, upload, dvcignore=None, **kwargs
+):
     if dvcignore:
         walk_iterator = dvcignore.walk_files(fs, path_info)
     else:
