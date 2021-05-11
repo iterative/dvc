@@ -211,7 +211,7 @@ class BaseOutput:
         return self.hash_info.isdir
 
     def _is_path_dvcignore(self, path) -> bool:
-        if self.IS_DEPENDENCY is False and self.dvcignore:
+        if not self.IS_DEPENDENCY and self.dvcignore:
             if self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False):
                 return True
         return False
