@@ -324,8 +324,9 @@ class DvcIgnoreFilter:
 
         return ignores_trie.get(dirname)
 
-    def _is_ignored(self, path, is_dir=False, ignore_subrepos=True):
-        if self._outside_repo(path):
+    def _is_ignored(self, fs, path, is_dir=False, ignore_subrepos=True):
+        path = os.path.abspath(path)
+        if fs.scheme != Schemes.LOCAL or self._outside_repo(path):
             return False
         dirname, basename = os.path.split(os.path.normpath(path))
         ignore_pattern = self._get_trie_pattern(dirname, None, ignore_subrepos)
@@ -334,15 +335,19 @@ class DvcIgnoreFilter:
         return False
 
     def is_ignored_dir(self, path, ignore_subrepos=True):
+        "Only used in LocalFileSystem"
         path = os.path.abspath(path)
         if path == self.root_dir:
             return False
 
-        return self._is_ignored(path, True, ignore_subrepos=ignore_subrepos)
+        return self._is_ignored(
+            self.fs, path, True, ignore_subrepos=ignore_subrepos
+        )
 
     def is_ignored_file(self, path):
+        "Only used in LocalFileSystem"
         path = os.path.abspath(path)
-        return self._is_ignored(path, False)
+        return self._is_ignored(self.fs, path, False)
 
     def _outside_repo(self, path):
         path = PathInfo(path)
