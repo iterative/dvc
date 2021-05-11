@@ -43,16 +43,16 @@ def prepare_default_pager(
     return " ".join(args)
 
 
-def make_pager(cmd):
+def make_pager(cmd=None):
     def _pager(text):
         return pydoc.tempfilepager(pydoc.plain(text), cmd)
 
-    return _pager
+    return _pager if cmd else pydoc.plainpager
 
 
 def find_pager():
     if not sys.stdout.isatty():
-        return pydoc.plainpager
+        return None
 
     # pylint: disable=redefined-outer-name
     pager = os.getenv(DVC_PAGER)
@@ -81,12 +81,13 @@ def find_pager():
             no_init=not less_env,
         )
 
-    logger.trace(f"Using pager: '{pager}'")
-    return make_pager(pager) if pager else pydoc.plainpager
+    return pager
 
 
 def pager(text: str) -> None:
-    find_pager()(text)
+    _pager = find_pager()
+    logger.trace(f"Using pager: '{_pager}'")  # type: ignore[attr-defined]
+    make_pager(_pager)(text)
 
 
 class DvcPager(Pager):
