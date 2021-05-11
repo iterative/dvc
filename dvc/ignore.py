@@ -324,9 +324,10 @@ class DvcIgnoreFilter:
 
         return ignores_trie.get(dirname)
 
-    def _is_ignored(self, fs, path, is_dir=False, ignore_subrepos=True):
-        path = os.path.abspath(path)
-        if fs.scheme != Schemes.LOCAL or self._outside_repo(path):
+    def _is_ignored(
+        self, path: str, is_dir: bool = False, ignore_subrepos: bool = True
+    ):
+        if self._outside_repo(path):
             return False
         dirname, basename = os.path.split(os.path.normpath(path))
         ignore_pattern = self._get_trie_pattern(dirname, None, ignore_subrepos)
@@ -334,20 +335,18 @@ class DvcIgnoreFilter:
             return ignore_pattern.matches(dirname, basename, is_dir)
         return False
 
-    def is_ignored_dir(self, path, ignore_subrepos=True):
+    def is_ignored_dir(self, path: str, ignore_subrepos: bool = True) -> bool:
         "Only used in LocalFileSystem"
         path = os.path.abspath(path)
         if path == self.root_dir:
             return False
 
-        return self._is_ignored(
-            self.fs, path, True, ignore_subrepos=ignore_subrepos
-        )
+        return self._is_ignored(path, True, ignore_subrepos=ignore_subrepos)
 
-    def is_ignored_file(self, path):
+    def is_ignored_file(self, path: str) -> bool:
         "Only used in LocalFileSystem"
         path = os.path.abspath(path)
-        return self._is_ignored(self.fs, path, False)
+        return self._is_ignored(path, False)
 
     def _outside_repo(self, path):
         path = PathInfo(path)
@@ -379,12 +378,16 @@ class DvcIgnoreFilter:
                     return CheckIgnoreResult(target, True, matches)
         return _no_match(target)
 
-    def is_ignored(self, path, ignore_subrepos=True):
+    def is_ignored(
+        self, fs: BaseFileSystem, path: str, ignore_subrepos: bool = True
+    ) -> bool:
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555
-        if os.path.isfile(path):
+        if fs.scheme != Schemes.LOCAL:
+            return False
+        if fs.isfile(path):
             return self.is_ignored_file(path)
-        if os.path.isdir(path):
+        if fs.isdir(path):
             return self.is_ignored_dir(path, ignore_subrepos)
         return self.is_ignored_file(path) or self.is_ignored_dir(
             path, ignore_subrepos

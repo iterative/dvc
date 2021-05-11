@@ -124,7 +124,7 @@ class FileMixin:
         return relpath(self.path)
 
     def exists(self):
-        is_ignored = self.repo.dvcignore.is_ignored(self.path)
+        is_ignored = self.repo.dvcignore.is_ignored_file(self.path)
         return self.repo.fs.exists(self.path) and not is_ignored
 
     def _is_git_ignored(self):
@@ -145,7 +145,7 @@ class FileMixin:
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
         if not self.exists():
-            dvc_ignored = self.repo.dvcignore.is_ignored(self.path)
+            dvc_ignored = self.repo.dvcignore.is_ignored_file(self.path)
             raise StageFileDoesNotExistError(
                 self.path, dvc_ignored=dvc_ignored
             )

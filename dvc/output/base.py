@@ -119,6 +119,10 @@ class BaseOutput:
         isexec=False,
     ):
         self.repo = stage.repo if stage else None
+        if fs:
+            self.fs = fs
+        else:
+            self.fs = self.FS_CLS(self.repo, {})
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
@@ -133,10 +137,6 @@ class BaseOutput:
         self.stage = stage
         self.def_path = path
         self.hash_info = HashInfo.from_dict(info)
-        if fs:
-            self.fs = fs
-        else:
-            self.fs = self.FS_CLS(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -211,12 +211,8 @@ class BaseOutput:
         return self.hash_info.isdir
 
     def _is_path_dvcignore(self, path) -> bool:
-        if (
-            self.scheme == Schemes.LOCAL
-            and self.IS_DEPENDENCY is False
-            and self.dvcignore
-        ):
-            if self.dvcignore.is_ignored(path, ignore_subrepos=False):
+        if self.IS_DEPENDENCY is False and self.dvcignore:
+            if self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False):
                 return True
         return False
 
