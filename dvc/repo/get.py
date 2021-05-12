@@ -52,8 +52,6 @@ def get(url, path, out=None, rev=None, jobs=None):
         ) as repo:
             from_info = PathInfo(repo.root_dir) / path
             to_info = PathInfo(out)
-            repo.repo_fs.download(
-                from_info, to_info, jobs=jobs, follow_subrepos=False
-            )
+            repo.repo_fs.download(from_info, to_info, jobs=jobs)
     finally:
         remove(tmp_dir)

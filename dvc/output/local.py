@@ -105,3 +105,7 @@ class LocalOutput(BaseOutput):
         if not istextfile(path, self.fs):
             msg = "binary file '{}' cannot be used as {}."
             raise DvcException(msg.format(self.path_info, name))
+
+    @property
+    def dvcignore(self):
+        return self.repo.dvcignore

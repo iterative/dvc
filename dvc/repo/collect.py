@@ -43,7 +43,7 @@ def _collect_paths(
     for path_info in path_infos:
 
         if recursive and fs.isdir(path_info):
-            target_infos.extend(fs.walk_files(path_info))
+            target_infos.extend(repo.dvcignore.walk_files(fs, path_info))
 
         if not fs.exists(path_info):
             if not recursive:

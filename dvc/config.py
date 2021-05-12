@@ -154,7 +154,7 @@ class Config(dict):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        if fs.exists(filename, use_dvcignore=False):
+        if fs.exists(filename):
             with fs.open(filename) as fobj:
                 conf_obj = ConfigObj(fobj)
         else:

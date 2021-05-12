@@ -9,7 +9,7 @@ from dvc.scheme import Schemes
 from .fsspec_wrapper import FSSpecWrapper
 
 
-class GSFileSystem(FSSpecWrapper):
+class GSFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"gcsfs": "gcsfs"}

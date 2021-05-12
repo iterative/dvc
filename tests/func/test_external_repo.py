@@ -206,7 +206,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             PathInfo(repo.root_dir) / "dir",
             repo.repo_fs,
             "md5",
-            follow_subrepos=False,
+            dvcignore=repo.dvcignore,
         )
         save(repo.odb.local, obj)
         assert set(cache_dir.glob("*/*")) == {

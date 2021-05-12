@@ -30,7 +30,7 @@ def ask_password(host, user, port):
     )
 
 
-class SSHFileSystem(BaseFileSystem):
+class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
     _JOBS = 4
@@ -159,7 +159,7 @@ class SSHFileSystem(BaseFileSystem):
             else:
                 yield io.TextIOWrapper(fd, encoding=encoding)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         with self.ssh(path_info) as ssh:
             return ssh.exists(path_info.path)
 

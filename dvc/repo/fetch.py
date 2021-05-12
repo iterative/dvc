@@ -111,14 +111,7 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
                     cb(repo.cloud.pull(used, jobs))
                 except (NoOutputOrStageError, NoRemoteError):
                     pass
-                obj = stage(
-                    odb,
-                    path_info,
-                    repo.repo_fs,
-                    "md5",
-                    jobs=jobs,
-                    follow_subrepos=False,
-                )
+                obj = stage(odb, path_info, repo.repo_fs, "md5", jobs=jobs,)
                 save(
                     odb, obj, jobs=jobs, download_callback=cb,
                 )

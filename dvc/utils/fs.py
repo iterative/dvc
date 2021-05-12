@@ -30,13 +30,17 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, fs):
+def get_mtime_and_size(path, fs, dvcignore=None):
     import nanotime
 
     if fs.isdir(path):
         size = 0
         files_mtimes = {}
-        for file_path in fs.walk_files(path):
+        if dvcignore:
+            walk_iterator = dvcignore.walk_files(fs, path)
+        else:
+            walk_iterator = fs.walk_files(path)
+        for file_path in walk_iterator:
             try:
                 stats = fs.stat(file_path)
             except OSError as exc:

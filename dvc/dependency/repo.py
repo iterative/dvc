@@ -56,7 +56,6 @@ class RepoDependency(LocalDependency):
                 path_info,
                 repo.repo_fs,
                 self.repo.odb.local.fs.PARAM_CHECKSUM,
-                follow_subrepos=False,
             ).hash_info
 
     def workspace_status(self):
@@ -95,16 +94,11 @@ class RepoDependency(LocalDependency):
             except (NoOutputOrStageError, NoRemoteError):
                 pass
             obj = stage(
-                odb,
-                path_info,
-                repo.repo_fs,
-                odb.fs.PARAM_CHECKSUM,
-                jobs=jobs,
-                follow_subrepos=False,
+                odb, path_info, repo.repo_fs, odb.fs.PARAM_CHECKSUM, jobs=jobs,
             )
             save(odb, obj, jobs=jobs)
 
-        checkout(to.path_info, to.fs, obj, odb)
+        checkout(to.path_info, to.fs, obj, odb, dvcignore=None)
 
     def update(self, rev=None):
         if rev:

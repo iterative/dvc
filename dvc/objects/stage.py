@@ -77,7 +77,13 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
     return path_info, obj
 
 
-def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
+def _build_objects(
+    path_info, fs, name, odb, state, upload, dvcignore=None, **kwargs
+):
+    if dvcignore:
+        walk_iterator = dvcignore.walk_files(fs, path_info)
+    else:
+        walk_iterator = fs.walk_files(path_info)
     with Tqdm(
         unit="md5",
         desc="Computing file/dir hashes (only done once)",
@@ -96,7 +102,7 @@ def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
         with ThreadPoolExecutor(
             max_workers=kwargs.pop("jobs", fs.hash_jobs)
         ) as executor:
-            yield from executor.map(worker, fs.walk_files(path_info, **kwargs))
+            yield from executor.map(worker, walk_iterator)
 
 
 def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):

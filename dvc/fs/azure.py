@@ -67,7 +67,7 @@ class AzureAuthError(DvcException):
     pass
 
 
-class AzureFileSystem(FSSpecWrapper):
+class AzureFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
     PARAM_CHECKSUM = "etag"

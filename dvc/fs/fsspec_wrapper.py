@@ -2,6 +2,8 @@ import os
 import shutil
 from functools import lru_cache
 
+from funcy import cached_property
+
 from dvc.progress import Tqdm
 
 from .base import BaseFileSystem
@@ -14,6 +16,7 @@ class FSSpecWrapper(BaseFileSystem):
         self.fs_args = {"skip_instance_cache": True}
         self.fs_args.update(self._prepare_credentials(config))
 
+    @cached_property
     def fs(self):
         raise NotImplementedError
 
@@ -88,7 +91,7 @@ class FSSpecWrapper(BaseFileSystem):
     def copy(self, from_info, to_info):
         self.fs.copy(self._with_bucket(from_info), self._with_bucket(to_info))
 
-    def exists(self, path_info, use_dvcignore=False):
+    def exists(self, path_info) -> bool:
         return self.fs.exists(self._with_bucket(path_info))
 
     def ls(self, path_info, detail=False):

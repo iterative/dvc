@@ -30,7 +30,7 @@ def update_pbar(pbar, total):
     return update
 
 
-class WebHDFSFileSystem(BaseFileSystem):
+class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"hdfs": "hdfs"}
@@ -114,7 +114,7 @@ class WebHDFSFileSystem(BaseFileSystem):
 
         self.hdfs_client.delete(path_info.path)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         assert not isinstance(path_info, list)
         assert path_info.scheme == "webhdfs"
 

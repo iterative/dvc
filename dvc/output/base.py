@@ -21,6 +21,7 @@ from dvc.objects import save as osave
 from dvc.objects.db import NamedCache
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.stage import stage as ostage
+from dvc.scheme import Schemes
 
 from ..fs.base import BaseFileSystem
 
@@ -117,6 +118,11 @@ class BaseOutput:
         desc=None,
         isexec=False,
     ):
+        self.repo = stage.repo if stage else None
+        if fs:
+            self.fs = fs
+        else:
+            self.fs = self.FS_CLS(self.repo, {})
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
@@ -129,13 +135,8 @@ class BaseOutput:
         # By resolved path, which contains actual location,
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
-        self.repo = stage.repo if stage else None
         self.def_path = path
         self.hash_info = HashInfo.from_dict(info)
-        if fs:
-            self.fs = fs
-        else:
-            self.fs = self.FS_CLS(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -195,17 +196,31 @@ class BaseOutput:
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
+                dvcignore=self.dvcignore,
             ).hash_info
         return ostage(
-            self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
+            self.odb,
+            self.path_info,
+            self.fs,
+            self.odb.fs.PARAM_CHECKSUM,
+            dvcignore=self.dvcignore,
         ).hash_info
 
     @property
     def is_dir_checksum(self):
         return self.hash_info.isdir
 
+    def _is_path_dvcignore(self, path) -> bool:
+        if not self.IS_DEPENDENCY and self.dvcignore:
+            if self.dvcignore.is_ignored(self.fs, path, ignore_subrepos=False):
+                return True
+        return False
+
     @property
     def exists(self):
+        if self._is_path_dvcignore(self.path_info):
+            return False
+
         return self.fs.exists(self.path_info)
 
     def changed_checksum(self):
@@ -249,13 +264,21 @@ class BaseOutput:
         return bool(status)
 
     @property
+    def dvcignore(self):
+        return None
+
+    @property
     def is_empty(self):
         return self.fs.is_empty(self.path_info)
 
     def isdir(self):
+        if self._is_path_dvcignore(self.path_info):
+            return False
         return self.fs.isdir(self.path_info)
 
     def isfile(self):
+        if self._is_path_dvcignore(self.path_info):
+            return False
         return self.fs.isfile(self.path_info)
 
     # pylint: disable=no-member
@@ -307,7 +330,11 @@ class BaseOutput:
             return
 
         self.obj = ostage(
-            self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
+            self.odb,
+            self.path_info,
+            self.fs,
+            self.odb.fs.PARAM_CHECKSUM,
+            dvcignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
         self.isexec = self.isfile() and self.fs.isexec(self.path_info)
@@ -328,6 +355,7 @@ class BaseOutput:
                 filter_info or self.path_info,
                 self.fs,
                 self.odb.fs.PARAM_CHECKSUM,
+                dvcignore=self.dvcignore,
             )
             objects.save(self.odb, obj)
             checkout(
@@ -336,6 +364,7 @@ class BaseOutput:
                 obj,
                 self.odb,
                 relink=True,
+                dvcignore=self.dvcignore,
             )
             self.set_exec()
 
@@ -451,7 +480,7 @@ class BaseOutput:
 
     def remove(self, ignore_remove=False):
         self.fs.remove(self.path_info)
-        if self.scheme != "local":
+        if self.scheme != Schemes.LOCAL:
             return
 
         if ignore_remove:
@@ -650,18 +679,17 @@ class BaseOutput:
 
         return ret
 
-    @classmethod
-    def _validate_output_path(cls, path, stage=None):
+    def _validate_output_path(self, path, stage=None):
         from dvc.dvcfile import is_valid_filename
 
         if is_valid_filename(path):
-            raise cls.IsStageFileError(path)
+            raise self.IsStageFileError(path)
 
         if stage:
             abs_path = os.path.join(stage.wdir, path)
-            if stage.repo.fs.dvcignore.is_ignored(abs_path):
-                check = stage.repo.fs.dvcignore.check_ignore(abs_path)
-                raise cls.IsIgnoredError(check)
+            if self._is_path_dvcignore(abs_path):
+                check = stage.repo.dvcignore.check_ignore(abs_path)
+                raise self.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
         if self.scheme != out.scheme:

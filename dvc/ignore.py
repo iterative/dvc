@@ -7,9 +7,12 @@ from itertools import groupby, takewhile
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 
+from dvc.fs.base import BaseFileSystem
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
+from dvc.scheme import Schemes
 from dvc.system import System
+from dvc.types import AnyPath, List, Optional
 from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
 
@@ -67,7 +70,7 @@ class DvcIgnorePatterns(DvcIgnore):
 
         return cls(path_spec_lines, dirname)
 
-    def __call__(self, root, dirs, files):
+    def __call__(self, root: List[str], dirs: List[str], files: List[str]):
         files = [f for f in files if not self.matches(root, f)]
         dirs = [d for d in dirs if not self.matches(root, d, True)]
 
@@ -159,26 +162,6 @@ def _no_match(path):
     return CheckIgnoreResult(path, False, ["::"])
 
 
-class DvcIgnoreFilterNoop:
-    def __init__(self, fs, root_dir):
-        pass
-
-    def __call__(self, root, dirs, files, **kwargs):
-        return dirs, files
-
-    def is_ignored_dir(self, _):
-        return False
-
-    def is_ignored_file(self, _):
-        return False
-
-    def check_ignore(self, path):
-        return _no_match(path)
-
-    def is_ignored(self, _):
-        return False
-
-
 class DvcIgnoreFilter:
     def __init__(self, fs, root_dir):
         from dvc.repo import Repo
@@ -193,27 +176,35 @@ class DvcIgnoreFilter:
         self.fs = fs
         self.root_dir = root_dir
         self.ignores_trie_fs = PathStringTrie()
+        self._ignores_trie_subrepos = PathStringTrie()
         self.ignores_trie_fs[root_dir] = DvcIgnorePatterns(
             default_ignore_patterns, root_dir
         )
-        self._ignored_subrepos = PathStringTrie()
-        self._update(self.root_dir)
+        self._ignores_trie_subrepos[root_dir] = self.ignores_trie_fs[root_dir]
+        self._update(
+            self.root_dir,
+            self._ignores_trie_subrepos,
+            dnames=None,
+            ignore_subrepos=False,
+        )
+        self._update(
+            self.root_dir,
+            self.ignores_trie_fs,
+            dnames=None,
+            ignore_subrepos=True,
+        )
 
-    def _update(self, dirname):
-        self._update_sub_repo(dirname)
-
-        old_pattern = self.ignores_trie_fs.longest_prefix(dirname).value
+    def _update_trie(self, dirname: str, trie: PathStringTrie) -> None:
+        old_pattern = trie.longest_prefix(dirname).value
         matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
 
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if not matches and self.fs.exists(
-            ignore_file_path, use_dvcignore=False
-        ):
+        if not matches and self.fs.exists(ignore_file_path):
             new_pattern = DvcIgnorePatterns.from_files(
                 ignore_file_path, self.fs
             )
             if old_pattern:
-                self.ignores_trie_fs[dirname] = DvcIgnorePatterns(
+                trie[dirname] = DvcIgnorePatterns(
                     *merge_patterns(
                         old_pattern.pattern_list,
                         old_pattern.dirname,
@@ -222,11 +213,32 @@ class DvcIgnoreFilter:
                     )
                 )
             else:
-                self.ignores_trie_fs[dirname] = new_pattern
+                trie[dirname] = new_pattern
         elif old_pattern:
-            self.ignores_trie_fs[dirname] = old_pattern
+            trie[dirname] = old_pattern
 
-    def _update_sub_repo(self, path):
+    def _update(
+        self,
+        dirname: str,
+        ignore_trie: PathStringTrie,
+        dnames: Optional["List"],
+        ignore_subrepos: bool,
+    ) -> None:
+        self._update_trie(dirname, ignore_trie)
+
+        if ignore_subrepos:
+            if dnames is None:
+                try:
+                    _, dnames, _ = next(self.fs.walk(dirname))
+                except StopIteration:
+                    dnames = []
+
+            for dname in dnames:
+                self._update_sub_repo(
+                    os.path.join(dirname, dname), ignore_trie
+                )
+
+    def _update_sub_repo(self, path, ignore_trie: PathStringTrie):
         from dvc.repo import Repo
 
         if path == self.root_dir:
@@ -237,14 +249,11 @@ class DvcIgnoreFilter:
             return
 
         root, dname = os.path.split(path)
-        self._ignored_subrepos[root] = self._ignored_subrepos.get(
-            root, set()
-        ) | {dname}
         pattern_info = PatternInfo(f"/{dname}/", f"in sub_repo:{dname}")
         new_pattern = DvcIgnorePatterns([pattern_info], root)
-        old_pattern = self.ignores_trie_fs.longest_prefix(root).value
+        old_pattern = ignore_trie.longest_prefix(root).value
         if old_pattern:
-            self.ignores_trie_fs[root] = DvcIgnorePatterns(
+            ignore_trie[root] = DvcIgnorePatterns(
                 *merge_patterns(
                     old_pattern.pattern_list,
                     old_pattern.dirname,
@@ -253,25 +262,50 @@ class DvcIgnoreFilter:
                 )
             )
         else:
-            self.ignores_trie_fs[root] = new_pattern
+            ignore_trie[root] = new_pattern
 
     def __call__(self, root, dirs, files, ignore_subrepos=True):
-        for dname in dirs:
-            self._update_sub_repo(os.path.join(root, dname))
-
-        ignore_pattern = self._get_trie_pattern(root)
+        abs_root = os.path.abspath(root)
+        ignore_pattern = self._get_trie_pattern(
+            abs_root, dnames=dirs, ignore_subrepos=ignore_subrepos
+        )
         if ignore_pattern:
-            dirs, files = ignore_pattern(root, dirs, files)
-            if not ignore_subrepos:
-                dirs.extend(self._ignored_subrepos.get(root, []))
+            dirs, files = ignore_pattern(abs_root, dirs, files)
         return dirs, files
 
-    def _get_trie_pattern(self, dirname):
-        ignore_pattern = self.ignores_trie_fs.get(dirname)
+    def walk(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
+        ignore_subrepos = kwargs.pop("ignore_subrepos", True)
+        if fs.scheme == Schemes.LOCAL:
+            for root, dirs, files in fs.walk(path_info, **kwargs):
+                dirs[:], files[:] = self(
+                    root, dirs, files, ignore_subrepos=ignore_subrepos
+                )
+                yield root, dirs, files
+        else:
+            yield from fs.walk(path_info, **kwargs)
+
+    def walk_files(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
+        if fs.scheme == Schemes.LOCAL:
+            for root, _, files in self.walk(fs, path_info, **kwargs):
+                for file in files:
+                    # NOTE: os.path.join is ~5.5 times slower
+                    yield PathInfo(f"{root}{os.sep}{file}")
+        else:
+            yield from fs.walk_files(path_info)
+
+    def _get_trie_pattern(
+        self, dirname, dnames: Optional["List"] = None, ignore_subrepos=True
+    ) -> Optional["DvcIgnorePatterns"]:
+        if ignore_subrepos:
+            ignores_trie = self.ignores_trie_fs
+        else:
+            ignores_trie = self._ignores_trie_subrepos
+
+        ignore_pattern = ignores_trie.get(dirname)
         if ignore_pattern:
             return ignore_pattern
 
-        prefix = self.ignores_trie_fs.longest_prefix(dirname).key
+        prefix = ignores_trie.longest_prefix(dirname).key
         if not prefix:
             # outside of the repo
             return None
@@ -286,33 +320,31 @@ class DvcIgnoreFilter:
         dirs.append(dirname)
 
         for parent in dirs:
-            self._update(parent)
+            self._update(parent, ignores_trie, dnames, ignore_subrepos)
 
-        return self.ignores_trie_fs.get(dirname)
+        return ignores_trie.get(dirname)
 
-    def _is_ignored(self, path, is_dir=False):
+    def _is_ignored(
+        self, path: str, is_dir: bool = False, ignore_subrepos: bool = True
+    ):
         if self._outside_repo(path):
             return False
         dirname, basename = os.path.split(os.path.normpath(path))
-        ignore_pattern = self._get_trie_pattern(dirname)
+        ignore_pattern = self._get_trie_pattern(dirname, None, ignore_subrepos)
         if ignore_pattern:
             return ignore_pattern.matches(dirname, basename, is_dir)
         return False
 
-    def _is_subrepo(self, path):
-        dirname, basename = os.path.split(os.path.normpath(path))
-        return basename in self._ignored_subrepos.get(dirname, set())
-
-    def is_ignored_dir(self, path, ignore_subrepos=True):
+    def is_ignored_dir(self, path: str, ignore_subrepos: bool = True) -> bool:
+        "Only used in LocalFileSystem"
         path = os.path.abspath(path)
-        if not ignore_subrepos:
-            return not self._is_subrepo(path)
         if path == self.root_dir:
             return False
 
-        return self._is_ignored(path, True)
+        return self._is_ignored(path, True, ignore_subrepos=ignore_subrepos)
 
-    def is_ignored_file(self, path):
+    def is_ignored_file(self, path: str) -> bool:
+        "Only used in LocalFileSystem"
         path = os.path.abspath(path)
         return self._is_ignored(path, False)
 
@@ -346,14 +378,20 @@ class DvcIgnoreFilter:
                     return CheckIgnoreResult(target, True, matches)
         return _no_match(target)
 
-    def is_ignored(self, path):
+    def is_ignored(
+        self, fs: BaseFileSystem, path: str, ignore_subrepos: bool = True
+    ) -> bool:
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555
-        if os.path.isfile(path):
+        if fs.scheme != Schemes.LOCAL:
+            return False
+        if fs.isfile(path):
             return self.is_ignored_file(path)
-        if os.path.isdir(path):
-            return self.is_ignored_dir(path)
-        return self.is_ignored_file(path) or self.is_ignored_dir(path)
+        if fs.isdir(path):
+            return self.is_ignored_dir(path, ignore_subrepos)
+        return self.is_ignored_file(path) or self.is_ignored_dir(
+            path, ignore_subrepos
+        )
 
 
 def init(path):

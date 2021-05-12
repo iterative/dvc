@@ -123,7 +123,7 @@ class HDFSFileSystem(BaseFileSystem):
                 raise FileNotFoundError(*e.args)
             raise
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         assert not isinstance(path_info, list)
         assert path_info.scheme == "hdfs"
         with self.hdfs(path_info) as hdfs:
@@ -159,15 +159,15 @@ class HDFSFileSystem(BaseFileSystem):
         if not topdown:
             yield root, dirs, nondirs
 
-    def walk(self, path_info, **kwargs):
-        if not self.isdir(path_info):
+    def walk(self, top, topdown=True, onerror=None, **kwargs):
+        if not self.isdir(top):
             return
 
-        with self.hdfs(path_info) as hdfs:
+        with self.hdfs(top) as hdfs:
             for root, dnames, fnames in self._walk(
-                hdfs, path_info.path, **kwargs
+                hdfs, top.path, topdown=topdown
             ):
-                yield path_info.replace(path=root), dnames, fnames
+                yield top.replace(path=root), dnames, fnames
 
     def walk_files(self, path_info, **kwargs):
         for root, _, fnames in self.walk(path_info):

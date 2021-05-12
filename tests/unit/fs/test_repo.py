@@ -324,7 +324,7 @@ def test_subrepos(tmp_dir, scm, dvc):
         {"lorem": "lorem", "dir2": {"ipsum": "ipsum"}}, commit="BAR"
     )
 
-    dvc.fs._reset()
+    dvc._reset()
     fs = RepoFileSystem(dvc, subrepos=True)
 
     def assert_fs_belongs_to_repo(ret_val):
@@ -402,8 +402,8 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     )
 
     # using fs that does not have dvcignore
-    dvc.fs._reset()
-    fs = RepoFileSystem(dvc, subrepos=True)
+    dvc._reset()
+    fs = RepoFileSystem(dvc)
     expected = [
         PathInfo("dir") / "repo",
         PathInfo("dir") / "repo.txt",
@@ -420,7 +420,9 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
 
     actual = []
     for root, dirs, files in fs.walk(
-        os.path.join(fs.root_dir, "dir"), dvcfiles=dvcfiles
+        os.path.join(fs.root_dir, "dir"),
+        dvcfiles=dvcfiles,
+        ignore_subrepos=False,
     ):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
@@ -445,8 +447,8 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
     subrepo.scm_gen({"ipsum": "ipsum"}, commit="BAR")
 
     # using fs that does not have dvcignore
-    dvc.fs._reset()
-    fs = RepoFileSystem(dvc, subrepos=False)
+    dvc._reset()
+    fs = RepoFileSystem(dvc)
     expected = [
         tmp_dir / ".dvcignore",
         tmp_dir / ".gitignore",
@@ -629,7 +631,9 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
         expected[str(tmp_dir / "subrepo1")].add("subrepo3")
 
     actual = {}
-    fs = RepoFileSystem(dvc, subrepos=traverse_subrepos)
-    for root, dirs, files in fs.walk(str(tmp_dir)):
+    fs = RepoFileSystem(dvc)
+    for root, dirs, files in fs.walk(
+        str(tmp_dir), ignore_subrepos=not traverse_subrepos
+    ):
         actual[root] = set(dirs + files)
     assert expected == actual

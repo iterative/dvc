@@ -14,7 +14,7 @@ from .fsspec_wrapper import FSSpecWrapper
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
-class BaseS3FileSystem(FSSpecWrapper):
+class BaseS3FileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
@@ -167,7 +167,7 @@ def _translate_exceptions(func):
     return wrapper
 
 
-class S3FileSystem(BaseS3FileSystem):
+class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
     @wrap_prop(threading.Lock())
     @cached_property
     def s3(self):

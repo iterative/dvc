@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class CmdCheckIgnore(CmdBase):
     def __init__(self, args):
         super().__init__(args)
-        self.ignore_filter = self.repo.fs.dvcignore
+        self.ignore_filter = self.repo.dvcignore
 
     def _show_results(self, result):
         if not result.match and not self.args.non_matching:

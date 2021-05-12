@@ -2,8 +2,6 @@ import logging
 import os
 import stat
 
-from funcy import cached_property
-
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
@@ -22,70 +20,39 @@ class LocalFileSystem(BaseFileSystem):
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
 
-    def __init__(self, repo, config, use_dvcignore=False, dvcignore_root=None):
+    def __init__(self, repo, config):
         super().__init__(repo, config)
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
-        self.use_dvcignore = use_dvcignore
-        self.dvcignore_root = dvcignore_root
 
     @property
     def fs_root(self):
         return self.config.get("url")
 
-    @cached_property
-    def dvcignore(self):
-        from dvc.ignore import DvcIgnoreFilter, DvcIgnoreFilterNoop
-
-        root = self.dvcignore_root or self.fs_root
-        cls = DvcIgnoreFilter if self.use_dvcignore else DvcIgnoreFilterNoop
-        return cls(self, root)
-
     @staticmethod
     def open(path_info, mode="r", encoding=None, **kwargs):
         return open(path_info, mode=mode, encoding=encoding)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         assert isinstance(path_info, str) or path_info.scheme == "local"
         if self.repo:
             ret = os.path.lexists(path_info)
         else:
             ret = os.path.exists(path_info)
-        if not ret:
-            return False
-        if not use_dvcignore:
-            return True
+        return ret
 
-        return not self.dvcignore.is_ignored_file(
-            path_info
-        ) and not self.dvcignore.is_ignored_dir(path_info)
+    def isfile(self, path_info) -> bool:
+        return os.path.isfile(path_info)
 
-    def isfile(self, path_info):
-        if not os.path.isfile(path_info):
-            return False
-
-        return not self.dvcignore.is_ignored_file(path_info)
-
-    def isdir(
-        self, path_info, use_dvcignore=True
-    ):  # pylint: disable=arguments-differ
-        if not os.path.isdir(path_info):
-            return False
-        return not (use_dvcignore and self.dvcignore.is_ignored_dir(path_info))
+    def isdir(self, path_info) -> bool:
+        return os.path.isdir(path_info)
 
     def iscopy(self, path_info):
         return not (
             System.is_symlink(path_info) or System.is_hardlink(path_info)
         )
 
-    def walk(
-        self,
-        top,
-        topdown=True,
-        onerror=None,
-        use_dvcignore=True,
-        ignore_subrepos=True,
-    ):
+    def walk(self, top, topdown=True, onerror=None, **kwargs):
         """Directory fs generator.
 
         See `os.walk` for the docs. Differences:
@@ -94,14 +61,6 @@ class LocalFileSystem(BaseFileSystem):
         for root, dirs, files in os.walk(
             top, topdown=topdown, onerror=onerror
         ):
-            if use_dvcignore:
-                dirs[:], files[:] = self.dvcignore(
-                    os.path.abspath(root),
-                    dirs,
-                    files,
-                    ignore_subrepos=ignore_subrepos,
-                )
-
             yield os.path.normpath(root), dirs, files
 
     def walk_files(self, path_info, **kwargs):
@@ -133,9 +92,6 @@ class LocalFileSystem(BaseFileSystem):
         return is_exec(mode)
 
     def stat(self, path):
-        if self.dvcignore.is_ignored(path):
-            raise FileNotFoundError
-
         return os.stat(path)
 
     def move(self, from_info, to_info):
@@ -227,6 +183,3 @@ class LocalFileSystem(BaseFileSystem):
         copyfile(
             from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
-
-    def _reset(self):
-        return self.__dict__.pop("dvcignore", None)

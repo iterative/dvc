@@ -9,12 +9,14 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcException,
 )
+from dvc.ignore import DvcIgnoreFilter
 from dvc.objects import check, load
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.stage import stage
 from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
+from dvc.types import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -175,8 +177,13 @@ def _checkout_file(
     return modified
 
 
-def _remove_redundant_files(path_info, fs, obj, cache, force):
-    existing_files = set(fs.walk_files(path_info))
+def _remove_redundant_files(
+    path_info, fs, obj, cache, force, dvcignore: Optional[DvcIgnoreFilter],
+):
+    if dvcignore:
+        existing_files = set(dvcignore.walk_files(fs, path_info))
+    else:
+        existing_files = set(fs.walk_files(path_info))
 
     needed_files = {path_info.joinpath(*key) for key, _ in obj}
     redundant_files = existing_files - needed_files
@@ -187,9 +194,16 @@ def _remove_redundant_files(path_info, fs, obj, cache, force):
 
 
 def _checkout_dir(
-    path_info, fs, obj, cache, force, progress_callback=None, relink=False,
+    path_info,
+    fs,
+    obj,
+    cache,
+    force,
+    progress_callback=None,
+    relink=False,
+    dvcignore: Optional[DvcIgnoreFilter] = None,
 ):
-    modified = False, False
+    modified = False
     # Create dir separately so that dir is created
     # even if there are no files in it
     if not fs.exists(path_info):
@@ -212,7 +226,10 @@ def _checkout_dir(
             modified = True
 
     modified = (
-        _remove_redundant_files(path_info, fs, obj, cache, force) or modified
+        _remove_redundant_files(
+            path_info, fs, obj, cache, force, dvcignore=dvcignore
+        )
+        or modified
     )
 
     fs.repo.state.save(path_info, fs, obj.hash_info)
@@ -229,6 +246,7 @@ def _checkout(
     force=False,
     progress_callback=None,
     relink=False,
+    dvcignore: Optional[DvcIgnoreFilter] = None,
 ):
     if not obj.hash_info.isdir:
         ret = _checkout_file(
@@ -236,7 +254,14 @@ def _checkout(
         )
     else:
         ret = _checkout_dir(
-            path_info, fs, obj, cache, force, progress_callback, relink,
+            path_info,
+            fs,
+            obj,
+            cache,
+            force,
+            progress_callback,
+            relink,
+            dvcignore=dvcignore,
         )
 
     fs.repo.state.save_link(path_info, fs)
@@ -253,6 +278,7 @@ def checkout(
     progress_callback=None,
     relink=False,
     quiet=False,
+    dvcignore: Optional[DvcIgnoreFilter] = None,
 ):
     if path_info.scheme not in ["local", cache.fs.scheme]:
         raise NotImplementedError
@@ -269,7 +295,7 @@ def checkout(
         failed = path_info
 
     elif not relink and not _changed(path_info, fs, obj, cache):
-        logger.trace("Data '%s' didn't change.", path_info)
+        logger.trace("Data '%s' didn't change.", path_info)  # type: ignore
         skip = True
     else:
         try:
@@ -296,5 +322,12 @@ def checkout(
     logger.debug("Checking out '%s' with cache '%s'.", path_info, obj)
 
     return _checkout(
-        path_info, fs, obj, cache, force, progress_callback, relink,
+        path_info,
+        fs,
+        obj,
+        cache,
+        force,
+        progress_callback,
+        relink,
+        dvcignore=dvcignore,
     )

@@ -9,6 +9,7 @@ from funcy import cached_property
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
+from dvc.scheme import Schemes
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
@@ -92,7 +93,6 @@ class BaseFileSystem:
         return missing
 
     def _check_requires(self):
-        from ..scheme import Schemes
         from ..utils import format_link
         from ..utils.pkg import PKG
 
@@ -139,7 +139,7 @@ class BaseFileSystem:
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
-    def exists(self, path_info, use_dvcignore=True) -> bool:
+    def exists(self, path_info) -> bool:
         raise NotImplementedError
 
     # pylint: disable=unused-argument
@@ -165,6 +165,11 @@ class BaseFileSystem:
     def iscopy(self, path_info):
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
+
+    def walk(self, top, topdown=True, onerror=None, **kwargs):
+        """Return a generator with (root, dirs, files).
+        """
+        raise NotImplementedError
 
     def walk_files(self, path_info, **kwargs):
         """Return a generator with `PathInfo`s to all the files.
