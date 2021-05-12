@@ -9,7 +9,9 @@ from dvc.ignore import DvcIgnorePatterns
 def mock_dvcignore(dvcignore_path, patterns):
     fs = MagicMock()
     with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
-        ignore_patterns = DvcIgnorePatterns.from_files(dvcignore_path, fs)
+        ignore_patterns = DvcIgnorePatterns.from_files(
+            dvcignore_path, fs, None
+        )
 
     return ignore_patterns
 
