@@ -18,15 +18,15 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs):
-        self.fs = fs
-        self.repo = fs.repo
+    def __init__(self, fs, **config):
+        from dvc.state import StateNoop
 
-        self.verify = fs.config.get("verify", self.DEFAULT_VERIFY)
-        self.cache_types = fs.config.get("type") or copy(
-            self.DEFAULT_CACHE_TYPES
-        )
+        self.fs = fs
+        self.state = config.get("state", StateNoop())
+        self.verify = config.get("verify", self.DEFAULT_VERIFY)
+        self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
+        self.slow_link_warning = config.get("slow_link_warning", True)
 
     def move(self, from_info, to_info):
         self.fs.move(from_info, to_info)
@@ -80,7 +80,7 @@ class ObjectDB:
                 raise
 
         self.protect(cache_info)
-        self.fs.repo.state.save(cache_info, self.fs, hash_info)
+        self.state.save(cache_info, self.fs, hash_info)
 
         callback = kwargs.get("download_callback")
         if callback:

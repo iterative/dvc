@@ -65,8 +65,8 @@ class HDFSFileSystem(BaseFileSystem):
     PARAM_CHECKSUM = "checksum"
     TRAVERSE_PREFIX_LEN = 2
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
         self.path_info = None
         url = config.get("url")

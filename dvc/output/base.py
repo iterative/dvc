@@ -122,7 +122,7 @@ class BaseOutput:
         if fs:
             self.fs = fs
         else:
-            self.fs = self.FS_CLS(self.repo, {})
+            self.fs = self.FS_CLS()
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
@@ -365,6 +365,7 @@ class BaseOutput:
                 self.odb,
                 relink=True,
                 dvcignore=self.dvcignore,
+                state=self.repo.state,
             )
             self.set_exec()
 
@@ -469,6 +470,7 @@ class BaseOutput:
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
+                state=self.repo.state,
                 **kwargs,
             )
         except CheckoutError:
@@ -508,7 +510,8 @@ class BaseOutput:
         if odb is None:
             odb = self.odb
 
-        from_fs = get_cloud_fs(self.repo, url=source)
+        cls, config = get_cloud_fs(self.repo, url=source)
+        from_fs = cls(**config)
         from_info = from_fs.path_info
 
         # When running import-url --to-remote / add --to-remote/-o ... we

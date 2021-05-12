@@ -12,7 +12,7 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = "local"
 
     def __init__(self, root_dir, trie):
-        super().__init__(None, {})
+        super().__init__()
         self._fs_root = root_dir
         self.trie = trie
 

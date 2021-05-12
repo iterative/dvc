@@ -46,8 +46,8 @@ class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     DEFAULT_PORT = 22
     TIMEOUT = 1800
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
         url = config.get("url")
         if url:
             parsed = urlparse(url)

@@ -16,4 +16,4 @@ def test_missing_deps(pkg, msg, mocker):
     mocker.patch.object(BaseFileSystem, "REQUIRES", requires)
     mocker.patch("dvc.utils.pkg.PKG", pkg)
     with pytest.raises(RemoteMissingDepsError, match=msg):
-        BaseFileSystem(None, {})
+        BaseFileSystem()

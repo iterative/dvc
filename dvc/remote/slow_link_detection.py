@@ -29,9 +29,7 @@ def slow_link_guard(f):
         if this.already_displayed:
             return f(remote, *args, **kwargs)
 
-        cache_conf = remote.repo.config["cache"]
-        slow_link_warning = cache_conf.get("slow_link_warning", True)
-        if not slow_link_warning or cache_conf.get("type"):
+        if not remote.slow_link_warning or remote.cache_types:
             return f(remote, *args, **kwargs)
 
         start = time.time()

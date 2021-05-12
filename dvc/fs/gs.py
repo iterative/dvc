@@ -16,13 +16,13 @@ class GSFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
         url = config.get("url", "gs://")
         self.path_info = self.PATH_CLS(url)
 
-    def _prepare_credentials(self, config):
+    def _prepare_credentials(self, **config):
         login_info = {"consistency": None}
         login_info["project"] = config.get("projectname")
         login_info["token"] = config.get("credentialpath")

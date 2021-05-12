@@ -20,14 +20,14 @@ class LocalFileSystem(BaseFileSystem):
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        from fsspec.implementations.local import LocalFileSystem as LocalFS
+
+        super().__init__(**config)
+        self.fs = LocalFS()
         url = config.get("url")
         self.path_info = self.PATH_CLS(url) if url else None
-
-    @property
-    def fs_root(self):
-        return self.config.get("url")
+        self.fs_root = url
 
     @staticmethod
     def open(path_info, mode="r", encoding=None, **kwargs):
@@ -35,11 +35,7 @@ class LocalFileSystem(BaseFileSystem):
 
     def exists(self, path_info) -> bool:
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        if self.repo:
-            ret = os.path.lexists(path_info)
-        else:
-            ret = os.path.exists(path_info)
-        return ret
+        return self.fs.exists(path_info)
 
     def isfile(self, path_info) -> bool:
         return os.path.isfile(path_info)

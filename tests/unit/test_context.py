@@ -288,7 +288,7 @@ def test_track(tmp_dir):
         ],
         "dct": {"foo": "foo", "bar": "bar", "baz": "baz"},
     }
-    fs = LocalFileSystem(None, config={})
+    fs = LocalFileSystem()
     path = tmp_dir / "params.yaml"
     dump_yaml(path, d, fs)
 
@@ -323,7 +323,7 @@ def test_track_from_multiple_files(tmp_dir):
     d1 = {"Train": {"us": {"lr": 10}}}
     d2 = {"Train": {"us": {"layers": 100}}}
 
-    fs = LocalFileSystem(None, config={})
+    fs = LocalFileSystem()
     path1 = tmp_dir / "params.yaml"
     path2 = tmp_dir / "params2.yaml"
     dump_yaml(path1, d1, fs)

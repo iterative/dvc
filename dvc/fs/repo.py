@@ -35,9 +35,9 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "md5"
 
     def __init__(
-        self, repo, subrepos=False, repo_factory: RepoFactory = None,
+        self, repo=None, subrepos=False, repo_factory: RepoFactory = None,
     ):
-        super().__init__(repo, {"url": repo.root_dir})
+        super().__init__()
 
         from dvc.utils.collections import PathStringTrie
 
@@ -49,6 +49,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             self.repo_factory = repo_factory
 
         self._main_repo = repo
+        self.hash_jobs = repo.fs.hash_jobs
         self.root_dir = repo.root_dir
         self._traverse_subrepos = subrepos
 
@@ -61,7 +62,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         """Keep a dvcfs instance of each repo."""
 
         if hasattr(repo, "dvc_dir"):
-            self._dvcfss[repo.root_dir] = DvcFileSystem(repo)
+            self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
@@ -93,11 +94,11 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             if self._is_dvc_repo(d):
                 repo = self.repo_factory(
                     d,
-                    scm=self.repo.scm,
-                    rev=self.repo.get_rev(),
+                    scm=self._main_repo.scm,
+                    rev=self._main_repo.get_rev(),
                     repo_factory=self.repo_factory,
                 )
-                self._dvcfss[repo.root_dir] = DvcFileSystem(repo)
+                self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
             self._subrepos_trie[d] = repo
 
     def _is_dvc_repo(self, dir_path):
@@ -381,10 +382,6 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             ) as wrapped:
                 with self.open(from_info, "rb", **kwargs) as from_fobj:
                     shutil.copyfileobj(from_fobj, wrapped)
-
-    @property
-    def hash_jobs(self):  # pylint: disable=invalid-overridden-method
-        return self._main_repo.fs.hash_jobs
 
     def metadata(self, path):
         abspath = os.path.abspath(path)

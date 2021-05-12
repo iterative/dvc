@@ -161,7 +161,7 @@ class Repo:
         if scm:
             self._fs = scm.get_fs(rev)
         else:
-            self._fs = LocalFileSystem(self, {"url": self.root_dir})
+            self._fs = LocalFileSystem(url=self.root_dir)
 
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
@@ -170,13 +170,13 @@ class Repo:
         # used by RepoFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
-        self.odb = ODBManager(self)
         self.cloud = DataCloud(self)
         self.stage = StageLoad(self)
 
         if scm or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
+            self.odb = ODBManager(self)
         else:
             self.lock = make_lock(
                 os.path.join(self.tmp_dir, "lock"),
@@ -189,6 +189,8 @@ class Repo:
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
             self.state = State(self.root_dir, self.tmp_dir, self.dvcignore)
+            self.odb = ODBManager(self)
+
             self.stage_cache = StageCache(self)
 
             self._ignore()
@@ -472,7 +474,7 @@ class Repo:
     def dvcfs(self):
         from dvc.fs.dvc import DvcFileSystem
 
-        return DvcFileSystem(self)
+        return DvcFileSystem(repo=self)
 
     @cached_property
     def repo_fs(self):

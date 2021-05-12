@@ -4,12 +4,9 @@ from functools import partial, partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
-from funcy import cached_property
-
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
-from dvc.scheme import Schemes
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 from dvc.utils.http import open_url
@@ -55,29 +52,13 @@ class BaseFileSystem:
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
     DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
-    def __init__(self, repo, config):
-        self.repo = repo
-        self.config = config
-
-        self._check_requires()
+    def __init__(self, **kwargs):
+        self._check_requires(**kwargs)
 
         self.path_info = None
 
-    @cached_property
-    def jobs(self):
-        return (
-            self.config.get("jobs")
-            or (self.repo and self.repo.config["core"].get("jobs"))
-            or self._JOBS
-        )
-
-    @cached_property
-    def hash_jobs(self):
-        return (
-            self.config.get("checksum_jobs")
-            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
-            or self.HASH_JOBS
-        )
+        self.jobs = kwargs.get("jobs") or self._JOBS
+        self.hash_jobs = kwargs.get("checksum_jobs") or self.HASH_JOBS
 
     @classmethod
     def get_missing_deps(cls):
@@ -92,7 +73,8 @@ class BaseFileSystem:
 
         return missing
 
-    def _check_requires(self):
+    def _check_requires(self, **kwargs):
+        from ..scheme import Schemes
         from ..utils import format_link
         from ..utils.pkg import PKG
 
@@ -100,7 +82,7 @@ class BaseFileSystem:
         if not missing:
             return
 
-        url = self.config.get("url", f"{self.scheme}://")
+        url = kwargs.get("url", f"{self.scheme}://")
 
         scheme = self.scheme
         if scheme == Schemes.WEBDAVS:

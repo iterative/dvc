@@ -186,7 +186,7 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    state = odb.repo.state
+    state = odb.state
     # pylint: disable=assignment-from-none
     hash_info = state.get(path_info, fs)
 
