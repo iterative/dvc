@@ -1,5 +1,10 @@
 import ast
+import dataclasses
+import logging
+import sys
 from contextlib import contextmanager
+from functools import partial
+from typing import Any, Optional
 
 from funcy import reraise
 
@@ -7,6 +12,8 @@ from ._common import ParseError, _dump_data, _load_data, _modify_data
 
 _PARAMS_KEY = "__params_old_key_for_update__"
 _PARAMS_TEXT_KEY = "__params_text_key_for_update__"
+
+logger = logging.getLogger(__name__)
 
 
 class PythonFileCorruptedError(ParseError):
@@ -23,8 +30,7 @@ def parse_py(text, path):
     with reraise(SyntaxError, PythonFileCorruptedError(path)):
         tree = ast.parse(text, filename=path)
 
-    lines = text.splitlines()
-    result = _ast_tree_to_dict(tree, lines)
+    result = _ast_tree_to_dict(tree, text)
     return result
 
 
@@ -33,9 +39,8 @@ def parse_py_for_update(text, path):
     with reraise(SyntaxError, PythonFileCorruptedError(path)):
         tree = ast.parse(text, filename=path)
 
-    lines = text.splitlines()
-    result = _ast_tree_to_dict(tree, lines)
-    result.update({_PARAMS_KEY: _ast_tree_to_dict(tree, lines, lineno=True)})
+    result = _ast_tree_to_dict(tree, text)
+    result.update({_PARAMS_KEY: _ast_tree_to_dict(tree, text, lineno=True)})
     result.update({_PARAMS_TEXT_KEY: text})
     return result
 
@@ -51,19 +56,37 @@ def _dump(data, stream):
     old_lines = data[_PARAMS_TEXT_KEY].splitlines(True)
 
     def _update_lines(lines, old_dct, new_dct):
-        for key, value in new_dct.items():
-            if isinstance(value, dict):
-                lines = _update_lines(lines, old_dct[key], value)
-            elif value != old_dct[key]["value"]:
-                old_value = old_dct[key]["value"]
-                lineno = old_dct[key]["lineno"]
+        if not isinstance(old_dct, dict):
+            return lines
 
-                segment = old_dct[key].get("segment")
-                old_segment = " = {}".format(segment or old_value)
-                new_segment = " = {}".format(value)
-                lines[lineno] = lines[lineno].replace(old_segment, new_segment)
+        for key, value in new_dct.items():
+            old_value = old_dct.get(key)
+            if isinstance(old_value, dict) and isinstance(value, dict):
+                lines = _update_lines(lines, old_value, value)
+                continue
+
+            if isinstance(old_value, Node):
+                if isinstance(value, dict):
+                    logger.trace("Old %s is %s, new value is of type %s", key, old_value, type(value))
+                    continue
             else:
                 continue
+
+            if old_value.value is not None and value == old_value.value:
+                # we should try to reduce amount of updates
+                # so if things didn't change at all or are equivalent
+                # we don't need to dump at all.
+                continue
+            elif old_value.lineno is not None and (old_value.segment or old_value.value):
+                old_segment = " = {}".format(old_value.segment or old_value.value)
+                new_segment = " = {}".format(value)
+                lineno = old_value.lineno
+                logger.trace("updating lineno:", lineno)
+                line = lines[lineno].replace(old_segment, new_segment)
+                logger.trace("before: ", lines[lineno])
+                lines[lineno] = line
+                logger.trace("after: ", lines[lineno])
+
         return lines
 
     new_lines = _update_lines(old_lines, old_params, new_params)
@@ -91,7 +114,7 @@ def modify_py(path, fs=None):
         yield d
 
 
-def _ast_tree_to_dict(tree, src_lines, only_self_params=False, lineno=False):
+def _ast_tree_to_dict(tree, source, only_self_params=False, lineno=False):
     """Parses ast trees to dict.
 
     :param tree: ast.Tree
@@ -105,14 +128,14 @@ def _ast_tree_to_dict(tree, src_lines, only_self_params=False, lineno=False):
             if isinstance(_body, (ast.Assign, ast.AnnAssign)):
                 result.update(
                     _ast_assign_to_dict(
-                        _body, src_lines, only_self_params, lineno
+                        _body, source, only_self_params, lineno
                     )
                 )
             elif isinstance(_body, ast.ClassDef):
                 result.update(
                     {
                         _body.name: _ast_tree_to_dict(
-                            _body, src_lines, lineno=lineno
+                            _body, source, lineno=lineno
                         )
                     }
                 )
@@ -121,7 +144,7 @@ def _ast_tree_to_dict(tree, src_lines, only_self_params=False, lineno=False):
             ):
                 result.update(
                     _ast_tree_to_dict(
-                        _body, src_lines, only_self_params=True, lineno=lineno
+                        _body, source, only_self_params=True, lineno=lineno
                     )
                 )
         except ValueError:
@@ -131,49 +154,14 @@ def _ast_tree_to_dict(tree, src_lines, only_self_params=False, lineno=False):
     return result
 
 
-def _ast_assign_to_dict(
-    assign, src_lines, only_self_params=False, lineno=False
-):
-    result = {}
-
+def _ast_assign_to_dict(assign, source, only_self_params=False, lineno=False):
     if isinstance(assign, ast.AnnAssign):
         name = _get_ast_name(assign.target, only_self_params)
     elif len(assign.targets) == 1:
         name = _get_ast_name(assign.targets[0], only_self_params)
     else:
         raise AttributeError
-
-    if isinstance(assign.value, ast.Dict):
-        value = {}
-        for key, val in zip(assign.value.keys, assign.value.values):
-            if lineno:
-                value[_get_ast_value(key)] = {
-                    "lineno": assign.lineno - 1,
-                    "value": _get_ast_value(val),
-                }
-            else:
-                value[_get_ast_value(key)] = _get_ast_value(val)
-    elif isinstance(assign.value, ast.List):
-        value = [_get_ast_value(val) for val in assign.value.elts]
-    elif isinstance(assign.value, ast.Set):
-        values = [_get_ast_value(val) for val in assign.value.elts]
-        value = set(values)
-    elif isinstance(assign.value, ast.Tuple):
-        values = [_get_ast_value(val) for val in assign.value.elts]
-        value = tuple(values)
-    else:
-        value = _get_ast_value(assign.value)
-
-    if lineno and not isinstance(assign.value, ast.Dict):
-        v = assign.value
-        offsets = slice(v.col_offset, v.end_col_offset)
-        lno = assign.lineno - 1
-        segment = src_lines[lno][offsets] if len(src_lines) > lno else None
-        result[name] = {"lineno": lno, "value": value, "segment": segment}
-    else:
-        result[name] = value
-
-    return result
+    return {name: _get_ast_value(assign.value, source, value_only=not lineno)}
 
 
 def _get_ast_name(target, only_self_params=False):
@@ -186,13 +174,45 @@ def _get_ast_name(target, only_self_params=False):
     return result
 
 
-def _get_ast_value(value):
-    if isinstance(value, ast.Num):
-        result = value.n
-    elif isinstance(value, ast.Str):
-        result = value.s
-    elif isinstance(value, ast.NameConstant):
-        result = value.value
+def get_source_segment(source, node):
+    if sys.version_info > (3, 8):
+        return ast.get_source_segment(source, node)
+
+    try:
+        import astunparse
+
+        return astunparse.unparse(node).rstrip()
+    except:
+        return None
+
+
+@dataclasses.dataclass
+class Node:
+    value: Any
+    lineno: Optional[int]
+    segment: Optional[str]
+
+
+def _get_ast_value(node, source=None, value_only: bool = False):
+    from ast import literal_eval
+
+    convert = partial(_get_ast_value, source=source, value_only=value_only)
+    if isinstance(node, ast.Tuple):
+        result = tuple(map(convert, node.elts))
+    elif isinstance(node, ast.Set):
+        result = set(map(convert, node.elts))
+    elif isinstance(node, ast.Dict):
+        result = dict(
+            (_get_ast_value(k, value_only=True), convert(v))
+            for k, v in zip(node.keys, node.values)
+        )
     else:
-        raise ValueError
+        result = literal_eval(node)
+        if value_only or not source:
+            return result
+
+        lno = node.lineno - 1
+        segment = get_source_segment(source, node)
+        return Node(result, lno, segment)
+
     return result
