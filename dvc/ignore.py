@@ -52,10 +52,10 @@ class DvcIgnorePatterns(DvcIgnore):
         ]
 
     @classmethod
-    def from_files(cls, ignore_file_path, fs):
+    def from_files(cls, ignore_file_path, fs, root):
         assert os.path.isabs(ignore_file_path)
         dirname = os.path.normpath(os.path.dirname(ignore_file_path))
-        ignore_file_rel_path = os.path.relpath(ignore_file_path, fs.fs_root)
+        ignore_file_rel_path = os.path.relpath(ignore_file_path, root)
         with fs.open(ignore_file_path, encoding="utf-8") as fobj:
             path_spec_lines = [
                 PatternInfo(
@@ -201,7 +201,7 @@ class DvcIgnoreFilter:
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
         if not matches and self.fs.exists(ignore_file_path):
             new_pattern = DvcIgnorePatterns.from_files(
-                ignore_file_path, self.fs
+                ignore_file_path, self.fs, self.root_dir,
             )
             if old_pattern:
                 trie[dirname] = DvcIgnorePatterns(

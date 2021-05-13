@@ -13,25 +13,21 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def __init__(self, root_dir, trie):
         super().__init__()
-        self._fs_root = root_dir
+        self._root = root_dir
         self.trie = trie
 
     @property
     def rev(self):
         return self.trie.rev
 
-    @property
-    def fs_root(self):
-        return self._fs_root
-
     def _get_key(self, path):
         if isinstance(path, str):
             if not os.path.isabs(path):
                 relparts = path.split(os.sep)
             else:
-                relparts = relpath(path, self.fs_root).split(os.sep)
+                relparts = relpath(path, self._root).split(os.sep)
         else:
-            relparts = path.relative_to(self.fs_root).parts
+            relparts = path.relative_to(self._root).parts
         if relparts == ["."]:
             return ()
         return tuple(relparts)
@@ -88,9 +84,9 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         key = self._get_key(top)
         for prefix, dirs, files in self.trie.walk(key, topdown=topdown):
             if prefix:
-                root = os.path.join(self.fs_root, os.sep.join(prefix))
+                root = os.path.join(self._root, os.sep.join(prefix))
             else:
-                root = self.fs_root
+                root = self._root
             yield root, dirs, files
 
     def isexec(self, path_info):
