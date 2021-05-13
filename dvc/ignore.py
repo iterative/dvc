@@ -52,16 +52,12 @@ class DvcIgnorePatterns(DvcIgnore):
         ]
 
     @classmethod
-    def from_files(cls, ignore_file_path, fs, root):
-        assert os.path.isabs(ignore_file_path)
-        dirname = os.path.normpath(os.path.dirname(ignore_file_path))
-        ignore_file_rel_path = os.path.relpath(ignore_file_path, root)
-        with fs.open(ignore_file_path, encoding="utf-8") as fobj:
+    def from_file(cls, path, fs, name):
+        assert os.path.isabs(path)
+        dirname = os.path.normpath(os.path.dirname(path))
+        with fs.open(path, encoding="utf-8") as fobj:
             path_spec_lines = [
-                PatternInfo(
-                    line,
-                    "{}:{}:{}".format(ignore_file_rel_path, line_no + 1, line),
-                )
+                PatternInfo(line, "{}:{}:{}".format(name, line_no + 1, line),)
                 for line_no, line in enumerate(
                     map(str.strip, fobj.readlines())
                 )
@@ -198,11 +194,10 @@ class DvcIgnoreFilter:
         old_pattern = trie.longest_prefix(dirname).value
         matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
 
-        ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if not matches and self.fs.exists(ignore_file_path):
-            new_pattern = DvcIgnorePatterns.from_files(
-                ignore_file_path, self.fs, self.root_dir,
-            )
+        path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
+        if not matches and self.fs.exists(path):
+            name = os.path.relpath(path, self.root_dir)
+            new_pattern = DvcIgnorePatterns.from_file(path, self.fs, name)
             if old_pattern:
                 trie[dirname] = DvcIgnorePatterns(
                     *merge_patterns(
