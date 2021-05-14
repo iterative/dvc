@@ -268,7 +268,7 @@ class Stage(params.StageParams):
         env: Env = {}
         if out.live:
             from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
-            from dvc.output import BaseOutput
+            from dvc.output import Output
             from dvc.schema import LIVE_PROPS
 
             env[DVCLIVE_PATH] = str(out.path_info)
@@ -276,10 +276,10 @@ class Stage(params.StageParams):
                 config = project(out.live, LIVE_PROPS)
 
                 env[DVCLIVE_SUMMARY] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
+                    int(config.get(Output.PARAM_LIVE_SUMMARY, True))
                 )
                 env[DVCLIVE_HTML] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_HTML, True))
+                    int(config.get(Output.PARAM_LIVE_HTML, True))
                 )
         elif out.checkpoint and checkpoint_func:
             from dvc.env import DVC_CHECKPOINT
@@ -453,7 +453,7 @@ class Stage(params.StageParams):
                     raise
 
     def save_outs(self, allow_missing=False):
-        from dvc.output.base import OutputDoesNotExistError
+        from dvc.output import OutputDoesNotExistError
 
         for out in self.outs:
             try:
@@ -484,7 +484,7 @@ class Stage(params.StageParams):
 
     @rwlocked(write=["outs"])
     def commit(self, allow_missing=False, filter_info=None):
-        from dvc.output.base import OutputDoesNotExistError
+        from dvc.output import OutputDoesNotExistError
 
         link_failures = []
         for out in self.filter_outs(filter_info):

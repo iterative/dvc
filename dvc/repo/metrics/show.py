@@ -7,7 +7,7 @@ from dvc.exceptions import (
     NoMetricsParsedError,
 )
 from dvc.fs.repo import RepoFileSystem
-from dvc.output import BaseOutput
+from dvc.output import Output
 from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
@@ -18,11 +18,11 @@ from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 logger = logging.getLogger(__name__)
 
 
-def _is_metric(out: BaseOutput) -> bool:
+def _is_metric(out: Output) -> bool:
     return bool(out.metric) or bool(out.live)
 
 
-def _to_path_infos(metrics: List[BaseOutput]) -> List[PathInfo]:
+def _to_path_infos(metrics: List[Output]) -> List[PathInfo]:
     result = []
     for out in metrics:
         if out.metric:

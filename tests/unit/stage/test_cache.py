@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.output import base
+import dvc.output as dvc_output
 
 
 def test_stage_cache(tmp_dir, dvc, mocker):
@@ -44,7 +44,7 @@ def test_stage_cache(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(base, "checkout")
+    checkout_spy = mocker.spy(dvc_output, "checkout")
     with dvc.lock:
         stage.run()
 
@@ -97,7 +97,7 @@ def test_stage_cache_params(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(base, "checkout")
+    checkout_spy = mocker.spy(dvc_output, "checkout")
     with dvc.lock:
         stage.run()
 
@@ -151,7 +151,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     assert os.path.isfile(cache_file)
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
-    checkout_spy = mocker.spy(base, "checkout")
+    checkout_spy = mocker.spy(dvc_output, "checkout")
     with dvc.lock:
         stage.run()
 

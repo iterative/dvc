@@ -10,7 +10,7 @@ from ._metadata import Metadata
 from .base import BaseFileSystem
 
 if typing.TYPE_CHECKING:
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return outs
 
     def _get_granular_hash(
-        self, path_info: PathInfo, out: "BaseOutput", remote=None
+        self, path_info: PathInfo, out: "Output", remote=None
     ):
         assert isinstance(path_info, PathInfo)
         # NOTE: use string paths here for performance reasons

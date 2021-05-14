@@ -14,7 +14,7 @@ from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
-    from dvc.output import BaseOutput
+    from dvc.output import Output
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
@@ -254,7 +254,7 @@ class Plots:
         write(path, plots, metrics, html_template_path)
 
 
-def _is_plot(out: "BaseOutput") -> bool:
+def _is_plot(out: "Output") -> bool:
     return bool(out.plot) or bool(out.live)
 
 
@@ -278,7 +278,7 @@ def _collect_plots(
     return result
 
 
-def _plot_props(out: "BaseOutput") -> Dict:
+def _plot_props(out: "Output") -> Dict:
     from dvc.schema import PLOT_PROPS
 
     if not (out.plot or out.live):

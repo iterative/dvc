@@ -19,8 +19,7 @@ from dvc.exceptions import (
     StagePathAsOutputError,
 )
 from dvc.main import main
-from dvc.output import BaseOutput
-from dvc.output.base import OutputIsStageFileError
+from dvc.output import Output, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
@@ -763,7 +762,7 @@ class TestRunPersist(TestDvc):
     def stage_should_contain_persist_flag(self, stage_file):
         stage_file_content = load_yaml(stage_file)
         self.assertEqual(
-            True, stage_file_content["outs"][0][BaseOutput.PARAM_PERSIST]
+            True, stage_file_content["outs"][0][Output.PARAM_PERSIST]
         )
 
     def should_append_upon_repro(self, file, stage_file):

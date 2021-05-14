@@ -2,7 +2,7 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
-from dvc.output import CHECKSUMS_SCHEMA, BaseOutput
+from dvc.output import CHECKSUMS_SCHEMA, Output
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
@@ -26,7 +26,7 @@ DATA_SCHEMA = {
     Required("path"): str,
     HashInfo.PARAM_SIZE: int,
     HashInfo.PARAM_NFILES: int,
-    BaseOutput.PARAM_ISEXEC: bool,
+    Output.PARAM_ISEXEC: bool,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): Any(str, list),
@@ -45,28 +45,28 @@ LOCKFILE_V2_SCHEMA = {
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {
-        BaseOutput.PARAM_CACHE: bool,
-        BaseOutput.PARAM_PERSIST: bool,
-        BaseOutput.PARAM_CHECKPOINT: bool,
-        BaseOutput.PARAM_DESC: str,
+        Output.PARAM_CACHE: bool,
+        Output.PARAM_PERSIST: bool,
+        Output.PARAM_CHECKPOINT: bool,
+        Output.PARAM_DESC: str,
     }
 }
 
 PLOT_PROPS = {
-    BaseOutput.PARAM_PLOT_TEMPLATE: str,
-    BaseOutput.PARAM_PLOT_X: str,
-    BaseOutput.PARAM_PLOT_Y: str,
-    BaseOutput.PARAM_PLOT_X_LABEL: str,
-    BaseOutput.PARAM_PLOT_Y_LABEL: str,
-    BaseOutput.PARAM_PLOT_TITLE: str,
-    BaseOutput.PARAM_PLOT_HEADER: bool,
+    Output.PARAM_PLOT_TEMPLATE: str,
+    Output.PARAM_PLOT_X: str,
+    Output.PARAM_PLOT_Y: str,
+    Output.PARAM_PLOT_X_LABEL: str,
+    Output.PARAM_PLOT_Y_LABEL: str,
+    Output.PARAM_PLOT_TITLE: str,
+    Output.PARAM_PLOT_HEADER: bool,
 }
 PLOT_PROPS_SCHEMA = {**OUT_PSTAGE_DETAILED_SCHEMA[str], **PLOT_PROPS}
 PLOT_PSTAGE_SCHEMA = {str: Any(PLOT_PROPS_SCHEMA, [PLOT_PROPS_SCHEMA])}
 
 LIVE_PROPS = {
-    BaseOutput.PARAM_LIVE_SUMMARY: bool,
-    BaseOutput.PARAM_LIVE_HTML: bool,
+    Output.PARAM_LIVE_SUMMARY: bool,
+    Output.PARAM_LIVE_HTML: bool,
 }
 LIVE_PROPS_SCHEMA = {**PLOT_PROPS_SCHEMA, **LIVE_PROPS}
 LIVE_PSTAGE_SCHEMA = {str: LIVE_PROPS_SCHEMA}

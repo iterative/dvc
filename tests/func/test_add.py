@@ -24,7 +24,7 @@ from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
-from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
+from dvc.output import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageExternalOutputsError,
