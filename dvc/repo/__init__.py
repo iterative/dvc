@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional
@@ -372,9 +373,11 @@ class Repo:
         """
         from dvc.objects.db import NamedCache
 
-        cache = NamedCache()
+        used_objs = set()
+        used_external = defaultdict(set)
+        run_cache = NamedCache()
 
-        for branch in self.brancher(
+        for _ in self.brancher(
             revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
@@ -390,23 +393,24 @@ class Repo:
                 for target in targets
             )
 
-            suffix = f"({branch})" if branch else ""
             for stage, filter_info in pairs:
-                used_cache = stage.get_used_cache(
+                objs, external = stage.get_used_cache(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
                 )
-                cache.update(used_cache, suffix=suffix)
+                used_objs.update(objs)
+                for repo_pair, paths in external:
+                    used_external[repo_pair].update(paths)
 
         if used_run_cache:
             used_cache = self.stage_cache.get_used_cache(
                 used_run_cache, remote=remote, force=force, jobs=jobs
             )
-            cache.update(used_cache)
+            run_cache.update(used_cache)
 
-        return cache
+        return objs, external, run_cache
 
     @cached_property
     def outs_trie(self):

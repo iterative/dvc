@@ -78,7 +78,7 @@ def _cloud_status(
     """
     import dvc.remote.base as cloud
 
-    used = self.used_cache(
+    used_objs, _, _ = self.used_cache(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -92,7 +92,7 @@ def _cloud_status(
 
     ret = {}
     status_info = self.cloud.status(
-        used, jobs, remote=remote, log_missing=False
+        used_objs, jobs, remote=remote, log_missing=False
     )
     for info in status_info.values():
         name = info["name"]
