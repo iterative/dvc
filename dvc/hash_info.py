@@ -21,6 +21,9 @@ class HashInfo:
     def __str__(self):
         return f"{self.name}: {self.value}"
 
+    def __hash__(self):
+        return hash((self.name, self.value))
+
     @classmethod
     def from_dict(cls, d):
         _d = d.copy() if d else {}

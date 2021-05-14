@@ -37,6 +37,11 @@ class HashFile:
             and self.hash_info == other.hash_info
         )
 
+    def __hash__(self):
+        return hash(
+            (self.hash_info, self.path_info, self.fs.scheme, self.fs.path_info)
+        )
+
     def check(self, odb, check_hash=True):
         from .stage import get_file_hash
 
