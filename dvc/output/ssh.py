@@ -1,7 +1,7 @@
 from dvc.output.base import BaseOutput
 
-from ..tree.ssh import SSHTree
+from ..fs.ssh import SSHFileSystem
 
 
 class SSHOutput(BaseOutput):
-    TREE_CLS = SSHTree
+    FS_CLS = SSHFileSystem

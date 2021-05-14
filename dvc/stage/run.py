@@ -3,21 +3,16 @@ import os
 import signal
 import subprocess
 import threading
-from contextlib import contextmanager
 
+from funcy import first
+
+from dvc.stage.monitor import Monitor
 from dvc.utils import fix_env
 
-from .decorators import relock_repo, unlocked_repo
+from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
 
 logger = logging.getLogger(__name__)
-
-
-CHECKPOINT_SIGNAL_FILE = "DVC_CHECKPOINT"
-
-
-class CheckpointKilledError(StageCmdFailedError):
-    pass
 
 
 def _make_cmd(executable, cmd):
@@ -89,25 +84,45 @@ def _run(stage, executable, cmd, checkpoint_func, **kwargs):
 
     exec_cmd = _make_cmd(executable, cmd)
     old_handler = None
-    p = None
 
     try:
         p = subprocess.Popen(exec_cmd, **kwargs)
         if main_thread:
             old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        killed = threading.Event()
-        with checkpoint_monitor(stage, checkpoint_func, p, killed):
+        tasks = _get_monitor_tasks(stage, checkpoint_func, p)
+
+        if tasks:
+            with Monitor(tasks):
+                p.communicate()
+        else:
             p.communicate()
+
+        if p.returncode != 0:
+            for t in tasks:
+                if t.killed.is_set():
+                    raise t.error_cls(cmd, p.returncode)
+            raise StageCmdFailedError(cmd, p.returncode)
     finally:
         if old_handler:
             signal.signal(signal.SIGINT, old_handler)
 
-    retcode = None if not p else p.returncode
-    if retcode != 0:
-        if killed.is_set():
-            raise CheckpointKilledError(cmd, retcode)
-        raise StageCmdFailedError(cmd, retcode)
+
+def _get_monitor_tasks(stage, checkpoint_func, proc):
+
+    result = []
+    if checkpoint_func:
+        from .monitor import CheckpointTask
+
+        result.append(CheckpointTask(stage, checkpoint_func, proc))
+
+    live = first((o for o in stage.outs if (o.live and o.live["html"])))
+    if live:
+        from .monitor import LiveTask
+
+        result.append(LiveTask(stage, live, proc))
+
+    return result
 
 
 def cmd_run(stage, dry=False, checkpoint_func=None, run_env=None):
@@ -143,69 +158,3 @@ def run_stage(
 
     run = cmd_run if dry else unlocked_repo(cmd_run)
     run(stage, dry=dry, checkpoint_func=checkpoint_func, run_env=run_env)
-
-
-@contextmanager
-def checkpoint_monitor(stage, callback_func, proc, killed):
-    if not callback_func:
-        yield None
-        return
-
-    logger.debug(
-        "Monitoring checkpoint stage '%s' with cmd process '%d'",
-        stage,
-        proc.pid,
-    )
-    done = threading.Event()
-    monitor_thread = threading.Thread(
-        target=_checkpoint_run,
-        args=(stage, callback_func, done, proc, killed),
-    )
-
-    try:
-        monitor_thread.start()
-        yield monitor_thread
-    finally:
-        done.set()
-        monitor_thread.join()
-
-
-def _checkpoint_run(stage, callback_func, done, proc, killed):
-    """Run callback_func whenever checkpoint signal file is present."""
-    signal_path = os.path.join(stage.repo.tmp_dir, CHECKPOINT_SIGNAL_FILE)
-    while True:
-        if os.path.exists(signal_path):
-            try:
-                _run_callback(stage, callback_func)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    "Error generating checkpoint, %s will be aborted", stage
-                )
-                _kill(proc)
-                killed.set()
-            finally:
-                logger.debug("Remove checkpoint signal file")
-                os.remove(signal_path)
-        if done.wait(1):
-            return
-
-
-def _kill(proc):
-    if os.name == "nt":
-        return _kill_nt(proc)
-    proc.terminate()
-    proc.wait()
-
-
-def _kill_nt(proc):
-    # windows stages are spawned with shell=True, proc is the shell process and
-    # not the actual stage process - we have to kill the entire tree
-    subprocess.call(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
-
-
-@relock_repo
-def _run_callback(stage, callback_func):
-    stage.save(allow_missing=True)
-    stage.commit(allow_missing=True)
-    logger.debug("Running checkpoint callback for stage '%s'", stage)
-    callback_func()

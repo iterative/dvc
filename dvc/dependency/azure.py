@@ -1,8 +1,8 @@
 from dvc.dependency.base import BaseDependency
 from dvc.output.base import BaseOutput
 
-from ..tree.azure import AzureTree
+from ..fs.azure import AzureFileSystem
 
 
 class AzureDependency(BaseDependency, BaseOutput):
-    TREE_CLS = AzureTree
+    FS_CLS = AzureFileSystem

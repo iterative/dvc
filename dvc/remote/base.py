@@ -61,25 +61,25 @@ def index_locked(f):
 class Remote:
     """Cloud remote class.
 
-    Provides methods for indexing and garbage collecting trees which contain
+    Provides methods for indexing and garbage collecting fss which contain
     DVC remotes.
     """
 
     INDEX_CLS = RemoteIndex
 
-    def __init__(self, tree):
-        from dvc.cache import get_cloud_cache
+    def __init__(self, fs):
+        from dvc.objects.db import get_odb
 
-        self.tree = tree
-        self.repo = tree.repo
-        self.cache = get_cloud_cache(self.tree)
+        self.fs = fs
+        self.repo = fs.repo
+        self.odb = get_odb(self.fs)
 
-        config = tree.config
+        config = fs.config
         url = config.get("url")
         if url:
             index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
             self.index = self.INDEX_CLS(
-                self.repo, index_name, dir_suffix=self.tree.CHECKSUM_DIR_SUFFIX
+                self.repo, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
             )
         else:
             self.index = RemoteIndexNoop()
@@ -87,12 +87,12 @@ class Remote:
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
-            path_info=self.tree.path_info or "No path",
+            path_info=self.fs.path_info or "No path",
         )
 
     @index_locked
     def gc(self, *args, **kwargs):
-        removed = self.cache.gc(*args, **kwargs)
+        removed = self.odb.gc(*args, **kwargs)
 
         if removed:
             self.index.clear()
@@ -129,7 +129,7 @@ class Remote:
         if not hashes:
             return indexed_hashes
 
-        return indexed_hashes + self.cache.hashes_exist(list(hashes), **kwargs)
+        return indexed_hashes + self.odb.hashes_exist(list(hashes), **kwargs)
 
     def _status(
         self,
@@ -147,8 +147,8 @@ class Remote:
         {dir_hash: set(file_hash, ...)} which can be used to map
         a .dir file to its file contents.
         """
-        logger.debug(f"Preparing to collect status from {self.tree.path_info}")
-        md5s = set(named_cache.scheme_keys(cache.tree.scheme))
+        logger.debug(f"Preparing to collect status from {self.fs.path_info}")
+        md5s = set(named_cache.scheme_keys(cache.fs.scheme))
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
@@ -164,7 +164,7 @@ class Remote:
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            dir_md5s = set(named_cache.dir_keys(cache.tree.scheme))
+            dir_md5s = set(named_cache.dir_keys(cache.fs.scheme))
             if dir_md5s:
                 remote_exists.update(
                     self._indexed_dir_hashes(cache, named_cache, dir_md5s)
@@ -173,7 +173,7 @@ class Remote:
             if md5s:
                 remote_exists.update(
                     self.hashes_exist(
-                        md5s, jobs=jobs, name=str(self.tree.path_info)
+                        md5s, jobs=jobs, name=str(self.fs.path_info)
                     )
                 )
         return self._make_status(
@@ -200,7 +200,7 @@ class Remote:
         dir_status = {}
         file_status = {}
         dir_contents = {}
-        for hash_, item in named_cache[cache.tree.scheme].items():
+        for hash_, item in named_cache[cache.fs.scheme].items():
             if item.children:
                 dir_status[hash_] = make_names(hash_, item.names)
                 dir_contents[hash_] = set()
@@ -227,7 +227,7 @@ class Remote:
         indexed_dir_exists = set()
         if indexed_dirs:
             indexed_dir_exists.update(
-                self.cache.list_hashes_exists(indexed_dirs)
+                self.odb.list_hashes_exists(indexed_dirs)
             )
             missing_dirs = indexed_dirs.difference(indexed_dir_exists)
             if missing_dirs:
@@ -239,13 +239,13 @@ class Remote:
 
         # Check if non-indexed (new) dir hashes exist on remote
         dir_exists = dir_md5s.intersection(indexed_dir_exists)
-        dir_exists.update(self.cache.list_hashes_exists(dir_md5s - dir_exists))
+        dir_exists.update(self.odb.list_hashes_exists(dir_md5s - dir_exists))
 
         # If .dir hash exists on the remote, assume directory contents
         # still exists on the remote
         for dir_hash in dir_exists:
             file_hashes = list(
-                named_cache.child_keys(cache.tree.scheme, dir_hash)
+                named_cache.child_keys(cache.fs.scheme, dir_hash)
             )
             if dir_hash not in self.index:
                 logger.debug(
@@ -278,7 +278,7 @@ class Remote:
         ):
             if info["status"] == status:
                 cache.append(cache_obj.hash_to_path_info(md5))
-                path_infos.append(self.cache.hash_to_path_info(md5))
+                path_infos.append(self.odb.hash_to_path_info(md5))
                 names.append(info["name"])
                 hashes.append(md5)
             elif info["status"] == STATUS_MISSING:
@@ -304,21 +304,21 @@ class Remote:
         logger.debug(
             "Preparing to {} '{}'".format(
                 "download data from" if download else "upload data to",
-                self.tree.path_info,
+                self.fs.path_info,
             )
         )
 
         if download:
-            func = _log_exceptions(self.tree.download, "download")
+            func = _log_exceptions(self.fs.download_file, "download")
             status = STATUS_DELETED
             desc = "Downloading"
         else:
-            func = _log_exceptions(self.tree.upload, "upload")
+            func = _log_exceptions(self.fs.upload, "upload")
             status = STATUS_NEW
             desc = "Uploading"
 
         if jobs is None:
-            jobs = self.tree.JOBS
+            jobs = self.fs.jobs
 
         dir_status, file_status, dir_contents = self._status(
             cache,
@@ -471,16 +471,13 @@ class Remote:
             download=False,
         )
 
-        if self.tree.scheme == "local":
-            with self.tree.state:
-                for checksum in named_cache.scheme_keys("local"):
-                    cache_file = self.cache.hash_to_path_info(checksum)
-                    if self.tree.exists(cache_file):
-                        hash_info = HashInfo(
-                            self.tree.PARAM_CHECKSUM, checksum
-                        )
-                        self.tree.state.save(cache_file, hash_info)
-                        self.cache.protect(cache_file)
+        if self.fs.scheme == "local":
+            for checksum in named_cache.scheme_keys("local"):
+                cache_file = self.odb.hash_to_path_info(checksum)
+                if self.fs.exists(cache_file):
+                    hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
+                    self.fs.repo.state.save(cache_file, self.fs, hash_info)
+                    self.odb.protect(cache_file)
 
         return ret
 
@@ -494,33 +491,19 @@ class Remote:
             download=True,
         )
 
-        if not self.cache.verify:
-            with cache.tree.state:
-                for checksum in named_cache.scheme_keys("local"):
-                    cache_file = cache.hash_to_path_info(checksum)
-                    if cache.tree.exists(cache_file):
-                        # We can safely save here, as existing corrupted files
-                        # will be removed upon status, while files corrupted
-                        # during download will not be moved from tmp_file
-                        # (see `BaseTree.download()`)
-                        hash_info = HashInfo(
-                            cache.tree.PARAM_CHECKSUM, checksum
-                        )
-                        cache.tree.state.save(cache_file, hash_info)
-                        cache.protect(cache_file)
+        if not self.odb.verify:
+            for checksum in named_cache.scheme_keys("local"):
+                cache_file = cache.hash_to_path_info(checksum)
+                if cache.fs.exists(cache_file):
+                    # We can safely save here, as existing corrupted files
+                    # will be removed upon status, while files corrupted
+                    # during download will not be moved from tmp_file
+                    # (see `BaseFileSystem.download()`)
+                    hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
+                    cache.fs.repo.state.save(cache_file, cache.fs, hash_info)
+                    cache.protect(cache_file)
 
         return ret
-
-    def transfer(self, from_tree, from_info, jobs=None, no_progress_bar=False):
-        from dvc.objects import transfer
-
-        return transfer(
-            self.cache,
-            from_tree,
-            from_info,
-            jobs=jobs,
-            no_progress_bar=no_progress_bar,
-        )
 
     @staticmethod
     def _log_missing_caches(hash_info_dict):

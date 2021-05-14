@@ -1,8 +1,8 @@
 from dvc.dependency.base import BaseDependency
 from dvc.output.base import BaseOutput
 
-from ..tree.http import HTTPTree
+from ..fs.http import HTTPFileSystem
 
 
 class HTTPDependency(BaseDependency, BaseOutput):
-    TREE_CLS = HTTPTree
+    FS_CLS = HTTPFileSystem

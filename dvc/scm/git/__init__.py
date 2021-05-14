@@ -2,11 +2,12 @@
 
 import logging
 import os
+import re
 import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Dict, Iterable, List, Optional, Set, Type
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Type
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -75,6 +76,8 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
     LOCAL_BRANCH_PREFIX = "refs/heads/"
+    RE_HEXSHA = re.compile(r"^[0-9A-Fa-f]{4,40}$")
+    BAD_REF_CHARS_RE = re.compile("[\177\\s~^:?*\\[]")
 
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
@@ -119,12 +122,12 @@ class Git(Base):
 
     @classmethod
     def is_sha(cls, rev):
-        for _, backend in GitBackends.DEFAULT.items():
-            try:
-                return backend.is_sha(rev)
-            except NotImplementedError:
-                pass
-        raise NoGitBackendError("is_sha")
+        return rev and cls.RE_HEXSHA.search(rev)
+
+    @classmethod
+    def split_ref_pattern(cls, ref: str) -> Tuple[str, str]:
+        name = cls.BAD_REF_CHARS_RE.split(ref, maxsplit=1)[0]
+        return name, ref[len(name) :]
 
     @staticmethod
     def _get_git_dir(root_dir):
@@ -148,7 +151,9 @@ class Git(Base):
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
         if not path_isin(os.path.realpath(gitignore), self.root_dir):
-            raise FileNotInRepoError(path)
+            raise FileNotInRepoError(
+                f"'{path}' is outside of git repository '{self.root_dir}'"
+            )
 
         return entry, gitignore
 
@@ -340,15 +345,15 @@ class Git(Base):
                 pass
         raise NoGitBackendError(name)
 
-    def get_tree(self, rev: str, **kwargs):
-        from dvc.tree.git import GitTree
+    def get_fs(self, rev: str, **kwargs):
+        from dvc.fs.git import GitFileSystem
 
         from .objects import GitTrie
 
         resolved = self.resolve_rev(rev)
-        tree_obj = self._backend_func("get_tree_obj", rev=resolved)
+        tree_obj = self.pygit2.get_tree_obj(rev=resolved)
         trie = GitTrie(tree_obj, resolved)
-        return GitTree(self.root_dir, trie, **kwargs)
+        return GitFileSystem(self.root_dir, trie, **kwargs)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")
@@ -368,7 +373,6 @@ class Git(Base):
     get_rev = partialmethod(_backend_func, "get_rev")
     _resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")
-    branch_revs = partialmethod(_backend_func, "branch_revs")
 
     set_ref = partialmethod(_backend_func, "set_ref")
     get_ref = partialmethod(_backend_func, "get_ref")
@@ -381,7 +385,7 @@ class Git(Base):
     _stash_iter = partialmethod(_backend_func, "_stash_iter")
     _stash_push = partialmethod(_backend_func, "_stash_push")
     _stash_apply = partialmethod(_backend_func, "_stash_apply")
-    reflog_delete = partialmethod(_backend_func, "reflog_delete")
+    _stash_drop = partialmethod(_backend_func, "_stash_drop")
     describe = partialmethod(_backend_func, "describe")
     diff = partialmethod(_backend_func, "diff")
     reset = partialmethod(_backend_func, "reset")
@@ -405,8 +409,24 @@ class Git(Base):
                     raise RevError(f"ambiguous Git revision '{rev}'")
             raise
 
+    def branch_revs(
+        self, branch: str, end_rev: Optional[str] = None
+    ) -> Iterable[str]:
+        """Iterate over revisions in a given branch (from newest to oldest).
+
+        If end_rev is set, iterator will stop when the specified revision is
+        reached.
+        """
+        commit = self.resolve_commit(branch)
+        while commit is not None:
+            yield commit.hexsha
+            parent = first(commit.parents)
+            if parent is None or parent == end_rev:
+                return
+            commit = self.resolve_commit(parent)
+
     @contextmanager
-    def detach_head(self, rev: Optional[str] = None):
+    def detach_head(self, rev: Optional[str] = None, force: bool = False):
         """Context manager for performing detached HEAD SCM operations.
 
         Detaches and restores HEAD similar to interactive git rebase.
@@ -420,7 +440,7 @@ class Git(Base):
             rev = "HEAD"
         orig_head = self.get_ref("HEAD", follow=False)
         logger.debug("Detaching HEAD at '%s'", rev)
-        self.checkout(rev, detach=True)
+        self.checkout(rev, detach=True, force=force)
         try:
             yield self.get_ref("HEAD")
         finally:

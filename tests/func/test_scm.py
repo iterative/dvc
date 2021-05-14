@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from flaky.flaky_decorator import flaky
 from git import Repo
 
 from dvc.scm import SCM, Git, NoSCM
@@ -242,6 +243,9 @@ def test_git_stash_drop(tmp_dir, scm, ref):
     assert len(stash) == 1
 
 
+# libgit2 stash_save() is flaky on linux when run inside pytest, see:
+# https://github.com/iterative/dvc/pull/5286#issuecomment-792574294
+@flaky(max_runs=5, min_passes=1)
 @pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
 def test_git_stash_pop(tmp_dir, scm, ref):
     from dvc.scm.git import Stash
@@ -279,6 +283,7 @@ def test_git_stash_clear(tmp_dir, scm, ref):
 
     parts = list(stash.ref.split("/"))
     assert not os.path.exists(os.path.join(os.fspath(tmp_dir), ".git", *parts))
-    assert not os.path.exists(
-        os.path.join(os.fspath(tmp_dir), ".git", "logs", *parts)
-    )
+    # NOTE: some backends will completely remove reflog file on clear, some
+    # will only truncate it, either case means an empty stash
+    log_path = os.path.join(os.fspath(tmp_dir), ".git", "logs", *parts)
+    assert not os.path.exists(log_path) or not open(log_path).read()

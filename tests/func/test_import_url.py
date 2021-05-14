@@ -5,10 +5,10 @@ from uuid import uuid4
 
 import pytest
 
-from dvc.cache import Cache
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
+from dvc.objects.db import ODBManager
 from dvc.stage import Stage
 from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
@@ -159,11 +159,6 @@ def test_import_url(tmp_dir, dvc, workspace):
             "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
         ),
         (
-            pytest.lazy_fixture("gs"),
-            "dc24e1271084ee317ac3c2656fb8812b",
-            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-        ),
-        (
             pytest.lazy_fixture("hdfs"),
             "ec0943f83357f702033c98e70b853c8c",
             "e6dcd267966dc628d732874f94ef4280.dir",
@@ -185,7 +180,7 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
     # remove external cache to make sure that we don't need it to import dirs
     with dvc.config.edit() as conf:
         del conf["cache"]
-    dvc.cache = Cache(dvc)
+    dvc.odb = ODBManager(dvc)
 
     assert not (tmp_dir / "dir").exists()  # sanity check
     dvc.imp_url("remote://workspace/dir")
@@ -340,6 +335,60 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
         )
 
 
+def test_import_url_to_remote_absolute(
+    tmp_dir, make_tmp_dir, dvc, local_remote
+):
+    tmp_abs_dir = make_tmp_dir("abs")
+    tmp_foo = tmp_abs_dir / "foo"
+    tmp_foo.write_text("foo")
+
+    stage = dvc.imp_url(str(tmp_foo), to_remote=True)
+
+    foo = tmp_dir / "foo"
+    assert stage.deps[0].fspath == str(tmp_foo)
+    assert stage.outs[0].fspath == os.fspath(foo)
+    assert foo.with_suffix(".dvc").exists()
+
+
 def test_import_url_to_remote_invalid_combinations(dvc):
     with pytest.raises(InvalidArgumentError, match="--no-exec"):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)
+
+
+empty_xfail = pytest.mark.xfail(
+    reason="https://github.com/iterative/dvc/issues/5521"
+)
+
+
+@pytest.mark.parametrize(
+    "workspace",
+    [
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.param(pytest.lazy_fixture("gs"), marks=empty_xfail),
+        pytest.param(pytest.lazy_fixture("azure"), marks=empty_xfail),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="disabled on windows"
+            ),
+        ),
+    ],
+    indirect=True,
+)
+def test_import_url_empty_directory(tmp_dir, dvc, workspace):
+    # prefix based storage services (e.g s3) doesn't have the real concept
+    # of directories. So instead we create an empty file that ends with a
+    # trailing slash in order to actually support this operation
+    if workspace.IS_OBJECT_STORAGE:
+        contents = ""
+    else:
+        contents = {}
+
+    workspace.gen({"empty_dir/": contents})
+
+    dvc.imp_url("remote://workspace/empty_dir/")
+
+    empty_dir = tmp_dir / "empty_dir"
+    assert empty_dir.is_dir()
+    assert tuple(empty_dir.iterdir()) == ()

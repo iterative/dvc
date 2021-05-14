@@ -1,5 +1,6 @@
 import importlib.util
 import os
+from pathlib import Path
 
 from setuptools import find_packages, setup
 from setuptools.command.build_py import build_py as _build_py
@@ -50,8 +51,8 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
-    "dulwich>=0.20.18",
-    "pygit2>=1.4.0",
+    "dulwich>=0.20.21",
+    "pygit2>=1.5.0",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
@@ -82,23 +83,24 @@ install_requires = [
     "pygtrie==2.3.2",
     "dpath>=2.0.1,<3",
     "shtab>=1.3.4,<2",
-    "rich>=9.0.0",
+    "rich>=10.0.0",
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
-    "fsspec>=0.8.5",
+    "fsspec==0.9.0",
+    "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["google-cloud-storage==1.19.0"]
-gdrive = ["pydrive2>=1.6.3", "six >= 1.13.0"]
+gs = ["gcsfs==0.8.0"]
+gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
 s3 = ["boto3>=1.9.201"]
-azure = ["azure-storage-blob>=12.0", "knack"]
+azure = ["adlfs==0.7.1", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
-oss = ["oss2==2.6.1", "pycryptodome<3.9.9"]
+oss = ["oss2==2.6.1", "pycryptodome>=3.10"]
 ssh = ["paramiko[invoke]>=2.7.0"]
 
 # Remove the env marker if/when pyarrow is available for Python3.9
@@ -112,47 +114,9 @@ webdav = ["webdavclient3>=3.14.5"]
 ssh_gssapi = ["paramiko[invoke,gssapi]>=2.7.0"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
-# Extra dependecies to run tests
-tests_requirements = [
-    "wheel>=0.31.1",
-    # Test requirements:
-    "pytest>=6.0.1,<6.2.2",
-    "pytest-cov",
-    "pytest-docker>=0.7.2",
-    "pytest-timeout>=1.3.3",
-    "pytest-cov>=2.6.1",
-    "pytest-xdist>=1.26.1",
-    "pytest-mock==1.11.2",
-    "pytest-lazy-fixture",
-    "pytest-tap",
-    "flaky>=3.5.3",
-    "mock>=3.0.0",
-    "xmltodict>=0.11.0",
-    "google-compute-engine==2.8.13",
-    "Pygments",  # required by collective.checkdocs,
-    "collective.checkdocs",
-    "psutil",
-    "pydocstyle<4.0",
-    "jaraco.windows==3.9.2",
-    "mock-ssh-server>=0.8.2",
-    "moto==1.3.16.dev122",
-    # moto's indirect dependency that is causing problems with flufl.lock's
-    # dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
-    "aws-sam-translator<1.29.0",
-    # for moto's indirect dependency.
-    # See https://github.com/iterative/dvc/pull/4879
-    "urllib3<1.26.0",
-    "rangehttpserver==1.2.0",
-    "beautifulsoup4==4.4.0",
-    "pylint==2.5.3",
-    "pylint-pytest>=0.3.0",
-    "pylint-plugin-utils",
-    "wget",
-    "filelock",
-    "mypy",
-    "wsgidav",
-    "crc32c",
-]
+tests_requirements = (
+    Path("test_requirements.txt").read_text().strip().splitlines()
+)
 
 setup(
     name="dvc",
@@ -187,6 +151,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,

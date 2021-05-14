@@ -34,18 +34,18 @@ def _collect_paths(
     recursive: bool = False,
     rev: str = None,
 ):
-    from dvc.tree.repo import RepoTree
+    from dvc.fs.repo import RepoFileSystem
 
     path_infos = [PathInfo(os.path.abspath(target)) for target in targets]
-    tree = RepoTree(repo)
+    fs = RepoFileSystem(repo)
 
     target_infos = []
     for path_info in path_infos:
 
-        if recursive and tree.isdir(path_info):
-            target_infos.extend(tree.walk_files(path_info))
+        if recursive and fs.isdir(path_info):
+            target_infos.extend(fs.walk_files(path_info))
 
-        if not tree.exists(path_info):
+        if not fs.exists(path_info):
             if not recursive:
                 if rev == "workspace" or rev == "":
                     logger.warning(

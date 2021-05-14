@@ -42,8 +42,8 @@ def test_walk_with_submodules(tmp_dir, scm, git_dir):
 
     files = []
     dirs = []
-    tree = scm.get_tree("HEAD")
-    for _, dnames, fnames in tree.walk("."):
+    fs = scm.get_fs("HEAD")
+    for _, dnames, fnames in fs.walk("."):
         dirs.extend(dnames)
         files.extend(fnames)
 
@@ -59,20 +59,20 @@ def test_walk_onerror(tmp_dir, scm):
     tmp_dir.scm_gen(
         {"foo": "foo"}, commit="init",
     )
-    tree = scm.get_tree("HEAD")
+    fs = scm.get_fs("HEAD")
 
     # path does not exist
-    for _ in tree.walk("dir"):
+    for _ in fs.walk("dir"):
         pass
     with pytest.raises(OSError):
-        for _ in tree.walk("dir", onerror=onerror):
+        for _ in fs.walk("dir", onerror=onerror):
             pass
 
     # path is not a directory
-    for _ in tree.walk("foo"):
+    for _ in fs.walk("foo"):
         pass
     with pytest.raises(OSError):
-        for _ in tree.walk("foo", onerror=onerror):
+        for _ in fs.walk("foo", onerror=onerror):
             pass
 
 
@@ -162,6 +162,25 @@ def test_set_ref(tmp_dir, git):
     assert (
         "ref: refs/heads/master"
         == (tmp_dir / ".git" / "refs" / "foo" / "baz").read_text().strip()
+    )
+
+
+def test_set_ref_with_message(tmp_dir, git):
+    tmp_dir.scm_gen({"file": "0"}, commit="init")
+    init_rev = tmp_dir.scm.get_rev()
+    tmp_dir.scm_gen({"file": "1"}, commit="commit")
+    commit_rev = tmp_dir.scm.get_rev()
+
+    git.set_ref("refs/foo/bar", init_rev, message="init message")
+    assert (
+        "init message"
+        in (tmp_dir / ".git" / "logs" / "refs" / "foo" / "bar").read_text()
+    )
+
+    git.set_ref("refs/foo/bar", commit_rev, message="modify message")
+    assert (
+        "modify message"
+        in (tmp_dir / ".git" / "logs" / "refs" / "foo" / "bar").read_text()
     )
 
 
@@ -513,3 +532,30 @@ def test_remind_to_track(scm, caplog):
     scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
     scm.remind_to_track()
     assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text
+
+
+def test_add(tmp_dir, scm, git):
+    if git.test_backend == "pygit2":
+        pytest.skip()
+
+    tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
+    git.add(["foo", "dir"])
+    staged, unstaged, untracked = scm.status()
+    assert set(staged["add"]) == {"foo", "dir/baz"}
+    assert len(unstaged) == 0
+    assert len(untracked) == 1
+
+    scm.commit("commit")
+    tmp_dir.gen({"foo": "bar", "dir": {"baz": "bar"}})
+    git.add([], update=True)
+    staged, unstaged, _ = scm.status()
+    assert set(staged["modify"]) == {"foo", "dir/baz"}
+    assert len(unstaged) == 0
+    assert len(untracked) == 1
+
+    scm.reset()
+    git.add(["dir"], update=True)
+    staged, unstaged, _ = scm.status()
+    assert set(staged["modify"]) == {"dir/baz"}
+    assert len(unstaged) == 1
+    assert len(untracked) == 1

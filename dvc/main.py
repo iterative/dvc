@@ -45,6 +45,11 @@ def main(argv=None):  # noqa: C901
 
         logger.trace(args)
 
+        if not args.quiet:
+            from dvc.ui import ui
+
+            ui.enable()
+
         with debugtools(args):
             cmd = args.func(args)
             ret = cmd.run()
@@ -96,7 +101,7 @@ def main(argv=None):  # noqa: C901
     finally:
         logger.setLevel(outerLogLevel)
 
-        from dvc.tree.pool import close_pools
+        from dvc.fs.pool import close_pools
 
         # Closing pools by-hand to prevent weird messages when closing SSH
         # connections. See https://github.com/iterative/dvc/issues/3248 for

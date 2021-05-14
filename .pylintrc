@@ -15,10 +15,13 @@ ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook="import sys; \
-           from pathlib import Path; \
-           from pylint.config import find_pylintrc; \
-           sys.path.append(Path(find_pylintrc()).parent / 'tests');"
+init-hook="import sys;
+           from pathlib import Path;
+           from pylint.config import find_pylintrc;
+
+           tests_folder = Path(find_pylintrc()).parent / 'tests'
+           sys.path.append(str(tests_folder));
+           "
 
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
@@ -178,7 +181,10 @@ disable=format,
         # we use it to speedup/optimize
         import-outside-toplevel,
         fixme,
-
+        # we use cause of the exception for error message output
+        # so some of the times we don't use `raise from` to not show the cause
+        # of the error
+        raise-missing-from,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -293,7 +299,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local,Dvcfile
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis. It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=
+ignored-modules=azure
 
 # Show a hint with possible names when a member name was not found. The aspect
 # of finding the hint is based on edit distance.

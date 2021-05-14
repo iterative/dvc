@@ -15,6 +15,9 @@ TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 
 
 class S3(Base, CloudURLInfo):
+
+    IS_OBJECT_STORAGE = True
+
     @staticmethod
     def should_test():
         do_test = env2bool("DVC_TEST_AWS", undefined=None)

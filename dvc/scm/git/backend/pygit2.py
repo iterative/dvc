@@ -1,13 +1,17 @@
 import locale
 import logging
 import os
+import stat
+from contextlib import contextmanager
 from io import BytesIO, StringIO
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple
+from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
+
+from funcy import cached_property
 
 from dvc.scm.base import MergeConflictError, RevError, SCMError
 from dvc.utils import relpath
 
-from ..objects import GitObject
+from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
@@ -31,6 +35,8 @@ class Pygit2Object(GitObject):
 
     @property
     def mode(self):
+        if not self.obj.filemode and self.obj.type_str == "tree":
+            return stat.S_IFDIR
         return self.obj.filemode
 
     def scandir(self) -> Iterable["Pygit2Object"]:
@@ -61,11 +67,39 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         self._stashes: dict = {}
 
     def close(self):
+        if hasattr(self, "_refdb"):
+            del self._refdb
         self.repo.free()
 
     @property
     def root_dir(self) -> str:
         return self.repo.workdir
+
+    @cached_property
+    def _refdb(self):
+        from pygit2 import RefdbFsBackend
+
+        return RefdbFsBackend(self.repo)
+
+    @property
+    def default_signature(self):
+        try:
+            return self.repo.default_signature
+        except KeyError as exc:
+            raise SCMError(
+                "Git username and email must be configured"
+            ) from exc
+
+    # Workaround to force git_backend_odb_pack to release open file handles
+    # in DVC's mixed git-backend environment.
+    # See https://github.com/iterative/dvc/issues/5641
+    @contextmanager
+    def release_odb_handles(self):
+        yield
+        # It is safe to free the libgit2 repo context multiple times - free
+        # just forces libgit/pygit to release git ODB related contexts which
+        # can be reacquired later as needed.
+        self.repo.free()
 
     @staticmethod
     def clone(
@@ -76,42 +110,45 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     ):
         raise NotImplementedError
 
-    @staticmethod
-    def is_sha(rev: str) -> bool:
-        raise NotImplementedError
-
     @property
     def dir(self) -> str:
         raise NotImplementedError
 
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         raise NotImplementedError
 
     def commit(self, msg: str, no_verify: bool = False):
         raise NotImplementedError
 
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
-        from pygit2 import GitError
+        from pygit2 import GIT_CHECKOUT_FORCE, GitError
 
-        if create_new:
-            commit = self.repo.revparse_single("HEAD")
-            new_branch = self.repo.branches.local.create(branch, commit)
-            self.repo.checkout(new_branch)
-        else:
-            if branch == "-":
-                branch = "@{-1}"
-            try:
-                commit, ref = self.repo.resolve_refish(branch)
-            except (KeyError, GitError):
-                raise RevError(f"unknown Git revision '{branch}'")
-            self.repo.checkout_tree(commit)
-            detach = kwargs.get("detach", False)
-            if ref and not detach:
-                self.repo.set_head(ref.name)
+        checkout_strategy = GIT_CHECKOUT_FORCE if force else None
+
+        with self.release_odb_handles():
+            if create_new:
+                commit = self.repo.revparse_single("HEAD")
+                new_branch = self.repo.branches.local.create(branch, commit)
+                self.repo.checkout(new_branch, strategy=checkout_strategy)
             else:
-                self.repo.set_head(commit.id)
+                if branch == "-":
+                    branch = "@{-1}"
+                try:
+                    commit, ref = self.repo.resolve_refish(branch)
+                except (KeyError, GitError):
+                    raise RevError(f"unknown Git revision '{branch}'")
+                self.repo.checkout_tree(commit, strategy=checkout_strategy)
+                detach = kwargs.get("detach", False)
+                if ref and not detach:
+                    self.repo.set_head(ref.name)
+                else:
+                    self.repo.set_head(commit.id)
 
     def pull(self, **kwargs):
         raise NotImplementedError
@@ -120,7 +157,13 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def branch(self, branch: str):
-        raise NotImplementedError
+        from pygit2 import GitError
+
+        try:
+            commit = self.repo[self.repo.head.target]
+            self.repo.create_branch(branch, commit)
+        except GitError as exc:
+            raise SCMError(f"Failed to create branch '{branch}'") from exc
 
     def tag(self, tag: str):
         raise NotImplementedError
@@ -131,7 +174,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_tracked(self, path: str) -> bool:
         raise NotImplementedError
 
-    def is_dirty(self, **kwargs) -> bool:
+    def is_dirty(self, untracked_files: bool = False) -> bool:
         raise NotImplementedError
 
     def active_branch(self) -> str:
@@ -173,11 +216,20 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             return shas.pop()  # type: ignore
         raise RevError(f"unknown Git revision '{rev}'")
 
-    def resolve_commit(self, rev: str) -> str:
-        raise NotImplementedError
+    def resolve_commit(self, rev: str) -> "GitCommit":
+        from pygit2 import GitError
 
-    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
-        raise NotImplementedError
+        try:
+            commit, _ref = self.repo.resolve_refish(rev)
+        except (KeyError, GitError):
+            raise SCMError(f"Invalid commit '{rev}'")
+        return GitCommit(
+            str(commit.id),
+            commit.commit_time,
+            commit.commit_time_offset,
+            commit.message,
+            [str(parent) for parent in commit.parent_ids],
+        )
 
     def _get_stash(self, ref: str):
         raise NotImplementedError
@@ -199,12 +251,16 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if old_ref and old_ref != self.get_ref(name, follow=False):
             raise SCMError(f"Failed to set '{name}'")
 
-        if symbolic:
-            ref = self.repo.create_reference_symbolic(name, new_ref, True)
-        else:
-            ref = self.repo.create_reference_direct(name, new_ref, True)
         if message:
-            ref.set_target(new_ref, message)
+            self._refdb.ensure_log(name)
+        if symbolic:
+            self.repo.create_reference_symbolic(
+                name, new_ref, True, message=message
+            )
+        else:
+            self.repo.create_reference_direct(
+                name, new_ref, True, message=message
+            )
 
     def get_ref(self, name, follow: bool = True) -> Optional[str]:
         from pygit2 import GIT_REF_SYMBOLIC
@@ -225,12 +281,43 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         ref.delete()
 
     def iter_refs(self, base: Optional[str] = None):
-        for ref in self.repo.references:
-            if ref.startswith(base):
-                yield ref
+        if base:
+            for ref in self.repo.references:
+                if ref.startswith(base):
+                    yield ref
+        else:
+            yield from self.repo.references
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
-        raise NotImplementedError
+        import fnmatch
+
+        from pygit2 import GitError
+
+        def _contains(repo, ref, search_commit):
+            commit, _ref = self.repo.resolve_refish(ref)
+            base = repo.merge_base(search_commit.id, commit.id)
+            return base == search_commit.id
+
+        try:
+            search_commit, _ref = self.repo.resolve_refish(rev)
+        except (KeyError, GitError):
+            raise SCMError(f"Invalid rev '{rev}'")
+
+        if not pattern:
+            yield from (
+                ref
+                for ref in self.iter_refs()
+                if _contains(self.repo, ref, search_commit)
+            )
+            return
+
+        literal = pattern.rstrip("/").split("/")
+        for ref in self.iter_refs():
+            if (
+                ref.split("/")[: len(literal)] == literal
+                or fnmatch.fnmatch(ref, pattern)
+            ) and _contains(self.repo, ref, search_commit):
+                yield ref
 
     def push_refspec(
         self,
@@ -260,15 +347,64 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        raise NotImplementedError
+        from dvc.scm.git import Stash
+
+        oid = self.repo.stash(
+            self.default_signature,
+            message=message,
+            include_untracked=include_untracked,
+        )
+        commit = self.repo[oid]
+
+        if ref != Stash.DEFAULT_STASH:
+            self.set_ref(ref, commit.id, message=commit.message)
+            self.repo.stash_drop()
+        return str(oid), False
 
     def _stash_apply(self, rev: str):
-        raise NotImplementedError
+        from pygit2 import (
+            GIT_CHECKOUT_RECREATE_MISSING,
+            GIT_CHECKOUT_SAFE,
+            GitError,
+        )
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        raise NotImplementedError
+        from dvc.scm.git import Stash
+
+        def _apply(index):
+            try:
+                self.repo.index.read(False)
+                self.repo.stash_apply(
+                    index,
+                    strategy=GIT_CHECKOUT_SAFE | GIT_CHECKOUT_RECREATE_MISSING,
+                )
+            except GitError as exc:
+                raise MergeConflictError(
+                    "Stash apply resulted in merge conflicts"
+                ) from exc
+
+        # libgit2 stash apply only accepts refs/stash items by index. If rev is
+        # not in refs/stash, we will push it onto the stash, and then pop it
+        commit, _ref = self.repo.resolve_refish(rev)
+        stash = self.repo.references.get(Stash.DEFAULT_STASH)
+        if stash:
+            for i, entry in enumerate(stash.log()):
+                if entry.oid_new == commit.id:
+                    _apply(i)
+                    return
+
+        self.set_ref(Stash.DEFAULT_STASH, commit.id, message=commit.message)
+        try:
+            _apply(0)
+        finally:
+            self.repo.stash_drop()
+
+    def _stash_drop(self, ref: str, index: int):
+        from dvc.scm.git import Stash
+
+        if ref != Stash.DEFAULT_STASH:
+            raise NotImplementedError
+
+        self.repo.stash_drop(index)
 
     def describe(
         self,
@@ -336,24 +472,26 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 ]
         else:
             path_list = None
-        self.repo.checkout_index(
-            index=index, paths=path_list, strategy=strategy,
-        )
 
-        if index.conflicts and (ours or theirs):
-            for ancestor, ours_entry, theirs_entry in index.conflicts:
-                if not ancestor:
-                    continue
-                if ours:
-                    entry = ours_entry
-                    index.add(ours_entry)
-                else:
-                    entry = theirs_entry
-                path = os.path.join(self.root_dir, entry.path)
-                with open(path, "wb") as fobj:
-                    fobj.write(self.repo.get(entry.id).read_raw())
-                index.add(entry.path)
-            index.write()
+        with self.release_odb_handles():
+            self.repo.checkout_index(
+                index=index, paths=path_list, strategy=strategy,
+            )
+
+            if index.conflicts and (ours or theirs):
+                for ancestor, ours_entry, theirs_entry in index.conflicts:
+                    if not ancestor:
+                        continue
+                    if ours:
+                        entry = ours_entry
+                        index.add(ours_entry)
+                    else:
+                        entry = theirs_entry
+                    path = os.path.join(self.root_dir, entry.path)
+                    with open(path, "wb") as fobj:
+                        fobj.write(self.repo.get(entry.id).read_raw())
+                    index.add(entry.path)
+                index.write()
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         raise NotImplementedError
@@ -378,25 +516,26 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if commit and not msg:
             raise SCMError("Merge commit message is required")
 
-        try:
-            self.repo.index.read(False)
-            self.repo.merge(rev)
-            self.repo.index.write()
-        except GitError as exc:
-            raise SCMError("Merge failed") from exc
+        with self.release_odb_handles():
+            try:
+                self.repo.index.read(False)
+                self.repo.merge(rev)
+                self.repo.index.write()
+            except GitError as exc:
+                raise SCMError("Merge failed") from exc
 
-        if self.repo.index.conflicts:
-            raise MergeConflictError("Merge contained conflicts")
+            if self.repo.index.conflicts:
+                raise MergeConflictError("Merge contained conflicts")
 
-        if commit:
-            user = self.repo.default_signature
-            tree = self.repo.index.write_tree()
-            merge_commit = self.repo.create_commit(
-                "HEAD", user, user, msg, tree, [self.repo.head.target, rev]
-            )
-            return str(merge_commit)
-        if squash:
-            self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
-            self.repo.state_cleanup()
-            self.repo.index.write()
+            if commit:
+                user = self.default_signature
+                tree = self.repo.index.write_tree()
+                merge_commit = self.repo.create_commit(
+                    "HEAD", user, user, msg, tree, [self.repo.head.target, rev]
+                )
+                return str(merge_commit)
+            if squash:
+                self.repo.reset(self.repo.head.target, GIT_RESET_MIXED)
+                self.repo.state_cleanup()
+                self.repo.index.write()
         return None

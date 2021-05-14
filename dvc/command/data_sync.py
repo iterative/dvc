@@ -156,6 +156,7 @@ def add_parser(subparsers, _parent_parser):
         help="Fetch cache for all tags.",
     )
     pull_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
@@ -224,6 +225,7 @@ def add_parser(subparsers, _parent_parser):
         help="Push cache for all tags.",
     )
     push_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
@@ -290,6 +292,7 @@ def add_parser(subparsers, _parent_parser):
         help="Fetch cache for all tags.",
     )
     fetch_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,
@@ -370,6 +373,7 @@ def add_parser(subparsers, _parent_parser):
         "for all tags.",
     )
     status_parser.add_argument(
+        "-A",
         "--all-commits",
         action="store_true",
         default=False,

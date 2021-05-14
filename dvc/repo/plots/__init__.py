@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Dict, List
+import os
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from funcy import cached_property, first, project
 
@@ -9,6 +10,7 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
+from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
@@ -49,7 +51,7 @@ class Plots:
             }}}
         Data parsing is postponed, since it's affected by props.
         """
-        from dvc.tree.repo import RepoTree
+        from dvc.fs.repo import RepoFileSystem
         from dvc.utils.collections import ensure_list
 
         targets = ensure_list(targets)
@@ -60,16 +62,16 @@ class Plots:
                 continue
             rev = rev or "workspace"
 
-            tree = RepoTree(self.repo)
+            fs = RepoFileSystem(self.repo)
             plots = _collect_plots(self.repo, targets, rev, recursive)
             for path_info, props in plots.items():
 
                 if rev not in data:
                     data[rev] = {}
 
-                if tree.isdir(path_info):
+                if fs.isdir(path_info):
                     plot_files = []
-                    for pi in tree.walk_files(path_info):
+                    for pi in fs.walk_files(path_info):
                         plot_files.append(
                             (pi, relpath(pi, self.repo.root_dir))
                         )
@@ -83,11 +85,27 @@ class Plots:
 
                     # Load data from git or dvc cache
                     try:
-                        with tree.open(path) as fd:
+                        with fs.open(path) as fd:
                             data[rev][repo_path]["data"] = fd.read()
                     except FileNotFoundError:
                         # This might happen simply because cache is absent
-                        pass
+                        logger.debug(
+                            (
+                                "Could not find '%s' on '%s'. "
+                                "File will not be plotted"
+                            ),
+                            path,
+                            rev,
+                        )
+                    except UnicodeDecodeError:
+                        logger.debug(
+                            (
+                                "'%s' at '%s' is binary file. It will not be "
+                                "plotted."
+                            ),
+                            path,
+                            rev,
+                        )
 
         return data
 
@@ -202,6 +220,26 @@ class Plots:
         from .template import PlotTemplates
 
         return PlotTemplates(self.repo.dvc_dir)
+
+    def write_html(
+        self,
+        path: StrPath,
+        plots: Dict[str, Dict],
+        metrics: Optional[Dict[str, Dict]] = None,
+        html_template_path: Optional[StrPath] = None,
+    ):
+        if not html_template_path:
+            html_template_path = self.repo.config.get("plots", {}).get(
+                "html_template", None
+            )
+            if html_template_path and not os.path.isabs(html_template_path):
+                html_template_path = os.path.join(
+                    self.repo.dvc_dir, html_template_path
+                )
+
+        from dvc.utils.html import write
+
+        write(path, plots, metrics, html_template_path)
 
 
 def _is_plot(out: "BaseOutput") -> bool:

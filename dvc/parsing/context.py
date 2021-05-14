@@ -356,20 +356,20 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(
-        cls, tree, path: PathInfo, select_keys: List[str] = None
+        cls, fs, path: PathInfo, select_keys: List[str] = None
     ) -> "Context":
         from dvc.utils.serialize import LOADERS
 
         file = relpath(path)
-        if not tree.exists(path):
+        if not fs.exists(path):
             raise ParamsLoadError(f"'{file}' does not exist")
-        if tree.isdir(path):
+        if fs.isdir(path):
             raise ParamsLoadError(f"'{file}' is a directory")
 
         _, ext = os.path.splitext(file)
         loader = LOADERS[ext]
 
-        data = loader(path, tree=tree)
+        data = loader(path, fs=fs)
         if not isinstance(data, Mapping):
             typ = type(data).__name__
             raise ParamsLoadError(
@@ -397,19 +397,19 @@ class Context(CtxDict):
         return super().merge_update(other, overwrite=overwrite)
 
     def merge_from(
-        self, tree, item: str, wdir: PathInfo, overwrite=False,
+        self, fs, item: str, wdir: PathInfo, overwrite=False,
     ):
         path, _, keys_str = item.partition(":")
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
-        path_info = wdir / path
 
-        abspath = os.path.abspath(path_info)
+        abspath = os.path.abspath(wdir / path)
+        path_info = PathInfo(abspath)
         if abspath in self.imports:
             if not select_keys and self.imports[abspath] is None:
                 return  # allow specifying complete filepath multiple times
             self.check_loaded(abspath, item, select_keys)
 
-        ctx = Context.load_from(tree, path_info, select_keys)
+        ctx = Context.load_from(fs, path_info, select_keys)
 
         try:
             self.merge_update(ctx, overwrite=overwrite)
@@ -439,7 +439,7 @@ class Context(CtxDict):
 
     def load_from_vars(
         self,
-        tree,
+        fs,
         vars_: List,
         wdir: PathInfo,
         stage_name: str = None,
@@ -447,8 +447,8 @@ class Context(CtxDict):
     ):
         if default:
             to_import = wdir / default
-            if tree.exists(to_import):
-                self.merge_from(tree, default, wdir)
+            if fs.exists(to_import):
+                self.merge_from(fs, default, wdir)
             else:
                 msg = "%s does not exist, it won't be used in parametrization"
                 logger.trace(msg, to_import)  # type: ignore[attr-defined]
@@ -457,7 +457,7 @@ class Context(CtxDict):
         for index, item in enumerate(vars_):
             assert isinstance(item, (str, dict))
             if isinstance(item, str):
-                self.merge_from(tree, item, wdir)
+                self.merge_from(fs, item, wdir)
             else:
                 joiner = "." if stage_name else ""
                 meta = Meta(source=f"{stage_name}{joiner}vars[{index}]")

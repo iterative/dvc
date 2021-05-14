@@ -248,3 +248,31 @@ def test_info_with_debug_loglevel_shows_no_datetime(caplog, dt):
         logger.info("message")
 
         assert "message" == formatter.format(caplog.records[0])
+
+
+def test_add_existing_level(caplog, dt):
+    # Common pattern to configure logging level in external libraries
+    # eg:
+    # https://github.com/bokeh/bokeh/blob/04bb30fef2e72e64baaa8b2f330806d5bfdd3b11/
+    # bokeh/util/logconfig.py#L79-L85
+    TRACE2 = 4
+    logging.addLevelName(TRACE2, "TRACE2")
+    logging.TRACE2 = TRACE2
+
+    dvc.logger.addLoggingLevel("TRACE2", 2)
+
+    # DVC sets all expected entrypoints, but doesn't override the level
+    assert logging.TRACE2 == 4
+    assert hasattr(logging, "trace2")
+    assert hasattr(logger, "trace2")
+    assert logging.getLevelName("TRACE2") == 4
+
+    # The TRACE2 logging level uses the original, higher logging level
+    with caplog.at_level(logging.TRACE2, logger="dvc"):
+        logger.trace2("TRACE2")
+    assert len(caplog.records) == 1
+
+    (record,) = caplog.records
+    assert record.levelno == 4
+    assert record.levelname == "TRACE2"
+    assert record.message == "TRACE2"

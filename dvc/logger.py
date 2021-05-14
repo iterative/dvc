@@ -23,14 +23,19 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     Adds a new logging level to the `logging` module and the
     currently configured logging class.
 
+    Uses the existing numeric levelNum if already defined.
+
     Based on https://stackoverflow.com/questions/2183233
     """
     if methodName is None:
         methodName = levelName.lower()
 
-    assert not hasattr(logging, levelName)
-    assert not hasattr(logging, methodName)
-    assert not hasattr(logging.getLoggerClass(), methodName)
+    # If the level name is already defined as a top-level `logging`
+    # constant, then adopt the existing numeric level.
+    if hasattr(logging, levelName):
+        existingLevelNum = getattr(logging, levelName)
+        assert isinstance(existingLevelNum, int)
+        levelNum = existingLevelNum
 
     def logForLevel(self, message, *args, **kwargs):
         if self.isEnabledFor(levelNum):
@@ -40,10 +45,19 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
     def logToRoot(message, *args, **kwargs):
         logging.log(levelNum, message, *args, **kwargs)
 
-    logging.addLevelName(levelNum, levelName)
-    setattr(logging, levelName, levelNum)
-    setattr(logging.getLoggerClass(), methodName, logForLevel)
-    setattr(logging, methodName, logToRoot)
+    # getLevelName resolves the numeric log level if already defined,
+    # otherwise returns a string
+    if not isinstance(logging.getLevelName(levelName), int):
+        logging.addLevelName(levelNum, levelName)
+
+    if not hasattr(logging, levelName):
+        setattr(logging, levelName, levelNum)
+
+    if not hasattr(logging.getLoggerClass(), methodName):
+        setattr(logging.getLoggerClass(), methodName, logForLevel)
+
+    if not hasattr(logging, methodName):
+        setattr(logging, methodName, logToRoot)
 
 
 class LoggingException(Exception):

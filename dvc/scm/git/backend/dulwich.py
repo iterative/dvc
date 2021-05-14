@@ -4,7 +4,17 @@ import logging
 import os
 import stat
 from io import BytesIO, StringIO
-from typing import Callable, Dict, Iterable, Mapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from funcy import cached_property
 
@@ -15,6 +25,9 @@ from dvc.utils import relpath
 
 from ..objects import GitObject
 from .base import BaseGitBackend
+
+if TYPE_CHECKING:
+    from ..objects import GitCommit
 
 logger = logging.getLogger(__name__)
 
@@ -109,24 +122,23 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     ):
         raise NotImplementedError
 
-    @staticmethod
-    def is_sha(rev: str) -> bool:
-        raise NotImplementedError
-
     @property
     def dir(self) -> str:
         return self.repo.commondir()
 
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         from dvc.utils.fs import walk_files
 
-        if update:
-            raise NotImplementedError
+        assert paths or update
 
         if isinstance(paths, str):
             paths = [paths]
 
-        files = []
+        if update and not paths:
+            self.repo.stage(list(self.repo.open_index()))
+            return
+
+        files: List[bytes] = []
         for path in paths:
             if not os.path.isabs(path) and self._submodules:
                 # NOTE: If path is inside a submodule, Dulwich expects the
@@ -142,25 +154,51 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                         )
                         break
             if os.path.isdir(path):
-                files.extend(walk_files(path))
+                files.extend(
+                    os.fsencode(relpath(fpath, self.root_dir))
+                    for fpath in walk_files(path)
+                )
             else:
-                files.append(path)
+                files.append(os.fsencode(relpath(path, self.root_dir)))
 
-        for fpath in files:
-            # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
-            self.repo.stage(relpath(fpath, self.root_dir))
+        # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
+        if update:
+            index = self.repo.open_index()
+            if os.name == "nt":
+                # NOTE: we need git/unix separator to compare against index
+                # paths but repo.stage() expects to be called with OS paths
+                self.repo.stage(
+                    [
+                        fname
+                        for fname in files
+                        if fname.replace(b"\\", b"/") in index
+                    ]
+                )
+            else:
+                self.repo.stage([fname for fname in files if fname in index])
+        else:
+            self.repo.stage(files)
 
     def commit(self, msg: str, no_verify: bool = False):
         from dulwich.errors import CommitError
         from dulwich.porcelain import commit
+        from dulwich.repo import InvalidUserIdentity
 
         try:
             commit(self.root_dir, message=msg, no_verify=no_verify)
         except CommitError as exc:
             raise SCMError("Git commit failed") from exc
+        except InvalidUserIdentity as exc:
+            raise SCMError(
+                "Git username and email must be configured"
+            ) from exc
 
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
         raise NotImplementedError
 
@@ -171,7 +209,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def branch(self, branch: str):
-        raise NotImplementedError
+        from dulwich.porcelain import Error, branch_create
+
+        try:
+            branch_create(self.root_dir, branch)
+        except Error as exc:
+            raise SCMError(f"Failed to create branch '{branch}'") from exc
 
     def tag(self, tag: str):
         raise NotImplementedError
@@ -188,8 +231,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 return True
         return False
 
-    def is_dirty(self, **kwargs) -> bool:
-        raise NotImplementedError
+    def is_dirty(self, untracked_files: bool = False) -> bool:
+        staged, unstaged, untracked = self.status()
+        return bool(staged or unstaged or (untracked_files and untracked))
 
     def active_branch(self) -> str:
         raise NotImplementedError
@@ -210,15 +254,15 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return DulwichObject(self.repo, ".", stat.S_IFDIR, tree.id)
 
     def get_rev(self) -> str:
-        raise NotImplementedError
+        rev = self.get_ref("HEAD")
+        if rev:
+            return rev
+        raise SCMError("Empty git repo")
 
     def resolve_rev(self, rev: str) -> str:
         raise NotImplementedError
 
-    def resolve_commit(self, rev: str) -> str:
-        raise NotImplementedError
-
-    def branch_revs(self, branch: str, end_rev: Optional[str] = None):
+    def resolve_commit(self, rev: str) -> "GitCommit":
         raise NotImplementedError
 
     def _get_stash(self, ref: str):
@@ -489,6 +533,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
+        from dulwich.repo import InvalidUserIdentity
+
         from dvc.scm.git import Stash
 
         if include_untracked or ref == Stash.DEFAULT_STASH:
@@ -498,16 +544,28 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         stash = self._get_stash(ref)
         message_b = message.encode("utf-8") if message else None
-        rev = stash.push(message=message_b)
+        try:
+            rev = stash.push(message=message_b)
+        except InvalidUserIdentity as exc:
+            raise SCMError(
+                "Git username and email must be configured"
+            ) from exc
         return os.fsdecode(rev), True
 
     def _stash_apply(self, rev: str):
         raise NotImplementedError
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        raise NotImplementedError
+    def _stash_drop(self, ref: str, index: int):
+        from dvc.scm.git import Stash
+
+        if ref == Stash.DEFAULT_STASH:
+            raise NotImplementedError
+
+        stash = self._get_stash(ref)
+        try:
+            stash.drop(index)
+        except ValueError as exc:
+            raise SCMError("Failed to drop stash entry") from exc
 
     def describe(
         self,
@@ -561,9 +619,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         )
         return (
             {
-                status: [os.fsdecode(name)]
+                status: [os.fsdecode(name) for name in paths]
                 for status, paths in staged.items()
-                for name in paths
+                if paths
             },
             [os.fsdecode(name) for name in unstaged],
             [os.fsdecode(name) for name in untracked],

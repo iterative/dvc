@@ -17,22 +17,8 @@ from dvc.dependency.webhdfs import WebHDFSDependency
 from dvc.output.base import BaseOutput
 from dvc.scheme import Schemes
 
-from ..tree import get_cloud_tree
+from ..fs import get_cloud_fs
 from .repo import RepoDependency
-
-DEPS = [
-    AzureDependency,
-    GSDependency,
-    HDFSDependency,
-    HTTPDependency,
-    HTTPSDependency,
-    S3Dependency,
-    SSHDependency,
-    WebDAVDependency,
-    WebDAVSDependency,
-    WebHDFSDependency,
-    # NOTE: LocalDependency is the default choice
-]
 
 DEP_MAP = {
     Schemes.LOCAL: LocalDependency,
@@ -64,8 +50,8 @@ SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
 def _get(stage, p, info):
     parsed = urlparse(p) if p else None
     if parsed and parsed.scheme == "remote":
-        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
-        return DEP_MAP[tree.scheme](stage, p, info, tree=tree)
+        fs = get_cloud_fs(stage.repo, name=parsed.netloc)
+        return DEP_MAP[fs.scheme](stage, p, info, fs=fs)
 
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
@@ -75,10 +61,8 @@ def _get(stage, p, info):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    for d in DEPS:
-        if d.supported(p):
-            return d(stage, p, info)
-    return LocalDependency(stage, p, info)
+    dep_cls = DEP_MAP.get(parsed.scheme, LocalDependency)
+    return dep_cls(stage, p, info)
 
 
 def loadd_from(stage, d_list):

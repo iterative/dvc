@@ -32,7 +32,9 @@ def apply(repo, rev, force=True, **kwargs):
         raise InvalidExpRevError(rev) from exc
 
     stash_rev = exp_rev in exps.stash_revs
-    if not stash_rev and not exps.get_branch_by_rev(exp_rev):
+    if not stash_rev and not exps.get_branch_by_rev(
+        exp_rev, allow_multiple=True
+    ):
         raise InvalidExpRevError(exp_rev)
 
     # Note that we don't use stash_workspace() here since we need finer control

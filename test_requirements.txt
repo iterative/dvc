@@ -1,0 +1,48 @@
+wheel==0.36.2
+
+# Test requirements
+pytest==6.2.3
+pytest-cov==2.11.1
+pytest-xdist==2.2.1
+pytest-mock==3.6.0
+pytest-lazy-fixture==0.6.3
+pytest-timeout==1.4.2
+pytest-docker==0.10.1
+
+flaky==3.7.0
+mock==4.0.3
+rangehttpserver==1.2.0
+mock-ssh-server==0.9.0
+# moto's indirect dependency that is causing problems with flufl.lock's
+# dependency (atpublic). See https://github.com/iterative/dvc/pull/4853
+moto==2.0.5
+beautifulsoup4==4.9.3
+wget==3.2
+filelock==3.0.12
+wsgidav==3.1.0
+crc32c==2.2
+xmltodict==0.12.0
+google-compute-engine==2.8.13
+google-cloud-storage==1.38.0
+
+urllib3==1.26.4
+
+# required by collective.checkdocs
+Pygments==2.8.1
+collective.checkdocs==0.2
+pydocstyle==6.0.0
+jaraco.windows==5.5.0
+
+# pylint requirements
+pylint==2.8.2
+# we use this to suppress pytest-related false positives in our tests.
+pylint-pytest==1.0.3
+# we use this to suppress some messages in tests, eg: foo/bar naming,
+# and, protected method calls in our tests
+pylint-plugin-utils==0.6
+
+# type-checking
+mypy==0.812
+
+# pypi doesn't allow for direct dependencies
+# gdrivefs @ git+https://github.com/intake/gdrivefs.git

@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import stat
@@ -28,8 +29,8 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
     assert ref_info and ref_info.baseline_sha == baseline
 
     new_mock.assert_called_once()
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -68,8 +69,8 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
     )
     exp = first(results)
 
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 3"
 
 
@@ -103,7 +104,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
     "changes, expected",
     [
         [["foo=baz"], "{foo: baz, goo: {bag: 3}, lorem: false}"],
-        [["foo=baz,goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
+        [["foo=baz", "goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
         [
             ["goo.bag=4"],
             "{foo: [bar: 1, baz: 2], goo: {bag: 4}, lorem: false}",
@@ -114,7 +115,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
             "{foo: [bar: 1, baz: 3], goo: {bag: 3}, lorem: false}",
         ],
         [
-            ["foo[1]=- baz\n- goo"],
+            ["foo[1]=[baz, goo]"],
             "{foo: [bar: 1, [baz, goo]], goo: {bag: 3}, lorem: false}",
         ],
         [
@@ -142,8 +143,8 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     exp = first(results)
 
     new_mock.assert_called_once()
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == expected
 
 
@@ -238,10 +239,10 @@ def test_update_py_params(tmp_dir, scm, dvc):
     )
     exp_a = first(results)
 
-    tree = scm.get_tree(exp_a)
-    with tree.open(tmp_dir / "params.py") as fobj:
+    fs = scm.get_fs(exp_a)
+    with fs.open(tmp_dir / "params.py") as fobj:
         assert fobj.read().strip() == "INT = 2"
-    with tree.open(tmp_dir / "metrics.py") as fobj:
+    with fs.open(tmp_dir / "metrics.py") as fobj:
         assert fobj.read().strip() == "INT = 2"
 
     tmp_dir.gen(
@@ -261,7 +262,11 @@ def test_update_py_params(tmp_dir, scm, dvc):
 
     results = dvc.experiments.run(
         stage.addressing,
-        params=["params.py:FLOAT=0.1,Train.seed=2121,Klass.a=222"],
+        params=[
+            "params.py:FLOAT=0.1",
+            "params.py:Train.seed=2121",
+            "params.py:Klass.a=222",
+        ],
         tmp_dir=True,
     )
     exp_a = first(results)
@@ -280,10 +285,10 @@ def test_update_py_params(tmp_dir, scm, dvc):
         # in order to compare with the original
         return text.replace("\r\n", "\n")
 
-    tree = scm.get_tree(exp_a)
-    with tree.open(tmp_dir / "params.py") as fobj:
+    fs = scm.get_fs(exp_a)
+    with fs.open(tmp_dir / "params.py") as fobj:
         assert _dos2unix(fobj.read().strip()) == result
-    with tree.open(tmp_dir / "metrics.py") as fobj:
+    with fs.open(tmp_dir / "metrics.py") as fobj:
         assert _dos2unix(fobj.read().strip()) == result
 
     tmp_dir.gen("params.py", "INT = 1\n")
@@ -406,34 +411,12 @@ def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
         stage.addressing, params=["foo=2"], tmp_dir=not workspace
     )
     exp = first(results)
-    tree = scm.get_tree(exp)
-    assert tree.exists("dvc.yaml")
-    assert tree.exists("dvc.lock")
-    assert tree.exists("copy.py")
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
+    fs = scm.get_fs(exp)
+    assert fs.exists("dvc.yaml")
+    assert fs.exists("dvc.lock")
+    assert fs.exists("copy.py")
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
-
-
-@pytest.mark.parametrize("workspace", [True, False])
-def test_dirty_lockfile(tmp_dir, scm, dvc, exp_stage, workspace):
-    from dvc.dvcfile import LockfileCorruptedError
-
-    tmp_dir.gen("dvc.lock", "foo")
-
-    with pytest.raises(LockfileCorruptedError):
-        dvc.reproduce(exp_stage.addressing)
-
-    results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], tmp_dir=not workspace
-    )
-    exp = first(results)
-
-    tree = scm.get_tree(exp)
-    with tree.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == "foo: 2"
-
-    if not workspace:
-        assert (tmp_dir / "dvc.lock").read_text() == "foo"
 
 
 def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
@@ -509,10 +492,10 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
 
-    tree = scm.get_tree(exp)
+    fs = scm.get_fs(exp)
     for fname in ["metrics.yaml", "dvc.lock"]:
-        assert tree.exists(subdir / fname)
-    with tree.open(subdir / "metrics.yaml") as fobj:
+        assert fs.exists(subdir / fname)
+    with fs.open(subdir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     assert dvc.experiments.get_exact_name(exp) == ref_info.name
@@ -521,7 +504,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
 
 @pytest.mark.parametrize("workspace", [True, False])
 def test_subrepo(tmp_dir, scm, workspace):
-    from tests.unit.tree.test_repo import make_subrepo
+    from tests.unit.fs.test_repo import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
@@ -554,10 +537,10 @@ def test_subrepo(tmp_dir, scm, workspace):
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
 
-    tree = scm.get_tree(exp)
+    fs = scm.get_fs(exp)
     for fname in ["metrics.yaml", "dvc.lock"]:
-        assert tree.exists(subrepo / fname)
-    with tree.open(subrepo / "metrics.yaml") as fobj:
+        assert fs.exists(subrepo / fname)
+    with fs.open(subrepo / "metrics.yaml") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
@@ -577,8 +560,8 @@ def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
     expected = {"foo: 2", "foo: 3"}
     metrics = set()
     for exp in results:
-        tree = scm.get_tree(exp)
-        with tree.open(tmp_dir / "metrics.yaml") as fobj:
+        fs = scm.get_fs(exp)
+        with fs.open(tmp_dir / "metrics.yaml") as fobj:
             metrics.add(fobj.read().strip())
     assert expected == metrics
 
@@ -608,3 +591,86 @@ def test_remove(tmp_dir, scm, dvc, exp_stage):
     removed = dvc.experiments.remove(queue=True)
     assert removed == 1
     assert len(dvc.experiments.stash) == 0
+
+
+def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
+    from dvc.utils.fs import remove
+
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"}, commit="add files")
+    stage = dvc.stage.add(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py", "foo"],
+        force=True,
+    )
+    remove("foo")
+    remove("bar")
+
+    dvc.experiments.run(stage.addressing, params=["foo=2"])
+    assert (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert not (tmp_dir / "bar").exists()
+
+
+@pytest.mark.parametrize("tail", ["", "~1", "^"])
+def test_fix_exp_head(tmp_dir, scm, tail):
+    from dvc.repo.experiments.base import EXEC_BASELINE
+    from dvc.repo.experiments.utils import fix_exp_head
+
+    head = "HEAD" + tail
+    assert head == fix_exp_head(scm, head)
+
+    scm.set_ref(EXEC_BASELINE, "refs/heads/master")
+    assert EXEC_BASELINE + tail == fix_exp_head(scm, head)
+    assert "foo" + tail == fix_exp_head(scm, "foo" + tail)
+
+
+@pytest.mark.parametrize(
+    "workspace, params, target",
+    itertools.product((True, False), ("foo: 1", "foo: 2"), (True, False)),
+)
+def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
+    tmp_dir.dvc_gen("data", "data")
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    exp_stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py", "data"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            "data.dvc",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
+    tmp_dir.gen("params.yaml", params)
+    tmp_dir.gen("data", "modified")
+
+    results = dvc.experiments.run(
+        exp_stage.addressing if target else None, tmp_dir=not workspace
+    )
+    exp = first(results)
+
+    for rev in dvc.brancher(revs=[exp]):
+        if rev != exp:
+            continue
+        with dvc.repo_fs.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip() == params
+        with dvc.repo_fs.open(tmp_dir / "data") as fobj:
+            assert fobj.read().strip() == "modified"
+
+    if workspace:
+        assert (tmp_dir / "metrics.yaml").read_text().strip() == params
+        assert (tmp_dir / "data").read_text().strip() == "modified"

@@ -23,6 +23,9 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 
 class GCP(Base, CloudURLInfo):
+
+    IS_OBJECT_STORAGE = True
+
     @staticmethod
     def should_test():
         do_test = env2bool("DVC_TEST_GCP", undefined=None)

@@ -1,3 +1,6 @@
+import json
+import logging
+
 from dvc.cli import parse_args
 from dvc.command.ls import CmdList
 
@@ -52,3 +55,18 @@ def test_list_outputs_only(mocker):
     m.assert_called_once_with(
         url, None, recursive=False, rev=None, dvc_only=True
     )
+
+
+def test_show_json(mocker, caplog):
+    cli_args = parse_args(["list", "local_dir", "--show-json"])
+    assert cli_args.func == CmdList
+
+    cmd = cli_args.func(cli_args)
+
+    result = [{"key": "val"}]
+    mocker.patch("dvc.repo.Repo.ls", return_value=result)
+
+    with caplog.at_level(logging.INFO, "dvc"):
+        assert cmd.run() == 0
+
+    assert json.dumps(result) in caplog.messages

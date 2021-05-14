@@ -10,8 +10,8 @@ class TOMLFileCorruptedError(ParseError):
         super().__init__(path, "TOML file structure is corrupted")
 
 
-def load_toml(path, tree=None):
-    return _load_data(path, parser=parse_toml, tree=tree)
+def load_toml(path, fs=None):
+    return _load_data(path, parser=parse_toml, fs=fs)
 
 
 def parse_toml(text, path, decoder=None):
@@ -40,11 +40,11 @@ def _dump(data, stream):
     return toml.dump(data, stream, encoder=toml.TomlPreserveCommentEncoder())
 
 
-def dump_toml(path, data, tree=None):
-    return _dump_data(path, data, dumper=_dump, tree=tree)
+def dump_toml(path, data, fs=None):
+    return _dump_data(path, data, dumper=_dump, fs=fs)
 
 
 @contextmanager
-def modify_toml(path, tree=None):
-    with _modify_data(path, parse_toml_for_update, dump_toml, tree=tree) as d:
+def modify_toml(path, fs=None):
+    with _modify_data(path, parse_toml_for_update, dump_toml, fs=fs) as d:
         yield d

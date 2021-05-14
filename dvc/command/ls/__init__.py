@@ -34,7 +34,11 @@ class CmdList(CmdBaseNoRepo):
                 recursive=self.args.recursive,
                 dvc_only=self.args.dvc_only,
             )
-            if entries:
+            if self.args.show_json:
+                import json
+
+                logger.info(json.dumps(entries))
+            elif entries:
                 entries = _prettify(entries, sys.stdout.isatty())
                 logger.info("\n".join(entries))
             return 0
@@ -64,6 +68,9 @@ def add_parser(subparsers, parent_parser):
     )
     list_parser.add_argument(
         "--dvc-only", action="store_true", help="Show only DVC outputs."
+    )
+    list_parser.add_argument(
+        "--show-json", action="store_true", help="Show output in JSON format."
     )
     list_parser.add_argument(
         "--rev",

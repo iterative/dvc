@@ -23,7 +23,7 @@ class RepoDependency(LocalDependency):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
-    def _parse_path(self, tree, path):
+    def _parse_path(self, fs, path):
         return None
 
     @property
@@ -47,11 +47,17 @@ class RepoDependency(LocalDependency):
         return external_repo(d["url"], rev=rev, **kwargs)
 
     def _get_hash(self, locked=True):
+        from dvc.objects.stage import stage
+
         with self._make_repo(locked=locked) as repo:
             path_info = PathInfo(repo.root_dir) / self.def_path
-            return repo.repo_tree.get_hash(
-                path_info, "md5", follow_subrepos=False
-            )
+            return stage(
+                self.repo.odb.local,
+                path_info,
+                repo.repo_fs,
+                self.repo.odb.local.fs.PARAM_CHECKSUM,
+                follow_subrepos=False,
+            ).hash_info
 
     def workspace_status(self):
         current = self._get_hash(locked=True)
@@ -73,24 +79,32 @@ class RepoDependency(LocalDependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects import save, stage
+        from dvc.config import NoRemoteError
+        from dvc.exceptions import NoOutputOrStageError
+        from dvc.objects import save
+        from dvc.objects.stage import stage
 
-        cache = self.repo.cache.local
+        odb = self.repo.odb.local
 
-        with self._make_repo(cache_dir=cache.cache_dir) as repo:
+        with self._make_repo(cache_dir=odb.cache_dir) as repo:
             if self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
             path_info = PathInfo(repo.root_dir) / self.def_path
+            try:
+                repo.fetch([path_info.fspath], jobs=jobs, recursive=True)
+            except (NoOutputOrStageError, NoRemoteError):
+                pass
             obj = stage(
-                cache,
+                odb,
                 path_info,
-                repo.repo_tree,
+                repo.repo_fs,
+                odb.fs.PARAM_CHECKSUM,
                 jobs=jobs,
                 follow_subrepos=False,
             )
-            save(cache, obj, jobs=jobs)
+            save(odb, obj, jobs=jobs)
 
-        checkout(to.path_info, to.tree, obj, cache)
+        checkout(to.path_info, to.fs, obj, odb)
 
     def update(self, rev=None):
         if rev:

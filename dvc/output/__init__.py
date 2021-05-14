@@ -6,7 +6,6 @@ from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc.hash_info import HashInfo
 from dvc.output.base import BaseOutput
-from dvc.output.gs import GSOutput
 from dvc.output.hdfs import HDFSOutput
 from dvc.output.local import LocalOutput
 from dvc.output.s3 import S3Output
@@ -14,25 +13,15 @@ from dvc.output.ssh import SSHOutput
 from dvc.output.webhdfs import WebHDFSOutput
 from dvc.scheme import Schemes
 
-from ..tree import get_cloud_tree
-from ..tree.hdfs import HDFSTree
-from ..tree.local import LocalTree
-from ..tree.s3 import S3Tree
-from ..tree.webhdfs import WebHDFSTree
-
-OUTS = [
-    HDFSOutput,
-    S3Output,
-    GSOutput,
-    SSHOutput,
-    WebHDFSOutput,
-    # NOTE: LocalOutput is the default choice
-]
+from ..fs import get_cloud_fs
+from ..fs.hdfs import HDFSFileSystem
+from ..fs.local import LocalFileSystem
+from ..fs.s3 import S3FileSystem
+from ..fs.webhdfs import WebHDFSFileSystem
 
 OUTS_MAP = {
     Schemes.HDFS: HDFSOutput,
     Schemes.S3: S3Output,
-    Schemes.GS: GSOutput,
     Schemes.SSH: SSHOutput,
     Schemes.LOCAL: LocalOutput,
     Schemes.WEBHDFS: WebHDFSOutput,
@@ -46,17 +35,17 @@ CHECKSUM_SCHEMA = Any(
 
 # NOTE: currently there are only 3 possible checksum names:
 #
-#    1) md5 (LOCAL, SSH, GS);
+#    1) md5 (LOCAL, SSH);
 #    2) etag (S3);
 #    3) checksum (HDFS);
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
-    LocalTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3Tree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    HDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    WebHDFSTree.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3FileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    HDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    WebHDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
 }
 
 SCHEMA = CHECKSUMS_SCHEMA.copy()
@@ -88,13 +77,13 @@ def _get(
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        tree = get_cloud_tree(stage.repo, name=parsed.netloc)
-        return OUTS_MAP[tree.scheme](
+        fs = get_cloud_fs(stage.repo, name=parsed.netloc)
+        return OUTS_MAP[fs.scheme](
             stage,
             p,
             info,
             cache=cache,
-            tree=tree,
+            fs=fs,
             metric=metric,
             plot=plot,
             persist=persist,
@@ -104,28 +93,13 @@ def _get(
             isexec=isexec,
         )
 
-    for o in OUTS:
-        if o.supported(p):
-            return o(
-                stage,
-                p,
-                info,
-                cache=cache,
-                tree=None,
-                metric=metric,
-                plot=plot,
-                persist=persist,
-                checkpoint=checkpoint,
-                live=live,
-                desc=desc,
-                isexec=isexec,
-            )
-    return LocalOutput(
+    out_cls = OUTS_MAP.get(parsed.scheme, LocalOutput)
+    return out_cls(
         stage,
         p,
         info,
         cache=cache,
-        tree=None,
+        fs=None,
         metric=metric,
         plot=plot,
         persist=persist,

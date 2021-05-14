@@ -27,6 +27,11 @@ _dvc_compgen_stages_and_files() {
     _dvc_compgen_DVCFiles $1
     _dvc_compgen_stages $1
 }
+
+_dvc_compgen_exps() {
+    local _dvc_exps=($(dvc exp list -q --all --names-only))
+    compgen -W "${_dvc_exps[*]}" -- $1
+}
     """,
     "zsh": """
 _dvc_compadd_DVCFiles() {
@@ -55,6 +60,10 @@ _dvc_compadd_stages_and_files() {
     _dvc_compadd_DVCFiles
     _dvc_compadd_stages
 }
+
+_dvc_compadd_exps() {
+    _describe 'experiments' "($(dvc exp list -q -a --names-only))"
+}
     """,
 }
 
@@ -71,6 +80,11 @@ STAGE = {
 DVCFILES_AND_STAGE = {
     "bash": "_dvc_compgen_stages_and_files",
     "zsh": "_dvc_compadd_stages_and_files",
+}
+
+EXPERIMENT = {
+    "bash": "_dvc_compgen_exps",
+    "zsh": "_dvc_compadd_exps",
 }
 
 

@@ -14,7 +14,7 @@ class TestInit(TestGit):
         self.assertTrue(os.path.isdir(DvcRepo.DVC_DIR))
 
     def test_api(self):
-        DvcRepo.init()
+        DvcRepo.init().close()
 
         self._test_init()
 

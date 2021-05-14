@@ -85,28 +85,6 @@ def diff(old, new, with_unchanged=False):
     return dict(res)
 
 
-def table(header, rows, markdown=False):
-    from tabulate import tabulate
-
-    if not rows and not markdown:
-        return ""
-
-    ret = tabulate(
-        rows,
-        header,
-        tablefmt="github" if markdown else "plain",
-        disable_numparse=True,
-        # None will be shown as "" by default, overriding
-        missingval="—",
-    )
-
-    if markdown:
-        # NOTE: md table is incomplete without the trailing newline
-        ret += "\n"
-
-    return ret
-
-
 def format_dict(d):
     ret = {}
     for key, val in d.items():

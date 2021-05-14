@@ -69,14 +69,13 @@ class CmdMergeDriver(CmdHookBase):
         dvc = Repo()
 
         try:
-            with dvc.state:
-                ancestor = Dvcfile(dvc, self.args.ancestor, verify=False)
-                our = Dvcfile(dvc, self.args.our, verify=False)
-                their = Dvcfile(dvc, self.args.their, verify=False)
+            ancestor = Dvcfile(dvc, self.args.ancestor, verify=False)
+            our = Dvcfile(dvc, self.args.our, verify=False)
+            their = Dvcfile(dvc, self.args.their, verify=False)
 
-                our.merge(ancestor, their)
+            our.merge(ancestor, their)
 
-                return 0
+            return 0
         finally:
             dvc.close()
 

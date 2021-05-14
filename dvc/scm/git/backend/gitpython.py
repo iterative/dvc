@@ -3,15 +3,15 @@ import locale
 import logging
 import os
 from functools import partial
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple
+from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
-from funcy import first, ignore
+from funcy import ignore
 
 from dvc.progress import Tqdm
 from dvc.scm.base import CloneError, MergeConflictError, RevError, SCMError
 from dvc.utils import fix_env, is_binary, relpath
 
-from ..objects import GitObject
+from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
@@ -188,11 +188,13 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def dir(self) -> str:
         return self.repo.git_dir
 
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
             if update:
+                if isinstance(paths, str):
+                    paths = [paths]
                 self.git.add(*paths, update=True)
             else:
                 self.repo.index.add(paths)
@@ -215,12 +217,16 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Git pre-commit hook failed") from exc
 
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
         if create_new:
-            self.repo.git.checkout("HEAD", b=branch, **kwargs)
+            self.repo.git.checkout("HEAD", b=branch, force=force, **kwargs)
         else:
-            self.repo.git.checkout(branch, **kwargs)
+            self.repo.git.checkout(branch, force=force, **kwargs)
 
     def pull(self, **kwargs):
         infos = self.repo.remote().pull(**kwargs)
@@ -247,8 +253,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_tracked(self, path):
         return bool(self.repo.git.ls_files(path))
 
-    def is_dirty(self, **kwargs):
-        return self.repo.is_dirty(**kwargs)
+    def is_dirty(self, untracked_files: bool = False) -> bool:
+        return self.repo.is_dirty(untracked_files=untracked_files)
 
     def active_branch(self):
         return self.repo.active_branch.name
@@ -313,7 +319,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         raise RevError(f"unknown Git revision '{rev}'")
 
-    def resolve_commit(self, rev):
+    def resolve_commit(self, rev: str) -> "GitCommit":
         """Return Commit object for the specified revision."""
         from git.exc import BadName, GitCommandError
         from git.objects.tag import TagObject
@@ -321,25 +327,16 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         try:
             commit = self.repo.rev_parse(rev)
         except (BadName, GitCommandError):
-            commit = None
+            raise SCMError(f"Invalid commit '{rev}'")
         if isinstance(commit, TagObject):
             commit = commit.object
-        return commit
-
-    def branch_revs(
-        self, branch: str, end_rev: Optional[str] = None
-    ) -> Iterable[str]:
-        """Iterate over revisions in a given branch (from newest to oldest).
-
-        If end_rev is set, iterator will stop when the specified revision is
-        reached.
-        """
-        commit = self.resolve_commit(branch)
-        while commit is not None:
-            yield commit.hexsha
-            commit = first(commit.parents)
-            if commit and commit.hexsha == end_rev:
-                return
+        return GitCommit(
+            commit.hexsha,
+            commit.committed_date,
+            commit.committer_tz_offset,
+            commit.message,
+            [str(parent) for parent in commit.parents],
+        )
 
     def set_ref(
         self,
@@ -502,16 +499,22 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 ) from exc
             raise SCMError("Could not apply stash") from exc
 
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        args = ["delete"]
-        if updateref:
-            args.append("--updateref")
-        if rewrite:
-            args.append("--rewrite")
-        args.append(ref)
-        self.git.reflog(*args)
+    def _stash_drop(self, ref: str, index: int):
+        from git.exc import GitCommandError
+
+        from dvc.scm.git import Stash
+
+        if ref == Stash.DEFAULT_STASH:
+            self.git.stash("drop", index)
+            return
+
+        self.git.reflog(
+            "delete", "--updateref", "--rewrite", f"{ref}@{{{index}}}"
+        )
+        try:
+            self.git.reflog("exists", ref)
+        except GitCommandError:
+            self.remove_ref(ref)
 
     def describe(
         self,

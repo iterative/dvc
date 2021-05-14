@@ -41,10 +41,10 @@ def test_remove_non_existent_file(tmp_dir, dvc):
 
 def test_remove_broken_symlink(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
-    dvc.cache.local.cache_types = ["symlink"]
+    dvc.odb.local.cache_types = ["symlink"]
 
     (stage,) = dvc.add("foo")
-    remove(dvc.cache.local.cache_dir)
+    remove(dvc.odb.local.cache_dir)
     assert System.is_symlink("foo")
 
     with pytest.raises(DvcException):

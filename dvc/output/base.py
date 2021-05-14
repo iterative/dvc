@@ -8,7 +8,6 @@ from voluptuous import Any
 
 import dvc.objects as objects
 import dvc.prompt as prompt
-from dvc.cache import NamedCache
 from dvc.checkout import checkout
 from dvc.exceptions import (
     CheckoutError,
@@ -18,8 +17,12 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.hash_info import HashInfo
+from dvc.objects import save as osave
+from dvc.objects.db import NamedCache
+from dvc.objects.errors import ObjectFormatError
+from dvc.objects.stage import stage as ostage
 
-from ..tree.base import BaseTree
+from ..fs.base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +63,7 @@ class OutputIsIgnoredError(DvcException):
 class BaseOutput:
     IS_DEPENDENCY = False
 
-    TREE_CLS = BaseTree
+    FS_CLS = BaseFileSystem
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
@@ -104,7 +107,7 @@ class BaseOutput:
         stage,
         path,
         info=None,
-        tree=None,
+        fs=None,
         cache=True,
         metric=False,
         plot=False,
@@ -129,10 +132,10 @@ class BaseOutput:
         self.repo = stage.repo if stage else None
         self.def_path = path
         self.hash_info = HashInfo.from_dict(info)
-        if tree:
-            self.tree = tree
+        if fs:
+            self.fs = fs
         else:
-            self.tree = self.TREE_CLS(self.repo, {})
+            self.fs = self.FS_CLS(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -141,18 +144,18 @@ class BaseOutput:
         self.live = live
         self.desc = desc
 
-        self.path_info = self._parse_path(tree, path)
-        if self.use_cache and self.cache is None:
+        self.path_info = self._parse_path(fs, path)
+        if self.use_cache and self.odb is None:
             raise RemoteCacheRequiredError(self.path_info)
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
 
-    def _parse_path(self, tree, path):
-        if tree:
+    def _parse_path(self, fs, path):
+        if fs:
             parsed = urlparse(path)
-            return tree.path_info / parsed.path.lstrip("/")
-        return self.TREE_CLS.PATH_CLS(path)
+            return fs.path_info / parsed.path.lstrip("/")
+        return self.FS_CLS.PATH_CLS(path)
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
@@ -164,7 +167,7 @@ class BaseOutput:
 
     @property
     def scheme(self):
-        return self.TREE_CLS.scheme
+        return self.FS_CLS.scheme
 
     @property
     def is_in_repo(self):
@@ -178,25 +181,24 @@ class BaseOutput:
         return self.use_cache or self.stage.is_repo_import
 
     @property
-    def cache(self):
-        return getattr(self.repo.cache, self.scheme)
-
-    @property
-    def dir_cache(self):
-        return self.hash_info.dir_info
-
-    @classmethod
-    def supported(cls, url):
-        return cls.TREE_CLS.supported(url)
+    def odb(self):
+        return getattr(self.repo.odb, self.scheme)
 
     @property
     def cache_path(self):
-        return self.cache.hash_to_path_info(self.hash_info.value).url
+        return self.odb.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
         if not self.use_cache:
-            return self.tree.get_hash(self.path_info, self.tree.PARAM_CHECKSUM)
-        return objects.stage(self.cache, self.path_info, self.tree).hash_info
+            return ostage(
+                self.repo.odb.local,
+                self.path_info,
+                self.fs,
+                self.fs.PARAM_CHECKSUM,
+            ).hash_info
+        return ostage(
+            self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
+        ).hash_info
 
     @property
     def is_dir_checksum(self):
@@ -204,7 +206,7 @@ class BaseOutput:
 
     @property
     def exists(self):
-        return self.tree.exists(self.path_info)
+        return self.fs.exists(self.path_info)
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
@@ -218,9 +220,9 @@ class BaseOutput:
             return True
 
         try:
-            objects.check(self.cache, obj)
+            objects.check(self.odb, obj)
             return False
-        except (FileNotFoundError, objects.ObjectFormatError):
+        except (FileNotFoundError, ObjectFormatError):
             return True
 
     def workspace_status(self):
@@ -248,13 +250,13 @@ class BaseOutput:
 
     @property
     def is_empty(self):
-        return self.tree.is_empty(self.path_info)
+        return self.fs.is_empty(self.path_info)
 
     def isdir(self):
-        return self.tree.isdir(self.path_info)
+        return self.fs.isdir(self.path_info)
 
     def isfile(self):
-        return self.tree.isfile(self.path_info)
+        return self.fs.isfile(self.path_info)
 
     # pylint: disable=no-member
 
@@ -304,13 +306,15 @@ class BaseOutput:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = objects.stage(self.cache, self.path_info, self.tree)
+        self.obj = ostage(
+            self.odb, self.path_info, self.fs, self.odb.fs.PARAM_CHECKSUM
+        )
         self.hash_info = self.obj.hash_info
-        self.isexec = self.isfile() and self.tree.isexec(self.path_info)
+        self.isexec = self.isfile() and self.fs.isexec(self.path_info)
 
     def set_exec(self):
         if self.isfile() and self.isexec:
-            self.cache.set_exec(self.path_info)
+            self.odb.set_exec(self.path_info)
 
     def commit(self, filter_info=None):
         if not self.exists:
@@ -319,15 +323,18 @@ class BaseOutput:
         assert self.hash_info
 
         if self.use_cache:
-            obj = objects.stage(
-                self.cache, filter_info or self.path_info, self.tree
+            obj = ostage(
+                self.odb,
+                filter_info or self.path_info,
+                self.fs,
+                self.odb.fs.PARAM_CHECKSUM,
             )
-            objects.save(self.cache, obj)
+            objects.save(self.odb, obj)
             checkout(
                 filter_info or self.path_info,
-                self.tree,
+                self.fs,
                 obj,
-                self.cache,
+                self.odb,
                 relink=True,
             )
             self.set_exec()
@@ -376,14 +383,14 @@ class BaseOutput:
         raise DvcException(f"verify metric is not supported for {self.scheme}")
 
     def download(self, to, jobs=None):
-        self.tree.download(self.path_info, to.path_info, jobs=jobs)
+        self.fs.download(self.path_info, to.path_info, jobs=jobs)
 
     def get_obj(self, filter_info=None):
         if self.obj:
             obj = self.obj
         elif self.hash_info:
             try:
-                obj = objects.load(self.cache, self.hash_info)
+                obj = objects.load(self.odb, self.hash_info)
             except FileNotFoundError:
                 return None
         else:
@@ -391,7 +398,7 @@ class BaseOutput:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.cache, prefix)
+            obj = obj.filter(self.odb, prefix)
 
         return obj
 
@@ -402,6 +409,7 @@ class BaseOutput:
         relink=False,
         filter_info=None,
         allow_missing=False,
+        checkpoint_reset=False,
         **kwargs,
     ):
         if not self.use_cache:
@@ -416,14 +424,19 @@ class BaseOutput:
             # backward compatibility
             return None
 
+        if self.checkpoint and checkpoint_reset:
+            if self.exists:
+                self.remove()
+            return None
+
         added = not self.exists
 
         try:
             modified = checkout(
                 filter_info or self.path_info,
-                self.tree,
+                self.fs,
                 obj,
-                self.cache,
+                self.odb,
                 force=force,
                 progress_callback=progress_callback,
                 relink=relink,
@@ -437,7 +450,7 @@ class BaseOutput:
         return added, False if added else modified
 
     def remove(self, ignore_remove=False):
-        self.tree.remove(self.path_info)
+        self.fs.remove(self.path_info)
         if self.scheme != "local":
             return
 
@@ -449,7 +462,7 @@ class BaseOutput:
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 
-        self.tree.move(self.path_info, out.path_info)
+        self.fs.move(self.path_info, out.path_info)
         self.def_path = out.def_path
         self.path_info = out.path_info
         self.save()
@@ -458,9 +471,43 @@ class BaseOutput:
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore(self.fspath)
 
-    def get_files_number(self, filter_info=None):
-        from funcy import ilen
+    def transfer(
+        self, source, odb=None, jobs=None, update=False, no_progress_bar=False,
+    ):
+        from dvc.fs import get_cloud_fs
 
+        if odb is None:
+            odb = self.odb
+
+        from_fs = get_cloud_fs(self.repo, url=source)
+        from_info = from_fs.path_info
+
+        # When running import-url --to-remote / add --to-remote/-o ... we
+        # assume that it is unlikely that the odb will contain majority of the
+        # hashes, so we transfer everything as is (even if that file might
+        # already be in the cache) and don't waste an upload to scan the layout
+        # of the source location. But when doing update --to-remote, there is
+        # a high probability that the odb might contain some of the hashes, so
+        # we first calculate all the hashes (but don't transfer anything) and
+        # then only update the missing cache files.
+
+        upload = not (update and from_fs.isdir(from_info))
+        jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
+        obj = ostage(
+            odb,
+            from_info,
+            from_fs,
+            "md5",
+            upload=upload,
+            jobs=jobs,
+            no_progress_bar=no_progress_bar,
+        )
+        osave(odb, obj, jobs=jobs, move=upload)
+
+        self.hash_info = obj.hash_info
+        return obj
+
+    def get_files_number(self, filter_info=None):
         if not self.use_cache or not self.hash_info:
             return 0
 
@@ -470,17 +517,12 @@ class BaseOutput:
         if not filter_info or filter_info == self.path_info:
             return self.hash_info.nfiles or 0
 
-        if not self.hash_info.dir_info:
-            return 0
-
-        return ilen(
-            filter_info.isin_or_eq(self.path_info / relpath)
-            for relpath, _ in self.hash_info.dir_info.items()
-        )
+        obj = self.get_obj(filter_info=filter_info)
+        return len(obj) if obj else 0
 
     def unprotect(self):
         if self.exists:
-            self.cache.unprotect(self.path_info)
+            self.odb.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
 
@@ -488,8 +530,8 @@ class BaseOutput:
             raise DvcException("cannot get dir cache for file checksum")
 
         try:
-            objects.check(self.cache, self.cache.get(self.hash_info))
-        except (FileNotFoundError, objects.ObjectFormatError):
+            objects.check(self.odb, self.odb.get(self.hash_info))
+        except (FileNotFoundError, ObjectFormatError):
             self.repo.cloud.pull(
                 NamedCache.make("local", self.hash_info.value, str(self)),
                 show_checksums=False,
@@ -497,12 +539,11 @@ class BaseOutput:
             )
 
         try:
-            objects.load(self.cache, self.hash_info)
-            assert self.hash_info.dir_info
-        except (objects.ObjectFormatError, FileNotFoundError):
-            self.hash_info.dir_info = None
+            self.obj = objects.load(self.odb, self.hash_info)
+        except (FileNotFoundError, ObjectFormatError):
+            self.obj = None
 
-        return self.dir_cache
+        return self.obj
 
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
@@ -534,8 +575,8 @@ class BaseOutput:
             logger.debug(f"failed to pull cache for '{self}'")
 
         try:
-            objects.check(self.cache, self.cache.get(self.hash_info))
-        except (FileNotFoundError, objects.ObjectFormatError):
+            objects.check(self.odb, self.odb.get(self.hash_info))
+        except (FileNotFoundError, ObjectFormatError):
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
@@ -550,17 +591,14 @@ class BaseOutput:
 
         path = str(self.path_info)
         filter_path = str(filter_info) if filter_info else None
-        is_win = os.name == "nt"
-        for entry_relpath, entry_hash_info in self.dir_cache.items():
-            if is_win:
-                entry_relpath = entry_relpath.replace("/", os.sep)
-            entry_path = os.path.join(path, entry_relpath)
+        for entry_key, entry_obj in self.obj:
+            entry_path = os.path.join(path, *entry_key)
             if (
                 not filter_path
                 or entry_path == filter_path
                 or entry_path.startswith(filter_path + os.sep)
             ):
-                cache.add(self.scheme, entry_hash_info.value, entry_path)
+                cache.add(self.scheme, entry_obj.hash_info.value, entry_path)
 
         return cache
 
@@ -621,8 +659,8 @@ class BaseOutput:
 
         if stage:
             abs_path = os.path.join(stage.wdir, path)
-            if stage.repo.tree.dvcignore.is_ignored(abs_path):
-                check = stage.repo.tree.dvcignore.check_ignore(abs_path)
+            if stage.repo.fs.dvcignore.is_ignored(abs_path):
+                check = stage.repo.fs.dvcignore.check_ignore(abs_path)
                 raise cls.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
@@ -633,7 +671,7 @@ class BaseOutput:
         other = out.dumpd()
 
         ignored = [
-            self.tree.PARAM_CHECKSUM,
+            self.fs.PARAM_CHECKSUM,
             HashInfo.PARAM_SIZE,
             HashInfo.PARAM_NFILES,
         ]
@@ -653,6 +691,8 @@ class BaseOutput:
             )
 
     def merge(self, ancestor, other):
+        from dvc.objects.tree import merge
+
         assert other
 
         if ancestor:
@@ -664,6 +704,6 @@ class BaseOutput:
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        self.hash_info = objects.merge(
-            self.cache, ancestor_info, self.hash_info, other.hash_info
+        self.hash_info = merge(
+            self.odb, ancestor_info, self.hash_info, other.hash_info
         )

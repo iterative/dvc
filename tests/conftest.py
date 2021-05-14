@@ -43,9 +43,16 @@ def reset_loglevel(request, caplog):
         yield
 
 
+@pytest.fixture(autouse=True)
+def enable_ui():
+    from dvc.ui import ui
+
+    ui.enable()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _close_pools():
-    from dvc.tree.pool import close_pools
+    from dvc.fs.pool import close_pools
 
     yield
     close_pools()

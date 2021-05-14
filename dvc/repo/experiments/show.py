@@ -5,6 +5,7 @@ from datetime import datetime
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.experiments.base import ExpRefInfo
+from dvc.repo.experiments.utils import fix_exp_head
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
 from dvc.scm.base import SCMError
@@ -12,17 +13,23 @@ from dvc.scm.base import SCMError
 logger = logging.getLogger(__name__)
 
 
-def _collect_experiment_commit(repo, rev, stash=False, sha_only=True):
+def _collect_experiment_commit(
+    repo, exp_rev, stash=False, sha_only=True, param_deps=False
+):
     res = defaultdict(dict)
-    for rev in repo.brancher(revs=[rev]):
+    for rev in repo.brancher(revs=[exp_rev]):
         if rev == "workspace":
+            if exp_rev != "workspace":
+                continue
             res["timestamp"] = None
         else:
             commit = repo.scm.resolve_commit(rev)
-            res["timestamp"] = datetime.fromtimestamp(commit.committed_date)
+            res["timestamp"] = datetime.fromtimestamp(commit.commit_time)
 
-        configs = _collect_configs(repo, rev=rev)
-        params = _read_params(repo, configs, rev)
+        params, params_path_infos = _collect_configs(repo, rev=rev)
+        params = _read_params(
+            repo, params, params_path_infos, rev, deps=param_deps
+        )
         if params:
             res["params"] = params
 
@@ -66,7 +73,8 @@ def _collect_experiment_branch(res, repo, branch, baseline, **kwargs):
                 exp.update(collected_exp)
         else:
             exp = collected_exp
-        res[rev] = exp
+        if rev not in res:
+            res[rev] = exp
         prev = rev
     if len(revs) > 1:
         res[prev]["checkpoint_parent"] = baseline
@@ -82,6 +90,7 @@ def show(
     all_commits=False,
     sha_only=False,
     num=1,
+    param_deps=False,
 ):
     res = defaultdict(OrderedDict)
 
@@ -92,7 +101,8 @@ def show(
         revs = []
         for n in range(num):
             try:
-                revs.append(repo.scm.resolve_rev(f"HEAD~{n}"))
+                head = fix_exp_head(repo.scm, f"HEAD~{n}")
+                revs.append(repo.scm.resolve_rev(head))
             except SCMError:
                 break
 
@@ -109,7 +119,7 @@ def show(
 
     for rev in revs:
         res[rev]["baseline"] = _collect_experiment_commit(
-            repo, rev, sha_only=sha_only
+            repo, rev, sha_only=sha_only, param_deps=param_deps
         )
 
         if rev == "workspace":
@@ -121,19 +131,24 @@ def show(
             for ref in repo.scm.iter_refs(base=str(ref_info))
         ]
         for exp_ref, _ in sorted(
-            commits, key=lambda x: x[1].committed_date, reverse=True,
+            commits, key=lambda x: x[1].commit_time, reverse=True,
         ):
             ref_info = ExpRefInfo.from_ref(exp_ref)
             assert ref_info.baseline_sha == rev
             _collect_experiment_branch(
-                res[rev], repo, exp_ref, rev, sha_only=sha_only
+                res[rev],
+                repo,
+                exp_ref,
+                rev,
+                sha_only=sha_only,
+                param_deps=param_deps,
             )
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():
         if entry.baseline_rev in revs:
             experiment = _collect_experiment_commit(
-                repo, stash_rev, stash=True
+                repo, stash_rev, stash=True, param_deps=param_deps
             )
             res[entry.baseline_rev][stash_rev] = experiment
 

@@ -13,12 +13,12 @@ from dvc.exceptions import (
     ReproductionError,
     StagePathAsOutputError,
 )
+from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.output.base import BaseOutput
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.tree.local import LocalTree
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -651,7 +651,9 @@ class TestReproDataSource(TestReproChangedData):
         stages = self.dvc.reproduce(self.foo_stage.path)
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
-        self.assertEqual(stages[0].outs[0].hash_info.value, file_md5(self.BAR))
+        self.assertEqual(
+            stages[0].outs[0].hash_info.value, file_md5(self.BAR, self.dvc.fs),
+        )
 
 
 class TestReproChangedDir(SingleStageRun, TestDvc):
@@ -734,8 +736,8 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalTree.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalTree.PARAM_CHECKSUM]
+        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
         dump_yaml(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
@@ -827,12 +829,12 @@ class TestReproAllPipelines(SingleStageRun, TestDvc):
 
 class TestReproNoCommit(TestRepro):
     def test(self):
-        remove(self.dvc.cache.local.cache_dir)
+        remove(self.dvc.odb.local.cache_dir)
         ret = main(
             ["repro", self._get_stage_target(self.stage), "--no-commit"]
         )
         self.assertEqual(ret, 0)
-        self.assertEqual(os.listdir(self.dvc.cache.local.cache_dir), ["runs"])
+        self.assertEqual(os.listdir(self.dvc.odb.local.cache_dir), ["runs"])
 
 
 class TestReproAlreadyCached(TestRepro):
@@ -874,9 +876,9 @@ class TestReproAlreadyCached(TestRepro):
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
-            LocalTree,
+            LocalFileSystem,
             "download",
-            side_effect=LocalTree.download,
+            side_effect=LocalFileSystem.download,
             autospec=True,
         )
 
@@ -912,6 +914,7 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         self.assertEqual(0, ret)
 
         self._caplog.clear()
+        self._capsys.readouterr()  # clearing the buffer
 
         from dvc.dvcfile import DVC_FILE_SUFFIX
 
@@ -921,7 +924,8 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         self.assertEqual(0, ret)
 
         expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
-        self.assertIn(expected_metrics_display, self._caplog.text)
+        actual, _ = self._capsys.readouterr()
+        self.assertIn(expected_metrics_display, actual)
 
 
 @pytest.fixture

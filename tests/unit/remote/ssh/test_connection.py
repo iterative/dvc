@@ -6,9 +6,9 @@ import tempfile
 
 import pytest
 
+from dvc.fs.ssh.connection import SSHConnection
 from dvc.info import get_fs_type
 from dvc.system import System
-from dvc.tree.ssh.connection import SSHConnection
 
 here = os.path.abspath(os.path.dirname(__file__))
 

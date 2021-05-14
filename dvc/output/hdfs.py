@@ -1,7 +1,7 @@
 from dvc.output.base import BaseOutput
 
-from ..tree.hdfs import HDFSTree
+from ..fs.hdfs import HDFSFileSystem
 
 
 class HDFSOutput(BaseOutput):
-    TREE_CLS = HDFSTree
+    FS_CLS = HDFSFileSystem

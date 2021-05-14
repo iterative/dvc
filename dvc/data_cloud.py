@@ -64,7 +64,7 @@ class DataCloud:
         remote = self.get_remote(remote, "push")
 
         return remote.push(
-            self.repo.cache.local,
+            self.repo.odb.local,
             cache,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -86,29 +86,11 @@ class DataCloud:
         remote = self.get_remote(remote, "pull")
 
         return remote.pull(
-            self.repo.cache.local,
+            self.repo.odb.local,
             cache,
             jobs=jobs,
             show_checksums=show_checksums,
         )
-
-    def transfer(self, source, jobs=None, remote=None, command=None):
-        """Transfer data items in a cloud-agnostic way.
-
-        Args:
-            source (str): url for the source location.
-            jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.BaseRemote): optional remote to compare
-                cache to. By default remote from core.remote config option
-                is used.
-            command (str): the command which is benefitting from this function
-                (to be used for reporting better error messages).
-        """
-        from dvc.tree import get_cloud_tree
-
-        from_tree = get_cloud_tree(self.repo, url=source)
-        remote = self.get_remote(remote, command)
-        return remote.transfer(from_tree, from_tree.path_info, jobs=jobs)
 
     def status(
         self,
@@ -133,7 +115,7 @@ class DataCloud:
         """
         remote = self.get_remote(remote, "status")
         return remote.status(
-            self.repo.cache.local,
+            self.repo.odb.local,
             cache,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -142,4 +124,4 @@ class DataCloud:
 
     def get_url_for(self, remote, checksum):
         remote = self.get_remote(remote)
-        return str(remote.cache.hash_to_path_info(checksum))
+        return str(remote.odb.hash_to_path_info(checksum))

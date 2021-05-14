@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, cast
 
 from rich.style import StyleType
 from rich.table import Column as RichColumn
@@ -8,6 +8,7 @@ from rich.table import Table as RichTable
 if TYPE_CHECKING:
     from rich.console import (
         Console,
+        ConsoleOptions,
         JustifyMethod,
         OverflowMethod,
         RenderableType,
@@ -56,7 +57,7 @@ class Table(RichTable):
         self.columns.append(column)
 
     def _calculate_column_widths(
-        self, console: "Console", max_width: int
+        self, console: "Console", options: "ConsoleOptions"
     ) -> List[int]:
         """Calculate the widths of each column, including padding, not
         including borders.
@@ -64,22 +65,23 @@ class Table(RichTable):
         Adjacent collapsed columns will be removed until there is only a single
         truncated column remaining.
         """
-        widths = super()._calculate_column_widths(console, max_width)
+        widths = super()._calculate_column_widths(console, options)
         last_collapsed = -1
-        for i in range(len(self.columns) - 1, -1, -1):
-            if widths[i] == 1 and self.columns[i].collapse:
+        columns = cast(List[Column], self.columns)
+        for i in range(len(columns) - 1, -1, -1):
+            if widths[i] == 0 and columns[i].collapse:
                 if last_collapsed >= 0:
                     del widths[last_collapsed]
-                    del self.columns[last_collapsed]
+                    del columns[last_collapsed]
                     if self.box:
-                        max_width += 1
-                    for column in self.columns[last_collapsed:]:
+                        options.max_width += 1
+                    for column in columns[last_collapsed:]:
                         column._index -= 1
                 last_collapsed = i
                 padding = self._get_padding_width(i)
                 if (
-                    self.columns[i].overflow == "ellipsis"
-                    and (sum(widths) + padding) <= max_width
+                    columns[i].overflow == "ellipsis"
+                    and (sum(widths) + padding) <= options.max_width
                 ):
                     # Set content width to 1 (plus padding) if we can fit a
                     # single unicode ellipsis in this column
@@ -88,7 +90,7 @@ class Table(RichTable):
                 last_collapsed = -1
         return widths
 
-    def _collapse_widths(
+    def _collapse_widths(  # type: ignore[override]
         self, widths: List[int], wrapable: List[bool], max_width: int,
     ) -> List[int]:
         """Collapse columns right-to-left if possible to fit table into
@@ -97,7 +99,8 @@ class Table(RichTable):
         If table is still too wide after collapsing, rich's automatic overflow
         handling will be used.
         """
-        collapsible = [column.collapse for column in self.columns]
+        columns = cast(List[Column], self.columns)
+        collapsible = [column.collapse for column in columns]
         total_width = sum(widths)
         excess_width = total_width - max_width
         if any(collapsible):

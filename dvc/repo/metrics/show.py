@@ -6,13 +6,13 @@ from dvc.exceptions import (
     NoMetricsFoundError,
     NoMetricsParsedError,
 )
+from dvc.fs.repo import RepoFileSystem
 from dvc.output import BaseOutput
 from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.repo.live import summary_path_info
 from dvc.scm.base import SCMError
-from dvc.tree.repo import RepoTree
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 
 logger = logging.getLogger(__name__)
@@ -71,15 +71,15 @@ def _extract_metrics(metrics, path, rev):
 
 
 def _read_metrics(repo, metrics, rev):
-    tree = RepoTree(repo)
+    fs = RepoFileSystem(repo)
 
     res = {}
     for metric in metrics:
-        if not tree.isfile(metric):
+        if not fs.isfile(metric):
             continue
 
         try:
-            val = load_yaml(metric, tree=tree)
+            val = load_yaml(metric, fs=fs)
         except (FileNotFoundError, YAMLFileCorruptedError):
             logger.debug(
                 "failed to read '%s' on '%s'", metric, rev, exc_info=True

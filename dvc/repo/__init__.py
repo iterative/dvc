@@ -16,8 +16,8 @@ from .graph import build_graph, build_outs_graph, get_pipelines
 from .trie import build_outs_trie
 
 if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
     from dvc.scm import Base
-    from dvc.tree.base import BaseTree
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def lock_repo(repo: "Repo"):
         if depth > 0:
             yield
         else:
-            with repo.lock, repo.state:
+            with repo.lock:
                 repo._reset()
                 yield
                 # Graph cache is no longer valid after we release the repo.lock
@@ -99,8 +99,8 @@ class Repo:
         dvc_dir = None
         tmp_dir = None
         try:
-            tree = scm.get_tree(rev) if isinstance(scm, Git) and rev else None
-            root_dir = self.find_root(root_dir, tree)
+            fs = scm.get_fs(rev) if isinstance(scm, Git) and rev else None
+            root_dir = self.find_root(root_dir, fs)
             dvc_dir = os.path.join(root_dir, self.DVC_DIR)
             tmp_dir = os.path.join(dvc_dir, "tmp")
             makedirs(tmp_dir, exist_ok=True)
@@ -131,42 +131,48 @@ class Repo:
         url=None,
         repo_factory=None,
     ):
-        from dvc.cache import Cache
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
+        from dvc.fs.local import LocalFileSystem
         from dvc.lock import LockNoop, make_lock
+        from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
         from dvc.repo.stage import StageLoad
+        from dvc.scm import SCM
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
-        from dvc.tree.local import LocalTree
 
         self.url = url
-        self._tree_conf = {
+        self._fs_conf = {
             "repo_factory": repo_factory,
         }
+
+        if rev and not scm:
+            scm = SCM(root_dir or os.curdir)
 
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
         )
 
-        tree_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
+        fs_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:
-            self._tree = scm.get_tree(rev, **tree_kwargs)
+            self._fs = scm.get_fs(rev, **fs_kwargs)
         else:
-            self._tree = LocalTree(self, {"url": self.root_dir}, **tree_kwargs)
+            self._fs = LocalFileSystem(
+                self, {"url": self.root_dir}, **fs_kwargs
+            )
 
-        self.config = Config(self.dvc_dir, tree=self.tree, config=config)
+        self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
         self._scm = scm
 
-        # used by RepoTree to determine if it should traverse subrepos
+        # used by RepoFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
-        self.cache = Cache(self)
+        self.odb = ODBManager(self)
         self.cloud = DataCloud(self)
         self.stage = StageLoad(self)
 
@@ -184,7 +190,7 @@ class Repo:
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self)
+            self.state = State(self.root_dir, self.tmp_dir)
             self.stage_cache = StageCache(self)
 
             self._ignore()
@@ -239,12 +245,12 @@ class Repo:
             raise
 
     def get_rev(self):
-        from dvc.tree.local import LocalTree
+        from dvc.fs.local import LocalFileSystem
 
         assert self.scm
-        if isinstance(self.tree, LocalTree):
+        if isinstance(self.fs, LocalFileSystem):
             return self.scm.get_rev()
-        return self.tree.rev
+        return self.fs.rev
 
     @cached_property
     def experiments(self):
@@ -253,25 +259,25 @@ class Repo:
         return Experiments(self)
 
     @property
-    def tree(self) -> "BaseTree":
-        return self._tree
+    def fs(self) -> "BaseFileSystem":
+        return self._fs
 
-    @tree.setter
-    def tree(self, tree: "BaseTree"):
-        self._tree = tree
+    @fs.setter
+    def fs(self, fs: "BaseFileSystem"):
+        self._fs = fs
         # Our graph cache is no longer valid, as it was based on the previous
-        # tree.
+        # fs.
         self._reset()
 
     def __repr__(self):
         return f"{self.__class__.__name__}: '{self.root_dir}'"
 
     @classmethod
-    def find_root(cls, root=None, tree=None) -> str:
+    def find_root(cls, root=None, fs=None) -> str:
         root_dir = os.path.realpath(root or os.curdir)
 
-        if tree:
-            if tree.isdir(os.path.join(root_dir, cls.DVC_DIR)):
+        if fs:
+            if fs.isdir(os.path.join(root_dir, cls.DVC_DIR)):
                 return root_dir
             raise NotDvcRepoError(f"'{root}' does not contain DVC directory")
 
@@ -305,7 +311,7 @@ class Repo:
         return Repo(root_dir)
 
     def unprotect(self, target):
-        return self.cache.local.unprotect(PathInfo(target))
+        return self.odb.local.unprotect(PathInfo(target))
 
     def _ignore(self):
         flist = [
@@ -313,8 +319,8 @@ class Repo:
             self.tmp_dir,
         ]
 
-        if path_isin(self.cache.local.cache_dir, self.root_dir):
-            flist += [self.cache.local.cache_dir]
+        if path_isin(self.odb.local.cache_dir, self.root_dir):
+            flist += [self.odb.local.cache_dir]
 
         self.scm.ignore_list(flist)
 
@@ -366,7 +372,7 @@ class Repo:
             to items containing the output's `dumpd` names and the output's
             children (if the given output is a directory).
         """
-        from dvc.cache import NamedCache
+        from dvc.objects.db import NamedCache
 
         cache = NamedCache()
 
@@ -462,24 +468,29 @@ class Repo:
         return self.DVC_DIR in path_parts
 
     @cached_property
-    def repo_tree(self):
-        from dvc.tree.repo import RepoTree
+    def dvcfs(self):
+        from dvc.fs.dvc import DvcFileSystem
 
-        return RepoTree(self, subrepos=self.subrepos, **self._tree_conf)
+        return DvcFileSystem(self)
+
+    @cached_property
+    def repo_fs(self):
+        from dvc.fs.repo import RepoFileSystem
+
+        return RepoFileSystem(self, subrepos=self.subrepos, **self._fs_conf)
 
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
-        from dvc.tree.repo import RepoTree
+        from dvc.fs.repo import RepoFileSystem
 
-        tree = RepoTree(self, subrepos=True)
+        fs = RepoFileSystem(self, subrepos=True)
         path = PathInfo(self.root_dir) / path
         try:
-            with self.state:
-                with tree.open(
-                    path, mode=mode, encoding=encoding, remote=remote,
-                ) as fobj:
-                    yield fobj
+            with fs.open(
+                path, mode=mode, encoding=encoding, remote=remote,
+            ) as fobj:
+                yield fobj
         except FileNotFoundError as exc:
             raise FileMissingError(path) from exc
         except IsADirectoryError as exc:
@@ -487,8 +498,10 @@ class Repo:
 
     def close(self):
         self.scm.close()
+        self.state.close()
 
     def _reset(self):
+        self.state.close()
         self.scm._reset()  # pylint: disable=protected-access
         self.__dict__.pop("outs_trie", None)
         self.__dict__.pop("outs_graph", None)

@@ -1,0 +1,4 @@
+/build
+/*.deb
+/*.rpm
+/*.pkg

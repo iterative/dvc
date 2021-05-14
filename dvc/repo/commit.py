@@ -37,20 +37,32 @@ def prompt_to_commit(stage, changes, force=False):
 
 @locked
 def commit(
-    self, target, with_deps=False, recursive=False, force=False,
+    self,
+    target,
+    with_deps=False,
+    recursive=False,
+    force=False,
+    allow_missing=False,
+    data_only=False,
 ):
     from dvc.dvcfile import Dvcfile
 
-    stages_info = self.stage.collect_granular(
-        target, with_deps=with_deps, recursive=recursive
-    )
+    stages_info = [
+        info
+        for info in self.stage.collect_granular(
+            target, with_deps=with_deps, recursive=recursive
+        )
+        if not data_only or info.stage.is_data_source
+    ]
     for stage_info in stages_info:
         stage = stage_info.stage
         changes = stage.changed_entries()
         if any(changes):
             prompt_to_commit(stage, changes, force=force)
-            stage.save()
-        stage.commit(filter_info=stage_info.filter_info)
+            stage.save(allow_missing=allow_missing)
+        stage.commit(
+            filter_info=stage_info.filter_info, allow_missing=allow_missing
+        )
 
         Dvcfile(self, stage.path).dump(stage, update_pipeline=False)
     return [s.stage for s in stages_info]

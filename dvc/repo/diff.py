@@ -1,8 +1,13 @@
 import logging
 import os
+from collections import defaultdict
+from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
+from dvc.objects.stage import get_file_hash
+from dvc.objects.stage import stage as ostage
 from dvc.repo import locked
+from dvc.repo.experiments.utils import fix_exp_head
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +15,7 @@ logger = logging.getLogger(__name__)
 @locked
 def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     """
-    By default, it compares the workspace with the last commit's tree.
+    By default, it compares the workspace with the last commit's fs.
 
     This implementation differs from `git diff` since DVC doesn't have
     the concept of `index`, but it keeps the same interface, thus,
@@ -20,11 +25,12 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
-    from dvc.tree.repo import RepoTree
+    from dvc.fs.repo import RepoFileSystem
 
-    repo_tree = RepoTree(self)
+    repo_fs = RepoFileSystem(self)
 
-    b_rev = b_rev if b_rev else "workspace"
+    a_rev = fix_exp_head(self.scm, a_rev)
+    b_rev = fix_exp_head(self.scm, b_rev) if b_rev else "workspace"
     results = {}
     missing_targets = {}
     for rev in self.brancher(revs=[a_rev, b_rev]):
@@ -37,10 +43,10 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
         if targets is not None:
             # convert targets to path_infos, and capture any missing targets
             targets_path_infos, missing_targets[rev] = _targets_to_path_infos(
-                repo_tree, targets
+                repo_fs, targets
             )
 
-        results[rev] = _paths_checksums(self, repo_tree, targets_path_infos)
+        results[rev] = _paths_checksums(self, repo_fs, targets_path_infos)
 
     if targets is not None:
         # check for overlapping missing targets between a_rev and b_rev
@@ -52,14 +58,14 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     old = results[a_rev]
     new = results[b_rev]
 
-    # Compare paths between the old and new tree.
+    # Compare paths between the old and new fs.
     # set() efficiently converts dict keys to a set
     added = sorted(set(new) - set(old))
     deleted_or_missing = set(old) - set(new)
     if b_rev == "workspace":
         # missing status is only applicable when diffing local workspace
         # against a commit
-        missing = sorted(_filter_missing(repo_tree, deleted_or_missing))
+        missing = sorted(_filter_missing(repo_fs, deleted_or_missing))
     else:
         missing = []
     deleted = sorted(deleted_or_missing - set(missing))
@@ -93,10 +99,10 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     return ret if any(ret.values()) else {}
 
 
-def _paths_checksums(repo, repo_tree, targets):
+def _paths_checksums(repo, repo_fs, targets):
     """
     A dictionary of checksums addressed by relpaths collected from
-    the current tree outputs.
+    the current fs outputs.
 
     To help distinguish between a directory and a file output,
     the former one will come with a trailing slash in the path:
@@ -105,16 +111,16 @@ def _paths_checksums(repo, repo_tree, targets):
         file:      "data"
     """
 
-    return dict(_output_paths(repo, repo_tree, targets))
+    return dict(_output_paths(repo, repo_fs, targets))
 
 
-def _output_paths(repo, repo_tree, targets):
-    from dvc.tree.local import LocalTree
+def _output_paths(repo, repo_fs, targets):
+    from dvc.fs.local import LocalFileSystem
 
-    on_working_tree = isinstance(repo.tree, LocalTree)
+    on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
     def _exists(output):
-        if on_working_tree:
+        if on_working_fs:
             return output.exists
         return True
 
@@ -126,10 +132,10 @@ def _output_paths(repo, repo_tree, targets):
         )
 
     def _to_checksum(output):
-        if on_working_tree:
-            return repo.cache.local.tree.get_hash(
-                output.path_info, "md5"
-            ).value
+        if on_working_fs:
+            return ostage(
+                repo.odb.local, output.path_info, repo.odb.local.fs, "md5",
+            ).hash_info.value
         return output.hash_info.value
 
     for stage in repo.stages:
@@ -146,26 +152,27 @@ def _output_paths(repo, repo_tree, targets):
                     yield_output
                     or any(target.isin(output.path_info) for target in targets)
                 ):
-                    yield from _dir_output_paths(repo_tree, output, targets)
+                    yield from _dir_output_paths(repo_fs, output, targets)
 
 
-def _dir_output_paths(repo_tree, output, targets=None):
+def _dir_output_paths(repo_fs, output, targets=None):
     from dvc.config import NoRemoteError
 
     try:
-        for fname in repo_tree.walk_files(output.path_info):
+        for fname in repo_fs.walk_files(output.path_info):
             if targets is None or any(
                 fname.isin_or_eq(target) for target in targets
             ):
-                yield str(fname), repo_tree.get_file_hash(fname, "md5").value
+                # pylint: disable=no-member
+                yield str(fname), get_file_hash(fname, repo_fs, "md5").value
     except NoRemoteError:
         logger.warning("dir cache entry for '%s' is missing", output)
 
 
-def _filter_missing(repo_tree, paths):
+def _filter_missing(repo_fs, paths):
     for path in paths:
         try:
-            metadata = repo_tree.metadata(path)
+            metadata = repo_fs.metadata(path)
             if metadata.is_dvc:
                 out = metadata.outs[0]
                 if out.status().get(str(out)) == "not in cache":
@@ -174,13 +181,13 @@ def _filter_missing(repo_tree, paths):
             pass
 
 
-def _targets_to_path_infos(repo_tree, targets):
+def _targets_to_path_infos(repo_fs, targets):
     path_infos = []
     missing = []
 
     for target in targets:
-        if repo_tree.exists(target):
-            path_infos.append(repo_tree.metadata(target).path_info)
+        if repo_fs.exists(target):
+            path_infos.append(repo_fs.metadata(target).path_info)
         else:
             missing.append(target)
 
@@ -188,29 +195,23 @@ def _targets_to_path_infos(repo_tree, targets):
 
 
 def _calculate_renamed(new, old, added, deleted):
-    old_inverted = {}
+    old_inverted: Dict[str, List[str]] = defaultdict(list)
     # It is needed to be dict of lists to cover cases
     # when repo has paths with same hash
     for path, path_hash in old.items():
-        bucket = old_inverted.get(path_hash, None)
-        if bucket is None:
-            old_inverted[path_hash] = [path]
-        else:
-            bucket.append(path)
+        old_inverted[path_hash].append(path)
 
     renamed = []
     for path in added:
         path_hash = new[path]
-        old_paths = old_inverted.get(path_hash, None)
-        if not old_paths:
+        old_paths = old_inverted[path_hash]
+        try:
+            iterator = enumerate(old_paths)
+            index = next(idx for idx, path in iterator if path in deleted)
+        except StopIteration:
             continue
-        old_path = None
-        for tmp_old_path in old_paths:
-            if tmp_old_path in deleted:
-                old_path = tmp_old_path
-                break
-        if not old_path:
-            continue
+
+        old_path = old_paths.pop(index)
         renamed.append(
             {"path": {"old": old_path, "new": path}, "hash": path_hash}
         )

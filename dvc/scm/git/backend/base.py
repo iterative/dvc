@@ -1,10 +1,21 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Mapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.scm.base import SCMError
 
 from ..objects import GitObject
+
+if TYPE_CHECKING:
+    from ..objects import GitCommit
 
 
 class NoGitBackendError(SCMError):
@@ -41,18 +52,13 @@ class BaseGitBackend(ABC):
     ):
         pass
 
-    @staticmethod
-    @abstractmethod
-    def is_sha(rev: str) -> bool:
-        pass
-
     @property
     @abstractmethod
     def dir(self) -> str:
         pass
 
     @abstractmethod
-    def add(self, paths: Iterable[str], update=False):
+    def add(self, paths: Union[str, Iterable[str]], update=False):
         pass
 
     @abstractmethod
@@ -61,7 +67,11 @@ class BaseGitBackend(ABC):
 
     @abstractmethod
     def checkout(
-        self, branch: str, create_new: Optional[bool] = False, **kwargs,
+        self,
+        branch: str,
+        create_new: Optional[bool] = False,
+        force: bool = False,
+        **kwargs,
     ):
         pass
 
@@ -90,7 +100,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def is_dirty(self, **kwargs) -> bool:
+    def is_dirty(self, untracked_files: bool = False) -> bool:
         pass
 
     @abstractmethod
@@ -122,13 +132,7 @@ class BaseGitBackend(ABC):
         pass
 
     @abstractmethod
-    def resolve_commit(self, rev: str) -> str:
-        pass
-
-    @abstractmethod
-    def branch_revs(
-        self, branch: str, end_rev: Optional[str] = None
-    ) -> Iterable[str]:
+    def resolve_commit(self, rev: str) -> "GitCommit":
         pass
 
     @abstractmethod
@@ -245,17 +249,21 @@ class BaseGitBackend(ABC):
         message: Optional[str] = None,
         include_untracked: Optional[bool] = False,
     ) -> Tuple[Optional[str], bool]:
-        """Push a commit onto the specified stash."""
+        """Push a commit onto the specified stash.
+
+        Returns a tuple of the form (rev, need_reset) where need_reset
+        indicates whether or not the workspace should be `reset --hard`
+        (some backends will not clean the workspace after creating a stash
+        commit).
+        """
 
     @abstractmethod
     def _stash_apply(self, rev: str):
         """Apply the specified stash revision."""
 
     @abstractmethod
-    def reflog_delete(
-        self, ref: str, updateref: bool = False, rewrite: bool = False
-    ):
-        """Delete the specified reflog entry."""
+    def _stash_drop(self, ref: str, index: int):
+        """Drop the specified stash revision."""
 
     @abstractmethod
     def describe(

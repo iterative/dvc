@@ -5,7 +5,6 @@ import pytest
 
 from dvc.exceptions import OutputDuplicationError
 from dvc.repo import NotDvcRepoError, Repo, locked
-from dvc.utils.fs import remove
 
 
 def test_is_dvc_internal(dvc):
@@ -45,7 +44,7 @@ def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):
     [os.path.join("dir", "subdir", "file"), os.path.join("dir", "subdir")],
 )
 def test_used_cache(tmp_dir, dvc, path):
-    from dvc.cache import NamedCache
+    from dvc.objects.db import NamedCache
 
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
     expected = NamedCache.make(
@@ -113,25 +112,28 @@ def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
 def test_branch_config(tmp_dir, scm):
     tmp_dir.scm_gen("foo", "foo", commit="init")
 
+    # sanity check
+    with pytest.raises(NotDvcRepoError):
+        Repo().close()
+
     scm.checkout("branch", create_new=True)
     dvc = Repo.init()
     with dvc.config.edit() as conf:
         conf["remote"]["branch"] = {"url": "/some/path"}
-    scm.add([".dvc"])
+    dvc.close()
+
+    scm.add([os.path.join(".dvc", "config")])
     scm.commit("init dvc")
     scm.checkout("master")
 
-    remove(".dvc")
-
-    # sanity check
     with pytest.raises(NotDvcRepoError):
-        Repo()
-
-    with pytest.raises(NotDvcRepoError):
-        Repo(scm=scm, rev="master")
+        Repo(scm=scm, rev="master").close()
 
     dvc = Repo(scm=scm, rev="branch")
-    assert dvc.config["remote"]["branch"]["url"] == "/some/path"
+    try:
+        assert dvc.config["remote"]["branch"]["url"] == "/some/path"
+    finally:
+        dvc.close()
 
 
 def test_dynamic_cache_initalization(tmp_dir, scm):
@@ -139,5 +141,6 @@ def test_dynamic_cache_initalization(tmp_dir, scm):
     with dvc.config.edit() as conf:
         conf["cache"]["ssh"] = "foo"
         conf["remote"]["foo"] = {"url": "remote://bar/baz"}
+    dvc.close()
 
-    Repo(str(tmp_dir))
+    Repo(str(tmp_dir)).close()

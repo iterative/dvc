@@ -1,6 +1,6 @@
-from ..tree.https import HTTPSTree
+from ..fs.https import HTTPSFileSystem
 from .http import HTTPDependency
 
 
 class HTTPSDependency(HTTPDependency):
-    TREE_CLS = HTTPSTree
+    FS_CLS = HTTPSFileSystem

@@ -1,7 +1,7 @@
 from dvc.output.base import BaseOutput
 
-from ..tree.s3 import S3Tree
+from ..fs.s3 import S3FileSystem
 
 
 class S3Output(BaseOutput):
-    TREE_CLS = S3Tree
+    FS_CLS = S3FileSystem

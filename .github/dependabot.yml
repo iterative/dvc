@@ -1,0 +1,16 @@
+version: 2
+
+updates:
+  - directory: "/"
+    package-ecosystem: "pip"
+    schedule:
+      interval: "daily"
+    labels:
+      - "maintenance"
+
+  - directory: "/"
+    package-ecosystem: "github-actions"
+    schedule:
+      interval: "daily"
+    labels:
+      - "maintenance"

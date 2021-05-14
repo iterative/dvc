@@ -30,15 +30,15 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, tree):
+def get_mtime_and_size(path, fs):
     import nanotime
 
-    if tree.isdir(path):
+    if fs.isdir(path):
         size = 0
         files_mtimes = {}
-        for file_path in tree.walk_files(path):
+        for file_path in fs.walk_files(path):
             try:
-                stats = tree.stat(file_path)
+                stats = fs.stat(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
@@ -51,7 +51,7 @@ def get_mtime_and_size(path, tree):
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-        base_stat = tree.stat(path)
+        base_stat = fs.stat(path)
         size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
@@ -180,7 +180,10 @@ def makedirs(path, exist_ok=False, mode=None):
         if not exist_ok or not os.path.isdir(path):
             raise
 
-    os.chmod(path, mode)
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        logger.trace("failed to chmod '%o' '%s'", mode, path, exc_info=True)
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):

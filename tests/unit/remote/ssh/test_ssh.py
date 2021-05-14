@@ -5,8 +5,8 @@ import sys
 import pytest
 from mock import mock_open, patch
 
+from dvc.fs.ssh import SSHFileSystem
 from dvc.system import System
-from dvc.tree.ssh import SSHTree
 
 
 def test_url(dvc):
@@ -19,21 +19,21 @@ def test_url(dvc):
     url = f"ssh://{user}@{host}:{port}{path}"
     config = {"url": url}
 
-    tree = SSHTree(dvc, config)
-    assert tree.path_info == url
+    fs = SSHFileSystem(dvc, config)
+    assert fs.path_info == url
 
     # SCP-like URL ssh://[user@]host.xz:/absolute/path
     url = f"ssh://{user}@{host}:{path}"
     config = {"url": url}
 
-    tree = SSHTree(dvc, config)
-    assert tree.path_info == url
+    fs = SSHFileSystem(dvc, config)
+    assert fs.path_info == url
 
 
 def test_no_path(dvc):
     config = {"url": "ssh://127.0.0.1"}
-    tree = SSHTree(dvc, config)
-    assert tree.path_info.path == ""
+    fs = SSHFileSystem(dvc, config)
+    assert fs.path_info.path == ""
 
 
 mock_ssh_config = """
@@ -66,11 +66,11 @@ else:
 def test_ssh_host_override_from_config(
     mock_file, mock_exists, dvc, config, expected_host
 ):
-    tree = SSHTree(dvc, config)
+    fs = SSHFileSystem(dvc, config)
 
-    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
-    mock_file.assert_called_with(SSHTree.ssh_config_filename())
-    assert tree.path_info.host == expected_host
+    mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
+    mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
+    assert fs.path_info.host == expected_host
 
 
 @pytest.mark.parametrize(
@@ -94,11 +94,11 @@ def test_ssh_host_override_from_config(
     read_data=mock_ssh_config,
 )
 def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
-    tree = SSHTree(dvc, config)
+    fs = SSHFileSystem(dvc, config)
 
-    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
-    mock_file.assert_called_with(SSHTree.ssh_config_filename())
-    assert tree.path_info.user == expected_user
+    mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
+    mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
+    assert fs.path_info.user == expected_user
 
 
 @pytest.mark.parametrize(
@@ -107,7 +107,7 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
         ({"url": "ssh://example.com:2222"}, 2222),
         ({"url": "ssh://example.com"}, 1234),
         ({"url": "ssh://example.com", "port": 4321}, 4321),
-        ({"url": "ssh://not_in_ssh_config.com"}, SSHTree.DEFAULT_PORT),
+        ({"url": "ssh://not_in_ssh_config.com"}, SSHFileSystem.DEFAULT_PORT),
         ({"url": "ssh://not_in_ssh_config.com:2222"}, 2222),
         ({"url": "ssh://not_in_ssh_config.com:2222", "port": 4321}, 4321),
     ],
@@ -119,11 +119,11 @@ def test_ssh_user(mock_file, mock_exists, dvc, config, expected_user):
     read_data=mock_ssh_config,
 )
 def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
-    tree = SSHTree(dvc, config)
+    fs = SSHFileSystem(dvc, config)
 
-    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
-    mock_file.assert_called_with(SSHTree.ssh_config_filename())
-    assert tree.path_info.port == expected_port
+    mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
+    mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
+    assert fs.path_info.port == expected_port
 
 
 @pytest.mark.parametrize(
@@ -154,11 +154,11 @@ def test_ssh_port(mock_file, mock_exists, dvc, config, expected_port):
     read_data=mock_ssh_config,
 )
 def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
-    tree = SSHTree(dvc, config)
+    fs = SSHFileSystem(dvc, config)
 
-    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
-    mock_file.assert_called_with(SSHTree.ssh_config_filename())
-    assert tree.keyfile == expected_keyfile
+    mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
+    mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
+    assert fs.keyfile == expected_keyfile
 
 
 @pytest.mark.parametrize(
@@ -176,11 +176,11 @@ def test_ssh_keyfile(mock_file, mock_exists, dvc, config, expected_keyfile):
     read_data=mock_ssh_config,
 )
 def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
-    tree = SSHTree(dvc, config)
+    fs = SSHFileSystem(dvc, config)
 
-    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
-    mock_file.assert_called_with(SSHTree.ssh_config_filename())
-    assert tree.gss_auth == expected_gss_auth
+    mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
+    mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
+    assert fs.gss_auth == expected_gss_auth
 
 
 @pytest.mark.parametrize(
@@ -201,20 +201,20 @@ def test_ssh_gss_auth(mock_file, mock_exists, dvc, config, expected_gss_auth):
 def test_ssh_allow_agent(
     mock_file, mock_exists, dvc, config, expected_allow_agent
 ):
-    tree = SSHTree(dvc, config)
+    fs = SSHFileSystem(dvc, config)
 
-    mock_exists.assert_called_with(SSHTree.ssh_config_filename())
-    mock_file.assert_called_with(SSHTree.ssh_config_filename())
-    assert tree.allow_agent == expected_allow_agent
+    mock_exists.assert_called_with(SSHFileSystem.ssh_config_filename())
+    mock_file.assert_called_with(SSHFileSystem.ssh_config_filename())
+    assert fs.allow_agent == expected_allow_agent
 
 
 def test_hardlink_optimization(dvc, tmp_dir, ssh):
-    tree = SSHTree(dvc, ssh.config)
+    fs = SSHFileSystem(dvc, ssh.config)
 
-    from_info = tree.path_info / "empty"
-    to_info = tree.path_info / "link"
+    from_info = fs.path_info / "empty"
+    to_info = fs.path_info / "link"
 
-    with tree.open(from_info, "wb"):
+    with fs.open(from_info, "wb"):
         pass
 
     if os.name == "nt":
@@ -222,5 +222,5 @@ def test_hardlink_optimization(dvc, tmp_dir, ssh):
     else:
         link_path = to_info.path
 
-    tree.hardlink(from_info, to_info)
+    fs.hardlink(from_info, to_info)
     assert not System.is_hardlink(link_path)

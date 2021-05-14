@@ -433,15 +433,21 @@ class Stage(params.StageParams):
         return m
 
     def save(self, allow_missing=False):
-        self.save_deps()
+        self.save_deps(allow_missing=allow_missing)
         self.save_outs(allow_missing=allow_missing)
         self.md5 = self.compute_md5()
 
         self.repo.stage_cache.save(self)
 
-    def save_deps(self):
+    def save_deps(self, allow_missing=False):
+        from dvc.dependency.base import DependencyDoesNotExistError
+
         for dep in self.deps:
-            dep.save()
+            try:
+                dep.save()
+            except DependencyDoesNotExistError:
+                if not allow_missing:
+                    raise
 
     def save_outs(self, allow_missing=False):
         from dvc.output.base import OutputDoesNotExistError
@@ -614,7 +620,7 @@ class Stage(params.StageParams):
         )
 
     def get_used_cache(self, *args, **kwargs):
-        from dvc.cache import NamedCache
+        from dvc.objects.db import NamedCache
 
         cache = NamedCache()
         for out in self.filter_outs(kwargs.get("filter_info")):

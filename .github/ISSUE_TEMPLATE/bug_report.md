@@ -48,14 +48,17 @@ A clear and concise description of what you expect to happen.
 This is required to ensure that we can reproduce the bug.
 -->
 
-**Output of `dvc version`:**
+**Output of `dvc doctor`:**
 
 ```console
-$ dvc version
+$ dvc doctor
 ```
 
 **Additional Information (if any):**
 
 <!--
+Please check https://github.com/iterative/dvc/wiki/Debugging-DVC on ways to gather more information regarding the issue.
+
 If applicable, please also provide a `--verbose` output of the command, eg: `dvc add --verbose`.
+If the issue is regarding the performance, please attach the profiling information and the benchmark comparisons.
 -->

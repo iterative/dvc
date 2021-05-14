@@ -1,11 +1,11 @@
-from dvc.cache import Cache
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
+from dvc.objects.db import ODBManager
 from dvc.system import System
 
 
 def test_destroy(tmp_dir, dvc, run_copy):
     dvc.config["cache"]["type"] = ["symlink"]
-    dvc.cache = Cache(dvc)
+    dvc.odb = ODBManager(dvc)
 
     tmp_dir.dvc_gen("file", "text")
     tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})

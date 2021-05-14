@@ -3,6 +3,7 @@ import re
 
 import pytest
 
+from dvc.fs.local import LocalFileSystem
 from dvc.path_info import PathInfo
 from dvc.utils import (
     dict_sha256,
@@ -86,7 +87,8 @@ def test_fix_env_pyenv(path, orig):
 def test_file_md5(tmp_dir):
     tmp_dir.gen("foo", "foo content")
 
-    assert file_md5("foo") == file_md5(PathInfo("foo"))
+    fs = LocalFileSystem(None, {})
+    assert file_md5("foo", fs) == file_md5(PathInfo("foo"), fs)
 
 
 def test_tmp_fname():

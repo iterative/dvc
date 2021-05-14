@@ -708,7 +708,7 @@ def test_show_from_subdir(tmp_dir, dvc, caplog):
     with subdir.chdir(), caplog.at_level(logging.INFO, "dvc"):
         assert main(["plots", "show", "metric.json"]) == 0
 
-    assert f"file://{str(subdir)}" in caplog.text
+    assert subdir.as_uri() in caplog.text
     assert (subdir / "plots.html").exists()
 
 
@@ -754,7 +754,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.cache.local.cache_dir)
+        remove(dvc.odb.local.cache_dir)
 
     dvc._reset()
 
@@ -827,3 +827,13 @@ def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
 
     result = dvc.plots.show(targets=[p1])
     assert set(result.keys()) == {p1}
+
+
+def test_ignore_binary_file(tmp_dir, dvc, run_copy_metrics):
+    with open("file", "wb") as fobj:
+        fobj.write(b"\xc1")
+
+    run_copy_metrics("file", "plot_file", plots=["plot_file"])
+
+    with pytest.raises(NoMetricsParsedError):
+        dvc.plots.show()

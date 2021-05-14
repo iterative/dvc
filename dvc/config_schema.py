@@ -145,6 +145,7 @@ SCHEMA = {
                     "session_token": str,
                     Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
+                    Optional("ssl_verify", default=True): Bool,
                     "sse": str,
                     "sse_kms_key_id": str,
                     "acl": str,
@@ -171,7 +172,7 @@ SCHEMA = {
                     "allow_agent": Bool,
                     **REMOTE_COMMON,
                 },
-                "hdfs": {"user": str, **REMOTE_COMMON},
+                "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
                 "webhdfs": {
                     "hdfscli_config": str,
                     "webhdfs_token": str,
@@ -179,7 +180,16 @@ SCHEMA = {
                     "webhdfs_alias": str,
                     **REMOTE_COMMON,
                 },
-                "azure": {"connection_string": str, **REMOTE_COMMON},
+                "azure": {
+                    "connection_string": str,
+                    "sas_token": str,
+                    "account_name": str,
+                    "account_key": str,
+                    "tenant_id": str,
+                    "client_id": str,
+                    "client_secret": str,
+                    **REMOTE_COMMON,
+                },
                 "oss": {
                     "oss_key_id": str,
                     "oss_key_secret": str,
@@ -191,9 +201,8 @@ SCHEMA = {
                     "gdrive_client_id": str,
                     "gdrive_client_secret": str,
                     "gdrive_user_credentials_file": str,
-                    "gdrive_service_account_email": str,
                     "gdrive_service_account_user_email": str,
-                    "gdrive_service_account_p12_file_path": str,
+                    "gdrive_service_account_json_file_path": str,
                     Optional("gdrive_trash_only", default=False): Bool,
                     **REMOTE_COMMON,
                 },
@@ -206,12 +215,13 @@ SCHEMA = {
         )
     },
     "state": {
-        "row_limit": All(Coerce(int), Range(1)),
-        "row_cleanup_quota": All(Coerce(int), Range(0, 100)),
+        "row_limit": All(Coerce(int), Range(1)),  # obsoleted
+        "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
     },
     # section for experimental features
     "feature": {
         # enabled by default. It's of no use, kept for backward compatibility.
         Optional("parametrization", default=True): Bool
     },
+    "plots": {"html_template": str},
 }

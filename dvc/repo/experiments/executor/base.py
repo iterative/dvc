@@ -33,7 +33,7 @@ from dvc.repo.experiments.base import (
 )
 from dvc.scm import SCM
 from dvc.stage import PipelineStage
-from dvc.stage.run import CheckpointKilledError
+from dvc.stage.monitor import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256
 from dvc.utils.fs import remove
@@ -138,11 +138,11 @@ class BaseExecutor(ABC):
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
-    def pack_repro_args(path, *args, tree=None, extra=None, **kwargs):
+    def pack_repro_args(path, *args, fs=None, extra=None, **kwargs):
         dpath = os.path.dirname(path)
-        if tree:
-            open_func = tree.open
-            tree.makedirs(dpath)
+        if fs:
+            open_func = fs.open
+            fs.makedirs(dpath)
         else:
             from dvc.utils.fs import makedirs
 
@@ -181,16 +181,16 @@ class BaseExecutor(ABC):
                 refs.append(ref)
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
-            orig_rev = dest_scm.get_ref(orig_ref)
-            if dest_scm.diff(orig_rev, new_rev):
-                if force:
-                    logger.debug(
-                        "Replacing existing experiment '%s'", orig_ref,
-                    )
-                    return True
-                if on_diverged:
-                    checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
-                    on_diverged(orig_ref, checkpoint)
+            if force:
+                logger.debug(
+                    "Replacing existing experiment '%s'", orig_ref,
+                )
+                return True
+
+            checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
+            self._raise_ref_conflict(dest_scm, orig_ref, new_rev, checkpoint)
+            if on_diverged:
+                on_diverged(orig_ref, checkpoint)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
@@ -218,6 +218,7 @@ class BaseExecutor(ABC):
         queue: Optional["Queue"] = None,
         rel_cwd: Optional[str] = None,
         name: Optional[str] = None,
+        log_errors: bool = True,
         log_level: Optional[int] = None,
     ) -> "ExecutorResult":
         """Run dvc repro and return the result.
@@ -234,7 +235,7 @@ class BaseExecutor(ABC):
 
         if queue is not None:
             queue.put((rev, os.getpid()))
-        if log_level is not None:
+        if log_errors and log_level is not None:
             cls._set_log_level(log_level)
 
         def filter_pipeline(stages):
@@ -246,29 +247,49 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
-        with cls._repro_dvc(dvc_dir, rel_cwd) as dvc:
+        with cls._repro_dvc(dvc_dir, rel_cwd, log_errors) as dvc:
             args, kwargs = cls._repro_args(dvc)
+            if args:
+                targets: Optional[Union[list, str]] = args[0]
+            else:
+                targets = kwargs.get("targets")
 
             repro_force = kwargs.get("force", False)
             logger.trace(  # type: ignore[attr-defined]
                 "Executor repro with force = '%s'", str(repro_force)
             )
 
-            # NOTE: for checkpoint experiments we handle persist outs slightly
-            # differently than normal:
+            repro_dry = kwargs.get("dry")
+
+            # NOTE: checkpoint outs are handled as a special type of persist
+            # out:
             #
             # - checkpoint out may not yet exist if this is the first time this
             #   experiment has been run, this is not an error condition for
             #   experiments
-            # - at the start of a repro run, we need to remove the persist out
-            #   and restore it to its last known (committed) state (which may
-            #   be removed/does not yet exist) so that our executor workspace
-            #   is not polluted with the (persistent) out from an unrelated
-            #   experiment run
-            dvc_checkout(dvc, force=True, quiet=True, allow_missing=True)
+            # - if experiment was run with --reset, the checkpoint out will be
+            #   removed at the start of the experiment (regardless of any
+            #   dvc.lock entry for the checkpoint out)
+            # - if run without --reset, the checkpoint out will be checked out
+            #   using any hash present in dvc.lock (or removed if no entry
+            #   exists in dvc.lock)
+            checkpoint_reset: bool = kwargs.pop("reset", False)
+            if not repro_dry:
+                dvc_checkout(
+                    dvc,
+                    targets=targets,
+                    with_deps=targets is not None,
+                    force=True,
+                    quiet=True,
+                    allow_missing=True,
+                    checkpoint_reset=checkpoint_reset,
+                )
 
             checkpoint_func = partial(
-                cls.checkpoint_callback, dvc.scm, name, repro_force
+                cls.checkpoint_callback,
+                dvc.scm,
+                name,
+                repro_force or checkpoint_reset,
             )
             stages = dvc_reproduce(
                 dvc,
@@ -279,29 +300,38 @@ class BaseExecutor(ABC):
             )
 
             exp_hash = cls.hash_exp(stages)
-            try:
-                cls.commit(
-                    dvc.scm,
-                    exp_hash,
-                    exp_name=name,
-                    force=repro_force,
-                    checkpoint=any(stage.is_checkpoint for stage in stages),
-                )
-            except UnchangedExperimentError:
-                pass
-            ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-            if ref:
-                exp_ref = ExpRefInfo.from_ref(ref)
-            if cls.WARN_UNTRACKED:
-                untracked = dvc.scm.untracked_files()
-                if untracked:
-                    logger.warning(
-                        "The following untracked files were present in the "
-                        "experiment directory after reproduction but will "
-                        "not be included in experiment commits:\n"
-                        "\t%s",
-                        ", ".join(untracked),
+            if not repro_dry:
+                try:
+                    is_checkpoint = any(
+                        stage.is_checkpoint for stage in stages
                     )
+                    if is_checkpoint and checkpoint_reset:
+                        # For reset checkpoint stages, we need to force
+                        # overwriting existing checkpoint refs even though
+                        # repro may not have actually been run with --force
+                        repro_force = True
+                    cls.commit(
+                        dvc.scm,
+                        exp_hash,
+                        exp_name=name,
+                        force=repro_force,
+                        checkpoint=is_checkpoint,
+                    )
+                except UnchangedExperimentError:
+                    pass
+                ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+                if ref:
+                    exp_ref = ExpRefInfo.from_ref(ref)
+                if cls.WARN_UNTRACKED:
+                    untracked = dvc.scm.untracked_files()
+                    if untracked:
+                        logger.warning(
+                            "The following untracked files were present in "
+                            "the experiment directory after reproduction but "
+                            "will not be included in experiment commits:\n"
+                            "\t%s",
+                            ", ".join(untracked),
+                        )
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
@@ -310,7 +340,9 @@ class BaseExecutor(ABC):
 
     @classmethod
     @contextmanager
-    def _repro_dvc(cls, dvc_dir: Optional[str], rel_cwd: Optional[str]):
+    def _repro_dvc(
+        cls, dvc_dir: Optional[str], rel_cwd: Optional[str], log_errors: bool
+    ):
         from dvc.repo import Repo
 
         dvc = Repo(dvc_dir)
@@ -331,13 +363,15 @@ class BaseExecutor(ABC):
         except CheckpointKilledError:
             raise
         except DvcException:
-            logger.exception("")
+            if log_errors:
+                logger.exception("")
             raise
         except Exception:
-            logger.exception("unexpected error")
+            if log_errors:
+                logger.exception("unexpected error")
             raise
         finally:
-            dvc.scm.close()
+            dvc.close()
             if old_cwd:
                 os.chdir(old_cwd)
 
@@ -347,6 +381,8 @@ class BaseExecutor(ABC):
         if os.path.exists(args_path):
             args, kwargs = cls.unpack_repro_args(args_path)
             remove(args_path)
+            # explicitly git rm/unstage the args file
+            dvc.scm.add([args_path])
         else:
             args = []
             kwargs = {}
@@ -385,6 +421,7 @@ class BaseExecutor(ABC):
             logger.debug("No changes to commit")
             raise UnchangedExperimentError(rev)
 
+        check_conflict = False
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
         if branch:
             old_ref = rev
@@ -395,20 +432,40 @@ class BaseExecutor(ABC):
             ref_info = ExpRefInfo(baseline_rev, name)
             branch = str(ref_info)
             old_ref = None
-            if not force and scm.get_ref(branch):
-                if checkpoint:
-                    raise CheckpointExistsError(ref_info.name)
-                raise ExperimentExistsError(ref_info.name)
-            logger.debug("Commit to new experiment branch '%s'", branch)
+            if scm.get_ref(branch):
+                if not force:
+                    check_conflict = True
+                logger.debug(
+                    "%s existing experiment branch '%s'",
+                    "Replace" if force else "Reuse",
+                    branch,
+                )
+            else:
+                logger.debug("Commit to new experiment branch '%s'", branch)
 
         scm.add([], update=True)
         scm.commit(f"dvc: commit experiment {exp_hash}", no_verify=True)
         new_rev = scm.get_rev()
-        scm.set_ref(branch, new_rev, old_ref=old_ref)
+        if check_conflict:
+            new_rev = cls._raise_ref_conflict(scm, branch, new_rev, checkpoint)
+        else:
+            scm.set_ref(branch, new_rev, old_ref=old_ref)
         scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         if checkpoint:
             scm.set_ref(EXEC_CHECKPOINT, new_rev)
         return new_rev
+
+    @staticmethod
+    def _raise_ref_conflict(scm, ref, new_rev, checkpoint):
+        # If this commit is a duplicate of the existing commit at 'ref', return
+        # the existing commit. Otherwise, error out and require user to re-run
+        # with --force as needed
+        orig_rev = scm.get_ref(ref)
+        if scm.diff(orig_rev, new_rev):
+            if checkpoint:
+                raise CheckpointExistsError(ref)
+            raise ExperimentExistsError(ref)
+        return orig_rev
 
     @staticmethod
     def _set_log_level(level):

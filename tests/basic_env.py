@@ -192,10 +192,12 @@ class TestDvc(TestDvcFixture, TestCase):
         TestDvcFixture.__init__(self)
         TestCase.__init__(self, methodName)
         self._caplog = None
+        self._capsys = None
 
     @pytest.fixture(autouse=True)
-    def inject_fixtures(self, caplog):
+    def inject_fixtures(self, caplog, capsys):
         self._caplog = caplog
+        self._capsys = capsys
 
 
 class TestDvcGit(TestDvcGitFixture, TestCase):

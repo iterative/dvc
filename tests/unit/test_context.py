@@ -4,6 +4,7 @@ from unittest.mock import mock_open
 
 import pytest
 
+from dvc.fs.local import LocalFileSystem
 from dvc.parsing import DEFAULT_PARAMS_FILE
 from dvc.parsing.context import (
     Context,
@@ -15,7 +16,6 @@ from dvc.parsing.context import (
     Value,
     recurse_not_a_node,
 )
-from dvc.tree.local import LocalTree
 from dvc.utils import relpath
 from dvc.utils.serialize import dump_yaml, dumps_yaml
 
@@ -218,12 +218,12 @@ def test_overwrite_with_setitem():
 
 def test_load_from(mocker):
     d = {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
-    tree = mocker.Mock(
+    fs = mocker.Mock(
         open=mock_open(read_data=dumps_yaml(d)),
         **{"exists.return_value": True, "isdir.return_value": False},
     )
     file = "params.yaml"
-    c = Context.load_from(tree, file)
+    c = Context.load_from(fs, file)
 
     assert asdict(c["x"].meta) == {
         "source": file,
@@ -288,11 +288,11 @@ def test_track(tmp_dir):
         ],
         "dct": {"foo": "foo", "bar": "bar", "baz": "baz"},
     }
-    tree = LocalTree(None, config={})
+    fs = LocalFileSystem(None, config={})
     path = tmp_dir / "params.yaml"
-    dump_yaml(path, d, tree)
+    dump_yaml(path, d, fs)
 
-    context = Context.load_from(tree, path)
+    context = Context.load_from(fs, path)
 
     def key_tracked(d, key):
         assert len(d) == 1
@@ -323,14 +323,14 @@ def test_track_from_multiple_files(tmp_dir):
     d1 = {"Train": {"us": {"lr": 10}}}
     d2 = {"Train": {"us": {"layers": 100}}}
 
-    tree = LocalTree(None, config={})
+    fs = LocalFileSystem(None, config={})
     path1 = tmp_dir / "params.yaml"
     path2 = tmp_dir / "params2.yaml"
-    dump_yaml(path1, d1, tree)
-    dump_yaml(path2, d2, tree)
+    dump_yaml(path1, d1, fs)
+    dump_yaml(path2, d2, fs)
 
-    context = Context.load_from(tree, path1)
-    c = Context.load_from(tree, path2)
+    context = Context.load_from(fs, path1)
+    c = Context.load_from(fs, path2)
     context.merge_update(c)
 
     def key_tracked(d, path, key):
@@ -429,7 +429,7 @@ def test_resolve_resolves_boolean_value():
 
 def test_load_from_raises_if_file_not_exist(tmp_dir, dvc):
     with pytest.raises(ParamsLoadError) as exc_info:
-        Context.load_from(dvc.tree, tmp_dir / DEFAULT_PARAMS_FILE)
+        Context.load_from(dvc.fs, tmp_dir / DEFAULT_PARAMS_FILE)
 
     assert str(exc_info.value) == "'params.yaml' does not exist"
 
@@ -439,6 +439,6 @@ def test_load_from_raises_if_file_is_directory(tmp_dir, dvc):
     data_dir.mkdir()
 
     with pytest.raises(ParamsLoadError) as exc_info:
-        Context.load_from(dvc.tree, data_dir)
+        Context.load_from(dvc.fs, data_dir)
 
     assert str(exc_info.value) == "'data' is a directory"

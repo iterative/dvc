@@ -103,7 +103,7 @@ def remote(tmp_dir, dvc, request):
 
 @pytest.fixture
 def workspace(tmp_dir, dvc, request):
-    from dvc.cache import Cache
+    from dvc.objects.db import ODBManager
 
     cloud = request.param
 
@@ -119,6 +119,6 @@ def workspace(tmp_dir, dvc, request):
         with dvc.config.edit() as conf:
             conf["cache"][scheme] = "cache"
 
-        dvc.cache = Cache(dvc)
+        dvc.odb = ODBManager(dvc)
 
     return cloud

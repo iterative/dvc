@@ -52,6 +52,8 @@ def add(  # noqa: C901
             invalid_opt = "--no-commit option"
         elif recursive:
             invalid_opt = "--recursive option"
+        elif kwargs.get("external"):
+            invalid_opt = "--external option"
     else:
         message = "{option} can't be used without --to-remote"
         if kwargs.get("remote"):
@@ -88,7 +90,12 @@ def add(  # noqa: C901
                 )
 
             stages = _create_stages(
-                repo, sub_targets, fname, pbar=pbar, **kwargs,
+                repo,
+                sub_targets,
+                fname,
+                pbar=pbar,
+                transfer=to_remote or to_cache,
+                **kwargs,
             )
 
             try:
@@ -157,24 +164,14 @@ def _process_stages(
         (target,) = sub_targets
         (out,) = stage.outs
 
+        odb = None
         if to_remote:
-            out.hash_info = repo.cloud.transfer(
-                target,
-                jobs=kwargs.get("jobs"),
-                remote=kwargs.get("remote"),
-                command="add",
-            )
-        else:
-            from dvc.objects import transfer
-            from dvc.tree import get_cloud_tree
+            remote = repo.cloud.get_remote(kwargs.get("remote"), "add")
+            odb = remote.odb
 
-            from_tree = get_cloud_tree(repo, url=target)
-            out.hash_info = transfer(
-                out.cache,
-                from_tree,
-                from_tree.path_info,
-                jobs=kwargs.get("jobs"),
-            )
+        out.transfer(target, odb=odb, jobs=kwargs.get("jobs"))
+
+        if to_cache:
             out.checkout()
 
         Dvcfile(repo, stage.path).dump(stage)
@@ -212,7 +209,7 @@ def _find_all_targets(repo, target, recursive):
         return [
             os.fspath(path)
             for path in Tqdm(
-                repo.tree.walk_files(target),
+                repo.fs.walk_files(target),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",
@@ -233,6 +230,7 @@ def _create_stages(
     external=False,
     glob=False,
     desc=None,
+    transfer=False,
     **kwargs,
 ):
     from dvc.dvcfile import Dvcfile
@@ -249,7 +247,9 @@ def _create_stages(
     ):
         if kwargs.get("out"):
             out = resolve_output(out, kwargs["out"])
-        path, wdir, out = resolve_paths(repo, out)
+        path, wdir, out = resolve_paths(
+            repo, out, always_local=transfer and not kwargs.get("out")
+        )
         stage = create_stage(
             Stage,
             repo,

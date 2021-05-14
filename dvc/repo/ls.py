@@ -35,7 +35,7 @@ def ls(
         if path:
             path_info /= path
 
-        ret = _ls(repo.repo_tree, path_info, recursive, dvc_only)
+        ret = _ls(repo.repo_fs, path_info, recursive, dvc_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, dvc_only=dvc_only)
@@ -48,13 +48,13 @@ def ls(
         return ret_list
 
 
-def _ls(tree, path_info, recursive=None, dvc_only=False):
+def _ls(fs, path_info, recursive=None, dvc_only=False):
     def onerror(exc):
         raise exc
 
     infos = []
     try:
-        for root, dirs, files in tree.walk(
+        for root, dirs, files in fs.walk(
             path_info.fspath, onerror=onerror, dvcfiles=True
         ):
             entries = chain(files, dirs) if not recursive else files
@@ -68,7 +68,7 @@ def _ls(tree, path_info, recursive=None, dvc_only=False):
 
     ret = {}
     for info in infos:
-        metadata = tree.metadata(info)
+        metadata = fs.metadata(info)
         if metadata.output_exists or not dvc_only:
             path = (
                 path_info.name
