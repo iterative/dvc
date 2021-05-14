@@ -122,3 +122,23 @@ def test_external_outs(tmp_path_factory, dvc):
 
     create_stage(Stage, dvc, "path.dvc", outs=["remote://myremote/foo"])
     create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)], external=True)
+
+
+def test_env(dvc):
+    from dvc.env import DVC_ROOT
+    from dvc.exceptions import DvcException
+    from dvc.stage import create_stage
+
+    stage = create_stage(Stage, dvc, "path.dvc", outs=["foo", "bar"])
+
+    with mock.patch.object(stage, "_read_env", return_value={"foo": "foo"}):
+        env = stage.env()
+        assert env == {DVC_ROOT: dvc.root_dir, "foo": "foo"}
+
+    def mock_read_env(out, **kwargs):
+        return {"foo": str(out)}
+
+    with pytest.raises(DvcException) as exc:
+        with mock.patch.object(stage, "_read_env", mock_read_env):
+            env = stage.env()
+        assert exc.value == "Conflicting values for env variable"
