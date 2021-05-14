@@ -1,8 +1,15 @@
+from typing import NamedTuple, Optional
+
 from voluptuous import Required
 
 from dvc.path_info import PathInfo
 
 from .base import Dependency
+
+
+class RepoPair(NamedTuple):
+    url: str
+    rev: Optional[str] = None
 
 
 class RepoDependency(Dependency):
@@ -31,10 +38,10 @@ class RepoDependency(Dependency):
         return False
 
     @property
-    def repo_pair(self):
+    def repo_pair(self) -> RepoPair:
         d = self.def_repo
         rev = d.get(self.PARAM_REV_LOCK) or d.get(self.PARAM_REV)
-        return d[self.PARAM_URL], rev
+        return RepoPair(d[self.PARAM_URL], rev)
 
     def __str__(self):
         return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
