@@ -56,3 +56,18 @@ def test_ls_colors_exec():
 def test_ls_colors_ext():
     ls_colors = LsColors(LsColors.default + ":*.xml=01;33")
     assert colorize(ls_colors)("file.xml") == "\x1b[01;33mfile.xml\x1b[0m"
+
+
+def test_ls_repo_with_custom_color_env_defined(monkeypatch):
+    monkeypatch.setenv("LS_COLORS", "rs=0:di=01;34:*.xml=01;31:*.dvc=01;33:")
+    ls_colors = LsColors()
+    colorizer = colorize(ls_colors)
+
+    assert colorizer(".dvcignore") == ".dvcignore"
+    assert colorizer(".gitignore") == ".gitignore"
+    assert colorizer("README.md") == "README.md"
+    assert colorizer("data", "d") == "\x1b[01;34mdata\x1b[0m"
+    assert colorizer("structure.xml") == "\x1b[01;31mstructure.xml\x1b[0m"
+    assert (
+        colorizer("structure.xml.dvc") == "\x1b[01;33mstructure.xml.dvc\x1b[0m"
+    )

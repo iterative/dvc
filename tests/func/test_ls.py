@@ -73,36 +73,6 @@ def test_ls_repo(tmp_dir, dvc, scm):
     )
 
 
-def test_ls_repo_with_color(tmp_dir, dvc, scm, mocker, monkeypatch, caplog):
-    import logging
-
-    from dvc.cli import parse_args
-
-    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
-    tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
-
-    monkeypatch.setenv("LS_COLORS", "rs=0:di=01;34:*.xml=01;31:*.dvc=01;33:")
-    cli_args = parse_args(["list", os.fspath(tmp_dir)])
-    cmd = cli_args.func(cli_args)
-
-    caplog.clear()
-    mocker.patch("sys.stdout.isatty", return_value=True)
-    with caplog.at_level(logging.INFO, logger="dvc.command.ls"):
-        assert cmd.run() == 0
-
-    assert caplog.records[-1].msg == "\n".join(
-        [
-            ".dvcignore",
-            ".gitignore",
-            "README.md",
-            "\x1b[01;34mdata\x1b[0m",
-            "\x1b[01;34mmodel\x1b[0m",
-            "\x1b[01;31mstructure.xml\x1b[0m",
-            "\x1b[01;33mstructure.xml.dvc\x1b[0m",
-        ]
-    )
-
-
 def test_ls_repo_recursive(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
