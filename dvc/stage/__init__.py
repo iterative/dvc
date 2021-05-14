@@ -296,8 +296,11 @@ class Stage(params.StageParams):
 
         for out in self.outs:
             current = self._read_env(out, checkpoint_func=checkpoint_func)
-            if set(env.keys()).intersection(set(current.keys())):
-                raise DvcException("Duplicated env variable")
+            if any(
+                env.get(key) != current.get(key)
+                for key in set(env.keys()).intersection(current.keys())
+            ):
+                raise DvcException("Conflicting values for env variable")
             env.update(current)
         return env
 
