@@ -7,6 +7,7 @@ from itertools import groupby, takewhile
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 
+from dvc.exceptions import DvcException
 from dvc.fs.base import BaseFileSystem
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
@@ -17,6 +18,19 @@ from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
 
 logger = logging.getLogger(__name__)
+
+
+class SubrepoException(DvcException):
+    """
+    Raised when the target is in a subrepo.
+    """
+
+    def __init__(self, subrepo):
+        super().__init__(f"is in a subrepo '{subrepo}'")
+        self.target = ""
+
+    def __str__(self):
+        return f"fatal: Pathspec '{self.target}' {self.msg}"
 
 
 class DvcIgnore:
@@ -130,6 +144,9 @@ class DvcIgnorePatterns(DvcIgnore):
                 matches |= bool(regex.match(f"{path}/"))
 
             if matches:
+                if isinstance(pattern_info.file_info, SubrepoException):
+                    pattern_info.file_info.target = path
+                    raise pattern_info.file_info
                 result.append(pattern_info.file_info)
 
         return result
@@ -244,7 +261,7 @@ class DvcIgnoreFilter:
             return
 
         root, dname = os.path.split(path)
-        pattern_info = PatternInfo(f"/{dname}/", f"in sub_repo:{dname}")
+        pattern_info = PatternInfo(f"/{dname}/", SubrepoException(dname))
         new_pattern = DvcIgnorePatterns([pattern_info], root)
         old_pattern = ignore_trie.longest_prefix(root).value
         if old_pattern:

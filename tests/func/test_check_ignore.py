@@ -91,10 +91,13 @@ def test_check_ignore_sub_repo(tmp_dir, dvc, capsys):
         {DvcIgnore.DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}}
     )
 
-    assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
+    assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 255
     out, _ = capsys.readouterr()
     assert (
-        "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo")) in out
+        "Pathspec '{}' is in a subrepo '{}'".format(
+            os.path.join("dir", "foo"), "dir"
+        )
+        in out
     )
 
 
