@@ -147,8 +147,6 @@ class DvcIgnorePatterns:
         return hash(self.dirname + ":" + str(self.pattern_list))
 
     def __eq__(self, other):
-        print(self)
-        print(other)
         if not isinstance(other, DvcIgnorePatterns):
             return NotImplemented
         return (self.dirname == other.dirname) & (str(self) == str(other))
