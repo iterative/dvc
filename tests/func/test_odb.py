@@ -1,6 +1,5 @@
 import os
 import stat
-import textwrap
 
 import configobj
 import pytest
@@ -230,27 +229,3 @@ def test_shared_cache(tmp_dir, dvc, group):
     }
 
     assert expected == actual
-
-
-def test_cache_dir_local(tmp_dir, dvc, caplog):
-    (tmp_dir / ".dvc" / "config.local").write_text(
-        textwrap.dedent(
-            """\
-            [cache]
-                dir = some/path
-            """
-        )
-    )
-    path = os.path.join(dvc.dvc_dir, "some", "path")
-
-    caplog.clear()
-    assert main(["cache", "dir", "--local"]) == 0
-    assert path in caplog.text
-
-    caplog.clear()
-    assert main(["cache", "dir"]) == 0
-    assert path in caplog.text
-
-    caplog.clear()
-    assert main(["cache", "dir", "--project"]) == 251
-    assert "option 'dir' doesn't exist in section 'cache'" in caplog.text

@@ -1,10 +1,8 @@
 import argparse
-import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
-
-logger = logging.getLogger(__name__)
+from dvc.ui import ui
 
 
 class CmdCheckIgnore(CmdBase):
@@ -22,9 +20,9 @@ class CmdCheckIgnore(CmdBase):
                 patterns = patterns[-1:]
 
             for pattern in patterns:
-                logger.info("{}\t{}".format(pattern, result.file))
+                ui.write(pattern, result.file, sep="\t")
         else:
-            logger.info(result.file)
+            ui.write(result.file)
 
     def _check_one_file(self, target):
         result = self.ignore_filter.check_ignore(target)
