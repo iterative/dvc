@@ -4,6 +4,7 @@ import logging
 import shtab
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 FILE = shtab.FILE
@@ -95,7 +96,7 @@ class CmdCompletion(CmdBaseNoRepo):
         parser = get_main_parser()
         shell = self.args.shell
         script = shtab.complete(parser, shell=shell, preamble=PREAMBLE)
-        print(script)
+        ui.write(script, force=True)
         return 0
 
 
