@@ -18,6 +18,7 @@ from dvc.remote.base import (
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils.fs import move, remove
 from dvc.utils.serialize import dump_yaml, load_yaml
+from tests.func.parsing.test_errors import escape_ansi
 
 all_clouds = [
     pytest.lazy_fixture(cloud)
@@ -484,16 +485,18 @@ def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
     assert msg in caplog.text
 
 
-def test_pull_stats(tmp_dir, dvc, caplog, local_remote):
+def test_pull_stats(tmp_dir, dvc, capsys, caplog, local_remote):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.push()
     clean(["foo", "bar"], dvc)
     (tmp_dir / "bar").write_text("foobar")
-    caplog.clear()
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["pull", "--force"])
-    assert "M\tbar" in caplog.text
-    assert "A\tfoo" in caplog.text
+
+    assert main(["pull", "--force"]) == 0
+
+    out, _ = capsys.readouterr()
+    out = escape_ansi(out)
+    assert "M\tbar" in out
+    assert "A\tfoo" in out
     assert "2 files fetched" in caplog.text
     assert "1 file added" in caplog.text
     assert "1 file modified" in caplog.text

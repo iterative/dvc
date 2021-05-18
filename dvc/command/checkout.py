@@ -1,5 +1,4 @@
 import argparse
-import logging
 import operator
 
 import colorama
@@ -7,8 +6,7 @@ import colorama
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import CheckoutError
-
-logger = logging.getLogger(__name__)
+from dvc.ui import ui
 
 
 def log_changes(stats):
@@ -24,16 +22,9 @@ def log_changes(stats):
         if not entries:
             continue
 
+        nc = colorama.Fore.RESET
         for entry in entries:
-            logger.info(
-                "{color}{state}{nc}{spacing}{entry}".format(
-                    color=color,
-                    state=state[0].upper(),
-                    nc=colorama.Fore.RESET,
-                    spacing="\t",
-                    entry=entry,
-                )
-            )
+            ui.write(f"{color}{state[0].upper()}{nc}", entry, sep="\t")
 
 
 class CmdCheckout(CmdBase):
@@ -58,7 +49,7 @@ class CmdCheckout(CmdBase):
             msg = get_summary(
                 sorted(stats.items(), key=operator.itemgetter(0))
             )
-            logger.info(msg or default_message)
+            ui.write(msg or default_message)
         else:
             log_changes(stats)
 

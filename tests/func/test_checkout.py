@@ -26,6 +26,7 @@ from dvc.utils import relpath
 from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
+from tests.func.parsing.test_errors import escape_ansi
 from tests.func.test_repro import TestRepro
 
 logger = logging.getLogger("dvc")
@@ -676,7 +677,7 @@ def test_stats_on_removed_file_from_tracked_dir(tmp_dir, dvc, scm):
 
 
 def test_stats_on_show_changes_does_not_show_summary(
-    tmp_dir, dvc, scm, caplog
+    tmp_dir, dvc, scm, capsys
 ):
     tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}}, "other": "other"},
@@ -684,29 +685,23 @@ def test_stats_on_show_changes_does_not_show_summary(
     )
     scm.checkout("HEAD~")
 
-    with caplog.at_level(logging.INFO, logger="dvc"):
-        caplog.clear()
-        assert main(["checkout"]) == 0
-        for out in ["D\tdir" + os.sep, "D\tother"]:
-            assert out in caplog.text
-        assert "modified" not in caplog.text
-        assert "deleted" not in caplog.text
-        assert "added" not in caplog.text
+    assert main(["checkout"]) == 0
+
+    out, _ = capsys.readouterr()
+    assert escape_ansi(out).splitlines() == [f"D\tdir{os.sep}", "D\tother"]
 
 
-def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, caplog):
+def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, capsys):
     tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
     scm.checkout("HEAD~")
 
-    with caplog.at_level(logging.INFO, logger="dvc"):
-        caplog.clear()
-        assert main(["checkout", "--summary"]) == 0
-        assert "2 files deleted" in caplog.text
-        assert "dir" not in caplog.text
-        assert "other" not in caplog.text
+    assert main(["checkout", "--summary"]) == 0
+
+    out, _ = capsys.readouterr()
+    assert "2 files deleted" == out.rstrip()
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
