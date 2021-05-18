@@ -22,15 +22,6 @@ logger = logging.getLogger(__name__)
 DVCIGNORE_FILE = ".dvcignore"
 
 
-CheckIgnoreResult = namedtuple(
-    "CheckIgnoreResult", ["file", "match", "patterns"]
-)
-
-
-def _no_match(path):
-    return CheckIgnoreResult(path, False, ["::"])
-
-
 class DvcIgnorePatterns:
     def __init__(self, pattern_list, dirname):
         if pattern_list:
@@ -167,6 +158,15 @@ def _merge_two_patterns(first: DvcIgnorePatterns, second: DvcIgnorePatterns):
             second.dirname,
         )
     )
+
+
+CheckIgnoreResult = namedtuple(
+    "CheckIgnoreResult", ["file", "match", "patterns"]
+)
+
+
+def _no_match(path):
+    return CheckIgnoreResult(path, False, ["::"])
 
 
 class DvcIgnoreTrieNode:
