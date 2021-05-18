@@ -256,7 +256,7 @@ def setup(level=logging.INFO):
                         "console_trace",
                         "console_errors",
                     ],
-                },
+                }
             },
             "disable_existing_loggers": False,
         }

@@ -281,9 +281,7 @@ def test_ignore_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
     dvc._reset()
     result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir / "dir")
-    assert set(result) == {
-        tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE,
-    }
+    assert set(result) == {tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE}
 
 
 def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
@@ -310,7 +308,7 @@ def test_pattern_trie_fs(tmp_dir, dvc):
                             "bottom": {},
                         }
                     },
-                },
+                }
             },
             "other": {DvcIgnore.DVCIGNORE_FILE: "1\n2\n3"},
         }

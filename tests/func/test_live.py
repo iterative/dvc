@@ -212,30 +212,13 @@ def test_live_checkpoints_resume(
     checkpoint_resume = first(results)
 
     dvc.experiments.run(
-        stage.addressing,
-        checkpoint_resume=checkpoint_resume,
-        tmp_dir=False,
+        stage.addressing, checkpoint_resume=checkpoint_resume, tmp_dir=False
     )
 
     results = dvc.experiments.show()
-    assert checkpoints_metric(results, "logs.json", "step") == [
-        3,
-        2,
-        1,
-        0,
-    ]
-    assert checkpoints_metric(results, "logs.json", "metric1") == [
-        4,
-        3,
-        2,
-        1,
-    ]
-    assert checkpoints_metric(results, "logs.json", "metric2") == [
-        8,
-        6,
-        4,
-        2,
-    ]
+    assert checkpoints_metric(results, "logs.json", "step") == [3, 2, 1, 0]
+    assert checkpoints_metric(results, "logs.json", "metric1") == [4, 3, 2, 1]
+    assert checkpoints_metric(results, "logs.json", "metric2") == [8, 6, 4, 2]
 
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):

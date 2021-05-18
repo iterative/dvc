@@ -289,10 +289,7 @@ class ObjectDB:
             with ThreadPoolExecutor(
                 max_workers=jobs or self.fs.jobs
             ) as executor:
-                in_remote = executor.map(
-                    list_with_update,
-                    traverse_prefixes,
-                )
+                in_remote = executor.map(list_with_update, traverse_prefixes)
                 yield from itertools.chain.from_iterable(in_remote)
 
     def all(self, jobs=None, name=None):

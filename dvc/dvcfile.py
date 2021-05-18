@@ -40,8 +40,7 @@ class FileIsGitIgnored(DvcException):
     def __init__(self, path, pipeline_file=False):
         super().__init__(
             "{}'{}' is git-ignored.".format(
-                "bad DVC file name " if pipeline_file else "",
-                path,
+                "bad DVC file name " if pipeline_file else "", path
             )
         )
 

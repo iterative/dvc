@@ -275,10 +275,7 @@ def metrics_table(
 
     for branch, val in metrics.items():
         for fname, metric in val.items():
-            row_data: Dict[str, str] = {
-                "Revision": branch,
-                "Path": fname,
-            }
+            row_data: Dict[str, str] = {"Revision": branch, "Path": fname}
             flattened = (
                 flatten(format_dict(metric))
                 if isinstance(metric, dict)

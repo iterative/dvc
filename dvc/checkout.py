@@ -97,10 +97,7 @@ def _do_link(cache, from_info, to_info, link_method):
     link_method(from_info, to_info)
 
     logger.debug(
-        "Created '%s': %s -> %s",
-        cache.cache_types[0],
-        from_info,
-        to_info,
+        "Created '%s': %s -> %s", cache.cache_types[0], from_info, to_info
     )
 
 
@@ -190,12 +187,7 @@ def _checkout_file(
 
 
 def _remove_redundant_files(
-    path_info,
-    fs,
-    obj,
-    cache,
-    force,
-    dvcignore: Optional[DvcIgnoreFilter],
+    path_info, fs, obj, cache, force, dvcignore: Optional[DvcIgnoreFilter]
 ):
     if dvcignore:
         existing_files = set(dvcignore.walk_files(fs, path_info))
@@ -271,14 +263,7 @@ def _checkout(
 ):
     if not obj.hash_info.isdir:
         ret = _checkout_file(
-            path_info,
-            fs,
-            obj,
-            cache,
-            force,
-            progress_callback,
-            relink,
-            state,
+            path_info, fs, obj, cache, force, progress_callback, relink, state
         )
     else:
         ret = _checkout_dir(
@@ -343,10 +328,7 @@ def checkout(
 
     if failed or skip:
         if progress_callback and obj:
-            progress_callback(
-                str(path_info),
-                len(obj),
-            )
+            progress_callback(str(path_info), len(obj))
         if failed:
             raise CheckoutError([failed])
         return

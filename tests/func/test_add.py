@@ -59,7 +59,7 @@ def test_add(tmp_dir, dvc):
                 "path": "foo",
                 "size": 3,
             }
-        ],
+        ]
     }
 
 
@@ -78,7 +78,7 @@ def test_add_executable(tmp_dir, dvc):
                 "size": 3,
                 "isexec": True,
             }
-        ],
+        ]
     }
     assert os.stat("foo").st_mode & stat.S_IEXEC
 
@@ -1052,10 +1052,7 @@ def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        (
-            "--recursive",
-            {"targets": ["foo"], "recursive": True},
-        ),
+        ("--recursive", {"targets": ["foo"], "recursive": True}),
         ("--external", {"targets": ["foo"], "external": True}),
     ],
 )
@@ -1135,10 +1132,7 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        (
-            "--recursive",
-            {"targets": ["foo"], "recursive": True},
-        ),
+        ("--recursive", {"targets": ["foo"], "recursive": True}),
     ],
 )
 def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):

@@ -652,8 +652,7 @@ class TestReproDataSource(TestReproChangedData):
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
         self.assertEqual(
-            stages[0].outs[0].hash_info.value,
-            file_md5(self.BAR, self.dvc.fs),
+            stages[0].outs[0].hash_info.value, file_md5(self.BAR, self.dvc.fs)
         )
 
 

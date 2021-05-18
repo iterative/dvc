@@ -143,11 +143,7 @@ class FakeClient:
                 root = posixpath.join(
                     hdfs_path, os.path.relpath(local_root, local_path)
                 )
-            yield (
-                root,
-                dnames,
-                fnames,
-            )
+            yield (root, dnames, fnames)
 
     def delete(self, hdfs_path):
         return self._path(hdfs_path).unlink()

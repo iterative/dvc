@@ -127,9 +127,7 @@ class StageLoader(Mapping):
         if self.lockfile_data and name not in self.lockfile_data:
             self.lockfile_needs_update()
             logger.trace(  # type: ignore[attr-defined]
-                "No lock entry found for '%s:%s'",
-                self.dvcfile.relpath,
-                name,
+                "No lock entry found for '%s:%s'", self.dvcfile.relpath, name
             )
 
         resolved_stage = resolved_data[name]

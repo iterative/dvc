@@ -35,10 +35,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "md5"
 
     def __init__(
-        self,
-        repo=None,
-        subrepos=False,
-        repo_factory: RepoFactory = None,
+        self, repo=None, subrepos=False, repo_factory: RepoFactory = None
     ):
         super().__init__()
 
@@ -381,10 +378,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         with open(to_file, "wb+") as to_fobj:
             with Tqdm.wrapattr(
-                to_fobj,
-                "write",
-                desc=name,
-                disable=no_progress_bar,
+                to_fobj, "write", desc=name, disable=no_progress_bar
             ) as wrapped:
                 with self.open(from_info, "rb", **kwargs) as from_fobj:
                     shutil.copyfileobj(from_fobj, wrapped)

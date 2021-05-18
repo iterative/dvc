@@ -386,7 +386,7 @@ class ScatterTemplate(Template):
                                 },
                             }
                         ],
-                    },
+                    }
                 ],
             },
         ],

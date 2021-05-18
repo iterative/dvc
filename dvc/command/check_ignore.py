@@ -120,8 +120,6 @@ def add_parser(subparsers, parent_parser):
         help="Read paths from standard input instead of providing `targets`.",
     )
     parser.add_argument(
-        "targets",
-        nargs="*",
-        help="File or directory paths to check",
+        "targets", nargs="*", help="File or directory paths to check"
     ).complete = completion.FILE
     parser.set_defaults(func=CmdCheckIgnore)

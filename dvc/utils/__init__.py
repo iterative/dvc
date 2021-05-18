@@ -232,10 +232,7 @@ def colorize(message, color=None, style=None):
     if not color:
         return message
 
-    styles = {
-        "dim": colorama.Style.DIM,
-        "bold": colorama.Style.BRIGHT,
-    }
+    styles = {"dim": colorama.Style.DIM, "bold": colorama.Style.BRIGHT}
 
     colors = {
         "green": colorama.Fore.GREEN,
@@ -435,10 +432,7 @@ def parse_target(
     if not match:
         return target, None
 
-    path, name = (
-        match.group("path"),
-        match.group("name"),
-    )
+    path, name = (match.group("path"), match.group("name"))
 
     if name and key:
         name += f"{JOIN}{key}"

@@ -206,13 +206,7 @@ def test_open_rev(tmp_dir, scm, dvc):
     ids=["file", "inside-dir"],
 )
 def test_api_missing_local_cache_exists_on_remote(
-    tmp_dir,
-    scm,
-    dvc,
-    as_external,
-    remote,
-    files,
-    to_read,
+    tmp_dir, scm, dvc, as_external, remote, files, to_read
 ):
     tmp_dir.dvc_gen(files, commit="DVC track files")
     dvc.push()

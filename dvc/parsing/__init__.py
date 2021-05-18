@@ -447,11 +447,7 @@ class ForeachDefinition:
                 # generated stages. We do it once when accessing do_definition.
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
-                format_and_raise(
-                    exc,
-                    f"stage '{generated}'",
-                    self.relpath,
-                )
+                format_and_raise(exc, f"stage '{generated}'", self.relpath)
 
             # let mypy know that this state is unreachable as format_and_raise
             # does not return at all (it's not able to understand it for some

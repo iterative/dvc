@@ -172,8 +172,7 @@ def test_vars_already_loaded_message(tmp_dir, dvc, local, vars_):
 
 
 @pytest.mark.parametrize(
-    "vars_, loc",
-    [(DATA, "build.vars[0]"), ("params.json", "params.json")],
+    "vars_, loc", [(DATA, "build.vars[0]"), ("params.json", "params.json")]
 )
 def test_local_overwrite_error(tmp_dir, dvc, vars_, loc):
     dump_yaml(DEFAULT_PARAMS_FILE, DATA)

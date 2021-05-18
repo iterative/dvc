@@ -84,11 +84,7 @@ class S3(Base, CloudURLInfo):
         assert parents
 
     def write_bytes(self, contents):
-        self._s3.put_object(
-            Bucket=self.bucket,
-            Key=self.path,
-            Body=contents,
-        )
+        self._s3.put_object(Bucket=self.bucket, Key=self.path, Body=contents)
 
     def read_bytes(self):
         data = self._s3.get_object(Bucket=self.bucket, Key=self.path)

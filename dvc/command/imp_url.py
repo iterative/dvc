@@ -58,9 +58,7 @@ def add_parser(subparsers, parent_parser):
         "remote://remote_name/path/to/file/or/dir (see `dvc remote`)",
     )
     import_parser.add_argument(
-        "out",
-        nargs="?",
-        help="Destination path to put files to.",
+        "out", nargs="?", help="Destination path to put files to."
     ).complete = completion.DIR
     import_parser.add_argument(
         "--file",

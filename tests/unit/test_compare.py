@@ -291,10 +291,7 @@ def test_metrics_show_with_no_revision():
 
 
 def test_metrics_show_with_non_dict_values():
-    td = metrics_table(
-        {"branch_1": {"metrics.json": 1}},
-        all_branches=True,
-    )
+    td = metrics_table({"branch_1": {"metrics.json": 1}}, all_branches=True)
     assert td.as_dict() == [
         {"Revision": "branch_1", "Path": "metrics.json", "": "1"}
     ]
@@ -454,7 +451,7 @@ def test_metrics_show_default(capsys):
                 "a.d.e": {"old": 3, "new": 4, "diff": 1},
                 "a.b.c": {"old": 1, "new": 2, "diff": 1},
             }
-        },
+        }
     )
     out, _ = capsys.readouterr()
     assert out == textwrap.dedent(

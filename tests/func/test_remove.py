@@ -72,12 +72,7 @@ def test_cmd_remove(tmp_dir, dvc):
 
 
 def test_cmd_remove_gitignore_single_stage(tmp_dir, scm, dvc, run_copy):
-    stage = dvc.run(
-        name="my",
-        cmd='echo "hello" > out',
-        deps=[],
-        outs=["out"],
-    )
+    stage = dvc.run(name="my", cmd='echo "hello" > out', deps=[], outs=["out"])
 
     assert (tmp_dir / ".gitignore").exists()
 

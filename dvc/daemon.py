@@ -33,10 +33,7 @@ def _spawn_windows(cmd, env):
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
     _popen(
-        cmd,
-        env=env,
-        creationflags=creationflags,
-        startupinfo=startupinfo,
+        cmd, env=env, creationflags=creationflags, startupinfo=startupinfo
     ).communicate()
 
 

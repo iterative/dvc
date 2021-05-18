@@ -35,9 +35,7 @@ class Formatter:
 
 class Console:
     def __init__(
-        self,
-        formatter: Formatter = None,
-        enable: bool = False,
+        self, formatter: Formatter = None, enable: bool = False
     ) -> None:
         self.formatter: Formatter = formatter or Formatter()
         self._enabled: bool = enable
@@ -166,12 +164,7 @@ class Console:
             return
 
         return t.plain_table(
-            self,
-            data,
-            headers,
-            markdown=markdown,
-            pager=pager,
-            force=force,
+            self, data, headers, markdown=markdown, pager=pager, force=force
         )
 
 

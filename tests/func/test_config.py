@@ -313,8 +313,7 @@ def test_config_show_origin_merged(tmp_dir, dvc, caplog):
     )
     assert (
         "{}\t{}\n".format(
-            os.path.join(".dvc", "config.local"),
-            "remote.myremote.timeout=100",
+            os.path.join(".dvc", "config.local"), "remote.myremote.timeout=100"
         )
         in caplog.text
     )

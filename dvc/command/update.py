@@ -36,9 +36,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     update_parser.add_argument(
-        "targets",
-        nargs="+",
-        help=".dvc files to update.",
+        "targets", nargs="+", help=".dvc files to update."
     ).complete = completion.DVC_FILE
     update_parser.add_argument(
         "--rev",

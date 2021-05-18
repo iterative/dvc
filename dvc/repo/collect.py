@@ -18,9 +18,7 @@ DvcPaths = List[DvcPath]
 
 
 def _collect_outs(
-    repo: "Repo",
-    output_filter: FilterFn = None,
-    deps: bool = False,
+    repo: "Repo", output_filter: FilterFn = None, deps: bool = False
 ) -> Outputs:
     outs = [
         out
@@ -51,14 +49,11 @@ def _collect_paths(
             if not recursive:
                 if rev == "workspace" or rev == "":
                     logger.warning(
-                        "'%s' was not found in current workspace.",
-                        path_info,
+                        "'%s' was not found in current workspace.", path_info
                     )
                 else:
                     logger.warning(
-                        "'%s' was not found at: '%s'.",
-                        path_info,
-                        rev,
+                        "'%s' was not found at: '%s'.", path_info, rev
                     )
             continue
         target_infos.append(path_info)

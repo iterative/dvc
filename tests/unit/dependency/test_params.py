@@ -5,12 +5,7 @@ from dvc.dependency.param import BadParamFileError, MissingParamsError
 from dvc.stage import Stage
 from dvc.utils.serialize import dump_toml, dump_yaml, load_yaml
 
-PARAMS = {
-    "foo": 1,
-    "bar": 53.135,
-    "baz": "str",
-    "qux": None,
-}
+PARAMS = {"foo": 1, "bar": 53.135, "baz": "str", "qux": None}
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
@@ -63,10 +58,7 @@ def test_loadd_from(dvc):
 
 def test_dumpd_with_info(dvc):
     dep = ParamsDependency(Stage(dvc), None, PARAMS)
-    assert dep.dumpd() == {
-        "path": DEFAULT_PARAMS_FILE,
-        "params": PARAMS,
-    }
+    assert dep.dumpd() == {"path": DEFAULT_PARAMS_FILE, "params": PARAMS}
 
 
 def test_dumpd_without_info(dvc):
@@ -161,16 +153,13 @@ def test_read_params_py(tmp_dir, dvc):
     }
 
     tmp_dir.gen(
-        parameters_file,
-        "class Train:\n    foo = 'val1'\n    bar = 'val2'\n",
+        parameters_file, "class Train:\n    foo = 'val1'\n    bar = 'val2'\n"
     )
     dep = ParamsDependency(Stage(dvc), parameters_file, ["Train.foo"])
     assert dep.read_params() == {"Train.foo": "val1"}
 
     dep = ParamsDependency(Stage(dvc), parameters_file, ["Train"])
-    assert dep.read_params() == {
-        "Train": {"foo": "val1", "bar": "val2"},
-    }
+    assert dep.read_params() == {"Train": {"foo": "val1", "bar": "val2"}}
 
     tmp_dir.gen(
         parameters_file,

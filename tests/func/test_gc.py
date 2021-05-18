@@ -286,15 +286,7 @@ def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
 
 
 def test_gc_with_possible_args_positive(tmp_dir, dvc):
-    for flag in [
-        "-w",
-        "-a",
-        "-T",
-        "--all-commits",
-        "-aT",
-        "-wa",
-        "-waT",
-    ]:
+    for flag in ["-w", "-a", "-T", "--all-commits", "-aT", "-wa", "-waT"]:
         assert main(["gc", "-vf", flag]) == 0
 
 

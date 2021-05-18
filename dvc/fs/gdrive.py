@@ -138,10 +138,7 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
-                os.path.join(
-                    tmp_dir,
-                    self.DEFAULT_USER_CREDENTIALS_FILE,
-                ),
+                os.path.join(tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE),
             )
         )
 

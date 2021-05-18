@@ -63,11 +63,7 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self,
-        dvc_dir=None,
-        validate=True,
-        fs=None,
-        config=None,
+        self, dvc_dir=None, validate=True, fs=None, config=None
     ):  # pylint: disable=super-init-not-called
         from dvc.fs.local import LocalFileSystem
 

@@ -52,19 +52,12 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
         "foobar"
     }
     assert collect_outs("copy-foo-foobar") == {"foobar"}
-    assert collect_outs("copy-foo-foobar", with_deps=True) == {
-        "foobar",
-        "foo",
-    }
+    assert collect_outs("copy-foo-foobar", with_deps=True) == {"foobar", "foo"}
     assert collect_outs("copy-foo-foobar", recursive=True) == {"foobar"}
 
     run_copy("foobar", "baz", name="copy-foobar-baz")
     assert collect_outs("dvc.yaml") == {"foobar", "baz"}
-    assert collect_outs("dvc.yaml", with_deps=True) == {
-        "foobar",
-        "baz",
-        "foo",
-    }
+    assert collect_outs("dvc.yaml", with_deps=True) == {"foobar", "baz", "foo"}
 
 
 def test_collect_dir_recursive(tmp_dir, dvc, run_head):

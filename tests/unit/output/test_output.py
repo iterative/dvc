@@ -75,14 +75,10 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     mocker.patch.object(stage, "addressing", "stage.dvc")
     mocker.patch.object(stage, "wdir", ".")
     mocker.patch.object(
-        stage.repo.fs.dvcignore,
-        "is_ignored",
-        return_value=False,
+        stage.repo.fs.dvcignore, "is_ignored", return_value=False
     )
     mocker.patch.object(
-        stage.repo.fs.dvcignore,
-        "check_ignore",
-        return_value=_no_match("path"),
+        stage.repo.fs.dvcignore, "check_ignore", return_value=_no_match("path")
     )
 
     output = BaseOutput(stage, "path")

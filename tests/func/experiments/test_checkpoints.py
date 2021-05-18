@@ -85,9 +85,7 @@ def test_reset_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
 ):
     dvc.experiments.run(
-        checkpoint_stage.addressing,
-        name="foo",
-        tmp_dir=not workspace,
+        checkpoint_stage.addressing, name="foo", tmp_dir=not workspace
     )
 
     results = dvc.experiments.run(

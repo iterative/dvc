@@ -17,9 +17,7 @@ from dvc.utils.serialize import dump_yaml, modify_yaml
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
     run_copy_metrics(
-        "metrics_t.yaml",
-        "metrics.yaml",
-        metrics=["metrics.yaml"],
+        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
     )
     assert dvc.metrics.show() == {"": {"metrics.yaml": 1.1}}
 
@@ -27,9 +25,7 @@ def test_show_simple(tmp_dir, dvc, run_copy_metrics):
 def test_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
     run_copy_metrics(
-        "metrics_t.yaml",
-        "metrics.yaml",
-        metrics=["metrics.yaml"],
+        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
     )
     assert dvc.metrics.show() == {"": {"metrics.yaml": {"foo": 1.1}}}
 
@@ -96,16 +92,12 @@ def test_show_subrepo_with_preexisting_tags(tmp_dir, scm):
 def test_missing_cache(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
     run_copy_metrics(
-        "metrics_t.yaml",
-        "metrics.yaml",
-        metrics=["metrics.yaml"],
+        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
     )
 
     # This one should be skipped
     stage = run_copy_metrics(
-        "metrics_t.yaml",
-        "metrics2.yaml",
-        metrics=["metrics2.yaml"],
+        "metrics_t.yaml", "metrics2.yaml", metrics=["metrics2.yaml"]
     )
     remove(stage.outs[0].fspath)
     remove(stage.outs[0].cache_path)

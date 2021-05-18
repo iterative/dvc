@@ -68,25 +68,16 @@ _dvc_compadd_exps() {
     """,
 }
 
-DVC_FILE = {
-    "bash": "_dvc_compgen_DVCFiles",
-    "zsh": "_dvc_compadd_DVCFiles",
-}
+DVC_FILE = {"bash": "_dvc_compgen_DVCFiles", "zsh": "_dvc_compadd_DVCFiles"}
 
-STAGE = {
-    "bash": "_dvc_compgen_stages",
-    "zsh": "_dvc_compadd_stages",
-}
+STAGE = {"bash": "_dvc_compgen_stages", "zsh": "_dvc_compadd_stages"}
 
 DVCFILES_AND_STAGE = {
     "bash": "_dvc_compgen_stages_and_files",
     "zsh": "_dvc_compadd_stages_and_files",
 }
 
-EXPERIMENT = {
-    "bash": "_dvc_compgen_exps",
-    "zsh": "_dvc_compadd_exps",
-}
+EXPERIMENT = {"bash": "_dvc_compgen_exps", "zsh": "_dvc_compadd_exps"}
 
 
 class CmdCompletion(CmdBaseNoRepo):

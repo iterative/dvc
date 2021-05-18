@@ -22,10 +22,7 @@ def test_live_diff(dvc, mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(
-        target="target",
-        revs=["HEAD", "rev1"],
-    )
+    m.assert_called_once_with(target="target", revs=["HEAD", "rev1"])
 
 
 def test_live_show(dvc, mocker):

@@ -131,9 +131,7 @@ def show(
             for ref in repo.scm.iter_refs(base=str(ref_info))
         ]
         for exp_ref, _ in sorted(
-            commits,
-            key=lambda x: x[1].commit_time,
-            reverse=True,
+            commits, key=lambda x: x[1].commit_time, reverse=True
         ):
             ref_info = ExpRefInfo.from_ref(exp_ref)
             assert ref_info.baseline_sha == rev

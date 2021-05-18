@@ -161,12 +161,7 @@ class LocalFileSystem(BaseFileSystem):
         }
 
     def _upload(
-        self,
-        from_file,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        **_kwargs,
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
         makedirs(to_info.parent, exist_ok=True)
 

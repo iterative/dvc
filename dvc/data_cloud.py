@@ -48,13 +48,7 @@ class DataCloud:
 
         return get_remote(self.repo, name=name)
 
-    def push(
-        self,
-        cache,
-        jobs=None,
-        remote=None,
-        show_checksums=False,
-    ):
+    def push(self, cache, jobs=None, remote=None, show_checksums=False):
         """Push data items in a cloud-agnostic way.
 
         Args:
@@ -74,13 +68,7 @@ class DataCloud:
             show_checksums=show_checksums,
         )
 
-    def pull(
-        self,
-        cache,
-        jobs=None,
-        remote=None,
-        show_checksums=False,
-    ):
+    def pull(self, cache, jobs=None, remote=None, show_checksums=False):
         """Pull data items in a cloud-agnostic way.
 
         Args:

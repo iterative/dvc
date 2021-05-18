@@ -46,10 +46,7 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
 
 
 def test_stage_overwrites_if_already_exists(tmp_dir, dvc):
-    lockfile = Lockfile(
-        dvc,
-        "path.lock",
-    )
+    lockfile = Lockfile(dvc, "path.lock")
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile.dump(stage)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command3")
