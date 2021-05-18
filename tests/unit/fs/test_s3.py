@@ -34,9 +34,7 @@ def test_init(dvc):
 
 
 def test_verify_ssl_default_param(dvc):
-    config = {
-        "url": url,
-    }
+    config = {"url": url}
     fs = S3FileSystem(**config)
 
     assert fs.fs_args["client_kwargs"]["verify"]

@@ -67,19 +67,14 @@ def test_unset_nonexistent(tmp_dir, dvc, run_copy_metrics, custom_template):
     )
 
     with pytest.raises(PropsNotFoundError):
-        dvc.plots.modify(
-            "metric.json", unset=["nonexistent"],
-        )
+        dvc.plots.modify("metric.json", unset=["nonexistent"])
 
 
 def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     subdir = tmp_dir / "subdir"
     subdir.mkdir()
 
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
 
     fname = "file.json"
     _write_json(tmp_dir, metric, fname)

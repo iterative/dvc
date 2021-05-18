@@ -100,8 +100,5 @@ def azure_server(test_config, docker_compose, docker_services):
 def azure(azure_server):
     url = f"azure://{TEST_AZURE_CONTAINER}/{uuid.uuid4()}"
     ret = Azure(url)
-    ret.config = {
-        "url": url,
-        "connection_string": azure_server,
-    }
+    ret.config = {"url": url, "connection_string": azure_server}
     return ret

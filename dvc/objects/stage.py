@@ -47,7 +47,7 @@ def _get_file_hash(path_info, fs, name):
 def get_file_hash(path_info, fs, name, state=None):
     if state:
         hash_info = state.get(  # pylint: disable=assignment-from-none
-            path_info, fs,
+            path_info, fs
         )
         if hash_info:
             return hash_info
@@ -109,9 +109,7 @@ def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):
     if not upload and name in fs.DETAIL_FIELDS:
         for details in fs.find(path_info, detail=True):
             file_info = path_info.replace(path=details["name"])
-            hash_info = HashInfo(
-                name, details[name], size=details.get("size"),
-            )
+            hash_info = HashInfo(name, details[name], size=details.get("size"))
             yield file_info, HashFile(file_info, fs, hash_info)
 
         return None

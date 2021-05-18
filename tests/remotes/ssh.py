@@ -46,10 +46,7 @@ class SSHMocked(Base, URLInfo):
 
     @cached_property
     def config(self):
-        return {
-            "url": self.url,
-            "keyfile": TEST_SSH_KEY_PATH,
-        }
+        return {"url": self.url, "keyfile": TEST_SSH_KEY_PATH}
 
     @contextmanager
     def _ssh(self):

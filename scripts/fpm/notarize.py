@@ -60,5 +60,7 @@ config = {
 (path / "config.json").write_text(json.dumps(config))
 
 check_call(
-    ["gon", "config.json"], cwd=path, stderr=STDOUT,
+    ["gon", "config.json"],
+    cwd=path,
+    stderr=STDOUT,
 )

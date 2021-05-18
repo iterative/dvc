@@ -147,9 +147,7 @@ class Repo:
         from dvc.state import State, StateNoop
 
         self.url = url
-        self._fs_conf = {
-            "repo_factory": repo_factory,
-        }
+        self._fs_conf = {"repo_factory": repo_factory}
 
         if rev and not scm:
             scm = SCM(root_dir or os.curdir)
@@ -317,10 +315,7 @@ class Repo:
         return self.odb.local.unprotect(PathInfo(target))
 
     def _ignore(self):
-        flist = [
-            self.config.files["local"],
-            self.tmp_dir,
-        ]
+        flist = [self.config.files["local"], self.tmp_dir]
 
         if path_isin(self.odb.local.cache_dir, self.root_dir):
             flist += [self.odb.local.cache_dir]
@@ -407,7 +402,7 @@ class Repo:
 
         if used_run_cache:
             used_cache = self.stage_cache.get_used_cache(
-                used_run_cache, remote=remote, force=force, jobs=jobs,
+                used_run_cache, remote=remote, force=force, jobs=jobs
             )
             cache.update(used_cache)
 
@@ -491,7 +486,7 @@ class Repo:
         path = PathInfo(self.root_dir) / path
         try:
             with fs.open(
-                path, mode=mode, encoding=encoding, remote=remote,
+                path, mode=mode, encoding=encoding, remote=remote
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:

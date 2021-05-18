@@ -198,7 +198,7 @@ def merge(odb, ancestor_info, our_info, their_info):
     our = load(odb, our_info)
     their = load(odb, their_info)
 
-    merged_dict = _merge(ancestor.as_dict(), our.as_dict(), their.as_dict(),)
+    merged_dict = _merge(ancestor.as_dict(), our.as_dict(), their.as_dict())
 
     merged = Tree(None, None, None)
     for key, hi in merged_dict.items():

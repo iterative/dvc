@@ -39,10 +39,7 @@ class GCP(Base, CloudURLInfo):
 
     @cached_property
     def config(self):
-        return {
-            "url": self.url,
-            "credentialpath": TEST_GCP_CREDS_FILE,
-        }
+        return {"url": self.url, "credentialpath": TEST_GCP_CREDS_FILE}
 
     @staticmethod
     def _get_storagepath():

@@ -11,9 +11,9 @@ from dvc.ui import ui
 
 def log_changes(stats):
     colors = [
-        ("modified", colorama.Fore.YELLOW,),
+        ("modified", colorama.Fore.YELLOW),
         ("added", colorama.Fore.GREEN),
-        ("deleted", colorama.Fore.RED,),
+        ("deleted", colorama.Fore.RED),
     ]
 
     for state, color in colors:

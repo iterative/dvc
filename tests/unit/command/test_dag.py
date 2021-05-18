@@ -58,21 +58,13 @@ def test_build_target(repo):
 def test_build_target_with_outs(repo):
     G = _build(repo, target="3", outs=True)
     assert set(G.nodes()) == {"a", "b", "h", "i"}
-    assert set(G.edges()) == {
-        ("i", "a"),
-        ("i", "b"),
-        ("h", "a"),
-        ("h", "b"),
-    }
+    assert set(G.edges()) == {("i", "a"), ("i", "b"), ("h", "a"), ("h", "b")}
 
 
 def test_build_granular_target_with_outs(repo):
     G = _build(repo, target="h", outs=True)
     assert set(G.nodes()) == {"a", "b", "h"}
-    assert set(G.edges()) == {
-        ("h", "a"),
-        ("h", "b"),
-    }
+    assert set(G.edges()) == {("h", "a"), ("h", "b")}
 
 
 def test_build_full(repo):

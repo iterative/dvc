@@ -23,10 +23,10 @@ def istextblock(block):
 
 
 def istextfile(fname, fs, blocksize=512):
-    """ Uses heuristics to guess whether the given file is text or binary,
-        by reading a single block of bytes from the file.
-        If more than 30% of the chars in the block are non-text, or there
-        are NUL ('\x00') bytes in the block, assume this is a binary file.
+    """Uses heuristics to guess whether the given file is text or binary,
+    by reading a single block of bytes from the file.
+    If more than 30% of the chars in the block are non-text, or there
+    are NUL ('\x00') bytes in the block, assume this is a binary file.
     """
     with fs.open(fname, "rb") as fobj:
         block = fobj.read(blocksize)

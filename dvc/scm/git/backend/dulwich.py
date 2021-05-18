@@ -405,7 +405,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                             overwrite = False
                             if on_diverged:
                                 overwrite = on_diverged(
-                                    os.fsdecode(ref), os.fsdecode(remote_sha),
+                                    os.fsdecode(ref), os.fsdecode(remote_sha)
                                 )
                             if not overwrite:
                                 continue

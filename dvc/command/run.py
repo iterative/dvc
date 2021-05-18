@@ -83,11 +83,9 @@ def add_parser(subparsers, parent_parser):
         help=RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    run_parser.add_argument("-n", "--name", help="Stage name.")
     run_parser.add_argument(
-        "-n", "--name", help="Stage name.",
-    )
-    run_parser.add_argument(
-        "--file", metavar="<filename>", help=argparse.SUPPRESS,
+        "--file", metavar="<filename>", help=argparse.SUPPRESS
     )
     run_parser.add_argument(
         "--no-exec",

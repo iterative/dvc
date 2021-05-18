@@ -87,10 +87,7 @@ def test_custom_auth_method(dvc):
 
 
 def test_ssl_verify_is_enabled_by_default(dvc):
-    config = {
-        "url": "http://example.com/",
-        "path_info": "file.html",
-    }
+    config = {"url": "http://example.com/", "path_info": "file.html"}
 
     fs = HTTPFileSystem(**config)
 

@@ -42,7 +42,7 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
 
 
 def file_md5(fname, fs):
-    """ get the (md5 hexdigest, md5 digest) of a file """
+    """get the (md5 hexdigest, md5 digest) of a file"""
     from dvc.istextfile import istextfile
     from dvc.progress import Tqdm
 
@@ -215,7 +215,7 @@ def fix_env(env=None):
 
 
 def tmp_fname(fname=""):
-    """ Temporary name for a partial download """
+    """Temporary name for a partial download"""
     from shortuuid import uuid
 
     return os.fspath(fname) + "." + uuid() + ".tmp"
@@ -232,10 +232,7 @@ def colorize(message, color=None, style=None):
     if not color:
         return message
 
-    styles = {
-        "dim": colorama.Style.DIM,
-        "bold": colorama.Style.BRIGHT,
-    }
+    styles = {"dim": colorama.Style.DIM, "bold": colorama.Style.BRIGHT}
 
     colors = {
         "green": colorama.Fore.GREEN,
@@ -435,10 +432,7 @@ def parse_target(
     if not match:
         return target, None
 
-    path, name = (
-        match.group("path"),
-        match.group("name"),
-    )
+    path, name = (match.group("path"), match.group("name"))
 
     if name and key:
         name += f"{JOIN}{key}"

@@ -57,7 +57,7 @@ def _collect_with_deps(stages: StageList, graph: "DiGraph") -> StageSet:
 
 
 def _maybe_collect_from_dvc_yaml(
-    loader: "StageLoad", target, with_deps: bool, **load_kwargs,
+    loader: "StageLoad", target, with_deps: bool, **load_kwargs
 ) -> StageIter:
     from dvc.stage.exceptions import StageNotFound
 
@@ -90,7 +90,7 @@ def _collect_specific_target(
         logger.debug(msg, target, PIPELINE_FILE)
         if not (recursive and loader.fs.isdir(target)):
             stages = _maybe_collect_from_dvc_yaml(
-                loader, target, with_deps, accept_group=accept_group,
+                loader, target, with_deps, accept_group=accept_group
             )
             if stages:
                 return stages, file, name
@@ -190,7 +190,7 @@ class StageLoad:
         return stage
 
     def from_target(
-        self, target: str, accept_group: bool = False, glob: bool = False,
+        self, target: str, accept_group: bool = False, glob: bool = False
     ) -> StageList:
         """
         Returns a list of stage from the provided target.
@@ -198,7 +198,7 @@ class StageLoad:
         """
         path, name = parse_target(target, isa_glob=glob)
         return self.load_all(
-            path=path, name=name, accept_group=accept_group, glob=glob,
+            path=path, name=name, accept_group=accept_group, glob=glob
         )
 
     def get_target(self, target: str) -> "Stage":

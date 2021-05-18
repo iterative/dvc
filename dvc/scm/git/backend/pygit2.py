@@ -475,7 +475,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         with self.release_odb_handles():
             self.repo.checkout_index(
-                index=index, paths=path_list, strategy=strategy,
+                index=index, paths=path_list, strategy=strategy
             )
 
             if index.conflicts and (ours or theirs):

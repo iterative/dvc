@@ -57,7 +57,7 @@ class DvcIgnorePatterns(DvcIgnore):
         dirname = os.path.normpath(os.path.dirname(path))
         with fs.open(path, encoding="utf-8") as fobj:
             path_spec_lines = [
-                PatternInfo(line, "{}:{}:{}".format(name, line_no + 1, line),)
+                PatternInfo(line, "{}:{}:{}".format(name, line_no + 1, line))
                 for line_no, line in enumerate(
                     map(str.strip, fobj.readlines())
                 )
@@ -366,7 +366,7 @@ class DvcIgnoreFilter:
             pattern = self._get_trie_pattern(dirname)
             if pattern:
                 matches = pattern.matches(
-                    dirname, basename, os.path.isdir(full_target), True,
+                    dirname, basename, os.path.isdir(full_target), True
                 )
 
                 if matches:

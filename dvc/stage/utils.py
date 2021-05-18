@@ -28,8 +28,7 @@ def check_stage_path(repo, path, is_wdir=False):
     assert repo is not None
 
     error_msg = "{wdir_or_path} '{path}' {{}}".format(
-        wdir_or_path="stage working dir" if is_wdir else "file path",
-        path=path,
+        wdir_or_path="stage working dir" if is_wdir else "file path", path=path
     )
 
     real_path = os.path.realpath(path)
@@ -304,7 +303,7 @@ def _check_stage_exists(
 
 
 def validate_state(
-    repo: "Repo", new: Union["Stage", "PipelineStage"], force: bool = False,
+    repo: "Repo", new: Union["Stage", "PipelineStage"], force: bool = False
 ) -> None:
     """Validates that the new stage:
 

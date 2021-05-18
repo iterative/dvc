@@ -35,7 +35,7 @@ class ObjectDB:
         self.fs.makedirs(path_info)
 
     def get(self, hash_info):
-        """ get raw object """
+        """get raw object"""
         return HashFile(
             # Prefer string path over PathInfo when possible due to performance
             self.hash_to_path(hash_info.value),
@@ -289,7 +289,7 @@ class ObjectDB:
             with ThreadPoolExecutor(
                 max_workers=jobs or self.fs.jobs
             ) as executor:
-                in_remote = executor.map(list_with_update, traverse_prefixes,)
+                in_remote = executor.map(list_with_update, traverse_prefixes)
                 yield from itertools.chain.from_iterable(in_remote)
 
     def all(self, jobs=None, name=None):

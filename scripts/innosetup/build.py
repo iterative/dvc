@@ -38,5 +38,7 @@ with (path / "config.ini").open("w") as fobj:
     cfg.write(fobj)
 
 check_call(
-    ["iscc", "setup.iss"], cwd=path, stderr=STDOUT,
+    ["iscc", "setup.iss"],
+    cwd=path,
+    stderr=STDOUT,
 )

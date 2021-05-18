@@ -396,9 +396,7 @@ class Context(CtxDict):
             raise ReservedKeyError(matches)
         return super().merge_update(other, overwrite=overwrite)
 
-    def merge_from(
-        self, fs, item: str, wdir: PathInfo, overwrite=False,
-    ):
+    def merge_from(self, fs, item: str, wdir: PathInfo, overwrite=False):
         path, _, keys_str = item.partition(":")
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
 

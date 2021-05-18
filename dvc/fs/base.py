@@ -149,8 +149,7 @@ class BaseFileSystem:
         return False  # We can't be sure by default
 
     def walk(self, top, topdown=True, onerror=None, **kwargs):
-        """Return a generator with (root, dirs, files).
-        """
+        """Return a generator with (root, dirs, files)."""
         raise NotImplementedError
 
     def walk_files(self, path_info, **kwargs):
@@ -209,9 +208,7 @@ class BaseFileSystem:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def upload(
-        self, from_info, to_info, name=None, no_progress_bar=False,
-    ):
+    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -266,14 +263,14 @@ class BaseFileSystem:
 
         if not _only_file and self.isdir(from_info):
             return self._download_dir(
-                from_info, to_info, name, no_progress_bar, jobs, **kwargs,
+                from_info, to_info, name, no_progress_bar, jobs, **kwargs
             )
-        return self._download_file(from_info, to_info, name, no_progress_bar,)
+        return self._download_file(from_info, to_info, name, no_progress_bar)
 
     download_file = partialmethod(download, _only_file=True)
 
     def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
+        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs
     ):
         from_infos = list(self.walk_files(from_info, **kwargs))
         if not from_infos:
@@ -290,7 +287,7 @@ class BaseFileSystem:
             disable=no_progress_bar,
         ) as pbar:
             download_files = pbar.wrap_fn(
-                partial(self._download_file, name=name, no_progress_bar=True,)
+                partial(self._download_file, name=name, no_progress_bar=True)
             )
             max_workers = jobs or self.jobs
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -314,9 +311,7 @@ class BaseFileSystem:
                             entry.cancel()
                         raise exc
 
-    def _download_file(
-        self, from_info, to_info, name, no_progress_bar,
-    ):
+    def _download_file(self, from_info, to_info, name, no_progress_bar):
         makedirs(to_info.parent, exist_ok=True)
 
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)

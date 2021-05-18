@@ -34,10 +34,7 @@ def _gdrive_retry(func):
             except (ValueError, LookupError):
                 return False
 
-            return reason in [
-                "userRateLimitExceeded",
-                "rateLimitExceeded",
-            ]
+            return reason in ["userRateLimitExceeded", "rateLimitExceeded"]
 
     # 16 tries, start at 0.5s, multiply by golden ratio, cap at 20s
     return retry(

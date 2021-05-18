@@ -37,7 +37,7 @@ all_clouds = [
     pytest.param(
         pytest.lazy_fixture("oss"),
         marks=pytest.mark.xfail(
-            reason="https://github.com/iterative/dvc/issues/4633",
+            reason="https://github.com/iterative/dvc/issues/4633"
         ),
     )
 ]
@@ -189,9 +189,7 @@ def test_cloud_cli(tmp_dir, dvc, remote):
 
     # NOTE: check if remote gc works correctly on directories
     assert main(["gc", "-cw", "-f"] + args) == 0
-    shutil.move(
-        dvc.odb.local.cache_dir, dvc.odb.local.cache_dir + ".back",
-    )
+    shutil.move(dvc.odb.local.cache_dir, dvc.odb.local.cache_dir + ".back")
 
     assert main(["fetch"] + args) == 0
 

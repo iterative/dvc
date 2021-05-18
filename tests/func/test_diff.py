@@ -175,9 +175,7 @@ def test_directories(tmp_dir, scm, dvc):
 
     assert dvc.diff(":/modify", ":/delete") == {
         "added": [],
-        "deleted": [
-            {"path": os.path.join("dir", "2"), "hash": digest("two")},
-        ],
+        "deleted": [{"path": os.path.join("dir", "2"), "hash": digest("two")}],
         "modified": [
             {
                 "path": os.path.join("dir", ""),
@@ -223,7 +221,7 @@ def test_diff_no_cache(tmp_dir, scm, dvc):
         {
             "path": os.path.join("dir", ""),
             "hash": "f0f7a307d223921557c929f944bf5303.dir",
-        },
+        }
     ]
 
 
@@ -396,7 +394,7 @@ def test_targets_single_dir_with_file(tmp_dir, scm, dvc):
             {
                 "path": os.path.join("dir_with", "file.txt"),
                 "hash": digest("first"),
-            },
+            }
         ],
         "deleted": [],
         "modified": [],
@@ -416,7 +414,7 @@ def test_targets_single_file_in_dir_with_file(tmp_dir, scm, dvc):
             {
                 "path": os.path.join("dir_with", "file.txt"),
                 "hash": digest("first"),
-            },
+            }
         ],
         "deleted": [],
         "modified": [],
@@ -558,7 +556,7 @@ def test_rename_multiple_files_same_hashes(tmp_dir, scm, dvc):
     them in either of the `added` or the `deleted` section.
     """
     tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "subdir": {"foo": "foo"}}}, commit="commit #1",
+        {"dir": {"foo": "foo", "subdir": {"foo": "foo"}}}, commit="commit #1"
     )
     remove(tmp_dir / "dir")
     # changing foo and subdir/foo to bar and subdir/bar respectively
