@@ -77,8 +77,8 @@ def _check_blockers(lock, info, *, mode, waiters):
             "'{path}' is busy, it is being blocked by:\n"
             "{blockers}\n"
             "\n"
-            "If there are no processes with such PIDs, you can manually remove"
-            "'.dvc/tmp/rwlock' and try again.".format(
+            "If there are no processes with such PIDs, you can manually "
+            "remove '.dvc/tmp/rwlock' and try again.".format(
                 path=str(path_info), blockers=_infos_to_str(blockers)
             )
         )
