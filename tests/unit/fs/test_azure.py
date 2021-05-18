@@ -1,15 +1,9 @@
-<<<<<<< HEAD:tests/unit/fs/test_azure.py
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from dvc.fs.azure import AzureFileSystem, _temp_event_loop
-=======
-import pytest
-
-from dvc.fs.azure import AzureAuthError, AzureFileSystem
->>>>>>> azure: better error messages / allow_anonymous_login option:tests/unit/remote/test_azure.py
+from dvc.fs.azure import AzureAuthError, AzureFileSystem, _temp_event_loop
 from dvc.path_info import PathInfo
 
 container_name = "container-name"
@@ -75,11 +69,10 @@ def test_temp_event_loop():
         assert future.result() == "yeey"
 
 
-def test_azure_login_methods(dvc):
+def test_azure_login_methods():
     def get_login_method(config):
-        fs = AzureFileSystem(dvc, config)
+        fs = AzureFileSystem(**config)
         # pylint: disable=pointless-statement
-        fs.fs_args
         return fs.login_method
 
     with pytest.raises(AzureAuthError):
