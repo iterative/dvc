@@ -152,7 +152,7 @@ class FSSpecWrapper(BaseFileSystem):
 
 
 # pylint: disable=abstract-method
-class CloudFSSpecWrapper(FSSpecWrapper):
+class ObjectFSWrapper(FSSpecWrapper):
     def _isdir(self, path_info):
         # Directory in object storages are interpreted differently
         # among different fsspec providers, so this logic is a temporary

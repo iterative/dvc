@@ -6,11 +6,11 @@ from funcy import cached_property, wrap_prop
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import CloudFSSpecWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 
 # pylint:disable=abstract-method
-class GSFileSystem(CloudFSSpecWrapper):
+class GSFileSystem(ObjectFSWrapper):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"gcsfs": "gcsfs"}

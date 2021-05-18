@@ -12,7 +12,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .fsspec_wrapper import CloudFSSpecWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -68,7 +68,7 @@ class AzureAuthError(DvcException):
 
 
 # pylint:disable=abstract-method
-class AzureFileSystem(CloudFSSpecWrapper):
+class AzureFileSystem(ObjectFSWrapper):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
     PARAM_CHECKSUM = "etag"

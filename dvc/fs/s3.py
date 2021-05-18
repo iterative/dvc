@@ -9,13 +9,13 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import CloudFSSpecWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
 # pylint:disable=abstract-method
-class BaseS3FileSystem(CloudFSSpecWrapper):
+class BaseS3FileSystem(ObjectFSWrapper):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
