@@ -3,10 +3,12 @@ import shutil
 
 import pytest
 
+from dvc.config import NoRemoteError
 from dvc.fs.dvc import DvcFileSystem
 from dvc.hash_info import HashInfo
 from dvc.objects.stage import stage
 from dvc.path_info import PathInfo
+from dvc.utils.fs import remove
 
 
 def test_exists(tmp_dir, dvc):
@@ -37,6 +39,18 @@ def test_open_dirty_hash(tmp_dir, dvc):
         # NOTE: Unlike RepoFileSystem, DvcFileSystem should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
+
+
+def test_open_no_remote(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file", "file")
+    (tmp_dir / "file").unlink()
+    remove(dvc.odb.local.cache_dir)
+
+    fs = DvcFileSystem(repo=dvc)
+    with pytest.raises(FileNotFoundError) as exc_info:
+        with fs.open(PathInfo(tmp_dir) / "file", "r"):
+            pass
+    assert isinstance(exc_info.value.__cause__, NoRemoteError)
 
 
 def test_open_dirty_no_hash(tmp_dir, dvc):

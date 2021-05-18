@@ -68,13 +68,17 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             raise IsADirectoryError
 
         out = outs[0]
+
+        if not out.hash_info:
+            raise FileNotFoundError
+
         if out.changed_cache(filter_info=path):
             from dvc.config import NoRemoteError
 
             try:
                 remote_obj = self.repo.cloud.get_remote(remote)
-            except NoRemoteError:
-                raise FileNotFoundError
+            except NoRemoteError as exc:
+                raise FileNotFoundError from exc
             if out.is_dir_checksum:
                 checksum = self._get_granular_hash(path, out).value
             else:
