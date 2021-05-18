@@ -158,29 +158,30 @@ class DvcIgnorePatterns:
         return ",".join([pattern.patterns for pattern in self.pattern_list])
 
 
+def _merge_two_patterns(first: DvcIgnorePatterns, second: DvcIgnorePatterns):
+    return DvcIgnorePatterns(
+        *merge_patterns(
+            first.pattern_list,
+            first.dirname,
+            second.pattern_list,
+            second.dirname,
+        )
+    )
+
+
 class DvcIgnoreTrieNode:
     def __init__(self, dirname: str):
         self.file_patterns = DvcIgnorePatterns([], dirname)
         self.subrepo_patterns = DvcIgnorePatterns([], dirname)
 
     def add_new_file_patterns(self, new_patterns: DvcIgnorePatterns):
-        self.file_patterns = DvcIgnorePatterns(
-            *merge_patterns(
-                self.file_patterns.pattern_list,
-                self.file_patterns.dirname,
-                new_patterns.pattern_list,
-                new_patterns.dirname,
-            )
+        self.file_patterns = _merge_two_patterns(
+            self.file_patterns, new_patterns
         )
 
     def add_new_subrepo_patterns(self, new_patterns: DvcIgnorePatterns):
-        self.subrepo_patterns = DvcIgnorePatterns(
-            *merge_patterns(
-                self.subrepo_patterns.pattern_list,
-                self.subrepo_patterns.dirname,
-                new_patterns.pattern_list,
-                new_patterns.dirname,
-            )
+        self.subrepo_patterns = _merge_two_patterns(
+            self.subrepo_patterns, new_patterns
         )
 
     @classmethod

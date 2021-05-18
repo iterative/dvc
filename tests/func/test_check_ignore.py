@@ -43,7 +43,7 @@ def test_check_ignore_details(tmp_dir, dvc, file, ret, output, capsys):
 
 
 @pytest.mark.parametrize("non_matching", [True, False])
-def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, caplog, capsys):
+def test_check_ignore_non_matching(tmp_dir, dvc, non_matching, capsys):
     tmp_dir.gen(DVCIGNORE_FILE, "other")
     if non_matching:
         assert main(["check-ignore", "-d", "-n", "file"]) == 1
@@ -92,18 +92,15 @@ def test_check_ignore_out_side_repo(tmp_dir, dvc, caplog):
     )
 
 
-def test_check_ignore_sub_repo(tmp_dir, dvc, capsys):
-    tmp_dir.gen(
-        {DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}}
-    )
+def test_check_ignore_sub_repo(tmp_dir, dvc, caplog):
+    tmp_dir.gen({DVCIGNORE_FILE: "other", "dir": {".dvc": {}, "foo": "bar"}})
 
-    assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 255
-    out, _ = capsys.readouterr()
+    assert main(["check-ignore", os.path.join("dir", "foo")]) == 255
     assert (
-        "Pathspec '{}' is in a subrepo '{}'".format(
+        "fatal: Pathspec '{}' is in a subrepo '{}'".format(
             os.path.join("dir", "foo"), "dir"
         )
-        in out
+        in caplog.text
     )
 
 
