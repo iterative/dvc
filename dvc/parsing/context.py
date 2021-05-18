@@ -397,7 +397,11 @@ class Context(CtxDict):
         return super().merge_update(other, overwrite=overwrite)
 
     def merge_from(
-        self, fs, item: str, wdir: PathInfo, overwrite=False,
+        self,
+        fs,
+        item: str,
+        wdir: PathInfo,
+        overwrite=False,
     ):
         path, _, keys_str = item.partition(":")
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None

@@ -12,7 +12,13 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def push(
-    repo, git_remote, exp_name, *args, force=False, push_cache=False, **kwargs,
+    repo,
+    git_remote,
+    exp_name,
+    *args,
+    force=False,
+    push_cache=False,
+    **kwargs,
 ):
     exp_ref = _get_exp_ref(repo, exp_name)
 
@@ -63,10 +69,17 @@ def _get_exp_ref(repo, exp_name):
 
 
 def _push_cache(
-    repo, exp_ref, dvc_remote=None, jobs=None, run_cache=False,
+    repo,
+    exp_ref,
+    dvc_remote=None,
+    jobs=None,
+    run_cache=False,
 ):
     revs = list(exp_commits(repo.scm, [exp_ref]))
     logger.debug("dvc push experiment '%s'", exp_ref)
     repo.push(
-        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs,
+        jobs=jobs,
+        remote=dvc_remote,
+        run_cache=run_cache,
+        revs=revs,
     )

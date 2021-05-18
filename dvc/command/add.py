@@ -117,6 +117,8 @@ def add_parser(subparsers, parent_parser):
         ),
     )
     parser.add_argument(
-        "targets", nargs="+", help="Input files/directories to add.",
+        "targets",
+        nargs="+",
+        help="Input files/directories to add.",
     ).complete = completion.FILE
     parser.set_defaults(func=CmdAdd)

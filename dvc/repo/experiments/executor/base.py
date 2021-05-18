@@ -183,7 +183,8 @@ class BaseExecutor(ABC):
         def on_diverged_ref(orig_ref: str, new_rev: str):
             if force:
                 logger.debug(
-                    "Replacing existing experiment '%s'", orig_ref,
+                    "Replacing existing experiment '%s'",
+                    orig_ref,
                 )
                 return True
 

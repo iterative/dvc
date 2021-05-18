@@ -5,7 +5,11 @@ from dvc.path_info import PathInfo
 
 
 def ls(
-    url, path=None, rev=None, recursive=None, dvc_only=False,
+    url,
+    path=None,
+    rev=None,
+    recursive=None,
+    dvc_only=False,
 ):
     """Methods for getting files and outputs for the repo.
 

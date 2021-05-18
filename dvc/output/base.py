@@ -503,7 +503,12 @@ class BaseOutput:
             self.repo.scm.ignore(self.fspath)
 
     def transfer(
-        self, source, odb=None, jobs=None, update=False, no_progress_bar=False,
+        self,
+        source,
+        odb=None,
+        jobs=None,
+        update=False,
+        no_progress_bar=False,
     ):
         from dvc.fs import get_cloud_fs
 
@@ -677,7 +682,8 @@ class BaseOutput:
             return ret
 
         ret.add_child_cache(
-            self.hash_info.value, self.collect_used_dir_cache(**kwargs),
+            self.hash_info.value,
+            self.collect_used_dir_cache(**kwargs),
         )
 
         return ret

@@ -166,7 +166,13 @@ def test_ls_repo_with_path_subdir_dvc_only(tmp_dir, dvc, scm):
 
     path = os.path.join("data", "subcontent")
     files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True)
-    match_files(files, ((("data.xml",), True), (("statistics",), False),))
+    match_files(
+        files,
+        (
+            (("data.xml",), True),
+            (("statistics",), False),
+        ),
+    )
 
 
 def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
@@ -176,7 +182,11 @@ def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
     path = os.path.join("data", "subcontent")
     files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True, recursive=True)
     match_files(
-        files, ((("data.xml",), True), (("statistics", "data.csv"), True),)
+        files,
+        (
+            (("data.xml",), True),
+            (("statistics", "data.csv"), True),
+        ),
     )
 
 

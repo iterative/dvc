@@ -87,7 +87,8 @@ def docker_services(
     from pytest_docker.plugin import DockerComposeExecutor, Services
 
     executor = DockerComposeExecutor(
-        docker_compose_file, docker_compose_project_name,
+        docker_compose_file,
+        docker_compose_project_name,
     )
 
     # making sure we don't accidentally launch docker-compose in parallel,

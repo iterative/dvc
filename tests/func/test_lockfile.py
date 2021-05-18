@@ -207,7 +207,8 @@ def test_migrates_v1_lockfile_to_v2_during_dump(
 
 
 @pytest.mark.parametrize(
-    "version_info", [{"schema": "1.1"}, {"schema": "2.1"}, {"schema": "3.0"}],
+    "version_info",
+    [{"schema": "1.1"}, {"schema": "2.1"}, {"schema": "3.0"}],
 )
 def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
     lockdata = {**version_info, "stages": {"foo": {"cmd": "echo foo"}}}

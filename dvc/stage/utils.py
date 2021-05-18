@@ -304,7 +304,9 @@ def _check_stage_exists(
 
 
 def validate_state(
-    repo: "Repo", new: Union["Stage", "PipelineStage"], force: bool = False,
+    repo: "Repo",
+    new: Union["Stage", "PipelineStage"],
+    force: bool = False,
 ) -> None:
     """Validates that the new stage:
 

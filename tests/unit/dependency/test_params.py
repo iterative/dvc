@@ -161,7 +161,8 @@ def test_read_params_py(tmp_dir, dvc):
     }
 
     tmp_dir.gen(
-        parameters_file, "class Train:\n    foo = 'val1'\n    bar = 'val2'\n",
+        parameters_file,
+        "class Train:\n    foo = 'val1'\n    bar = 'val2'\n",
     )
     dep = ParamsDependency(Stage(dvc), parameters_file, ["Train.foo"])
     assert dep.read_params() == {"Train.foo": "val1"}

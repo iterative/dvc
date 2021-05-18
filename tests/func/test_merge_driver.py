@@ -33,12 +33,42 @@ def _gen(tmp_dir, struct, name):
                 "subdir": {"foo": "foo", "bar": "bar", "baz": "baz"},
             },
         ),
-        ({}, {"foo": "foo"}, {"bar": "bar"}, {"foo": "foo", "bar": "bar"},),
-        ({}, {}, {"bar": "bar"}, {"bar": "bar"},),
-        ({}, {"foo": "foo"}, {}, {"foo": "foo"},),
-        (None, {"foo": "foo"}, {"bar": "bar"}, {"foo": "foo", "bar": "bar"},),
-        (None, None, {"bar": "bar"}, {"bar": "bar"},),
-        (None, {"foo": "foo"}, None, {"foo": "foo"},),
+        (
+            {},
+            {"foo": "foo"},
+            {"bar": "bar"},
+            {"foo": "foo", "bar": "bar"},
+        ),
+        (
+            {},
+            {},
+            {"bar": "bar"},
+            {"bar": "bar"},
+        ),
+        (
+            {},
+            {"foo": "foo"},
+            {},
+            {"foo": "foo"},
+        ),
+        (
+            None,
+            {"foo": "foo"},
+            {"bar": "bar"},
+            {"foo": "foo", "bar": "bar"},
+        ),
+        (
+            None,
+            None,
+            {"bar": "bar"},
+            {"bar": "bar"},
+        ),
+        (
+            None,
+            {"foo": "foo"},
+            None,
+            {"foo": "foo"},
+        ),
     ],
 )
 def test_merge(tmp_dir, dvc, ancestor, our, their, merged):

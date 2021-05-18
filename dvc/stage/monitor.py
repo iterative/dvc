@@ -101,7 +101,11 @@ class Monitor:
         self.done = threading.Event()
         self.tasks = tasks
         self.monitor_thread = threading.Thread(
-            target=Monitor._loop, args=(self.tasks, self.done,),
+            target=Monitor._loop,
+            args=(
+                self.tasks,
+                self.done,
+            ),
         )
 
     def __enter__(self):

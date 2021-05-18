@@ -261,5 +261,7 @@ def test_experiments_remove(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, exp_names=[], queue=True,
+        cmd.repo,
+        exp_names=[],
+        queue=True,
     )

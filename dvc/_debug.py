@@ -77,15 +77,27 @@ def add_debugging_flags(parser):
     from argparse import SUPPRESS
 
     parser.add_argument(
-        "--cprofile", action="store_true", default=False, help=SUPPRESS,
+        "--cprofile",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
-        "--pdb", action="store_true", default=False, help=SUPPRESS,
+        "--pdb",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )
     parser.add_argument(
-        "--instrument", action="store_true", default=False, help=SUPPRESS,
+        "--instrument",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )
     parser.add_argument(
-        "--instrument-open", action="store_true", default=False, help=SUPPRESS,
+        "--instrument-open",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )

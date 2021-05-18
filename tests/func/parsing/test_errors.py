@@ -180,7 +180,8 @@ def test_foreach_data_key_does_not_exists(tmp_dir, dvc, key):
 
 
 @pytest.mark.parametrize(
-    "foreach_data", ["${foo}", "${dct.model1}", "${lst.0}", "foobar"],
+    "foreach_data",
+    ["${foo}", "${dct.model1}", "${lst.0}", "foobar"],
 )
 def test_foreach_data_expects_list_or_dict(tmp_dir, dvc, foreach_data):
     context = Context(
@@ -208,7 +209,11 @@ def test_foreach_overwriting_item_in_list(
 ):
     context = Context(global_data)
     definition = make_foreach_def(
-        tmp_dir, "build", {"model1": 10, "model2": 5}, {}, context,
+        tmp_dir,
+        "build",
+        {"model1": 10, "model2": 5},
+        {},
+        context,
     )
     with caplog.at_level(logging.WARNING, logger="dvc.parsing"):
         definition.resolve_all()
@@ -221,7 +226,10 @@ def test_foreach_overwriting_item_in_list(
 
 def test_foreach_do_syntax_errors(tmp_dir, dvc):
     definition = make_foreach_def(
-        tmp_dir, "build", ["foo", "bar"], {"cmd": "echo ${syntax.[error}"},
+        tmp_dir,
+        "build",
+        ["foo", "bar"],
+        {"cmd": "echo ${syntax.[error}"},
     )
 
     with pytest.raises(ResolveError) as exc_info:

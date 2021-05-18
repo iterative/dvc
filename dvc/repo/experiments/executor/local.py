@@ -59,7 +59,8 @@ class TempDirExecutor(BaseLocalExecutor):
         if cache_dir:
             self._config(cache_dir)
         logger.debug(
-            "Init temp dir executor in dir '%s'", self._tmp_dir,
+            "Init temp dir executor in dir '%s'",
+            self._tmp_dir,
         )
 
     def _config(self, cache_dir):

@@ -40,7 +40,9 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     freeze_parser.add_argument(
-        "targets", nargs="+", help="Stages or .dvc files to freeze",
+        "targets",
+        nargs="+",
+        help="Stages or .dvc files to freeze",
     ).complete = completion.DVC_FILE
     freeze_parser.set_defaults(func=CmdFreeze)
 
@@ -53,6 +55,8 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unfreeze_parser.add_argument(
-        "targets", nargs="+", help="Stages or .dvc files to unfreeze",
+        "targets",
+        nargs="+",
+        help="Stages or .dvc files to unfreeze",
     ).complete = completion.DVC_FILE
     unfreeze_parser.set_defaults(func=CmdUnfreeze)

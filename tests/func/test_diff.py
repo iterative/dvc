@@ -558,7 +558,8 @@ def test_rename_multiple_files_same_hashes(tmp_dir, scm, dvc):
     them in either of the `added` or the `deleted` section.
     """
     tmp_dir.dvc_gen(
-        {"dir": {"foo": "foo", "subdir": {"foo": "foo"}}}, commit="commit #1",
+        {"dir": {"foo": "foo", "subdir": {"foo": "foo"}}},
+        commit="commit #1",
     )
     remove(tmp_dir / "dir")
     # changing foo and subdir/foo to bar and subdir/bar respectively

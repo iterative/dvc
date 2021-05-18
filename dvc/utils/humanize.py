@@ -8,7 +8,8 @@ def join(words):
 
     return (
         "{before} and {after}".format(
-            before=", ".join(words[:-1]), after=words[-1],
+            before=", ".join(words[:-1]),
+            after=words[-1],
         )
         if len(words) > 1
         else words[0]

@@ -448,7 +448,9 @@ class ForeachDefinition:
                 return entry.resolve_stage(skip_checks=True)
             except ContextError as exc:
                 format_and_raise(
-                    exc, f"stage '{generated}'", self.relpath,
+                    exc,
+                    f"stage '{generated}'",
+                    self.relpath,
                 )
 
             # let mypy know that this state is unreachable as format_and_raise

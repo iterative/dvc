@@ -291,7 +291,10 @@ def test_metrics_show_with_no_revision():
 
 
 def test_metrics_show_with_non_dict_values():
-    td = metrics_table({"branch_1": {"metrics.json": 1}}, all_branches=True,)
+    td = metrics_table(
+        {"branch_1": {"metrics.json": 1}},
+        all_branches=True,
+    )
     assert td.as_dict() == [
         {"Revision": "branch_1", "Path": "metrics.json", "": "1"}
     ]

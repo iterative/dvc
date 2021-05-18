@@ -27,7 +27,9 @@ def test_get_dir(tmp_dir):
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
 def test_get_url_to_dir(
-    tmp_dir, tmp_path_factory, dname,
+    tmp_dir,
+    tmp_path_factory,
+    dname,
 ):
     tmp_dir.gen({"src": {"foo": "foo contents"}, "dir": {"subdir": {}}})
 

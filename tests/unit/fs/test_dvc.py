@@ -230,14 +230,18 @@ def test_get_hash_granular(tmp_dir, dvc):
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert fs.info(subdir).get("md5") is None
     assert stage(dvc.odb.local, subdir, fs, "md5").hash_info == HashInfo(
-        "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir",
+        "md5",
+        "af314506f1622d107e0ed3f14ec1a3b5.dir",
     )
     assert (
         fs.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
     )
     assert stage(
         dvc.odb.local, subdir / "data", fs, "md5"
-    ).hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc",)
+    ).hash_info == HashInfo(
+        "md5",
+        "8d777f385d3dfec8815d20f7496026dc",
+    )
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):

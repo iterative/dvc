@@ -180,7 +180,10 @@ def test_shared_stage_cache(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "bar", name="copy-foo-bar")
 
-    parent_cache_dir = os.path.join(dvc.stage_cache.cache_dir, "88",)
+    parent_cache_dir = os.path.join(
+        dvc.stage_cache.cache_dir,
+        "88",
+    )
     cache_dir = os.path.join(
         parent_cache_dir,
         "883395068439203a9de3d1e1649a16e9027bfd1ab5dab4f438d321c4a928b328",

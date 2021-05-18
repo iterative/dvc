@@ -201,7 +201,9 @@ def _add_common_args(parser):
         metavar="<path>",
     )
     parser.add_argument(
-        "--live", help="Declare output as dvclive.", metavar="<path>",
+        "--live",
+        help="Declare output as dvclive.",
+        metavar="<path>",
     )
     parser.add_argument(
         "--live-no-cache",

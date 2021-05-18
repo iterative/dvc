@@ -139,7 +139,10 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pull_parser.add_argument(
-        "-r", "--remote", help="Remote storage to pull from", metavar="<name>",
+        "-r",
+        "--remote",
+        help="Remote storage to pull from",
+        metavar="<name>",
     )
     pull_parser.add_argument(
         "-a",
@@ -208,7 +211,10 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     push_parser.add_argument(
-        "-r", "--remote", help="Remote storage to push to", metavar="<name>",
+        "-r",
+        "--remote",
+        help="Remote storage to push to",
+        metavar="<name>",
     )
     push_parser.add_argument(
         "-a",

@@ -35,7 +35,8 @@ class CmdLiveDiff(CmdLive):
 def shared_parent_parser():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
-        "target", help="Logs dir to produce summary from",
+        "target",
+        help="Logs dir to produce summary from",
     ).complete = completion.DIR
     parent_parser.add_argument(
         "-o",

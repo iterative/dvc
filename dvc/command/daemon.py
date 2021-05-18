@@ -67,6 +67,7 @@ def add_parser(subparsers, parent_parser):
         help=DAEMON_ANALYTICS_HELP,
     )
     daemon_analytics_parser.add_argument(
-        "target", help="Analytics file.",
+        "target",
+        help="Analytics file.",
     ).complete = completion.FILE
     daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)

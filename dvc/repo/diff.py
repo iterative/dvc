@@ -134,7 +134,10 @@ def _output_paths(repo, repo_fs, targets):
     def _to_checksum(output):
         if on_working_fs:
             return ostage(
-                repo.odb.local, output.path_info, repo.odb.local.fs, "md5",
+                repo.odb.local,
+                output.path_info,
+                repo.odb.local.fs,
+                "md5",
             ).hash_info.value
         return output.hash_info.value
 

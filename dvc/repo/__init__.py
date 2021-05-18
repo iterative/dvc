@@ -407,7 +407,10 @@ class Repo:
 
         if used_run_cache:
             used_cache = self.stage_cache.get_used_cache(
-                used_run_cache, remote=remote, force=force, jobs=jobs,
+                used_run_cache,
+                remote=remote,
+                force=force,
+                jobs=jobs,
             )
             cache.update(used_cache)
 
@@ -491,7 +494,10 @@ class Repo:
         path = PathInfo(self.root_dir) / path
         try:
             with fs.open(
-                path, mode=mode, encoding=encoding, remote=remote,
+                path,
+                mode=mode,
+                encoding=encoding,
+                remote=remote,
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:

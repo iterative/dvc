@@ -92,8 +92,7 @@ class Base:
         return [self.ignore(path) for path in p_list]
 
     def add(self, paths):
-        """Makes SCM start tracking every path from a specified list of paths.
-        """
+        """Makes SCM track every path from a specified list of paths."""
 
     def commit(self, msg):
         """Makes SCM create a commit."""
@@ -197,7 +196,7 @@ class Base:
         """Return boolean whether file belongs to scm"""
 
     def close(self):
-        """ Method to close the files """
+        """Method to close the files"""
 
     def _reset(self) -> None:
         pass

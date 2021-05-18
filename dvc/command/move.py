@@ -37,9 +37,11 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     move_parser.add_argument(
-        "src", help="Source path to a data file or directory.",
+        "src",
+        help="Source path to a data file or directory.",
     ).complete = completion.FILE
     move_parser.add_argument(
-        "dst", help="Destination path.",
+        "dst",
+        help="Destination path.",
     ).complete = completion.FILE
     move_parser.set_defaults(func=CmdMove)

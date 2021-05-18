@@ -94,7 +94,11 @@ def test_check_ignore_sub_repo(tmp_dir, dvc, capsys):
     assert main(["check-ignore", "-d", os.path.join("dir", "foo")]) == 0
     out, _ = capsys.readouterr()
     assert (
-        "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo"),) in out
+        "in sub_repo:{}\t{}".format(
+            "dir",
+            os.path.join("dir", "foo"),
+        )
+        in out
     )
 
 

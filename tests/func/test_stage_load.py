@@ -260,12 +260,15 @@ def test_collect_granular_with_not_existing_output_or_stage_name(tmp_dir, dvc):
 
 
 def test_collect_granular_with_deps(tmp_dir, dvc, stages):
-    assert set(
-        map(
-            itemgetter(0),
-            dvc.stage.collect_granular("bar.dvc", with_deps=True),
+    assert (
+        set(
+            map(
+                itemgetter(0),
+                dvc.stage.collect_granular("bar.dvc", with_deps=True),
+            )
         )
-    ) == {stages["copy-foo-bar"], stages["foo-generate"]}
+        == {stages["copy-foo-bar"], stages["foo-generate"]}
+    )
     assert set(
         map(
             itemgetter(0),
@@ -276,12 +279,15 @@ def test_collect_granular_with_deps(tmp_dir, dvc, stages):
         stages["copy-foo-bar"],
         stages["foo-generate"],
     }
-    assert set(
-        map(
-            itemgetter(0),
-            dvc.stage.collect_granular(PIPELINE_FILE, with_deps=True),
+    assert (
+        set(
+            map(
+                itemgetter(0),
+                dvc.stage.collect_granular(PIPELINE_FILE, with_deps=True),
+            )
         )
-    ) == set(stages.values())
+        == set(stages.values())
+    )
 
 
 def test_collect_granular_same_output_name_stage_name(tmp_dir, dvc, run_copy):

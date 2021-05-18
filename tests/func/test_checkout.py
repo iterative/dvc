@@ -388,7 +388,7 @@ class TestCheckoutHook(TestDvc):
     @patch("sys.stdout.isatty", return_value=True)
     @patch("dvc.prompt.input", side_effect=EOFError)
     def test(self, _mock_input, _mock_isatty):
-        """ Test that dvc checkout handles EOFError gracefully, which is what
+        """Test that dvc checkout handles EOFError gracefully, which is what
         it will experience when running in a git hook.
         """
         stages = self.dvc.add(self.DATA_DIR)

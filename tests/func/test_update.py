@@ -8,7 +8,8 @@ from tests.unit.fs.test_repo import make_subrepo
 
 
 @pytest.mark.parametrize(
-    "cached", [True, False],
+    "cached",
+    [True, False],
 )
 def test_update_import(tmp_dir, dvc, erepo_dir, cached):
     gen = erepo_dir.dvc_gen if cached else erepo_dir.scm_gen

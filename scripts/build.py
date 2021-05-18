@@ -43,7 +43,9 @@ version = dvc_version.__version__
 )
 
 check_call(
-    ["python", "build.py"], cwd=pyinstaller, stderr=STDOUT,
+    ["python", "build.py"],
+    cwd=pyinstaller,
+    stderr=STDOUT,
 )
 
 if args.sign_application:
@@ -60,11 +62,15 @@ if args.sign_application:
 
 if args.pkg == "exe":
     check_call(
-        ["python", "build.py"], cwd=innosetup, stderr=STDOUT,
+        ["python", "build.py"],
+        cwd=innosetup,
+        stderr=STDOUT,
     )
 else:
     check_call(
-        ["python", "build.py", args.pkg], cwd=fpm, stderr=STDOUT,
+        ["python", "build.py", args.pkg],
+        cwd=fpm,
+        stderr=STDOUT,
     )
 
 if args.sign_installer:

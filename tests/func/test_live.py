@@ -212,7 +212,9 @@ def test_live_checkpoints_resume(
     checkpoint_resume = first(results)
 
     dvc.experiments.run(
-        stage.addressing, checkpoint_resume=checkpoint_resume, tmp_dir=False,
+        stage.addressing,
+        checkpoint_resume=checkpoint_resume,
+        tmp_dir=False,
     )
 
     results = dvc.experiments.show()

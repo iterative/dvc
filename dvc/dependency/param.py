@@ -128,7 +128,8 @@ class ParamsDependency(LocalDependency):
         if missing_params:
             raise MissingParamsError(
                 "Parameters '{}' are missing from '{}'.".format(
-                    ", ".join(missing_params), self,
+                    ", ".join(missing_params),
+                    self,
                 )
             )
 

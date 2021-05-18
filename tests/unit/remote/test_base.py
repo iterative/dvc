@@ -84,10 +84,14 @@ def test_hashes_exist(object_exists, traverse, dvc):
 
 
 @mock.patch.object(
-    ObjectDB, "list_hashes", return_value=[],
+    ObjectDB,
+    "list_hashes",
+    return_value=[],
 )
 @mock.patch.object(
-    ObjectDB, "_path_to_hash", side_effect=lambda x: x,
+    ObjectDB,
+    "_path_to_hash",
+    side_effect=lambda x: x,
 )
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     odb = ObjectDB(BaseFileSystem())

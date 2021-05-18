@@ -12,8 +12,8 @@ from dvc.remote.index import RemoteIndexNoop
 
 def test_status_download_optimization(mocker, dvc):
     """When comparing the status to pull a remote cache,
-        And the desired files to fetch are already on the local cache,
-        Don't check the existence of the desired files on the remote cache
+    And the desired files to fetch are already on the local cache,
+    Don't check the existence of the desired files on the remote cache
     """
     odb = LocalObjectDB(LocalFileSystem())
 

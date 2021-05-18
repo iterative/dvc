@@ -241,7 +241,12 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     # Uploads file to remote
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,
+        self,
+        from_file,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        **_kwargs,
     ):
         # First try to create parent directories
         self.makedirs(to_info.parent)

@@ -87,7 +87,9 @@ class CmdPlotsDiff(CmdPlots):
 class CmdPlotsModify(CmdPlots):
     def run(self):
         self.repo.plots.modify(
-            self.args.target, props=self._props(), unset=self.args.unset,
+            self.args.target,
+            props=self._props(),
+            unset=self.args.unset,
         )
         return 0
 
@@ -160,7 +162,10 @@ def add_parser(subparsers, parent_parser):
         help=argparse.SUPPRESS,
     )
     plots_diff_parser.add_argument(
-        "revisions", nargs="*", default=None, help="Git commits to plot from",
+        "revisions",
+        nargs="*",
+        default=None,
+        help="Git commits to plot from",
     )
     _add_props_arguments(plots_diff_parser)
     _add_output_arguments(plots_diff_parser)
@@ -175,7 +180,8 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Metric file to set properties to",
+        "target",
+        help="Metric file to set properties to",
     ).complete = completion.FILE
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(

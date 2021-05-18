@@ -36,7 +36,8 @@ def test_roundtrip(dvc, index):
 
 def test_clear(dvc, index):
     index.update(
-        ["1234.dir"], ["5678"],
+        ["1234.dir"],
+        ["5678"],
     )
     index.clear()
     assert first(index.hashes()) is None

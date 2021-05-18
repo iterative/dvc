@@ -190,7 +190,8 @@ def test_cloud_cli(tmp_dir, dvc, remote):
     # NOTE: check if remote gc works correctly on directories
     assert main(["gc", "-cw", "-f"] + args) == 0
     shutil.move(
-        dvc.odb.local.cache_dir, dvc.odb.local.cache_dir + ".back",
+        dvc.odb.local.cache_dir,
+        dvc.odb.local.cache_dir + ".back",
     )
 
     assert main(["fetch"] + args) == 0

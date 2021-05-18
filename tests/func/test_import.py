@@ -163,7 +163,9 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
 
     with erepo_dir.chdir():
         erepo_dir.dvc.run(
-            cmd=f"echo hello > {src}", outs_no_cache=[src], single_stage=True,
+            cmd=f"echo hello > {src}",
+            outs_no_cache=[src],
+            single_stage=True,
         )
 
     erepo_dir.scm_add(
@@ -444,7 +446,11 @@ def test_import_subrepos(tmp_dir, erepo_dir, dvc, scm, is_dvc, files):
     key = next(iter(files))
     path = str((subrepo / key).relative_to(erepo_dir))
 
-    stage = dvc.imp(os.fspath(erepo_dir), path, out="out",)
+    stage = dvc.imp(
+        os.fspath(erepo_dir),
+        path,
+        out="out",
+    )
 
     assert (tmp_dir / "out").read_text() == files[key]
     assert stage.deps[0].def_path == path

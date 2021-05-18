@@ -94,7 +94,11 @@ class RepoDependency(LocalDependency):
             except (NoOutputOrStageError, NoRemoteError):
                 pass
             obj = stage(
-                odb, path_info, repo.repo_fs, odb.fs.PARAM_CHECKSUM, jobs=jobs,
+                odb,
+                path_info,
+                repo.repo_fs,
+                odb.fs.PARAM_CHECKSUM,
+                jobs=jobs,
             )
             save(odb, obj, jobs=jobs)
 
