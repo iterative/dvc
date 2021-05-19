@@ -236,7 +236,11 @@ class DvcIgnoreFilter:
         for dname in dnames:
             self._update_sub_repo(os.path.join(dirname, dname))
 
-    def _update_trie(self, dirname: str, dnames: Optional["List"],) -> None:
+    def _update_trie(
+        self,
+        dirname: str,
+        dnames: Optional["List"],
+    ) -> None:
         old_trie_node = self._ignore_trie.longest_prefix(dirname).value
         self._ignore_trie[dirname] = DvcIgnoreTrieNode.copy_node(
             dirname, old_trie_node
@@ -382,7 +386,10 @@ class DvcIgnoreFilter:
         trie_node = self._get_trie_node(dirname)
         if trie_node:
             subrepo_match = trie_node.subrepo_patterns.matches(
-                dirname, basename, os.path.isdir(full_target), True,
+                dirname,
+                basename,
+                os.path.isdir(full_target),
+                True,
             )
             if subrepo_match:
                 subrepo_info = subrepo_match[0].format(target)

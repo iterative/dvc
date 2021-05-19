@@ -117,7 +117,8 @@ def test_check_sub_dir_ignore_file(tmp_dir, dvc, capsys):
     out, _ = capsys.readouterr()
     assert (
         "{}:2:foo\t{}".format(
-            os.path.join("dir", DVCIGNORE_FILE), os.path.join("dir", "foo"),
+            os.path.join("dir", DVCIGNORE_FILE),
+            os.path.join("dir", "foo"),
         )
         in out
     )
