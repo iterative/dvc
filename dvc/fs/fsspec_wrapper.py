@@ -57,27 +57,20 @@ class FSSpecWrapper(BaseFileSystem):
         host filesystem"""
         return {}
 
-    def isdir(self, path_info):
-        if not self.exists(path_info):
-            return False
+    def _isdir(self, path_info):
+        return self.fs.isdir(self._with_bucket(path_info))
 
-        # Directory in object storages are interpreted differently
-        # among different fsspec providers, so this logic is a temporary
-        # measure for us to adapt as of now. It checks whether it is a
-        # directory (as in a prefix with contents) or whether it is an empty
-        # file where it's name ends with a forward slash
-        entry = self.info(path_info)
-        return entry["type"] == "directory" or (
-            entry["size"] == 0
-            and entry["type"] == "file"
-            and entry["name"].endswith("/")
-        )
+    def isdir(self, path_info):
+        try:
+            return self._isdir(path_info)
+        except FileNotFoundError:
+            return False
 
     def isfile(self, path_info):
-        if not self.exists(path_info):
+        try:
+            return not self._isdir(path_info)
+        except FileNotFoundError:
             return False
-
-        return not self.isdir(path_info)
 
     def is_empty(self, path_info):
         entry = self.info(path_info)
@@ -106,14 +99,6 @@ class FSSpecWrapper(BaseFileSystem):
         files = self.fs.find(path, detail=detail)
         if detail:
             files = files.values()
-
-        # When calling find() on a file, it returns the same file in a list.
-        # For object-based storages, the same behavior applies to empty
-        # directories since they are represented as files. This condition
-        # checks whether we should yield an empty list (if it is an empty
-        # directory) or just yield the file itself.
-        if len(files) == 1 and files[0] == path and self.isdir(path_info):
-            return None
 
         yield from self._strip_buckets(files, detail=detail)
 
@@ -164,3 +149,36 @@ class FSSpecWrapper(BaseFileSystem):
             ) as wrapped:
                 with open(to_file, "wb") as fdest:
                     shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)
+
+
+# pylint: disable=abstract-method
+class ObjectFSWrapper(FSSpecWrapper):
+    def _isdir(self, path_info):
+        # Directory in object storages are interpreted differently
+        # among different fsspec providers, so this logic is a temporary
+        # measure for us to adapt as of now. It checks whether it is a
+        # directory (as in a prefix with contents) or whether it is an empty
+        # file where it's name ends with a forward slash
+
+        entry = self.info(path_info)
+        return entry["type"] == "directory" or (
+            entry["size"] == 0
+            and entry["type"] == "file"
+            and entry["name"].endswith("/")
+        )
+
+    def find(self, path_info, detail=False):
+        path = self._with_bucket(path_info)
+        files = self.fs.find(path, detail=detail)
+        if detail:
+            files = files.values()
+
+        # When calling find() on a file, it returns the same file in a list.
+        # For object-based storages, the same behavior applies to empty
+        # directories since they are represented as files. This condition
+        # checks whether we should yield an empty list (if it is an empty
+        # directory) or just yield the file itself.
+        if len(files) == 1 and files[0] == path and self.isdir(path_info):
+            return None
+
+        yield from self._strip_buckets(files, detail=detail)
