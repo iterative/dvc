@@ -61,7 +61,7 @@ def gc(
 
         used_objs: Set["HashFile"] = set()
         for repo in all_repos + [self]:
-            objs, _, _ = repo.used_cache(
+            objs, _ = repo.used_cache(
                 all_branches=all_branches,
                 with_deps=with_deps,
                 all_tags=all_tags,

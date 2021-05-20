@@ -41,7 +41,7 @@ def fetch(
     if isinstance(targets, str):
         targets = [targets]
 
-    used_objs, used_external, _ = self.used_cache(
+    used_objs, used_external = self.used_cache(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -108,7 +108,7 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
             for path in files:
                 path_info = root / path
                 try:
-                    used_objs, _, _ = repo.used_cache(
+                    used_objs, _ = repo.used_cache(
                         [os.fspath(path_info)],
                         force=True,
                         jobs=jobs,

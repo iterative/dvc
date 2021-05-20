@@ -371,11 +371,8 @@ class Repo:
             to items containing the output's `dumpd` names and the output's
             children (if the given output is a directory).
         """
-        from dvc.objects.db import NamedCache
-
         used_objs = set()
         used_external = defaultdict(set)
-        run_cache = NamedCache()
 
         for _ in self.brancher(
             revs=revs,
@@ -405,12 +402,14 @@ class Repo:
                     used_external[repo_pair].update(paths)
 
         if used_run_cache:
-            used_cache = self.stage_cache.get_used_cache(
+            objs, external = self.stage_cache.get_used_cache(
                 used_run_cache, remote=remote, force=force, jobs=jobs
             )
-            run_cache.update(used_cache)
+            used_objs.update(objs)
+            for repo_pair, paths in external:
+                used_external[repo_pair].update(paths)
 
-        return objs, external, run_cache
+        return objs, external
 
     @cached_property
     def outs_trie(self):

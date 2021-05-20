@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from collections import defaultdict
 from contextlib import contextmanager
 
 from funcy import cached_property, first
@@ -248,14 +249,17 @@ class StageCache:
         )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
-        from dvc.objects.db import NamedCache
-
-        cache = NamedCache()
+        """Return used cache for the specified run-cached stages."""
+        used_objs = set()
+        used_external = defaultdict(set)
 
         for key, value in used_run_cache:
             entry = self._load_cache(key, value)
             if not entry:
                 continue
             stage = self._create_stage(entry)
-            cache.update(stage.get_used_cache(*args, **kwargs))
-        return cache
+            objs, external = stage.get_used_cache(*args, **kwargs)
+            used_objs.update(objs)
+            for repo_pair, paths in external:
+                used_external[repo_pair].update(paths)
+        return used_objs, used_external
