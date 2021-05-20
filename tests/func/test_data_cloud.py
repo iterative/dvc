@@ -8,7 +8,6 @@ from flaky.flaky_decorator import flaky
 import dvc as dvc_module
 from dvc.external_repo import clean_repos
 from dvc.main import main
-from dvc.objects.db import NamedCache
 from dvc.remote.base import (
     STATUS_DELETED,
     STATUS_MISSING,
@@ -62,16 +61,15 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     )
     out_dir = stage_dir.outs[0]
     cache_dir = out_dir.cache_path
-    name_dir = str(out_dir)
     md5_dir = out_dir.hash_info.value
-    info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
+    objs = {out_dir.obj} | set(out_dir.obj)
 
     # Check status
     status = dvc.cloud.status(info, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_NEW}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+    status_dir = dvc.cloud.status(objs, show_checksums=True)
     expected = {md5_dir: {"name": md5_dir, "status": STATUS_NEW}}
     assert status_dir == expected
 
@@ -83,7 +81,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     expected = {md5: {"name": md5, "status": STATUS_MISSING}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+    status_dir = dvc.cloud.status(objs, show_checksums=True)
     expected = {md5_dir: {"name": md5_dir, "status": STATUS_MISSING}}
     assert status_dir == expected
 
@@ -96,14 +94,14 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
 
-    dvc.cloud.push(info_dir)
+    dvc.cloud.push(objs)
     assert os.path.isfile(cache_dir)
 
     status = dvc.cloud.status(info, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_OK}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+    status_dir = dvc.cloud.status(objs, show_checksums=True)
     expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
     assert status_dir == expected
 
@@ -114,7 +112,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     expected = {md5: {"name": md5, "status": STATUS_DELETED}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+    status_dir = dvc.cloud.status(objs, show_checksums=True)
     expected = {md5_dir: {"name": md5_dir, "status": STATUS_DELETED}}
     assert status_dir == expected
 
@@ -125,14 +123,14 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     with open(cache) as fd:
         assert fd.read() == "foo"
 
-    dvc.cloud.pull(info_dir)
+    dvc.cloud.pull(objs)
     assert os.path.isfile(cache_dir)
 
     status = dvc.cloud.status(info, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_OK}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
+    status_dir = dvc.cloud.status(objs, show_checksums=True)
     expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
     assert status_dir == expected
 
