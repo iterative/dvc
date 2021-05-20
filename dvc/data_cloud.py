@@ -61,7 +61,7 @@ class DataCloud:
         self,
         objs: Iterable["HashFile"],
         jobs: Optional[int] = None,
-        remote_name: Optional[str] = None,
+        remote: Optional[str] = None,
         show_checksums: bool = False,
     ):
         """Push data items in a cloud-agnostic way.
@@ -74,9 +74,9 @@ class DataCloud:
             show_checksums: show checksums instead of file names in
                 information messages.
         """
-        remote = self.get_remote(remote_name, "push")
+        remote_obj = self.get_remote(remote, "push")
 
-        return remote.push(
+        return remote_obj.push(
             self.repo.odb.local,
             objs,
             jobs=jobs,
@@ -87,7 +87,7 @@ class DataCloud:
         self,
         objs: Iterable["HashFile"],
         jobs: Optional[int] = None,
-        remote_name: Optional[str] = None,
+        remote: Optional[str] = None,
         show_checksums: bool = False,
     ):
         """Pull data items in a cloud-agnostic way.
@@ -100,9 +100,9 @@ class DataCloud:
             show_checksums: show checksums instead of file names in
                 information messages.
         """
-        remote = self.get_remote(remote_name, "pull")
+        remote_obj = self.get_remote(remote, "pull")
 
-        return remote.pull(
+        return remote_obj.pull(
             self.repo.odb.local,
             objs,
             jobs=jobs,
@@ -113,7 +113,7 @@ class DataCloud:
         self,
         objs: Iterable["HashFile"],
         jobs: Optional[int] = None,
-        remote_name: Optional[str] = None,
+        remote: Optional[str] = None,
         show_checksums: bool = False,
         log_missing: bool = True,
     ):
@@ -130,8 +130,8 @@ class DataCloud:
             log_missing: log warning messages if file doesn't exist
                 neither in cache, neither in cloud.
         """
-        remote = self.get_remote(remote_name, "status")
-        return remote.status(
+        remote_obj = self.get_remote(remote, "status")
+        return remote_obj.status(
             self.repo.odb.local,
             objs,
             jobs=jobs,
@@ -140,5 +140,5 @@ class DataCloud:
         )
 
     def get_url_for(self, remote, checksum):
-        remote = self.get_remote(remote)
-        return str(remote.odb.hash_to_path_info(checksum))
+        remote_obj = self.get_remote(remote)
+        return str(remote_obj.odb.hash_to_path_info(checksum))
