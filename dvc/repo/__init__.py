@@ -409,7 +409,7 @@ class Repo:
             for repo_pair, paths in external:
                 used_external[repo_pair].update(paths)
 
-        return objs, external
+        return used_objs, used_external
 
     @cached_property
     def outs_trie(self):

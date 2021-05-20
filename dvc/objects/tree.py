@@ -115,6 +115,8 @@ class Tree(HashFile):
         tree = cls.from_list(raw)
         tree.path_info = obj.path_info
         tree.fs = obj.fs
+        for _, entry_obj in tree:
+            entry_obj.fs = obj.fs
         tree.hash_info = hash_info
 
         return tree

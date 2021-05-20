@@ -211,10 +211,10 @@ class Remote:
             if isinstance(obj, Tree):
                 dir_status[hash_] = make_names(obj)
                 dir_contents[hash_] = set()
-                for child_obj in obj:
+                for _, child_obj in obj:
                     child_hash = child_obj.hash_info.value
                     file_status[child_hash] = make_names(child_obj)
-                    dir_contents[hash_] = child_hash
+                    dir_contents[hash_].add(child_hash)
             else:
                 file_status[hash_] = make_names(obj)
 
