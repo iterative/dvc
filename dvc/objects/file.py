@@ -39,7 +39,12 @@ class HashFile:
 
     def __hash__(self):
         return hash(
-            (self.hash_info, self.path_info, self.fs.scheme, self.fs.path_info)
+            (
+                self.hash_info,
+                self.path_info,
+                self.fs.scheme if self.fs else None,
+                self.fs.path_info if self.fs else None,
+            )
         )
 
     def check(self, odb, check_hash=True):
