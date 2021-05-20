@@ -25,7 +25,9 @@ class DataCloud:
         self.repo = repo
 
     def get_remote(
-        self, name: Optional[str] = None, command: str = "<command>",
+        self,
+        name: Optional[str] = None,
+        command: str = "<command>",
     ) -> "Remote":
         from dvc.config import NoRemoteError
 

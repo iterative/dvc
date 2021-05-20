@@ -78,7 +78,8 @@ def gc(
             continue
 
         removed = odb.gc(
-            {obj for obj in objs if obj.fs.scheme == scheme}, jobs=jobs,
+            {obj for obj in objs if obj.fs.scheme == scheme},
+            jobs=jobs,
         )
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
@@ -88,7 +89,8 @@ def gc(
 
     remote = self.cloud.get_remote(remote, "gc -c")
     removed = remote.gc(
-        {obj for obj in objs if obj.fs.scheme == Schemes.LOCAL}, jobs=jobs,
+        {obj for obj in objs if obj.fs.scheme == Schemes.LOCAL},
+        jobs=jobs,
     )
     if not removed:
         logger.info("No unused cache to remove from remote.")

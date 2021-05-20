@@ -61,7 +61,10 @@ def fetch(
         if run_cache:
             self.stage_cache.pull(remote)
         downloaded += self.cloud.pull(
-            used_objs, jobs, remote=remote, show_checksums=show_checksums,
+            used_objs,
+            jobs,
+            remote=remote,
+            show_checksums=show_checksums,
         )
     except NoRemoteError:
         if not used_external and any(

@@ -182,11 +182,20 @@ class Remote:
                     )
                 )
         return self._make_status(
-            cache, objs, local_exists, remote_exists, log_missing,
+            cache,
+            objs,
+            local_exists,
+            remote_exists,
+            log_missing,
         )
 
     def _make_status(
-        self, cache, objs, local_exists, remote_exists, log_missing,
+        self,
+        cache,
+        objs,
+        local_exists,
+        remote_exists,
+        log_missing,
     ):
         def make_names(obj):
             return {"name": obj.hash_info.value}
@@ -292,7 +301,12 @@ class Remote:
         return (from_infos, to_infos, names, hashes), missing
 
     def _process(
-        self, cache, objs, jobs=None, show_checksums=False, download=False,
+        self,
+        cache,
+        objs,
+        jobs=None,
+        show_checksums=False,
+        download=False,
     ):
         logger.debug(
             "Preparing to {} '{}'".format(
