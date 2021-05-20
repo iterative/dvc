@@ -41,7 +41,7 @@ def test_s3_ssl_verify(tmp_dir, dvc):
     with config.edit() as conf:
         conf["remote"]["remote-name"] = {"url": "s3://bucket/dvc"}
 
-    assert config["remote"]["remote-name"]["ssl_verify"] is None
+    assert "ssl_verify" not in config["remote"]["remote-name"]
 
     with config.edit() as conf:
         section = conf["remote"]["remote-name"]
