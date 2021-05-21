@@ -1,9 +1,7 @@
 import argparse
-import logging
 
 from dvc.command.base import CmdBase, append_doc_link
-
-logger = logging.getLogger(__name__)
+from dvc.ui import ui
 
 
 def _show_ascii(G):
@@ -101,7 +99,7 @@ class CmdDAG(CmdBase):
         )
 
         if self.args.dot:
-            logger.info(_show_dot(G))
+            ui.write(_show_dot(G))
         else:
             from dvc.utils.pager import pager
 
