@@ -147,11 +147,16 @@ class Remote:
         a .dir file to its file contents.
         """
         logger.debug(f"Preparing to collect status from {self.fs.path_info}")
-        md5s = {
-            obj.hash_info.value
-            for obj in objs
-            if obj.fs.scheme == cache.fs.scheme
-        }
+        md5s = set()
+        dir_objs = {}
+        for obj in objs:
+            if obj.fs.scheme != cache.fs.scheme:
+                continue
+            md5s.add(obj.hash_info.value)
+            if isinstance(obj, Tree):
+                dir_objs[obj.hash_info.value] = obj
+                for _, entry_obj in obj:
+                    md5s.add(entry_obj.hash_info.value)
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
@@ -167,11 +172,6 @@ class Remote:
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            dir_objs = {
-                obj.hash_info.value: obj
-                for obj in objs
-                if (obj.fs.scheme == cache.fs.scheme and isinstance(obj, Tree))
-            }
             if dir_objs:
                 remote_exists.update(self._indexed_dir_hashes(dir_objs))
                 md5s.difference_update(remote_exists)
