@@ -521,14 +521,13 @@ class Remote:
     @staticmethod
     def _log_missing_caches(hash_info_dict):
         missing_caches = [
-            (md5, info)
+            md5
             for md5, info in hash_info_dict.items()
             if info["status"] == STATUS_MISSING
         ]
         if missing_caches:
             missing_desc = "\n".join(
-                "name: {}, md5: {}".format(info["name"], md5)
-                for md5, info in missing_caches
+                "md5: {}".format(md5) for md5 in missing_caches
             )
             msg = (
                 "Some of the cache files do not exist neither locally "
