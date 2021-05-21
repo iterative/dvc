@@ -502,9 +502,8 @@ class Remote:
         )
 
         if not self.odb.verify:
-            for obj in objs:
-                if obj.fs.scheme != "local":
-                    continue
+
+            def save_state(obj):
                 checksum = obj.hash_info.value
                 cache_file = cache.hash_to_path_info(checksum)
                 if cache.fs.exists(cache_file):
@@ -515,6 +514,14 @@ class Remote:
                     hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
                     cache.state.save(cache_file, cache.fs, hash_info)
                     cache.protect(cache_file)
+
+            for obj in objs:
+                if obj.fs.scheme != "local":
+                    continue
+                save_state(obj)
+                if isinstance(obj, Tree):
+                    for _, entry_obj in obj:
+                        save_state(entry_obj)
 
         return ret
 
