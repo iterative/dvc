@@ -55,11 +55,11 @@ def gc(
         repos = []
     all_repos = [Repo(path) for path in repos]
 
+    used_objs: Set["HashFile"] = set()
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)
 
-        used_objs: Set["HashFile"] = set()
         for repo in all_repos + [self]:
             objs, _ = repo.used_cache(
                 all_branches=all_branches,
@@ -78,7 +78,7 @@ def gc(
             continue
 
         removed = odb.gc(
-            {obj for obj in objs if obj.fs.scheme == scheme},
+            {obj for obj in used_objs if obj.fs.scheme == scheme},
             jobs=jobs,
         )
         if not removed:
@@ -89,7 +89,7 @@ def gc(
 
     remote = self.cloud.get_remote(remote, "gc -c")
     removed = remote.gc(
-        {obj for obj in objs if obj.fs.scheme == Schemes.LOCAL},
+        {obj for obj in used_objs if obj.fs.scheme == Schemes.LOCAL},
         jobs=jobs,
     )
     if not removed:
