@@ -635,7 +635,7 @@ class Stage(params.StageParams):
             for repo_pair, path in out.get_used_external(
                 *args, **kwargs
             ).items():
-                used_external[repo_pair].update(path)
+                used_external[repo_pair].add(path)
 
         return used_objs, used_external
 

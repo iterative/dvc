@@ -398,7 +398,7 @@ class Repo:
                     filter_info=filter_info,
                 )
                 used_objs.update(objs)
-                for repo_pair, paths in external:
+                for repo_pair, paths in external.items():
                     used_external[repo_pair].update(paths)
 
         if used_run_cache:
@@ -406,7 +406,7 @@ class Repo:
                 used_run_cache, remote=remote, force=force, jobs=jobs
             )
             used_objs.update(objs)
-            for repo_pair, paths in external:
+            for repo_pair, paths in external.items():
                 used_external[repo_pair].update(paths)
 
         return used_objs, used_external
