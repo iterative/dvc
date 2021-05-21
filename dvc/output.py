@@ -811,7 +811,7 @@ class Output:
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
     ) -> Set["HashFile"]:
-        """Return flattened and filtered set of used objects for this out."""
+        """Fetch dir cache and return used objects for this out."""
 
         try:
             self.get_dir_cache(jobs=jobs, remote=remote)
@@ -833,18 +833,8 @@ class Output:
                 )
             return set()
 
-        used = {self.obj}
-        path = str(self.path_info)
-        filter_path = str(filter_info) if filter_info else None
-        for entry_key, entry_obj in self.obj:
-            entry_path = os.path.join(path, *entry_key)
-            if (
-                not filter_path
-                or entry_path == filter_path
-                or entry_path.startswith(filter_path + os.sep)
-            ):
-                used.add(entry_obj)
-        return used
+        used = self.get_obj(filter_info=filter_info)
+        return {used}
 
     def get_used_objs(self, **kwargs) -> Set["HashFile"]:
         """Return filtered set of used objects for this out."""

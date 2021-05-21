@@ -7,6 +7,7 @@ from typing import Optional
 
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.file import HashFile
+from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
 
 logger = logging.getLogger(__name__)
@@ -316,6 +317,14 @@ class ObjectDB:
         pass
 
     def gc(self, used, jobs=None):
+        used_hashes = set()
+        for obj in used:
+            used_hashes.add(obj.hash_info.value)
+            if isinstance(obj, Tree):
+                used_hashes.update(
+                    entry_obj.hash_info.value for _, entry_obj in obj
+                )
+
         removed = False
         # hashes must be sorted to ensure we always remove .dir files first
         for hash_ in sorted(
@@ -323,7 +332,7 @@ class ObjectDB:
             key=self.fs.is_dir_hash,
             reverse=True,
         ):
-            if hash_ in used:
+            if hash_ in used_hashes:
                 continue
             path_info = self.hash_to_path_info(hash_)
             if self.fs.is_dir_hash(hash_):
