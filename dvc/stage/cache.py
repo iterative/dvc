@@ -197,7 +197,8 @@ class StageCache:
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
         if pull:
-            self.repo.cloud.pull(cached_stage.get_used_cache())
+            objs, _ = cached_stage.get_used_cache()
+            self.repo.cloud.pull(objs)
 
         if not cached_stage.outs_cached():
             raise RunCacheNotFoundError(stage)
