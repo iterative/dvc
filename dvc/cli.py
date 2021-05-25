@@ -115,7 +115,7 @@ class DvcParser(argparse.ArgumentParser):
         _find_parser(self, cmd_cls)
 
     def _check_and_log_suggestions(self, message):
-        cmd = regex_search(string=message, regex="'(.*?)'")
+        cmd = regex_search(string=message, regex="[?=invalid choice: ]'(.*?)'")
         if not cmd:
             return
 
@@ -124,7 +124,6 @@ class DvcParser(argparse.ArgumentParser):
             return
 
         multi_line_message = [
-            "",
             "",
             "The most similar commands are:",
             f"\t{' '.join(suggestions)}",
