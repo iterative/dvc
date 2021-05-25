@@ -652,7 +652,7 @@ class Output:
     def download(self, to, jobs=None):
         self.fs.download(self.path_info, to.path_info, jobs=jobs)
 
-    def get_obj(self, filter_info=None):
+    def get_obj(self, filter_info=None, **kwargs):
         if self.obj:
             obj = self.obj
         elif self.hash_info:
@@ -665,7 +665,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.odb, prefix)
+            obj = obj.filter(self.odb, prefix, **kwargs)
 
         return obj
 
@@ -833,8 +833,7 @@ class Output:
                 )
             return set()
 
-        used = self.get_obj(filter_info=filter_info)
-        return {used}
+        return {self.get_obj(filter_info=filter_info, copy=True)}
 
     def get_used_objs(self, **kwargs) -> Set["HashFile"]:
         """Return filtered set of used objects for this out."""

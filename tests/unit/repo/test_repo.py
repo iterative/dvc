@@ -45,7 +45,10 @@ def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):
     [os.path.join("dir", "subdir", "file"), os.path.join("dir", "subdir")],
 )
 def test_used_cache(tmp_dir, dvc, path):
+    from dvc.objects.tree import Tree
+
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
+
     expected_objs = {
         HashInfo("md5", "70922d6bf66eb073053a82f77d58c536.dir"),
         HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac"),
@@ -53,9 +56,14 @@ def test_used_cache(tmp_dir, dvc, path):
     expected_external = {}
 
     objs, external = dvc.used_cache([path])
-    assert {
-        obj.hash_info for obj in objs
-    } == expected_objs and external == expected_external
+    used = set()
+    for obj in objs:
+        used.add(obj.hash_info)
+        if isinstance(obj, Tree):
+            used.update(entry_obj.hash_info for _, entry_obj in obj)
+
+    assert used == expected_objs
+    assert external == expected_external
 
 
 def test_locked(mocker):
