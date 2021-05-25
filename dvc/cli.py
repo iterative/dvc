@@ -46,6 +46,7 @@ from .command import (
 )
 from .command.base import fix_subparsers
 from .exceptions import DvcParserError
+from .utils.string import fuzzy_match, regex_search
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,26 @@ class DvcParser(argparse.ArgumentParser):
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
+        self._check_and_log_suggestions(message)
         _find_parser(self, cmd_cls)
+
+    def _check_and_log_suggestions(self, message):
+        cmd = regex_search(string=message, regex="'(.*?)'")
+        if not cmd:
+            return
+
+        suggestions = fuzzy_match(cmd, self._get_choices())
+        if not suggestions:
+            return
+
+        multi_line_message = [
+            "",
+            "",
+            "The most similar commands are:",
+            f"\t{' '.join(suggestions)}",
+            "",
+        ]
+        logger.info("\n".join(multi_line_message))
 
     def parse_args(self, args=None, namespace=None):
         # NOTE: overriding to provide a more granular help message.
@@ -121,6 +141,21 @@ class DvcParser(argparse.ArgumentParser):
             msg = "unrecognized arguments: %s"
             self.error(msg % " ".join(argv), getattr(args, "func", None))
         return args
+
+    def _get_choices(self) -> list:
+        """ Gets the list of choices for dvc and its sub-commands"""
+        cmd_choices = [
+            list(action.choices.keys())
+            for action in self._actions
+            if action.dest == "cmd"
+            and isinstance(
+                action.choices, dict
+            )  # pylint: disable=protected-access
+        ]
+        if not cmd_choices:
+            return []
+
+        return cmd_choices[0]
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
