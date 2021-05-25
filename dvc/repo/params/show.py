@@ -13,7 +13,7 @@ from dvc.stage import PipelineStage
 from dvc.utils.serialize import LOADERS, ParseError
 
 if TYPE_CHECKING:
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
     from dvc.repo import Repo
     from dvc.types import DvcPath
 
@@ -24,13 +24,13 @@ class NoParamsError(DvcException):
     pass
 
 
-def _is_params(dep: "BaseOutput"):
+def _is_params(dep: "Output"):
     return isinstance(dep, ParamsDependency)
 
 
 def _collect_configs(
     repo: "Repo", rev, targets=None
-) -> Tuple[List["BaseOutput"], List["DvcPath"]]:
+) -> Tuple[List["Output"], List["DvcPath"]]:
     params, path_infos = collect(
         repo,
         targets=targets or [],

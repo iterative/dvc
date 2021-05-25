@@ -15,7 +15,7 @@ from dvc.exceptions import (
 )
 from dvc.fs.local import LocalFileSystem
 from dvc.main import main
-from dvc.output.base import BaseOutput
+from dvc.output import Output
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -883,9 +883,9 @@ class TestReproAlreadyCached(TestRepro):
         )
 
         patch_checkout = patch.object(
-            BaseOutput,
+            Output,
             "checkout",
-            side_effect=BaseOutput.checkout,
+            side_effect=Output.checkout,
             autospec=True,
         )
 

@@ -156,7 +156,7 @@ def _process_stages(
     link_failures = []
     from dvc.dvcfile import Dvcfile
 
-    from ..output.base import OutputDoesNotExistError
+    from ..output import OutputDoesNotExistError
 
     if to_remote or to_cache:
         # Already verified in the add()

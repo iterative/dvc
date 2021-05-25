@@ -84,7 +84,7 @@ def _load_live_output(
     live_html=False,
     **kwargs,
 ):
-    from dvc.output import BaseOutput, loads_from
+    from dvc.output import Output, loads_from
 
     outs = []
     if live or live_no_cache:
@@ -96,8 +96,8 @@ def _load_live_output(
             [path],
             use_cache=not bool(live_no_cache),
             live={
-                BaseOutput.PARAM_LIVE_SUMMARY: live_summary,
-                BaseOutput.PARAM_LIVE_HTML: live_html,
+                Output.PARAM_LIVE_SUMMARY: live_summary,
+                Output.PARAM_LIVE_HTML: live_html,
             },
         )
 
@@ -170,7 +170,7 @@ def check_missing_outputs(stage):
 
 
 def compute_md5(stage):
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
 
     from ..utils import dict_md5
 
@@ -193,11 +193,11 @@ def compute_md5(stage):
         exclude=[
             stage.PARAM_LOCKED,  # backward compatibility
             stage.PARAM_FROZEN,
-            BaseOutput.PARAM_DESC,
-            BaseOutput.PARAM_METRIC,
-            BaseOutput.PARAM_PERSIST,
-            BaseOutput.PARAM_CHECKPOINT,
-            BaseOutput.PARAM_ISEXEC,
+            Output.PARAM_DESC,
+            Output.PARAM_METRIC,
+            Output.PARAM_PERSIST,
+            Output.PARAM_CHECKPOINT,
+            Output.PARAM_ISEXEC,
             HashInfo.PARAM_SIZE,
             HashInfo.PARAM_NFILES,
         ],

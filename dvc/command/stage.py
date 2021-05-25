@@ -9,7 +9,7 @@ from dvc.utils.cli_parse import parse_params
 from dvc.utils.humanize import truncate_text
 
 if TYPE_CHECKING:
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
     from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ MAX_TEXT_LENGTH = 80
 
 
 def generate_description(stage: "Stage") -> str:
-    def part_desc(outs: Iterable["BaseOutput"]) -> str:
+    def part_desc(outs: Iterable["Output"]) -> str:
         return ", ".join(out.def_path for out in outs)
 
     if not stage.deps and not stage.outs:
@@ -27,7 +27,7 @@ def generate_description(stage: "Stage") -> str:
     if not stage.outs and stage.deps:
         return "Depends on " + part_desc(stage.deps)
 
-    def is_plot_or_metric(out: "BaseOutput"):
+    def is_plot_or_metric(out: "Output"):
         return bool(out.plot) or bool(out.metric)
 
     desc: List[str] = []

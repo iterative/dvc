@@ -82,25 +82,28 @@ def get_cloud_fs(repo, **kwargs):
     from dvc.config import ConfigError
     from dvc.config_schema import SCHEMA, Invalid
 
-    remote_conf = get_fs_config(repo.config, **kwargs)
+    repo_config = repo.config if repo else {}
+    core_config = repo_config.get("core", {})
+
+    remote_conf = get_fs_config(repo_config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
         raise ConfigError(str(exc)) from None
 
     if "jobs" not in remote_conf:
-        jobs = repo.config["core"].get("jobs")
+        jobs = core_config.get("jobs")
         if jobs:
             remote_conf["jobs"] = jobs
 
     if "checksum_jobs" not in remote_conf:
-        checksum_jobs = repo.config["core"].get("checksum_jobs")
+        checksum_jobs = core_config.get("checksum_jobs")
         if checksum_jobs:
             remote_conf["checksum_jobs"] = checksum_jobs
 
     cls = get_fs_cls(remote_conf)
 
-    if cls == GDriveFileSystem:
+    if cls == GDriveFileSystem and repo:
         remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
 
     return cls, remote_conf

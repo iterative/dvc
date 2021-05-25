@@ -6,7 +6,7 @@ import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
-from dvc.output.base import OutputIsIgnoredError
+from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.types import List

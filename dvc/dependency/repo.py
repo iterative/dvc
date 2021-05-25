@@ -2,10 +2,10 @@ from voluptuous import Required
 
 from dvc.path_info import PathInfo
 
-from .local import LocalDependency
+from .base import Dependency
 
 
-class RepoDependency(LocalDependency):
+class RepoDependency(Dependency):
     PARAM_REPO = "repo"
     PARAM_URL = "url"
     PARAM_REV = "rev"
@@ -23,7 +23,7 @@ class RepoDependency(LocalDependency):
         self.def_repo = def_repo
         super().__init__(stage, *args, **kwargs)
 
-    def _parse_path(self, fs, path):
+    def _parse_path(self, fs, path_info):
         return None
 
     @property

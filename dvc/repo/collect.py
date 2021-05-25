@@ -6,14 +6,14 @@ from dvc.path_info import PathInfo
 from dvc.types import DvcPath
 
 if TYPE_CHECKING:
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
 
-FilterFn = Callable[["BaseOutput"], bool]
-Outputs = List["BaseOutput"]
+FilterFn = Callable[["Output"], bool]
+Outputs = List["Output"]
 DvcPaths = List[DvcPath]
 
 
