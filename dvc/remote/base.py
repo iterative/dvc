@@ -67,11 +67,11 @@ class Remote:
 
     INDEX_CLS = RemoteIndex
 
-    def __init__(self, fs, tmp_dir, **config):
+    def __init__(self, fs, path_info, tmp_dir, **config):
         from dvc.objects.db import get_odb
 
         self.fs = fs
-        self.odb = get_odb(self.fs, **config)
+        self.odb = get_odb(self.fs, path_info, **config)
 
         url = config.get("url")
         if url:
@@ -85,7 +85,7 @@ class Remote:
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
-            path_info=self.fs.path_info or "No path",
+            path_info=self.odb.path_info or "No path",
         )
 
     @index_locked
@@ -145,7 +145,7 @@ class Remote:
         {dir_hash: set(file_hash, ...)} which can be used to map
         a .dir file to its file contents.
         """
-        logger.debug(f"Preparing to collect status from {self.fs.path_info}")
+        logger.debug(f"Preparing to collect status from {self.odb.path_info}")
         md5s = set(named_cache.scheme_keys(cache.fs.scheme))
 
         logger.debug("Collecting information from local cache...")
@@ -171,7 +171,7 @@ class Remote:
             if md5s:
                 remote_exists.update(
                     self.hashes_exist(
-                        md5s, jobs=jobs, name=str(self.fs.path_info)
+                        md5s, jobs=jobs, name=str(self.odb.path_info)
                     )
                 )
         return self._make_status(
@@ -302,7 +302,7 @@ class Remote:
         logger.debug(
             "Preparing to {} '{}'".format(
                 "download data from" if download else "upload data to",
-                self.fs.path_info,
+                self.odb.path_info,
             )
         )
 

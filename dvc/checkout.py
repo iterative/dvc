@@ -134,7 +134,7 @@ def _cache_is_copy(cache, path_info):
         return True
 
     workspace_file = path_info.with_name("." + uuid())
-    test_cache_file = cache.fs.path_info / ".cache_type_test_file"
+    test_cache_file = cache.path_info / ".cache_type_test_file"
     if not cache.fs.exists(test_cache_file):
         cache.makedirs(test_cache_file.parent)
         with cache.fs.open(test_cache_file, "wb") as fobj:

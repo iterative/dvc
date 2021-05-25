@@ -15,7 +15,7 @@ def test_status_download_optimization(mocker, dvc):
     And the desired files to fetch are already on the local cache,
     Don't check the existence of the desired files on the remote cache
     """
-    odb = LocalObjectDB(LocalFileSystem())
+    odb = LocalObjectDB(LocalFileSystem(), PathInfo("."))
 
     infos = NamedCache()
     infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")

@@ -106,4 +106,6 @@ def get_cloud_fs(repo, **kwargs):
     if cls == GDriveFileSystem and repo:
         remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
 
-    return cls, remote_conf
+    path_info = cls.PATH_CLS(remote_conf["url"])
+
+    return cls, remote_conf, path_info
