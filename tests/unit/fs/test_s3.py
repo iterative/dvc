@@ -26,13 +26,6 @@ def grants():
     }
 
 
-def test_init(dvc):
-    config = {"url": url}
-    fs = S3FileSystem(**config)
-
-    assert fs.path_info == url
-
-
 def test_verify_ssl_default_param(dvc):
     config = {"url": url}
     fs = S3FileSystem(**config)

@@ -39,11 +39,9 @@ def test_get_cloud_fs_validate(tmp_dir, dvc):
         default=False,
     )
 
-    assert get_cloud_fs(dvc, name="base")[1] == {
-        "url": "ssh://example.com/path"
-    }
+    assert get_cloud_fs(dvc, name="base")[1] == {"host": "example.com"}
     assert get_cloud_fs(dvc, name="first")[1] == {
-        "url": "ssh://example.com/path/first",
+        "host": "example.com",
         "type": ["symlink"],
     }
 

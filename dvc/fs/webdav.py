@@ -71,20 +71,18 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # Connection timeout
         self.timeout = config.get("timeout", 30)
 
-        # Get URL from configuration
-        self.url = config.get("url", None)
+        self.hostname = config["host"]
+        self.prefix = config.get("prefix")
+        self.user = config.get("user")
 
-        # If URL in config parse path_info
-        if self.url:
-            self.path_info = self.PATH_CLS(self.url)
-
-            # If username not specified try to use from URL
-            if self.user is None and self.path_info.user is not None:
-                self.user = self.path_info.user
-
-            # Construct hostname from path_info by stripping path
-            http_info = HTTPURLInfo(self.path_info.url)
-            self.hostname = http_info.replace(path="").url
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        path_info = WebDAVURLInfo(urlpath)
+        http_info = HTTPURLInfo(path_info.url)
+        return {
+            "prefix": path_info.path,
+            "host": http_info.replace(path="").url,
+        }
 
     # Webdav client
     @wrap_prop(threading.Lock())
@@ -115,10 +113,6 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             raise ConfigError(
                 f"Configuration for WebDAV {self.hostname} is invalid."
             )
-
-        # Check whether connection is valid (root should always exist)
-        if not client.check(self.path_info.path):
-            raise WebDAVConnectionError(self.hostname)
 
         return client
 
@@ -202,7 +196,7 @@ class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     # Creates directories
     def makedirs(self, path_info):
         # Terminate recursion
-        if path_info.path == self.path_info.path or self.exists(path_info):
+        if path_info.path == self.prefix or self.exists(path_info):
             return
 
         # Recursively descent to root

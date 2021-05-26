@@ -10,7 +10,7 @@ from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
 
 from ..progress import Tqdm
-from .index import RemoteIndex, RemoteIndexNoop
+from .index import RemoteIndex
 
 logger = logging.getLogger(__name__)
 
@@ -73,14 +73,11 @@ class Remote:
         self.fs = fs
         self.odb = get_odb(self.fs, path_info, **config)
 
-        url = config.get("url")
-        if url:
-            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
-            self.index = self.INDEX_CLS(
-                tmp_dir, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
-            )
-        else:
-            self.index = RemoteIndexNoop()
+        url = getattr(path_info, "fspath", path_info.url)
+        index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
+        self.index = self.INDEX_CLS(
+            tmp_dir, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
+        )
 
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(

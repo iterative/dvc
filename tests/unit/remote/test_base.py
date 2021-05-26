@@ -87,7 +87,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(ObjectDB, "_path_to_hash", side_effect=lambda x: x)
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     odb = ObjectDB(BaseFileSystem(), None)
-    odb.fs.path_info = PathInfo("foo")
+    odb.path_info = PathInfo("foo")
 
     # parallel traverse
     size = 256 / odb.fs._JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
@@ -112,7 +112,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
 
 def test_list_hashes(dvc):
     odb = ObjectDB(BaseFileSystem(), None)
-    odb.fs.path_info = PathInfo("foo")
+    odb.path_info = PathInfo("foo")
 
     with mock.patch.object(
         odb, "_list_paths", return_value=["12/3456", "bar"]

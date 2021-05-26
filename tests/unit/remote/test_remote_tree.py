@@ -47,7 +47,7 @@ def test_isdir(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.fs.isdir(remote.fs.path_info / path) == expected
+        assert remote.fs.isdir(remote.odb.path_info / path) == expected
 
 
 @pytest.mark.needs_internet
@@ -68,23 +68,23 @@ def test_exists(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.fs.exists(remote.fs.path_info / path) == expected
+        assert remote.fs.exists(remote.odb.path_info / path) == expected
 
 
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_walk_files(remote):
     files = [
-        remote.fs.path_info / "data/alice",
-        remote.fs.path_info / "data/alpha",
-        remote.fs.path_info / "data/subdir-file.txt",
-        remote.fs.path_info / "data/subdir/1",
-        remote.fs.path_info / "data/subdir/2",
-        remote.fs.path_info / "data/subdir/3",
-        remote.fs.path_info / "data/subdir/empty_file",
+        remote.odb.path_info / "data/alice",
+        remote.odb.path_info / "data/alpha",
+        remote.odb.path_info / "data/subdir-file.txt",
+        remote.odb.path_info / "data/subdir/1",
+        remote.odb.path_info / "data/subdir/2",
+        remote.odb.path_info / "data/subdir/3",
+        remote.odb.path_info / "data/subdir/empty_file",
     ]
 
-    assert list(remote.fs.walk_files(remote.fs.path_info / "data")) == files
+    assert list(remote.fs.walk_files(remote.odb.path_info / "data")) == files
 
 
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("s3")])
@@ -100,8 +100,8 @@ def test_copy_preserve_etag_across_buckets(cloud, dvc):
 
     another = S3FileSystem(**config)
 
-    from_info = rem.fs.path_info / "foo"
-    to_info = another.path_info / "foo"
+    from_info = rem.odb.path_info / "foo"
+    to_info = another.PATH_CLS("s3://another/foo")
 
     rem.fs.copy(from_info, to_info)
 
@@ -131,7 +131,7 @@ def test_isfile(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.fs.isfile(remote.fs.path_info / path) == expected
+        assert remote.fs.isfile(remote.odb.path_info / path) == expected
 
 
 @pytest.mark.needs_internet
@@ -139,7 +139,7 @@ def test_isfile(remote):
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")
     to_info = PathInfo(path)
-    remote.fs.download(remote.fs.path_info / "data", to_info)
+    remote.fs.download(remote.odb.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
     assert len(list(walk_files(path))) == 7

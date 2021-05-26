@@ -2,6 +2,7 @@ import logging
 import os.path
 import threading
 from typing import Optional
+from urllib.parse import urlparse
 
 from funcy import cached_property, memoize, wrap_prop, wrap_with
 
@@ -39,13 +40,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def __init__(self, **config):
         super().__init__(**config)
 
-        url = config.get("url")
-        if url:
-            self.path_info = self.PATH_CLS(url)
-            self.user = config.get("user", None)
-            self.host = self.path_info.host
-        else:
-            self.path_info = None
+        self.user = config.get("user", None)
 
         self.auth = config.get("auth", None)
         self.custom_auth_header = config.get("custom_auth_header", None)
@@ -55,12 +50,12 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
 
-    def _auth_method(self):
+    def _auth_method(self, url):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
         if self.auth:
             if self.ask_password and self.password is None:
-                self.password = ask_password(self.host, self.user)
+                self.password = ask_password(urlparse(url).hostname, self.user)
             if self.auth == "basic":
                 return HTTPBasicAuth(self.user, self.password)
             if self.auth == "digest":
@@ -103,7 +98,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             res = self._session.request(
                 method,
                 url,
-                auth=self._auth_method(),
+                auth=self._auth_method(url),
                 headers=self.headers,
                 **kwargs,
             )

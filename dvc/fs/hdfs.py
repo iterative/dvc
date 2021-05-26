@@ -6,7 +6,6 @@ import shutil
 import subprocess
 from collections import deque
 from contextlib import closing, contextmanager
-from urllib.parse import urlparse
 
 from dvc.hash_info import HashInfo
 from dvc.progress import Tqdm
@@ -68,23 +67,18 @@ class HDFSFileSystem(BaseFileSystem):
     def __init__(self, **config):
         super().__init__(**config)
 
-        self.path_info = None
-        url = config.get("url")
-        if not url:
-            return
-
-        parsed = urlparse(url)
-        user = parsed.username or config.get("user")
-
-        self.path_info = self.PATH_CLS.from_parts(
-            scheme=self.scheme,
-            host=parsed.hostname,
-            user=user,
-            port=parsed.port,
-            path=parsed.path,
-        )
+        self.host = config["host"]
+        self.user = config.get("user")
+        self.port = config.get("port")
 
         self.kerb_ticket = config.get("kerb_ticket")
+
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        from fsspec.implementations.hdfs import PyArrowHDFS
+
+        # pylint:disable=protected-access
+        return PyArrowHDFS._get_kwargs_from_urls(urlpath)
 
     def hdfs(self, path_info):
         import pyarrow.fs

@@ -142,6 +142,10 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             )
         )
 
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        return {"url": urlpath}
+
     def _validate_config(self):
         # Validate Service Account configuration
         if (

@@ -55,10 +55,16 @@ class BaseFileSystem:
     def __init__(self, **kwargs):
         self._check_requires(**kwargs)
 
-        self.path_info = None
-
         self.jobs = kwargs.get("jobs") or self._JOBS
         self.hash_jobs = kwargs.get("checksum_jobs") or self.HASH_JOBS
+
+    @classmethod
+    def _strip_protocol(cls, path: str):
+        return path
+
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):  # pylint:disable=unused-argument
+        return {}
 
     @classmethod
     def get_missing_deps(cls):
