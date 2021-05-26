@@ -1,7 +1,7 @@
 from collections import defaultdict
+from typing import Any, Mapping
 
-import dvc.output as output
-from dvc.output import Output
+from dvc.output import ARTIFACT_SCHEMA, Output
 
 from .base import Dependency
 from .param import ParamsDependency
@@ -11,12 +11,11 @@ from .repo import RepoDependency
 # without output-specific entries like 'cache' (whether or not output is
 # cached, see -o and -O flags for `dvc run`) and 'metric' (whether or not
 # output is a metrics file and how to parse it, see `-M` flag for `dvc run`).
-SCHEMA = output.SCHEMA.copy()
-del SCHEMA[Output.PARAM_CACHE]
-del SCHEMA[Output.PARAM_METRIC]
-del SCHEMA[Output.PARAM_DESC]
-SCHEMA.update(RepoDependency.REPO_SCHEMA)
-SCHEMA.update(ParamsDependency.PARAM_SCHEMA)
+SCHEMA: Mapping[str, Any] = {
+    **ARTIFACT_SCHEMA,
+    **RepoDependency.REPO_SCHEMA,
+    **ParamsDependency.PARAM_SCHEMA,
+}
 
 
 def _get(stage, p, info):

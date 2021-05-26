@@ -976,14 +976,20 @@ class Output:
         return self.path_info.fspath
 
 
-SCHEMA = CHECKSUMS_SCHEMA.copy()
-SCHEMA[Required(Output.PARAM_PATH)] = str
-SCHEMA[Output.PARAM_CACHE] = bool
-SCHEMA[Output.PARAM_METRIC] = Output.METRIC_SCHEMA
-SCHEMA[Output.PARAM_PLOT] = bool
-SCHEMA[Output.PARAM_PERSIST] = bool
-SCHEMA[Output.PARAM_CHECKPOINT] = bool
-SCHEMA[HashInfo.PARAM_SIZE] = int
-SCHEMA[HashInfo.PARAM_NFILES] = int
-SCHEMA[Output.PARAM_DESC] = str
-SCHEMA[Output.PARAM_ISEXEC] = bool
+ARTIFACT_SCHEMA = {
+    **CHECKSUMS_SCHEMA,
+    Required(Output.PARAM_PATH): str,
+    Output.PARAM_PLOT: bool,
+    Output.PARAM_PERSIST: bool,
+    Output.PARAM_CHECKPOINT: bool,
+    HashInfo.PARAM_SIZE: int,
+    HashInfo.PARAM_NFILES: int,
+    Output.PARAM_ISEXEC: bool,
+}
+
+SCHEMA = {
+    **ARTIFACT_SCHEMA,
+    Output.PARAM_CACHE: bool,
+    Output.PARAM_METRIC: Output.METRIC_SCHEMA,
+    Output.PARAM_DESC: str,
+}
