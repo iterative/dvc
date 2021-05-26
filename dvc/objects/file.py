@@ -43,7 +43,6 @@ class HashFile:
                 self.hash_info,
                 self.path_info,
                 self.fs.scheme if self.fs else None,
-                self.fs.path_info if self.fs else None,
             )
         )
 
