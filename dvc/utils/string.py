@@ -3,7 +3,7 @@ from difflib import get_close_matches
 
 
 def fuzzy_match(string: str, dictionary: list) -> list:
-    """ Performs fuzzy match of the string with the given dictionary
+    """Performs fuzzy match of the string with the given dictionary
     and returns the list of possible best "good enough" matches
     """
     if not string or not dictionary:
@@ -15,7 +15,7 @@ def fuzzy_match(string: str, dictionary: list) -> list:
 
 
 def regex_search(string: str, regex: str) -> str:
-    """ Search using regex on string and return the first match"""
+    """Search using regex on string and return the first match"""
     match = re.search(regex, string)
     if not match:
         return ""

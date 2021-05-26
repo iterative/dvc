@@ -142,7 +142,7 @@ class DvcParser(argparse.ArgumentParser):
         return args
 
     def _get_choices(self) -> list:
-        """ Gets the list of choices for dvc and its sub-commands"""
+        """Gets the list of choices for dvc and its sub-commands"""
         cmd_choices = [
             list(action.choices.keys())
             for action in self._actions
