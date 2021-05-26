@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections import abc
 from itertools import chain, repeat, zip_longest
 from operator import itemgetter
 from typing import (
@@ -9,6 +9,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Mapping,
     MutableSequence,
     Sequence,
     Tuple,
@@ -149,7 +150,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         self._columns[name] = Column([self._fill_value] * len(self))
         self._keys.append(name)
 
-    def row_from_dict(self, d: Dict[str, "CellT"]) -> None:
+    def row_from_dict(self, d: Mapping[str, "CellT"]) -> None:
         keys = self.keys()
         for key in d:
             if key not in keys:
@@ -165,7 +166,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         ui.table(self, headers=self.keys(), **kwargs)
 
-    def as_dict(self, cols: Iterable[str] = None) -> Iterable[Dict[str, str]]:
+    def as_dict(
+        self, cols: Iterable[str] = None
+    ) -> Iterable[Dict[str, "CellT"]]:
         keys = self.keys() if cols is None else set(cols)
         return [
             {k: self._columns[k][i] for k in keys} for i in range(len(self))
@@ -183,7 +186,7 @@ def _format_field(
         if isinstance(_val, float) and precision:
             func = round if round_digits else _normalize_float
             return func(_val, precision)
-        if isinstance(_val, Mapping):
+        if isinstance(_val, abc.Mapping):
             return {k: _format(v) for k, v in _val.items()}
         if isinstance(_val, list):
             return [_format(x) for x in _val]
