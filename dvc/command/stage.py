@@ -113,8 +113,11 @@ def parse_cmd(commands: List[str]) -> str:
     """
 
     def quote_argument(arg: str):
-        should_quote = " " in arg and '"' not in arg
-        return f'"{arg}"' if should_quote else arg
+        if not arg:
+            return '""'
+        if " " in arg and '"' not in arg:
+            return f'"{arg}"'
+        return arg
 
     if len(commands) < 2:
         return " ".join(commands)
