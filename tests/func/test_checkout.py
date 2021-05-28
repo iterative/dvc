@@ -26,7 +26,6 @@ from dvc.utils import relpath
 from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
-from tests.func.parsing.test_errors import escape_ansi
 from tests.func.test_repro import TestRepro
 
 logger = logging.getLogger("dvc")
@@ -688,7 +687,10 @@ def test_stats_on_show_changes_does_not_show_summary(
     assert main(["checkout"]) == 0
 
     out, _ = capsys.readouterr()
-    assert escape_ansi(out).splitlines() == [f"D\tdir{os.sep}", "D\tother"]
+    assert out.splitlines() == [
+        f"D\tdir{os.sep}".expandtabs(),
+        "D\tother".expandtabs(),
+    ]
 
 
 def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, capsys):

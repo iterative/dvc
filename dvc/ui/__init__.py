@@ -7,7 +7,6 @@ from typing import (
     Iterable,
     Optional,
     Sequence,
-    TextIO,
     Union,
 )
 
@@ -58,15 +57,13 @@ class Console:
         style: str = None,
         sep: str = None,
         end: str = None,
-        flush: bool = False,
     ) -> None:
         return self.write(
             *objects,
             style=style,
             sep=sep,
             end=end,
-            file=sys.stderr,
-            flush=flush,
+            stderr=True,
         )
 
     def write(
@@ -75,16 +72,22 @@ class Console:
         style: str = None,
         sep: str = None,
         end: str = None,
-        file: TextIO = None,
-        flush: bool = False,
+        stderr: bool = False,
         force: bool = False,
+        styled: bool = False,
     ) -> None:
+        sep = " " if sep is None else sep
+        end = "\n" if end is None else end
         if not self._enabled and not force:
             return
 
-        file = file or sys.stdout
+        if styled:
+            console = self.error_console if stderr else self.rich_console
+            return console.print(*objects, sep=sep, end=end)
+
+        file = sys.stderr if stderr else sys.stdout
         values = (self.formatter.format(obj, style=style) for obj in objects)
-        return print(*values, sep=sep, end=end, file=file, flush=flush)
+        return print(*values, sep=sep, end=end, file=file)
 
     @staticmethod
     def progress(*args, **kwargs) -> Tqdm:
@@ -131,6 +134,12 @@ class Console:
         from rich import console
 
         return console.Console()
+
+    @cached_property
+    def error_console(self):
+        from rich import console
+
+        return console.Console(stderr=True)
 
     def table(
         self,

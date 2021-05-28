@@ -1,8 +1,6 @@
 import argparse
 import operator
 
-import colorama
-
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import CheckoutError
@@ -10,21 +8,22 @@ from dvc.ui import ui
 
 
 def log_changes(stats):
-    colors = [
-        ("modified", colorama.Fore.YELLOW),
-        ("added", colorama.Fore.GREEN),
-        ("deleted", colorama.Fore.RED),
-    ]
+    colors = {
+        "modified": "yellow",
+        "added": "green",
+        "deleted": "red",
+    }
 
-    for state, color in colors:
+    for state, color in colors.items():
         entries = stats.get(state)
 
         if not entries:
             continue
 
-        nc = colorama.Fore.RESET
         for entry in entries:
-            ui.write(f"{color}{state[0].upper()}{nc}", entry, sep="\t")
+            ui.write(
+                f"[{color}]{state[0].upper()}", entry, styled=True, sep="\t"
+            )
 
 
 class CmdCheckout(CmdBase):
