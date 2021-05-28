@@ -10,6 +10,7 @@ from dvc.command.stage import CmdStageAdd
         (["echo", "foo", "bar"], "echo foo bar"),
         (["echo", '"foo bar"'], 'echo "foo bar"'),
         (["echo", "foo bar"], 'echo "foo bar"'),
+        (["cmd", "--flag", ""], 'cmd --flag ""'),
     ],
 )
 def test_stage_add(mocker, dvc, command, parsed_command):
