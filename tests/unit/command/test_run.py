@@ -1,5 +1,6 @@
 from dvc.cli import parse_args
 from dvc.command.run import CmdRun
+from tests.utils.asserts import called_once_with_subset
 
 
 def test_run(mocker, dvc):
@@ -60,7 +61,8 @@ def test_run(mocker, dvc):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(
+    assert called_once_with_subset(
+        m,
         deps=["deps"],
         outs=["outs"],
         outs_no_cache=["outs-no-cache"],
@@ -96,7 +98,8 @@ def test_run_args_from_cli(mocker, dvc):
     cmd = args.func(args)
     m = mocker.patch.object(cmd.repo, "run", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with(
+    assert called_once_with_subset(
+        m,
         deps=[],
         outs=[],
         outs_no_cache=[],
@@ -132,7 +135,8 @@ def test_run_args_with_spaces(mocker, dvc):
     cmd = args.func(args)
     m = mocker.patch.object(cmd.repo, "run", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with(
+    assert called_once_with_subset(
+        m,
         deps=[],
         outs=[],
         outs_no_cache=[],
