@@ -202,7 +202,7 @@ Comparison to related technologies
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
 #. `DAGsHub <https://dagshub.com/>`_ - online service of Git+DVC repositories with pipeline and metrics visualization and
-   DVC-specific clous storage.
+   DVC-specific cloud storage.
 
 Contributing
 ============
