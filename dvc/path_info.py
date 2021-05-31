@@ -201,7 +201,7 @@ class URLInfo(_BasePath):
         return self._spath
 
     @cached_property
-    def _path(self):
+    def _path(self):  # false-positive, pylint: disable=method-hidden
         return _URLPathInfo(self._spath)
 
     @property

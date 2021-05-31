@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import lmap
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION

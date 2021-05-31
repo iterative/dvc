@@ -8,8 +8,7 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-import dvc.objects as objects
-import dvc.prompt as prompt
+from dvc import objects, prompt
 from dvc.checkout import checkout
 from dvc.exceptions import (
     CheckoutError,

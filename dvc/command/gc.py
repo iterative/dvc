@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.command.base import CmdBase, append_doc_link
 
 logger = logging.getLogger(__name__)
