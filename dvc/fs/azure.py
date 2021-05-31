@@ -84,14 +84,12 @@ class AzureFileSystem(ObjectFSWrapper):
 
         url = config.get("url")
         self.path_info = self.PATH_CLS(url)
-        self.bucket = self.path_info.bucket
 
-        if not self.bucket:
+        if not self.path_info.bucket:
             container = self._az_config.get("storage", "container_name", None)
             url = f"azure://{container}"
 
         self.path_info = self.PATH_CLS(url)
-        self.bucket = self.path_info.bucket
 
     def _prepare_credentials(self, **config):
         from azure.identity.aio import DefaultAzureCredential
@@ -167,10 +165,6 @@ class AzureFileSystem(ObjectFSWrapper):
         try:
             with _temp_event_loop():
                 file_system = AzureBlobFileSystem(**self.fs_args)
-                if self.bucket not in [
-                    container.rstrip("/") for container in file_system.ls("/")
-                ]:
-                    file_system.mkdir(self.bucket)
         except (ValueError, AzureError) as e:
             raise AzureAuthError(
                 f"Authentication to Azure Blob Storage via {self.login_method}"
