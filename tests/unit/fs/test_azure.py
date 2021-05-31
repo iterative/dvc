@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from dvc.fs.azure import AzureFileSystem, _temp_event_loop
+from dvc.fs.azure import AzureAuthError, AzureFileSystem, _temp_event_loop
 from dvc.path_info import PathInfo
 
 container_name = "container-name"
@@ -67,3 +67,66 @@ def test_temp_event_loop():
 
         future = executor.submit(wrapped_procedure)
         assert future.result() == "yeey"
+
+
+def test_azure_login_methods():
+    def get_login_method(config):
+        fs = AzureFileSystem(**config)
+        # pylint: disable=pointless-statement
+        return fs.login_method
+
+    with pytest.raises(AzureAuthError):
+        get_login_method({})
+
+    assert (
+        get_login_method({"connection_string": "test"}) == "connection string"
+    )
+    assert get_login_method({"account_name": "test"}).startswith(
+        "default credentials"
+    )
+    assert (
+        get_login_method(
+            {"account_name": "test", "allow_anonymous_login": True}
+        )
+        == "anonymous login"
+    )
+
+    with pytest.raises(AzureAuthError):
+        get_login_method(
+            {"tenant_id": "test", "client_id": "test", "client_secret": "test"}
+        )
+
+    assert (
+        get_login_method(
+            {
+                "account_name": "test",
+                "tenant_id": "test",
+                "client_id": "test",
+                "client_secret": "test",
+            }
+        )
+        == "AD service principal"
+    )
+
+    assert (
+        get_login_method({"account_name": "test", "account_key": "test"})
+        == "account key"
+    )
+    assert (
+        get_login_method({"account_name": "test", "sas_token": "test"})
+        == "SAS token"
+    )
+    assert (
+        get_login_method(
+            {
+                "connection_string": "test",
+                "account_name": "test",
+                "sas_token": "test",
+            }
+        )
+        == "connection string"
+    )
+    assert (
+        get_login_method({"connection_string": "test", "sas_token": "test"})
+        == "connection string"
+    )

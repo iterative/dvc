@@ -117,8 +117,21 @@ class AzureFileSystem(ObjectFSWrapper):
         login_info["client_id"] = config.get("client_id")
         login_info["client_secret"] = config.get("client_secret")
 
-        if not any(
+        if not (login_info["account_name"] or login_info["connection_string"]):
+            raise AzureAuthError(
+                "Authentication to Azure Blob Storage requires either "
+                "account_name or connection_string.\nLearn more about "
+                "configuration settings at "
+                + format_link("https://man.dvc.org/remote/modify")
+            )
+
+        any_secondary = any(
             value for key, value in login_info.items() if key != "account_name"
+        )
+        if (
+            login_info["account_name"]
+            and not any_secondary
+            and not config.get("allow_anonymous_login")
         ):
             login_info["credential"] = DefaultAzureCredential(
                 exclude_interactive_browser_credential=False
