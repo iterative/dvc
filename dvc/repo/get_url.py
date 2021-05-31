@@ -2,8 +2,7 @@ import os
 
 
 def get_url(url, out=None, jobs=None):
-    import dvc.dependency as dependency
-    import dvc.output as output
+    from dvc import dependency, output
     from dvc.utils import resolve_output
 
     out = resolve_output(url, out)

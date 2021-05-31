@@ -2,7 +2,7 @@ import logging
 
 from shortuuid import uuid
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.exceptions import (
     CacheLinkError,
     CheckoutError,

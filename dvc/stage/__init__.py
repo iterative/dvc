@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 from funcy import cached_property, project
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.exceptions import (
     CacheLinkError,
     CheckoutError,

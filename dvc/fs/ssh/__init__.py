@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from funcy import first, memoize, silent, wrap_with
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
 
