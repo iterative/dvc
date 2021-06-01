@@ -37,7 +37,15 @@ def test_verify_ssl_default_param(dvc):
     config = {"url": url}
     fs = S3FileSystem(**config)
 
-    assert fs.fs_args["client_kwargs"]["verify"]
+    assert "client_kwargs" not in fs.fs_args
+
+    config = {
+        "url": url,
+        "endpointurl": "https://my.custom.s3:1234",
+    }
+    fs = S3FileSystem(**config)
+
+    assert "verify" not in fs.fs_args["client_kwargs"]
 
 
 def test_s3_config_credentialpath(dvc, monkeypatch):
@@ -70,6 +78,29 @@ def test_ssl_verify_bool_param(dvc):
     fs = S3FileSystem(**config)
 
     assert fs.fs_args["client_kwargs"]["verify"] == config["ssl_verify"]
+
+
+def test_ssl_verify_path_param(dvc):
+    config = {"url": url, "ssl_verify": "/path/to/custom/cabundle.pem"}
+    fs = S3FileSystem(**config)
+
+    assert fs.fs_args["client_kwargs"]["verify"] == config["ssl_verify"]
+
+
+def test_ssl_verify_none_param(dvc):
+    config = {"url": url, "ssl_verify": None}
+    fs = S3FileSystem(**config)
+
+    assert "client_kwargs" not in fs.fs_args
+
+    config = {
+        "url": url,
+        "endpointurl": "https://my.custom.s3:1234",
+        "ssl_verify": None,
+    }
+    fs = S3FileSystem(**config)
+
+    assert "verify" not in fs.fs_args["client_kwargs"]
 
 
 def test_grants(dvc):

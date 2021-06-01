@@ -103,7 +103,7 @@ class BaseS3FileSystem(ObjectFSWrapper):
         client = login_info["client_kwargs"]
         client["region_name"] = config.get("region")
         client["endpoint_url"] = config.get("endpointurl")
-        client["verify"] = config.get("ssl_verify", True)
+        client["verify"] = config.get("ssl_verify")
 
         # encryptions
         additional = login_info["s3_additional_kwargs"]
