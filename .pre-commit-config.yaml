@@ -1,3 +1,6 @@
+ci:
+  skip: [pylint, dvc-pre-commit]
+
 repos:
   - hooks:
       - id: black
