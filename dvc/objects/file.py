@@ -1,17 +1,30 @@
 import errno
 import logging
 import os
+from typing import TYPE_CHECKING, Optional
 
 from .errors import ObjectFormatError
+
+if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.hash_info import HashInfo
+    from dvc.path_info import PathInfo
 
 logger = logging.getLogger(__name__)
 
 
 class HashFile:
-    def __init__(self, path_info, fs, hash_info):
+    def __init__(
+        self,
+        path_info: Optional["PathInfo"],
+        fs: Optional["BaseFileSystem"],
+        hash_info: "HashInfo",
+        name: Optional[str] = None,
+    ):
         self.path_info = path_info
         self.fs = fs
         self.hash_info = hash_info
+        self.name = name
 
     @property
     def size(self):

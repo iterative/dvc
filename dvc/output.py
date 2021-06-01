@@ -24,6 +24,7 @@ from .fs.local import LocalFileSystem
 from .fs.s3 import S3FileSystem
 from .hash_info import HashInfo
 from .istextfile import istextfile
+from .objects import Tree
 from .objects import save as osave
 from .objects.errors import ObjectFormatError
 from .objects.stage import stage as ostage
@@ -833,7 +834,9 @@ class Output:
                 )
             return set()
 
-        return {self.get_obj(filter_info=filter_info, copy=True)}
+        obj = self.get_obj(filter_info=filter_info, copy=True)
+        self._set_obj_names(obj)
+        return {obj}
 
     def get_used_objs(self, **kwargs) -> Set["HashFile"]:
         """Return filtered set of used objects for this out."""
@@ -866,8 +869,15 @@ class Output:
         obj = self.get_obj(filter_info=kwargs.get("filter_info"))
         if not obj:
             obj = self.odb.get(self.hash_info)
+        self._set_obj_names(obj)
 
         return {obj}
+
+    def _set_obj_names(self, obj):
+        obj.name = str(self)
+        if isinstance(obj, Tree):
+            for key, entry_obj in obj:
+                entry_obj.name = os.path.join(str(self), *key)
 
     def get_used_external(self, **kwargs) -> Dict["RepoPair", str]:
         if not self.use_cache or not self.stage.is_repo_import:

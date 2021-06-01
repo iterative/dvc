@@ -184,6 +184,7 @@ class Remote:
         return self._make_status(
             cache,
             objs,
+            show_checksums,
             local_exists,
             remote_exists,
             log_missing,
@@ -193,12 +194,17 @@ class Remote:
         self,
         cache,
         objs,
+        show_checksums,
         local_exists,
         remote_exists,
         log_missing,
     ):
         def make_names(obj):
-            return {"name": obj.hash_info.value}
+            if show_checksums or obj.name is None:
+                name = obj.hash_info.value
+            else:
+                name = obj.name
+            return {"name": name}
 
         dir_status = {}
         file_status = {}
