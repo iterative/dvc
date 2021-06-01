@@ -374,7 +374,16 @@ class Repo:
         used_objs = set()
         used_external = defaultdict(set)
 
-        for _ in self.brancher(
+        def _add_suffix(objs, suffix):
+            from dvc.objects.tree import Tree
+
+            for obj in objs:
+                obj.name += suffix
+                if isinstance(obj, Tree):
+                    for _, entry_obj in obj:
+                        entry_obj.name += suffix
+
+        for branch in self.brancher(
             revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
@@ -397,6 +406,8 @@ class Repo:
                     jobs=jobs,
                     filter_info=filter_info,
                 )
+                if branch:
+                    _add_suffix(objs, f" ({branch})")
                 used_objs.update(objs)
                 for repo_pair, paths in external.items():
                     used_external[repo_pair].update(paths)

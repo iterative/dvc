@@ -262,8 +262,8 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
         "Some of the cache files do not exist "
         "neither locally nor on remote. Missing cache files:\n"
     )
-    foo = "md5: 37b51d194a7513e45b56f6524f2d51f2\n"
-    bar = "md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
+    foo = "name: bar, md5: 37b51d194a7513e45b56f6524f2d51f2\n"
+    bar = "name: foo, md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
 
     caplog.clear()
     dvc.push()
@@ -279,8 +279,8 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
 
     caplog.clear()
     assert dvc.status(cloud=True) == {
-        "37b51d194a7513e45b56f6524f2d51f2": "missing",
-        "acbd18db4cc2f85cedef654fccc4a4d8": "missing",
+        "bar": "missing",
+        "foo": "missing",
     }
     assert header not in caplog.text
     assert foo not in caplog.text
