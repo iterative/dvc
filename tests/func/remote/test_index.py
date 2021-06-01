@@ -93,13 +93,12 @@ def test_clear_on_download_err(tmp_dir, dvc, tmp_path_factory, remote, mocker):
 
 def test_partial_upload(tmp_dir, dvc, tmp_path_factory, remote, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
-    bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    fail_hashes = {entry_obj.hash_info.value for _, entry_obj in bar.obj}
+    tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})
 
     original = LocalFileSystem._upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
-        if name in fail_hashes:
+        if "baz" in name:
             raise Exception("stop baz")
         return original(self, from_file, to_info, name, **kwargs)
 

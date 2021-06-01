@@ -179,12 +179,8 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     # Faulty upload version, failing on foo
     original = LocalFileSystem._upload
 
-    fail_hashes = {foo.obj.hash_info.value} | {
-        entry_obj.hash_info.value for _, entry_obj in baz.obj
-    }
-
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
-        if name in fail_hashes:
+        if "foo" in name:
             raise Exception("stop foo")
         return original(self, from_file, to_info, name, **kwargs)
 
