@@ -144,9 +144,7 @@ class Remote:
         a .dir file to its file contents.
         """
 
-        logger.debug(
-            f"Preparing to collect status from {self.odb.path_info}"
-        )
+        logger.debug(f"Preparing to collect status from {self.odb.path_info}")
         md5s = set()
         dir_objs = {}
         for obj in objs:
