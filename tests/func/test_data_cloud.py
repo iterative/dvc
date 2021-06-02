@@ -560,14 +560,19 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
 
 @pytest.mark.parametrize("remote", full_clouds, indirect=True)
 def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
+    # Related: https://github.com/iterative/dvc/issues/6089
+
     fs_type = type(dvc.cloud.get_remote("upstream").fs)
     monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
     monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
 
-    tmp_dir.dvc_gen({"foo": "363"})
+    # foo's md5 checksum is 00411460f7c92d2124a67ea0f4cb5f85
+    # bar's md5 checksum is 0000000018e6137ac2caab16074784a6
+    tmp_dir.dvc_gen({"foo": "363", "bar": "jk8ssl"})
 
     dvc.push()
-    clean(["foo"], dvc)
+    clean(["foo", "bar"], dvc)
 
     stats = dvc.pull()
-    assert "foo" in stats["added"]
+    assert stats["fetched"] == 2
+    assert set(stats["added"]) == {"foo", "bar"}
