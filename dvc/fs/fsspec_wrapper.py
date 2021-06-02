@@ -11,6 +11,8 @@ from .base import BaseFileSystem
 
 # pylint: disable=no-member
 class FSSpecWrapper(BaseFileSystem):
+    TRAVERSE_PREFIX_LEN = 2
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.fs_args = {"skip_instance_cache": True}

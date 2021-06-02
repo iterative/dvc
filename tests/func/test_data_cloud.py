@@ -41,6 +41,14 @@ all_clouds = [
     )
 ]
 
+# Clouds that implement the general methods that can be tested
+# for functional tests that require extensive apis (e.g traversing
+# via walk_files())
+full_clouds = [
+    pytest.lazy_fixture(cloud)
+    for cloud in ["s3", "gs", "azure", "ssh", "hdfs"]
+]
+
 
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
@@ -548,3 +556,18 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     stats = dvc.pull(os.path.join("foo", "bar"))
     assert stats["fetched"] == 1
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
+
+
+@pytest.mark.parametrize("remote", full_clouds, indirect=True)
+def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
+    fs_type = type(dvc.cloud.get_remote("upstream").fs)
+    monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
+    monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
+
+    tmp_dir.dvc_gen({"foo": "363"})
+
+    dvc.push()
+    clean(["foo"], dvc)
+
+    stats = dvc.pull()
+    assert "foo" in stats["added"]

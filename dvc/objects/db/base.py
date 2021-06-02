@@ -399,8 +399,15 @@ class ObjectDB:
         # hashes_exist() (see ssh, local)
         assert self.fs.TRAVERSE_PREFIX_LEN >= 2
 
+        # During the tests, for ensuring that the traverse behavior
+        # is working we turn on this option. It will ensure the
+        # list_hashes_traverse() is called.
+        always_traverse = getattr(self.fs, "_ALWAYS_TRAVERSE", False)
+
         hashes = set(hashes)
-        if len(hashes) == 1 or not self.fs.CAN_TRAVERSE:
+        if (
+            len(hashes) == 1 or not self.fs.CAN_TRAVERSE
+        ) and not always_traverse:
             remote_hashes = self.list_hashes_exists(hashes, jobs, name)
             return remote_hashes
 
@@ -418,7 +425,7 @@ class ObjectDB:
             )
         else:
             traverse_weight = traverse_pages
-        if len(hashes) < traverse_weight:
+        if len(hashes) < traverse_weight and not always_traverse:
             logger.debug(
                 "Large remote ('{}' hashes < '{}' traverse weight), "
                 "using object_exists for remaining hashes".format(
