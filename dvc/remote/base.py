@@ -145,7 +145,7 @@ class Remote:
         """
 
         logger.debug(
-            f"Preparing to collect status from {self.fs.odb.path_info}"
+            f"Preparing to collect status from {self.odb.path_info}"
         )
         md5s = set()
         dir_objs = {}
