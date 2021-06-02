@@ -6,7 +6,6 @@ from funcy import first
 from voluptuous import MultipleInvalid, Schema
 
 from dvc.ignore import _no_match
-from dvc.objects.db import NamedCache
 from dvc.output import CHECKSUM_SCHEMA, Output
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
@@ -100,5 +99,6 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
     ).return_value = exists
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
-        assert isinstance(output.get_used_cache(), NamedCache)
+        assert set() == output.get_used_objs()
+        assert {} == output.get_used_external()
     assert first(caplog.messages) == expected_message

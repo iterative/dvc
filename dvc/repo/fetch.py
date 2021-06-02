@@ -4,6 +4,7 @@ import os
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, NoOutputOrStageError
 
+from ..scheme import Schemes
 from . import locked
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ def fetch(
     if isinstance(targets, str):
         targets = [targets]
 
-    used = self.used_cache(
+    used_objs, used_external = self.used_cache(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -60,16 +61,21 @@ def fetch(
         if run_cache:
             self.stage_cache.pull(remote)
         downloaded += self.cloud.pull(
-            used, jobs, remote=remote, show_checksums=show_checksums
+            used_objs,
+            jobs,
+            remote=remote,
+            show_checksums=show_checksums,
         )
     except NoRemoteError:
-        if not used.external and used["local"]:
+        if not used_external and any(
+            obj.fs.scheme == Schemes.LOCAL for obj in used_objs
+        ):
             raise
     except DownloadError as exc:
         failed += exc.amount
 
-    for (repo_url, repo_rev), files in used.external.items():
-        d, f = _fetch_external(self, repo_url, repo_rev, files, jobs)
+    for repo_pair, files in used_external.items():
+        d, f = _fetch_external(self, repo_pair.url, repo_pair.rev, files, jobs)
         downloaded += d
         failed += f
 
@@ -102,13 +108,13 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
             for path in files:
                 path_info = root / path
                 try:
-                    used = repo.used_cache(
+                    used_objs, _ = repo.used_cache(
                         [os.fspath(path_info)],
                         force=True,
                         jobs=jobs,
                         recursive=True,
                     )
-                    cb(repo.cloud.pull(used, jobs))
+                    cb(repo.cloud.pull(used_objs, jobs))
                 except (NoOutputOrStageError, NoRemoteError):
                     pass
                 obj = stage(odb, path_info, repo.repo_fs, "md5", jobs=jobs)

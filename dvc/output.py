@@ -2,7 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
-from typing import Type
+from typing import TYPE_CHECKING, Dict, Set, Type
 from urllib.parse import urlparse
 
 from funcy import collecting, project
@@ -24,13 +24,18 @@ from .fs.local import LocalFileSystem
 from .fs.s3 import S3FileSystem
 from .hash_info import HashInfo
 from .istextfile import istextfile
+from .objects import Tree
 from .objects import save as osave
-from .objects.db import NamedCache
 from .objects.errors import ObjectFormatError
 from .objects.stage import stage as ostage
 from .scheme import Schemes
 from .utils import relpath
 from .utils.fs import path_isin
+
+if TYPE_CHECKING:
+    from dvc.dependency.repo import RepoPair
+
+    from .objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -647,7 +652,7 @@ class Output:
     def download(self, to, jobs=None):
         self.fs.download(self.path_info, to.path_info, jobs=jobs)
 
-    def get_obj(self, filter_info=None):
+    def get_obj(self, filter_info=None, **kwargs):
         if self.obj:
             obj = self.obj
         elif self.hash_info:
@@ -660,7 +665,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.odb, prefix)
+            obj = obj.filter(self.odb, prefix, **kwargs)
 
         return obj
 
@@ -786,18 +791,14 @@ class Output:
             self.odb.unprotect(self.path_info)
 
     def get_dir_cache(self, **kwargs):
-
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
 
+        obj = self.odb.get(self.hash_info)
         try:
-            objects.check(self.odb, self.odb.get(self.hash_info))
+            objects.check(self.odb, obj)
         except (FileNotFoundError, ObjectFormatError):
-            self.repo.cloud.pull(
-                NamedCache.make("local", self.hash_info.value, str(self)),
-                show_checksums=False,
-                **kwargs,
-            )
+            self.repo.cloud.pull([obj], show_checksums=False, **kwargs)
 
         try:
             self.obj = objects.load(self.odb, self.hash_info)
@@ -808,27 +809,8 @@ class Output:
 
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
-    ):
-        """Get a list of `info`s related to the given directory.
-
-        - Pull the directory entry from the remote cache if it was changed.
-
-        Example:
-
-            Given the following commands:
-
-            $ echo "foo" > directory/foo
-            $ echo "bar" > directory/bar
-            $ dvc add directory
-
-            It will return a NamedCache like:
-
-            nc = NamedCache()
-            nc.add(self.scheme, 'c157a79031e1', 'directory/foo')
-            nc.add(self.scheme, 'd3b07384d113', 'directory/bar')
-        """
-
-        cache = NamedCache()
+    ) -> Set["HashFile"]:
+        """Fetch dir cache and return used objects for this out."""
 
         try:
             self.get_dir_cache(jobs=jobs, remote=remote)
@@ -848,38 +830,17 @@ class Output:
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
-            return cache
+            return set()
 
-        path = str(self.path_info)
-        filter_path = str(filter_info) if filter_info else None
-        for entry_key, entry_obj in self.obj:
-            entry_path = os.path.join(path, *entry_key)
-            if (
-                not filter_path
-                or entry_path == filter_path
-                or entry_path.startswith(filter_path + os.sep)
-            ):
-                cache.add(self.scheme, entry_obj.hash_info.value, entry_path)
+        obj = self.get_obj(filter_info=filter_info, copy=True)
+        self._set_obj_names(obj)
+        return {obj}
 
-        return cache
-
-    def get_used_cache(self, **kwargs):
-        """Get a dumpd of the given `out`, with an entry including the branch.
-
-        The `used_cache` of an output is no more than its `info`.
-
-        In case that the given output is a directory, it will also
-        include the `info` of its files.
-        """
+    def get_used_objs(self, **kwargs) -> Set["HashFile"]:
+        """Return filtered set of used objects for this out."""
 
         if not self.use_cache:
-            return NamedCache()
-
-        if self.stage.is_repo_import:
-            cache = NamedCache()
-            (dep,) = self.stage.deps
-            cache.external[dep.repo_pair].add(dep.def_path)
-            return cache
+            return set()
 
         if not self.hash_info:
             msg = (
@@ -898,18 +859,30 @@ class Output:
                     )
                 )
             logger.warning(msg)
-            return NamedCache()
+            return set()
 
-        ret = NamedCache.make(self.scheme, self.hash_info.value, str(self))
+        if self.is_dir_checksum:
+            return self.collect_used_dir_cache(**kwargs)
 
-        if not self.is_dir_checksum:
-            return ret
+        obj = self.get_obj(filter_info=kwargs.get("filter_info"))
+        if not obj:
+            obj = self.odb.get(self.hash_info)
+        self._set_obj_names(obj)
 
-        ret.add_child_cache(
-            self.hash_info.value, self.collect_used_dir_cache(**kwargs)
-        )
+        return {obj}
 
-        return ret
+    def _set_obj_names(self, obj):
+        obj.name = str(self)
+        if isinstance(obj, Tree):
+            for key, entry_obj in obj:
+                entry_obj.name = os.path.join(str(self), *key)
+
+    def get_used_external(self, **kwargs) -> Dict["RepoPair", str]:
+        if not self.use_cache or not self.stage.is_repo_import:
+            return {}
+
+        (dep,) = self.stage.deps
+        return {dep.repo_pair: dep.def_path}
 
     def _validate_output_path(self, path, stage=None):
         from dvc.dvcfile import is_valid_filename

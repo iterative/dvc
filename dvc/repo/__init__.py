@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional
@@ -370,9 +371,17 @@ class Repo:
             to items containing the output's `dumpd` names and the output's
             children (if the given output is a directory).
         """
-        from dvc.objects.db import NamedCache
+        used_objs = set()
+        used_external = defaultdict(set)
 
-        cache = NamedCache()
+        def _add_suffix(objs, suffix):
+            from dvc.objects.tree import Tree
+
+            for obj in objs:
+                obj.name += suffix
+                if isinstance(obj, Tree):
+                    for _, entry_obj in obj:
+                        entry_obj.name += suffix
 
         for branch in self.brancher(
             revs=revs,
@@ -390,23 +399,28 @@ class Repo:
                 for target in targets
             )
 
-            suffix = f"({branch})" if branch else ""
             for stage, filter_info in pairs:
-                used_cache = stage.get_used_cache(
+                objs, external = stage.get_used_cache(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
                 )
-                cache.update(used_cache, suffix=suffix)
+                if branch:
+                    _add_suffix(objs, f" ({branch})")
+                used_objs.update(objs)
+                for repo_pair, paths in external.items():
+                    used_external[repo_pair].update(paths)
 
         if used_run_cache:
-            used_cache = self.stage_cache.get_used_cache(
+            objs, external = self.stage_cache.get_used_cache(
                 used_run_cache, remote=remote, force=force, jobs=jobs
             )
-            cache.update(used_cache)
+            used_objs.update(objs)
+            for repo_pair, paths in external.items():
+                used_external[repo_pair].update(paths)
 
-        return cache
+        return used_objs, used_external
 
     @cached_property
     def outs_trie(self):

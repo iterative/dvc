@@ -1,10 +1,13 @@
 import logging
+from typing import TYPE_CHECKING, Set
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.objects.db import NamedCache
 
 from ..scheme import Schemes
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -52,30 +55,32 @@ def gc(
         repos = []
     all_repos = [Repo(path) for path in repos]
 
+    used_objs: Set["HashFile"] = set()
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)
 
-        used = NamedCache()
         for repo in all_repos + [self]:
-            used.update(
-                repo.used_cache(
-                    all_branches=all_branches,
-                    with_deps=with_deps,
-                    all_tags=all_tags,
-                    all_commits=all_commits,
-                    all_experiments=all_experiments,
-                    remote=remote,
-                    force=force,
-                    jobs=jobs,
-                )
+            objs, _ = repo.used_cache(
+                all_branches=all_branches,
+                with_deps=with_deps,
+                all_tags=all_tags,
+                all_commits=all_commits,
+                all_experiments=all_experiments,
+                remote=remote,
+                force=force,
+                jobs=jobs,
             )
+            used_objs.update(objs)
 
     for scheme, odb in self.odb.by_scheme():
         if not odb:
             continue
 
-        removed = odb.gc(set(used.scheme_keys(scheme)), jobs=jobs)
+        removed = odb.gc(
+            {obj for obj in used_objs if obj.fs.scheme == scheme},
+            jobs=jobs,
+        )
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
 
@@ -83,6 +88,9 @@ def gc(
         return
 
     remote = self.cloud.get_remote(remote, "gc -c")
-    removed = remote.gc(set(used.scheme_keys(Schemes.LOCAL)), jobs=jobs)
+    removed = remote.gc(
+        {obj for obj in used_objs if obj.fs.scheme == Schemes.LOCAL},
+        jobs=jobs,
+    )
     if not removed:
         logger.info("No unused cache to remove from remote.")

@@ -8,7 +8,6 @@ from flaky.flaky_decorator import flaky
 import dvc as dvc_module
 from dvc.external_repo import clean_repos
 from dvc.main import main
-from dvc.objects.db import NamedCache
 from dvc.remote.base import (
     STATUS_DELETED,
     STATUS_MISSING,
@@ -57,7 +56,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     out = stage.outs[0]
     cache = out.cache_path
     md5 = out.hash_info.value
-    info = out.get_used_cache()
+    foo_objs = out.get_used_objs()
 
     (stage_dir,) = tmp_dir.dvc_gen(
         {
@@ -70,29 +69,39 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     )
     out_dir = stage_dir.outs[0]
     cache_dir = out_dir.cache_path
-    name_dir = str(out_dir)
     md5_dir = out_dir.hash_info.value
-    info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
+    dir_objs = {out_dir.obj}
+    entry_md5s = [entry_obj.hash_info.value for _, entry_obj in out_dir.obj]
+
+    def _make_dir_status(status):
+        expected = {md5_dir: {"name": md5_dir, "status": status}}
+        expected.update(
+            {
+                entry_md5: {"name": entry_md5, "status": status}
+                for entry_md5 in entry_md5s
+            }
+        )
+        return expected
 
     # Check status
-    status = dvc.cloud.status(info, show_checksums=True)
+    status = dvc.cloud.status(foo_objs, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_NEW}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
-    expected = {md5_dir: {"name": md5_dir, "status": STATUS_NEW}}
+    status_dir = dvc.cloud.status(dir_objs, show_checksums=True)
+    expected = _make_dir_status(STATUS_NEW)
     assert status_dir == expected
 
     # Move cache and check status
     # See issue https://github.com/iterative/dvc/issues/4383 for details
     backup_dir = dvc.odb.local.cache_dir + ".backup"
     move(dvc.odb.local.cache_dir, backup_dir)
-    status = dvc.cloud.status(info, show_checksums=True)
+    status = dvc.cloud.status(foo_objs, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_MISSING}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
-    expected = {md5_dir: {"name": md5_dir, "status": STATUS_MISSING}}
+    status_dir = dvc.cloud.status(dir_objs, show_checksums=True)
+    expected = _make_dir_status(STATUS_MISSING)
     assert status_dir == expected
 
     # Restore original cache:
@@ -100,48 +109,48 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     move(backup_dir, dvc.odb.local.cache_dir)
 
     # Push and check status
-    dvc.cloud.push(info)
+    dvc.cloud.push(foo_objs)
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
 
-    dvc.cloud.push(info_dir)
+    dvc.cloud.push(dir_objs)
     assert os.path.isfile(cache_dir)
 
-    status = dvc.cloud.status(info, show_checksums=True)
+    status = dvc.cloud.status(foo_objs, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_OK}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
-    expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
+    status_dir = dvc.cloud.status(dir_objs, show_checksums=True)
+    expected = _make_dir_status(STATUS_OK)
     assert status_dir == expected
 
     # Remove and check status
     remove(dvc.odb.local.cache_dir)
 
-    status = dvc.cloud.status(info, show_checksums=True)
+    status = dvc.cloud.status(foo_objs, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_DELETED}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
-    expected = {md5_dir: {"name": md5_dir, "status": STATUS_DELETED}}
+    status_dir = dvc.cloud.status(dir_objs, show_checksums=True)
+    expected = _make_dir_status(STATUS_DELETED)
     assert status_dir == expected
 
     # Pull and check status
-    dvc.cloud.pull(info)
+    dvc.cloud.pull(foo_objs)
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     with open(cache) as fd:
         assert fd.read() == "foo"
 
-    dvc.cloud.pull(info_dir)
+    dvc.cloud.pull(dir_objs)
     assert os.path.isfile(cache_dir)
 
-    status = dvc.cloud.status(info, show_checksums=True)
+    status = dvc.cloud.status(foo_objs, show_checksums=True)
     expected = {md5: {"name": md5, "status": STATUS_OK}}
     assert status == expected
 
-    status_dir = dvc.cloud.status(info_dir, show_checksums=True)
-    expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
+    status_dir = dvc.cloud.status(dir_objs, show_checksums=True)
+    expected = _make_dir_status(STATUS_OK)
     assert status_dir == expected
 
 
@@ -277,7 +286,10 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     assert bar in caplog.text
 
     caplog.clear()
-    assert dvc.status(cloud=True) == {"bar": "missing", "foo": "missing"}
+    assert dvc.status(cloud=True) == {
+        "bar": "missing",
+        "foo": "missing",
+    }
     assert header not in caplog.text
     assert foo not in caplog.text
     assert bar not in caplog.text

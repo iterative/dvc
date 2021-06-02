@@ -4,6 +4,7 @@ import shutil
 import pytest
 
 from dvc.exceptions import OutputDuplicationError
+from dvc.hash_info import HashInfo
 from dvc.repo import NotDvcRepoError, Repo, locked
 
 
@@ -44,26 +45,25 @@ def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):
     [os.path.join("dir", "subdir", "file"), os.path.join("dir", "subdir")],
 )
 def test_used_cache(tmp_dir, dvc, path):
-    from dvc.objects.db import NamedCache
+    from dvc.objects.tree import Tree
 
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
-    expected = NamedCache.make(
-        "local", "70922d6bf66eb073053a82f77d58c536.dir", "dir"
-    )
-    expected.add_child_cache(
-        "70922d6bf66eb073053a82f77d58c536.dir",
-        NamedCache.make(
-            "local",
-            "8c7dd922ad47494fc02c388e12c00eac",
-            os.path.join("dir", "subdir", "file"),
-        ),
-    )
 
-    used_cache = dvc.used_cache([path])
-    assert (
-        used_cache._items == expected._items
-        and used_cache.external == expected.external
-    )
+    expected_objs = {
+        HashInfo("md5", "70922d6bf66eb073053a82f77d58c536.dir"),
+        HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac"),
+    }
+    expected_external = {}
+
+    objs, external = dvc.used_cache([path])
+    used = set()
+    for obj in objs:
+        used.add(obj.hash_info)
+        if isinstance(obj, Tree):
+            used.update(entry_obj.hash_info for _, entry_obj in obj)
+
+    assert used == expected_objs
+    assert external == expected_external
 
 
 def test_locked(mocker):

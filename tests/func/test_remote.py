@@ -204,6 +204,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     dvc.push()
     remove(dvc.odb.local.cache_dir)
 
+    baz.collect_used_dir_cache()
     with patch.object(LocalFileSystem, "_download", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
@@ -430,17 +431,22 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     remote = dvc.cloud.get_remote("upstream")
 
     odb = dvc.odb.local
-    dir_hash = stage.outs[0].hash_info.value
-    used = stage.get_used_cache(remote=remote)
+    out = stage.outs[0]
+    file_objs = [entry_obj for _, entry_obj in out.obj]
 
     # remove one of the cache files for directory
-    file_hashes = list(used.child_keys(odb.fs.scheme, dir_hash))
-    remove(odb.hash_to_path_info(file_hashes[0]))
+    remove(odb.hash_to_path_info(file_objs[0].hash_info.value))
 
     dvc.push()
-    assert not remote.fs.exists(remote.odb.hash_to_path_info(dir_hash))
-    assert not remote.fs.exists(remote.odb.hash_to_path_info(file_hashes[0]))
-    assert remote.fs.exists(remote.odb.hash_to_path_info(file_hashes[1]))
+    assert not remote.fs.exists(
+        remote.odb.hash_to_path_info(out.hash_info.value)
+    )
+    assert not remote.fs.exists(
+        remote.odb.hash_to_path_info(file_objs[0].hash_info.value)
+    )
+    assert remote.fs.exists(
+        remote.odb.hash_to_path_info(file_objs[1].hash_info.value)
+    )
 
 
 def test_upload_exists(tmp_dir, dvc, local_remote):
