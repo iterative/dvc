@@ -8,7 +8,7 @@ from dvc.objects.db.index import ObjectDBIndex
 
 @pytest.fixture
 def index(dvc):
-    index_ = ObjectDBIndex(dvc.tmp_dir, "foo")
+    index_ = ObjectDBIndex(dvc.index_tmp_dir, "foo")
     yield index_
 
 
