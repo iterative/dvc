@@ -15,21 +15,27 @@ connection_string = (
 )
 
 
-def test_init_env_var(monkeypatch, dvc):
+def test_strip_protocol_env_var(monkeypatch, dvc):
     monkeypatch.setenv("AZURE_STORAGE_CONTAINER_NAME", container_name)
     monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
 
-    config = {"url": "azure://"}
-    fs = AzureFileSystem(**config)
-    assert fs.path_info == "azure://" + container_name
+    assert (
+        AzureFileSystem._strip_protocol("azure://")
+        == f"azure://{container_name}"
+    )
+
+
+def test_strip_protocol(dvc):
+    assert (
+        AzureFileSystem._strip_protocol(f"azure://{container_name}")
+        == f"azure://{container_name}"
+    )
 
 
 def test_init(dvc):
-    prefix = "some/prefix"
-    url = f"azure://{container_name}/{prefix}"
-    config = {"url": url, "connection_string": connection_string}
+    config = {"connection_string": connection_string}
     fs = AzureFileSystem(**config)
-    assert fs.path_info == url
+    assert fs.fs_args["connection_string"] == connection_string
 
 
 def test_info(tmp_dir, azure):

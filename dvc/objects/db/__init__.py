@@ -3,22 +3,22 @@ from collections import defaultdict
 from dvc.scheme import Schemes
 
 
-def get_odb(fs, **config):
+def get_odb(fs, path_info, **config):
     from .base import ObjectDB
     from .gdrive import GDriveObjectDB
     from .local import LocalObjectDB
     from .ssh import SSHObjectDB
 
     if fs.scheme == Schemes.LOCAL:
-        return LocalObjectDB(fs, **config)
+        return LocalObjectDB(fs, path_info, **config)
 
     if fs.scheme == Schemes.SSH:
-        return SSHObjectDB(fs, **config)
+        return SSHObjectDB(fs, path_info, **config)
 
     if fs.scheme == Schemes.GDRIVE:
-        return GDriveObjectDB(fs, **config)
+        return GDriveObjectDB(fs, path_info, **config)
 
-    return ObjectDB(fs, **config)
+    return ObjectDB(fs, path_info, **config)
 
 
 def _get_odb(repo, settings):
@@ -27,8 +27,8 @@ def _get_odb(repo, settings):
     if not settings:
         return None
 
-    cls, config = get_cloud_fs(repo, **settings)
-    return get_odb(cls(**config), state=repo.state, **config)
+    cls, config, path_info = get_cloud_fs(repo, **settings)
+    return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 
 class ODBManager:

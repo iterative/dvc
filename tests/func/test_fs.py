@@ -244,9 +244,8 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
 )
 def test_fs_getsize(dvc, cloud):
     cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
-    cls, config = get_cloud_fs(dvc, **cloud.config)
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
-    path_info = fs.path_info
 
     assert fs.getsize(path_info / "baz") == 7
     assert fs.getsize(path_info / "data" / "foo") == 3
@@ -270,11 +269,11 @@ def test_fs_getsize(dvc, cloud):
 )
 def test_fs_upload_fobj(dvc, tmp_dir, cloud):
     tmp_dir.gen("foo", "foo")
-    cls, config = get_cloud_fs(dvc, **cloud.config)
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
 
     from_info = tmp_dir / "foo"
-    to_info = fs.path_info / "foo"
+    to_info = path_info / "foo"
 
     with open(from_info, "rb") as stream:
         fs.upload_fobj(stream, to_info)
@@ -297,9 +296,9 @@ def test_fs_ls(dvc, cloud):
             }
         }
     )
-    cls, config = get_cloud_fs(dvc, **cloud.config)
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
-    path_info = cloud / "directory"
+    path_info /= "directory"
 
     assert {os.path.basename(file_key) for file_key in fs.ls(path_info)} == {
         "foo",
@@ -327,9 +326,8 @@ def test_fs_ls(dvc, cloud):
 )
 def test_fs_find_recursive(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
-    cls, config = get_cloud_fs(dvc, **cloud.config)
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
-    path_info = fs.path_info
 
     assert {
         os.path.basename(file_key) for file_key in fs.find(path_info / "data")
@@ -349,9 +347,8 @@ def test_fs_find_recursive(dvc, cloud):
 )
 def test_fs_find_with_etag(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
-    cls, config = get_cloud_fs(dvc, **cloud.config)
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
-    path_info = fs.path_info
 
     for details in fs.find(path_info / "data", detail=True):
         assert (
@@ -371,7 +368,7 @@ def test_fs_find_with_etag(dvc, cloud):
 )
 def test_fs_fsspec_path_management(dvc, cloud):
     cloud.gen({"foo": "foo", "data": {"bar": "bar", "baz": {"foo": "foo"}}})
-    cls, config = get_cloud_fs(dvc, **cloud.config)
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
 
     root = cloud.parents[len(cloud.parents) - 1]

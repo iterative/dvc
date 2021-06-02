@@ -25,8 +25,6 @@ class LocalFileSystem(BaseFileSystem):
 
         super().__init__(**config)
         self.fs = LocalFS()
-        url = config.get("url")
-        self.path_info = self.PATH_CLS(url) if url else None
 
     @staticmethod
     def open(path_info, mode="r", encoding=None, **kwargs):

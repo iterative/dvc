@@ -75,10 +75,10 @@ class SSHObjectDB(ObjectDB):
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
-            root = posixpath.join(self.fs.path_info.path, prefix[:2])
+            root = posixpath.join(self.path_info.path, prefix[:2])
         else:
-            root = self.fs.path_info.path
-        with self.fs.ssh(self.fs.path_info) as ssh:
+            root = self.path_info.path
+        with self.fs.ssh(self.path_info) as ssh:
             if prefix and not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly

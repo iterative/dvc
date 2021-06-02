@@ -18,10 +18,11 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs, **config):
+    def __init__(self, fs, path_info, **config):
         from dvc.state import StateNoop
 
         self.fs = fs
+        self.path_info = path_info
         self.state = config.get("state", StateNoop())
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
@@ -87,7 +88,7 @@ class ObjectDB:
             callback(1)
 
     def hash_to_path_info(self, hash_):
-        return self.fs.path_info / hash_[0:2] / hash_[2:]
+        return self.path_info / hash_[0:2] / hash_[2:]
 
     # Override to return path as a string instead of PathInfo for clouds
     # which support string paths (see local)
@@ -143,12 +144,12 @@ class ObjectDB:
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
             if len(prefix) > 2:
-                path_info = self.fs.path_info / prefix[:2] / prefix[2:]
+                path_info = self.path_info / prefix[:2] / prefix[2:]
             else:
-                path_info = self.fs.path_info / prefix[:2]
+                path_info = self.path_info / prefix[:2]
             prefix = True
         else:
-            path_info = self.fs.path_info
+            path_info = self.path_info
             prefix = False
         if progress_callback:
             for file_info in self.fs.walk_files(path_info, prefix=prefix):
@@ -319,7 +320,7 @@ class ObjectDB:
         removed = False
         # hashes must be sorted to ensure we always remove .dir files first
         for hash_ in sorted(
-            self.all(jobs, str(self.fs.path_info)),
+            self.all(jobs, str(self.path_info)),
             key=self.fs.is_dir_hash,
             reverse=True,
         ):

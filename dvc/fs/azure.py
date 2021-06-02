@@ -5,7 +5,8 @@ import sys
 import threading
 from contextlib import contextmanager
 
-from funcy import cached_property, wrap_prop
+from fsspec.utils import infer_storage_options
+from funcy import cached_property, memoize, wrap_prop
 
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
@@ -67,6 +68,19 @@ class AzureAuthError(DvcException):
     pass
 
 
+@memoize
+def _az_config():
+    # NOTE: ideally we would've used get_default_cli().config from
+    # azure.cli.core, but azure-cli-core has a lot of conflicts with other
+    # dependencies. So instead we are just use knack directly
+    from knack.config import CLIConfig
+
+    config_dir = os.getenv(
+        "AZURE_CONFIG_DIR", os.path.expanduser(os.path.join("~", ".azure"))
+    )
+    return CLIConfig(config_dir=config_dir, config_env_var_prefix="AZURE")
+
+
 # pylint:disable=abstract-method
 class AzureFileSystem(ObjectFSWrapper):
     scheme = Schemes.AZURE
@@ -79,17 +93,21 @@ class AzureFileSystem(ObjectFSWrapper):
         "azure-identity": "azure.identity",
     }
 
-    def __init__(self, **config):
-        super().__init__(**config)
+    @classmethod
+    def _strip_protocol(cls, path: str):
+        bucket = infer_storage_options(path).get("host")
+        if bucket:
+            return path
 
-        url = config.get("url")
-        self.path_info = self.PATH_CLS(url)
+        bucket = _az_config().get("storage", "container_name", None)
+        return f"azure://{bucket}"
 
-        if not self.path_info.bucket:
-            container = self._az_config.get("storage", "container_name", None)
-            url = f"azure://{container}"
-
-        self.path_info = self.PATH_CLS(url)
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        ops = infer_storage_options(urlpath)
+        if "host" in ops:
+            return {"bucket": ops["host"]}
+        return {}
 
     def _prepare_credentials(self, **config):
         from azure.identity.aio import DefaultAzureCredential
@@ -100,16 +118,16 @@ class AzureFileSystem(ObjectFSWrapper):
         login_info = {}
         login_info["connection_string"] = config.get(
             "connection_string",
-            self._az_config.get("storage", "connection_string", None),
+            _az_config().get("storage", "connection_string", None),
         )
         login_info["account_name"] = config.get(
-            "account_name", self._az_config.get("storage", "account", None)
+            "account_name", _az_config().get("storage", "account", None)
         )
         login_info["account_key"] = config.get(
-            "account_key", self._az_config.get("storage", "key", None)
+            "account_key", _az_config().get("storage", "key", None)
         )
         login_info["sas_token"] = config.get(
-            "sas_token", self._az_config.get("storage", "sas_token", None)
+            "sas_token", _az_config().get("storage", "sas_token", None)
         )
         login_info["tenant_id"] = config.get("tenant_id")
         login_info["client_id"] = config.get("client_id")
@@ -156,18 +174,6 @@ class AzureFileSystem(ObjectFSWrapper):
 
         self.login_method = login_method
         return login_info
-
-    @cached_property
-    def _az_config(self):
-        # NOTE: ideally we would've used get_default_cli().config from
-        # azure.cli.core, but azure-cli-core has a lot of conflicts with other
-        # dependencies. So instead we are just use knack directly
-        from knack.config import CLIConfig
-
-        config_dir = os.getenv(
-            "AZURE_CONFIG_DIR", os.path.expanduser(os.path.join("~", ".azure"))
-        )
-        return CLIConfig(config_dir=config_dir, config_env_var_prefix="AZURE")
 
     @wrap_prop(threading.Lock())
     @cached_property

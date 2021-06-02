@@ -212,15 +212,17 @@ class StageCache:
         ret = []
 
         runs = from_remote.path_info / "runs"
-        if not from_remote.exists(runs):
+        if not from_remote.fs.exists(runs):
             return []
 
-        for src in from_remote.walk_files(runs):
+        for src in from_remote.fs.walk_files(runs):
             rel = src.relative_to(from_remote.path_info)
             dst = to_remote.path_info / rel
             key = dst.parent
             # check if any build cache already exists for this key
-            if to_remote.exists(key) and first(to_remote.walk_files(key)):
+            if to_remote.fs.exists(key) and first(
+                to_remote.fs.walk_files(key)
+            ):
                 continue
             func(src, dst)
             ret.append((src.parent.name, src.name))
@@ -233,8 +235,8 @@ class StageCache:
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.fs.upload, "upload"),
-            self.repo.odb.local.fs,
-            remote.fs,
+            self.repo.odb.local,
+            remote.odb,
         )
 
     def pull(self, remote):
@@ -243,8 +245,8 @@ class StageCache:
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.fs.download, "download"),
-            remote.fs,
-            self.repo.odb.local.fs,
+            remote.odb,
+            self.repo.odb.local,
         )
 
     def get_used_cache(self, used_run_cache, *args, **kwargs):
