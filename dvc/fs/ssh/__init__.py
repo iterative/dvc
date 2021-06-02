@@ -5,7 +5,6 @@ import os
 import shutil
 import threading
 from contextlib import closing, contextmanager
-from urllib.parse import urlparse
 
 from funcy import first, memoize, silent, wrap_with
 
@@ -48,34 +47,19 @@ class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def __init__(self, **config):
         super().__init__(**config)
-        url = config.get("url")
-        if url:
-            parsed = urlparse(url)
-            user_ssh_config = self._load_user_ssh_config(parsed.hostname)
+        user_ssh_config = self._load_user_ssh_config(config["host"])
 
-            host = user_ssh_config.get("hostname", parsed.hostname)
-            user = (
-                config.get("user")
-                or parsed.username
-                or user_ssh_config.get("user")
-                or getpass.getuser()
-            )
-            port = (
-                config.get("port")
-                or parsed.port
-                or self._try_get_ssh_config_port(user_ssh_config)
-                or self.DEFAULT_PORT
-            )
-            self.path_info = self.PATH_CLS.from_parts(
-                scheme=self.scheme,
-                host=host,
-                user=user,
-                port=port,
-                path=parsed.path,
-            )
-        else:
-            self.path_info = None
-            user_ssh_config = {}
+        self.host = user_ssh_config.get("hostname", config["host"])
+        self.user = (
+            config.get("user")
+            or user_ssh_config.get("user")
+            or getpass.getuser()
+        )
+        self.port = (
+            config.get("port")
+            or self._try_get_ssh_config_port(user_ssh_config)
+            or self.DEFAULT_PORT
+        )
 
         self.keyfile = config.get(
             "keyfile"
@@ -92,6 +76,16 @@ class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         else:
             self.sock = None
         self.allow_agent = config.get("allow_agent", True)
+
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        from fsspec.implementations.sftp import SFTPFileSystem
+
+        # pylint:disable=protected-access
+        kwargs = SFTPFileSystem._get_kwargs_from_urls(urlpath)
+        if "username" in kwargs:
+            kwargs["user"] = kwargs.pop("username")
+        return kwargs
 
     @staticmethod
     def ssh_config_filename():
@@ -120,17 +114,13 @@ class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def _try_get_ssh_config_keyfile(user_ssh_config):
         return first(user_ssh_config.get("identityfile") or ())
 
-    def ensure_credentials(self, path_info=None):
-        if path_info is None:
-            path_info = self.path_info
-
+    def ensure_credentials(self):
         # NOTE: we use the same password regardless of the server :(
         if self.ask_password and self.password is None:
-            host, user, port = path_info.host, path_info.user, path_info.port
-            self.password = ask_password(host, user, port)
+            self.password = ask_password(self.host, self.user, self.port)
 
     def ssh(self, path_info):
-        self.ensure_credentials(path_info)
+        self.ensure_credentials()
 
         from .connection import SSHConnection
 

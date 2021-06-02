@@ -284,9 +284,8 @@ class Output:
     ):
         self.repo = stage.repo if stage else None
 
-        fs_cls, fs_config = get_cloud_fs(self.repo, url=path)
+        fs_cls, fs_config, path_info = get_cloud_fs(self.repo, url=path)
         self.fs = fs_cls(**fs_config)
-        path_info = self.fs.path_info
 
         if (
             self.fs.scheme == "local"
@@ -746,9 +745,8 @@ class Output:
         if odb is None:
             odb = self.odb
 
-        cls, config = get_cloud_fs(self.repo, url=source)
+        cls, config, from_info = get_cloud_fs(self.repo, url=source)
         from_fs = cls(**config)
-        from_info = from_fs.path_info
 
         # When running import-url --to-remote / add --to-remote/-o ... we
         # assume that it is unlikely that the odb will contain majority of the

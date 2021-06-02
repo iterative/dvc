@@ -40,6 +40,14 @@ all_clouds = [
     )
 ]
 
+# Clouds that implement the general methods that can be tested
+# for functional tests that require extensive apis (e.g traversing
+# via walk_files())
+full_clouds = [
+    pytest.lazy_fixture(cloud)
+    for cloud in ["s3", "gs", "azure", "ssh", "hdfs"]
+]
+
 
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", all_clouds, indirect=True)
@@ -560,3 +568,23 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
     stats = dvc.pull(os.path.join("foo", "bar"))
     assert stats["fetched"] == 1
     assert (tmp_dir / "foo").read_text() == {"bar": {"baz": "baz"}}
+
+
+@pytest.mark.parametrize("remote", full_clouds, indirect=True)
+def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
+    # Related: https://github.com/iterative/dvc/issues/6089
+
+    fs_type = type(dvc.cloud.get_remote("upstream").fs)
+    monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
+    monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
+
+    # foo's md5 checksum is 00411460f7c92d2124a67ea0f4cb5f85
+    # bar's md5 checksum is 0000000018e6137ac2caab16074784a6
+    tmp_dir.dvc_gen({"foo": "363", "bar": "jk8ssl"})
+
+    dvc.push()
+    clean(["foo", "bar"], dvc)
+
+    stats = dvc.pull()
+    assert stats["fetched"] == 2
+    assert set(stats["added"]) == {"foo", "bar"}

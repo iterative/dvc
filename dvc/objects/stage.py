@@ -15,7 +15,7 @@ def _upload_file(path_info, fs, odb):
     from dvc.utils import tmp_fname
     from dvc.utils.stream import HashedStreamReader
 
-    tmp_info = odb.fs.path_info / tmp_fname()
+    tmp_info = odb.path_info / tmp_fname()
     with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
         stream = HashedStreamReader(stream)
         odb.fs.upload_fobj(

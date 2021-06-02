@@ -29,12 +29,6 @@ class BaseS3FileSystem(ObjectFSWrapper):
         "grant_write_acp": "GrantWriteACP",
     }
 
-    def __init__(self, **config):
-        super().__init__(**config)
-
-        url = config.get("url", "s3://")
-        self.path_info = self.PATH_CLS(url)
-
     _TRANSFER_CONFIG_ALIASES = {
         "max_queue_size": "max_io_queue",
         "max_concurrent_requests": "max_concurrency",
@@ -103,7 +97,7 @@ class BaseS3FileSystem(ObjectFSWrapper):
         client = login_info["client_kwargs"]
         client["region_name"] = config.get("region")
         client["endpoint_url"] = config.get("endpointurl")
-        client["verify"] = config.get("ssl_verify", True)
+        client["verify"] = config.get("ssl_verify")
 
         # encryptions
         additional = login_info["s3_additional_kwargs"]

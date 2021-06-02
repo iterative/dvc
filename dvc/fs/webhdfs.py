@@ -4,7 +4,6 @@ import posixpath
 import shutil
 import threading
 from contextlib import contextmanager
-from urllib.parse import urlparse
 
 from funcy import cached_property, wrap_prop
 
@@ -40,22 +39,23 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def __init__(self, **config):
         super().__init__(**config)
 
-        self.path_info = None
-        url = config.get("url")
-        if not url:
-            return
-
-        self.path_info = self.PATH_CLS(url)
-
-        parsed = urlparse(url)
-
-        self.host = parsed.hostname
-        self.user = parsed.username or config.get("user")
-        self.port = parsed.port
+        self.host = config["host"]
+        self.user = config.get("user")
+        self.port = config.get("port")
 
         self.hdfscli_config = config.get("hdfscli_config")
         self.token = config.get("webhdfs_token")
         self.alias = config.get("webhdfs_alias")
+
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        from fsspec.implementations.webhdfs import WebHDFS
+
+        return (
+            WebHDFS._get_kwargs_from_urls(  # pylint:disable=protected-access
+                urlpath
+            )
+        )
 
     @wrap_prop(threading.Lock())
     @cached_property

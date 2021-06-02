@@ -25,7 +25,7 @@ def test_public_auth_method(dvc):
 
     fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() is None
+    assert fs._auth_method(config["url"]) is None
 
 
 def test_basic_auth_method(dvc):
@@ -44,8 +44,8 @@ def test_basic_auth_method(dvc):
 
     fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() == auth
-    assert isinstance(fs._auth_method(), HTTPBasicAuth)
+    assert fs._auth_method(config["url"]) == auth
+    assert isinstance(fs._auth_method(config["url"]), HTTPBasicAuth)
 
 
 def test_digest_auth_method(dvc):
@@ -64,8 +64,8 @@ def test_digest_auth_method(dvc):
 
     fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() == auth
-    assert isinstance(fs._auth_method(), HTTPDigestAuth)
+    assert fs._auth_method(config["url"]) == auth
+    assert isinstance(fs._auth_method(config["url"]), HTTPDigestAuth)
 
 
 def test_custom_auth_method(dvc):
@@ -81,7 +81,7 @@ def test_custom_auth_method(dvc):
 
     fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() is None
+    assert fs._auth_method(config["url"]) is None
     assert header in fs.headers
     assert fs.headers[header] == password
 
@@ -123,9 +123,9 @@ def test_http_method(dvc):
 
     fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() == auth
+    assert fs._auth_method(config["url"]) == auth
     assert fs.method == "PUT"
-    assert isinstance(fs._auth_method(), HTTPBasicAuth)
+    assert isinstance(fs._auth_method(config["url"]), HTTPBasicAuth)
 
 
 def test_exists(mocker):

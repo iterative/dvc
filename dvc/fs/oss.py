@@ -42,9 +42,6 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def __init__(self, **config):
         super().__init__(**config)
 
-        url = config.get("url")
-        self.path_info = self.PATH_CLS(url) if url else None
-
         self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
 
         self.key_id = (

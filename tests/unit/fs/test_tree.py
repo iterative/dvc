@@ -16,12 +16,12 @@ def test_get_cloud_fs(tmp_dir, dvc):
     first = base / "first"
     second = first / "second"
 
-    cls, config = get_cloud_fs(dvc, name="base")
-    assert cls(**config).path_info == base
-    cls, config = get_cloud_fs(dvc, name="first")
-    assert cls(**config).path_info == first
-    cls, config = get_cloud_fs(dvc, name="second")
-    assert cls(**config).path_info == second
+    _, _, path_info = get_cloud_fs(dvc, name="base")
+    assert path_info == base
+    _, _, path_info = get_cloud_fs(dvc, name="first")
+    assert path_info == first
+    _, _, path_info = get_cloud_fs(dvc, name="second")
+    assert path_info == second
 
 
 def test_get_cloud_fs_validate(tmp_dir, dvc):
@@ -39,11 +39,9 @@ def test_get_cloud_fs_validate(tmp_dir, dvc):
         default=False,
     )
 
-    assert get_cloud_fs(dvc, name="base")[1] == {
-        "url": "ssh://example.com/path"
-    }
+    assert get_cloud_fs(dvc, name="base")[1] == {"host": "example.com"}
     assert get_cloud_fs(dvc, name="first")[1] == {
-        "url": "ssh://example.com/path/first",
+        "host": "example.com",
         "type": ["symlink"],
     }
 

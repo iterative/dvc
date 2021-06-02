@@ -457,7 +457,7 @@ def test_upload_exists(tmp_dir, dvc, local_remote):
     remote.fs.CACHE_MODE = 0o644
 
     from_info = PathInfo(tmp_dir / "foo")
-    to_info = remote.fs.path_info / "foo"
+    to_info = remote.odb.path_info / "foo"
     remote.fs.upload(from_info, to_info)
     assert remote.fs.exists(to_info)
 

@@ -22,9 +22,9 @@ class LocalObjectDB(ObjectDB):
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, fs, **config):
-        super().__init__(fs, **config)
-        self.cache_dir = config.get("url")
+    def __init__(self, fs, path_info, **config):
+        super().__init__(fs, path_info, **config)
+        self.cache_dir = path_info.fspath
 
         shared = config.get("shared")
         if shared:
@@ -36,11 +36,11 @@ class LocalObjectDB(ObjectDB):
 
     @property
     def cache_dir(self):
-        return self.fs.path_info.fspath if self.fs.path_info else None
+        return self.path_info.fspath if self.path_info else None
 
     @cache_dir.setter
     def cache_dir(self, value):
-        self.fs.path_info = PathInfo(value) if value else None
+        self.path_info = PathInfo(value) if value else None
 
     @cached_property
     def cache_path(self):
@@ -81,13 +81,13 @@ class LocalObjectDB(ObjectDB):
         return ret
 
     def _list_paths(self, prefix=None, progress_callback=None):
-        assert self.fs.path_info is not None
+        assert self.path_info is not None
         if prefix:
-            path_info = self.fs.path_info / prefix[:2]
+            path_info = self.path_info / prefix[:2]
             if not self.fs.exists(path_info):
                 return
         else:
-            path_info = self.fs.path_info
+            path_info = self.path_info
         # NOTE: use utils.fs walk_files since fs.walk_files will not follow
         # symlinks
         if progress_callback:

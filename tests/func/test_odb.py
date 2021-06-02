@@ -88,7 +88,7 @@ class TestExternalCacheDir(TestDvc):
 
         self.dvc.__init__()
 
-        assert self.dvc.odb.ssh.fs.path_info == ssh_url + "/tmp"
+        assert self.dvc.odb.ssh.path_info == ssh_url + "/tmp"
 
 
 class TestSharedCacheDir(TestDir):
