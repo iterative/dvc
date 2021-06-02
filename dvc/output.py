@@ -796,8 +796,8 @@ class Output:
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
 
+        obj = self.odb.get(self.hash_info)
         try:
-            obj = self.odb.get(self.hash_info)
             objects.check(self.odb, obj)
         except (FileNotFoundError, ObjectFormatError):
             self.repo.cloud.pull([obj], show_checksums=False, **kwargs)

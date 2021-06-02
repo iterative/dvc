@@ -8,7 +8,7 @@ from .errors import ObjectFormatError
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.path_info import PathInfo
+    from dvc.types import DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class HashFile:
     def __init__(
         self,
-        path_info: Optional["PathInfo"],
+        path_info: Optional["DvcPath"],
         fs: Optional["BaseFileSystem"],
         hash_info: "HashInfo",
         name: Optional[str] = None,
