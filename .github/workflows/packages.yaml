@@ -7,7 +7,7 @@ on:
     types: [released, prereleased]
 jobs:
   deb:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
@@ -36,7 +36,7 @@ jobs:
         asset_name: dvc_${{ github.event.release.tag_name }}_amd64.deb
         asset_content_type: binary/octet-stream
   rpm:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.8
@@ -125,7 +125,7 @@ jobs:
         asset_name: dvc-${{ github.event.release.tag_name }}.exe
         asset_content_type: binary/octet-stream
   pip:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2.3.4
     - name: Set up Python 3.7
