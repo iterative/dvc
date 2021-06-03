@@ -1,15 +1,6 @@
-from typing import NamedTuple, Optional
-
 from voluptuous import Required
 
-from dvc.path_info import PathInfo
-
 from .base import Dependency
-
-
-class RepoPair(NamedTuple):
-    url: str
-    rev: Optional[str] = None
 
 
 class RepoDependency(Dependency):
@@ -37,37 +28,12 @@ class RepoDependency(Dependency):
     def is_in_repo(self):
         return False
 
-    @property
-    def repo_pair(self) -> RepoPair:
-        d = self.def_repo
-        rev = d.get(self.PARAM_REV_LOCK) or d.get(self.PARAM_REV)
-        return RepoPair(d[self.PARAM_URL], rev)
-
     def __str__(self):
         return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
 
-    def _make_repo(self, *, locked=True, **kwargs):
-        from dvc.external_repo import external_repo
-
-        d = self.def_repo
-        rev = (d.get("rev_lock") if locked else None) or d.get("rev")
-        return external_repo(d["url"], rev=rev, **kwargs)
-
-    def _get_hash(self, locked=True):
-        from dvc.objects.stage import stage
-
-        with self._make_repo(locked=locked) as repo:
-            path_info = PathInfo(repo.root_dir) / self.def_path
-            return stage(
-                self.repo.odb.local,
-                path_info,
-                repo.repo_fs,
-                self.repo.odb.local.fs.PARAM_CHECKSUM,
-            ).hash_info
-
     def workspace_status(self):
-        current = self._get_hash(locked=True)
-        updated = self._get_hash(locked=False)
+        current = self.get_obj(locked=True).hash_info
+        updated = self.get_obj(locked=False).hash_info
 
         if current != updated:
             return {str(self): "update available"}
@@ -85,25 +51,14 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError
         from dvc.objects import save
-        from dvc.objects.stage import stage
 
         odb = self.repo.odb.local
 
-        with self._make_repo(cache_dir=odb.cache_dir) as repo:
-            if self.def_repo.get(self.PARAM_REV_LOCK) is None:
-                self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
-            path_info = PathInfo(repo.root_dir) / self.def_path
-            try:
-                repo.fetch([path_info.fspath], jobs=jobs, recursive=True)
-            except (NoOutputOrStageError, NoRemoteError):
-                pass
-            obj = stage(
-                odb, path_info, repo.repo_fs, odb.fs.PARAM_CHECKSUM, jobs=jobs
-            )
-            save(odb, obj, jobs=jobs)
+        obj = self.get_obj()
+        save(odb, obj, jobs=jobs)
+        if self.def_repo.get(self.PARAM_REV_LOCK) is None:
+            self.def_repo[self.PARAM_REV_LOCK] = obj.repo_rev
 
         checkout(
             to.path_info,
@@ -126,3 +81,16 @@ class RepoDependency(Dependency):
         # origin project url and rev_lock, and it makes RepoDependency
         # immutable, hence its impossible for checksum to change.
         return False
+
+    def get_obj(
+        self, locked=True, **kwargs
+    ):  # pylint: disable=arguments-differ
+        from dvc.objects.external import ExternalRepoFile
+
+        d = self.def_repo
+        rev = (d.get(self.PARAM_REV_LOCK) if locked else None) or d.get(
+            self.PARAM_REV
+        )
+        return ExternalRepoFile(
+            self.repo.odb.local, d[self.PARAM_URL], rev, self.def_path
+        )
