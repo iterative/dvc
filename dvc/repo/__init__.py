@@ -1,6 +1,5 @@
 import logging
 import os
-from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional
@@ -341,7 +340,7 @@ class Repo:
             existing_stages = self.stages if old_stages is None else old_stages
             build_graph(existing_stages + new_stages)
 
-    def used_cache(
+    def used_objs(
         self,
         targets=None,
         all_branches=False,
@@ -367,12 +366,10 @@ class Repo:
         the scope.
 
         Returns:
-            A dictionary with Schemes (representing output's location) mapped
-            to items containing the output's `dumpd` names and the output's
-            children (if the given output is a directory).
+            A set of HashFile objects which are referenced in the specified
+            targets.
         """
         used_objs = set()
-        used_external = defaultdict(set)
 
         def _add_suffix(objs, suffix):
             from dvc.objects.tree import Tree
@@ -400,7 +397,7 @@ class Repo:
             )
 
             for stage, filter_info in pairs:
-                objs, external = stage.get_used_cache(
+                objs = stage.get_used_objs(
                     remote=remote,
                     force=force,
                     jobs=jobs,
@@ -409,18 +406,14 @@ class Repo:
                 if branch:
                     _add_suffix(objs, f" ({branch})")
                 used_objs.update(objs)
-                for repo_pair, paths in external.items():
-                    used_external[repo_pair].update(paths)
 
         if used_run_cache:
-            objs, external = self.stage_cache.get_used_cache(
+            objs = self.stage_cache.get_used_objs(
                 used_run_cache, remote=remote, force=force, jobs=jobs
             )
             used_objs.update(objs)
-            for repo_pair, paths in external.items():
-                used_external[repo_pair].update(paths)
 
-        return used_objs, used_external
+        return used_objs
 
     @cached_property
     def outs_trie(self):

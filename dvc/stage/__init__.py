@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Set
 
 from funcy import cached_property, project
 
@@ -35,7 +35,6 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from dvc.dependency.repo import RepoPair
     from dvc.dvcfile import DVCFile
     from dvc.objects.file import HashFile
 
@@ -624,20 +623,12 @@ class Stage(params.StageParams):
             for out in self.filter_outs(filter_info)
         )
 
-    def get_used_cache(
-        self, *args, **kwargs
-    ) -> Tuple[Set["HashFile"], Dict["RepoPair", Set[str]]]:
-        """Return tuple of (used_objects, used_external) for this stage."""
+    def get_used_objs(self, *args, **kwargs) -> Set["HashFile"]:
+        """Return set of objects used by this stage."""
         used_objs = set()
-        used_external = defaultdict(set)
         for out in self.filter_outs(kwargs.get("filter_info")):
             used_objs.update(out.get_used_objs(*args, **kwargs))
-            for repo_pair, path in out.get_used_external(
-                *args, **kwargs
-            ).items():
-                used_external[repo_pair].add(path)
-
-        return used_objs, used_external
+        return used_objs
 
     @staticmethod
     def _check_can_merge(stage, ancestor_out=None):

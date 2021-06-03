@@ -2,7 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
-from typing import TYPE_CHECKING, Dict, Set, Type
+from typing import TYPE_CHECKING, Set, Type
 from urllib.parse import urlparse
 
 from funcy import collecting, project
@@ -33,8 +33,6 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc.dependency.repo import RepoPair
-
     from .objects.file import HashFile
 
 logger = logging.getLogger(__name__)
@@ -842,6 +840,9 @@ class Output:
         if not self.use_cache:
             return set()
 
+        if self.stage.is_repo_import:
+            return self.get_used_external(**kwargs)
+
         if not self.hash_info:
             msg = (
                 "Output '{}'({}) is missing version info. "
@@ -877,12 +878,14 @@ class Output:
             for key, entry_obj in obj:
                 entry_obj.name = os.path.join(str(self), *key)
 
-    def get_used_external(self, **kwargs) -> Dict["RepoPair", str]:
+    def get_used_external(self, **kwargs) -> Set["HashFile"]:
         if not self.use_cache or not self.stage.is_repo_import:
-            return {}
+            return set()
 
         (dep,) = self.stage.deps
-        return {dep.repo_pair: dep.def_path}
+        obj = dep.get_obj()
+        self._set_obj_names(obj)
+        return {obj}
 
     def _validate_output_path(self, path, stage=None):
         from dvc.dvcfile import is_valid_filename
