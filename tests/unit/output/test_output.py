@@ -79,7 +79,7 @@ def test_checksum_schema_fail(value):
         ),
     ],
 )
-def test_get_used_cache(exists, expected_message, mocker, caplog):
+def test_get_used_objs(exists, expected_message, mocker, caplog):
     stage = mocker.MagicMock()
     mocker.patch.object(stage, "__str__", return_value="stage: 'stage.dvc'")
     mocker.patch.object(stage, "addressing", "stage.dvc")
@@ -100,5 +100,4 @@ def test_get_used_cache(exists, expected_message, mocker, caplog):
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert set() == output.get_used_objs()
-        assert {} == output.get_used_external()
     assert first(caplog.messages) == expected_message
