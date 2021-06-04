@@ -58,8 +58,14 @@ class ExternalRepoFile(HashFile):
 
     def _make_repo(self, **kwargs):
         from dvc.external_repo import external_repo
+        from dvc.scm.base import CloneError
 
-        return external_repo(self.repo_url, rev=self.repo_rev, **kwargs)
+        try:
+            return external_repo(self.repo_url, rev=self.repo_rev, **kwargs)
+        except CloneError as exc:
+            raise ObjectFormatError(
+                f"Could not clone external obj repo '{self.repo_url}'"
+            ) from exc
 
     def get_staged(self, odb: Optional["ObjectDB"] = None):
         from . import load

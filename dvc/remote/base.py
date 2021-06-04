@@ -8,6 +8,7 @@ from functools import partial, wraps
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
+from dvc.objects.external import ExternalRepoFile
 from dvc.objects.tree import Tree
 
 from ..progress import Tqdm
@@ -148,7 +149,10 @@ class Remote:
         md5s = set()
         dir_objs = {}
         for obj in objs:
-            if obj.fs.scheme != cache.fs.scheme:
+            if (
+                isinstance(obj, ExternalRepoFile)
+                or obj.fs.scheme != cache.fs.scheme
+            ):
                 continue
             md5s.add(obj.hash_info.value)
             if isinstance(obj, Tree):

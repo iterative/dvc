@@ -6,6 +6,7 @@ from copy import copy
 from typing import Optional
 
 from dvc.objects.errors import ObjectFormatError
+from dvc.objects.external import ExternalRepoFile
 from dvc.objects.file import HashFile
 from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
@@ -320,6 +321,8 @@ class ObjectDB:
     def gc(self, used, jobs=None):
         used_hashes = set()
         for obj in used:
+            if isinstance(obj, ExternalRepoFile):
+                continue
             used_hashes.add(obj.hash_info.value)
             if isinstance(obj, Tree):
                 used_hashes.update(
