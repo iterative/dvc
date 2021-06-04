@@ -49,6 +49,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         self.headers = {}
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
+        self.chunked_upload = config.get("chunked_upload", True)
 
     def _auth_method(self, url):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
@@ -128,7 +129,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # Sometimes servers are configured to forbid HEAD requests
         # Context: https://github.com/iterative/dvc/issues/4131
         with self.request("GET", url, stream=True) as r:
-            if r.ok:
+            if r.ok or r.status_code == 404:
                 return r
 
         return response
@@ -147,7 +148,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         size = self._content_length(resp)
         return {"etag": etag, "size": size}
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj_chunked(self, fobj, to_info):
         def chunks(fobj):
             while True:
                 chunk = fobj.read(self.CHUNK_SIZE)
@@ -159,6 +160,17 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
 
+    def _upload_fobj_not_chunked(self, fobj, to_info):
+        response = self.request(self.method, to_info.url, files={"file": fobj})
+        if response.status_code not in (200, 201):
+            raise HTTPError(response.status_code, response.reason)
+
+    def _upload_fobj(self, fobj, to_info):
+        if self.chunked_upload:
+            return self._upload_fobj_chunked(fobj, to_info)
+        else:
+            return self._upload_fobj_not_chunked(fobj, to_info)
+        
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)
         if response.status_code != 200:
