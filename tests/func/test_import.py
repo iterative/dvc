@@ -305,7 +305,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove(dst_cache)
 
     with patch(
-        "dvc.fs.local.LocalFileSystem._download", side_effect=Exception
+        "dvc.objects.db.base.ObjectDB.add", side_effect=OSError
     ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
@@ -530,7 +530,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    from dvc.data_cloud import DataCloud
+    import dvc as dvc_module
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
@@ -545,7 +545,7 @@ def test_import_with_jobs(mocker, dvc, erepo_dir):
             commit="init",
         )
 
-    spy = mocker.spy(DataCloud, "pull")
+    spy = mocker.spy(dvc_module.objects, "save")
     dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
     run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
     assert run_jobs == 3
