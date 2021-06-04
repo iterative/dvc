@@ -1,8 +1,10 @@
 import logging
-import os
+
+from funcy import lsplit
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError, NoOutputOrStageError
+from dvc.exceptions import DownloadError
+from dvc.objects.external import ExternalRepoFile
 
 from ..scheme import Schemes
 from . import locked
@@ -41,7 +43,7 @@ def fetch(
     if isinstance(targets, str):
         targets = [targets]
 
-    used_objs, used_external = self.used_cache(
+    objs = self.used_objs(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -52,6 +54,9 @@ def fetch(
         jobs=jobs,
         recursive=recursive,
         revs=revs,
+    )
+    used_external, used_objs = lsplit(
+        lambda x: isinstance(x, ExternalRepoFile), objs
     )
 
     downloaded = 0
@@ -74,8 +79,8 @@ def fetch(
     except DownloadError as exc:
         failed += exc.amount
 
-    for repo_pair, files in used_external.items():
-        d, f = _fetch_external(self, repo_pair.url, repo_pair.rev, files, jobs)
+    if used_external:
+        d, f = _fetch_external(self, used_external, jobs)
         downloaded += d
         failed += f
 
@@ -85,12 +90,9 @@ def fetch(
     return downloaded
 
 
-def _fetch_external(self, repo_url, repo_rev, files, jobs):
-    from dvc.external_repo import external_repo
+def _fetch_external(self, external_objs, jobs):
     from dvc.objects import save
-    from dvc.objects.stage import stage
-    from dvc.path_info import PathInfo
-    from dvc.scm.base import CloneError
+    from dvc.objects.errors import ObjectError
 
     failed = 0
 
@@ -100,29 +102,15 @@ def _fetch_external(self, repo_url, repo_rev, files, jobs):
         results.append(result)
 
     odb = self.odb.local
-    try:
-        with external_repo(
-            repo_url, repo_rev, cache_dir=odb.cache_dir
-        ) as repo:
-            root = PathInfo(repo.root_dir)
-            for path in files:
-                path_info = root / path
-                try:
-                    used_objs, _ = repo.used_cache(
-                        [os.fspath(path_info)],
-                        force=True,
-                        jobs=jobs,
-                        recursive=True,
-                    )
-                    cb(repo.cloud.pull(used_objs, jobs))
-                except (NoOutputOrStageError, NoRemoteError):
-                    pass
-                obj = stage(odb, path_info, repo.repo_fs, "md5", jobs=jobs)
-                save(odb, obj, jobs=jobs, download_callback=cb)
-    except CloneError:
-        failed += 1
-        logger.exception(
-            "failed to fetch data for '{}'".format(", ".join(files))
-        )
+    for obj in external_objs:
+        try:
+            save(odb, obj, jobs=jobs, download_callback=cb)
+        except (ObjectError, OSError):
+            failed += 1
+            logger.exception(
+                "failed to fetch data for '{}'".format(
+                    ", ".join(obj.path_info)
+                )
+            )
 
     return sum(results), failed

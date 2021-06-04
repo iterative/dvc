@@ -24,7 +24,7 @@ def push(
 
     expanded_targets = glob_targets(targets, glob=glob)
 
-    used_objs, _ = self.used_cache(
+    used_objs = self.used_objs(
         expanded_targets,
         all_branches=all_branches,
         all_tags=all_tags,

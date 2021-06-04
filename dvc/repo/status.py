@@ -78,7 +78,7 @@ def _cloud_status(
     """
     import dvc.remote.base as cloud
 
-    used_objs, _ = self.used_cache(
+    used_objs = self.used_objs(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,

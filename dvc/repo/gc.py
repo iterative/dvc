@@ -61,7 +61,7 @@ def gc(
             stack.enter_context(repo.lock)
 
         for repo in all_repos + [self]:
-            objs, _ = repo.used_cache(
+            objs = repo.used_objs(
                 all_branches=all_branches,
                 with_deps=with_deps,
                 all_tags=all_tags,
