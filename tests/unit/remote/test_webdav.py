@@ -8,13 +8,11 @@ password = "password"
 
 
 def test_user(dvc):
-    fs = WebDAVFileSystem(host=url, user=user)
-
+    fs = WebDAVFileSystem(url=url, user=user)
     assert fs.user == user
 
 
 def test_password(dvc):
-    config = {"host": url, "user": user, "password": password}
+    config = {"url": url, "user": user, "password": password}
     fs = WebDAVFileSystem(**config)
-
     assert fs.password == password
