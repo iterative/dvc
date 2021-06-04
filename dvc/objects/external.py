@@ -32,6 +32,7 @@ class ExternalRepoFile(HashFile):
         self.def_odb = def_odb
         self.repo_url = repo_url
         self.repo_rev = repo_rev
+        self._resolved_rev = None
         self.path_info = path_info
         self._hash_info: Optional["HashInfo"] = None
         self.name = name
@@ -82,8 +83,8 @@ class ExternalRepoFile(HashFile):
 
         cache_dir = getattr(odb, "cache_dir", None)
         with self._make_repo(cache_dir=cache_dir) as repo:
+            self._resolved_rev = repo.get_rev()
             path_info = PathInfo(repo.root_dir) / str(self.path_info)
-            self.repo_rev = repo.get_rev()
             obj = stage(
                 odb,
                 path_info,
@@ -99,7 +100,8 @@ class ExternalRepoFile(HashFile):
             self.get_staged()
         return self._hash_info
 
-    @property
-    def latest_rev(self):
-        with self._make_repo(locked=False) as repo:
-            return repo.get_rev()
+    def get_rev(self):
+        if self._resolved_rev is None:
+            with self._make_repo() as repo:
+                self._resolved_rev = repo.get_rev()
+        return self._resolved_rev

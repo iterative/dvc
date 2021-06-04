@@ -58,7 +58,7 @@ class RepoDependency(Dependency):
         obj = self.get_obj()
         save(odb, obj, jobs=jobs)
         if self.def_repo.get(self.PARAM_REV_LOCK) is None:
-            self.def_repo[self.PARAM_REV_LOCK] = obj.repo_rev
+            self.def_repo[self.PARAM_REV_LOCK] = obj.get_rev()
 
         obj = load(odb, obj.hash_info)
         checkout(
@@ -74,7 +74,9 @@ class RepoDependency(Dependency):
         if rev:
             self.def_repo[self.PARAM_REV] = rev
 
-        self.def_repo[self.PARAM_REV_LOCK] = self.get_obj().latest_rev
+        self.def_repo[self.PARAM_REV_LOCK] = self.get_obj(
+            locked=False
+        ).get_rev()
 
     def changed_checksum(self):
         # From current repo point of view what describes RepoDependency is its
