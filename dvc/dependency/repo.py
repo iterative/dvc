@@ -51,7 +51,7 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects import save
+        from dvc.objects import load, save
 
         odb = self.repo.odb.local
 
@@ -60,6 +60,7 @@ class RepoDependency(Dependency):
         if self.def_repo.get(self.PARAM_REV_LOCK) is None:
             self.def_repo[self.PARAM_REV_LOCK] = obj.repo_rev
 
+        obj = load(odb, obj.hash_info)
         checkout(
             to.path_info,
             to.fs,
@@ -73,8 +74,7 @@ class RepoDependency(Dependency):
         if rev:
             self.def_repo[self.PARAM_REV] = rev
 
-        with self._make_repo(locked=False) as repo:
-            self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
+        self.def_repo[self.PARAM_REV_LOCK] = self.get_obj().latest_rev
 
     def changed_checksum(self):
         # From current repo point of view what describes RepoDependency is its

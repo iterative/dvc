@@ -20,6 +20,9 @@ def save(
     jobs: Optional[int] = None,
     **kwargs,
 ):
+    if isinstance(obj, ExternalRepoFile):
+        obj = obj.get_staged(odb)
+
     if isinstance(obj, Tree):
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             for future in Tqdm(
@@ -38,8 +41,6 @@ def save(
                 unit="file",
             ):
                 future.result()
-    elif isinstance(obj, ExternalRepoFile):
-        obj = obj.fetch_obj(odb, jobs=jobs)
 
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 

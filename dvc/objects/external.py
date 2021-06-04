@@ -3,9 +3,11 @@ from typing import TYPE_CHECKING, Optional
 
 from dvc.path_info import PathInfo
 
+from .errors import ObjectFormatError
 from .file import HashFile
 
 if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
     from dvc.types import DvcPath
 
     from .db.base import ObjectDB
@@ -31,11 +33,14 @@ class ExternalRepoFile(HashFile):
         self.repo_url = repo_url
         self.repo_rev = repo_rev
         self.path_info = path_info
-        self._hash_info = None
+        self._hash_info: Optional["HashInfo"] = None
         self.name = name
 
     def __str__(self):
-        return f"external object {self.repo_url}@{self.repo_rev}"
+        return (
+            f"external object {self.repo_url}: {self.path_info} "
+            f"@ {self.repo_rev}"
+        )
 
     def __bool__(self):
         return bool(self._hash_info)
@@ -56,27 +61,22 @@ class ExternalRepoFile(HashFile):
 
         return external_repo(self.repo_url, rev=self.repo_rev, **kwargs)
 
-    def _stage(
-        self,
-        odb: Optional["ObjectDB"] = None,
-        fetch: bool = False,
-        jobs: int = None,
-    ):
-        from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError
-
+    def get_staged(self, odb: Optional["ObjectDB"] = None):
+        from . import load
         from .stage import stage
 
         odb = odb or self.def_odb
-        cache_dir = getattr(odb, "cache_dir", None) if fetch else None
 
+        if self._hash_info is not None:
+            try:
+                odb.check(self._hash_info, False)
+                return load(odb, self._hash_info)
+            except (FileNotFoundError, ObjectFormatError):
+                pass
+
+        cache_dir = getattr(odb, "cache_dir", None)
         with self._make_repo(cache_dir=cache_dir) as repo:
             path_info = PathInfo(repo.root_dir) / str(self.path_info)
-            if fetch:
-                try:
-                    repo.fetch([path_info.fspath], jobs=jobs, recursive=True)
-                except (NoOutputOrStageError, NoRemoteError):
-                    pass
             self.repo_rev = repo.get_rev()
             obj = stage(
                 odb,
@@ -90,8 +90,10 @@ class ExternalRepoFile(HashFile):
     @property
     def hash_info(self):
         if self._hash_info is None:
-            self._stage()
+            self.get_staged()
         return self._hash_info
 
-    def fetch_obj(self, odb: "ObjectDB", jobs: int = None):
-        return self._stage(odb, fetch=True, jobs=jobs)
+    @property
+    def latest_rev(self):
+        with self._make_repo(locked=False) as repo:
+            return repo.get_rev()
