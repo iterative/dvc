@@ -1,10 +1,22 @@
 import os
 from itertools import chain
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import PathMissingError
 
+if TYPE_CHECKING:
+    from dvc.fs.repo import RepoFileSystem
 
-def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
+    from . import Repo
+
+
+def ls(
+    url: str,
+    path: Optional[str] = None,
+    rev: str = None,
+    recursive: bool = None,
+    dvc_only: bool = False,
+):
     """Methods for getting files and outputs for the repo.
 
     Args:
@@ -31,10 +43,7 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
     with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
         path = path or ""
 
-        ret = _ls(repo.repo_fs, path, recursive, dvc_only)
-
-        if path and not ret:
-            raise PathMissingError(path, repo, dvc_only=dvc_only)
+        ret = _ls(repo, path, recursive, dvc_only)
 
         ret_list = []
         for path, info in ret.items():
@@ -44,13 +53,16 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
         return ret_list
 
 
-def _ls(fs, path, recursive=None, dvc_only=False):
+def _ls(
+    repo: "Repo", path: str, recursive: bool = None, dvc_only: bool = False
+):
+    fs: "RepoFileSystem" = repo.repo_fs
     fs_path = fs.from_os_path(path)
 
     try:
         fs_path = fs.info(fs_path)["name"]
     except FileNotFoundError:
-        return {}
+        raise PathMissingError(path, repo, dvc_only=dvc_only)
 
     infos = {}
     for root, dirs, files in fs.walk(
