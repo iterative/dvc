@@ -273,6 +273,24 @@ def test_ls_repo_with_removed_dvc_dir_with_path_file(tmp_dir, dvc, scm):
     match_files(files, ((("file",), True),))
 
 
+def test_ls_repo_with_rev(erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
+        erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
+
+    rev = erepo_dir.scm.list_all_commits()[1]
+    files = Repo.ls(os.fspath(erepo_dir), rev=rev)
+    match_files(
+        files,
+        (
+            ((".dvcignore",), False),
+            ((".gitignore",), False),
+            (("README.md",), False),
+            (("model",), False),
+        ),
+    )
+
+
 def test_ls_remote_repo(erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
