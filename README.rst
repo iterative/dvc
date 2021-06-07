@@ -204,6 +204,10 @@ Comparison to related technologies
 #. `DAGsHub <https://dagshub.com/>`_ - online service of Git+DVC repositories with pipeline and metrics visualization and
    DVC-specific cloud storage.
 
+#. `DVC Studio <https://studio.iterative.ai/>`_ - online service of DVC repositories visualisation from DVC team. Also,
+   integrated with `CML (CI/CD for ML) <https://cml.dev/>`_ for training models in clouds and Kubernetes.
+
+
 Contributing
 ============
 
