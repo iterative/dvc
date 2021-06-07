@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Slack Notification
-      uses: rtCamp/action-slack-notify@v2.1.3
+      uses: rtCamp/action-slack-notify@v2.2.0
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_COLOR: ${{ job.status }}
