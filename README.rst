@@ -205,7 +205,7 @@ Comparison to related technologies
    DVC-specific cloud storage.
 
 #. `DVC Studio <https://studio.iterative.ai/>`_ - online service of DVC repositories visualisation from DVC team. Also,
-   integrated with `CML (CI/CD for ML) <https://cml.dev/>`_ for training models in clouds and kubernetes.
+   integrated with `CML (CI/CD for ML) <https://cml.dev/>`_ for training models in clouds and Kubernetes.
 
 
 Contributing
