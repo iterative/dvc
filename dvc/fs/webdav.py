@@ -72,10 +72,6 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         # TODO: retry upload on failure
         return self.fs.client.upload_fileobj(fobj, rpath)
 
-    def makedirs(self, path_info):
-        path = self.translate_path_info(path_info)
-        return self.fs.makedirs(path, exist_ok=True)
-
     @lru_cache(512)
     def translate_path_info(self, path):
         if isinstance(path, self.PATH_CLS):
