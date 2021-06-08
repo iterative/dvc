@@ -1,16 +1,23 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional, Set
 
 from dvc.progress import Tqdm
 
 from .tree import Tree
 
 if TYPE_CHECKING:
+    from dvc.remote.base import Remote
+
     from .db.base import ObjectDB
     from .file import HashFile
 
 logger = logging.getLogger(__name__)
+
+
+class UsedObjectsPair(NamedTuple):
+    remote: Optional["Remote"]
+    objs: Set["HashFile"]
 
 
 def save(

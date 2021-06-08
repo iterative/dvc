@@ -1,6 +1,15 @@
+import os
+from typing import TYPE_CHECKING, Dict, List
+
 from voluptuous import Required
 
+from dvc.objects import UsedObjectsPair
+from dvc.path_info import PathInfo
+
 from .base import Dependency
+
+if TYPE_CHECKING:
+    from dvc.objects.file import HashFile
 
 
 class RepoDependency(Dependency):
@@ -19,6 +28,7 @@ class RepoDependency(Dependency):
 
     def __init__(self, def_repo, stage, *args, **kwargs):
         self.def_repo = def_repo
+        self._staged_objs: Dict[str, "HashFile"] = {}
         super().__init__(stage, *args, **kwargs)
 
     def _parse_path(self, fs, path_info):
@@ -57,8 +67,6 @@ class RepoDependency(Dependency):
 
         obj = self.get_obj()
         save(odb, obj, jobs=jobs)
-        if self.def_repo.get(self.PARAM_REV_LOCK) is None:
-            self.def_repo[self.PARAM_REV_LOCK] = obj.get_rev()
 
         obj = load(odb, obj.hash_info)
         checkout(
@@ -73,10 +81,8 @@ class RepoDependency(Dependency):
     def update(self, rev=None):
         if rev:
             self.def_repo[self.PARAM_REV] = rev
-
-        self.def_repo[self.PARAM_REV_LOCK] = self.get_obj(
-            locked=False
-        ).get_rev()
+        with self._make_repo(locked=False) as repo:
+            self.def_repo[self.PARAM_REV_LOCK] = repo.get_rev()
 
     def changed_checksum(self):
         # From current repo point of view what describes RepoDependency is its
@@ -84,15 +90,79 @@ class RepoDependency(Dependency):
         # immutable, hence its impossible for checksum to change.
         return False
 
-    def get_obj(
-        self, locked=True, **kwargs
-    ):  # pylint: disable=arguments-differ
-        from dvc.objects.external import ExternalRepoFile
+    def get_used_objs(self, **kwargs) -> List[UsedObjectsPair]:
+        from dvc.config import NoRemoteError
+        from dvc.exceptions import NoOutputOrStageError
+        from dvc.objects.stage import stage
+
+        odb = self.repo.odb.local
+        locked = kwargs.pop("locked", True)
+        with self._make_repo(locked=locked, cache_dir=odb.cache_dir) as repo:
+            rev = repo.get_rev()
+            if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
+                self.def_repo[self.PARAM_REV_LOCK] = rev
+
+            path_info = PathInfo(repo.root_dir) / str(self.def_path)
+            try:
+                imported_objs = repo.used_objs(
+                    [os.fspath(path_info)],
+                    force=True,
+                    jobs=kwargs.get("jobs"),
+                    recursive=True,
+                )
+            except (NoRemoteError, NoOutputOrStageError):
+                pass
+
+            def_remote = repo.cloud.get_remote()
+            result = [UsedObjectsPair(def_remote, set())]
+            for remote, objs in imported_objs:
+                if remote is None:
+                    result[0].objs.update(objs)
+                # else ignore chained imports
+
+            staged_obj = stage(
+                odb,
+                path_info,
+                repo.repo_fs,
+                odb.fs.PARAM_CHECKSUM,
+            )
+            self._staged_objs[rev] = staged_obj
+            result[0].objs.add(staged_obj)
+            return result
+
+    def get_obj(self, filter_info=None, **kwargs):
+        from dvc.objects.stage import stage
+
+        odb = self.repo.odb.local
+        locked = kwargs.pop("locked", True)
+        with self._make_repo(locked=locked, cache_dir=odb.cache_dir) as repo:
+            rev = repo.get_rev()
+            if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
+                self.def_repo[self.PARAM_REV_LOCK] = rev
+            obj = self._staged_objs.get(rev)
+            if obj is not None:
+                return obj
+
+            path_info = PathInfo(repo.root_dir) / str(self.def_path)
+            obj = stage(
+                odb,
+                path_info,
+                repo.repo_fs,
+                odb.fs.PARAM_CHECKSUM,
+            )
+            def_remote = repo.cloud.get_remote()
+            self._staged_objs[rev] = UsedObjectsPair(obj, def_remote)
+            return obj
+
+    def _make_repo(self, locked=True, **kwargs):
+        from dvc.external_repo import external_repo
 
         d = self.def_repo
-        rev = (d.get(self.PARAM_REV_LOCK) if locked else None) or d.get(
+        rev = self._get_rev(locked=locked)
+        return external_repo(d[self.PARAM_URL], rev=rev, **kwargs)
+
+    def _get_rev(self, locked=True):
+        d = self.def_repo
+        return (d.get(self.PARAM_REV_LOCK) if locked else None) or d.get(
             self.PARAM_REV
-        )
-        return ExternalRepoFile(
-            self.repo.odb.local, d[self.PARAM_URL], rev, self.def_path
         )
