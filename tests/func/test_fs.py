@@ -1,3 +1,4 @@
+import io
 import os
 from operator import itemgetter
 from os.path import join
@@ -324,7 +325,7 @@ def test_fs_ls(dvc, cloud):
         pytest.lazy_fixture("gdrive"),
     ],
 )
-def test_fs_find_recursive(dvc, cloud):
+def test_fs_find(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
     cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
@@ -382,3 +383,28 @@ def test_fs_fsspec_path_management(dvc, cloud):
     data_details = fs.info(data)
     assert data_details["name"].rstrip("/") == data.path
     assert data_details["type"] == "directory"
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("webdav"),
+    ],
+)
+def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
+
+    with io.BytesIO(b"foo") as stream:
+        fs.upload_fobj(stream, cloud / "dir" / "foo")
+
+    assert fs.isdir(cloud / "dir")
+    assert fs.exists(cloud / "dir" / "foo")
+
+    fs.copy(cloud / "dir" / "foo", cloud / "dir2" / "foo")
+    assert fs.isdir(cloud / "dir2")
+    assert fs.exists(cloud / "dir2" / "foo")

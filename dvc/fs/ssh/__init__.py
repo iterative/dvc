@@ -173,7 +173,7 @@ class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         with self.ssh() as ssh:
             ssh.remove(path_info.path)
 
-    def makedirs(self, path_info):
+    def makedirs(self, path_info, **kwargs):
         with self.ssh() as ssh:
             ssh.makedirs(path_info.path)
 

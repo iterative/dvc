@@ -79,8 +79,8 @@ class LocalFileSystem(BaseFileSystem):
                 raise NotImplementedError
         remove(path_info)
 
-    def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True)
+    def makedirs(self, path_info, **kwargs):
+        makedirs(path_info, exist_ok=kwargs.pop("exist_ok", True))
 
     def isexec(self, path_info):
         mode = self.stat(path_info).st_mode
