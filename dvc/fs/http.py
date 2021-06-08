@@ -157,19 +157,18 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 yield chunk
 
         response = self.request(self.method, to_info.url, data=chunks(fobj))
-        if response.status_code not in (200, 201):
-            raise HTTPError(response.status_code, response.reason)
+        return response
 
     def _upload_fobj_not_chunked(self, fobj, to_info):
-        response = self.request(self.method, to_info.url, files={"file": fobj})
-        if response.status_code not in (200, 201):
-            raise HTTPError(response.status_code, response.reason)
+        return self.request(self.method, to_info.url, files={"file": fobj})
 
     def _upload_fobj(self, fobj, to_info):
         if self.chunked_upload:
-            return self._upload_fobj_chunked(fobj, to_info)
+            response = self._upload_fobj_chunked(fobj, to_info)
         else:
-            return self._upload_fobj_not_chunked(fobj, to_info)
+            response = self._upload_fobj_not_chunked(fobj, to_info)
+        if response.status_code not in (200, 201):
+            raise HTTPError(response.status_code, response.reason)
         
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)
