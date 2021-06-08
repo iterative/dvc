@@ -49,19 +49,19 @@ def test_used_objs(tmp_dir, dvc, path):
 
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
 
-    expected_objs = {
+    expected = {
         HashInfo("md5", "70922d6bf66eb073053a82f77d58c536.dir"),
         HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac"),
     }
 
-    objs = dvc.used_objs([path])
     used = set()
-    for obj in objs:
-        used.add(obj.hash_info)
-        if isinstance(obj, Tree):
-            used.update(entry_obj.hash_info for _, entry_obj in obj)
+    for _, objs in dvc.used_objs([path]):
+        for obj in objs:
+            used.add(obj.hash_info)
+            if isinstance(obj, Tree):
+                used.update(entry_obj.hash_info for _, entry_obj in obj)
 
-    assert used == expected_objs
+    assert used == expected
 
 
 def test_locked(mocker):

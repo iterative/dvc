@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from funcy import cached_property, project
 
@@ -15,6 +15,7 @@ from dvc.exceptions import (
     DvcException,
     MergeError,
 )
+from dvc.objects import UsedObjectsPair
 from dvc.utils import relpath
 
 from . import params
@@ -36,7 +37,6 @@ from .utils import (
 
 if TYPE_CHECKING:
     from dvc.dvcfile import DVCFile
-    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
@@ -623,12 +623,16 @@ class Stage(params.StageParams):
             for out in self.filter_outs(filter_info)
         )
 
-    def get_used_objs(self, *args, **kwargs) -> Set["HashFile"]:
+    def get_used_objs(self, *args, **kwargs) -> List[UsedObjectsPair]:
         """Return set of objects used by this stage."""
-        used_objs = set()
+        result = [UsedObjectsPair(None, set())]
         for out in self.filter_outs(kwargs.get("filter_info")):
-            used_objs.update(out.get_used_objs(*args, **kwargs))
-        return used_objs
+            for used in out.get_used_objs(*args, **kwargs):
+                if used.remote is None:
+                    result[0].objs.update(used.objs)
+                else:
+                    result.append(used)
+        return result
 
     @staticmethod
     def _check_can_merge(stage, ancestor_out=None):

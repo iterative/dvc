@@ -252,12 +252,15 @@ class StageCache:
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):
         """Return used cache for the specified run-cached stages."""
+        from dvc.objects import UsedObjectsPair
+
         used_objs = set()
         for key, value in used_run_cache:
             entry = self._load_cache(key, value)
             if not entry:
                 continue
             stage = self._create_stage(entry)
-            objs = stage.get_used_objs(*args, **kwargs)
-            used_objs.update(objs)
-        return used_objs
+            for used in stage.get_used_objs(*args, **kwargs):
+                if used.remote is None:
+                    used_objs.update(used.objs)
+        return UsedObjectsPair(None, used_objs)

@@ -369,7 +369,9 @@ class Repo:
             A set of HashFile objects which are referenced in the specified
             targets.
         """
-        used_objs = set()
+        from dvc.objects import UsedObjectsPair
+
+        result = [UsedObjectsPair(None, set())]
 
         def _add_suffix(objs, suffix):
             from dvc.objects.tree import Tree
@@ -397,23 +399,26 @@ class Repo:
             )
 
             for stage, filter_info in pairs:
-                objs = stage.get_used_objs(
+                for used in stage.get_used_objs(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
-                )
-                if branch:
-                    _add_suffix(objs, f" ({branch})")
-                used_objs.update(objs)
+                ):
+                    if used.remote is None:
+                        if branch:
+                            _add_suffix(used.objs, f" ({branch})")
+                        result[0].objs.update(used.objs)
+                    else:
+                        result.append(used)
 
         if used_run_cache:
-            objs = self.stage_cache.get_used_objs(
+            for _, objs in self.stage_cache.get_used_objs(
                 used_run_cache, remote=remote, force=force, jobs=jobs
-            )
-            used_objs.update(objs)
+            ):
+                result[0].objs.update(objs)
 
-        return used_objs
+        return result
 
     @cached_property
     def outs_trie(self):
