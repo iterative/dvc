@@ -169,7 +169,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             response = self._upload_fobj_not_chunked(fobj, to_info)
         if response.status_code not in (200, 201):
             raise HTTPError(response.status_code, response.reason)
-        
+
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self.request("GET", from_info.url, stream=True)
         if response.status_code != 200:
