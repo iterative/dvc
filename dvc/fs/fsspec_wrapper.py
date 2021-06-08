@@ -130,12 +130,11 @@ class FSSpecWrapper(BaseFileSystem):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
-        self.makedirs(to_info.parent)
         total = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
             self.upload_fobj(
                 fobj,
-                self._with_bucket(to_info),
+                to_info,
                 desc=name,
                 total=total,
                 no_progress_bar=no_progress_bar,
@@ -162,6 +161,12 @@ class FSSpecWrapper(BaseFileSystem):
 
 # pylint: disable=abstract-method
 class ObjectFSWrapper(FSSpecWrapper):
+    @lru_cache(512)
+    def _with_bucket(self, path):
+        if isinstance(path, self.PATH_CLS):
+            return f"{path.bucket}/{path.path}"
+        return path
+
     def makedirs(self, path_info, exist_ok=True, **kwargs):
         # For object storages make this method a no-op. The original
         # fs.makedirs() method will only check if the bucket exists
