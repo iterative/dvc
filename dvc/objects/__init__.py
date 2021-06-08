@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Optional
 
 from dvc.progress import Tqdm
 
-from .external import ExternalRepoFile
 from .tree import Tree
 
 if TYPE_CHECKING:
@@ -20,9 +19,6 @@ def save(
     jobs: Optional[int] = None,
     **kwargs,
 ):
-    if isinstance(obj, ExternalRepoFile):
-        obj = obj.get_staged(odb)
-
     if isinstance(obj, Tree):
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             for future in Tqdm(

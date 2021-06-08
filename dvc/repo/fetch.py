@@ -1,10 +1,7 @@
 import logging
 
-from funcy import lsplit
-
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError
-from dvc.objects.external import ExternalRepoFile
 
 from ..scheme import Schemes
 from . import locked
@@ -54,9 +51,6 @@ def fetch(
         jobs=jobs,
         recursive=recursive,
         revs=revs,
-    )
-    used_external, used_objs = lsplit(
-        lambda x: isinstance(x, ExternalRepoFile), objs
     )
 
     downloaded = 0
