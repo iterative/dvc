@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional
@@ -369,18 +370,18 @@ class Repo:
             A set of HashFile objects which are referenced in the specified
             targets.
         """
-        from dvc.objects import UsedObjectsPair
-
-        result = [UsedObjectsPair(None, set())]
+        used = defaultdict(set)
 
         def _add_suffix(objs, suffix):
             from dvc.objects.tree import Tree
 
             for obj in objs:
-                obj.name += suffix
+                if obj.name is not None:
+                    obj.name += suffix
                 if isinstance(obj, Tree):
                     for _, entry_obj in obj:
-                        entry_obj.name += suffix
+                        if entry_obj.name is not None:
+                            entry_obj.name += suffix
 
         for branch in self.brancher(
             revs=revs,
@@ -399,26 +400,23 @@ class Repo:
             )
 
             for stage, filter_info in pairs:
-                for used in stage.get_used_objs(
+                for odb, objs in stage.get_used_objs(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
-                ):
-                    if used.remote is None:
-                        if branch:
-                            _add_suffix(used.objs, f" ({branch})")
-                        result[0].objs.update(used.objs)
-                    else:
-                        result.append(used)
+                ).items():
+                    if branch:
+                        _add_suffix(objs, f" ({branch})")
+                    used[odb].update(objs)
 
         if used_run_cache:
-            for _, objs in self.stage_cache.get_used_objs(
+            for odb, objs in self.stage_cache.get_used_objs(
                 used_run_cache, remote=remote, force=force, jobs=jobs
-            ):
-                result[0].objs.update(objs)
+            ).items():
+                used[odb].update(objs)
 
-        return result
+        return used
 
     @cached_property
     def outs_trie(self):
