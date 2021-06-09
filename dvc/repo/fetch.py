@@ -36,11 +36,12 @@ def fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+    from dvc.objects.db.git import GitObjectDB
 
     if isinstance(targets, str):
         targets = [targets]
 
-    objs = self.used_objs(
+    used = self.used_objs(
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -59,22 +60,39 @@ def fetch(
     try:
         if run_cache:
             self.stage_cache.pull(remote)
-        downloaded += self.cloud.pull(
-            used_objs,
-            jobs,
-            remote=remote,
-            show_checksums=show_checksums,
-        )
-    except NoRemoteError:
-        if not used_external and any(
-            obj.fs.scheme == Schemes.LOCAL for obj in used_objs
-        ):
-            raise
     except DownloadError as exc:
         failed += exc.amount
 
-    if used_external:
-        d, f = _fetch_external(self, used_external, jobs)
+    external = set()
+    for odb, objs in used.items():
+        if odb is None:
+            # objs contains naive objects to be pulled from specified remote
+            d, f = _fetch_naive_objs(
+                self,
+                objs,
+                jobs=jobs,
+                remote=remote,
+                show_checksums=show_checksums,
+            )
+            downloaded += d
+            failed += f
+        elif isinstance(odb, GitObjectDB):
+            # objs contains staged import objects which should be saved
+            # last (after all other objects have been pulled)
+            external.update(objs)
+        else:
+            d, f = _fetch_from_odb(
+                self,
+                odb,
+                objs,
+                jobs=jobs,
+                show_checksums=show_checksums,
+            )
+            downloaded += d
+            failed += f
+
+    if external:
+        d, f = _fetch_external(self, external, jobs=jobs)
         downloaded += d
         failed += f
 
@@ -84,27 +102,51 @@ def fetch(
     return downloaded
 
 
-def _fetch_external(self, external_objs, jobs):
+def _fetch_naive_objs(repo, objs, **kwargs):
+    # objs contains naive objects to be pulled from specified remote
+    downloaded = 0
+    failed = 0
+    try:
+        downloaded += repo.cloud.pull(objs, **kwargs)
+    except NoRemoteError:
+        if any(obj.fs.scheme == Schemes.LOCAL for obj in objs):
+            raise
+    except DownloadError as exc:
+        failed += exc.amount
+    return downloaded, failed
+
+
+def _fetch_from_odb(repo, odb, objs, **kwargs):
+    from dvc.remote.base import Remote
+
+    downloaded = 0
+    failed = 0
+    remote = Remote.from_odb(odb)
+    try:
+        downloaded += remote.pull(
+            repo.odb.local,
+            objs,
+            **kwargs,
+        )
+    except DownloadError as exc:
+        failed += exc.amount
+    return downloaded, failed
+
+
+def _fetch_external(repo, objs, **kwargs):
     from dvc.objects import save
     from dvc.objects.errors import ObjectError
 
+    results = []
     failed = 0
 
-    results = []
-
-    def cb(result):
+    def callback(result):
         results.append(result)
 
-    odb = self.odb.local
-    for obj in external_objs:
+    for obj in objs:
         try:
-            save(odb, obj, jobs=jobs, download_callback=cb)
-        except (ObjectError, OSError):
+            save(repo.odb.local, obj, download_callback=callback, **kwargs)
+        except ObjectError:
             failed += 1
-            logger.exception(
-                "failed to fetch data for '{}'".format(
-                    ", ".join(obj.path_info)
-                )
-            )
 
     return sum(results), failed
