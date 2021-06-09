@@ -64,6 +64,12 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
 
+    @property
+    def repo_url(self):
+        if self._main_repo is None:
+            return None
+        return self._main_repo.url
+
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
 

@@ -1,14 +1,15 @@
 import os
-from typing import TYPE_CHECKING, Dict, List
+from collections import defaultdict
+from typing import TYPE_CHECKING, Dict, Optional, Set
 
 from voluptuous import Required
 
-from dvc.objects import UsedObjectsPair
 from dvc.path_info import PathInfo
 
 from .base import Dependency
 
 if TYPE_CHECKING:
+    from dvc.objects.db.base import ObjectDB
     from dvc.objects.file import HashFile
 
 
@@ -90,45 +91,59 @@ class RepoDependency(Dependency):
         # immutable, hence its impossible for checksum to change.
         return False
 
-    def get_used_objs(self, **kwargs) -> List[UsedObjectsPair]:
+    def get_used_objs(
+        self, **kwargs
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError
+        from dvc.objects.db.git import GitObjectDB
         from dvc.objects.stage import stage
 
-        odb = self.repo.odb.local
+        local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
-        with self._make_repo(locked=locked, cache_dir=odb.cache_dir) as repo:
+        with self._make_repo(
+            locked=locked, cache_dir=local_odb.cache_dir
+        ) as repo:
+            used_objs = defaultdict(set)
             rev = repo.get_rev()
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = rev
 
             path_info = PathInfo(repo.root_dir) / str(self.def_path)
             try:
-                imported_objs = repo.used_objs(
+                for odb, objs in repo.used_objs(
                     [os.fspath(path_info)],
                     force=True,
                     jobs=kwargs.get("jobs"),
                     recursive=True,
-                )
+                ).items():
+                    if odb is None:
+                        odb = repo.cloud.get_remote().odb
+                    self._check_circular_import(odb)
+                    used_objs[odb].update(objs)
             except (NoRemoteError, NoOutputOrStageError):
                 pass
 
-            def_remote = repo.cloud.get_remote()
-            result = [UsedObjectsPair(def_remote, set())]
-            for remote, objs in imported_objs:
-                if remote is None:
-                    result[0].objs.update(objs)
-                # else ignore chained imports
-
             staged_obj = stage(
-                odb,
+                local_odb,
                 path_info,
                 repo.repo_fs,
-                odb.fs.PARAM_CHECKSUM,
+                local_odb.fs.PARAM_CHECKSUM,
             )
             self._staged_objs[rev] = staged_obj
-            result[0].objs.add(staged_obj)
-            return result
+            git_odb = GitObjectDB(repo.repo_fs, repo.root_dir, repo.tmp_dir)
+            used_objs[git_odb].add(staged_obj)
+            return used_objs
+
+    def _check_circular_import(self, odb):
+        from dvc.exceptions import CircularImportError
+        from dvc.fs.repo import RepoFileSystem
+
+        if not odb or not isinstance(odb.fs, RepoFileSystem):
+            return
+
+        if odb.fs.repo_url is not None and odb.fs.repo_url == self.repo.url:
+            raise CircularImportError(self)
 
     def get_obj(self, filter_info=None, **kwargs):
         from dvc.objects.stage import stage
@@ -150,8 +165,7 @@ class RepoDependency(Dependency):
                 repo.repo_fs,
                 odb.fs.PARAM_CHECKSUM,
             )
-            def_remote = repo.cloud.get_remote()
-            self._staged_objs[rev] = UsedObjectsPair(obj, def_remote)
+            self._staged_objs[rev] = obj
             return obj
 
     def _make_repo(self, locked=True, **kwargs):

@@ -384,3 +384,8 @@ class CacheLinkError(DvcException):
         )
         super().__init__(msg)
         self.path_infos = path_infos
+
+
+class CircularImportError(DvcException):
+    def __init__(self, dep):
+        super().__init__(f"'{dep}' contains a circular DVC import.")

@@ -887,7 +887,7 @@ class Output:
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         if not self.use_cache or not self.stage.is_repo_import:
-            return []
+            return {}
 
         (dep,) = self.stage.deps
         return dep.get_used_objs()
