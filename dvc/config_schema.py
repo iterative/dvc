@@ -93,7 +93,7 @@ HTTP_COMMON = {
     "user": str,
     "password": str,
     "ask_password": Bool,
-    "ssl_verify": Bool,
+    "ssl_verify": Any(Bool, str),
     "method": str,
 }
 WEBDAV_COMMON = {
@@ -104,6 +104,7 @@ WEBDAV_COMMON = {
     "cert_path": str,
     "key_path": str,
     "timeout": Coerce(int),
+    "ssl_verify": Any(Bool, str),
 }
 
 SCHEMA = {
