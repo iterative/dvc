@@ -105,7 +105,7 @@ jobs:
         --cov-report=xml --cov-report=term
         --all ${{ env.extra_test_args }}
     - name: upload coverage report
-      uses: codecov/codecov-action@v1.5.0
+      uses: codecov/codecov-action@v1.5.2
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
