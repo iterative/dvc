@@ -55,7 +55,7 @@ def test_used_objs(tmp_dir, dvc, path):
     }
 
     used = set()
-    for _, objs in dvc.used_objs([path]):
+    for _, objs in dvc.used_objs([path]).items():
         for obj in objs:
             used.add(obj.hash_info)
             if isinstance(obj, Tree):
