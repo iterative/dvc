@@ -31,7 +31,10 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         key_path = config.get("key_path", None)
         cert = cert_path if not key_path else (cert_path, key_path)
 
-        self.fs_args.update({"base_url": config["url"], "cert": cert})
+        ssl_verify = config.get("ssl_verify", True)
+        self.fs_args.update(
+            {"base_url": config["url"], "cert": cert, "verify": ssl_verify}
+        )
         self.prefix = config.get("prefix", "")
 
     @staticmethod

@@ -106,6 +106,18 @@ def test_ssl_verify_disable(dvc):
     assert fs._session.verify is False
 
 
+def test_ssl_verify_custom_cert(dvc):
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "ssl_verify": "/path/to/custom/cabundle.pem",
+    }
+
+    fs = HTTPFileSystem(**config)
+
+    assert fs._session.verify == "/path/to/custom/cabundle.pem"
+
+
 def test_http_method(dvc):
     from requests.auth import HTTPBasicAuth
 
