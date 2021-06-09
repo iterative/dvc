@@ -37,7 +37,7 @@ def test_cmd_error(dvc):
 @mock.patch.object(ObjectDB, "list_hashes_traverse")
 @mock.patch.object(ObjectDB, "list_hashes_exists")
 def test_hashes_exist(object_exists, traverse, dvc):
-    odb = ObjectDB(BaseFileSystem(), None)
+    odb = ObjectDB(BaseFileSystem(), None, None)
 
     # remote does not support traverse
     odb.fs.CAN_TRAVERSE = False
@@ -86,7 +86,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(ObjectDB, "list_hashes", return_value=[])
 @mock.patch.object(ObjectDB, "_path_to_hash", side_effect=lambda x: x)
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
-    odb = ObjectDB(BaseFileSystem(), None)
+    odb = ObjectDB(BaseFileSystem(), None, None)
     odb.path_info = PathInfo("foo")
 
     # parallel traverse
@@ -111,7 +111,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
 
 
 def test_list_hashes(dvc):
-    odb = ObjectDB(BaseFileSystem(), None)
+    odb = ObjectDB(BaseFileSystem(), None, None)
     odb.path_info = PathInfo("foo")
 
     with mock.patch.object(
@@ -123,7 +123,7 @@ def test_list_hashes(dvc):
 
 def test_list_paths(dvc):
     path_info = PathInfo("foo")
-    odb = ObjectDB(BaseFileSystem(), path_info)
+    odb = ObjectDB(BaseFileSystem(), path_info, None)
 
     with mock.patch.object(odb.fs, "walk_files", return_value=[]) as walk_mock:
         for _ in odb._list_paths():
