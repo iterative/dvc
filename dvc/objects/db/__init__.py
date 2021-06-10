@@ -1,22 +1,22 @@
 from dvc.scheme import Schemes
 
 
-def get_odb(fs, path_info, tmp_dir, **config):
+def get_odb(fs, path_info, **config):
     from .base import ObjectDB
     from .gdrive import GDriveObjectDB
     from .local import LocalObjectDB
     from .ssh import SSHObjectDB
 
     if fs.scheme == Schemes.LOCAL:
-        return LocalObjectDB(fs, path_info, tmp_dir, **config)
+        return LocalObjectDB(fs, path_info, **config)
 
     if fs.scheme == Schemes.SSH:
-        return SSHObjectDB(fs, path_info, tmp_dir, **config)
+        return SSHObjectDB(fs, path_info, **config)
 
     if fs.scheme == Schemes.GDRIVE:
-        return GDriveObjectDB(fs, path_info, tmp_dir, **config)
+        return GDriveObjectDB(fs, path_info, **config)
 
-    return ObjectDB(fs, path_info, tmp_dir, **config)
+    return ObjectDB(fs, path_info, **config)
 
 
 def _get_odb(repo, settings):
@@ -26,9 +26,7 @@ def _get_odb(repo, settings):
         return None
 
     cls, config, path_info = get_cloud_fs(repo, **settings)
-    return get_odb(
-        cls(**config), path_info, repo.tmp_dir, state=repo.state, **config
-    )
+    return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 
 class ODBManager:

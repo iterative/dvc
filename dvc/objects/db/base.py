@@ -19,17 +19,17 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs, path_info, tmp_dir, **config):
+    def __init__(self, fs, path_info, **config):
         from dvc.state import StateNoop
 
         self.fs = fs
         self.path_info = path_info
-        self.tmp_dir = tmp_dir
         self.state = config.get("state", StateNoop())
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
         self.slow_link_warning = config.get("slow_link_warning", True)
+        self.tmp_dir = config.get("tmp_dir")
 
     @property
     def config(self):
@@ -38,6 +38,7 @@ class ObjectDB:
             "verify": self.verify,
             "type": self.cache_types,
             "slow_link_warning": self.slow_link_warning,
+            "tmp_dir": self.tmp_dir,
         }
 
     def __eq__(self, other):

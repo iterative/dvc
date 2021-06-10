@@ -133,7 +133,7 @@ class RepoDependency(Dependency):
                 local_odb.fs.PARAM_CHECKSUM,
             )
             self._staged_objs[rev] = staged_obj
-            git_odb = GitObjectDB(repo.repo_fs, repo.root_dir, repo.tmp_dir)
+            git_odb = GitObjectDB(repo.repo_fs, repo.root_dir)
             used_objs[git_odb].add(staged_obj)
             return used_objs
 
