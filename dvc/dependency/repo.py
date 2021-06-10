@@ -144,8 +144,9 @@ class RepoDependency(Dependency):
         if not odb or not isinstance(odb.fs, RepoFileSystem):
             return
 
-        if odb.fs.repo_url is not None and odb.fs.repo_url == self.repo.url:
-            raise CircularImportError(self)
+        self_url = self.repo.url or self.repo.root_dir
+        if odb.fs.repo_url is not None and odb.fs.repo_url == self_url:
+            raise CircularImportError(self, odb.fs.repo_url, self_url)
 
     def get_obj(self, filter_info=None, **kwargs):
         from dvc.objects.stage import stage
