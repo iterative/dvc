@@ -549,3 +549,53 @@ def test_import_with_jobs(mocker, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
     run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
     assert run_jobs == 3
+
+
+def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
+    erepo_dir.add_remote(config=local_cloud.config)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
+    erepo_dir.dvc.push()
+    remove(erepo_dir.dvc.odb.local.cache_dir)
+    remove(os.fspath(erepo_dir / "dir"))
+
+    erepo2 = make_tmp_dir("erepo2", scm=True, dvc=True)
+    with erepo2.chdir():
+        erepo2.dvc.imp(os.fspath(erepo_dir), "dir")
+        erepo2.scm.add("dir.dvc")
+        erepo2.scm.commit("import")
+    remove(erepo2.dvc.odb.local.cache_dir)
+    remove(os.fspath(erepo2 / "dir"))
+
+    dvc.imp(os.fspath(erepo2), "dir", "dir_imported")
+    dst = tmp_dir / "dir_imported"
+    assert (dst / "foo").read_text() == "foo"
+    assert (dst / "bar").read_text() == "bar"
+
+    remove(dvc.odb.local.cache_dir)
+    remove("dir_imported")
+
+    # pulled objects should come from the original upstream repo's remote,
+    # no cache or remote should be needed from the intermediate repo
+    dvc.pull(["dir_imported.dvc"])
+    assert not os.path.exists(erepo_dir.dvc.odb.local.cache_dir)
+    assert not os.path.exists(erepo2.dvc.odb.local.cache_dir)
+    assert (dst / "foo").read_text() == "foo"
+    assert (dst / "bar").read_text() == "bar"
+
+
+def test_circular_import(tmp_dir, dvc, scm, erepo_dir):
+    from dvc.exceptions import CircularImportError
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
+
+    dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+    scm.add("dir_imported.dvc")
+    scm.commit("import")
+
+    with erepo_dir.chdir():
+        with pytest.raises(CircularImportError):
+            erepo_dir.dvc.imp(
+                os.fspath(tmp_dir), "dir_imported", "circular_import"
+            )
