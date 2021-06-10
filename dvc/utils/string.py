@@ -1,4 +1,3 @@
-import re
 from difflib import get_close_matches
 
 
@@ -12,11 +11,3 @@ def fuzzy_match(string: str, dictionary: list) -> list:
     return get_close_matches(
         word=string, possibilities=dictionary, n=3, cutoff=0.6
     )
-
-
-def regex_search(string: str, regex: str) -> str:
-    """Search using regex on string and return the first match"""
-    match = re.search(regex, string)
-    if not match:
-        return ""
-    return match.group(1)

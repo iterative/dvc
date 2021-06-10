@@ -46,7 +46,7 @@ from .command import (
 )
 from .command.base import fix_subparsers
 from .exceptions import DvcParserError
-from .utils.string import fuzzy_match, regex_search
+from .utils.string import fuzzy_match
 
 logger = logging.getLogger(__name__)
 
@@ -109,17 +109,19 @@ def _find_parser(parser, cmd_cls):
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
+    last_invalid_command = None
+
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
-        self._check_and_log_suggestions(message)
+        if self.last_invalid_command:
+            self.print_suggestions()
+            raise DvcParserError()
         _find_parser(self, cmd_cls)
 
-    def _check_and_log_suggestions(self, message):
-        cmd = regex_search(string=message, regex="[?=invalid choice: ]'(.*?)'")
-        if not cmd:
-            return
-
-        suggestions = fuzzy_match(cmd, self._get_choices())
+    def print_suggestions(self):
+        suggestions = fuzzy_match(
+            self.last_invalid_command, self._get_choices()
+        )
         if not suggestions:
             return
 
@@ -155,6 +157,15 @@ class DvcParser(argparse.ArgumentParser):
             return []
 
         return cmd_choices[0]
+
+    def _check_value(self, action, value):
+        # NOTE: overriding to get the last invalid command
+        try:
+            self.last_invalid_command = None
+            super()._check_value(action, value)
+        except argparse.ArgumentError as arg_exc:
+            self.last_invalid_command = value
+            raise arg_exc
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
