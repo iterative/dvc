@@ -81,7 +81,7 @@ def fetch(
             # last (after all other objects have been pulled)
             external.update(objs)
         else:
-            d, f = _fetch_from_odb(
+            d, f = fetch_from_odb(
                 self,
                 odb,
                 objs,
@@ -116,7 +116,7 @@ def _fetch_naive_objs(repo, objs, **kwargs):
     return downloaded, failed
 
 
-def _fetch_from_odb(repo, odb, objs, **kwargs):
+def fetch_from_odb(repo, odb, objs, **kwargs):
     from dvc.remote.base import Remote
 
     downloaded = 0

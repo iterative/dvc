@@ -62,19 +62,21 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects import load, save
+        from dvc.objects import save
+        from dvc.objects.db.git import GitObjectDB
+        from dvc.repo.fetch import fetch_from_odb
 
-        odb = self.repo.odb.local
+        for odb, objs in self.get_used_objs().items():
+            if not isinstance(odb, GitObjectDB):
+                fetch_from_odb(self.repo, odb, objs, jobs=jobs)
 
         obj = self.get_obj()
-        save(odb, obj, jobs=jobs)
-
-        obj = load(odb, obj.hash_info)
+        save(self.repo.odb.local, obj, jobs=jobs)
         checkout(
             to.path_info,
             to.fs,
             obj,
-            odb,
+            self.repo.odb.local,
             dvcignore=None,
             state=self.repo.state,
         )
