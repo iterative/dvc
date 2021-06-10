@@ -367,8 +367,9 @@ class Repo:
         the scope.
 
         Returns:
-            A set of HashFile objects which are referenced in the specified
-            targets.
+            A dict mapping (remote) ODB instances to sets of objects that
+            belong to each ODB. If the ODB instance is None, the objects
+            are naive and do not belong to a specific remote ODB.
         """
         used = defaultdict(set)
 
