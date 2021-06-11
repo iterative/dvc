@@ -39,7 +39,7 @@ pylint-pytest==1.0.3
 pylint-plugin-utils==0.6
 
 # type-checking
-mypy==0.901
+mypy==0.902
 
 # pypi doesn't allow for direct dependencies
 # gdrivefs @ git+https://github.com/intake/gdrivefs.git
