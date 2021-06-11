@@ -112,26 +112,40 @@ class DvcParser(argparse.ArgumentParser):
     last_invalid_command = None
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
-        logger.error(message)
-        if self.last_invalid_command:
-            self.print_suggestions()
+
+        if self.last_invalid_command and self.print_suggestions():
             raise DvcParserError()
+
+        logger.error(message)
         _find_parser(self, cmd_cls)
 
     def print_suggestions(self):
         suggestions = fuzzy_match(
             self.last_invalid_command, self._get_choices()
         )
-        if not suggestions:
-            return
 
+        subparser = self._subparsers
+        if (
+            not suggestions
+            or not subparser._group_actions  # pylint: disable=protected-access
+        ):
+            return False
+
+        help_cmd = (
+            subparser._group_actions[  # pylint: disable=protected-access
+                0
+            ].help
+        )
         multi_line_message = [
+            f"dvc: '{self.last_invalid_command}' is not a valid dvc command. "
+            f"{help_cmd}"
+            "\t",
             "",
             "The most similar commands are:",
             f"\t{' '.join(suggestions)}",
-            "",
         ]
         logger.info("\n".join(multi_line_message))
+        return True
 
     def parse_args(self, args=None, namespace=None):
         # NOTE: overriding to provide a more granular help message.
