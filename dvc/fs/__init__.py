@@ -12,8 +12,7 @@ from .local import LocalFileSystem
 from .oss import OSSFileSystem
 from .s3 import S3FileSystem
 from .ssh import SSHFileSystem
-from .webdav import WebDAVFileSystem
-from .webdavs import WebDAVSFileSystem
+from .webdav import WebDAVFileSystem, WebDAVSFileSystem
 from .webhdfs import WebHDFSFileSystem
 
 FS_MAP = {
@@ -112,5 +111,5 @@ def get_cloud_fs(repo, **kwargs):
     )
 
     extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
-
-    return cls, dict(**extras, **remote_conf), path_info
+    conf = {**extras, **remote_conf}  # remote config takes priority
+    return cls, conf, path_info
