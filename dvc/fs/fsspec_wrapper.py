@@ -96,7 +96,8 @@ class FSSpecWrapper(BaseFileSystem):
         files = self.fs.ls(path, detail=detail)
         yield from self._strip_buckets(files, detail=detail)
 
-    def find(self, path_info, detail=False):
+    # pylint: disable=unused-argument
+    def find(self, path_info, detail=False, prefix=None):
         path = self._with_bucket(path_info)
         files = self.fs.find(path, detail=detail)
         if detail:
@@ -105,7 +106,7 @@ class FSSpecWrapper(BaseFileSystem):
         yield from self._strip_buckets(files, detail=detail)
 
     def walk_files(self, path_info, **kwargs):
-        for file in self.find(path_info):
+        for file in self.find(path_info, **kwargs):
             yield path_info.replace(path=file)
 
     def remove(self, path_info):
@@ -155,6 +156,8 @@ class FSSpecWrapper(BaseFileSystem):
 
 # pylint: disable=abstract-method
 class ObjectFSWrapper(FSSpecWrapper):
+    TRAVERSE_PREFIX_LEN = 3
+
     def _isdir(self, path_info):
         # Directory in object storages are interpreted differently
         # among different fsspec providers, so this logic is a temporary
@@ -169,9 +172,16 @@ class ObjectFSWrapper(FSSpecWrapper):
             and entry["name"].endswith("/")
         )
 
-    def find(self, path_info, detail=False):
-        path = self._with_bucket(path_info)
-        files = self.fs.find(path, detail=detail)
+    def find(self, path_info, detail=False, prefix=None):
+        if prefix is not None:
+            path = self._with_bucket(path_info.parent)
+            files = self.fs.find(
+                path, detail=detail, prefix=path_info.parts[-1]
+            )
+        else:
+            path = self._with_bucket(path_info)
+            files = self.fs.find(path, detail=detail)
+
         if detail:
             files = files.values()
 

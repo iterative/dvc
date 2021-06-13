@@ -538,7 +538,7 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         query = f"({query}) and trashed=false"
         return self._gdrive_list(query)
 
-    def find(self, path_info, detail=False):
+    def find(self, path_info, detail=False, prefix=None):
         root_path = path_info.path
         seen_paths = set()
 
