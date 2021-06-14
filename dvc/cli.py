@@ -136,8 +136,14 @@ class DvcParser(argparse.ArgumentParser):
                 0
             ].help
         )
+
+        parent_cmd = self.prog
+        command_text = (
+            "subcommand" if len(parent_cmd.split()) > 1 else "command"
+        )
         multi_line_message = [
-            f"dvc: '{self.last_invalid_command}' is not a valid dvc command. "
+            f"dvc: '{self.last_invalid_command}' is "
+            f"not a valid `{parent_cmd}` {command_text}. "
             f"{help_cmd}"
             "\t",
             "",
