@@ -589,26 +589,21 @@ class Experiments:
         )
 
         executors = self._init_executors(to_run)
-        exec_results = self._executors_repro(executors, **kwargs)
-
-        if keep_stash:
+        try:
+            exec_results = {}
+            exec_results.update(self._executors_repro(executors, **kwargs))
+        finally:
             # only drop successfully run stashed experiments
-            to_drop = sorted(
-                (
-                    stash_revs[rev][0]
-                    for rev in exec_results
-                    if rev in stash_revs
-                ),
-                reverse=True,
-            )
-        else:
-            # drop all stashed experiments
-            to_drop = sorted(
-                (stash_revs[rev][0] for rev in to_run if rev in stash_revs),
-                reverse=True,
-            )
-        for index in to_drop:
-            self.stash.drop(index)
+            to_drop = [
+                entry.index
+                for rev, entry in to_run.items()
+                if (
+                    entry.index is not None
+                    and (not keep_stash or rev in exec_results)
+                )
+            ]
+            for index in sorted(to_drop, reverse=True):
+                self.stash.drop(index)
 
         result: Dict[str, str] = {}
         for _, exp_result in exec_results.items():
@@ -655,7 +650,7 @@ class Experiments:
 
     def _executors_repro(
         self, executors: dict, jobs: Optional[int] = 1
-    ) -> Mapping[str, Mapping[str, str]]:
+    ) -> Dict[str, Dict[str, str]]:
         """Run dvc repro for the specified BaseExecutors in parallel.
 
         Returns:
