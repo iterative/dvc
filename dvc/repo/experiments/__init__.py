@@ -735,7 +735,10 @@ class Experiments:
             raise ExperimentExistsError(ref_info.name)
 
         for ref in executor.fetch_exps(
-            self.scm, force=exec_result.force, on_diverged=on_diverged
+            self.scm,
+            executor.git_url,
+            force=exec_result.force,
+            on_diverged=on_diverged,
         ):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:

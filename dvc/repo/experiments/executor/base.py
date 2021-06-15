@@ -161,9 +161,11 @@ class BaseExecutor(ABC):
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
 
+    @classmethod
     def fetch_exps(
-        self,
+        cls,
         dest_scm: "Git",
+        url: str,
         force: bool = False,
         on_diverged: Callable[[str, bool], None] = None,
     ) -> Iterable[str]:
@@ -171,13 +173,17 @@ class BaseExecutor(ABC):
 
         Args:
             dest_scm: Destination Git instance.
+            url: Git remote URL to fetch from.
             force: If True, diverged refs will be overwritten
             on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
                 to be called when an experiment ref has diverged.
         """
         refs = []
-        for ref in self.scm.iter_refs(base=EXPS_NAMESPACE):
-            if not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
+        has_checkpoint = False
+        for ref in dest_scm.iter_remote_refs(url, base=EXPS_NAMESPACE):
+            if ref == EXEC_CHECKPOINT:
+                has_checkpoint = True
+            elif not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
                 refs.append(ref)
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
@@ -185,24 +191,25 @@ class BaseExecutor(ABC):
                 logger.debug("Replacing existing experiment '%s'", orig_ref)
                 return True
 
-            checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None
-            self._raise_ref_conflict(dest_scm, orig_ref, new_rev, checkpoint)
+            cls._raise_ref_conflict(
+                dest_scm, orig_ref, new_rev, has_checkpoint
+            )
             if on_diverged:
-                on_diverged(orig_ref, checkpoint)
+                on_diverged(orig_ref, has_checkpoint)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
         # fetch experiments
         dest_scm.fetch_refspecs(
-            self.git_url,
+            url,
             [f"{ref}:{ref}" for ref in refs],
             on_diverged=on_diverged_ref,
             force=force,
         )
         # update last run checkpoint (if it exists)
-        if self.scm.get_ref(EXEC_CHECKPOINT):
+        if has_checkpoint:
             dest_scm.fetch_refspecs(
-                self.git_url,
+                url,
                 [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
                 force=True,
             )
