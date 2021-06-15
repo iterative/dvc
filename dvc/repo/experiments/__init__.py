@@ -901,8 +901,10 @@ class Experiments:
                     # If we are appending to a checkpoint branch in a workspace
                     # run, show both workspace and the latest checkpoint as
                     # running.
-                    result[rev] = info
-                    rev = self.scm.get_ref(EXEC_BRANCH) or "workspace"
+                    branch_rev = self.scm.get_ref(EXEC_BRANCH)
+                    if branch_rev:
+                        result["workspace"] = info
+                        rev = branch_rev
                 elif info.git_url:
 
                     def on_diverged(_ref: str, _checkpoint: bool):
