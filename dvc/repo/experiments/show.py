@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _collect_experiment_commit(
-    repo, exp_rev, stash=False, sha_only=True, param_deps=False
+    repo, exp_rev, stash=False, sha_only=True, param_deps=False, running=None
 ):
     res = defaultdict(dict)
     for rev in repo.brancher(revs=[exp_rev]):
@@ -34,6 +34,7 @@ def _collect_experiment_commit(
             res["params"] = params
 
         res["queued"] = stash
+        res["running"] = running is not None and exp_rev in running
         if not stash:
             metrics = _collect_metrics(repo, None, rev, False)
             vals = _read_metrics(repo, metrics, rev)
@@ -117,9 +118,15 @@ def show(
         )
     )
 
+    running = repo.experiments.get_running_exps()
+
     for rev in revs:
         res[rev]["baseline"] = _collect_experiment_commit(
-            repo, rev, sha_only=sha_only, param_deps=param_deps
+            repo,
+            rev,
+            sha_only=sha_only,
+            param_deps=param_deps,
+            running=running,
         )
 
         if rev == "workspace":
@@ -142,13 +149,18 @@ def show(
                 rev,
                 sha_only=sha_only,
                 param_deps=param_deps,
+                running=running,
             )
 
     # collect queued (not yet reproduced) experiments
     for stash_rev, entry in repo.experiments.stash_revs.items():
         if entry.baseline_rev in revs:
             experiment = _collect_experiment_commit(
-                repo, stash_rev, stash=True, param_deps=param_deps
+                repo,
+                stash_rev,
+                stash=stash_rev not in running,
+                param_deps=param_deps,
+                running=running,
             )
             res[entry.baseline_rev][stash_rev] = experiment
 

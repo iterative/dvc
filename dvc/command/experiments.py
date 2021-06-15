@@ -150,7 +150,12 @@ def _collect_rows(
 
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
-        queued = str(exp.get("queued") or "")
+        if exp.get("running"):
+            state = "Run"
+        elif exp.get("queued"):
+            state = "Queue"
+        else:
+            state = "-"
         is_baseline = rev == "baseline"
 
         if is_baseline:
@@ -189,10 +194,10 @@ def _collect_rows(
         row = [
             exp_name,
             name_rev,
-            queued,
             typ,
             _format_time(exp.get("timestamp")),
             parent,
+            state,
         ]
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
@@ -304,7 +309,7 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = ["Experiment", "rev", "queued", "typ", "Created", "parent"]
+    headers = ["Experiment", "rev", "typ", "Created", "parent", "State"]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -340,8 +345,7 @@ def prepare_exp_id(kwargs) -> "Text":
     text.append(suff)
 
     tree = experiment_types[typ]
-    queued = "*" if kwargs.get("queued") else ""
-    pref = (f"{tree} " if tree else "") + queued
+    pref = f"{tree} " if tree else ""
     return Text(pref) + text
 
 
@@ -383,7 +387,7 @@ def show_experiments(
 
     row_styles = lmap(baseline_styler, td.column("typ"))
 
-    merge_headers = ["Experiment", "rev", "queued", "typ", "parent"]
+    merge_headers = ["Experiment", "rev", "typ", "parent"]
     td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
     td.drop(*merge_headers[1:])
 
@@ -391,6 +395,7 @@ def show_experiments(
     styles = {
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
+        "State": {"header_style": "black on grey93"},
     }
     header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
     styles.update(
