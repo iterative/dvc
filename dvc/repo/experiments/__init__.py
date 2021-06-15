@@ -648,6 +648,7 @@ class Experiments:
 
         return executors
 
+    @unlocked_repo
     def _executors_repro(
         self, executors: dict, jobs: Optional[int] = 1
     ) -> Dict[str, Dict[str, str]]:
@@ -689,12 +690,15 @@ class Experiments:
             except KeyboardInterrupt:
                 # forward SIGINT to any running executor processes and
                 # cancel any remaining futures
+                workers.shutdown(wait=False)
                 pids = {}
-                while not pid_q.empty():
-                    rev, pid = pid_q.get()
-                    pids[rev] = pid
                 for future, (rev, _) in futures.items():
                     if future.running():
+                        # if future has already been started by the scheduler
+                        # we still have to wait until it tells us its PID
+                        while rev not in pids:
+                            rev, pid = pid_q.get()
+                            pids[rev] = pid
                         os.kill(pids[rev], signal.SIGINT)
                     elif not future.done():
                         future.cancel()
