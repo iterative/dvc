@@ -3,6 +3,7 @@ import os
 import pickle
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
+from dataclasses import dataclass
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -52,6 +53,32 @@ class ExecutorResult(NamedTuple):
     force: bool
 
 
+@dataclass
+class ExecutorInfo:
+    PARAM_PID = "pid"
+    PARAM_GIT_URL = "git"
+    PARAM_BASELINE_REV = "baseline"
+
+    pid: Optional[int]
+    git_url: Optional[str]
+    baseline_rev: Optional[str]
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            d.get(cls.PARAM_PID),
+            d.get(cls.PARAM_GIT_URL),
+            d.get(cls.PARAM_BASELINE_REV),
+        )
+
+    def to_dict(self):
+        return {
+            self.PARAM_PID: self.pid,
+            self.PARAM_GIT_URL: self.git_url,
+            self.PARAM_BASELINE_REV: self.baseline_rev,
+        }
+
+
 class BaseExecutor(ABC):
     """Base class for executing experiments in parallel.
 
@@ -66,6 +93,7 @@ class BaseExecutor(ABC):
     PACKED_ARGS_FILE = "repro.dat"
     WARN_UNTRACKED = False
     QUIET = False
+    PIDFILE_EXT = ".run"
 
     def __init__(
         self,
@@ -225,6 +253,7 @@ class BaseExecutor(ABC):
         name: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
+        **kwargs,
     ) -> "ExecutorResult":
         """Run dvc repro and return the result.
 
@@ -252,7 +281,12 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
-        with cls._repro_dvc(dvc_dir, rel_cwd, log_errors) as dvc:
+        with cls._repro_dvc(
+            dvc_dir,
+            rel_cwd,
+            log_errors,
+            **kwargs,
+        ) as dvc:
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -346,9 +380,16 @@ class BaseExecutor(ABC):
     @classmethod
     @contextmanager
     def _repro_dvc(
-        cls, dvc_dir: Optional[str], rel_cwd: Optional[str], log_errors: bool
+        cls,
+        dvc_dir: Optional[str],
+        rel_cwd: Optional[str],
+        log_errors: bool,
+        pidfile: Optional[str] = None,
+        git_url: Optional[str] = None,
+        **kwargs,
     ):
         from dvc.repo import Repo
+        from dvc.utils.serialize import modify_yaml
 
         dvc = Repo(dvc_dir)
         if cls.QUIET:
@@ -361,6 +402,10 @@ class BaseExecutor(ABC):
                 os.chdir(dvc.root_dir)
         else:
             old_cwd = None
+        if pidfile is not None:
+            info = ExecutorInfo(os.getpid(), git_url, dvc.scm.get_rev())
+            with modify_yaml(pidfile) as d:
+                d.update(info.to_dict())
         logger.debug("Running repro in '%s'", os.getcwd())
 
         try:
@@ -376,6 +421,8 @@ class BaseExecutor(ABC):
                 logger.exception("unexpected error")
             raise
         finally:
+            if pidfile is not None:
+                remove(pidfile)
             dvc.close()
             if old_cwd:
                 os.chdir(old_cwd)

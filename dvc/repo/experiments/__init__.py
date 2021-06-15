@@ -81,6 +81,7 @@ class Experiments:
         r"(?P<checkpoint>-checkpoint)?$"
     )
     EXEC_TMP_DIR = "exps"
+    EXEC_PID_DIR = os.path.join(EXEC_TMP_DIR, "run")
 
     StashEntry = namedtuple(
         "StashEntry", ["index", "rev", "baseline_rev", "branch", "name"]
@@ -623,6 +624,9 @@ class Experiments:
         base_tmp_dir = os.path.join(self.repo.tmp_dir, self.EXEC_TMP_DIR)
         if not os.path.exists(base_tmp_dir):
             makedirs(base_tmp_dir)
+        pid_dir = os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
+        if not os.path.exists(pid_dir):
+            makedirs(pid_dir)
         for stash_rev, item in to_run.items():
             self.scm.set_ref(EXEC_HEAD, item.rev)
             self.scm.set_ref(EXEC_MERGE, stash_rev)
@@ -667,6 +671,11 @@ class Experiments:
         with ProcessPoolExecutor(max_workers=jobs) as workers:
             futures = {}
             for rev, executor in executors.items():
+                pidfile = os.path.join(
+                    self.repo.tmp_dir,
+                    self.EXEC_PID_DIR,
+                    f"{rev}{executor.PIDFILE_EXT}",
+                )
                 future = workers.submit(
                     executor.reproduce,
                     executor.dvc_dir,
@@ -675,6 +684,8 @@ class Experiments:
                     name=executor.name,
                     rel_cwd=rel_cwd,
                     log_level=logger.getEffectiveLevel(),
+                    pidfile=pidfile,
+                    git_url=executor.git_url,
                 )
                 futures[future] = (rev, executor)
 
@@ -750,6 +761,8 @@ class Experiments:
     @unlocked_repo
     def _workspace_repro(self) -> Mapping[str, str]:
         """Run the most recently stashed experiment in the workspace."""
+        from dvc.utils.fs import makedirs
+
         from .executor.base import BaseExecutor
 
         entry = first(self.stash_revs.values())
@@ -769,12 +782,19 @@ class Experiments:
                 self.scm.remove_ref(EXEC_BRANCH)
             try:
                 orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
+                pid_dir = os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
+                if not os.path.exists(pid_dir):
+                    makedirs(pid_dir)
+                pidfile = os.path.join(
+                    pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}"
+                )
                 exec_result = BaseExecutor.reproduce(
                     None,
                     rev,
                     name=entry.name,
                     rel_cwd=relpath(os.getcwd(), self.scm.root_dir),
                     log_errors=False,
+                    pidfile=pidfile,
                 )
 
                 if not exec_result.exp_hash:
