@@ -14,6 +14,7 @@ from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.ui import ui
 from dvc.utils.flatten import flatten
 
 if TYPE_CHECKING:
@@ -450,7 +451,7 @@ class CmdExperimentsShow(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(all_experiments, default=_format_json))
+            ui.write(json.dumps(all_experiments, default=_format_json))
         else:
             show_experiments(
                 all_experiments,
@@ -494,7 +495,7 @@ class CmdExperimentsDiff(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(diff))
+            ui.write(json.dumps(diff))
         else:
             from dvc.compare import show_diff
 
@@ -502,8 +503,6 @@ class CmdExperimentsDiff(CmdBase):
             diffs = [("metrics", "Metric"), ("params", "Param")]
             for idx, (key, title) in enumerate(diffs):
                 if idx:
-                    from dvc.ui import ui
-
                     # we are printing tables even in `--quiet` mode
                     # so we should also be printing the "table" separator
                     ui.write(force=True)
@@ -537,7 +536,7 @@ class CmdExperimentsRun(CmdRepro):
                 )
 
         if self.args.reset:
-            logger.info("Any existing checkpoints will be reset and re-run.")
+            ui.write("Any existing checkpoints will be reset and re-run.")
 
         results = self.repo.experiments.run(
             name=self.args.name,
@@ -554,7 +553,7 @@ class CmdExperimentsRun(CmdRepro):
         if self.args.metrics and results:
             metrics = self.repo.metrics.show(revs=list(results))
             metrics.pop("workspace", None)
-            logger.info(show_metrics(metrics))
+            show_metrics(metrics)
 
         return 0
 
@@ -608,12 +607,13 @@ class CmdExperimentsGC(CmdRepro):
         )
 
         if removed:
-            logger.info(
-                f"Removed {removed} experiments. To remove unused cache files "
-                "use 'dvc gc'."
+            ui.write(
+                f"Removed {removed} experiments.",
+                "To remove unused cache files",
+                "use 'dvc gc'.",
             )
         else:
-            logger.info("No experiments to remove.")
+            ui.write("No experiments to remove.")
         return 0
 
 
@@ -662,15 +662,15 @@ class CmdExperimentsPush(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        logger.info(
-            "Pushed experiment '%s' to Git remote '%s'.",
-            self.args.experiment,
-            self.args.git_remote,
+        ui.write(
+            f"Pushed experiment '{self.args.experiment}',"
+            f"to Git remote '{self.args.git_remote}'."
         )
         if not self.args.push_cache:
-            logger.info(
-                "To push cached outputs for this experiment to DVC remote "
-                "storage, re-run this command without '--no-cache'."
+            ui.write(
+                "To push cached outputs",
+                "for this experiment to DVC remote storage,"
+                "re-run this command without '--no-cache'.",
             )
 
         return 0
@@ -689,15 +689,15 @@ class CmdExperimentsPull(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        logger.info(
-            "Pulled experiment '%s' from Git remote '%s'. ",
-            self.args.experiment,
-            self.args.git_remote,
+        ui.write(
+            f"Pulled experiment '{self.args.experiment}'",
+            f"from Git remote '{self.args.git_remote}'.",
         )
         if not self.args.pull_cache:
-            logger.info(
-                "To pull cached outputs for this experiment from DVC remote "
-                "storage, re-run this command without '--no-cache'."
+            ui.write(
+                "To pull cached outputs for this experiment"
+                "from DVC remote storage,"
+                "re-run this command without '--no-cache'."
             )
 
         return 0

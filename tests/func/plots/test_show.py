@@ -683,17 +683,18 @@ def test_show_no_repo(tmp_dir):
     dvc.plots.show(["metric.json"])
 
 
-def test_show_from_subdir(tmp_dir, dvc, caplog):
+def test_show_from_subdir(tmp_dir, dvc, capsys):
     subdir = tmp_dir / "subdir"
 
     subdir.mkdir()
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     _write_json(subdir, metric, "metric.json")
 
-    with subdir.chdir(), caplog.at_level(logging.INFO, "dvc"):
+    with subdir.chdir():
         assert main(["plots", "show", "metric.json"]) == 0
 
-    assert subdir.as_uri() in caplog.text
+    out, _ = capsys.readouterr()
+    assert subdir.as_uri() in out
     assert (subdir / "plots.html").exists()
 
 

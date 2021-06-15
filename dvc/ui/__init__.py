@@ -1,5 +1,4 @@
 import sys
-from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -12,15 +11,15 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.progress import Tqdm
-from dvc.utils import colorize
-
 if TYPE_CHECKING:
+    from dvc.progress import Tqdm
     from dvc.ui.table import Headers, Styles, TableData
 
 
 class Formatter:
     def __init__(self, theme: Dict = None, defaults: Dict = None) -> None:
+        from collections import defaultdict
+
         theme = theme or {
             "success": {"color": "green", "style": "bold"},
             "warn": {"color": "yellow"},
@@ -29,6 +28,8 @@ class Formatter:
         self.theme = defaultdict(lambda: defaults or {}, theme)
 
     def format(self, message: str, style: str = None, **kwargs) -> str:
+        from dvc.utils import colorize
+
         return colorize(message, **self.theme[style])
 
 
@@ -75,6 +76,7 @@ class Console:
         stderr: bool = False,
         force: bool = False,
         styled: bool = False,
+        file=None,
     ) -> None:
         sep = " " if sep is None else sep
         end = "\n" if end is None else end
@@ -85,12 +87,14 @@ class Console:
             console = self.error_console if stderr else self.rich_console
             return console.print(*objects, sep=sep, end=end)
 
-        file = sys.stderr if stderr else sys.stdout
+        file = file or (sys.stderr if stderr else sys.stdout)
         values = (self.formatter.format(obj, style=style) for obj in objects)
         return print(*values, sep=sep, end=end, file=file)
 
     @staticmethod
-    def progress(*args, **kwargs) -> Tqdm:
+    def progress(*args, **kwargs) -> "Tqdm":
+        from dvc.progress import Tqdm
+
         return Tqdm(*args, **kwargs)
 
     def prompt(

@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from dvc import prompt
 from dvc.command.base import CmdBase, append_doc_link
 
 logger = logging.getLogger(__name__)
@@ -10,6 +9,7 @@ logger = logging.getLogger(__name__)
 class CmdDestroy(CmdBase):
     def run(self):
         from dvc.exceptions import DvcException
+        from dvc.ui import ui
 
         try:
             statement = (
@@ -19,7 +19,7 @@ class CmdDestroy(CmdBase):
                 "Are you sure you want to continue?"
             )
 
-            if not self.args.force and not prompt.confirm(statement):
+            if not self.args.force and not ui.confirm(statement):
                 raise DvcException(
                     "cannot destroy without a confirmation from the user."
                     " Use `-f` to force."
