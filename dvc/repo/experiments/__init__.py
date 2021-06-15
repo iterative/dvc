@@ -879,6 +879,43 @@ class Experiments:
             return ExpRefInfo.from_ref(ref).name
         return None
 
+    def get_running_exps(self) -> Dict[str, int]:
+        """Return running experiments as stash revisions mapped to PIDs."""
+        from dvc.utils.serialize import load_yaml
+
+        from .executor.base import BaseExecutor, ExecutorInfo
+
+        result = {}
+        for pidfile in self.repo.fs.walk_files(
+            os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
+        ):
+            rev, _ = os.path.splitext(os.path.basename(pidfile))
+
+            try:
+                info = ExecutorInfo.from_dict(load_yaml(pidfile))
+                if rev == "workspace":
+                    # If we are appending to a checkpoint branch in a workspace
+                    # run, show both workspace and the latest checkpoint as
+                    # running.
+                    result[rev] = info
+                    rev = self.scm.get_ref(EXEC_BRANCH) or "workspace"
+                elif info.git_url:
+
+                    def on_diverged(_ref: str, _checkpoint: bool):
+                        return False
+
+                    for ref in BaseExecutor.fetch_exps(
+                        self.scm,
+                        info.git_url,
+                        on_diverged=on_diverged,
+                    ):
+                        logger.debug("Updated running experiment '%s'.", ref)
+                        rev = self.scm.get_ref(ref)
+                result[rev] = info
+            except OSError:
+                pass
+        return result
+
     def apply(self, *args, **kwargs):
         from dvc.repo.experiments.apply import apply
 
