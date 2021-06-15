@@ -884,7 +884,7 @@ class Experiments:
         return None
 
     def get_running_exps(self) -> Dict[str, int]:
-        """Return running experiments as stash revisions mapped to PIDs."""
+        """Return info for running experiments."""
         from dvc.utils.serialize import load_yaml
 
         from .executor.base import BaseExecutor, ExecutorInfo
@@ -897,14 +897,15 @@ class Experiments:
 
             try:
                 info = ExecutorInfo.from_dict(load_yaml(pidfile))
+                result[rev] = info.to_dict()
                 if rev == "workspace":
                     # If we are appending to a checkpoint branch in a workspace
                     # run, show both workspace and the latest checkpoint as
                     # running.
-                    branch_rev = self.scm.get_ref(EXEC_BRANCH)
-                    if branch_rev:
-                        result["workspace"] = info
-                        rev = branch_rev
+                    last_rev = self.scm.get_ref(EXEC_BRANCH)
+                    result[rev]["last"] = last_rev
+                    if last_rev:
+                        result[last_rev] = info.to_dict()
                 elif info.git_url:
 
                     def on_diverged(_ref: str, _checkpoint: bool):
@@ -916,8 +917,10 @@ class Experiments:
                         on_diverged=on_diverged,
                     ):
                         logger.debug("Updated running experiment '%s'.", ref)
-                        rev = self.scm.get_ref(ref)
-                result[rev] = info
+                        last_rev = self.scm.get_ref(ref)
+                        result[rev]["last"] = last_rev
+                        if last_rev:
+                            result[last_rev] = info.to_dict()
             except OSError:
                 pass
         return result
