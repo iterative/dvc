@@ -141,7 +141,7 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         self.hdfs_client.makedirs(to_info.parent.path)
         self.hdfs_client.rename(from_info.path, to_info.path)
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         with self.hdfs_client.write(to_info.path) as fdest:
             shutil.copyfileobj(fobj, fdest)
 

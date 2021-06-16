@@ -19,7 +19,7 @@ def _upload_file(path_info, fs, odb):
     with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
         stream = HashedStreamReader(stream)
         odb.fs.upload_fobj(
-            stream, tmp_info, desc=path_info.name, total=fs.getsize(path_info)
+            stream, tmp_info, desc=path_info.name, size=fs.getsize(path_info)
         )
 
     obj = HashFile(tmp_info, odb.fs, stream.hash_info)

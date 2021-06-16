@@ -147,7 +147,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         size = self._content_length(resp)
         return {"etag": etag, "size": size}
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         def chunks(fobj):
             while True:
                 chunk = fobj.read(self.CHUNK_SIZE)
@@ -184,9 +184,9 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             self.upload_fobj(
                 fobj,
                 to_info,
+                size=None if no_progress_bar else os.path.getsize(from_file),
                 no_progress_bar=no_progress_bar,
                 desc=name or to_info.url,
-                total=None if no_progress_bar else os.path.getsize(from_file),
             )
 
     @staticmethod

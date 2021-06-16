@@ -618,22 +618,27 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         gdrive_file.FetchMetadata(fields="fileSize")
         return {"size": gdrive_file.get("fileSize")}
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         dirname = to_info.parent
         assert dirname
         parent_id = self._get_item_id(dirname, create=True)
         self._gdrive_upload_fobj(fobj, parent_id, to_info.name)
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self,
+        from_file,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        **_kwargs,
     ):
         with open(from_file, "rb") as fobj:
             self.upload_fobj(
                 fobj,
                 to_info,
+                size=os.path.getsize(from_file),
                 no_progress_bar=no_progress_bar,
                 desc=name or to_info.name,
-                total=os.path.getsize(from_file),
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):

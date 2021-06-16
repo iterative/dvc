@@ -235,14 +235,23 @@ class BaseFileSystem:
             no_progress_bar=no_progress_bar,
         )
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+    def upload_fobj(
+        self, fobj, to_info, no_progress_bar=False, size=None, **pbar_args
+    ):
         if not hasattr(self, "_upload_fobj"):
             raise RemoteActionNotImplemented("upload_fobj", self.scheme)
 
         with Tqdm.wrapattr(
-            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
+            fobj,
+            "read",
+            disable=no_progress_bar,
+            bytes=True,
+            total=size,
+            **pbar_args,
         ) as wrapped:
-            self._upload_fobj(wrapped, to_info)  # pylint: disable=no-member
+            self._upload_fobj(  # pylint: disable=no-member
+                wrapped, to_info, size=size
+            )
 
     def download(
         self,

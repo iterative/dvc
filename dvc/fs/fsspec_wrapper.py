@@ -118,20 +118,20 @@ class FSSpecWrapper(BaseFileSystem):
         info["name"] = self._strip_bucket(info["name"])
         return info
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, size=None):
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(fobj, fdest, length=fdest.blocksize)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
-        total = os.path.getsize(from_file)
+        size = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
             self.upload_fobj(
                 fobj,
                 self._with_bucket(to_info),
+                size=size,
                 desc=name,
-                total=total,
                 no_progress_bar=no_progress_bar,
             )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
