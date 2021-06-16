@@ -1024,6 +1024,7 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 
     hash_info = stage.outs[0].hash_info
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+    assert hash_info.size == len("foo")
 
 
 def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
@@ -1067,6 +1068,8 @@ def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
     (stage,) = dvc.add(str(local_cloud / "data"), out="data")
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
+    assert stage.outs[0].hash_info.size == len("foo") + len("bar")
+    assert stage.outs[0].hash_info.nfiles == 2
 
     data = tmp_dir / "data"
     assert data.read_text() == {"foo": "foo", "bar": "bar"}
