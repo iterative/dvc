@@ -49,17 +49,19 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         }
 
     def _prepare_credentials(self, **config):
-        self.user = user = config.get("user", None)
-        self.password = password = config.get("password", None)
+        user = config.get("user", None)
+        password = config.get("password", None)
 
         headers = {}
         token = config.get("token")
+        auth = None
         if token:
             headers.update({"Authorization": f"Bearer {token}"})
-        elif user and not password and config.get("ask_password"):
-            self.password = password = ask_password(config["host"], self.user)
+        elif user:
+            if not password and config.get("ask_password"):
+                password = ask_password(config["host"], user)
+            auth = (user, password)
 
-        auth = (user, password) if user and password else None
         return {"headers": headers, "auth": auth}
 
     @wrap_prop(threading.Lock())
