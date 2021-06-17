@@ -147,7 +147,7 @@ class AzureFileSystem(ObjectFSWrapper):
         if (
             login_info["account_name"]
             and not any_secondary
-            and not config.get("allow_anonymous_login")
+            and not config.get("allow_anonymous_login", False)
         ):
             login_info["credential"] = DefaultAzureCredential(
                 exclude_interactive_browser_credential=False

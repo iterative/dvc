@@ -189,6 +189,7 @@ SCHEMA = {
                     "tenant_id": str,
                     "client_id": str,
                     "client_secret": str,
+                    "allow_anonymous_login": bool,
                     **REMOTE_COMMON,
                 },
                 "oss": {
