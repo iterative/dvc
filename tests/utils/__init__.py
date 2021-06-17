@@ -2,9 +2,14 @@ import csv
 import os
 from contextlib import contextmanager
 
+import pytest
 from funcy import first
 
 from dvc.scm import Git
+
+# rewrite assertions in assert, pytest does not rewrite for other modules
+# than tests itself.
+pytest.register_assert_rewrite("tests.utils.asserts")
 
 
 def get_gitignore_content():

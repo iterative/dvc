@@ -1,5 +1,10 @@
-from typing import Any
+from typing import Any, Dict
 from unittest.mock import ANY, Mock
+
+
+def issubset(subset: Dict, superset: Dict) -> bool:
+    assert {**superset, **subset} == superset
+    return True
 
 
 def called_once_with_subset(m: Mock, *args: Any, **kwargs: Any) -> bool:
