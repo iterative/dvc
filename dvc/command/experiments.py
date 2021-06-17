@@ -151,9 +151,9 @@ def _collect_rows(
     new_checkpoint = True
     for i, (rev, exp) in enumerate(experiments.items()):
         if exp.get("running"):
-            state = "Run"
+            state = "Running"
         elif exp.get("queued"):
-            state = "Queue"
+            state = "Queued"
         else:
             state = "-"
         is_baseline = rev == "baseline"
