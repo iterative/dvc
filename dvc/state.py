@@ -237,7 +237,7 @@ def _build_sqlite_uri(filename, options):
             # file://server/dir/file
             # doesn't work, so need to either use:
             # file:////server/dir/file
-            # or 
+            # or
             # file://localhost//server/dir/file
             # easiest to do the latter with current structure
             # In future versions of sqlite, this may not be necessary
@@ -249,4 +249,6 @@ def _build_sqlite_uri(filename, options):
         uri_path = re.sub(r"/+", "/", uri_path)
 
     # Empty netloc, params and fragment
-    return urlunparse(("file", authority, uri_path, "", urlencode(options), ""))
+    return urlunparse(
+        ("file", authority, uri_path, "", urlencode(options), "")
+    )
