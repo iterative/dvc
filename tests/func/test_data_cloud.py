@@ -56,7 +56,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     out = stage.outs[0]
     cache = out.cache_path
     md5 = out.hash_info.value
-    foo_objs = out.get_used_objs()
+    foo_objs = out.get_used_objs().get(None, set())
 
     (stage_dir,) = tmp_dir.dvc_gen(
         {

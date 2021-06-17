@@ -2,7 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
-from typing import TYPE_CHECKING, Dict, Set, Type
+from typing import TYPE_CHECKING, Dict, Optional, Set, Type
 from urllib.parse import urlparse
 
 from funcy import collecting, project
@@ -33,8 +33,7 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc.dependency.repo import RepoPair
-
+    from .objects.db.base import ObjectDB
     from .objects.file import HashFile
 
 logger = logging.getLogger(__name__)
@@ -323,6 +322,8 @@ class Output:
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
+
+        self.def_remote = None
 
     def _parse_path(self, fs, path_info):
         if fs.scheme != "local":
@@ -809,7 +810,7 @@ class Output:
 
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
-    ) -> Set["HashFile"]:
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         """Fetch dir cache and return used objects for this out."""
 
         try:
@@ -830,17 +831,22 @@ class Output:
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
-            return set()
+            return {}
 
         obj = self.get_obj(filter_info=filter_info, copy=True)
         self._set_obj_names(obj)
-        return {obj}
+        return {None: {obj}}
 
-    def get_used_objs(self, **kwargs) -> Set["HashFile"]:
+    def get_used_objs(
+        self, **kwargs
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         """Return filtered set of used objects for this out."""
 
         if not self.use_cache:
-            return set()
+            return {}
+
+        if self.stage.is_repo_import:
+            return self.get_used_external(**kwargs)
 
         if not self.hash_info:
             msg = (
@@ -859,7 +865,7 @@ class Output:
                     )
                 )
             logger.warning(msg)
-            return set()
+            return {}
 
         if self.is_dir_checksum:
             return self.collect_used_dir_cache(**kwargs)
@@ -869,7 +875,7 @@ class Output:
             obj = self.odb.get(self.hash_info)
         self._set_obj_names(obj)
 
-        return {obj}
+        return {None: {obj}}
 
     def _set_obj_names(self, obj):
         obj.name = str(self)
@@ -877,12 +883,14 @@ class Output:
             for key, entry_obj in obj:
                 entry_obj.name = os.path.join(str(self), *key)
 
-    def get_used_external(self, **kwargs) -> Dict["RepoPair", str]:
+    def get_used_external(
+        self, **kwargs
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         if not self.use_cache or not self.stage.is_repo_import:
             return {}
 
         (dep,) = self.stage.deps
-        return {dep.repo_pair: dep.def_path}
+        return dep.get_used_objs()
 
     def _validate_output_path(self, path, stage=None):
         from dvc.dvcfile import is_valid_filename

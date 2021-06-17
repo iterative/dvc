@@ -72,6 +72,7 @@ class Remote:
         from dvc.objects.db import get_odb
 
         self.fs = fs
+        config["tmp_dir"] = tmp_dir
         self.odb = get_odb(self.fs, path_info, **config)
 
         url = getattr(path_info, "fspath", path_info.url)
@@ -84,6 +85,22 @@ class Remote:
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
             path_info=self.odb.path_info or "No path",
+        )
+
+    def __eq__(self, other):
+        return self.odb == other.odb
+
+    def __hash__(self):
+        return hash(self.odb)
+
+    @classmethod
+    def from_odb(cls, odb):
+        config = odb.config
+        return cls(
+            odb.fs,
+            odb.path_info,
+            config.pop("tmp_dir"),
+            **config,
         )
 
     @index_locked

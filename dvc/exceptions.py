@@ -384,3 +384,11 @@ class CacheLinkError(DvcException):
         )
         super().__init__(msg)
         self.path_infos = path_infos
+
+
+class CircularImportError(DvcException):
+    def __init__(self, dep, a, b):
+        super().__init__(
+            f"'{dep}' contains invalid circular import. "
+            f"DVC repo '{a}' already imports from '{b}'."
+        )

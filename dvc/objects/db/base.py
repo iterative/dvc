@@ -29,6 +29,23 @@ class ObjectDB:
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
         self.slow_link_warning = config.get("slow_link_warning", True)
+        self.tmp_dir = config.get("tmp_dir")
+
+    @property
+    def config(self):
+        return {
+            "state": self.state,
+            "verify": self.verify,
+            "type": self.cache_types,
+            "slow_link_warning": self.slow_link_warning,
+            "tmp_dir": self.tmp_dir,
+        }
+
+    def __eq__(self, other):
+        return self.fs == other.fs and self.path_info == other.path_info
+
+    def __hash__(self):
+        return hash((self.fs.scheme, self.path_info))
 
     def move(self, from_info, to_info):
         self.fs.move(from_info, to_info)
