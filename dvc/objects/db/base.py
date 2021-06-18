@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import Optional
 
-from dvc.objects.errors import ObjectFormatError
+from dvc.objects.errors import ObjectError, ObjectFormatError
 from dvc.objects.file import HashFile
 from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
@@ -30,6 +30,7 @@ class ObjectDB:
         self.cache_type_confirmed = False
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
+        self.read_only = config.get("read_only", False)
 
     @property
     def config(self):
@@ -39,10 +40,15 @@ class ObjectDB:
             "type": self.cache_types,
             "slow_link_warning": self.slow_link_warning,
             "tmp_dir": self.tmp_dir,
+            "read_only": self.read_only,
         }
 
     def __eq__(self, other):
-        return self.fs == other.fs and self.path_info == other.path_info
+        return (
+            self.fs == other.fs
+            and self.path_info == other.path_info
+            and self.read_only == other.read_only
+        )
 
     def __hash__(self):
         return hash((self.fs.scheme, self.path_info))
@@ -63,6 +69,8 @@ class ObjectDB:
         )
 
     def add(self, path_info, fs, hash_info, move=True, **kwargs):
+        if self.read_only:
+            raise ObjectError("Cannot write to read-only ODB")
         try:
             self.check(hash_info, check_hash=self.verify)
             return
@@ -335,6 +343,8 @@ class ObjectDB:
         pass
 
     def gc(self, used, jobs=None):
+        if self.read_only:
+            raise ObjectError("Cannot write to read-only ODB")
         used_hashes = set()
         for obj in used:
             used_hashes.add(obj.hash_info.value)
