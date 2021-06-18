@@ -51,6 +51,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # NOTE: use string paths here for performance reasons
         key = tuple(relpath(path_info, out.path_info).split(os.sep))
         out.get_dir_cache(remote=remote)
+        if out.obj is None:
+            raise FileNotFoundError
         obj = out.obj.trie.get(key)
         if obj:
             return obj.hash_info
