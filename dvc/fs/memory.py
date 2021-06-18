@@ -1,34 +1,28 @@
-from .base import BaseFileSystem
+import threading
+
+from funcy import cached_property, wrap_prop
+
+from dvc.path_info import CloudURLInfo
+from dvc.scheme import Schemes
+
+from .fsspec_wrapper import FSSpecWrapper
 
 
-class MemoryFileSystem(BaseFileSystem):
-    scheme = "local"
+class MemoryFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+    scheme = Schemes.MEMORY
     PARAM_CHECKSUM = "md5"
+    PATH_CLS = CloudURLInfo
+    TRAVERSE_PREFIX_LEN = 2
+    DEFAULT_BLOCKSIZE = 4096
 
-    def __init__(self, **kwargs):
+    @wrap_prop(threading.Lock())
+    @cached_property
+    def fs(self):
         from fsspec.implementations.memory import MemoryFileSystem as MemFS
 
-        super().__init__(**kwargs)
+        return MemFS(**self.fs_args)
 
-        self.fs = MemFS()
-
-    def exists(self, path_info) -> bool:
-        return self.fs.exists(path_info.fspath)
-
-    def open(self, path_info, mode="r", encoding=None, **kwargs):
-        return self.fs.open(
-            path_info.fspath, mode=mode, encoding=encoding, **kwargs
-        )
-
-    def info(self, path_info):
-        return self.fs.info(path_info.fspath)
-
-    def stat(self, path_info):
-        import os
-
-        info = self.fs.info(path_info.fspath)
-
-        return os.stat_result((0, 0, 0, 0, 0, 0, info["size"], 0, 0, 0))
-
-    def walk_files(self, path_info, **kwargs):
-        raise NotImplementedError
+    def open(self, *args, **kwargs):
+        with super().open(*args, **kwargs) as fobj:
+            fobj.blocksize = self.DEFAULT_BLOCKSIZE
+            return fobj
