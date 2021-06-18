@@ -15,6 +15,13 @@ class MemoryFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     TRAVERSE_PREFIX_LEN = 2
     DEFAULT_BLOCKSIZE = 4096
 
+    def __eq__(self, other):
+        # NOTE: all fsspec MemoryFileSystem instances are equivalent and use a
+        # single global store
+        return isinstance(other, type(self))
+
+    __hash__ = FSSpecWrapper.__hash__
+
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
