@@ -38,6 +38,7 @@ class ODBManager:
         Schemes.HDFS,
         Schemes.WEBHDFS,
     ]
+    STAGING_URL = "memory://dvc-staging"
 
     def __init__(self, repo):
         self.repo = repo
@@ -78,3 +79,12 @@ class ODBManager:
     def by_scheme(self):
         self._init_odb(self.CLOUD_SCHEMES)
         yield from self._odb.items()
+
+    @classmethod
+    def get_staging(cls):
+        from dvc.fs.memory import MemoryFileSystem
+        from dvc.path_info import CloudURLInfo
+
+        from .base import ObjectDB
+
+        return ObjectDB(MemoryFileSystem(), CloudURLInfo(cls.STAGING_URL))
