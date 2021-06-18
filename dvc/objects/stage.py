@@ -144,7 +144,14 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
     if value:
         hash_info = HashInfo(name, value)
         try:
-            return Tree.load(odb, hash_info)
+            tree = Tree.load(odb, hash_info)
+            # NOTE: loaded entries are naive objects with hash_infos but no
+            # path_info. For staging trees, obj.path_info should be relative
+            # to the staging src `path_info` and src fs
+            for key, entry in tree:
+                entry.fs = fs
+                entry.path_info = path_info.joinpath(*key)
+            return tree
         except FileNotFoundError:
             pass
 
@@ -163,6 +170,11 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
         if not tree.hash_info.value.endswith(".dir"):
             tree.hash_info.value += ".dir"
         odb.add(tree.path_info, tree.fs, tree.hash_info)
+
+    # if tree fs matches ODB fs, odb.add() is a move operation, so the
+    # digest() generated tempfile path is no longer valid
+    if isinstance(tree.fs, type(odb.fs)):
+        tree.path_info = odb.hash_to_path_info(tree.hash_info.value)
 
     return tree
 

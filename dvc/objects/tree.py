@@ -34,11 +34,11 @@ class Tree(HashFile):
 
     def digest(self):
         from dvc.fs.memory import MemoryFileSystem
-        from dvc.path_info import PathInfo
+        from dvc.path_info import CloudURLInfo
         from dvc.utils import tmp_fname
 
         memfs = MemoryFileSystem()
-        path_info = PathInfo(tmp_fname(""))
+        path_info = CloudURLInfo("memory://{}".format(tmp_fname("")))
         with memfs.open(path_info, "wb") as fobj:
             fobj.write(self.as_bytes())
         self.fs = memfs
