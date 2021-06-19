@@ -938,7 +938,7 @@ def add_parser(subparsers, parent_parser):
     experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
 
     EXPERIMENTS_RUN_HELP = (
-        "Reproduce complete or partial experiment pipelines."
+        "Run or resume an experiment."
     )
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
