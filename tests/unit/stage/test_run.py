@@ -18,7 +18,5 @@ def test_run_stage_dry(caplog, cmd, expected):
         stage = Stage(None, "stage.dvc", cmd=cmd)
         run_stage(stage, dry=True)
 
-    expected.insert(
-        0, "Running stage 'stage.dvc':",
-    )
+    expected.insert(0, "Running stage 'stage.dvc':")
     assert caplog.messages == expected

@@ -2,10 +2,11 @@ import logging
 import os.path
 import threading
 from typing import Optional
+from urllib.parse import urlparse
 
 from funcy import cached_property, memoize, wrap_prop, wrap_with
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.exceptions import DvcException, HTTPError
 from dvc.path_info import HTTPURLInfo
 from dvc.progress import Tqdm
@@ -36,16 +37,10 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     REQUEST_TIMEOUT = 60
     CHUNK_SIZE = 2 ** 16
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
-        url = config.get("url")
-        if url:
-            self.path_info = self.PATH_CLS(url)
-            self.user = config.get("user", None)
-            self.host = self.path_info.host
-        else:
-            self.path_info = None
+        self.user = config.get("user", None)
 
         self.auth = config.get("auth", None)
         self.custom_auth_header = config.get("custom_auth_header", None)
@@ -55,12 +50,12 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         self.ssl_verify = config.get("ssl_verify", True)
         self.method = config.get("method", "POST")
 
-    def _auth_method(self):
+    def _auth_method(self, url):
         from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
         if self.auth:
             if self.ask_password and self.password is None:
-                self.password = ask_password(self.host, self.user)
+                self.password = ask_password(urlparse(url).hostname, self.user)
             if self.auth == "basic":
                 return HTTPBasicAuth(self.user, self.password)
             if self.auth == "digest":
@@ -103,7 +98,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             res = self._session.request(
                 method,
                 url,
-                auth=self._auth_method(),
+                auth=self._auth_method(url),
                 headers=self.headers,
                 **kwargs,
             )
@@ -138,7 +133,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         return response
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         res = self._head(path_info.url)
         if res.status_code == 404:
             return False

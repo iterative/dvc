@@ -73,36 +73,6 @@ def test_ls_repo(tmp_dir, dvc, scm):
     )
 
 
-def test_ls_repo_with_color(tmp_dir, dvc, scm, mocker, monkeypatch, caplog):
-    import logging
-
-    from dvc.cli import parse_args
-
-    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
-    tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
-
-    monkeypatch.setenv("LS_COLORS", "rs=0:di=01;34:*.xml=01;31:*.dvc=01;33:")
-    cli_args = parse_args(["list", os.fspath(tmp_dir)])
-    cmd = cli_args.func(cli_args)
-
-    caplog.clear()
-    mocker.patch("sys.stdout.isatty", return_value=True)
-    with caplog.at_level(logging.INFO, logger="dvc.command.ls"):
-        assert cmd.run() == 0
-
-    assert caplog.records[-1].msg == "\n".join(
-        [
-            ".dvcignore",
-            ".gitignore",
-            "README.md",
-            "\x1b[01;34mdata\x1b[0m",
-            "\x1b[01;34mmodel\x1b[0m",
-            "\x1b[01;31mstructure.xml\x1b[0m",
-            "\x1b[01;33mstructure.xml.dvc\x1b[0m",
-        ]
-    )
-
-
 def test_ls_repo_recursive(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
@@ -196,7 +166,7 @@ def test_ls_repo_with_path_subdir_dvc_only(tmp_dir, dvc, scm):
 
     path = os.path.join("data", "subcontent")
     files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True)
-    match_files(files, ((("data.xml",), True), (("statistics",), False),))
+    match_files(files, ((("data.xml",), True), (("statistics",), False)))
 
 
 def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
@@ -206,7 +176,7 @@ def test_ls_repo_with_path_subdir_dvc_only_recursive(tmp_dir, dvc, scm):
     path = os.path.join("data", "subcontent")
     files = Repo.ls(os.fspath(tmp_dir), path, dvc_only=True, recursive=True)
     match_files(
-        files, ((("data.xml",), True), (("statistics", "data.csv"), True),)
+        files, ((("data.xml",), True), (("statistics", "data.csv"), True))
     )
 
 
@@ -301,6 +271,24 @@ def test_ls_repo_with_removed_dvc_dir_with_path_file(tmp_dir, dvc, scm):
     path = os.path.join("out", "file")
     files = Repo.ls(os.fspath(tmp_dir), path)
     match_files(files, ((("file",), True),))
+
+
+def test_ls_repo_with_rev(erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
+        erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
+
+    rev = erepo_dir.scm.list_all_commits()[1]
+    files = Repo.ls(os.fspath(erepo_dir), rev=rev)
+    match_files(
+        files,
+        (
+            ((".dvcignore",), False),
+            ((".gitignore",), False),
+            (("README.md",), False),
+            (("model",), False),
+        ),
+    )
 
 
 def test_ls_remote_repo(erepo_dir):
@@ -536,8 +524,8 @@ def test_subrepo(dvc_top_level, erepo):
             if hasattr(repo, "dvc"):
                 repo.dvc_gen(dvc_files, commit=f"dvc track for {repo}")
 
-    def _list_files(path=None):
-        return set(map(itemgetter("path"), Repo.ls(os.fspath(erepo), path)))
+    def _list_files(repo, path=None):
+        return set(map(itemgetter("path"), Repo.ls(os.fspath(repo), path)))
 
     extras = {".dvcignore", ".gitignore"}
     git_tracked_outputs = {"bar.txt", "scm_dir"}
@@ -547,12 +535,11 @@ def test_subrepo(dvc_top_level, erepo):
     top_level_outputs = (
         common_outputs if dvc_top_level else git_tracked_outputs
     )
-    assert _list_files() == top_level_outputs | {"subrepo"}
-    assert _list_files("subrepo") == common_outputs
-
-    assert _list_files("scm_dir") == {"ipsum"}
-    assert _list_files("subrepo/scm_dir") == {"ipsum"}
-
+    assert _list_files(erepo) == top_level_outputs
+    assert _list_files(erepo, "scm_dir") == {"ipsum"}
     if dvc_top_level:
-        assert _list_files("dvc_dir") == {"lorem"}
-    assert _list_files("subrepo/dvc_dir") == {"lorem"}
+        assert _list_files(erepo, "dvc_dir") == {"lorem"}
+
+    assert _list_files(subrepo, ".") == common_outputs
+    assert _list_files(subrepo, "scm_dir") == {"ipsum"}
+    assert _list_files(subrepo, "dvc_dir") == {"lorem"}

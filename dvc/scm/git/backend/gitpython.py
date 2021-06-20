@@ -274,7 +274,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return [
             c.hexsha
             for c in self.repo.iter_commits(
-                rev=head, branches=True, tags=True, remotes=True,
+                rev=head, branches=True, tags=True, remotes=True
             )
         ]
 

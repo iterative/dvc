@@ -156,7 +156,7 @@ def _process_stages(
     link_failures = []
     from dvc.dvcfile import Dvcfile
 
-    from ..output.base import OutputDoesNotExistError
+    from ..output import OutputDoesNotExistError
 
     if to_remote or to_cache:
         # Already verified in the add()
@@ -209,7 +209,7 @@ def _find_all_targets(repo, target, recursive):
         return [
             os.fspath(path)
             for path in Tqdm(
-                repo.fs.walk_files(target),
+                repo.dvcignore.walk_files(repo.fs, target),
                 desc="Searching " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
                 unit="file",

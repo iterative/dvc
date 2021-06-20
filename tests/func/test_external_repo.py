@@ -94,7 +94,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            PathInfo(repo.root_dir) / "subdir" / "file", PathInfo(dest),
+            PathInfo(repo.root_dir) / "subdir" / "file", PathInfo(dest)
         )
 
     assert dest.is_file()
@@ -206,7 +206,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             PathInfo(repo.root_dir) / "dir",
             repo.repo_fs,
             "md5",
-            follow_subrepos=False,
+            dvcignore=repo.dvcignore,
         )
         save(repo.odb.local, obj)
         assert set(cache_dir.glob("*/*")) == {

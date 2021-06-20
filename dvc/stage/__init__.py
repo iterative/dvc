@@ -4,11 +4,11 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Set
 
 from funcy import cached_property, project
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.exceptions import (
     CacheLinkError,
     CheckoutError,
@@ -36,6 +36,8 @@ from .utils import (
 
 if TYPE_CHECKING:
     from dvc.dvcfile import DVCFile
+    from dvc.objects.db.base import ObjectDB
+    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
@@ -268,7 +270,7 @@ class Stage(params.StageParams):
         env: Env = {}
         if out.live:
             from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
-            from dvc.output import BaseOutput
+            from dvc.output import Output
             from dvc.schema import LIVE_PROPS
 
             env[DVCLIVE_PATH] = str(out.path_info)
@@ -276,10 +278,10 @@ class Stage(params.StageParams):
                 config = project(out.live, LIVE_PROPS)
 
                 env[DVCLIVE_SUMMARY] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_SUMMARY, True))
+                    int(config.get(Output.PARAM_LIVE_SUMMARY, True))
                 )
                 env[DVCLIVE_HTML] = str(
-                    int(config.get(BaseOutput.PARAM_LIVE_HTML, True))
+                    int(config.get(Output.PARAM_LIVE_HTML, True))
                 )
         elif out.checkpoint and checkpoint_func:
             from dvc.env import DVC_CHECKPOINT
@@ -296,8 +298,11 @@ class Stage(params.StageParams):
 
         for out in self.outs:
             current = self._read_env(out, checkpoint_func=checkpoint_func)
-            if set(env.keys()).intersection(set(current.keys())):
-                raise DvcException("Duplicated env variable")
+            if any(
+                env.get(key) != current.get(key)
+                for key in set(env.keys()).intersection(current.keys())
+            ):
+                raise DvcException("Conflicting values for env variable")
             env.update(current)
         return env
 
@@ -451,7 +456,7 @@ class Stage(params.StageParams):
                     raise
 
     def save_outs(self, allow_missing=False):
-        from dvc.output.base import OutputDoesNotExistError
+        from dvc.output import OutputDoesNotExistError
 
         for out in self.outs:
             try:
@@ -482,7 +487,7 @@ class Stage(params.StageParams):
 
     @rwlocked(write=["outs"])
     def commit(self, allow_missing=False, filter_info=None):
-        from dvc.output.base import OutputDoesNotExistError
+        from dvc.output import OutputDoesNotExistError
 
         link_failures = []
         for out in self.filter_outs(filter_info):
@@ -632,14 +637,15 @@ class Stage(params.StageParams):
             for out in self.filter_outs(filter_info)
         )
 
-    def get_used_cache(self, *args, **kwargs):
-        from dvc.objects.db import NamedCache
-
-        cache = NamedCache()
+    def get_used_objs(
+        self, *args, **kwargs
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
+        """Return set of objects used by this stage."""
+        used_objs = defaultdict(set)
         for out in self.filter_outs(kwargs.get("filter_info")):
-            cache.update(out.get_used_cache(*args, **kwargs))
-
-        return cache
+            for odb, objs in out.get_used_objs(*args, **kwargs).items():
+                used_objs[odb].update(objs)
+        return used_objs
 
     @staticmethod
     def _check_can_merge(stage, ancestor_out=None):

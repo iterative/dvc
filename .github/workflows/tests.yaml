@@ -62,7 +62,7 @@ jobs:
         echo "::set-output name=dir::$(pip cache dir)"
     - name: set pip cache
       id: pip-cache
-      uses: actions/cache@v2.1.5
+      uses: actions/cache@v2.1.6
       with:
         path: ${{ steps.pip-cache-dir.outputs.dir }}
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
@@ -105,7 +105,7 @@ jobs:
         --cov-report=xml --cov-report=term
         --all ${{ env.extra_test_args }}
     - name: upload coverage report
-      uses: codecov/codecov-action@v1.5.0
+      uses: codecov/codecov-action@v1.5.2
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Slack Notification
-      uses: rtCamp/action-slack-notify@v2
+      uses: rtCamp/action-slack-notify@v2.2.0
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_COLOR: ${{ job.status }}

@@ -169,8 +169,8 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
                 "outs": [{"foo2": {"persist": True}}],
                 "always_changed": True,
                 "wdir": "dir",
-            },
-        },
+            }
+        }
     }
 
     run_head(
@@ -195,7 +195,7 @@ def test_run_dump_on_multistage(tmp_dir, dvc, run_head):
                 "metrics": [{"foobar-1": {"cache": False}}],
             },
             **data["stages"],
-        },
+        }
     }
 
 

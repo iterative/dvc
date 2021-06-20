@@ -24,7 +24,7 @@ from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
-from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
+from dvc.output import OutputAlreadyTrackedError, OutputIsStageFileError
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageExternalOutputsError,
@@ -59,7 +59,7 @@ def test_add(tmp_dir, dvc):
                 "path": "foo",
                 "size": 3,
             }
-        ],
+        ]
     }
 
 
@@ -78,7 +78,7 @@ def test_add_executable(tmp_dir, dvc):
                 "size": 3,
                 "isexec": True,
             }
-        ],
+        ]
     }
     assert os.stat("foo").st_mode & stat.S_IEXEC
 
@@ -1024,6 +1024,7 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 
     hash_info = stage.outs[0].hash_info
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+    assert hash_info.size == len("foo")
 
 
 def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
@@ -1052,7 +1053,7 @@ def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--recursive", {"targets": ["foo"], "recursive": True},),
+        ("--recursive", {"targets": ["foo"], "recursive": True}),
         ("--external", {"targets": ["foo"], "external": True}),
     ],
 )
@@ -1067,6 +1068,8 @@ def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
     (stage,) = dvc.add(str(local_cloud / "data"), out="data")
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
+    assert stage.outs[0].hash_info.size == len("foo") + len("bar")
+    assert stage.outs[0].hash_info.nfiles == 2
 
     data = tmp_dir / "data"
     assert data.read_text() == {"foo": "foo", "bar": "bar"}
@@ -1132,7 +1135,7 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--recursive", {"targets": ["foo"], "recursive": True},),
+        ("--recursive", {"targets": ["foo"], "recursive": True}),
     ],
 )
 def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):

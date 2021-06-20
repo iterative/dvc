@@ -7,11 +7,11 @@ logger = logging.getLogger(__name__)
 
 def fix_subparsers(subparsers):
     """Workaround for bug in Python 3. See more info at:
-        https://bugs.python.org/issue16308
-        https://github.com/iterative/dvc/issues/769
+    https://bugs.python.org/issue16308
+    https://github.com/iterative/dvc/issues/769
 
-        Args:
-            subparsers: subparsers to fix.
+    Args:
+        subparsers: subparsers to fix.
     """
     subparsers.required = True
     subparsers.dest = "cmd"

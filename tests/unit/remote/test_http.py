@@ -9,7 +9,7 @@ from dvc.path_info import URLInfo
 
 
 def test_download_fails_on_error_code(dvc, http):
-    fs = HTTPFileSystem(dvc, http.config)
+    fs = HTTPFileSystem(**http.config)
 
     with pytest.raises(HTTPError):
         fs._download(http / "missing.txt", "missing.txt")
@@ -23,9 +23,9 @@ def test_public_auth_method(dvc):
         "password": "",
     }
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() is None
+    assert fs._auth_method(config["url"]) is None
 
 
 def test_basic_auth_method(dvc):
@@ -42,10 +42,10 @@ def test_basic_auth_method(dvc):
         "password": password,
     }
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() == auth
-    assert isinstance(fs._auth_method(), HTTPBasicAuth)
+    assert fs._auth_method(config["url"]) == auth
+    assert isinstance(fs._auth_method(config["url"]), HTTPBasicAuth)
 
 
 def test_digest_auth_method(dvc):
@@ -62,10 +62,10 @@ def test_digest_auth_method(dvc):
         "password": password,
     }
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() == auth
-    assert isinstance(fs._auth_method(), HTTPDigestAuth)
+    assert fs._auth_method(config["url"]) == auth
+    assert isinstance(fs._auth_method(config["url"]), HTTPDigestAuth)
 
 
 def test_custom_auth_method(dvc):
@@ -79,20 +79,17 @@ def test_custom_auth_method(dvc):
         "password": password,
     }
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() is None
+    assert fs._auth_method(config["url"]) is None
     assert header in fs.headers
     assert fs.headers[header] == password
 
 
 def test_ssl_verify_is_enabled_by_default(dvc):
-    config = {
-        "url": "http://example.com/",
-        "path_info": "file.html",
-    }
+    config = {"url": "http://example.com/", "path_info": "file.html"}
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
     assert fs._session.verify is True
 
@@ -104,9 +101,21 @@ def test_ssl_verify_disable(dvc):
         "ssl_verify": False,
     }
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
     assert fs._session.verify is False
+
+
+def test_ssl_verify_custom_cert(dvc):
+    config = {
+        "url": "http://example.com/",
+        "path_info": "file.html",
+        "ssl_verify": "/path/to/custom/cabundle.pem",
+    }
+
+    fs = HTTPFileSystem(**config)
+
+    assert fs._session.verify == "/path/to/custom/cabundle.pem"
 
 
 def test_http_method(dvc):
@@ -124,11 +133,11 @@ def test_http_method(dvc):
         "method": "PUT",
     }
 
-    fs = HTTPFileSystem(dvc, config)
+    fs = HTTPFileSystem(**config)
 
-    assert fs._auth_method() == auth
+    assert fs._auth_method(config["url"]) == auth
     assert fs.method == "PUT"
-    assert isinstance(fs._auth_method(), HTTPBasicAuth)
+    assert isinstance(fs._auth_method(config["url"]), HTTPBasicAuth)
 
 
 def test_exists(mocker):
@@ -137,7 +146,7 @@ def test_exists(mocker):
     # on HEAD request failure.
     res.raw = io.StringIO("foo")
 
-    fs = HTTPFileSystem(None, {})
+    fs = HTTPFileSystem()
     mocker.patch.object(fs, "request", return_value=res)
 
     url = URLInfo("https://example.org/file.txt")
@@ -161,7 +170,7 @@ def test_content_length(mocker, headers, expected_size):
     res.headers.update(headers)
     res.status_code = 200
 
-    fs = HTTPFileSystem(None, {})
+    fs = HTTPFileSystem()
     mocker.patch.object(fs, "request", return_value=res)
 
     url = URLInfo("https://example.org/file.txt")

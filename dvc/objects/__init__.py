@@ -1,14 +1,24 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import TYPE_CHECKING, Optional
 
 from dvc.progress import Tqdm
 
 from .tree import Tree
 
+if TYPE_CHECKING:
+    from .db.base import ObjectDB
+    from .file import HashFile
+
 logger = logging.getLogger(__name__)
 
 
-def save(odb, obj, jobs=None, **kwargs):
+def save(
+    odb: "ObjectDB",
+    obj: "HashFile",
+    jobs: Optional[int] = None,
+    **kwargs,
+):
     if isinstance(obj, Tree):
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             for future in Tqdm(
@@ -18,7 +28,7 @@ def save(odb, obj, jobs=None, **kwargs):
                         entry.path_info,
                         entry.fs,
                         entry.hash_info,
-                        **kwargs
+                        **kwargs,
                     )
                     for _, entry in obj
                 ),

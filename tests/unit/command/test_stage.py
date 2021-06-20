@@ -2,6 +2,7 @@ import pytest
 
 from dvc.cli import parse_args
 from dvc.command.stage import CmdStageAdd
+from tests.utils.asserts import called_once_with_subset
 
 
 @pytest.mark.parametrize(
@@ -10,6 +11,7 @@ from dvc.command.stage import CmdStageAdd
         (["echo", "foo", "bar"], "echo foo bar"),
         (["echo", '"foo bar"'], 'echo "foo bar"'),
         (["echo", "foo bar"], 'echo "foo bar"'),
+        (["cmd", "--flag", ""], 'cmd --flag ""'),
     ],
 )
 def test_stage_add(mocker, dvc, command, parsed_command):
@@ -64,36 +66,30 @@ def test_stage_add(mocker, dvc, command, parsed_command):
     m = mocker.patch.object(cmd.repo.stage, "add")
 
     assert cmd.run() == 0
-    expected = {
-        "name": "name",
-        "deps": ["deps"],
-        "outs": ["outs"],
-        "outs_no_cache": ["outs-no-cache"],
-        "params": [
+    assert called_once_with_subset(
+        m,
+        name="name",
+        deps=["deps"],
+        outs=["outs"],
+        outs_no_cache=["outs-no-cache"],
+        params=[
             {"file": ["param1", "param2"]},
             {"params.yaml": ["param3"]},
         ],
-        "metrics": ["metrics"],
-        "metrics_no_cache": ["metrics-no-cache"],
-        "plots": ["plots"],
-        "plots_no_cache": ["plots-no-cache"],
-        "live": "live",
-        "live_no_summary": True,
-        "live_no_html": True,
-        "wdir": "wdir",
-        "outs_persist": ["outs-persist"],
-        "outs_persist_no_cache": ["outs-persist-no-cache"],
-        "checkpoints": ["checkpoints"],
-        "always_changed": True,
-        "external": True,
-        "desc": "description",
-        "cmd": parsed_command,
-        "force": True,
-    }
-    args, kwargs = m.call_args
-    assert not args
-
-    for key, val in expected.items():
-        # expected values should be a subset of what's in the call args list
-        assert key in kwargs
-        assert kwargs[key] == val, f"in key '{key}'"
+        metrics=["metrics"],
+        metrics_no_cache=["metrics-no-cache"],
+        plots=["plots"],
+        plots_no_cache=["plots-no-cache"],
+        live="live",
+        live_no_summary=True,
+        live_no_html=True,
+        wdir="wdir",
+        outs_persist=["outs-persist"],
+        outs_persist_no_cache=["outs-persist-no-cache"],
+        checkpoints=["checkpoints"],
+        always_changed=True,
+        external=True,
+        desc="description",
+        cmd=parsed_command,
+        force=True,
+    )

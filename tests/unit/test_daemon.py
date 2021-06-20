@@ -4,7 +4,7 @@ from unittest import TestCase
 
 import mock
 
-import dvc.daemon as daemon
+from dvc import daemon
 
 
 class TestDaemon(TestCase):

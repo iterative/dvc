@@ -6,19 +6,19 @@ from dvc.path_info import PathInfo
 from dvc.types import DvcPath
 
 if TYPE_CHECKING:
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
 
-FilterFn = Callable[["BaseOutput"], bool]
-Outputs = List["BaseOutput"]
+FilterFn = Callable[["Output"], bool]
+Outputs = List["Output"]
 DvcPaths = List[DvcPath]
 
 
 def _collect_outs(
-    repo: "Repo", output_filter: FilterFn = None, deps: bool = False,
+    repo: "Repo", output_filter: FilterFn = None, deps: bool = False
 ) -> Outputs:
     outs = [
         out
@@ -43,17 +43,17 @@ def _collect_paths(
     for path_info in path_infos:
 
         if recursive and fs.isdir(path_info):
-            target_infos.extend(fs.walk_files(path_info))
+            target_infos.extend(repo.dvcignore.walk_files(fs, path_info))
 
         if not fs.exists(path_info):
             if not recursive:
                 if rev == "workspace" or rev == "":
                     logger.warning(
-                        "'%s' was not found in current workspace.", path_info,
+                        "'%s' was not found in current workspace.", path_info
                     )
                 else:
                     logger.warning(
-                        "'%s' was not found at: '%s'.", path_info, rev,
+                        "'%s' was not found at: '%s'.", path_info, rev
                     )
             continue
         target_infos.append(path_info)

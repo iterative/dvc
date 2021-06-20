@@ -26,20 +26,19 @@ def grants():
     }
 
 
-def test_init(dvc):
-    config = {"url": url}
-    fs = S3FileSystem(dvc, config)
-
-    assert fs.path_info == url
-
-
 def test_verify_ssl_default_param(dvc):
+    config = {"url": url}
+    fs = S3FileSystem(**config)
+
+    assert "client_kwargs" not in fs.fs_args
+
     config = {
         "url": url,
+        "endpointurl": "https://my.custom.s3:1234",
     }
-    fs = S3FileSystem(dvc, config)
+    fs = S3FileSystem(**config)
 
-    assert fs.fs_args["client_kwargs"]["verify"]
+    assert "verify" not in fs.fs_args["client_kwargs"]
 
 
 def test_s3_config_credentialpath(dvc, monkeypatch):
@@ -47,12 +46,12 @@ def test_s3_config_credentialpath(dvc, monkeypatch):
     monkeypatch.setattr(os, "environ", environment)
 
     config = {"url": url, "credentialpath": "somewhere"}
-    S3FileSystem(dvc, config)
+    S3FileSystem(**config)
     assert environment["AWS_SHARED_CREDENTIALS_FILE"] == "somewhere"
     environment.clear()
 
     config = {"url": url, "configpath": "somewhere"}
-    S3FileSystem(dvc, config)
+    S3FileSystem(**config)
     assert environment["AWS_CONFIG_FILE"] == "somewhere"
     environment.clear()
 
@@ -61,7 +60,7 @@ def test_s3_config_credentialpath(dvc, monkeypatch):
         "credentialpath": "somewhere",
         "configpath": "elsewhere",
     }
-    S3FileSystem(dvc, config)
+    S3FileSystem(**config)
     assert environment["AWS_SHARED_CREDENTIALS_FILE"] == "somewhere"
     assert environment["AWS_CONFIG_FILE"] == "elsewhere"
     environment.clear()
@@ -69,9 +68,32 @@ def test_s3_config_credentialpath(dvc, monkeypatch):
 
 def test_ssl_verify_bool_param(dvc):
     config = {"url": url, "ssl_verify": False}
-    fs = S3FileSystem(dvc, config)
+    fs = S3FileSystem(**config)
 
     assert fs.fs_args["client_kwargs"]["verify"] == config["ssl_verify"]
+
+
+def test_ssl_verify_path_param(dvc):
+    config = {"url": url, "ssl_verify": "/path/to/custom/cabundle.pem"}
+    fs = S3FileSystem(**config)
+
+    assert fs.fs_args["client_kwargs"]["verify"] == config["ssl_verify"]
+
+
+def test_ssl_verify_none_param(dvc):
+    config = {"url": url, "ssl_verify": None}
+    fs = S3FileSystem(**config)
+
+    assert "client_kwargs" not in fs.fs_args
+
+    config = {
+        "url": url,
+        "endpointurl": "https://my.custom.s3:1234",
+        "ssl_verify": None,
+    }
+    fs = S3FileSystem(**config)
+
+    assert "verify" not in fs.fs_args["client_kwargs"]
 
 
 def test_grants(dvc):
@@ -82,7 +104,7 @@ def test_grants(dvc):
         "grant_write_acp": "id=write-acp-permission-id",
         "grant_full_control": "id=full-control-permission-id",
     }
-    fs = S3FileSystem(dvc, config)
+    fs = S3FileSystem(**config)
 
     extra_args = fs.fs_args["s3_additional_kwargs"]
     assert (
@@ -99,23 +121,20 @@ def test_grants_mutually_exclusive_acl_error(dvc, grants):
         config = {"url": url, "acl": "public-read", grant_option: grant_value}
 
         with pytest.raises(ConfigError):
-            S3FileSystem(dvc, config)
+            S3FileSystem(**config)
 
 
 def test_sse_kms_key_id(dvc):
-    fs = S3FileSystem(dvc, {"url": url, "sse_kms_key_id": "key"})
+    fs = S3FileSystem(url=url, sse_kms_key_id="key")
     assert fs.fs_args["s3_additional_kwargs"]["SSEKMSKeyId"] == "key"
 
 
 def test_key_id_and_secret(dvc):
     fs = S3FileSystem(
-        dvc,
-        {
-            "url": url,
-            "access_key_id": key_id,
-            "secret_access_key": key_secret,
-            "session_token": session_token,
-        },
+        url=url,
+        access_key_id=key_id,
+        secret_access_key=key_secret,
+        session_token=session_token,
     )
     assert fs.fs_args["key"] == key_id
     assert fs.fs_args["secret"] == key_secret
@@ -154,7 +173,7 @@ def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
         m.setenv(var, str(tmp_dir))
         # Fresh import to see the effects of changing HOME variable
         s3_mod = importlib.reload(sys.modules[S3FileSystem.__module__])
-        fs = s3_mod.S3FileSystem(dvc, s3.config)
+        fs = s3_mod.S3FileSystem(**s3.config)
 
     importlib.reload(sys.modules[S3FileSystem.__module__])
 
@@ -190,7 +209,7 @@ def test_s3_aws_config_different_profile(tmp_dir, dvc, s3, monkeypatch):
     )
     monkeypatch.setenv("AWS_CONFIG_FILE", config_file)
 
-    fs = S3FileSystem(dvc, {**s3.config, "profile": "dev"})
+    fs = S3FileSystem(profile="dev", **s3.config)
 
     s3_config = fs.fs_args["config_kwargs"]["s3"]
     assert s3_config["addressing_style"] == "virtual"

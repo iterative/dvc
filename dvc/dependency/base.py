@@ -1,6 +1,7 @@
 from typing import Type
 
 from dvc.exceptions import DvcException
+from dvc.output import Output
 
 
 class DependencyDoesNotExistError(DvcException):
@@ -20,7 +21,7 @@ class DependencyIsStageFileError(DvcException):
         super().__init__(f"DVC file '{path}' cannot be a dependency.")
 
 
-class BaseDependency:
+class Dependency(Output):
     IS_DEPENDENCY = True
 
     DoesNotExistError = DependencyDoesNotExistError  # type: Type[DvcException]

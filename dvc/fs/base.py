@@ -4,8 +4,6 @@ from functools import partial, partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
-from funcy import cached_property
-
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
@@ -54,29 +52,19 @@ class BaseFileSystem:
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
     DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
-    def __init__(self, repo, config):
-        self.repo = repo
-        self.config = config
+    def __init__(self, **kwargs):
+        self._check_requires(**kwargs)
 
-        self._check_requires()
+        self.jobs = kwargs.get("jobs") or self._JOBS
+        self.hash_jobs = kwargs.get("checksum_jobs") or self.HASH_JOBS
 
-        self.path_info = None
+    @classmethod
+    def _strip_protocol(cls, path: str):
+        return path
 
-    @cached_property
-    def jobs(self):
-        return (
-            self.config.get("jobs")
-            or (self.repo and self.repo.config["core"].get("jobs"))
-            or self._JOBS
-        )
-
-    @cached_property
-    def hash_jobs(self):
-        return (
-            self.config.get("checksum_jobs")
-            or (self.repo and self.repo.config["core"].get("checksum_jobs"))
-            or self.HASH_JOBS
-        )
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):  # pylint:disable=unused-argument
+        return {}
 
     @classmethod
     def get_missing_deps(cls):
@@ -91,7 +79,7 @@ class BaseFileSystem:
 
         return missing
 
-    def _check_requires(self):
+    def _check_requires(self, **kwargs):
         from ..scheme import Schemes
         from ..utils import format_link
         from ..utils.pkg import PKG
@@ -100,7 +88,7 @@ class BaseFileSystem:
         if not missing:
             return
 
-        url = self.config.get("url", f"{self.scheme}://")
+        url = kwargs.get("url", f"{self.scheme}://")
 
         scheme = self.scheme
         if scheme == Schemes.WEBDAVS:
@@ -139,7 +127,7 @@ class BaseFileSystem:
 
         raise RemoteActionNotImplemented("open", self.scheme)
 
-    def exists(self, path_info, use_dvcignore=True) -> bool:
+    def exists(self, path_info) -> bool:
         raise NotImplementedError
 
     # pylint: disable=unused-argument
@@ -166,6 +154,10 @@ class BaseFileSystem:
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
 
+    def walk(self, top, topdown=True, onerror=None, **kwargs):
+        """Return a generator with (root, dirs, files)."""
+        raise NotImplementedError
+
     def walk_files(self, path_info, **kwargs):
         """Return a generator with `PathInfo`s to all the files.
 
@@ -178,7 +170,7 @@ class BaseFileSystem:
     def ls(self, path_info, detail=False):
         raise RemoteActionNotImplemented("ls", self.scheme)
 
-    def find(self, path_info, detail=False):
+    def find(self, path_info, detail=False, prefix=None):
         raise RemoteActionNotImplemented("find", self.scheme)
 
     def is_empty(self, path_info):
@@ -222,9 +214,7 @@ class BaseFileSystem:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def upload(
-        self, from_info, to_info, name=None, no_progress_bar=False,
-    ):
+    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -279,14 +269,14 @@ class BaseFileSystem:
 
         if not _only_file and self.isdir(from_info):
             return self._download_dir(
-                from_info, to_info, name, no_progress_bar, jobs, **kwargs,
+                from_info, to_info, name, no_progress_bar, jobs, **kwargs
             )
-        return self._download_file(from_info, to_info, name, no_progress_bar,)
+        return self._download_file(from_info, to_info, name, no_progress_bar)
 
     download_file = partialmethod(download, _only_file=True)
 
     def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs,
+        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs
     ):
         from_infos = list(self.walk_files(from_info, **kwargs))
         if not from_infos:
@@ -303,7 +293,7 @@ class BaseFileSystem:
             disable=no_progress_bar,
         ) as pbar:
             download_files = pbar.wrap_fn(
-                partial(self._download_file, name=name, no_progress_bar=True,)
+                partial(self._download_file, name=name, no_progress_bar=True)
             )
             max_workers = jobs or self.jobs
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -327,9 +317,7 @@ class BaseFileSystem:
                             entry.cancel()
                         raise exc
 
-    def _download_file(
-        self, from_info, to_info, name, no_progress_bar,
-    ):
+    def _download_file(self, from_info, to_info, name, no_progress_bar):
         makedirs(to_info.parent, exist_ok=True)
 
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)

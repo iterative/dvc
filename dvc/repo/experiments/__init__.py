@@ -412,7 +412,7 @@ class Experiments:
         )
         if queue:
             logger.info(
-                "Queued experiment '%s' for future execution.", stash_rev[:7],
+                "Queued experiment '%s' for future execution.", stash_rev[:7]
             )
             return [stash_rev]
         if tmp_dir or queue:
@@ -459,9 +459,7 @@ class Experiments:
         )
 
     @scm_locked
-    def new(
-        self, *args, checkpoint_resume: Optional[str] = None, **kwargs,
-    ):
+    def new(self, *args, checkpoint_resume: Optional[str] = None, **kwargs):
         """Create a new experiment.
 
         Experiment will be reproduced and checked out into the user's
@@ -475,7 +473,7 @@ class Experiments:
         return self._stash_exp(*args, **kwargs)
 
     def _resume_checkpoint(
-        self, *args, resume_rev: Optional[str] = None, **kwargs,
+        self, *args, resume_rev: Optional[str] = None, **kwargs
     ):
         """Resume an existing (checkpoint) experiment.
 
@@ -707,7 +705,7 @@ class Experiments:
                         )
                     elif not isinstance(exc, CheckpointKilledError):
                         logger.error(
-                            "Failed to reproduce experiment '%s'", rev[:7],
+                            "Failed to reproduce experiment '%s'", rev[:7]
                         )
                 except CancelledError:
                     logger.error(
@@ -737,7 +735,7 @@ class Experiments:
             raise ExperimentExistsError(ref_info.name)
 
         for ref in executor.fetch_exps(
-            self.scm, force=exec_result.force, on_diverged=on_diverged,
+            self.scm, force=exec_result.force, on_diverged=on_diverged
         ):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:

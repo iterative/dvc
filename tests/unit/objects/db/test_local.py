@@ -4,24 +4,30 @@ import os
 import pytest
 
 from dvc.fs.local import LocalFileSystem
-from dvc.objects.db import NamedCache
+from dvc.hash_info import HashInfo
 from dvc.objects.db.local import LocalObjectDB
+from dvc.objects.file import HashFile
 from dvc.path_info import PathInfo
 from dvc.remote.index import RemoteIndexNoop
 
 
 def test_status_download_optimization(mocker, dvc):
     """When comparing the status to pull a remote cache,
-        And the desired files to fetch are already on the local cache,
-        Don't check the existence of the desired files on the remote cache
+    And the desired files to fetch are already on the local cache,
+    Don't check the existence of the desired files on the remote cache
     """
-    odb = LocalObjectDB(LocalFileSystem(dvc, {}))
+    odb = LocalObjectDB(LocalFileSystem(), PathInfo("."))
 
-    infos = NamedCache()
-    infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
-    infos.add("local", "37b51d194a7513e45b56f6524f2d51f2", "bar")
+    objs = {
+        HashFile(
+            None, odb.fs, HashInfo("md5", "acbd18db4cc2f85cedef654fccc4a4d8")
+        ),
+        HashFile(
+            None, odb.fs, HashInfo("md5", "37b51d194a7513e45b56f6524f2d51f2")
+        ),
+    }
 
-    local_exists = list(infos["local"])
+    local_exists = [obj.hash_info.value for obj in objs]
     mocker.patch.object(odb, "hashes_exist", return_value=local_exists)
 
     other_remote = mocker.Mock()
@@ -29,7 +35,7 @@ def test_status_download_optimization(mocker, dvc):
     other_remote.hashes_exist.return_value = []
     other_remote.index = RemoteIndexNoop()
 
-    other_remote.status(odb, infos, download=True)
+    other_remote.status(odb, objs, download=True)
 
     assert other_remote.hashes_exist.call_count == 0
 

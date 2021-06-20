@@ -28,18 +28,11 @@ class Azure(Base, CloudURLInfo):
     @cached_property
     def service_client(self):
         # pylint: disable=no-name-in-module
-        from azure.core.exceptions import ResourceNotFoundError
         from azure.storage.blob import BlobServiceClient
 
         service_client = BlobServiceClient.from_connection_string(
             self.CONNECTION_STRING
         )
-
-        container_client = service_client.get_container_client(self.bucket)
-        try:  # verify that container exists
-            container_client.get_container_properties()
-        except ResourceNotFoundError:
-            container_client.create_container()
 
         return service_client
 
@@ -98,10 +91,16 @@ def azure_server(test_config, docker_compose, docker_services):
 
 @pytest.fixture
 def azure(azure_server):
+    from azure.core.exceptions import ResourceNotFoundError
+
     url = f"azure://{TEST_AZURE_CONTAINER}/{uuid.uuid4()}"
     ret = Azure(url)
-    ret.config = {
-        "url": url,
-        "connection_string": azure_server,
-    }
+    ret.config = {"url": url, "connection_string": azure_server}
+
+    container = ret.service_client.get_container_client(TEST_AZURE_CONTAINER)
+    try:  # verify that container exists
+        container.get_container_properties()
+    except ResourceNotFoundError:
+        container.create_container()
+
     return ret

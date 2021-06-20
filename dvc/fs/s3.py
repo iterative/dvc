@@ -9,12 +9,13 @@ from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import FSSpecWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
-class BaseS3FileSystem(FSSpecWrapper):
+# pylint:disable=abstract-method
+class BaseS3FileSystem(ObjectFSWrapper):
     scheme = Schemes.S3
     PATH_CLS = CloudURLInfo
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
@@ -27,12 +28,6 @@ class BaseS3FileSystem(FSSpecWrapper):
         "grant_read_acp": "GrantReadACP",
         "grant_write_acp": "GrantWriteACP",
     }
-
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url", "s3://")
-        self.path_info = self.PATH_CLS(url)
 
     _TRANSFER_CONFIG_ALIASES = {
         "max_queue_size": "max_io_queue",
@@ -83,7 +78,7 @@ class BaseS3FileSystem(FSSpecWrapper):
         s3_config = profile_config.get("s3", {})
         return self._split_s3_config(s3_config)
 
-    def _prepare_credentials(self, config):
+    def _prepare_credentials(self, **config):
         from dvc.config import ConfigError
         from dvc.utils.flatten import flatten, unflatten
 
@@ -102,7 +97,7 @@ class BaseS3FileSystem(FSSpecWrapper):
         client = login_info["client_kwargs"]
         client["region_name"] = config.get("region")
         client["endpoint_url"] = config.get("endpointurl")
-        client["verify"] = config.get("ssl_verify", True)
+        client["verify"] = config.get("ssl_verify")
 
         # encryptions
         additional = login_info["s3_additional_kwargs"]
@@ -167,7 +162,7 @@ def _translate_exceptions(func):
     return wrapper
 
 
-class S3FileSystem(BaseS3FileSystem):
+class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
     @wrap_prop(threading.Lock())
     @cached_property
     def s3(self):

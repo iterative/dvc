@@ -2,10 +2,7 @@ from funcy import first
 
 
 def test_diff_empty(tmp_dir, scm, dvc, exp_stage):
-    assert dvc.experiments.diff() == {
-        "params": {},
-        "metrics": {},
-    }
+    assert dvc.experiments.diff() == {"params": {}, "metrics": {}}
 
 
 def test_diff_head(tmp_dir, scm, dvc, exp_stage):

@@ -21,25 +21,25 @@ class Webdav(Base, WebDAVURLInfo):
 
     @cached_property
     def client(self):
-        from webdav3.client import Client
+        from webdav4.client import Client
 
         user, secrets = first(AUTH.items())
         return Client(
-            {
-                "webdav_hostname": self.replace(path="").url,
-                "webdav_login": user,
-                "webdav_password": secrets["password"],
-            }
+            self.replace(path="").url, auth=(user, secrets["password"])
         )
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         parent_dirs = list(reversed(self.parents))[1:] if parents else []
         for d in parent_dirs + [self]:
-            self.client.mkdir(d.path)  # pylint: disable=no-member
+            path = d.path  # pylint: disable=no-member
+            if not self.client.exists(path):
+                self.client.mkdir(path)
 
     def write_bytes(self, contents):
-        self.client.upload_to(contents, self.path)
+        from io import BytesIO
+
+        self.client.upload_fileobj(BytesIO(contents), self.path)
 
 
 @pytest.fixture

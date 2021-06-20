@@ -253,7 +253,7 @@ reason = """libgit2 stash_save() is flaky on linux when run inside pytest
         pytest.param(
             None,
             marks=pytest.mark.xfail(
-                sys.platform == "linux", raises=AssertionError, reason=reason,
+                sys.platform == "linux", raises=AssertionError, reason=reason
             ),
         ),
         "refs/foo/stash",

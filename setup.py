@@ -51,7 +51,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>3",
-    "dulwich>=0.20.21",
+    "dulwich>=0.20.23",
     "pygit2>=1.5.0",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
@@ -73,7 +73,7 @@ install_requires = [
     "flufl.lock>=3.2,<4",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
-    "networkx>=2.1",
+    "networkx~=2.5",
     "psutil>=5.8.0",
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
@@ -88,16 +88,16 @@ install_requires = [
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
-    "fsspec==2021.4.0",
+    "fsspec @ git+https://github.com/intake/filesystem_spec.git",
     "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["gcsfs==2021.4.0"]
+gs = ["gcsfs==2021.6.0"]
 gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
-s3 = ["s3fs==2021.4.0", "boto3==1.16.52"]
+s3 = ["s3fs==2021.6.0", "aiobotocore[boto3]==1.3.0"]
 azure = ["adlfs==0.7.1", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
 oss = ["oss2==2.6.1", "pycryptodome>=3.10"]
@@ -106,7 +106,7 @@ ssh = ["paramiko[invoke]>=2.7.0"]
 # Remove the env marker if/when pyarrow is available for Python3.9
 hdfs = ["pyarrow>=2.0.0"]
 webhdfs = ["hdfs==2.5.8"]
-webdav = ["webdavclient3>=3.14.5"]
+webdav = ["webdav4>=0.7.0"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,

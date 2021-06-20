@@ -46,7 +46,7 @@ class Tqdm(tqdm):
         desc=None,
         leave=False,
         bar_format=None,
-        bytes=False,  # pylint: disable=W0622
+        bytes=False,  # pylint: disable=redefined-builtin
         file=None,
         total=None,
         postfix=None,
@@ -114,7 +114,7 @@ class Tqdm(tqdm):
 
     def update_to(self, current, total=None):
         if total:
-            self.total = total  # pylint: disable=W0613,W0201
+            self.total = total
         self.update(current - self.n)
 
     def wrap_fn(self, fn, callback=None):

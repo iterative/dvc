@@ -33,36 +33,17 @@ class CmdRun(CmdBase):
             )
             return 1
 
+        kwargs = vars(self.args)
+        kwargs.update(
+            {
+                "cmd": parse_cmd(self.args.cmd),
+                "fname": kwargs.pop("file"),
+                "no_exec": (self.args.no_exec or bool(self.args.checkpoints)),
+                "run_cache": not kwargs.pop("no_run_cache"),
+            }
+        )
         try:
-            self.repo.run(
-                cmd=parse_cmd(self.args.cmd),
-                outs=self.args.outs,
-                outs_no_cache=self.args.outs_no_cache,
-                metrics=self.args.metrics,
-                metrics_no_cache=self.args.metrics_no_cache,
-                plots=self.args.plots,
-                plots_no_cache=self.args.plots_no_cache,
-                live=self.args.live,
-                live_no_cache=self.args.live_no_cache,
-                live_no_summary=self.args.live_no_summary,
-                live_no_html=self.args.live_no_html,
-                deps=self.args.deps,
-                params=self.args.params,
-                fname=self.args.file,
-                wdir=self.args.wdir,
-                no_exec=(self.args.no_exec or bool(self.args.checkpoints)),
-                force=self.args.force,
-                run_cache=not self.args.no_run_cache,
-                no_commit=self.args.no_commit,
-                outs_persist=self.args.outs_persist,
-                outs_persist_no_cache=self.args.outs_persist_no_cache,
-                checkpoints=self.args.checkpoints,
-                always_changed=self.args.always_changed,
-                name=self.args.name,
-                single_stage=self.args.single_stage,
-                external=self.args.external,
-                desc=self.args.desc,
-            )
+            self.repo.run(**kwargs)
         except DvcException:
             logger.exception("")
             return 1
@@ -83,11 +64,9 @@ def add_parser(subparsers, parent_parser):
         help=RUN_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    run_parser.add_argument("-n", "--name", help="Stage name.")
     run_parser.add_argument(
-        "-n", "--name", help="Stage name.",
-    )
-    run_parser.add_argument(
-        "--file", metavar="<filename>", help=argparse.SUPPRESS,
+        "--file", metavar="<filename>", help=argparse.SUPPRESS
     )
     run_parser.add_argument(
         "--no-exec",

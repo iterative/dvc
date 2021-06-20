@@ -87,12 +87,7 @@ def checkout(
     **kwargs,
 ):
 
-    stats = {
-        "added": [],
-        "deleted": [],
-        "modified": [],
-        "failed": [],
-    }
+    stats = {"added": [], "deleted": [], "modified": [], "failed": []}
     if not targets:
         targets = [None]
         stats["deleted"] = _remove_unused_links(self)

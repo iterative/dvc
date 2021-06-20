@@ -85,7 +85,7 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
-class GDriveFileSystem(BaseFileSystem):
+class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
     PARAM_CHECKSUM = "checksum"
@@ -100,8 +100,8 @@ class GDriveFileSystem(BaseFileSystem):
     DEFAULT_GDRIVE_CLIENT_ID = "710796635688-iivsgbgsb6uv1fap6635dhvuei09o66c.apps.googleusercontent.com"  # noqa: E501
     DEFAULT_GDRIVE_CLIENT_SECRET = "a1Fz59uTpVNeG_VGuSKDLJXv"
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
         self.path_info = self.PATH_CLS(config["url"])
 
@@ -126,19 +126,25 @@ class GDriveFileSystem(BaseFileSystem):
         self._client_id = config.get("gdrive_client_id")
         self._client_secret = config.get("gdrive_client_secret")
         self._validate_config()
+
+        tmp_dir = config["gdrive_credentials_tmp_dir"]
+        assert tmp_dir
+
         self._gdrive_service_credentials_path = tmp_fname(
-            os.path.join(self.repo.tmp_dir, "")
+            os.path.join(tmp_dir, "")
         )
         self._gdrive_user_credentials_path = (
-            tmp_fname(os.path.join(self.repo.tmp_dir, ""))
+            tmp_fname(os.path.join(tmp_dir, ""))
             if os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
             else config.get(
                 "gdrive_user_credentials_file",
-                os.path.join(
-                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE,
-                ),
+                os.path.join(tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE),
             )
         )
+
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        return {"url": urlpath}
 
     def _validate_config(self):
         # Validate Service Account configuration
@@ -517,7 +523,7 @@ class GDriveFileSystem(BaseFileSystem):
         assert not create
         raise FileMissingError(path_info, hint)
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         try:
             self._get_item_id(path_info)
         except FileMissingError:
@@ -532,7 +538,7 @@ class GDriveFileSystem(BaseFileSystem):
         query = f"({query}) and trashed=false"
         return self._gdrive_list(query)
 
-    def find(self, path_info, detail=False):
+    def find(self, path_info, detail=False, prefix=None):
         root_path = path_info.path
         seen_paths = set()
 

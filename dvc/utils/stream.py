@@ -70,6 +70,7 @@ class HashedStreamReader(io.IOBase):
     def __init__(self, fobj):
         self.fobj = fobj
         self.md5 = hashlib.md5()
+        self.total_read = 0
         self.is_text_file = None
         super().__init__()
 
@@ -95,9 +96,12 @@ class HashedStreamReader(io.IOBase):
         else:
             data = chunk
         self.md5.update(data)
+        self.total_read += len(data)
 
         return chunk
 
     @property
     def hash_info(self):
-        return HashInfo(self.PARAM_CHECKSUM, self.md5.hexdigest(), nfiles=1)
+        return HashInfo(
+            self.PARAM_CHECKSUM, self.md5.hexdigest(), size=self.total_read
+        )

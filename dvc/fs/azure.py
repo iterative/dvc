@@ -1,17 +1,19 @@
 import asyncio
 import logging
 import os
+import sys
 import threading
 from contextlib import contextmanager
 
-from funcy import cached_property, wrap_prop
+from fsspec.utils import infer_storage_options
+from funcy import cached_property, memoize, wrap_prop
 
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .fsspec_wrapper import FSSpecWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -35,8 +37,20 @@ def _temp_event_loop():
 
     try:
         original_loop = asyncio.get_event_loop()
+        original_policy = asyncio.get_event_loop_policy()
     except RuntimeError:
         original_loop = None
+        original_policy = None
+
+    # From 3.8>= and onwards, asyncio changed the default
+    # loop policy for windows to use proactor loops instead
+    # of selector based ones. Due to that, proxied connections
+    # doesn't work with the aiohttp and this is most likely an
+    # upstream bug that needs to be solved outside of DVC. Until
+    # such issue is resolved, we need to manage this;
+    # https://github.com/aio-libs/aiohttp/issues/4536
+    if sys.version_info >= (3, 8) and os.name == "nt":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     loop = original_loop or asyncio.new_event_loop()
 
@@ -47,13 +61,28 @@ def _temp_event_loop():
         if original_loop is None:
             loop.close()
         asyncio.set_event_loop(original_loop)
+        asyncio.set_event_loop_policy(original_policy)
 
 
 class AzureAuthError(DvcException):
     pass
 
 
-class AzureFileSystem(FSSpecWrapper):
+@memoize
+def _az_config():
+    # NOTE: ideally we would've used get_default_cli().config from
+    # azure.cli.core, but azure-cli-core has a lot of conflicts with other
+    # dependencies. So instead we are just use knack directly
+    from knack.config import CLIConfig
+
+    config_dir = os.getenv(
+        "AZURE_CONFIG_DIR", os.path.expanduser(os.path.join("~", ".azure"))
+    )
+    return CLIConfig(config_dir=config_dir, config_env_var_prefix="AZURE")
+
+
+# pylint:disable=abstract-method
+class AzureFileSystem(ObjectFSWrapper):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
     PARAM_CHECKSUM = "etag"
@@ -64,21 +93,23 @@ class AzureFileSystem(FSSpecWrapper):
         "azure-identity": "azure.identity",
     }
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    @classmethod
+    def _strip_protocol(cls, path: str):
+        bucket = infer_storage_options(path).get("host")
+        if bucket:
+            return path
 
-        url = config.get("url")
-        self.path_info = self.PATH_CLS(url)
-        self.bucket = self.path_info.bucket
+        bucket = _az_config().get("storage", "container_name", None)
+        return f"azure://{bucket}"
 
-        if not self.bucket:
-            container = self._az_config.get("storage", "container_name", None)
-            url = f"azure://{container}"
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        ops = infer_storage_options(urlpath)
+        if "host" in ops:
+            return {"bucket": ops["host"]}
+        return {}
 
-        self.path_info = self.PATH_CLS(url)
-        self.bucket = self.path_info.bucket
-
-    def _prepare_credentials(self, config):
+    def _prepare_credentials(self, **config):
         from azure.identity.aio import DefaultAzureCredential
 
         # Disable spam from failed cred types for DefaultAzureCredential
@@ -87,23 +118,36 @@ class AzureFileSystem(FSSpecWrapper):
         login_info = {}
         login_info["connection_string"] = config.get(
             "connection_string",
-            self._az_config.get("storage", "connection_string", None),
+            _az_config().get("storage", "connection_string", None),
         )
         login_info["account_name"] = config.get(
-            "account_name", self._az_config.get("storage", "account", None)
+            "account_name", _az_config().get("storage", "account", None)
         )
         login_info["account_key"] = config.get(
-            "account_key", self._az_config.get("storage", "key", None)
+            "account_key", _az_config().get("storage", "key", None)
         )
         login_info["sas_token"] = config.get(
-            "sas_token", self._az_config.get("storage", "sas_token", None)
+            "sas_token", _az_config().get("storage", "sas_token", None)
         )
         login_info["tenant_id"] = config.get("tenant_id")
         login_info["client_id"] = config.get("client_id")
         login_info["client_secret"] = config.get("client_secret")
 
-        if not any(
+        if not (login_info["account_name"] or login_info["connection_string"]):
+            raise AzureAuthError(
+                "Authentication to Azure Blob Storage requires either "
+                "account_name or connection_string.\nLearn more about "
+                "configuration settings at "
+                + format_link("https://man.dvc.org/remote/modify")
+            )
+
+        any_secondary = any(
             value for key, value in login_info.items() if key != "account_name"
+        )
+        if (
+            login_info["account_name"]
+            and not any_secondary
+            and not config.get("allow_anonymous_login", False)
         ):
             login_info["credential"] = DefaultAzureCredential(
                 exclude_interactive_browser_credential=False
@@ -131,18 +175,6 @@ class AzureFileSystem(FSSpecWrapper):
         self.login_method = login_method
         return login_info
 
-    @cached_property
-    def _az_config(self):
-        # NOTE: ideally we would've used get_default_cli().config from
-        # azure.cli.core, but azure-cli-core has a lot of conflicts with other
-        # dependencies. So instead we are just use knack directly
-        from knack.config import CLIConfig
-
-        config_dir = os.getenv(
-            "AZURE_CONFIG_DIR", os.path.expanduser(os.path.join("~", ".azure"))
-        )
-        return CLIConfig(config_dir=config_dir, config_env_var_prefix="AZURE")
-
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
@@ -152,10 +184,6 @@ class AzureFileSystem(FSSpecWrapper):
         try:
             with _temp_event_loop():
                 file_system = AzureBlobFileSystem(**self.fs_args)
-                if self.bucket not in [
-                    container.rstrip("/") for container in file_system.ls("/")
-                ]:
-                    file_system.mkdir(self.bucket)
         except (ValueError, AzureError) as e:
             raise AzureAuthError(
                 f"Authentication to Azure Blob Storage via {self.login_method}"

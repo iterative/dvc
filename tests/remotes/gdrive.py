@@ -34,10 +34,7 @@ def _gdrive_retry(func):
             except (ValueError, LookupError):
                 return False
 
-            return reason in [
-                "userRateLimitExceeded",
-                "rateLimitExceeded",
-            ]
+            return reason in ["userRateLimitExceeded", "rateLimitExceeded"]
 
     # 16 tries, start at 0.5s, multiply by golden ratio, cap at 20s
     return retry(
@@ -124,6 +121,8 @@ def gdrive(test_config, make_tmp_dir):
     tmp_dir = make_tmp_dir("gdrive", dvc=True)
 
     ret = GDrive(GDrive.get_url())
-    fs = GDriveFileSystem(tmp_dir.dvc, ret.config)
+    fs = GDriveFileSystem(
+        gdrive_credentials_tmp_dir=tmp_dir.dvc.tmp_dir, **ret.config
+    )
     fs._gdrive_create_dir("root", fs.path_info.path)
     yield ret

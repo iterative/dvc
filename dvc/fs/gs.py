@@ -6,23 +6,18 @@ from funcy import cached_property, wrap_prop
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import FSSpecWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 
-class GSFileSystem(FSSpecWrapper):
+# pylint:disable=abstract-method
+class GSFileSystem(ObjectFSWrapper):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"gcsfs": "gcsfs"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-
-        url = config.get("url", "gs://")
-        self.path_info = self.PATH_CLS(url)
-
-    def _prepare_credentials(self, config):
+    def _prepare_credentials(self, **config):
         login_info = {"consistency": None}
         login_info["project"] = config.get("projectname")
         login_info["token"] = config.get("credentialpath")

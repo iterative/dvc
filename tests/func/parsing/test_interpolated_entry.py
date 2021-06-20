@@ -90,8 +90,8 @@ def test_stage_with_wdir(tmp_dir, dvc):
                 "params": ["value1"],
                 "wdir": "data",
                 "vars": [DEFAULT_PARAMS_FILE],
-            },
-        },
+            }
+        }
     }
 
     data_dir = tmp_dir / "data"
@@ -132,8 +132,8 @@ def test_with_templated_wdir(tmp_dir, dvc):
                 "params": ["value1"],
                 "wdir": "${dict.ws}",
                 "vars": [DEFAULT_PARAMS_FILE],
-            },
-        },
+            }
+        }
     }
     dump_yaml(
         tmp_dir / DEFAULT_PARAMS_FILE, {"dict": {"bar": "bar", "ws": "data"}}
@@ -176,7 +176,7 @@ def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
                 "cmd": "command --value ${bar}",
                 "params": [{"params.json": ["foo"]}],
                 "vars": ["params.json"],
-            },
+            }
         },
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
@@ -187,7 +187,7 @@ def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
                 "build": {
                     "cmd": "command --value bar",
                     "params": [{"params.json": ["foo"]}],
-                },
+                }
             }
         },
     )
@@ -204,8 +204,8 @@ def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
                 "cmd": "command --value ${bar}",
                 "params": [{"params.yaml": ["foo"]}],
                 "vars": ["params.yaml"],
-            },
-        },
+            }
+        }
     }
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
     assert_stage_equal(
@@ -215,7 +215,7 @@ def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
                 "build": {
                     "cmd": "command --value bar",
                     "params": [{"params.yaml": ["foo"]}],
-                },
+                }
             }
         },
     )

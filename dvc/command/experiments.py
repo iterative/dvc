@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import lmap
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
@@ -304,14 +304,7 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = [
-        "Experiment",
-        "rev",
-        "queued",
-        "typ",
-        "Created",
-        "parent",
-    ]
+    headers = ["Experiment", "rev", "queued", "typ", "Created", "parent"]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -714,7 +707,7 @@ class CmdExperimentsRemove(CmdBase):
     def run(self):
 
         self.repo.experiments.remove(
-            exp_names=self.args.experiment, queue=self.args.queue,
+            exp_names=self.args.experiment, queue=self.args.queue
         )
 
         return 0
@@ -875,7 +868,7 @@ def add_parser(subparsers, parent_parser):
         help="Fail if this command would overwrite conflicting changes.",
     )
     experiments_apply_parser.add_argument(
-        "experiment", help="Experiment to be applied.",
+        "experiment", help="Experiment to be applied."
     ).complete = completion.EXPERIMENT
     experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
@@ -1040,10 +1033,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_branch_parser.add_argument(
-        "experiment", help="Experiment to be promoted.",
+        "experiment", help="Experiment to be promoted."
     )
     experiments_branch_parser.add_argument(
-        "branch", help="Git branch name to use.",
+        "branch", help="Git branch name to use."
     )
     experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)
 
@@ -1066,7 +1059,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<rev>",
     )
     experiments_list_parser.add_argument(
-        "--all", action="store_true", help="List all experiments.",
+        "--all", action="store_true", help="List all experiments."
     )
     experiments_list_parser.add_argument(
         "--names-only",
@@ -1138,7 +1131,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<git_remote>",
     )
     experiments_push_parser.add_argument(
-        "experiment", help="Experiment to push.", metavar="<experiment>",
+        "experiment", help="Experiment to push.", metavar="<experiment>"
     ).complete = completion.EXPERIMENT
     experiments_push_parser.set_defaults(func=CmdExperimentsPush)
 
@@ -1194,7 +1187,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<git_remote>",
     )
     experiments_pull_parser.add_argument(
-        "experiment", help="Experiment to pull.", metavar="<experiment>",
+        "experiment", help="Experiment to pull.", metavar="<experiment>"
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
 
@@ -1207,7 +1200,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_remove_parser.add_argument(
-        "--queue", action="store_true", help="Remove all queued experiments.",
+        "--queue", action="store_true", help="Remove all queued experiments."
     )
     experiments_remove_parser.add_argument(
         "experiment",

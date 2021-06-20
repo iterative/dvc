@@ -182,9 +182,7 @@ class BaseExecutor(ABC):
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
             if force:
-                logger.debug(
-                    "Replacing existing experiment '%s'", orig_ref,
-                )
+                logger.debug("Replacing existing experiment '%s'", orig_ref)
                 return True
 
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT) is not None

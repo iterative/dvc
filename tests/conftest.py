@@ -10,6 +10,8 @@ from .remotes import *  # noqa, pylint: disable=wildcard-import
 os.environ["DVC_TEST"] = "true"
 # Ensure progress output even when not outputting to raw sys.stderr console
 os.environ["DVC_IGNORE_ISATTY"] = "true"
+# Disable system git config
+os.environ["GIT_CONFIG_NOSYSTEM"] = "1"
 
 REMOTES = {
     # remote: enabled_by_default?

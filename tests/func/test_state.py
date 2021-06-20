@@ -12,7 +12,7 @@ def test_state(tmp_dir, dvc):
     path_info = PathInfo(path)
     hash_info = HashInfo("md5", file_md5(path, dvc.fs))
 
-    state = State(dvc.root_dir, dvc.tmp_dir)
+    state = State(dvc.root_dir, dvc.tmp_dir, dvc.dvcignore)
 
     state.save(path_info, dvc.fs, hash_info)
     assert state.get(path_info, dvc.fs) == hash_info
@@ -65,9 +65,15 @@ def test_get_unused_links(tmp_dir, dvc):
     assert set(dvc.state.get_unused_links([], dvc.fs)) == {"foo", "bar"}
     assert set(dvc.state.get_unused_links(links[:1], dvc.fs)) == {"bar"}
     assert set(dvc.state.get_unused_links(links, dvc.fs)) == set()
-    assert set(
-        dvc.state.get_unused_links(
-            (links[:1] + [os.path.join(dvc.root_dir, "not-existing-file")]),
-            dvc.fs,
+    assert (
+        set(
+            dvc.state.get_unused_links(
+                (
+                    links[:1]
+                    + [os.path.join(dvc.root_dir, "not-existing-file")]
+                ),
+                dvc.fs,
+            )
         )
-    ) == {"bar"}
+        == {"bar"}
+    )

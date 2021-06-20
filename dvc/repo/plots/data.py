@@ -189,7 +189,7 @@ class CSVPlotData(PlotData):
 
         if header:
             reader = csv.DictReader(
-                io.StringIO(self.content), delimiter=self.delimiter,
+                io.StringIO(self.content), delimiter=self.delimiter
             )
         else:
             reader = csv.DictReader(

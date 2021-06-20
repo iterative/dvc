@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional
@@ -9,6 +10,7 @@ from funcy import cached_property, cat
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
+from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.utils.fs import path_isin
 
@@ -146,9 +148,7 @@ class Repo:
         from dvc.state import State, StateNoop
 
         self.url = url
-        self._fs_conf = {
-            "repo_factory": repo_factory,
-        }
+        self._fs_conf = {"repo_factory": repo_factory}
 
         if rev and not scm:
             scm = SCM(root_dir or os.curdir)
@@ -157,13 +157,10 @@ class Repo:
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
         )
 
-        fs_kwargs = {"use_dvcignore": True, "dvcignore_root": self.root_dir}
         if scm:
-            self._fs = scm.get_fs(rev, **fs_kwargs)
+            self._fs = scm.get_fs(rev)
         else:
-            self._fs = LocalFileSystem(
-                self, {"url": self.root_dir}, **fs_kwargs
-            )
+            self._fs = LocalFileSystem(url=self.root_dir)
 
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
@@ -172,13 +169,13 @@ class Repo:
         # used by RepoFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
-        self.odb = ODBManager(self)
         self.cloud = DataCloud(self)
         self.stage = StageLoad(self)
 
         if scm or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
+            self.odb = ODBManager(self)
         else:
             self.lock = make_lock(
                 os.path.join(self.tmp_dir, "lock"),
@@ -190,7 +187,9 @@ class Repo:
             # NOTE: storing state and link_state in the repository itself to
             # avoid any possible state corruption in 'shared cache dir'
             # scenario.
-            self.state = State(self.root_dir, self.tmp_dir)
+            self.state = State(self.root_dir, self.tmp_dir, self.dvcignore)
+            self.odb = ODBManager(self)
+
             self.stage_cache = StageCache(self)
 
             self._ignore()
@@ -240,6 +239,11 @@ class Repo:
                 # used in `params/metrics/plots/live` targets
                 return SCM(self.root_dir, no_scm=True)
             raise
+
+    @cached_property
+    def dvcignore(self) -> DvcIgnoreFilter:
+
+        return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
         from dvc.fs.local import LocalFileSystem
@@ -312,10 +316,7 @@ class Repo:
         return self.odb.local.unprotect(PathInfo(target))
 
     def _ignore(self):
-        flist = [
-            self.config.files["local"],
-            self.tmp_dir,
-        ]
+        flist = [self.config.files["local"], self.tmp_dir]
 
         if path_isin(self.odb.local.cache_dir, self.root_dir):
             flist += [self.odb.local.cache_dir]
@@ -340,7 +341,7 @@ class Repo:
             existing_stages = self.stages if old_stages is None else old_stages
             build_graph(existing_stages + new_stages)
 
-    def used_cache(
+    def used_objs(
         self,
         targets=None,
         all_branches=False,
@@ -366,13 +367,22 @@ class Repo:
         the scope.
 
         Returns:
-            A dictionary with Schemes (representing output's location) mapped
-            to items containing the output's `dumpd` names and the output's
-            children (if the given output is a directory).
+            A dict mapping (remote) ODB instances to sets of objects that
+            belong to each ODB. If the ODB instance is None, the objects
+            are naive and do not belong to a specific remote ODB.
         """
-        from dvc.objects.db import NamedCache
+        used = defaultdict(set)
 
-        cache = NamedCache()
+        def _add_suffix(objs, suffix):
+            from dvc.objects.tree import Tree
+
+            for obj in objs:
+                if obj.name is not None:
+                    obj.name += suffix
+                if isinstance(obj, Tree):
+                    for _, entry_obj in obj:
+                        if entry_obj.name is not None:
+                            entry_obj.name += suffix
 
         for branch in self.brancher(
             revs=revs,
@@ -390,23 +400,24 @@ class Repo:
                 for target in targets
             )
 
-            suffix = f"({branch})" if branch else ""
             for stage, filter_info in pairs:
-                used_cache = stage.get_used_cache(
+                for odb, objs in stage.get_used_objs(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
-                )
-                cache.update(used_cache, suffix=suffix)
+                ).items():
+                    if branch:
+                        _add_suffix(objs, f" ({branch})")
+                    used[odb].update(objs)
 
         if used_run_cache:
-            used_cache = self.stage_cache.get_used_cache(
-                used_run_cache, remote=remote, force=force, jobs=jobs,
-            )
-            cache.update(used_cache)
+            for odb, objs in self.stage_cache.get_used_objs(
+                used_run_cache, remote=remote, force=force, jobs=jobs
+            ).items():
+                used[odb].update(objs)
 
-        return cache
+        return used
 
     @cached_property
     def outs_trie(self):
@@ -469,7 +480,7 @@ class Repo:
     def dvcfs(self):
         from dvc.fs.dvc import DvcFileSystem
 
-        return DvcFileSystem(self)
+        return DvcFileSystem(repo=self)
 
     @cached_property
     def repo_fs(self):
@@ -486,7 +497,7 @@ class Repo:
         path = PathInfo(self.root_dir) / path
         try:
             with fs.open(
-                path, mode=mode, encoding=encoding, remote=remote,
+                path, mode=mode, encoding=encoding, remote=remote
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:
@@ -506,6 +517,7 @@ class Repo:
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
+        self.__dict__.pop("dvcignore", None)
 
     def __enter__(self):
         return self

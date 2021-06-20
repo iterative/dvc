@@ -3,7 +3,9 @@
 import pytest
 
 from dvc import output
-from dvc.output import LocalOutput, S3Output
+from dvc.fs.local import LocalFileSystem
+from dvc.fs.s3 import S3FileSystem
+from dvc.output import Output
 from dvc.stage import Stage
 
 
@@ -35,7 +37,8 @@ def test_load_from_pipeline(dvc, out_type, type_test_func):
     assert len(outs) == 6
 
     for i, out in enumerate(outs, start=1):
-        assert isinstance(out, LocalOutput)
+        assert isinstance(out, Output)
+        assert isinstance(out.fs, LocalFileSystem)
         assert out.def_path == f"file{i}"
         assert out.use_cache == (out.def_path in cached_outs)
         assert out.persist == (out.def_path in persisted_outs)
@@ -55,7 +58,8 @@ def test_load_from_pipeline_accumulates_flag(dvc):
         "outs",
     )
     for out in outs:
-        assert isinstance(out, LocalOutput)
+        assert isinstance(out, Output)
+        assert isinstance(out.fs, LocalFileSystem)
         assert not out.plot and not out.metric
         assert not out.hash_info
 
@@ -68,7 +72,8 @@ def test_load_remote_files_from_pipeline(dvc):
     (out,) = output.load_from_pipeline(
         stage, [{"s3://dvc-test/file.txt": {"cache": False}}], typ="metrics"
     )
-    assert isinstance(out, S3Output)
+    assert isinstance(out, Output)
+    assert isinstance(out.fs, S3FileSystem)
     assert not out.plot and out.metric
     assert not out.persist
     assert not out.hash_info
@@ -105,12 +110,14 @@ def test_plots_load_from_pipeline(dvc):
         ],
         "plots",
     )
-    assert isinstance(outs[0], LocalOutput)
+    assert isinstance(outs[0], Output)
+    assert isinstance(outs[0].fs, LocalFileSystem)
     assert outs[0].use_cache
     assert outs[0].plot is True and not outs[0].metric
     assert not outs[0].persist
 
-    assert isinstance(outs[1], LocalOutput)
+    assert isinstance(outs[1], Output)
+    assert isinstance(outs[1].fs, LocalFileSystem)
     assert not outs[1].use_cache
     assert outs[1].plot == {"x": 3} and not outs[1].metric
     assert outs[1].persist

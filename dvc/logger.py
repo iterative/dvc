@@ -188,8 +188,8 @@ def _stack_trace(exc_info):
 
 def disable_other_loggers():
     logging.captureWarnings(True)
-    root = logging.root
-    for (logger_name, logger) in root.manager.loggerDict.items():
+    loggerDict = logging.root.manager.loggerDict  # pylint: disable=no-member
+    for logger_name, logger in loggerDict.items():
         if logger_name != "dvc" and not logger_name.startswith("dvc."):
             logger.disabled = True
 
@@ -256,7 +256,7 @@ def setup(level=logging.INFO):
                         "console_trace",
                         "console_errors",
                     ],
-                },
+                }
             },
             "disable_existing_loggers": False,
         }

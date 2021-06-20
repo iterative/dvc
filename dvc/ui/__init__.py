@@ -7,9 +7,10 @@ from typing import (
     Iterable,
     Optional,
     Sequence,
-    TextIO,
     Union,
 )
+
+from funcy import cached_property
 
 from dvc.progress import Tqdm
 from dvc.utils import colorize
@@ -33,24 +34,10 @@ class Formatter:
 
 class Console:
     def __init__(
-        self,
-        formatter: Formatter = None,
-        output: TextIO = None,
-        error: TextIO = None,
-        enable: bool = False,
+        self, formatter: Formatter = None, enable: bool = False
     ) -> None:
-        self._output: Optional[TextIO] = output
-        self._error: Optional[TextIO] = error
         self.formatter: Formatter = formatter or Formatter()
         self._enabled: bool = enable
-
-    @property
-    def output(self) -> TextIO:
-        return self._output or sys.stdout
-
-    @property
-    def error_output(self) -> TextIO:
-        return self._error or sys.stderr
 
     def enable(self) -> None:
         self._enabled = True
@@ -70,15 +57,13 @@ class Console:
         style: str = None,
         sep: str = None,
         end: str = None,
-        flush: bool = False,
     ) -> None:
         return self.write(
             *objects,
             style=style,
             sep=sep,
             end=end,
-            file=self.error_output,
-            flush=flush,
+            stderr=True,
         )
 
     def write(
@@ -87,19 +72,25 @@ class Console:
         style: str = None,
         sep: str = None,
         end: str = None,
-        file: TextIO = None,
-        flush: bool = False,
+        stderr: bool = False,
         force: bool = False,
+        styled: bool = False,
     ) -> None:
+        sep = " " if sep is None else sep
+        end = "\n" if end is None else end
         if not self._enabled and not force:
             return
 
-        file = file or self.output
-        values = (self.formatter.format(obj, style=style) for obj in objects)
-        return print(*values, sep=sep, end=end, file=file, flush=flush)
+        if styled:
+            console = self.error_console if stderr else self.rich_console
+            return console.print(*objects, sep=sep, end=end)
 
-    def progress(self, *args, **kwargs) -> Tqdm:
-        kwargs.setdefault("file", self.error_output)
+        file = sys.stderr if stderr else sys.stdout
+        values = (self.formatter.format(obj, style=style) for obj in objects)
+        return print(*values, sep=sep, end=end, file=file)
+
+    @staticmethod
+    def progress(*args, **kwargs) -> Tqdm:
         return Tqdm(*args, **kwargs)
 
     def prompt(
@@ -137,15 +128,18 @@ class Console:
             return False
         return answer.startswith("y")
 
-    @property
+    @cached_property
     def rich_console(self):
         """rich_console is only set to stdout for now."""
         from rich import console
 
-        # FIXME: Getting IO Operation on closed file error
-        #  when testing with capsys, therefore we are creating
-        #  one instance each time as a temporary workaround.
-        return console.Console(file=self.output)
+        return console.Console()
+
+    @cached_property
+    def error_console(self):
+        from rich import console
+
+        return console.Console(stderr=True)
 
     def table(
         self,
@@ -179,7 +173,7 @@ class Console:
             return
 
         return t.plain_table(
-            self, data, headers, markdown=markdown, pager=pager, force=force,
+            self, data, headers, markdown=markdown, pager=pager, force=force
         )
 
 

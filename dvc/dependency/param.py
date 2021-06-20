@@ -4,10 +4,11 @@ from collections import defaultdict
 import dpath.util
 from voluptuous import Any
 
-from dvc.dependency.local import LocalDependency
 from dvc.exceptions import DvcException
 from dvc.hash_info import HashInfo
 from dvc.utils.serialize import LOADERS, ParseError
+
+from .base import Dependency
 
 
 class MissingParamsError(DvcException):
@@ -18,7 +19,7 @@ class BadParamFileError(DvcException):
     pass
 
 
-class ParamsDependency(LocalDependency):
+class ParamsDependency(Dependency):
     PARAM_PARAMS = "params"
     PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, list, None)}
     DEFAULT_PARAMS_FILE = "params.yaml"
@@ -39,7 +40,6 @@ class ParamsDependency(LocalDependency):
             path
             or os.path.join(stage.repo.root_dir, self.DEFAULT_PARAMS_FILE),
             info=info,
-            fs=stage.repo.fs,
         )
 
     def dumpd(self):
@@ -128,7 +128,7 @@ class ParamsDependency(LocalDependency):
         if missing_params:
             raise MissingParamsError(
                 "Parameters '{}' are missing from '{}'.".format(
-                    ", ".join(missing_params), self,
+                    ", ".join(missing_params), self
                 )
             )
 

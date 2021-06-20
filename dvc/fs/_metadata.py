@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List
 
-from dvc.output import BaseOutput
+from dvc.output import Output
 from dvc.path_info import PathInfo
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class Metadata:
     # optional fields
     isdir: bool = False  # is it a directory?
     is_exec: bool = False  # is it an executable?
-    outs: List[BaseOutput] = field(default_factory=list)  # list of outputs
+    outs: List[Output] = field(default_factory=list)  # list of outputs
 
     def __post_init__(self):
         self.output_exists = bool(self.outs)
