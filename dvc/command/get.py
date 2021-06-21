@@ -18,7 +18,7 @@ class CmdGet(CmdBaseNoRepo):
             url = get_url(
                 self.args.path, repo=self.args.url, rev=self.args.rev
             )
-            ui.write(url)
+            ui.write(url, force=True)
         except DvcException:
             logger.exception("failed to show URL")
             return 1

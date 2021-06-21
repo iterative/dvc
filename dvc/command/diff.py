@@ -147,7 +147,7 @@ class CmdDiff(CmdBase):
             if self.args.show_json:
                 ui.write(json.dumps(diff))
             elif self.args.show_md:
-                ui.write(_show_md(diff, show_hash, hide_missing))
+                _show_md(diff, show_hash, hide_missing)
             elif diff:
                 self._show_diff(diff, hide_missing)
 

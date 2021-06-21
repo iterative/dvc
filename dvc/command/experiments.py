@@ -663,7 +663,7 @@ class CmdExperimentsPush(CmdBase):
         )
 
         ui.write(
-            f"Pushed experiment '{self.args.experiment}',"
+            f"Pushed experiment '{self.args.experiment}'"
             f"to Git remote '{self.args.git_remote}'."
         )
         if not self.args.push_cache:

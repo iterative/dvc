@@ -72,7 +72,9 @@ class CmdConfig(CmdBaseNoRepo):
             prefix = self._config_file_prefix(
                 self.args.show_origin, self.config, level
             )
-            ui.write("\n".join(self._format_config(conf, prefix)))
+            configs = list(self._format_config(conf, prefix))
+            if configs:
+                ui.write("\n".join(configs))
 
         return 0
 

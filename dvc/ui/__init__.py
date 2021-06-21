@@ -6,6 +6,7 @@ from typing import (
     Iterable,
     Optional,
     Sequence,
+    TextIO,
     Union,
 )
 
@@ -76,7 +77,7 @@ class Console:
         stderr: bool = False,
         force: bool = False,
         styled: bool = False,
-        file=None,
+        file: TextIO = None,
     ) -> None:
         sep = " " if sep is None else sep
         end = "\n" if end is None else end
