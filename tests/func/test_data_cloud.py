@@ -475,13 +475,12 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
         ({}, "Everything is up to date"),
     ],
 )
-def test_push_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
+def test_push_stats(tmp_dir, dvc, fs, msg, capsys, local_remote):
     tmp_dir.dvc_gen(fs)
 
-    caplog.clear()
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["push"])
-    assert msg in caplog.text
+    main(["push"])
+    out, _ = capsys.readouterr()
+    assert msg in out
 
 
 @pytest.mark.parametrize(
@@ -492,17 +491,17 @@ def test_push_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
         ({}, "Everything is up to date."),
     ],
 )
-def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
+def test_fetch_stats(tmp_dir, dvc, fs, msg, capsys, local_remote):
     tmp_dir.dvc_gen(fs)
     dvc.push()
     clean(list(fs.keys()), dvc)
-    caplog.clear()
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["fetch"])
-    assert msg in caplog.text
+
+    main(["fetch"])
+    out, _ = capsys.readouterr()
+    assert msg in out
 
 
-def test_pull_stats(tmp_dir, dvc, capsys, caplog, local_remote):
+def test_pull_stats(tmp_dir, dvc, capsys, local_remote):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.push()
     clean(["foo", "bar"], dvc)
@@ -513,12 +512,13 @@ def test_pull_stats(tmp_dir, dvc, capsys, caplog, local_remote):
     out, _ = capsys.readouterr()
     assert "M\tbar".expandtabs() in out
     assert "A\tfoo".expandtabs() in out
-    assert "2 files fetched" in caplog.text
-    assert "1 file added" in caplog.text
-    assert "1 file modified" in caplog.text
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["pull"])
-    assert "Everything is up to date." in caplog.text
+    assert "2 files fetched" in out
+    assert "1 file added" in out
+    assert "1 file modified" in out
+
+    main(["pull"])
+    out, _ = capsys.readouterr()
+    assert "Everything is up to date." in out
 
 
 @pytest.mark.parametrize(
