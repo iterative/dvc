@@ -396,6 +396,9 @@ class ObjectDB:
             self.fs.remove(path_info)
             removed = True
 
+        if self.staging is not None:
+            self.staging.gc(set(), jobs=jobs)
+
         return removed
 
     def list_hashes_exists(self, hashes, jobs=None, name=None):
