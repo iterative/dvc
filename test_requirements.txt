@@ -40,6 +40,10 @@ pylint-plugin-utils==0.6
 
 # type-checking
 mypy==0.902
+types-requests
+types-paramiko
+types-tabulate
+types-toml
 
 # pypi doesn't allow for direct dependencies
 # gdrivefs @ git+https://github.com/intake/gdrivefs.git
