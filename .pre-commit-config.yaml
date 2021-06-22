@@ -28,6 +28,11 @@ repos:
          files: ^dvc/
     repo: https://github.com/pre-commit/mirrors-mypy
     rev: 'v0.902'
+    additional_dependencies:
+      - types-requests
+      - types-paramiko
+      - types-tabulate
+      - types-toml
   - repo: local
     hooks:
     - id: pylint
