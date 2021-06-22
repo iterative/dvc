@@ -147,6 +147,7 @@ class Tree(HashFile):
             return None
         if not copy:
             tree.digest()
+            assert tree.path_info and tree.fs and tree.hash_info
             odb.add(tree.path_info, tree.fs, tree.hash_info)
         return tree
 

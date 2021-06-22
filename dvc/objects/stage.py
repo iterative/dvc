@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
@@ -7,6 +8,11 @@ from dvc.ignore import DvcIgnore
 from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
 from dvc.utils import file_md5
+
+if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.objects.db.base import ObjectDB
+    from dvc.types import DvcPath
 
 
 def _upload_file(path_info, fs, odb):
@@ -191,10 +197,15 @@ def _dir_cache_exists(odb, hash_info):
     return odb.fs.exists(odb.hash_to_path_info(hash_info.value))
 
 
-def stage(odb, path_info, fs, name, upload=False, **kwargs):
-    assert path_info and (
-        isinstance(path_info, str) or path_info.scheme == fs.scheme
-    )
+def stage(
+    odb: "ObjectDB",
+    path_info: "DvcPath",
+    fs: "BaseFileSystem",
+    name: str,
+    upload: bool = False,
+    **kwargs,
+) -> "HashFile":
+    assert path_info and path_info.scheme == fs.scheme
 
     details = fs.info(path_info)
     state = odb.state

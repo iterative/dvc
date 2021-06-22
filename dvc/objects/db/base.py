@@ -3,12 +3,17 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from dvc.objects.errors import ObjectError, ObjectFormatError
 from dvc.objects.file import HashFile
 from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
+
+if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.hash_info import HashInfo
+    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +24,7 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs, path_info, **config):
+    def __init__(self, fs: "BaseFileSystem", path_info: "AnyPath", **config):
         from dvc.state import StateNoop
 
         self.fs = fs
@@ -31,7 +36,7 @@ class ObjectDB:
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
         self.read_only = config.get("read_only", False)
-        self.staging = config.get("staging", None)
+        self.staging: Optional["ObjectDB"] = config.get("staging", None)
 
     @property
     def config(self):
@@ -70,7 +75,14 @@ class ObjectDB:
             hash_info,
         )
 
-    def add(self, path_info, fs, hash_info, move=True, **kwargs):
+    def add(
+        self,
+        path_info: "AnyPath",
+        fs: "BaseFileSystem",
+        hash_info: "HashInfo",
+        move: bool = True,
+        **kwargs,
+    ):
         if self.read_only:
             raise ObjectError("Cannot write to read-only ODB")
         try:
@@ -135,7 +147,12 @@ class ObjectDB:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def check(self, hash_info, check_hash=True, check_staging=True):
+    def check(
+        self,
+        hash_info: "HashInfo",
+        check_hash: bool = True,
+        check_staging: bool = True,
+    ):
         """Compare the given hash with the (corresponding) actual one if
         check_hash is specified, or just verify the existence of the cache
         files on the filesystem.
@@ -159,7 +176,7 @@ class ObjectDB:
 
         obj = self.get(hash_info)
         if self.is_protected(obj.path_info):
-            logger.trace(
+            logger.trace(  # type: ignore[attr-defined]
                 "Assuming '%s' is unchanged since it is read-only",
                 obj.path_info,
             )

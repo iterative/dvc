@@ -7,6 +7,8 @@ from dvc.progress import Tqdm
 from .tree import Tree
 
 if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
+
     from .db.base import ObjectDB
     from .file import HashFile
 
@@ -19,6 +21,8 @@ def save(
     jobs: Optional[int] = None,
     **kwargs,
 ):
+    assert obj.path_info and obj.fs and obj.hash_info
+
     if isinstance(obj, Tree):
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             for future in Tqdm(
@@ -41,7 +45,7 @@ def save(
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 
-def check(odb, obj):
+def check(odb: "ObjectDB", obj: "HashFile"):
     odb.check(obj.hash_info)
 
     if isinstance(obj, Tree):
@@ -49,7 +53,7 @@ def check(odb, obj):
             odb.check(entry.hash_info)
 
 
-def load(odb, hash_info):
+def load(odb: "ObjectDB", hash_info: "HashInfo") -> "HashFile":
     if hash_info.isdir:
         if odb.staging is not None:
             try:
