@@ -100,5 +100,5 @@ class ODBManager:
 
     def by_scheme(self):
         self._init_odb(self.CLOUD_SCHEMES)
-        for scheme in self.CLOUD_SCHEMES:
+        for scheme in [Schemes.LOCAL] + self.CLOUD_SCHEMES:
             yield scheme, self._odb[scheme]
