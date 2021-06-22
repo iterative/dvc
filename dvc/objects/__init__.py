@@ -51,5 +51,11 @@ def check(odb, obj):
 
 def load(odb, hash_info):
     if hash_info.isdir:
+        if odb.staging is not None:
+            try:
+                return Tree.load(odb.staging, hash_info)
+            except Exception:  # pylint: disable=broad-except
+                pass
+
         return Tree.load(odb, hash_info)
     return odb.get(hash_info)

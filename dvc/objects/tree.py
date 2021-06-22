@@ -96,7 +96,6 @@ class Tree(HashFile):
 
     @classmethod
     def load(cls, odb, hash_info):
-
         obj = odb.get(hash_info)
 
         try:
@@ -134,18 +133,13 @@ class Tree(HashFile):
         """
         obj = self._dict.get(prefix)
         if obj:
-            if copy:
-                tree = Tree(self.path_info, self.fs, self.hash_info)
-                tree.add(prefix, obj)
-                return tree
             return obj
 
         if copy:
             tree = Tree(self.path_info, self.fs, self.hash_info)
-            depth = 0
         else:
             tree = Tree(None, None, None)
-            depth = len(prefix)
+        depth = len(prefix)
         try:
             for key, obj in self.trie.items(prefix):
                 tree.add(key[depth:], obj)

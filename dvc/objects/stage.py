@@ -157,13 +157,24 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
 
     tree = _build_tree(path_info, fs, name, odb, state, upload, **kwargs)
 
+    if odb.staging is not None:
+        odb = odb.staging
+
     odb.add(tree.path_info, tree.fs, tree.hash_info)
-    if name != "md5":
+
+    raw = odb.get(tree.hash_info)
+    if name == "md5":
+        # cleanup the digest() generated memfs path if needed and return the
+        # staged tree object based on the ODB fs/path
+        if tree.fs.exists(tree.path_info):
+            tree.fs.remove(tree.path_info)
+        tree.path_info = raw.path_info
+        tree.fs = raw.fs
+    else:
         # NOTE: used only for external outputs. Initial reasoning was to be
         # able to validate .dir files right in the workspace (e.g. check s3
         # etag), but could be dropped for manual validation with regular md5,
         # that would be universal for all clouds.
-        raw = odb.get(tree.hash_info)
         hash_info = get_file_hash(raw.path_info, raw.fs, name, state)
         tree.hash_info.name = hash_info.name
         tree.hash_info.value = hash_info.value
@@ -171,12 +182,13 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
             tree.hash_info.value += ".dir"
         odb.add(tree.path_info, tree.fs, tree.hash_info)
 
-    # if tree fs matches ODB fs, odb.add() is a move operation, so the
-    # digest() generated tempfile path is no longer valid
-    if isinstance(tree.fs, type(odb.fs)):
-        tree.path_info = odb.hash_to_path_info(tree.hash_info.value)
-
     return tree
+
+
+def _dir_cache_exists(odb, hash_info):
+    if odb.staging is not None and _dir_cache_exists(odb.staging, hash_info):
+        return True
+    return odb.fs.exists(odb.hash_to_path_info(hash_info.value))
 
 
 def stage(odb, path_info, fs, name, upload=False, **kwargs):
@@ -192,11 +204,7 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
     # If we have dir hash in state db, but dir cache file is lost,
     # then we need to recollect the dir via .get_dir_hash() call below,
     # see https://github.com/iterative/dvc/issues/2219 for context
-    if (
-        hash_info
-        and hash_info.isdir
-        and not odb.fs.exists(odb.hash_to_path_info(hash_info.value))
-    ):
+    if hash_info and hash_info.isdir and not _dir_cache_exists(odb, hash_info):
         hash_info = None
 
     if hash_info:
