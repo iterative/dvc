@@ -31,6 +31,7 @@ class ObjectDB:
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
         self.read_only = config.get("read_only", False)
+        self.staging = config.get("staging", None)
 
     @property
     def config(self):
@@ -41,6 +42,7 @@ class ObjectDB:
             "slow_link_warning": self.slow_link_warning,
             "tmp_dir": self.tmp_dir,
             "read_only": self.read_only,
+            "staging": self.staging,
         }
 
     def __eq__(self, other):
@@ -72,7 +74,7 @@ class ObjectDB:
         if self.read_only:
             raise ObjectError("Cannot write to read-only ODB")
         try:
-            self.check(hash_info, check_hash=self.verify)
+            self.check(hash_info, check_hash=self.verify, check_staging=False)
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
@@ -133,7 +135,7 @@ class ObjectDB:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def check(self, hash_info, check_hash=True):
+    def check(self, hash_info, check_hash=True, check_staging=True):
         """Compare the given hash with the (corresponding) actual one if
         check_hash is specified, or just verify the existence of the cache
         files on the filesystem.
@@ -147,6 +149,13 @@ class ObjectDB:
 
         - Remove the file from cache if it doesn't match the actual hash
         """
+
+        if check_staging and self.staging is not None:
+            try:
+                self.staging.check(hash_info, check_hash=check_hash)
+                return
+            except Exception:  # pylint: disable=broad-except
+                pass
 
         obj = self.get(hash_info)
         if self.is_protected(obj.path_info):
