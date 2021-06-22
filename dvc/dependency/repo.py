@@ -105,6 +105,8 @@ class RepoDependency(Dependency):
     def _get_used_and_obj(
         self, obj_only=False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashFile"]], "HashFile"]:
+        from copy import copy
+
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.objects.stage import stage
@@ -136,7 +138,7 @@ class RepoDependency(Dependency):
                 except (NoRemoteError, NoOutputOrStageError):
                     pass
 
-            staging = self.repo.odb.get_staging()
+            staging = copy(self.repo.odb.memory)
             try:
                 staged_obj = stage(
                     staging,
@@ -163,7 +165,7 @@ class RepoDependency(Dependency):
         from dvc.fs.repo import RepoFileSystem
         from dvc.objects.tree import Tree
 
-        staging = self.repo.odb.get_staging()
+        staging = self.repo.odb.memory
         if odb.fs != staging.fs or odb.path_info != staging.path_info:
             return
 
@@ -188,7 +190,7 @@ class RepoDependency(Dependency):
     def _filter_obj(self, obj, filter_info=None):
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            return obj.filter(self.repo.odb.get_staging(), prefix)
+            return obj.filter(self.repo.memory, prefix)
         return obj
 
     def _make_repo(self, locked=True, **kwargs):

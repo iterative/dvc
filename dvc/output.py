@@ -406,7 +406,7 @@ class Output:
     def get_hash(self):
         if not self.use_cache:
             return ostage(
-                self.repo.odb.get_staging(),
+                self.repo.odb.local,
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
@@ -670,7 +670,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.repo.odb.get_staging(), prefix, **kwargs)
+            obj = obj.filter(self.odb, prefix, **kwargs)
 
         return obj
 
