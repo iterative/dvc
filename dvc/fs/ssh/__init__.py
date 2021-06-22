@@ -237,7 +237,7 @@ class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         with self.ssh(path_info) as ssh:
             return ssh.info(path_info.path)
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         with self.open(to_info, mode="wb") as fdest:
             shutil.copyfileobj(fobj, fdest)

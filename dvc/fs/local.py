@@ -103,7 +103,7 @@ class LocalFileSystem(BaseFileSystem):
             self.remove(tmp_info)
             raise
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:

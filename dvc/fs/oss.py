@@ -104,7 +104,7 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         logger.debug(f"Removing oss://{path_info}")
         self._get_bucket(path_info.bucket).delete_object(path_info.path)
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         self._get_bucket(to_info.bucket).put_object(to_info.path, fobj)
 
     def _upload(

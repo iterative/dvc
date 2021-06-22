@@ -71,13 +71,15 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
         return WebdavFileSystem(**self.fs_args)
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, size: int = None):
         rpath = self.translate_path_info(to_info)
         self.makedirs(os.path.dirname(rpath))
         # using upload_fileobj to directly upload fileobj rather than buffering
         # and using overwrite=True to avoid check for an extra exists call,
         # as caller should ensure that the file does not exist beforehand.
-        return self.fs.client.upload_fileobj(fobj, rpath, overwrite=True)
+        return self.fs.client.upload_fileobj(
+            fobj, rpath, overwrite=True, size=size
+        )
 
     def makedirs(self, path_info):
         path = self.translate_path_info(path_info)
