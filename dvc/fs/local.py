@@ -90,7 +90,9 @@ class LocalFileSystem(BaseFileSystem):
         return os.stat(path)
 
     def move(self, from_info, to_info):
-        if from_info.scheme != "local" or to_info.scheme != "local":
+        if (
+            isinstance(from_info, PathInfo) and from_info.scheme != "local"
+        ) or (isinstance(to_info, PathInfo) and to_info.scheme != "local"):
             raise NotImplementedError
 
         self.makedirs(to_info.parent)
