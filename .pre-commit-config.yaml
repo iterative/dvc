@@ -26,13 +26,13 @@ repos:
       -  id: mypy
          language_version: python3
          files: ^dvc/
+         additional_dependencies:
+           - types-requests
+           - types-paramiko
+           - types-tabulate
+           - types-toml
     repo: https://github.com/pre-commit/mirrors-mypy
     rev: 'v0.902'
-    additional_dependencies:
-      - types-requests
-      - types-paramiko
-      - types-tabulate
-      - types-toml
   - repo: local
     hooks:
     - id: pylint
