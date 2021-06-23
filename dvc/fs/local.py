@@ -32,7 +32,9 @@ class LocalFileSystem(BaseFileSystem):
 
     def exists(self, path_info) -> bool:
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        return self.fs.exists(path_info)
+        # NOTE: os.fspath could be removed after fsspec 2021.06.1
+        # https://github.com/intake/filesystem_spec/issues/666
+        return self.fs.exists(os.fspath(path_info))
 
     def isfile(self, path_info) -> bool:
         return os.path.isfile(path_info)
