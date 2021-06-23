@@ -52,11 +52,6 @@ def get_file_hash(path_info, fs, name, state=None):
         if hash_info:
             return hash_info
 
-    if not fs.exists(path_info):
-        raise FileNotFoundError(
-            errno.ENOENT, os.strerror(errno.ENOENT), path_info
-        )
-
     hash_info = _get_file_hash(path_info, fs, name)
 
     if state:
