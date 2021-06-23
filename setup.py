@@ -88,7 +88,7 @@ install_requires = [
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
-    "fsspec @ git+https://github.com/intake/filesystem_spec.git",
+    "fsspec==2021.6.1",
     "diskcache>=5.2.1",
 ]
 
