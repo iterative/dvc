@@ -68,7 +68,22 @@ def test_open_in_history(tmp_dir, scm, dvc):
 
 
 def test_isdir_isfile(tmp_dir, dvc):
-    tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.gen(
+        {
+            "datafile": "data",
+            "datadir": {
+                "foo": "foo",
+                "bar": "bar",
+            },
+            "subdir": {
+                "baz": "baz",
+                "data": {
+                    "abc": "abc",
+                    "xyz": "xyz",
+                },
+            },
+        },
+    )
 
     fs = RepoFileSystem(repo=dvc)
     assert fs.isdir("datadir")
@@ -78,9 +93,18 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert fs.isfile("datafile")
     assert not fs.isdvc("datafile")
 
-    dvc.add(["datadir", "datafile"])
+    dvc.add(
+        [
+            "datadir",
+            "datafile",
+            os.path.join("subdir", "baz"),
+            os.path.join("subdir", "data"),
+        ]
+    )
     shutil.rmtree(tmp_dir / "datadir")
+    shutil.rmtree(tmp_dir / "subdir" / "data")
     (tmp_dir / "datafile").unlink()
+    (tmp_dir / "subdir" / "baz").unlink()
 
     assert fs.isdir("datadir")
     assert not fs.isfile("datadir")
@@ -88,6 +112,12 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert not fs.isdir("datafile")
     assert fs.isfile("datafile")
     assert fs.isdvc("datafile")
+
+    assert fs.isdir("subdir")
+    assert not fs.isfile("subdir")
+    assert not fs.isdvc("subdir")
+    assert fs.isfile(os.path.join("subdir", "baz"))
+    assert fs.isdir(os.path.join("subdir", "data"))
 
 
 def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
