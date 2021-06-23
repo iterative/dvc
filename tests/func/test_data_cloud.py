@@ -248,7 +248,7 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
 
 def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_hash = mocker.spy(dvc_module.objects.stage, "_get_file_hash")
+    test_file_md5 = mocker.spy(dvc_module.objects.stage, "file_md5")
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])
@@ -257,7 +257,7 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert ret == 0
     ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
     assert ret == 0
-    assert test_get_file_hash.mock.call_count == 1
+    assert test_file_md5.mock.call_count == 1
 
 
 def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
@@ -307,7 +307,7 @@ def test_verify_hashes(
     remove("dir")
     remove(dvc.odb.local.cache_dir)
 
-    hash_spy = mocker.spy(dvc_module.objects.stage, "_get_file_hash")
+    hash_spy = mocker.spy(dvc_module.objects.stage, "file_md5")
 
     dvc.pull()
     assert hash_spy.call_count == 0
