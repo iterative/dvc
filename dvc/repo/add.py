@@ -41,7 +41,7 @@ def check_arg_combinations(args):
 
     if to_remote or to_cache:
         message = "{option} can't be used with "
-        message += "--to-remote" if args.to_remote else "-o"
+        message += "--to-remote" if to_remote else "-o"
         if len(args.targets) != 1:
             invalid_opt = "multiple targets"
         elif args.no_commit:
