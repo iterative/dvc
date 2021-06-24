@@ -1,4 +1,6 @@
 # pylint: disable=unidiomatic-typecheck
+from mock import create_autospec
+
 from dvc.utils.collections import apply_diff, chunk_dict, validate
 
 
@@ -69,7 +71,7 @@ def test_pre_validate_decorator(mocker):
     def test_func(x, y, *args, j=3, k=5, **kwargs):
         pass
 
-    func_mock = mocker.create_autospec(test_func)
+    func_mock = create_autospec(test_func)
     func = validate(mock)(func_mock)
 
     func("x", "y")
@@ -109,7 +111,7 @@ def test_pre_validate_decorator(mocker):
     assert "y" not in args
 
 
-def test_pre_validate_update_args(mocker):
+def test_pre_validate_update_args():
     def test_validator(args):
         args.x += 50
         del args.y
@@ -117,7 +119,7 @@ def test_pre_validate_update_args(mocker):
     def test_func(x=5, y=10, z=15):
         pass
 
-    mock = mocker.create_autospec(test_func)
+    mock = create_autospec(test_func)
     func = validate(test_validator)(mock)
 
     func(100, 100)
