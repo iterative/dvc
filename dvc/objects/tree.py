@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 
 from funcy import cached_property
 
-from .errors import ObjectFormatError
+from .errors import ObjectError, ObjectFormatError
 from .file import HashFile
 from .stage import get_file_hash
 
@@ -121,35 +121,101 @@ class Tree(HashFile):
         return tree
 
     def filter(
-        self, odb: "ObjectDB", prefix: Tuple[str], copy: bool = False
-    ) -> Optional[HashFile]:
-        """Return filter object(s) for this tree.
+        self, odb: "ObjectDB", prefix: Tuple[str], digest: bool = True
+    ) -> Optional["Tree"]:
+        """Return a filtered copy of this tree that only contains entries
+        inside prefix.
 
-        If copy is True, returned object will be a Tree containing
-        filtered entries, but with hash_info copied from the original tree.
+        If digest is True, digest will be computed for the filtered tree,
+        and it will be staged in the odb.
 
-        If copy is False, returned object will be a raw HashFile or Tree with
-        newly computed hash_info for the filtered object.
+        If digest is False the returned tree will contain the original tree's
+        hash_info and path_info and odb will not be modified.
+
+        Returns an empty tree if no object exists at the specified prefix.
+        """
+        tree = Tree(self.path_info, self.fs, self.hash_info)
+        try:
+            for key, obj in self.trie.items(prefix):
+                tree.add(key, obj)
+        except KeyError:
+            pass
+
+        if digest:
+            tree.stage(odb)
+        return tree
+
+    def get(self, odb: "ObjectDB", prefix: Tuple[str]) -> Optional[HashFile]:
+        """Return object at the specified prefix in this tree.
+
+        If the returned object is a tree and stage is True, the resulting
+        tree will be staged in odb.
+
+        Returns None if no object exists at the specified prefix.
         """
         obj = self._dict.get(prefix)
         if obj:
             return obj
 
-        if copy:
-            tree = Tree(self.path_info, self.fs, self.hash_info)
-        else:
-            tree = Tree(None, None, None)
+        tree = Tree(None, None, None)
         depth = len(prefix)
         try:
             for key, obj in self.trie.items(prefix):
                 tree.add(key[depth:], obj)
         except KeyError:
             return None
-        if not copy:
-            tree.digest()
-            assert tree.path_info and tree.fs and tree.hash_info
-            odb.add(tree.path_info, tree.fs, tree.hash_info)
+
+        tree.stage(odb)
         return tree
+
+    def insert(
+        self, odb: "ObjectDB", prefix: Tuple[str], obj: HashFile
+    ) -> HashFile:
+        """Return a copy of tree this tree with obj inserted at prefix.
+
+        Any items which previously existed at prefix will be replaced.
+
+        If other is a Tree, the entire contents of the tree will be inserted
+        at prefix.
+
+        The resulting tree will be staged in odb.
+        """
+        import copy
+
+        tree = copy.deepcopy(self)
+        try:
+            key = posixpath.sep.join(prefix)
+            del tree.trie[key:]  # type: ignore[misc]
+        except KeyError:
+            pass
+        if isinstance(obj, Tree):
+            for subkey, entry in obj:
+                tree.add(prefix + subkey, entry)
+        else:
+            tree.add(prefix, obj)
+        tree.stage(odb)
+        return tree
+
+    def stage(self, odb: "ObjectDB"):
+        from . import load
+
+        self.digest()
+        assert self.path_info and self.fs and self.hash_info
+
+        try:
+            odb.check(self.hash_info, check_hash=False)
+        except (ObjectError, FileNotFoundError):
+            if odb.staging is not None:
+                odb = odb.staging
+            odb.add(self.path_info, self.fs, self.hash_info)
+        staged = load(odb, self.hash_info)
+
+        # cleanup the digest() generated temporary memfs path and use the
+        # staged path instead
+        if self.fs != staged.fs:
+            self.fs.remove(self.path_info)
+            self.fs = staged.fs
+        self.path_info = staged.path_info
 
 
 def _get_dir_size(odb, tree):

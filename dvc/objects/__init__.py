@@ -45,12 +45,14 @@ def save(
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 
-def check(odb: "ObjectDB", obj: "HashFile"):
-    odb.check(obj.hash_info)
-
+def check(odb: "ObjectDB", obj: "HashFile", skip_tree: bool = False):
     if isinstance(obj, Tree):
         for _, entry in obj:
             odb.check(entry.hash_info)
+        if skip_tree:
+            return
+
+    odb.check(obj.hash_info)
 
 
 def load(odb: "ObjectDB", hash_info: "HashInfo") -> "HashFile":

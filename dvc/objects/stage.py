@@ -137,9 +137,7 @@ def _build_tree(path_info, fs, name, odb, state, upload, **kwargs):
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
         tree.add(file_info.relative_to(path_info).parts, obj)
-
-    tree.digest()
-
+    tree.stage(odb)
     return tree
 
 
@@ -163,24 +161,12 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
 
     tree = _build_tree(path_info, fs, name, odb, state, upload, **kwargs)
 
-    if odb.staging is not None:
-        odb = odb.staging
-
-    odb.add(tree.path_info, tree.fs, tree.hash_info)
-
-    raw = odb.get(tree.hash_info)
-    if name == "md5":
-        # cleanup the digest() generated memfs path if needed and return the
-        # staged tree object based on the ODB fs/path
-        if tree.fs.exists(tree.path_info):
-            tree.fs.remove(tree.path_info)
-        tree.path_info = raw.path_info
-        tree.fs = raw.fs
-    else:
+    if name != "md5":
         # NOTE: used only for external outputs. Initial reasoning was to be
         # able to validate .dir files right in the workspace (e.g. check s3
         # etag), but could be dropped for manual validation with regular md5,
         # that would be universal for all clouds.
+        raw = odb.get(tree.hash_info)
         hash_info = get_file_hash(raw.path_info, raw.fs, name, state)
         tree.hash_info.name = hash_info.name
         tree.hash_info.value = hash_info.value
