@@ -14,6 +14,7 @@ from ..exceptions import (
 from ..progress import Tqdm
 from ..repo.scm_context import scm_context
 from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
+from ..utils.collections import ensure_list, validate
 from . import locked
 
 if TYPE_CHECKING:
@@ -23,34 +24,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@locked
-@scm_context
-def add(  # noqa: C901
-    repo,
-    targets: "TargetType",
-    recursive=False,
-    no_commit=False,
-    fname=None,
-    to_remote=False,
-    **kwargs,
-):
-    from dvc.utils.collections import ensure_list
-
-    if recursive and fname:
+def check_recursive_and_fname(args):
+    if args.recursive and args.fname:
         raise RecursiveAddingWhileUsingFilename()
 
-    targets = ensure_list(targets)
 
-    to_cache = kwargs.get("out") and not to_remote
+def transform_targets(args):
+    args.targets = ensure_list(args.targets)
+
+
+def check_arg_combinations(args):
+    kwargs = args.kwargs
     invalid_opt = None
+    to_remote = args.to_remote
+    to_cache = kwargs.get("out") and not to_remote
+
     if to_remote or to_cache:
         message = "{option} can't be used with "
-        message += "--to-remote" if to_remote else "-o"
-        if len(targets) != 1:
+        message += "--to-remote" if args.to_remote else "-o"
+        if len(args.targets) != 1:
             invalid_opt = "multiple targets"
-        elif no_commit:
+        elif args.no_commit:
             invalid_opt = "--no-commit option"
-        elif recursive:
+        elif args.recursive:
             invalid_opt = "--recursive option"
         elif kwargs.get("external"):
             invalid_opt = "--external option"
@@ -64,9 +60,23 @@ def add(  # noqa: C901
     if invalid_opt is not None:
         raise InvalidArgumentError(message.format(option=invalid_opt))
 
+
+@locked
+@scm_context
+@validate(check_recursive_and_fname, transform_targets, check_arg_combinations)
+def add(  # noqa: C901
+    repo,
+    targets: "TargetType",
+    recursive=False,
+    no_commit=False,
+    fname=None,
+    to_remote=False,
+    **kwargs,
+):
     link_failures = []
     stages_list = []
     num_targets = len(targets)
+    to_cache = kwargs.get("out") and not to_remote
     with Tqdm(total=num_targets, desc="Add", unit="file", leave=True) as pbar:
         if num_targets == 1:
             # clear unneeded top-level progress bar for single target

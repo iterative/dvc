@@ -1,6 +1,9 @@
+import inspect
 import os
+from collections import UserDict
 from collections.abc import Mapping
-from typing import Dict, Iterable, List, TypeVar, Union
+from functools import wraps
+from typing import Callable, Dict, Iterable, List, TypeVar, Union
 
 from pygtrie import StringTrie as _StringTrie
 
@@ -76,3 +79,43 @@ def chunk_dict(d: Dict[_KT, _VT], size: int = 1) -> List[Dict[_KT, _VT]]:
     from funcy import chunks
 
     return [{key: d[key] for key in chunk} for chunk in chunks(size, d)]
+
+
+class _NamespacedDict(UserDict):
+    def __init__(self, item):
+        super().__init__()
+        self.data = item
+
+    def __getattr__(self, item):
+        return self[item]
+
+    def __setattr__(self, key, value):
+        # for `data`, it could be accessed like a dictionary
+        d = self.__dict__ if key == "data" else self.data
+        d[key] = value
+
+    def __delattr__(self, item):
+        self.data.pop(item)
+
+
+def validate(*validators: Callable, post: bool = False):
+    def wrapped(func: Callable):
+        sig = inspect.signature(func)
+
+        @wraps(func)
+        def inner(*args, **kwargs):
+            ba = sig.bind(*args, **kwargs)
+            ba.apply_defaults()
+            kw = _NamespacedDict(ba.arguments)
+            if not post:
+                for validator in validators:
+                    validator(kw)
+            result = func(*ba.args, **ba.kwargs)
+            if post:
+                for validator in validators:
+                    result = validator(result)
+            return result
+
+        return inner
+
+    return wrapped
