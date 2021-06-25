@@ -65,19 +65,21 @@ def test_chunk_dict():
 # pylint: disable=unused-argument
 
 
-def test_pre_validate_decorator(mocker):
+def _test_func(x, y, *args, j=3, k=5, **kwargs):
+    pass
+
+
+def test_pre_validate_decorator_required_args(mocker):
     mock = mocker.MagicMock()
 
-    def test_func(x, y, *args, j=3, k=5, **kwargs):
-        pass
-
-    func_mock = create_autospec(test_func)
+    func_mock = create_autospec(_test_func)
     func = validate(mock)(func_mock)
 
     func("x", "y")
 
     func_mock.assert_called_once_with("x", "y", j=3, k=5)
     mock.assert_called_once()
+
     (args,) = mock.call_args[0]
     assert args.x == "x"
     assert args.y == "y"
@@ -86,15 +88,18 @@ def test_pre_validate_decorator(mocker):
     assert args.k == 5
     assert args.kwargs == {}
 
-    mock.reset_mock()
-    func_mock.reset_mock()
+
+def test_pre_validate_decorator_kwargs_args(mocker):
+    mock = mocker.MagicMock()
+    func_mock = create_autospec(_test_func)
+    func = validate(mock)(func_mock)
 
     func("x", "y", "part", "of", "args", j=1, k=10, m=100, n=1000)
 
-    mock.assert_called_once()
     func_mock.assert_called_once_with(
         "x", "y", "part", "of", "args", j=1, k=10, m=100, n=1000
     )
+    mock.assert_called_once()
     (args,) = mock.call_args[0]
     assert args.x == "x"
     assert args.y == "y"
@@ -103,27 +108,21 @@ def test_pre_validate_decorator(mocker):
     assert args.k == 10
     assert args.kwargs == {"m": 100, "n": 1000}
 
-    # we can change values to it
-    args.x = 3
-    assert args.x == 3
-    # we can remove values from it
-    del args.y
-    assert "y" not in args
-
 
 def test_pre_validate_update_args():
     def test_validator(args):
-        args.x += 50
-        del args.y
+        args.w += 50
+        del args.x
+        args.y = 100
 
-    def test_func(x=5, y=10, z=15):
+    def test_func(w=1, x=5, y=10, z=15):
         pass
 
     mock = create_autospec(test_func)
     func = validate(test_validator)(mock)
 
     func(100, 100)
-    mock.assert_called_once_with(x=150, z=15)
+    mock.assert_called_once_with(w=150, y=100, z=15)
 
 
 def test_post_validate_decorator(mocker):

@@ -61,9 +61,16 @@ def check_arg_combinations(args):
         raise InvalidArgumentError(message.format(option=invalid_opt))
 
 
+VALIDATORS = (
+    check_recursive_and_fname,
+    transform_targets,
+    check_arg_combinations,
+)
+
+
 @locked
 @scm_context
-@validate(check_recursive_and_fname, transform_targets, check_arg_combinations)
+@validate(*VALIDATORS)
 def add(  # noqa: C901
     repo,
     targets: "TargetType",

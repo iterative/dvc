@@ -1,6 +1,5 @@
 import inspect
 import os
-from collections import UserDict
 from collections.abc import Mapping
 from functools import wraps
 from typing import Callable, Dict, Iterable, List, TypeVar, Union
@@ -81,24 +80,38 @@ def chunk_dict(d: Dict[_KT, _VT], size: int = 1) -> List[Dict[_KT, _VT]]:
     return [{key: d[key] for key in chunk} for chunk in chunks(size, d)]
 
 
-class _NamespacedDict(UserDict):
-    def __init__(self, item):
-        super().__init__()
-        self.data = item
-
-    def __getattr__(self, item):
-        return self[item]
-
-    def __setattr__(self, key, value):
-        # for `data`, it could be accessed like a dictionary
-        d = self.__dict__ if key == "data" else self.data
-        d[key] = value
-
-    def __delattr__(self, item):
-        self.data.pop(item)
+class _NamespacedDict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self
 
 
 def validate(*validators: Callable, post: bool = False):
+    """
+    Validate and transform arguments and results from function calls.
+
+    The validators functions are passed a dictionary of arguments, which
+    supports dot notation access too.
+
+    The key is derived from the function signature, and hence is the name of
+    the argument, whereas the value is the one passed to the function
+    (if it is not passed, default value from keyword arguments are provided).
+
+    >>> def validator(args):
+    ...    assert args["l"] >= 0 and args.b >= 0 and args.h >= 0
+
+    >>> @validate(validator)
+    ... def cuboid_area(l, b, h=1):
+    ...   return 2*(l*b + l*h + b*h)
+
+    >>> cuboid_area(5, 20)
+    250
+    >>> cuboid_area(-1, -2)
+    Traceback (most recent call last):
+      ...
+    AssertionError
+    """
+
     def wrapped(func: Callable):
         sig = inspect.signature(func)
 
@@ -106,10 +119,12 @@ def validate(*validators: Callable, post: bool = False):
         def inner(*args, **kwargs):
             ba = sig.bind(*args, **kwargs)
             ba.apply_defaults()
-            kw = _NamespacedDict(ba.arguments)
+            ba.arguments = _NamespacedDict(ba.arguments)
+
             if not post:
                 for validator in validators:
-                    validator(kw)
+                    validator(ba.arguments)
+
             result = func(*ba.args, **ba.kwargs)
             if post:
                 for validator in validators:
