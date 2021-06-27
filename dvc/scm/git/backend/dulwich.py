@@ -281,9 +281,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def is_ignored(self, path: str) -> bool:
         # `is_ignored` returns `false` if excluded in `.gitignore` and
         # `None` if it's not mentioned at all. `True` if it is ignored.
-        return bool(
-            self.ignore_manager.is_ignored(relpath(path, self.root_dir))
-        )
+        relative_path = relpath(path, self.root_dir)
+        # if checking a directory, a trailing slash must be included
+        if path[-1] == "/":
+            relative_path += "/"
+        return bool(self.ignore_manager.is_ignored(relative_path))
 
     def set_ref(
         self,
