@@ -160,7 +160,7 @@ class Git(Base):
     def ignore(self, path):
         entry, gitignore = self._get_gitignore(path)
 
-        if self.is_ignored(path):
+        if self.is_ignored(str(path)):
             return
 
         msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))
