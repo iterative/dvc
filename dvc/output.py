@@ -863,7 +863,7 @@ class Output:
         obj = self.get_obj()
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(prefix, digest=False)
+            obj = obj.filter(self.odb, prefix, digest=False)
         self._set_obj_names(obj)
         return {None: {obj}}
 
