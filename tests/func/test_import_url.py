@@ -123,6 +123,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
         pytest.param(
             pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
         ),

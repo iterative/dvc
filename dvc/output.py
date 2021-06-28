@@ -45,18 +45,24 @@ CHECKSUM_SCHEMA = Any(
     And(Any(str, And(int, Coerce(str))), Length(min=3), Lower),
 )
 
+CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
+    None,
+    And(str, Length(max=0), SetTo(None)),
+    And(Any(str, And(int, Coerce(str))), Length(min=3)),
+)
+
 # NOTE: currently there are only 3 possible checksum names:
 #
 #    1) md5 (LOCAL, SSH);
-#    2) etag (S3);
+#    2) etag (S3, GS, OSS, AZURE, HTTP);
 #    3) checksum (HDFS);
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
     LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3FileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     HDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3FileSystem.PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
 }
 
 
