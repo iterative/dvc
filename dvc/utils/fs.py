@@ -4,10 +4,14 @@ import os
 import shutil
 import stat
 import sys
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import dict_md5
+
+if TYPE_CHECKING:
+    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +77,9 @@ class BasePathNotInCheckedPathException(DvcException):
         super().__init__(msg)
 
 
-def contains_symlink_up_to(path, base_path):
-    base_path = os.fspath(base_path)
-    path = os.fspath(path)
+def contains_symlink_up_to(path: "StrPath", base_path: "StrPath"):
+    base_path = os.path.normcase(os.fspath(base_path))
+    path = os.path.normcase(os.fspath(path))
 
     if base_path not in path:
         raise BasePathNotInCheckedPathException(path, base_path)
@@ -144,11 +148,11 @@ def remove(path):
             raise
 
 
-def path_isin(child, parent):
+def path_isin(child: "StrPath", parent: "StrPath"):
     """Check if given `child` path is inside `parent`."""
 
-    def normalize_path(path):
-        return os.path.normpath(path)
+    def normalize_path(path) -> str:
+        return os.path.normcase(os.path.normpath(path))
 
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
