@@ -166,6 +166,8 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
         # able to validate .dir files right in the workspace (e.g. check s3
         # etag), but could be dropped for manual validation with regular md5,
         # that would be universal for all clouds.
+        if odb.staging is not None:
+            odb = odb.staging
         raw = odb.get(tree.hash_info)
         hash_info = get_file_hash(raw.path_info, raw.fs, name, state)
         tree.hash_info.name = hash_info.name
