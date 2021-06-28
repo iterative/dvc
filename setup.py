@@ -80,7 +80,7 @@ install_requires = [
     "dataclasses==0.7; python_version < '3.7'",
     "flatten_dict>=0.3.0,<1",
     "tabulate>=0.8.7",
-    "pygtrie==2.3.2",
+    "pygtrie>=2.3.2",
     "dpath>=2.0.1,<3",
     "shtab>=1.3.4,<2",
     "rich>=10.0.0",
@@ -88,7 +88,7 @@ install_requires = [
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
     "typing_extensions>=3.7.4",
-    "fsspec==2021.6.1",
+    "fsspec>=2021.6.1",
     "diskcache>=5.2.1",
 ]
 
