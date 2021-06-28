@@ -295,6 +295,7 @@ def checkout(
     quiet=False,
     dvcignore: Optional[DvcIgnoreFilter] = None,
     state=None,
+    skip_tree_check=False,
 ):
     if path_info.scheme not in ["local", cache.fs.scheme]:
         raise NotImplementedError
@@ -315,7 +316,7 @@ def checkout(
         skip = True
     else:
         try:
-            check(cache, obj)
+            check(cache, obj, skip_tree=skip_tree_check)
         except (FileNotFoundError, ObjectFormatError):
             if not quiet:
                 logger.warning(

@@ -566,14 +566,22 @@ class Output:
         assert self.hash_info
 
         if self.use_cache:
-            obj = ostage(
-                self.odb,
-                filter_info or self.path_info,
-                self.fs,
-                self.odb.fs.PARAM_CHECKSUM,
-                dvcignore=self.dvcignore,
+            granular = (
+                self.is_dir_checksum
+                and filter_info
+                and filter_info != self.path_info
             )
-            objects.save(self.odb, obj)
+            if granular:
+                obj = self._commit_granular_dir(filter_info)
+            else:
+                obj = ostage(
+                    self.odb,
+                    filter_info or self.path_info,
+                    self.fs,
+                    self.odb.fs.PARAM_CHECKSUM,
+                    dvcignore=self.dvcignore,
+                )
+                objects.save(self.odb, obj)
             checkout(
                 filter_info or self.path_info,
                 self.fs,
@@ -582,8 +590,23 @@ class Output:
                 relink=True,
                 dvcignore=self.dvcignore,
                 state=self.repo.state,
+                skip_tree_check=granular,
             )
             self.set_exec()
+
+    def _commit_granular_dir(self, filter_info):
+        prefix = filter_info.relative_to(self.path_info).parts
+        save_obj = ostage(
+            self.odb,
+            self.path_info,
+            self.fs,
+            self.odb.fs.PARAM_CHECKSUM,
+            dvcignore=self.dvcignore,
+        )
+        save_obj = save_obj.filter(self.odb, prefix, digest=False)
+        checkout_obj = save_obj.get(self.repo.odb.memory, prefix)
+        objects.save(self.odb, save_obj)
+        return checkout_obj
 
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
@@ -670,7 +693,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.odb, prefix, **kwargs)
+            obj = obj.get(self.odb, prefix)
 
         return obj
 
@@ -837,7 +860,10 @@ class Output:
                 )
             return {}
 
-        obj = self.get_obj(filter_info=filter_info, copy=True)
+        obj = self.get_obj()
+        if filter_info and filter_info != self.path_info:
+            prefix = filter_info.relative_to(self.path_info).parts
+            obj = obj.filter(prefix, digest=False)
         self._set_obj_names(obj)
         return {None: {obj}}
 
