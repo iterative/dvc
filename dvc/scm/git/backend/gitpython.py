@@ -3,7 +3,16 @@ import locale
 import logging
 import os
 from functools import partial
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from funcy import ignore
 
@@ -13,6 +22,9 @@ from dvc.utils import fix_env, is_binary, relpath
 
 from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
+
+if TYPE_CHECKING:
+    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +123,11 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def git(self):
         return self.repo.git
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: "StrPath") -> bool:
         from git.exc import GitCommandError
 
         func = ignore(GitCommandError)(self.repo.git.check_ignore)
-        return bool(func(path))
+        return bool(func(str(path)))
 
     @property
     def root_dir(self) -> str:
