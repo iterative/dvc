@@ -69,7 +69,12 @@ class ODBManager:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        if settings is not None and self.repo.tmp_dir is not None:
+        make_staging = (
+            settings is not None
+            and "name" not in settings
+            and self.repo.tmp_dir is not None
+        )
+        if make_staging:
             staging_settings = dict(settings)
             staging_settings["url"] = os.path.join(
                 self.repo.tmp_dir, self.STAGING_PATH
