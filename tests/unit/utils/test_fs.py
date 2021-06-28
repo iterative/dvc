@@ -223,6 +223,16 @@ def test_path_isin_case_sensitive():
     assert path_isin(child, parent) == (os.name == "nt")
 
 
+def test_contains_symlink_case_sensitive():
+    child = os.path.join("path", "to", "folder")
+    parent = os.path.join("PATH", "TO")
+    if os.name == "nt":
+        assert contains_symlink_up_to(child, parent) is False
+    else:
+        with pytest.raises(BasePathNotInCheckedPathException):
+            contains_symlink_up_to(child, parent)
+
+
 def test_makedirs(tmp_dir):
     path = os.path.join(tmp_dir, "directory")
     path_info = PathInfo(os.path.join(tmp_dir, "another", "directory"))
