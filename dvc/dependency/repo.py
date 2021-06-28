@@ -152,13 +152,9 @@ class RepoDependency(Dependency):
                 ) from exc
             staging.read_only = True
 
-            # NOTE: we cache unfiltered trees in _staged_objs but always
-            # return the filtered object in used_objs
             self._staged_objs[rev] = staged_obj
-
-            filtered = self._filter_obj(staged_obj)
-            used_objs[staging].add(filtered)
-            return used_objs, filtered
+            used_objs[staging].add(staged_obj)
+            return used_objs, staged_obj
 
     def _check_circular_import(self, odb, objs):
         from dvc.exceptions import CircularImportError
@@ -183,14 +179,10 @@ class RepoDependency(Dependency):
         locked = kwargs.get("locked", True)
         rev = self._get_rev(locked=locked)
         if rev in self._staged_objs:
-            return self._filter_obj(self._staged_objs[rev])
-        _, obj = self._get_used_and_obj(obj_only=True, **kwargs)
-        return obj
-
-    def _filter_obj(self, obj, filter_info=None):
-        if filter_info and filter_info != self.path_info:
-            prefix = filter_info.relative_to(self.path_info).parts
-            return obj.filter(self.repo.memory, prefix)
+            return self._staged_objs[rev]
+        _, obj = self._get_used_and_obj(
+            obj_only=True, filter_info=filter_info, **kwargs
+        )
         return obj
 
     def _make_repo(self, locked=True, **kwargs):
