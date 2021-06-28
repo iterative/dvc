@@ -283,8 +283,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         # `None` if it's not mentioned at all. `True` if it is ignored.
         relative_path = relpath(path, self.root_dir)
         # if checking a directory, a trailing slash must be included
-        if path[-1] == "/":
-            relative_path += "/"
+        if path[-1] == os.sep:
+            relative_path += os.sep
         return bool(self.ignore_manager.is_ignored(relative_path))
 
     def set_ref(

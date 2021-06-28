@@ -463,7 +463,7 @@ class StageLoad:
         def is_out_or_ignored(root, directory):
             dir_path = f"{root}{sep}{directory}"
             # trailing slash needed to check if a directory is gitignored
-            return dir_path in outs or is_ignored(f"{dir_path}/")
+            return dir_path in outs or is_ignored(f"{dir_path}{sep}")
 
         stages = []
         for root, dirs, files in self.repo.dvcignore.walk(
