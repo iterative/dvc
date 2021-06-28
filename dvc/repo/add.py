@@ -98,8 +98,11 @@ def add(  # noqa: C901
                 **kwargs,
             )
 
+            # remove existing stages that are to-be replaced with these
+            # new stages for the graph checks.
+            old_stages = set(repo.stages) - set(stages)
             try:
-                repo.check_modified_graph(stages)
+                repo.check_modified_graph(stages, list(old_stages))
             except OverlappingOutputPathsError as exc:
                 msg = (
                     "Cannot add '{out}', because it is overlapping with other "
@@ -233,7 +236,6 @@ def _create_stages(
     transfer=False,
     **kwargs,
 ):
-    from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_meta
 
     expanded_targets = glob_targets(targets, glob=glob)
@@ -259,11 +261,8 @@ def _create_stages(
             external=external,
         )
         restore_meta(stage)
-        Dvcfile(repo, stage.path).remove()
         if desc:
             stage.outs[0].desc = desc
-
-        repo._reset()  # pylint: disable=protected-access
 
         if not stage:
             if pbar is not None:
