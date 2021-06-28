@@ -216,6 +216,13 @@ def test_path_isin_with_absolute_path():
     assert path_isin(child, parent)
 
 
+def test_path_isin_case_sensitive():
+    child = os.path.join("path", "to", "folder")
+    parent = os.path.join("PATH", "TO")
+
+    assert path_isin(child, parent) == (os.name == "nt")
+
+
 def test_makedirs(tmp_dir):
     path = os.path.join(tmp_dir, "directory")
     path_info = PathInfo(os.path.join(tmp_dir, "another", "directory"))

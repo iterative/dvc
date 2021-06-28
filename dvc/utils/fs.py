@@ -4,10 +4,14 @@ import os
 import shutil
 import stat
 import sys
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import dict_md5
+
+if TYPE_CHECKING:
+    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -144,11 +148,11 @@ def remove(path):
             raise
 
 
-def path_isin(child, parent):
+def path_isin(child: "StrPath", parent: "StrPath"):
     """Check if given `child` path is inside `parent`."""
 
-    def normalize_path(path):
-        return os.path.normpath(path)
+    def normalize_path(path) -> str:
+        return os.path.normcase(os.path.normpath(path))
 
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
