@@ -111,6 +111,10 @@ def test_ignored_dir_unignored_subdirs(tmp_dir, scm):
 
     assert not scm.is_ignored(tmp_dir / "data" / "raw" / "tracked.csv")
     assert scm.is_ignored(tmp_dir / "data" / "raw" / "not_tracked.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "non_existent.json")
 
     assert not scm.is_ignored(f"data{os.sep}")
     # git check-ignore would now mark "data/raw" as ignored
