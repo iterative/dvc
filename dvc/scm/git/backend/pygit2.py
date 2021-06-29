@@ -4,7 +4,16 @@ import os
 import stat
 from contextlib import contextmanager
 from io import BytesIO, StringIO
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from funcy import cached_property
 
@@ -15,6 +24,10 @@ from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
 
 logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:
+    from dvc.types import StrPath
 
 
 class Pygit2Object(GitObject):
@@ -234,7 +247,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def _get_stash(self, ref: str):
         raise NotImplementedError
 
-    def is_ignored(self, path: str) -> bool:
+    def is_ignored(self, path: "StrPath") -> bool:
         rel = relpath(path, self.root_dir)
         if os.name == "nt":
             rel.replace("\\", "/")
