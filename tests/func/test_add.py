@@ -24,7 +24,11 @@ from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
-from dvc.output import OutputAlreadyTrackedError, OutputIsStageFileError
+from dvc.output import (
+    OutputAlreadyTrackedError,
+    OutputDoesNotExistError,
+    OutputIsStageFileError,
+)
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageExternalOutputsError,
@@ -1190,3 +1194,40 @@ def test_add_ignored(tmp_dir, scm, dvc):
     assert str(exc.value) == ("bad DVC file name '{}' is git-ignored.").format(
         os.path.join("dir", "subdir.dvc")
     )
+
+
+def test_add_on_not_existing_file_should_not_remove_stage_file(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    (tmp_dir / "foo").unlink()
+    dvcfile_contents = (tmp_dir / stage.path).read_text()
+
+    with pytest.raises(OutputDoesNotExistError):
+        dvc.add("foo")
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / stage.path).read_text() == dvcfile_contents
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "dvc.repo.Repo.check_modified_graph",
+        "dvc.stage.Stage.save",
+        "dvc.stage.Stage.commit",
+    ],
+)
+def test_add_does_not_remove_stage_file_on_failure(
+    tmp_dir, dvc, mocker, target
+):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.gen("foo", "foobar")  # update file
+    dvcfile_contents = (tmp_dir / stage.path).read_text()
+
+    mocker.patch(
+        target,
+        side_effect=DvcException(f"raising error from mocked '{target}'"),
+    )
+
+    with pytest.raises(DvcException):
+        dvc.add("foo")
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / stage.path).read_text() == dvcfile_contents
