@@ -897,30 +897,33 @@ class Experiments:
 
             try:
                 info = ExecutorInfo.from_dict(load_yaml(pidfile))
-                result[rev] = info.to_dict()
                 if rev == "workspace":
                     # If we are appending to a checkpoint branch in a workspace
-                    # run, show both workspace and the latest checkpoint as
-                    # running.
+                    # run, show the latest checkpoint as running.
                     last_rev = self.scm.get_ref(EXEC_BRANCH)
-                    result[rev]["last"] = last_rev
                     if last_rev:
                         result[last_rev] = info.to_dict()
-                elif info.git_url:
+                    else:
+                        result[rev] = info.to_dict()
+                else:
+                    result[rev] = info.to_dict()
+                    if info.git_url:
 
-                    def on_diverged(_ref: str, _checkpoint: bool):
-                        return False
+                        def on_diverged(_ref: str, _checkpoint: bool):
+                            return False
 
-                    for ref in BaseExecutor.fetch_exps(
-                        self.scm,
-                        info.git_url,
-                        on_diverged=on_diverged,
-                    ):
-                        logger.debug("Updated running experiment '%s'.", ref)
-                        last_rev = self.scm.get_ref(ref)
-                        result[rev]["last"] = last_rev
-                        if last_rev:
-                            result[last_rev] = info.to_dict()
+                        for ref in BaseExecutor.fetch_exps(
+                            self.scm,
+                            info.git_url,
+                            on_diverged=on_diverged,
+                        ):
+                            logger.debug(
+                                "Updated running experiment '%s'.", ref
+                            )
+                            last_rev = self.scm.get_ref(ref)
+                            result[rev]["last"] = last_rev
+                            if last_rev:
+                                result[last_rev] = info.to_dict()
             except OSError:
                 pass
         return result

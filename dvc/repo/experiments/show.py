@@ -5,6 +5,7 @@ from datetime import datetime
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.experiments.base import ExpRefInfo
+from dvc.repo.experiments.executor.base import ExecutorInfo
 from dvc.repo.experiments.utils import fix_exp_head
 from dvc.repo.metrics.show import _collect_metrics, _read_metrics
 from dvc.repo.params.show import _collect_configs, _read_params
@@ -34,7 +35,12 @@ def _collect_experiment_commit(
             res["params"] = params
 
         res["queued"] = stash
-        res["running"] = running is not None and exp_rev in running
+        if running is not None and exp_rev in running:
+            res["running"] = True
+            res["executor"] = running[exp_rev].get(ExecutorInfo.PARAM_LOCATION)
+        else:
+            res["running"] = False
+            res["executor"] = None
         if not stash:
             metrics = _collect_metrics(repo, None, rev, False)
             vals = _read_metrics(repo, metrics, rev)

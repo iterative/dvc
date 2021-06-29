@@ -21,6 +21,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
             "params": {"params.yaml": {"foo": 1}},
             "queued": False,
             "running": False,
+            "executor": None,
             "timestamp": None,
         }
     }
@@ -43,6 +44,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
         "params": {"params.yaml": {"foo": 1}},
         "queued": False,
         "running": False,
+        "executor": None,
         "timestamp": timestamp,
         "name": "master",
     }
@@ -353,7 +355,7 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None)
+    info = ExecutorInfo(None, None, None, "local (workspace)")
     pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
     dump_yaml(pidfile, info.to_dict())
 
@@ -363,6 +365,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
             "params": {"params.yaml": {"foo": 1}},
             "queued": False,
             "running": True,
+            "executor": "local (workspace)",
             "timestamp": None,
         }
     }
@@ -370,7 +373,8 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     capsys.readouterr()
     assert main(["exp", "show", "--no-pager"]) == 0
     cap = capsys.readouterr()
-    assert "Run" in cap.out
+    assert "Running" in cap.out
+    assert "local (workspace)" in cap.out
 
 
 def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
@@ -380,13 +384,14 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
 
     pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None)
+    info = ExecutorInfo(None, None, None, "foo executor")
     pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
     dump_yaml(pidfile, info.to_dict())
 
     results = dvc.experiments.show()
     assert not results[baseline_rev][exp_rev]["queued"]
     assert results[baseline_rev][exp_rev]["running"]
+    assert results[baseline_rev][exp_rev]["executor"] == "foo executor"
     assert not results["workspace"]["baseline"]["running"]
 
 
@@ -409,7 +414,8 @@ def test_show_running_checkpoint(
 
     pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(123, "foo.git", baseline_rev)
+    executor = "local ({})".format("workspace" if workspace else "background")
+    info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
     rev = "workspace" if workspace else stash_rev
     pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
     dump_yaml(pidfile, info.to_dict())
@@ -421,4 +427,5 @@ def test_show_running_checkpoint(
         scm.set_ref(EXEC_BRANCH, str(exp_ref), symbolic=True)
     results = dvc.experiments.show()
     assert results[baseline_rev][checkpoint_rev]["running"]
-    assert results["workspace"]["baseline"]["running"] == workspace
+    assert results[baseline_rev][checkpoint_rev]["executor"] == executor
+    assert not results["workspace"]["baseline"]["running"]

@@ -97,9 +97,16 @@ def _update_names(names, items):
 def _collect_names(all_experiments, **kwargs):
     metric_names = defaultdict(dict)
     param_names = defaultdict(dict)
+    include_state = False
+    include_executor = False
 
     for _, experiments in all_experiments.items():
         for exp in experiments.values():
+            if exp.get("running"):
+                include_state = True
+                include_executor = True
+            elif exp.get("queued"):
+                include_state = True
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
     metric_names = _filter_names(
@@ -115,7 +122,7 @@ def _collect_names(all_experiments, **kwargs):
         kwargs.get("exclude_params"),
     )
 
-    return metric_names, param_names
+    return metric_names, param_names, include_state, include_executor
 
 
 experiment_types = {
@@ -136,6 +143,8 @@ def _collect_rows(
     precision=DEFAULT_PRECISION,
     sort_by=None,
     sort_order=None,
+    include_state=True,
+    include_executor=True,
 ):
     from dvc.scm.git import Git
 
@@ -155,7 +164,8 @@ def _collect_rows(
         elif exp.get("queued"):
             state = "Queued"
         else:
-            state = "-"
+            state = None
+        executor = exp.get("executor")
         is_baseline = rev == "baseline"
 
         if is_baseline:
@@ -197,8 +207,11 @@ def _collect_rows(
             typ,
             _format_time(exp.get("timestamp")),
             parent,
-            state,
         ]
+        if include_state:
+            row.append(state)
+        if include_executor:
+            row.append(executor)
         _extend_row(
             row, metric_names, exp.get("metrics", {}).items(), precision
         )
@@ -304,12 +317,18 @@ def experiments_table(
     sort_by=None,
     sort_order=None,
     precision=DEFAULT_PRECISION,
+    include_state=True,
+    include_executor=True,
 ) -> "TabularData":
     from funcy import lconcat
 
     from dvc.compare import TabularData
 
-    headers = ["Experiment", "rev", "typ", "Created", "parent", "State"]
+    headers = ["Experiment", "rev", "typ", "Created", "parent"]
+    if include_state:
+        headers.append("State")
+    if include_executor:
+        headers.append("Executor")
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -322,6 +341,8 @@ def experiments_table(
             sort_by=sort_by,
             sort_order=sort_order,
             precision=precision,
+            include_state=include_state,
+            include_executor=include_executor,
         )
         td.extend(rows)
 
@@ -361,7 +382,12 @@ def show_experiments(
     include_params = _parse_filter_list(kwargs.pop("include_params", []))
     exclude_params = _parse_filter_list(kwargs.pop("exclude_params", []))
 
-    metric_names, param_names = _collect_names(
+    (
+        metric_names,
+        param_names,
+        include_state,
+        include_executor,
+    ) = _collect_names(
         all_experiments,
         include_metrics=include_metrics,
         exclude_metrics=exclude_metrics,
@@ -380,6 +406,8 @@ def show_experiments(
         kwargs.get("sort_by"),
         kwargs.get("sort_order"),
         kwargs.get("precision"),
+        include_state=include_state,
+        include_executor=include_executor,
     )
 
     if no_timestamp:
@@ -396,6 +424,7 @@ def show_experiments(
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
         "State": {"header_style": "black on grey93"},
+        "Executor": {"header_style": "black on grey93"},
     }
     header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
     styles.update(

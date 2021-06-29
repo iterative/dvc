@@ -58,10 +58,12 @@ class ExecutorInfo:
     PARAM_PID = "pid"
     PARAM_GIT_URL = "git"
     PARAM_BASELINE_REV = "baseline"
+    PARAM_LOCATION = "location"
 
     pid: Optional[int]
     git_url: Optional[str]
     baseline_rev: Optional[str]
+    location: Optional[str]
 
     @classmethod
     def from_dict(cls, d):
@@ -69,6 +71,7 @@ class ExecutorInfo:
             d.get(cls.PARAM_PID),
             d.get(cls.PARAM_GIT_URL),
             d.get(cls.PARAM_BASELINE_REV),
+            d.get(cls.PARAM_LOCATION),
         )
 
     def to_dict(self):
@@ -76,6 +79,7 @@ class ExecutorInfo:
             self.PARAM_PID: self.pid,
             self.PARAM_GIT_URL: self.git_url,
             self.PARAM_BASELINE_REV: self.baseline_rev,
+            self.PARAM_LOCATION: self.location,
         }
 
 
@@ -94,6 +98,7 @@ class BaseExecutor(ABC):
     WARN_UNTRACKED = False
     QUIET = False
     PIDFILE_EXT = ".run"
+    DEFAULT_LOCATION: Optional[str] = "local (workspace)"
 
     def __init__(
         self,
@@ -403,7 +408,12 @@ class BaseExecutor(ABC):
         else:
             old_cwd = None
         if pidfile is not None:
-            info = ExecutorInfo(os.getpid(), git_url, dvc.scm.get_rev())
+            info = ExecutorInfo(
+                os.getpid(),
+                git_url,
+                dvc.scm.get_rev(),
+                cls.DEFAULT_LOCATION,
+            )
             with modify_yaml(pidfile) as d:
                 d.update(info.to_dict())
         logger.debug("Running repro in '%s'", os.getcwd())
