@@ -103,15 +103,17 @@ def test_ignored_dir_unignored_subdirs(tmp_dir, scm):
     tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.csv"})
     scm.add([".gitignore"])
     tmp_dir.gen(
-        {"data/raw/tracked.csv": "cont", "data/raw/not_tracked.json": "cont"}
+        {
+            os.path.join("data", "raw", "tracked.csv"): "cont",
+            os.path.join("data", "raw", "not_tracked.json"): "cont",
+        }
     )
 
-    assert not scm.is_ignored("data/raw/tracked.csv")
-    assert scm.is_ignored("data/raw/not_tracked.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "tracked.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "not_tracked.json")
 
-    assert not scm.is_ignored("data/")
-    assert scm.is_ignored("data/raw")
-    assert not scm.is_ignored("data/raw/")
+    assert not scm.is_ignored(f"data{os.sep}")
+    assert not scm.is_ignored(f"data{os.sep}raw{os.sep}")
 
 
 def test_get_gitignore(tmp_dir, scm):
