@@ -1222,12 +1222,14 @@ def test_add_does_not_remove_stage_file_on_failure(
     tmp_dir.gen("foo", "foobar")  # update file
     dvcfile_contents = (tmp_dir / stage.path).read_text()
 
+    exc_msg = f"raising error from mocked '{target}'"
     mocker.patch(
         target,
-        side_effect=DvcException(f"raising error from mocked '{target}'"),
+        side_effect=DvcException(exc_msg),
     )
 
-    with pytest.raises(DvcException):
+    with pytest.raises(DvcException) as exc_info:
         dvc.add("foo")
+    assert str(exc_info.value) == exc_msg
     assert (tmp_dir / "foo.dvc").exists()
     assert (tmp_dir / stage.path).read_text() == dvcfile_contents
