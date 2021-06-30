@@ -588,3 +588,23 @@ def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
     stats = dvc.pull()
     assert stats["fetched"] == 2
     assert set(stats["added"]) == {"foo", "bar"}
+
+
+@pytest.mark.parametrize("remote", full_clouds, indirect=True)
+def test_pull_no_00_prefix(tmp_dir, dvc, remote, monkeypatch):
+    # Related: https://github.com/iterative/dvc/issues/6244
+
+    fs_type = type(dvc.cloud.get_remote("upstream").fs)
+    monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
+    monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
+
+    # foo's md5 checksum is 14ffd92a6cbf5f2f657067df0d5881a6
+    # bar's md5 checksum is 64020400f00960c0ef04052547b134b3
+    tmp_dir.dvc_gen({"foo": "dvc", "bar": "cml"})
+
+    dvc.push()
+    clean(["foo", "bar"], dvc)
+
+    stats = dvc.pull()
+    assert stats["fetched"] == 2
+    assert set(stats["added"]) == {"foo", "bar"}
