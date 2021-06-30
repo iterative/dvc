@@ -397,7 +397,7 @@ def show_experiments(
     styles.update(
         {
             header: {
-                "justify": "left" if typ == "metrics" else "params",
+                "justify": "right" if typ == "metrics" else "left",
                 "header_style": f"black on {header_bg_colors[typ]}",
                 "collapse": idx != 0,
                 "no_wrap": typ == "metrics",
