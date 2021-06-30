@@ -8,7 +8,7 @@ from mock import patch
 import dvc.data_cloud as cloud
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, PathMissingError
 from dvc.objects.db import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
@@ -289,7 +289,7 @@ def test_push_wildcard_from_bare_git_repo(
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(PathMissingError):
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
@@ -347,11 +347,11 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
 
 
 def test_import_non_existing(erepo_dir, tmp_dir, dvc):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "invalid_output")
 
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "/root/", "root")
 
 

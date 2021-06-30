@@ -97,7 +97,7 @@ class RepoDependency(Dependency):
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError
+        from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.objects.db.git import GitObjectDB
         from dvc.objects.stage import stage
 
@@ -126,12 +126,18 @@ class RepoDependency(Dependency):
             except (NoRemoteError, NoOutputOrStageError):
                 pass
 
-            staged_obj = stage(
-                local_odb,
-                path_info,
-                repo.repo_fs,
-                local_odb.fs.PARAM_CHECKSUM,
-            )
+            try:
+                staged_obj = stage(
+                    local_odb,
+                    path_info,
+                    repo.repo_fs,
+                    local_odb.fs.PARAM_CHECKSUM,
+                )
+            except FileNotFoundError as exc:
+                raise PathMissingError(
+                    self.def_path, self.def_repo[self.PARAM_URL]
+                ) from exc
+
             self._staged_objs[rev] = staged_obj
             git_odb = GitObjectDB(repo.repo_fs, repo.root_dir)
             used_objs[git_odb].add(staged_obj)
