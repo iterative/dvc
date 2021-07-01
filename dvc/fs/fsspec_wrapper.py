@@ -173,7 +173,7 @@ class ObjectFSWrapper(FSSpecWrapper):
         )
 
     def find(self, path_info, detail=False, prefix=None):
-        if prefix is not None:
+        if prefix:
             path = self._with_bucket(path_info.parent)
             files = self.fs.find(
                 path, detail=detail, prefix=path_info.parts[-1]
