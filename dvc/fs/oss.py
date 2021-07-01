@@ -36,7 +36,6 @@ class OSSFileSystem(ObjectFSWrapper):
         self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
     ):
         total = os.path.getsize(from_file)
-        resumable = total > self.fs.SIMPLE_TRANSFER_SIZE
         with Tqdm(
             disable=no_progress_bar,
             total=total,
@@ -47,7 +46,6 @@ class OSSFileSystem(ObjectFSWrapper):
             self.fs.put_file(
                 from_file,
                 to_info.url,
-                resumable=resumable,
                 progress_callback=pbar.update_to,
             )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
@@ -56,7 +54,6 @@ class OSSFileSystem(ObjectFSWrapper):
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
     ):
         total = self.fs.size(from_info.url)
-        resumable = total > self.fs.SIMPLE_TRANSFER_SIZE
         with Tqdm(
             disable=no_progress_bar,
             total=total,
@@ -67,6 +64,5 @@ class OSSFileSystem(ObjectFSWrapper):
             self.fs.get_file(
                 from_info.url,
                 to_file,
-                resumable=resumable,
                 progress_callback=pbar.update_to,
             )
