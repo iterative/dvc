@@ -20,7 +20,7 @@ wsgidav==3.1.0
 crc32c==2.2.post0
 xmltodict==0.12.0
 google-compute-engine==2.8.13
-google-cloud-storage==1.39.0
+google-cloud-storage==1.40.0
 
 urllib3==1.26.6
 
