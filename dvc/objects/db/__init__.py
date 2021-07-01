@@ -46,6 +46,8 @@ class ODBManager:
     STAGING_MEMFS_URL = f"memory://{STAGING_PATH}"
 
     def __init__(self, repo):
+        from shortuuid import uuid
+
         from dvc.fs.memory import MemoryFileSystem
         from dvc.path_info import CloudURLInfo
 
@@ -84,8 +86,15 @@ class ODBManager:
             staging = None
 
         self._odb[Schemes.LOCAL] = _get_odb(repo, settings, staging=staging)
+
+        # NOTE: generate unique memfs URL per ODB manager - since memfs is
+        # global, non-unique URL will cause concurrency issues between
+        # Repo() instances
+        staging_memfs_url = CloudURLInfo(
+            f"memory://{self.STAGING_PATH}-{uuid()}"
+        )
         self._odb[Schemes.MEMORY] = ObjectDB(
-            MemoryFileSystem(), CloudURLInfo(self.STAGING_MEMFS_URL)
+            MemoryFileSystem(), staging_memfs_url
         )
 
     def _init_odb(self, schemes):

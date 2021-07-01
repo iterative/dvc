@@ -162,7 +162,7 @@ class RepoDependency(Dependency):
         from dvc.objects.tree import Tree
 
         staging = self.repo.odb.memory
-        if odb.fs != staging.fs or odb.path_info != staging.path_info:
+        if odb.fs != staging.fs:
             return
 
         obj = first(objs)
