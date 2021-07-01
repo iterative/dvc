@@ -205,8 +205,6 @@ class Tree(HashFile):
         try:
             odb.check(self.hash_info, check_hash=False)
         except (ObjectError, FileNotFoundError):
-            if odb.staging is not None:
-                odb = odb.staging
             odb.add(self.path_info, self.fs, self.hash_info)
         staged = load(odb, self.hash_info)
 

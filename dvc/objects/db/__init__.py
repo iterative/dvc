@@ -1,6 +1,10 @@
 import os
+from typing import TYPE_CHECKING, Optional
 
 from dvc.scheme import Schemes
+
+if TYPE_CHECKING:
+    from .base import ObjectDB
 
 
 def get_odb(fs, path_info, **config):
@@ -21,16 +25,14 @@ def get_odb(fs, path_info, **config):
     return ObjectDB(fs, path_info, **config)
 
 
-def _get_odb(repo, settings, staging=None):
+def _get_odb(repo, settings):
     from dvc.fs import get_cloud_fs
 
     if not settings:
         return None
 
     cls, config, path_info = get_cloud_fs(repo, **settings)
-    return get_odb(
-        cls(**config), path_info, state=repo.state, staging=staging, **config
-    )
+    return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 
 class ODBManager:
@@ -43,7 +45,6 @@ class ODBManager:
         Schemes.WEBHDFS,
     ]
     STAGING_PATH = "dvc-staging"
-    STAGING_MEMFS_URL = f"memory://{STAGING_PATH}"
 
     def __init__(self, repo):
         from shortuuid import uuid
@@ -56,6 +57,7 @@ class ODBManager:
         self.repo = repo
         self.config = config = repo.config["cache"]
         self._odb = {}
+        self._staging = {}
 
         local = config.get("local")
 
@@ -71,31 +73,24 @@ class ODBManager:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        make_staging = (
+        if (
             settings is not None
             and "name" not in settings
             and self.repo.tmp_dir is not None
-        )
-        if make_staging:
+        ):
             staging_settings = dict(settings)
             staging_settings["url"] = os.path.join(
                 self.repo.tmp_dir, self.STAGING_PATH
             )
-            staging = _get_odb(repo, staging_settings)
-        else:
-            staging = None
+            self._staging[Schemes.LOCAL] = _get_odb(repo, staging_settings)
 
-        self._odb[Schemes.LOCAL] = _get_odb(repo, settings, staging=staging)
+        self._odb[Schemes.LOCAL] = _get_odb(repo, settings)
 
         # NOTE: generate unique memfs URL per ODB manager - since memfs is
         # global, non-unique URL will cause concurrency issues between
         # Repo() instances
-        staging_memfs_url = CloudURLInfo(
-            f"memory://{self.STAGING_PATH}-{uuid()}"
-        )
-        self._odb[Schemes.MEMORY] = ObjectDB(
-            MemoryFileSystem(), staging_memfs_url
-        )
+        memfs_url = CloudURLInfo(f"memory://{self.STAGING_PATH}-{uuid()}")
+        self._staging[Schemes.MEMORY] = ObjectDB(MemoryFileSystem(), memfs_url)
 
     def _init_odb(self, schemes):
         for scheme in schemes:
@@ -116,3 +111,8 @@ class ODBManager:
         self._init_odb(self.CLOUD_SCHEMES)
         for scheme in [Schemes.LOCAL] + self.CLOUD_SCHEMES:
             yield scheme, self._odb[scheme]
+
+    def get_staging(
+        self, scheme: Optional[str] = None
+    ) -> Optional["ObjectDB"]:
+        return self._staging.get(scheme or Schemes.MEMORY)
