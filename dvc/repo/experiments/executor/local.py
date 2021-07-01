@@ -45,7 +45,7 @@ class TempDirExecutor(BaseLocalExecutor):
     # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
     QUIET = True
-    DEFAULT_LOCATION: Optional[str] = "local (background)"
+    DEFAULT_LOCATION: Optional[str] = "temp"
 
     def __init__(
         self,

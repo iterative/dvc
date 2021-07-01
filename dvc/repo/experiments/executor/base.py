@@ -98,7 +98,7 @@ class BaseExecutor(ABC):
     WARN_UNTRACKED = False
     QUIET = False
     PIDFILE_EXT = ".run"
-    DEFAULT_LOCATION: Optional[str] = "local (workspace)"
+    DEFAULT_LOCATION: Optional[str] = "workspace"
 
     def __init__(
         self,

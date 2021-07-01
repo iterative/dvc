@@ -355,7 +355,7 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None, "local (workspace)")
+    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
     pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
     dump_yaml(pidfile, info.to_dict())
 
@@ -365,7 +365,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
             "params": {"params.yaml": {"foo": 1}},
             "queued": False,
             "running": True,
-            "executor": "local (workspace)",
+            "executor": info.location,
             "timestamp": None,
         }
     }
@@ -374,7 +374,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     assert main(["exp", "show", "--no-pager"]) == 0
     cap = capsys.readouterr()
     assert "Running" in cap.out
-    assert "local (workspace)" in cap.out
+    assert info.location in cap.out
 
 
 def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
@@ -384,14 +384,14 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
 
     pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None, "foo executor")
+    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
     pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
     dump_yaml(pidfile, info.to_dict())
 
     results = dvc.experiments.show()
     assert not results[baseline_rev][exp_rev]["queued"]
     assert results[baseline_rev][exp_rev]["running"]
-    assert results[baseline_rev][exp_rev]["executor"] == "foo executor"
+    assert results[baseline_rev][exp_rev]["executor"] == info.location
     assert not results["workspace"]["baseline"]["running"]
 
 
@@ -400,6 +400,7 @@ def test_show_running_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, workspace, mocker
 ):
     from dvc.repo.experiments.base import EXEC_BRANCH
+    from dvc.repo.experiments.executor.local import TempDirExecutor
     from dvc.repo.experiments.utils import exp_refs_by_rev
 
     baseline_rev = scm.get_rev()
@@ -414,7 +415,11 @@ def test_show_running_checkpoint(
 
     pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    executor = "local ({})".format("workspace" if workspace else "background")
+    executor = (
+        BaseExecutor.DEFAULT_LOCATION
+        if workspace
+        else TempDirExecutor.DEFAULT_LOCATION
+    )
     info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
     rev = "workspace" if workspace else stash_rev
     pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
@@ -427,5 +432,5 @@ def test_show_running_checkpoint(
         scm.set_ref(EXEC_BRANCH, str(exp_ref), symbolic=True)
     results = dvc.experiments.show()
     assert results[baseline_rev][checkpoint_rev]["running"]
-    assert results[baseline_rev][checkpoint_rev]["executor"] == executor
+    assert results[baseline_rev][checkpoint_rev]["executor"] == info.location
     assert not results["workspace"]["baseline"]["running"]
