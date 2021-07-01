@@ -61,7 +61,7 @@ class OSSFileSystem(ObjectFSWrapper):
             desc=name,
             **pbar_args,
         ) as pbar:
-            self.fs.get_file(
+            self.fs.download_file(
                 from_info.url,
                 to_file,
                 progress_callback=pbar.update_to,
