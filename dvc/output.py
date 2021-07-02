@@ -27,7 +27,6 @@ from .istextfile import istextfile
 from .objects import Tree
 from .objects import save as osave
 from .objects.errors import ObjectFormatError
-from .objects.stage import stage as ostage
 from .scheme import Schemes
 from .utils import relpath
 from .utils.fs import path_isin
@@ -396,8 +395,16 @@ class Output:
         return self.use_cache or self.stage.is_repo_import
 
     @property
+    def odb_manager(self):
+        return self.repo.odb
+
+    @property
     def odb(self):
-        return getattr(self.repo.odb, self.scheme)
+        return getattr(self.odb_manager, self.scheme)
+
+    @property
+    def staging_odb(self):
+        return self.odb_manager.get_staging(self.scheme) or self.odb
 
     @property
     def cache_path(self):
@@ -405,15 +412,15 @@ class Output:
 
     def get_hash(self):
         if not self.use_cache:
-            return ostage(
-                self.repo.odb.local,
+            return self.odb_manager.stage(
+                Schemes.LOCAL,
                 self.path_info,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
                 dvcignore=self.dvcignore,
             ).hash_info
-        return ostage(
-            self.odb,
+        return self.odb_manager.stage(
+            self.scheme,
             self.path_info,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
@@ -449,7 +456,7 @@ class Output:
             return True
 
         try:
-            objects.check(self.odb, obj)
+            self.odb_manager.check(self.scheme, obj)
             return False
         except (FileNotFoundError, ObjectFormatError):
             return True
@@ -545,8 +552,8 @@ class Output:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = ostage(
-            self.odb,
+        self.obj = self.odb_manager.stage(
+            self.scheme,
             self.path_info,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
@@ -574,8 +581,8 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info)
             else:
-                obj = ostage(
-                    self.odb,
+                obj = self.odb_manager.stage(
+                    self.scheme,
                     filter_info or self.path_info,
                     self.fs,
                     self.odb.fs.PARAM_CHECKSUM,
@@ -590,21 +597,20 @@ class Output:
                 relink=True,
                 dvcignore=self.dvcignore,
                 state=self.repo.state,
-                skip_tree_check=granular,
             )
             self.set_exec()
 
     def _commit_granular_dir(self, filter_info):
         prefix = filter_info.relative_to(self.path_info).parts
-        save_obj = ostage(
-            self.odb,
+        save_obj = self.odb_manager.stage(
+            self.scheme,
             self.path_info,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
             dvcignore=self.dvcignore,
         )
-        save_obj = save_obj.filter(self.odb, prefix, digest=False)
-        checkout_obj = save_obj.get(self.repo.odb.memory, prefix)
+        save_obj = save_obj.filter(self.staging_odb, prefix, digest=False)
+        checkout_obj = save_obj.get(self.repo.odb.get_staging(), prefix)
         objects.save(self.odb, save_obj)
         return checkout_obj
 
@@ -693,7 +699,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.get(self.odb, prefix)
+            obj = obj.get(self.staging_odb, prefix)
 
         return obj
 
@@ -770,6 +776,8 @@ class Output:
     def transfer(
         self, source, odb=None, jobs=None, update=False, no_progress_bar=False
     ):
+        from .objects.stage import stage as ostage
+
         if odb is None:
             odb = self.odb
 
@@ -824,12 +832,13 @@ class Output:
 
         obj = self.odb.get(self.hash_info)
         try:
-            objects.check(self.odb, obj)
-        except (FileNotFoundError, ObjectFormatError):
+            odb = self.odb_manager.check(self.scheme, obj)
+        except FileNotFoundError:
             self.repo.cloud.pull([obj], show_checksums=False, **kwargs)
+            odb = self.odb
 
         try:
-            self.obj = objects.load(self.odb, self.hash_info)
+            self.obj = objects.load(odb, self.hash_info)
         except (FileNotFoundError, ObjectFormatError):
             self.obj = None
 
@@ -846,8 +855,8 @@ class Output:
             logger.debug(f"failed to pull cache for '{self}'")
 
         try:
-            objects.check(self.odb, self.odb.get(self.hash_info))
-        except (FileNotFoundError, ObjectFormatError):
+            self.odb_manager.check(self.scheme, self.odb.get(self.hash_info))
+        except FileNotFoundError:
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
@@ -863,7 +872,7 @@ class Output:
         obj = self.get_obj()
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.odb, prefix, digest=False)
+            obj = obj.filter(self.staging_odb, prefix, digest=False)
         self._set_obj_names(obj)
         return {None: {obj}}
 
