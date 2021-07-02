@@ -6,6 +6,7 @@ from funcy import first
 from voluptuous import Required
 
 from dvc.path_info import PathInfo
+from dvc.scheme import Schemes
 
 from .base import Dependency
 
@@ -109,7 +110,6 @@ class RepoDependency(Dependency):
 
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
-        from dvc.objects.stage import stage
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
@@ -138,10 +138,10 @@ class RepoDependency(Dependency):
                 except (NoRemoteError, NoOutputOrStageError):
                     pass
 
-            staging = copy(self.repo.odb.memory)
+            scheme = Schemes.MEMORY
             try:
-                staged_obj = stage(
-                    staging,
+                staged_obj = self.odb_manager.stage(
+                    scheme,
                     path_info,
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
@@ -150,6 +150,7 @@ class RepoDependency(Dependency):
                 raise PathMissingError(
                     self.def_path, self.def_repo[self.PARAM_URL]
                 ) from exc
+            staging = copy(self.odb_manager.get_staging(scheme))
             staging.read_only = True
 
             self._staged_objs[rev] = staged_obj
@@ -161,8 +162,7 @@ class RepoDependency(Dependency):
         from dvc.fs.repo import RepoFileSystem
         from dvc.objects.tree import Tree
 
-        staging = self.repo.odb.memory
-        if odb.fs != staging.fs:
+        if odb.fs != self.odb_manager.get_staging(Schemes.MEMORY).fs:
             return
 
         obj = first(objs)
