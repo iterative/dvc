@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import TYPE_CHECKING, Optional
 
-from dvc.objects.errors import ObjectError, ObjectFormatError
+from dvc.objects.errors import ObjectFormatError, ObjectPermissionError
 from dvc.objects.file import HashFile
 from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
@@ -85,7 +85,7 @@ class ObjectDB:
         **kwargs,
     ):
         if self.read_only:
-            raise ObjectError("Cannot write to read-only ODB")
+            raise ObjectPermissionError("Cannot add to read-only ODB")
         try:
             self.check(hash_info, check_hash=self.verify)
             return
@@ -363,7 +363,7 @@ class ObjectDB:
 
     def gc(self, used, jobs=None):
         if self.read_only:
-            raise ObjectError("Cannot write to read-only ODB")
+            raise ObjectPermissionError("Cannot gc read-only ODB")
         used_hashes = set()
         for obj in used:
             used_hashes.add(obj.hash_info.value)

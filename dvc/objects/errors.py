@@ -7,3 +7,7 @@ class ObjectError(DvcException):
 
 class ObjectFormatError(ObjectError):
     pass
+
+
+class ObjectPermissionError(ObjectError):
+    pass
