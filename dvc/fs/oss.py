@@ -32,6 +32,9 @@ class OSSFileSystem(ObjectFSWrapper):
 
         return _OSSFileSystem(**self.fs_args)
 
+    def _upload_fobj(self, fobj, to_info, size=None):
+        self.fs.pipe_file(self._with_bucket(to_info), fobj)
+
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
@@ -45,7 +48,7 @@ class OSSFileSystem(ObjectFSWrapper):
         ) as pbar:
             self.fs.put_file(
                 from_file,
-                to_info.url,
+                self._with_bucket(to_info),
                 progress_callback=pbar.update_to,
             )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
@@ -53,7 +56,7 @@ class OSSFileSystem(ObjectFSWrapper):
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
     ):
-        total = self.fs.size(from_info.url)
+        total = self.fs.size(self._with_bucket(from_info))
         with Tqdm(
             disable=no_progress_bar,
             total=total,
@@ -62,7 +65,7 @@ class OSSFileSystem(ObjectFSWrapper):
             **pbar_args,
         ) as pbar:
             self.fs.get_file(
-                from_info.url,
+                self._with_bucket(from_info),
                 to_file,
                 progress_callback=pbar.update_to,
             )
