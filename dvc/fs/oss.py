@@ -33,7 +33,7 @@ class OSSFileSystem(ObjectFSWrapper):
         return _OSSFileSystem(**self.fs_args)
 
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
+        self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
         total = os.path.getsize(from_file)
         with Tqdm(
@@ -41,7 +41,7 @@ class OSSFileSystem(ObjectFSWrapper):
             total=total,
             bytes=True,
             desc=name,
-            **pbar_args,
+            **kwargs,
         ) as pbar:
             self.fs.put_file(
                 from_file,
