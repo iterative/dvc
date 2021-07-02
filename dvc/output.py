@@ -887,7 +887,7 @@ class Output:
         obj.name = str(self)
         if isinstance(obj, Tree):
             for key, entry_obj in obj:
-                entry_obj.name = os.path.join(obj.name, *key)
+                entry_obj.name = os.path.sep.join([obj.name, *key])
 
     def get_used_external(
         self, **kwargs
