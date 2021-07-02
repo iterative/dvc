@@ -187,3 +187,15 @@ class ODBManager:
         if odb is None:
             odb = self._odb[scheme]
         return ostage(odb, path_info, fs, name, **kwargs)
+
+    def check(self, scheme: str, obj: "HashFile"):
+        from .. import check as ocheck
+
+        return ocheck(
+            (
+                odb
+                for odb in (self._odb.get(scheme), self.get_staging(scheme))
+                if odb is not None
+            ),
+            obj,
+        )

@@ -1,9 +1,10 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from dvc.progress import Tqdm
 
+from .errors import ObjectFormatError
 from .tree import Tree
 
 if TYPE_CHECKING:
@@ -45,12 +46,20 @@ def save(
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 
-def check(odb: "ObjectDB", obj: "HashFile", skip_tree: bool = False):
+def check(odbs: Iterable["ObjectDB"], obj: "HashFile") -> "ObjectDB":
+    for odb in odbs:
+        try:
+            _check(odb, obj)
+            return odb
+        except (FileNotFoundError, ObjectFormatError):
+            pass
+    raise FileNotFoundError
+
+
+def _check(odb: "ObjectDB", obj: "HashFile"):
     if isinstance(obj, Tree):
         for _, entry in obj:
             odb.check(entry.hash_info)
-        if skip_tree:
-            return
 
     odb.check(obj.hash_info)
 
