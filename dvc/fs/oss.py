@@ -53,15 +53,15 @@ class OSSFileSystem(ObjectFSWrapper):
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
     ):
-        total = self.fs.size(from_info.url)
+        # total = self.fs.size(from_info.url)
         with Tqdm(
             disable=no_progress_bar,
-            total=total,
+            # total=total,
             bytes=True,
             desc=name,
             **pbar_args,
         ) as pbar:
-            self.fs.download_file(
+            self.fs.get_file(
                 from_info.url,
                 to_file,
                 progress_callback=pbar.update_to,
