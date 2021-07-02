@@ -94,6 +94,15 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         return RefdbFsBackend(self.repo)
 
+    def _resolve_refish(self, refish: str):
+        from pygit2 import GIT_OBJ_COMMIT, Tag
+
+        commit, ref = self.repo.resolve_refish(refish)
+        if isinstance(commit, Tag):
+            ref = commit
+            commit = commit.peel(GIT_OBJ_COMMIT)
+        return commit, ref
+
     @property
     def default_signature(self):
         try:
@@ -153,7 +162,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 if branch == "-":
                     branch = "@{-1}"
                 try:
-                    commit, ref = self.repo.resolve_refish(branch)
+                    commit, ref = self._resolve_refish(branch)
                 except (KeyError, GitError):
                     raise RevError(f"unknown Git revision '{branch}'")
                 self.repo.checkout_tree(commit, strategy=checkout_strategy)
@@ -213,7 +222,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         from pygit2 import GitError
 
         try:
-            commit, _ref = self.repo.resolve_refish(rev)
+            commit, _ref = self._resolve_refish(rev)
             return str(commit.id)
         except (KeyError, GitError):
             pass
@@ -233,7 +242,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         from pygit2 import GitError
 
         try:
-            commit, _ref = self.repo.resolve_refish(rev)
+            commit, _ref = self._resolve_refish(rev)
         except (KeyError, GitError):
             raise SCMError(f"Invalid commit '{rev}'")
         return GitCommit(
@@ -307,12 +316,12 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         from pygit2 import GitError
 
         def _contains(repo, ref, search_commit):
-            commit, _ref = self.repo.resolve_refish(ref)
+            commit, _ref = self._resolve_refish(ref)
             base = repo.merge_base(search_commit.id, commit.id)
             return base == search_commit.id
 
         try:
-            search_commit, _ref = self.repo.resolve_refish(rev)
+            search_commit, _ref = self._resolve_refish(rev)
         except (KeyError, GitError):
             raise SCMError(f"Invalid rev '{rev}'")
 
@@ -397,7 +406,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         # libgit2 stash apply only accepts refs/stash items by index. If rev is
         # not in refs/stash, we will push it onto the stash, and then pop it
-        commit, _ref = self.repo.resolve_refish(rev)
+        commit, _ref = self._resolve_refish(rev)
         stash = self.repo.references.get(Stash.DEFAULT_STASH)
         if stash:
             for i, entry in enumerate(stash.log()):

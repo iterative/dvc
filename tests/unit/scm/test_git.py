@@ -553,3 +553,30 @@ def test_add(tmp_dir, scm, git):
     assert set(staged["modify"]) == {"dir/baz"}
     assert len(unstaged) == 1
     assert len(untracked) == 1
+
+
+@pytest.mark.parametrize("use_sha", [True, False])
+def test_pygit_resolve_refish(tmp_dir, scm, git, use_sha):
+    import pygit2
+
+    if git.test_backend != "pygit2":
+        pytest.skip()
+
+    tmp_dir.scm_gen("foo", "foo", commit="foo")
+    head = scm.get_rev()
+    tag = "my_tag"
+    scm.gitpython.git.tag("-a", tag, "-m", "create annotated tag")
+
+    if use_sha:
+        # refish will be annotated tag SHA (not commit SHA)
+        ref = git.pygit2.repo.references.get(f"refs/tags/{tag}")
+        refish = str(ref.target)
+    else:
+        refish = tag
+
+    assert refish != head
+    commit, ref = git.pygit2._resolve_refish(refish)
+    assert isinstance(commit, pygit2.Commit)
+    assert str(commit.id) == head
+    if not use_sha:
+        assert ref.name == f"refs/tags/{tag}"
