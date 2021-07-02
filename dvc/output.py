@@ -271,8 +271,6 @@ class Output:
     IsStageFileError = OutputIsStageFileError  # type: Type[DvcException]
     IsIgnoredError = OutputIsIgnoredError  # type: Type[DvcException]
 
-    sep = "/"
-
     def __init__(
         self,
         stage,
