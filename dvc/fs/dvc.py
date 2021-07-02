@@ -23,6 +23,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         repo: DVC repo.
     """
 
+    sep = os.sep
+
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 

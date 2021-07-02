@@ -33,6 +33,8 @@ class RemoteMissingDepsError(DvcException):
 
 
 class BaseFileSystem:
+    sep = "/"
+
     scheme = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
     PATH_CLS = URLInfo  # type: Any

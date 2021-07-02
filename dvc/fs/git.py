@@ -9,6 +9,8 @@ from .base import BaseFileSystem
 class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
+    sep = os.sep
+
     scheme = "local"
 
     def __init__(self, root_dir, trie):

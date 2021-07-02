@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class LocalFileSystem(BaseFileSystem):
+    sep = os.sep
+
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
