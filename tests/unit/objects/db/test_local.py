@@ -96,59 +96,76 @@ def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
 
 def test_staging_file(tmp_dir, dvc):
     from dvc.objects import check, save
-    from dvc.objects.stage import stage
 
     tmp_dir.gen("foo", "foo")
     fs = LocalFileSystem()
-    local_odb = dvc.odb.local
-    obj = stage(local_odb, tmp_dir / "foo", fs, "md5")
+    scheme = fs.scheme
 
-    for odb in (local_odb, local_odb.staging):
+    local_odb = dvc.odb.local
+    local_staging = dvc.odb.get_staging(scheme)
+    assert local_odb != local_staging
+
+    obj = dvc.odb.stage(scheme, tmp_dir / "foo", fs, "md5")
+
+    for odb in (local_odb, local_staging):
         path_info = odb.hash_to_path_info(obj.hash_info.value)
         assert not fs.exists(path_info)
 
     # check for file after staging should fail since files are not added on
     # stage()
     with pytest.raises(FileNotFoundError):
-        check(local_odb, obj)
+        dvc.odb.check(scheme, obj)
+    with pytest.raises(FileNotFoundError):
+        check({local_odb, local_staging}, obj)
+
     save(local_odb, obj)
-    check(local_odb, obj)
+    dvc.odb.check(scheme, obj)
+    check({local_odb}, obj)
+    with pytest.raises(FileNotFoundError):
+        check({local_staging}, obj)
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)
-    path_info = local_odb.staging.hash_to_path_info(obj.hash_info.value)
+    path_info = local_staging.hash_to_path_info(obj.hash_info.value)
     assert not fs.exists(path_info)
 
 
 def test_staging_dir(tmp_dir, dvc):
     from dvc.objects import check, save
-    from dvc.objects.stage import stage
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = LocalFileSystem()
+    scheme = fs.scheme
     local_odb = dvc.odb.local
-    obj = stage(local_odb, tmp_dir / "dir", fs, "md5")
+    local_staging = dvc.odb.get_staging(scheme)
+
+    obj = dvc.odb.stage(scheme, tmp_dir / "dir", fs, "md5")
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert not fs.exists(path_info)
-    path_info = local_odb.staging.hash_to_path_info(obj.hash_info.value)
+    path_info = local_staging.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)
 
     # check for raw object after staging should pass only when using the
     # staging odb
-    local_odb.check(obj.hash_info)
-    local_odb.staging.check(obj.hash_info, obj)
+    raw = HashFile(obj.path_info, obj.fs, obj.hash_info)
+    dvc.odb.check(scheme, raw)
+    check({local_odb, local_staging}, raw)
     with pytest.raises(FileNotFoundError):
-        local_odb.check(obj.hash_info, check_staging=False)
+        check({local_odb}, raw)
+
     # checking the entire tree should fail since individual file entries are
     # not added on stage()
     with pytest.raises(FileNotFoundError):
-        check(local_odb, obj)
+        dvc.odb.check(scheme, obj)
 
     save(local_odb, obj)
-    check(local_odb, obj)
+    dvc.odb.check(scheme, obj)
+    check({local_odb}, obj)
+    with pytest.raises(FileNotFoundError):
+        check({local_staging}, obj)
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)
-    path_info = local_odb.staging.hash_to_path_info(obj.hash_info.value)
+    path_info = local_staging.hash_to_path_info(obj.hash_info.value)
     assert not fs.exists(path_info)
