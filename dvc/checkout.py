@@ -21,22 +21,26 @@ from dvc.types import Optional
 logger = logging.getLogger(__name__)
 
 
-def _changed(path_info, fs, obj, cache):
+def _changed(path_info, fs, obj, cache, state=None):
     logger.trace("checking if '%s'('%s') has changed.", path_info, obj)
 
     try:
-        check(cache, obj)
+        check({cache}, obj)
     except (FileNotFoundError, ObjectFormatError):
         logger.debug(
             "cache for '%s'('%s') has changed.", path_info, obj.hash_info
         )
         return True
 
-    try:
-        actual = stage(cache, path_info, fs, obj.hash_info.name).hash_info
-    except FileNotFoundError:
-        logger.debug("'%s' doesn't exist.", path_info)
-        return True
+    hash_info = state.get(path_info, fs)
+    if hash_info:
+        actual = hash_info
+    else:
+        try:
+            actual = stage(cache, path_info, fs, obj.hash_info.name).hash_info
+        except FileNotFoundError:
+            logger.debug("'%s' doesn't exist.", path_info)
+            return True
 
     if obj.hash_info != actual:
         logger.debug(
@@ -62,7 +66,7 @@ def _remove(path_info, fs, cache, force=False):
     current = stage(cache, path_info, fs, fs.PARAM_CHECKSUM).hash_info
     try:
         obj = load(cache, current)
-        check(cache, obj)
+        check({cache}, obj)
     except (FileNotFoundError, ObjectFormatError):
         msg = (
             f"file/directory '{path_info}' is going to be removed. "
@@ -163,7 +167,7 @@ def _checkout_file(
     modified = False
     cache_info = cache.hash_to_path_info(obj.hash_info.value)
     if fs.exists(path_info):
-        if not relink and _changed(path_info, fs, obj, cache):
+        if not relink and _changed(path_info, fs, obj, cache, state=state):
             modified = True
             _remove(path_info, fs, cache, force=force)
             _link(cache, cache_info, path_info)
@@ -295,7 +299,6 @@ def checkout(
     quiet=False,
     dvcignore: Optional[DvcIgnoreFilter] = None,
     state=None,
-    skip_tree_check=False,
 ):
     if path_info.scheme not in ["local", cache.fs.scheme]:
         raise NotImplementedError
@@ -311,12 +314,12 @@ def checkout(
         _remove(path_info, fs, cache, force=force)
         failed = path_info
 
-    elif not relink and not _changed(path_info, fs, obj, cache):
+    elif not relink and not _changed(path_info, fs, obj, cache, state=state):
         logger.trace("Data '%s' didn't change.", path_info)  # type: ignore
         skip = True
     else:
         try:
-            check(cache, obj, skip_tree=skip_tree_check)
+            check({cache}, obj)
         except (FileNotFoundError, ObjectFormatError):
             if not quiet:
                 logger.warning(
