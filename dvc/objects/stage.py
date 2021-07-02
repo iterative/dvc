@@ -166,8 +166,6 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
         # able to validate .dir files right in the workspace (e.g. check s3
         # etag), but could be dropped for manual validation with regular md5,
         # that would be universal for all clouds.
-        if odb.staging is not None:
-            odb = odb.staging
         raw = odb.get(tree.hash_info)
         hash_info = get_file_hash(raw.path_info, raw.fs, name, state)
         tree.hash_info.name = hash_info.name
@@ -177,12 +175,6 @@ def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
         odb.add(tree.path_info, tree.fs, tree.hash_info)
 
     return tree
-
-
-def _dir_cache_exists(odb, hash_info):
-    if odb.staging is not None and _dir_cache_exists(odb.staging, hash_info):
-        return True
-    return odb.fs.exists(odb.hash_to_path_info(hash_info.value))
 
 
 def stage(
@@ -197,31 +189,6 @@ def stage(
 
     details = fs.info(path_info)
     state = odb.state
-    # pylint: disable=assignment-from-none
-    hash_info = state.get(path_info, fs)
-
-    # If we have dir hash in state db, but dir cache file is lost,
-    # then we need to recollect the dir via .get_dir_hash() call below,
-    # see https://github.com/iterative/dvc/issues/2219 for context
-    if hash_info and hash_info.isdir and not _dir_cache_exists(odb, hash_info):
-        hash_info = None
-
-    if hash_info:
-        from . import load
-        from .tree import Tree
-
-        obj = load(odb, hash_info)
-        if isinstance(obj, Tree):
-            obj.hash_info.nfiles = len(obj)
-            for key, entry in obj:
-                entry.fs = fs
-                entry.path_info = path_info.joinpath(*key)
-        else:
-            obj.fs = fs
-            obj.path_info = path_info
-        assert obj.hash_info.name == name
-        obj.hash_info.size = hash_info.size
-        return obj
 
     if details["type"] == "directory":
         obj = _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs)

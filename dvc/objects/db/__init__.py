@@ -4,6 +4,10 @@ from typing import TYPE_CHECKING, Optional
 from dvc.scheme import Schemes
 
 if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.types import DvcPath
+
+    from ..file import HashFile
     from .base import ObjectDB
 
 
@@ -92,6 +96,10 @@ class ODBManager:
         memfs_url = CloudURLInfo(f"memory://{self.STAGING_PATH}-{uuid()}")
         self._staging[Schemes.MEMORY] = ObjectDB(MemoryFileSystem(), memfs_url)
 
+    @property
+    def state(self):
+        return self.repo.state
+
     def _init_odb(self, schemes):
         for scheme in schemes:
             remote = self.config.get(scheme)
@@ -116,3 +124,66 @@ class ODBManager:
         self, scheme: Optional[str] = None
     ) -> Optional["ObjectDB"]:
         return self._staging.get(scheme or Schemes.MEMORY)
+
+    def load_from_state(
+        self,
+        scheme: str,
+        path_info: "DvcPath",
+        fs: "BaseFileSystem",
+        name: str,
+    ) -> "HashFile":
+        from .. import load
+        from ..errors import ObjectFormatError
+
+        main_odb = self._odb.get(scheme)
+        staging_odb = self._staging.get(scheme)
+
+        hash_info = self.state.get(path_info, fs)
+        if hash_info:
+            for odb in (staging_odb, main_odb):
+                if odb and odb.exists(hash_info):
+                    try:
+                        obj = load(odb, hash_info)
+                        self._fixup_state_obj(
+                            obj, hash_info, fs, path_info, name
+                        )
+                        return obj
+                    except ObjectFormatError:
+                        pass
+        raise FileNotFoundError
+
+    @staticmethod
+    def _fixup_state_obj(obj, hash_info, fs, path_info, name):
+        from ..tree import Tree
+
+        if isinstance(obj, Tree):
+            obj.hash_info.nfiles = len(obj)
+            for key, entry in obj:
+                entry.fs = fs
+                entry.path_info = path_info.joinpath(*key)
+        else:
+            obj.fs = fs
+            obj.path_info = path_info
+        assert obj.hash_info.name == name
+        obj.hash_info.size = hash_info.size
+
+    def stage(
+        self,
+        scheme: str,
+        path_info: "DvcPath",
+        fs: "BaseFileSystem",
+        name: str,
+        **kwargs,
+    ) -> "HashFile":
+        from ..stage import stage as ostage
+
+        try:
+            obj = self.load_from_state(scheme, path_info, fs, name)
+            return obj
+        except FileNotFoundError:
+            pass
+
+        odb = self.get_staging(scheme)
+        if odb is None:
+            odb = self._odb[scheme]
+        return ostage(odb, path_info, fs, name, **kwargs)
