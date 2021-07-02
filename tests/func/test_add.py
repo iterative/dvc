@@ -1,6 +1,5 @@
 import errno
 import filecmp
-import logging
 import os
 import shutil
 import stat
@@ -131,14 +130,12 @@ class TestAddCmdDirectoryRecursive(TestDvc):
 
     def test_warn_about_large_directories(self):
         warning = (
-            "You are adding a large directory 'large-dir' recursively,"
-            " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated DVC file and then"
-            " run `{cyan}dvc add large-dir{nc}`".format(
-                purple=colorama.Fore.MAGENTA,
-                cyan=colorama.Fore.CYAN,
-                nc=colorama.Style.RESET_ALL,
-            )
+            "You are adding a large directory 'large-dir' recursively."
+            "\nConsider tracking it as a whole instead with "
+            "`{cyan}dvc add large-dir{nc}`"
+        ).format(
+            cyan=colorama.Fore.CYAN,
+            nc=colorama.Style.RESET_ALL,
         )
 
         os.mkdir("large-dir")
@@ -149,9 +146,8 @@ class TestAddCmdDirectoryRecursive(TestDvc):
             with open(path, "w") as fobj:
                 fobj.write(path)
 
-        with self._caplog.at_level(logging.WARNING, logger="dvc"):
-            assert main(["add", "--recursive", "large-dir"]) == 0
-            assert warning in self._caplog.messages
+        assert main(["add", "--recursive", "large-dir"]) == 0
+        assert warning in self._capsys.readouterr()[1]
 
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
@@ -643,7 +639,7 @@ def test_failed_add_cleanup(tmp_dir, scm, dvc):
 
 
 def test_should_not_track_git_internal_files(mocker, dvc, tmp_dir):
-    stage_creator_spy = mocker.spy(dvc_module.repo.add, "_create_stages")
+    stage_creator_spy = mocker.spy(dvc_module.repo.add, "create_stages")
 
     ret = main(["add", "-R", dvc.root_dir])
     assert ret == 0
@@ -951,15 +947,15 @@ def test_add_file_in_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
         dvc.add(os.path.join("dir", "foo"))
 
 
-def test_add_with_cache_link_error(tmp_dir, dvc, mocker, caplog):
+def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
     mocker.patch(
         "dvc.checkout._do_link", side_effect=DvcException("link failed")
     )
-    with caplog.at_level(logging.WARNING, logger="dvc"):
-        dvc.add("foo")
-        assert "reconfigure cache types" in caplog.text
+    dvc.add("foo")
+    err = capsys.readouterr()[1]
+    assert "reconfigure cache types" in err
 
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()

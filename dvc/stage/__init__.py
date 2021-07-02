@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 
 from funcy import cached_property, project
 
@@ -389,6 +389,19 @@ class Stage(params.StageParams):
             self.ignore_remove_outs()
         if purge:
             self.dvcfile.remove_stage(self)
+
+    def transfer(
+        self,
+        source: str,
+        odb: "ObjectDB" = None,
+        to_remote: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        assert len(self.outs) == 1
+        (out,) = self.outs
+        out.transfer(source, odb=odb, jobs=kwargs.get("jobs"))
+        if not to_remote:
+            out.checkout()
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
