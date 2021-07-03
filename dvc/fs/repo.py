@@ -31,6 +31,8 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         kwargs: Additional keyword arguments passed to the `DvcFileSystem()`.
     """
 
+    sep = os.sep
+
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
