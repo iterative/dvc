@@ -111,13 +111,8 @@ class CmdDiff(CmdBase):
         if not sum(summary.values()):
             return None
 
-        states_values = []
-        for state in states:
-            state_value = summary[state]
-            if state_value > 0:
-                states_values.append(f"{state_value} {state}")
-
-        ui.write("files summary: " + ", ".join(states_values))
+        states_summary = ", ".join(f"{summary[state]} {state}" for state in states if summary[state] > 0)
+        ui.write("files summary:", states_summary)
 
     def run(self):
         from dvc.exceptions import DvcException
