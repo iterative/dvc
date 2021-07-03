@@ -111,7 +111,11 @@ class CmdDiff(CmdBase):
         if not sum(summary.values()):
             return None
 
-        states_summary = ", ".join(f"{summary[state]} {state}" for state in states if summary[state] > 0)
+        states_summary = ", ".join(
+            f"{summary[state]} {state}"
+            for state in states
+            if summary[state] > 0
+        )
         ui.write("files summary:", states_summary)
 
     def run(self):
