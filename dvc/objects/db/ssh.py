@@ -28,7 +28,7 @@ class SSHObjectDB(ObjectDB):
                 callback(path)
             return ret
 
-        with self.fs.ssh(path_infos[0]) as ssh:
+        with self.fs.ssh() as ssh:
             channels = ssh.open_max_sftp_channels()
             max_workers = len(channels)
 
@@ -78,7 +78,7 @@ class SSHObjectDB(ObjectDB):
             root = posixpath.join(self.path_info.path, prefix[:2])
         else:
             root = self.path_info.path
-        with self.fs.ssh(self.path_info) as ssh:
+        with self.fs.ssh() as ssh:
             if prefix and not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly
