@@ -1,3 +1,4 @@
+import logging
 import os
 import threading
 
@@ -8,6 +9,8 @@ from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 
 from .fsspec_wrapper import ObjectFSWrapper
+
+logger = logging.getLogger(__name__)
 
 
 # pylint:disable=abstract-method
@@ -31,6 +34,10 @@ class OSSFileSystem(ObjectFSWrapper):
         from ossfs import OSSFileSystem as _OSSFileSystem
 
         return _OSSFileSystem(**self.fs_args)
+
+    def remove(self, path_info):
+        logger.debug(f"Removing oss://{path_info}")
+        self.fs.rm_file(self._with_bucket(path_info))
 
     def _upload_fobj(self, fobj, to_info, size=None):
         self.fs.pipe_file(self._with_bucket(to_info), fobj)
