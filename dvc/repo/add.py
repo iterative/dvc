@@ -94,17 +94,15 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
 def progress_iter(stages: Stages) -> Iterator["Stage"]:
     total = len(stages)
     desc = "Adding..."
-    with ui.progress(
-        stages, total=total, desc=desc, unit="file", leave=True
-    ) as pbar:
+    with ui.progress(total=total, desc=desc, unit="file", leave=True) as pbar:
         if total == 1:
             pbar.bar_format = desc
             pbar.refresh()
 
-        for item in pbar:
+        for stage in stages:
             if total > 1:
-                pbar.update_msg(f"{item.outs[0]}")
-            yield item
+                pbar.update_msg(f"{stage.outs[0]}")
+            yield stage
             if total == 1:  # restore bar format for stats
                 # pylint: disable=no-member
                 pbar.bar_format = pbar.BAR_FMT_DEFAULT
