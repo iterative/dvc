@@ -1,5 +1,3 @@
-import errno
-import os
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
@@ -174,11 +172,7 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
         isinstance(path_info, str) or path_info.scheme == fs.scheme
     )
 
-    if not fs.exists(path_info):
-        raise FileNotFoundError(
-            errno.ENOENT, os.strerror(errno.ENOENT), path_info
-        )
-
+    details = fs.info(path_info)
     state = odb.state
     # pylint: disable=assignment-from-none
     hash_info = state.get(path_info, fs)
@@ -210,12 +204,12 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
         obj.hash_info.size = hash_info.size
         return obj
 
-    if fs.isdir(path_info):
+    if details["type"] == "directory":
         obj = _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs)
     else:
         _, obj = _get_file_obj(path_info, fs, name, odb, state, upload)
 
-    if obj.hash_info and fs.exists(path_info):
+    if obj.hash_info:
         state.save(path_info, fs, obj.hash_info)
 
     return obj
