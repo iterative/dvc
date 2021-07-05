@@ -13,6 +13,8 @@ from typing import (
 from funcy import cached_property
 
 if TYPE_CHECKING:
+    from rich.status import Status
+
     from dvc.progress import Tqdm
     from dvc.ui.table import Headers, Styles, TableData
 
@@ -180,6 +182,9 @@ class Console:
         return t.plain_table(
             self, data, headers, markdown=markdown, pager=pager, force=force
         )
+
+    def status(self, status: str, **kwargs: Any) -> "Status":
+        return self.error_console.status(status, **kwargs)
 
 
 ui = Console()
