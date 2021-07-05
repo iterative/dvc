@@ -28,8 +28,11 @@ class HashFile:
 
     @property
     def size(self):
-        if not (self.path_info and self.fs):
+        if self.hash_info.size is not None:
+            return self.hash_info.size
+        if not (self.fs and self.path_info):
             return None
+
         return self.fs.getsize(self.path_info)
 
     def __len__(self):
