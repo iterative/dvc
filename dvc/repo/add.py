@@ -152,13 +152,13 @@ def add(  # noqa: C901
     transfer = to_remote or to_cache
 
     glob = kwargs.get("glob", False)
-    targets_it = collect_targets(repo, targets, recursive=recursive, glob=glob)
+    add_targets = collect_targets(repo, targets, recursive, glob)
     # pass one for creating stages, other one is used for iterating here
-    targets_it, sources = tee(targets_it)
+    add_targets, sources = tee(add_targets)
 
     # collect targets and build stages as we go
     desc = "Collecting targets"
-    stages_it = create_stages(repo, targets_it, fname, transfer, **kwargs)
+    stages_it = create_stages(repo, add_targets, fname, transfer, **kwargs)
     stages = list(ui.progress(stages_it, desc=desc, unit="file"))
 
     msg = "Collecting stages from the workspace"
