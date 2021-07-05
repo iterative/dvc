@@ -18,7 +18,7 @@ def find_supported_remotes(string):
     index = 0
 
     for index, line in enumerate(lines):
-        if line == "Plugins:":
+        if line == "Supports:":
             index += 1
             break
     else:

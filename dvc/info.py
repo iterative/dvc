@@ -2,7 +2,6 @@ import itertools
 import os
 import pathlib
 import platform
-import sys
 import uuid
 
 import psutil
@@ -21,10 +20,10 @@ if PKG is None:
 else:
     package = f"({PKG})"
 
-if sys.version_info < (3, 8):
-    import importlib_metadata
-else:
+try:
     import importlib.metadata as importlib_metadata
+except ImportError:  # < 3.8
+    import importlib_metadata  # type: ignore[no-redef]
 
 
 def get_dvc_info():
@@ -33,7 +32,7 @@ def get_dvc_info():
         "---------------------------------",
         f"Platform: Python {platform.python_version()} on "
         f"{platform.platform()}",
-        f"Plugins:{_get_supported_remotes()}",
+        f"Supports:{_get_supported_remotes()}",
     ]
 
     try:
