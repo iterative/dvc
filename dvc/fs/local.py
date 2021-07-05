@@ -157,7 +157,7 @@ class LocalFileSystem(BaseFileSystem):
         st = os.stat(path_info)
         return {
             "size": st.st_size,
-            "type": "dir" if stat.S_ISDIR(st.st_mode) else "file",
+            "type": "directory" if stat.S_ISDIR(st.st_mode) else "file",
         }
 
     def _upload(

@@ -123,7 +123,7 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def info(self, path_info):
         st = self.hdfs_client.status(path_info.path)
-        return {"size": st["length"]}
+        return {"size": st["length"], "type": "file"}
 
     def checksum(self, path_info):
         return HashInfo(
