@@ -19,12 +19,18 @@ class OSSFileSystem(ObjectFSWrapper):
     PATH_CLS = CloudURLInfo
     REQUIRES = {"ossfs": "ossfs"}
     PARAM_CHECKSUM = "etag"
+    COPY_POLL_SECONDS = 5
+    LIST_OBJECT_PAGE_SIZE = 100
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def _prepare_credentials(self, **config):
         login_info = {}
-        login_info["key"] = config.get("oss_key_id")
-        login_info["secret"] = config.get("oss_key_secret")
+        login_info["key"] = config.get("oss_key_id") or os.getenv(
+            "OSS_ACCESS_KEY_ID"
+        )
+        login_info["secret"] = config.get("oss_key_secret") or os.getenv(
+            "OSS_ACCESS_KEY_SECRET"
+        )
         login_info["endpoint"] = config.get("oss_endpoint")
         return login_info
 
