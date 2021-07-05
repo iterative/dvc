@@ -79,18 +79,23 @@ class Console:
         styled: bool = False,
         file: TextIO = None,
     ) -> None:
+        from dvc.progress import Tqdm
+
         sep = " " if sep is None else sep
         end = "\n" if end is None else end
         if not self._enabled and not force:
             return
 
-        if styled:
-            console = self.error_console if stderr else self.rich_console
-            return console.print(*objects, sep=sep, end=end)
-
         file = file or (sys.stderr if stderr else sys.stdout)
-        values = (self.formatter.format(obj, style=style) for obj in objects)
-        return print(*values, sep=sep, end=end, file=file)
+        with Tqdm.external_write_mode(file=file):
+            if styled:
+                console = self.error_console if stderr else self.rich_console
+                return console.print(*objects, sep=sep, end=end)
+
+            values = (
+                self.formatter.format(obj, style=style) for obj in objects
+            )
+            return print(*values, sep=sep, end=end, file=file)
 
     @staticmethod
     def progress(*args, **kwargs) -> "Tqdm":
