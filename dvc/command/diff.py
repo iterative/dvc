@@ -111,14 +111,12 @@ class CmdDiff(CmdBase):
         if not sum(summary.values()):
             return None
 
-        fmt = (
-            "files summary: {added} added, {deleted} deleted,"
-            " {renamed} renamed, {modified} modified"
+        states_summary = ", ".join(
+            f"{summary[state]} {state}"
+            for state in states
+            if summary[state] > 0
         )
-        if not hide_missing:
-            fmt += ", {not in cache} not in cache"
-
-        ui.write(fmt.format_map(summary))
+        ui.write("files summary:", states_summary)
 
     def run(self):
         from dvc.exceptions import DvcException

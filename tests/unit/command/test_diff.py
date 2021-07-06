@@ -48,8 +48,7 @@ def test_default(mocker, capsys):
         "Renamed:\n"
         "    data{sep}file_old -> data{sep}file_new\n"
         "\n"
-        "files summary: 1 added, 0 deleted, "
-        "1 renamed, 0 modified, 0 not in cache"
+        "files summary: 1 added, 1 renamed"
     ).format(sep=os.path.sep) in capsys.readouterr()[0]
 
 
@@ -99,8 +98,7 @@ def test_show_hash(mocker, capsys):
         "    CCCCCCCC..DDDDDDDD  file1\n"
         "    AAAAAAAA..BBBBBBBB  file2\n"
         "\n"
-        "files summary: 0 added, 2 deleted, "
-        "1 renamed, 2 modified, 0 not in cache"
+        "files summary: 2 deleted, 1 renamed, 2 modified"
     ) in out
 
 
@@ -350,6 +348,6 @@ def test_hide_missing(mocker, capsys):
         "Renamed:\n"
         "    file_old -> file_new\n"
         "\n"
-        "files summary: 1 added, 0 deleted, 1 renamed, 0 modified"
+        "files summary: 1 added, 1 renamed"
     ) in out
     assert "not in cache" not in out
