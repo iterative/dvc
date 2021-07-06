@@ -1,8 +1,12 @@
+import dataclasses
+import logging
 import os
+import typing
 from urllib.parse import urlparse
 
-from funcy import walk_values
+from funcy import lremove, walk_values
 from voluptuous import (
+    ALLOW_EXTRA,
     All,
     Any,
     Coerce,
@@ -12,6 +16,8 @@ from voluptuous import (
     Range,
     Schema,
 )
+
+logger = logging.getLogger(__name__)
 
 Bool = All(
     Lower,
@@ -72,6 +78,59 @@ def ByUrl(mapping):
 
 class RelPath(str):
     pass
+
+
+@dataclasses.dataclass(frozen=True)
+class Flag:
+    key: str
+    default: typing.Any
+    deprecated_since: typing.Optional[str] = None
+    deprecated_msg: typing.Optional[str] = None
+
+    def log_deprecated_info(self, log_level: int = logging.DEBUG) -> None:
+        if not self.deprecated_since:
+            return
+        m = f"'feature.{self.key}' is deprecated since {self.deprecated_since}"
+        m += f", {self.deprecated_msg}." if self.deprecated_msg else ""
+        logger.log(log_level, m)
+
+
+# Feature flags that are documented should still be deprecated through
+# regular process, as they are validated.
+# Undocumented ones are shortly lived, and can be removed without any warnings.
+FEATURE_FLAGS_SCHEMA = {
+    # keys should be a tuple of (name of flag, default value)
+    # they should always be optional
+    Flag(
+        "parametrization", False, "2.0", "and has been enabled by default"
+    ): Bool
+}
+
+
+def feature_flags_schema(value: typing.Any) -> typing.Dict:
+    schema = Schema(
+        {
+            Optional(flag.key, default=flag.default): value
+            for flag, value in FEATURE_FLAGS_SCHEMA.items()
+        },
+        # allow extra keys but still log them
+        extra=ALLOW_EXTRA,
+    )
+
+    d = schema(value)
+
+    # warn about deprecated keys
+    specified_deprecated_flags = {
+        flag for flag in FEATURE_FLAGS_SCHEMA.keys() if flag.key in value
+    }
+    for flag in specified_deprecated_flags:
+        flag.log_deprecated_info()
+
+    feature_flags = {flag.key for flag in FEATURE_FLAGS_SCHEMA.keys()}
+    unknown_keys = lremove(feature_flags, d.keys())
+    if unknown_keys:
+        logger.debug(f"unknown feature flags in the config: {unknown_keys}")
+    return d
 
 
 REMOTE_COMMON = {
@@ -221,9 +280,6 @@ SCHEMA = {
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
     },
     # section for experimental features
-    "feature": {
-        # enabled by default. It's of no use, kept for backward compatibility.
-        Optional("parametrization", default=True): Bool
-    },
+    "feature": feature_flags_schema,
     "plots": {"html_template": str},
 }

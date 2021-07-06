@@ -318,3 +318,40 @@ def test_config_show_origin_merged(tmp_dir, dvc, capsys):
         )
         in out
     )
+
+
+def test_config_feature_flags(dvc, caplog):
+    # feature flags should have a default value
+    feature_configs = dvc.config["feature"]
+    assert feature_configs["parametrization"] is False
+
+    # test that validation still passes when value is changed
+    # but within the expected type/format.
+    feature_configs["parametrization"] = True
+    Config.validate(dvc.config)
+    assert feature_configs["parametrization"] is True
+
+    expected = (
+        "feature.parametrization' is deprecated since 2.0, "
+        "and has been enabled by default."
+    )
+    assert expected in caplog.text
+
+    # but when the feature flags is set of unexpected value, it should fail
+    feature_configs["parametrization"] = "string"
+    caplog.clear()
+    with pytest.raises(ConfigError):
+        Config.validate(dvc.config)
+    assert not caplog.text
+
+
+def test_config_feature_flags_allows_arbitrary_values(dvc, caplog):
+    feature_configs = dvc.config["feature"]
+    feature_configs.update(
+        {"int": 1, "string": "string", "bool": True, "obj": {"nested": "dict"}}
+    )
+    Config.validate(dvc.config)
+    assert (
+        "unknown feature flags in the config: "
+        "['int', 'string', 'bool', 'obj']"
+    ) in caplog.text
