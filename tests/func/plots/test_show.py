@@ -571,7 +571,7 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
 
 
 def test_load_metric_from_dict_json(tmp_dir):
-    metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    metric = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
     dmetric = {"train": metric}
 
     plot_data = JSONPlotData("-", "revision", json.dumps(dmetric))
@@ -584,7 +584,7 @@ def test_load_metric_from_dict_json(tmp_dir):
 
 
 def test_load_metric_from_dict_yaml(tmp_dir):
-    metric = [{"acccuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    metric = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
     dmetric = {"train": metric}
 
     plot_data = YAMLPlotData("-", "revision", dumps_yaml(dmetric))

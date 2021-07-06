@@ -184,7 +184,7 @@ Comparison to related technologies
 
 #. *Data Engineering* tools such as `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_ and
    others - in DVC data, model and ML pipelines represent a single ML project and focuses on data scientist' experience while
-   data engineering pipeline orchestrates multiple data projects and focuses on efficent execution. DVC project can be used
+   data engineering pipeline orchestrates multiple data projects and focuses on efficient execution. DVC project can be used
    from data pipeline as a single execution step. `AirFlow DVC <https://github.com/covid-genomics/airflow-dvc>`_ is an example
    of such integration.
 

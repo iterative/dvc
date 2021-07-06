@@ -48,7 +48,7 @@ class FSSpecWrapper(BaseFileSystem):
             yield entry
 
     def _entry_hook(self, entry):
-        """Simple hook method to be overriden when wanted to process
+        """Simple hook method to be overridden when wanted to process
         entries within info() and ls(detail=True) calls"""
         return entry
 
