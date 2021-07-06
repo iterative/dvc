@@ -28,13 +28,6 @@ class Tree(HashFile):
 
         return Trie(self._dict)
 
-    @property
-    def size(self):
-        try:
-            return sum(obj.size for _, obj in self)
-        except TypeError:
-            return None
-
     def add(self, key, obj):
         self.__dict__.pop("trie", None)
         self._dict[key] = obj
@@ -52,7 +45,10 @@ class Tree(HashFile):
         self.path_info = path_info
         self.hash_info = get_file_hash(path_info, memfs, "md5")
         self.hash_info.value += ".dir"
-        self.hash_info.size = self.size
+        try:
+            self.hash_info.size = sum(obj.size for _, obj in self)
+        except TypeError:
+            self.hash_info.size = None
         self.hash_info.nfiles = len(self)
 
     def __len__(self):
