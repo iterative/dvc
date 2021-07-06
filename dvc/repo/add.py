@@ -221,13 +221,14 @@ def _find_all_targets(
     from dvc.dvcfile import is_dvc_file
 
     if os.path.isdir(target) and recursive:
+        files = map(os.fspath, repo.dvcignore.walk_files(repo.fs, target))
         yield from (
-            os.fspath(path)
-            for path in repo.dvcignore.walk_files(repo.fs, target)
-            if not repo.is_dvc_internal(os.fspath(path))
-            if not is_dvc_file(os.fspath(path))
-            if not repo.scm.belongs_to_scm(os.fspath(path))
-            if not repo.scm.is_tracked(os.fspath(path))
+            path
+            for path in files
+            if not repo.is_dvc_internal(path)
+            if not is_dvc_file(path)
+            if not repo.scm.belongs_to_scm(path)
+            if not repo.scm.is_tracked(path)
         )
     else:
         yield target
