@@ -69,19 +69,27 @@ def test_list(lst, trie_dict):
         ({}, 0),
         (
             {
-                ("a",): HashInfo("md5", "abc", size=1),
-                ("b",): HashInfo("md5", "def", size=2),
-                ("c",): HashInfo("md5", "ghi", size=3),
-                ("dir", "foo"): HashInfo("md5", "jkl", size=4),
-                ("dir", "bar"): HashInfo("md5", "mno", size=5),
-                ("dir", "baz"): HashInfo("md5", "pqr", size=6),
+                ("a",): HashFile(None, None, HashInfo("md5", "abc", size=1)),
+                ("b",): HashFile(None, None, HashInfo("md5", "def", size=2)),
+                ("c",): HashFile(None, None, HashInfo("md5", "ghi", size=3)),
+                ("dir", "foo"): HashFile(
+                    None, None, HashInfo("md5", "jkl", size=4)
+                ),
+                ("dir", "bar"): HashFile(
+                    None, None, HashInfo("md5", "mno", size=5)
+                ),
+                ("dir", "baz"): HashFile(
+                    None, None, HashInfo("md5", "pqr", size=6)
+                ),
             },
             21,
         ),
         (
             {
-                ("a",): HashInfo("md5", "abc", size=1),
-                ("b",): HashInfo("md5", "def", size=None),
+                ("a",): HashFile(None, None, HashInfo("md5", "abc", size=1)),
+                ("b",): HashFile(
+                    None, None, HashInfo("md5", "def", size=None)
+                ),
             },
             None,
         ),
@@ -90,6 +98,7 @@ def test_list(lst, trie_dict):
 def test_size(trie_dict, size):
     tree = Tree(None, None, None)
     tree._dict = trie_dict
+    tree.digest()
     assert tree.size == size
 
 

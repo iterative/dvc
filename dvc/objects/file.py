@@ -28,9 +28,7 @@ class HashFile:
 
     @property
     def size(self):
-        if not (self.path_info and self.fs):
-            return None
-        return self.fs.getsize(self.path_info)
+        return self.hash_info.size
 
     def __len__(self):
         return 1
