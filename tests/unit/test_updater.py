@@ -83,7 +83,7 @@ def test_check_update_respect_config(mock_check, result, updater, mocker):
         ("0.0.2", "0.0.3", True),
         ("0.0.2", "0.0.1", False),
     ],
-    ids=["up-to-date", "behind", "ahead"],
+    ids=["uptodate", "behind", "ahead"],
 )
 def test_check_updates(mock_tty, updater, caplog, current, latest, notify):
     updater.current = current
