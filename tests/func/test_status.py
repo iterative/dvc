@@ -49,7 +49,7 @@ def test_status_non_dvc_repo_import(tmp_dir, dvc, git_dir):
 
 
 def test_status_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
-    git_dir.scm_gen("file", "first version", commit="first verison")
+    git_dir.scm_gen("file", "first version", commit="first version")
     old_rev = git_dir.scm.get_rev()
 
     dvc.imp(os.fspath(git_dir), "file", "file")

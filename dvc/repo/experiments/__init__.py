@@ -753,7 +753,7 @@ class Experiments:
         assert entry.index == 0
 
         # NOTE: the stash commit to be popped already contains all the current
-        # workspace changes plus CLI modifed --params changes.
+        # workspace changes plus CLI modified --params changes.
         # `checkout --force` here will not lose any data (popping stash commit
         # will result in conflict between workspace params and stashed CLI
         # params, but we always want the stashed version).

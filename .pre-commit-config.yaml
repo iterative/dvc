@@ -8,6 +8,13 @@ repos:
     repo: https://github.com/ambv/black
     rev: 21.6b0
   - hooks:
+      - id: codespell
+        args: 
+          - --ignore-words-list
+          - ba,datas,fo,uptodate
+    repo: https://github.com/codespell-project/codespell
+    rev: v2.1.0
+  - hooks:
       - id: isort
         language_version: python3
     repo: https://github.com/timothycrosley/isort

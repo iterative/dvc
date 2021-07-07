@@ -25,7 +25,7 @@ _DEFAULT_CREDS_STEPS = (
 
 @contextmanager
 def _temp_event_loop():
-    """When trying to initalize azure filesystem instances
+    """When trying to initialize azure filesystem instances
     with DefaultCredentials, the authentication process requires
     to have an access to a separate event loop. The normal calls
     are run in a separate loop managed by the fsspec, but the
