@@ -1,3 +1,4 @@
+import errno
 import io
 import logging
 import os
@@ -220,8 +221,19 @@ class HDFSFileSystem(BaseFileSystem):
 
     def info(self, path_info):
         with self.hdfs(path_info) as hdfs:
-            finfo = hdfs.get_file_info(path_info.path)
-            return {"size": finfo.size}
+            from pyarrow.fs import FileType
+
+            file_info = hdfs.get_file_info(path_info.path)
+            if file_info.type is FileType.Directory:
+                kind = "directory"
+            elif file_info.type is FileType.File:
+                kind = "file"
+            else:
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), path_info
+                )
+
+            return {"size": file_info.size, "type": kind}
 
     def checksum(self, path_info):
         return HashInfo(

@@ -175,5 +175,9 @@ def test_content_length(mocker, headers, expected_size):
 
     url = URLInfo("https://example.org/file.txt")
 
-    assert fs.info(url) == {"etag": None, "size": expected_size}
+    assert fs.info(url) == {
+        "etag": None,
+        "size": expected_size,
+        "type": "file",
+    }
     assert fs._content_length(res) == expected_size

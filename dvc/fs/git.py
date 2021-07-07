@@ -1,5 +1,6 @@
 import errno
 import os
+import stat
 
 from dvc.utils import is_exec, relpath
 
@@ -106,7 +107,10 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), path_info
             )
-        return {"size": st.st_size}
+        return {
+            "size": st.st_size,
+            "type": "directory" if stat.S_ISDIR(st.st_mode) else "file",
+        }
 
     def stat(self, path):
         key = self._get_key(path)

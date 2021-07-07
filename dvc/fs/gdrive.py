@@ -1,3 +1,4 @@
+import errno
 import io
 import logging
 import os
@@ -11,7 +12,7 @@ from urllib.parse import urlparse
 from funcy import cached_property, retry, wrap_prop, wrap_with
 from funcy.py3 import cat
 
-from dvc.exceptions import DvcException, FileMissingError
+from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.progress import Tqdm
 from dvc.scheme import Schemes
@@ -521,12 +522,14 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return min(item_ids)
 
         assert not create
-        raise FileMissingError(path_info, hint)
+        raise FileNotFoundError(
+            errno.ENOENT, os.strerror(errno.ENOENT), hint or path_info
+        )
 
     def exists(self, path_info) -> bool:
         try:
             self._get_item_id(path_info)
-        except FileMissingError:
+        except FileNotFoundError:
             return False
         else:
             return True
@@ -616,7 +619,7 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         item_id = self._get_item_id(path_info)
         gdrive_file = self._drive.CreateFile({"id": item_id})
         gdrive_file.FetchMetadata(fields="fileSize")
-        return {"size": gdrive_file.get("fileSize")}
+        return {"size": gdrive_file.get("fileSize"), "type": "file"}
 
     def _upload_fobj(self, fobj, to_info, **kwargs):
         dirname = to_info.parent

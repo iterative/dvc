@@ -233,7 +233,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def info(self, path_info):
         meta = self.metadata(path_info)
-        ret = {"type": "dir" if meta.isdir else "file"}
+        ret = {"type": "directory" if meta.isdir else "file"}
         if meta.is_output and len(meta.outs) == 1 and meta.outs[0].hash_info:
             hash_info = meta.outs[0].hash_info
             ret["size"] = hash_info.size
