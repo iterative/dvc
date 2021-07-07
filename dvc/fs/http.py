@@ -31,6 +31,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "etag"
     CAN_TRAVERSE = False
+    REQUIRES = {"requests": "requests"}
 
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
