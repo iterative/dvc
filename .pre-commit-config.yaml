@@ -10,7 +10,8 @@ repos:
   - hooks:
       - id: codespell
         args: 
-          - ignore-words-list ba,datas,fo,uptodate
+          - --ignore-words-list
+          - ba,datas,fo,uptodate
     repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
   - hooks:
