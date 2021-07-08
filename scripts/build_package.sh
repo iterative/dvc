@@ -11,4 +11,4 @@ fi
 echo 'PKG = "pip"' >dvc/utils/build.py
 
 python setup.py sdist
-python setup.py bdist_wheel --universal
+python setup.py bdist_wheel
