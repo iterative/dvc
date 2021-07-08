@@ -6,7 +6,6 @@ from funcy import first
 from voluptuous import Required
 
 from dvc.path_info import PathInfo
-from dvc.scheme import Schemes
 
 from .base import Dependency
 
@@ -106,10 +105,9 @@ class RepoDependency(Dependency):
     def _get_used_and_obj(
         self, obj_only=False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashFile"]], "HashFile"]:
-        from copy import copy
-
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
+        from dvc.objects.stage import get_staging, stage
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
@@ -133,15 +131,14 @@ class RepoDependency(Dependency):
                         if odb is None:
                             odb = repo.cloud.get_remote().odb
                             odb.read_only = True
-                        self._check_circular_import(odb, objs)
+                        self._check_circular_import(objs)
                         used_objs[odb].update(objs)
                 except (NoRemoteError, NoOutputOrStageError):
                     pass
 
-            scheme = Schemes.MEMORY
             try:
-                staged_obj = self.odb_manager.stage(
-                    scheme,
+                staged_obj = stage(
+                    None,
                     path_info,
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
@@ -150,20 +147,17 @@ class RepoDependency(Dependency):
                 raise PathMissingError(
                     self.def_path, self.def_repo[self.PARAM_URL]
                 ) from exc
-            staging = copy(self.odb_manager.get_staging(scheme))
+            staging = get_staging()
             staging.read_only = True
 
             self._staged_objs[rev] = staged_obj
             used_objs[staging].add(staged_obj)
             return used_objs, staged_obj
 
-    def _check_circular_import(self, odb, objs):
+    def _check_circular_import(self, objs):
         from dvc.exceptions import CircularImportError
         from dvc.fs.repo import RepoFileSystem
         from dvc.objects.tree import Tree
-
-        if odb.fs != self.odb_manager.get_staging(Schemes.MEMORY).fs:
-            return
 
         obj = first(objs)
         if isinstance(obj, Tree):
