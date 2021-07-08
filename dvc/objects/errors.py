@@ -9,5 +9,9 @@ class ObjectFormatError(ObjectError):
     pass
 
 
-class ObjectPermissionError(ObjectError):
+class ObjectDBError(DvcException):
+    pass
+
+
+class ObjectDBPermissionError(ObjectDBError):
     pass
