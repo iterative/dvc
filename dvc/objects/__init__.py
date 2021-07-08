@@ -22,9 +22,9 @@ def save(
     jobs: Optional[int] = None,
     **kwargs,
 ):
-    assert obj.path_info and obj.fs and obj.hash_info
-
     if isinstance(obj, Tree):
+        from .stage import get_staging
+
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             for future in Tqdm(
                 as_completed(
@@ -43,6 +43,14 @@ def save(
             ):
                 future.result()
 
+            # if dir cache for this tree has already been staged, move the
+            # staged object rather than uploading/copying a new object
+            staging = get_staging(odb)
+            if staging.exists(obj.hash_info):
+                obj = staging.get(obj.hash_info)
+                kwargs["move"] = True
+
+    assert obj.path_info and obj.fs and obj.hash_info
     odb.add(obj.path_info, obj.fs, obj.hash_info, **kwargs)
 
 
