@@ -6,6 +6,7 @@ from threading import RLock
 
 from tqdm import tqdm
 
+from dvc.env import DVC_IGNORE_ISATTY
 from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ class Tqdm(tqdm):
         desc=None,
         leave=False,
         bar_format=None,
-        bytes=False,  # pylint: disable=W0622
+        bytes=False,  # pylint: disable=redefined-builtin
         file=None,
         total=None,
         postfix=None,
@@ -77,7 +78,7 @@ class Tqdm(tqdm):
         # auto-disable based on TTY
         if (
             not disable
-            and not env2bool("DVC_IGNORE_ISATTY")
+            and not env2bool(DVC_IGNORE_ISATTY)
             and hasattr(file, "isatty")
         ):
             disable = not file.isatty()
@@ -114,7 +115,7 @@ class Tqdm(tqdm):
 
     def update_to(self, current, total=None):
         if total:
-            self.total = total  # pylint: disable=W0613,W0201
+            self.total = total
         self.update(current - self.n)
 
     def wrap_fn(self, fn, callback=None):

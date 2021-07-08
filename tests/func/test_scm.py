@@ -1,7 +1,7 @@
 import os
+import sys
 
 import pytest
-from flaky.flaky_decorator import flaky
 from git import Repo
 
 from dvc.scm import SCM, Git, NoSCM
@@ -97,6 +97,35 @@ def test_ignored(tmp_dir, scm):
 
     assert scm.is_ignored(tmp_dir / "dir1" / "file1.jpg")
     assert not scm.is_ignored(tmp_dir / "dir1" / "file2.txt")
+
+
+def test_ignored_dir_unignored_subdirs(tmp_dir, scm):
+    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.csv"})
+    scm.add([".gitignore"])
+    tmp_dir.gen(
+        {
+            os.path.join("data", "raw", "tracked.csv"): "cont",
+            os.path.join("data", "raw", "not_tracked.json"): "cont",
+        }
+    )
+
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "tracked.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "not_tracked.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "non_existent.json")
+
+    assert not scm.is_ignored(f"data{os.sep}")
+    # git check-ignore would now mark "data/raw" as ignored
+    # after detecting it's a directory in the file system;
+    # instead, we rely on the trailing separator to determine if handling a
+    # a directory - for consistency between existent and non-existent paths
+    assert scm.is_ignored(os.path.join("data", "raw"))
+    assert not scm.is_ignored(os.path.join("data", f"raw{os.sep}"))
+
+    assert scm.is_ignored(os.path.join("data", "non_existent"))
+    assert not scm.is_ignored(os.path.join("data", f"non_existent{os.sep}"))
 
 
 def test_get_gitignore(tmp_dir, scm):
@@ -243,10 +272,22 @@ def test_git_stash_drop(tmp_dir, scm, ref):
     assert len(stash) == 1
 
 
-# libgit2 stash_save() is flaky on linux when run inside pytest, see:
-# https://github.com/iterative/dvc/pull/5286#issuecomment-792574294
-@flaky(max_runs=5, min_passes=1)
-@pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
+reason = """libgit2 stash_save() is flaky on linux when run inside pytest
+    https://github.com/iterative/dvc/pull/5286#issuecomment-792574294"""
+
+
+@pytest.mark.parametrize(
+    "ref",
+    [
+        pytest.param(
+            None,
+            marks=pytest.mark.xfail(
+                sys.platform == "linux", raises=AssertionError, reason=reason
+            ),
+        ),
+        "refs/foo/stash",
+    ],
+)
 def test_git_stash_pop(tmp_dir, scm, ref):
     from dvc.scm.git import Stash
 

@@ -4,7 +4,6 @@ import uuid
 
 import pytest
 from funcy import cached_property
-from moto import mock_s3
 
 from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
@@ -12,11 +11,17 @@ from dvc.utils import env2bool
 from .base import Base
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
+TEST_AWS_ENDPOINT_URL = "http://127.0.0.1:{port}/"
 
 
 class S3(Base, CloudURLInfo):
 
     IS_OBJECT_STORAGE = True
+    TEST_AWS_ENDPOINT_URL = None
+
+    @cached_property
+    def config(self):
+        return {"url": self.url, "endpointurl": self.TEST_AWS_ENDPOINT_URL}
 
     @staticmethod
     def should_test():
@@ -49,7 +54,7 @@ class S3(Base, CloudURLInfo):
     def _s3(self):
         import boto3
 
-        return boto3.client("s3")
+        return boto3.client("s3", endpoint_url=self.config["endpointurl"])
 
     def is_file(self):
         from botocore.exceptions import ClientError
@@ -79,9 +84,7 @@ class S3(Base, CloudURLInfo):
         assert parents
 
     def write_bytes(self, contents):
-        self._s3.put_object(
-            Bucket=self.bucket, Key=self.path, Body=contents,
-        )
+        self._s3.put_object(Bucket=self.bucket, Key=self.path, Body=contents)
 
     def read_bytes(self):
         data = self._s3.get_object(Bucket=self.bucket, Key=self.path)
@@ -95,14 +98,59 @@ class S3(Base, CloudURLInfo):
 
 
 @pytest.fixture
-def s3(test_config):
+def s3_fake_creds_file(monkeypatch):
+    # https://github.com/spulec/moto#other-caveats
+    import pathlib
+
+    aws_dir = pathlib.Path("~").expanduser() / ".aws"
+    aws_dir.mkdir(exist_ok=True)
+
+    aws_creds = aws_dir / "credentials"
+    initially_exists = aws_creds.exists()
+
+    if not initially_exists:
+        aws_creds.touch()
+
+    try:
+        with monkeypatch.context() as m:
+            m.setenv("AWS_ACCESS_KEY_ID", "testing")
+            m.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+            m.setenv("AWS_SECURITY_TOKEN", "testing")
+            m.setenv("AWS_SESSION_TOKEN", "testing")
+            yield
+    finally:
+        if aws_creds.exists() and not initially_exists:
+            aws_creds.unlink()
+
+
+@pytest.fixture(scope="session")
+def s3_server(test_config, docker_compose, docker_services):
+    import requests
+
     test_config.requires("s3")
-    with mock_s3():
-        import boto3
 
-        boto3.client("s3").create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
+    port = docker_services.port_for("motoserver", 5000)
+    endpoint_url = TEST_AWS_ENDPOINT_URL.format(port=port)
 
-        yield S3(S3.get_url())
+    def _check():
+        try:
+            r = requests.get(endpoint_url)
+            return r.ok
+        except requests.RequestException:
+            return False
+
+    docker_services.wait_until_responsive(
+        timeout=60.0, pause=0.1, check=_check
+    )
+    S3.TEST_AWS_ENDPOINT_URL = endpoint_url
+    return endpoint_url
+
+
+@pytest.fixture
+def s3(s3_server, s3_fake_creds_file):
+    workspace = S3(S3.get_url())
+    workspace._s3.create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
+    yield workspace
 
 
 @pytest.fixture

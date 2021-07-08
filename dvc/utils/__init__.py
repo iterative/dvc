@@ -42,7 +42,7 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
 
 
 def file_md5(fname, fs):
-    """ get the (md5 hexdigest, md5 digest) of a file """
+    """get the (md5 hexdigest, md5 digest) of a file"""
     from dvc.istextfile import istextfile
     from dvc.progress import Tqdm
 
@@ -215,7 +215,7 @@ def fix_env(env=None):
 
 
 def tmp_fname(fname=""):
-    """ Temporary name for a partial download """
+    """Temporary name for a partial download"""
     from shortuuid import uuid
 
     return os.fspath(fname) + "." + uuid() + ".tmp"
@@ -232,10 +232,7 @@ def colorize(message, color=None, style=None):
     if not color:
         return message
 
-    styles = {
-        "dim": colorama.Style.DIM,
-        "bold": colorama.Style.BRIGHT,
-    }
+    styles = {"dim": colorama.Style.DIM, "bold": colorama.Style.BRIGHT}
 
     colors = {
         "green": colorama.Fore.GREEN,
@@ -322,10 +319,19 @@ def relpath(path, start=os.curdir):
     start = os.path.abspath(os.fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
-    if os.name == "nt" and not os.path.commonprefix(
-        [start, os.path.abspath(path)]
-    ):
-        return path
+    if os.name == "nt":
+        # Since python 3.8 os.realpath resolves network shares to their UNC
+        # path. So, to be certain that relative paths correctly captured,
+        # we need to resolve to UNC path first. We resolve only the drive
+        # name so that we don't follow any 'real' symlinks on the path
+        def resolve_network_drive_windows(path_to_resolve):
+            drive, tail = os.path.splitdrive(path_to_resolve)
+            return os.path.join(os.path.realpath(drive), tail)
+
+        path = resolve_network_drive_windows(os.path.abspath(path))
+        start = resolve_network_drive_windows(start)
+        if not os.path.commonprefix([start, path]):
+            return path
     return os.path.relpath(path, start)
 
 
@@ -435,10 +441,7 @@ def parse_target(
     if not match:
         return target, None
 
-    path, name = (
-        match.group("path"),
-        match.group("name"),
-    )
+    path, name = (match.group("path"), match.group("name"))
 
     if name and key:
         name += f"{JOIN}{key}"

@@ -50,5 +50,6 @@ check_call(
 )
 
 check_call(
-    ["pkgutil", "--check-signature", os.fspath(pkg)], stderr=STDOUT,
+    ["pkgutil", "--check-signature", os.fspath(pkg)],
+    stderr=STDOUT,
 )

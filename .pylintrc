@@ -313,6 +313,7 @@ missing-member-hint-distance=1
 # showing a hint for a missing member.
 missing-member-max-choices=1
 
+signature-mutators=funcy.decorators.decorator,
 
 [VARIABLES]
 

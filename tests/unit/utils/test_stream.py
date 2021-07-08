@@ -19,7 +19,7 @@ def test_hashed_stream_reader(tmp_dir):
         assert stream_reader.read(1) == b"o"
         assert stream_reader.tell() == 3
 
-    hex_digest = file_md5(foo, LocalFileSystem(None, {}))
+    hex_digest = file_md5(foo, LocalFileSystem())
     assert stream_reader.is_text_file
     assert hex_digest == stream_reader.hash_info.value
 
@@ -43,6 +43,6 @@ def test_hashed_stream_reader_as_chunks(tmp_dir):
 
         assert stream_reader.tell() == actual_size == total_read
 
-    hex_digest = file_md5(foo, LocalFileSystem(None, {}))
+    hex_digest = file_md5(foo, LocalFileSystem())
     assert not stream_reader.is_text_file
     assert hex_digest == stream_reader.hash_info.value

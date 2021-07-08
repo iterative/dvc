@@ -24,8 +24,11 @@ from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
 from dvc.objects.db import ODBManager
-from dvc.output.base import OutputAlreadyTrackedError, OutputIsStageFileError
-from dvc.repo import Repo as DvcRepo
+from dvc.output import (
+    OutputAlreadyTrackedError,
+    OutputDoesNotExistError,
+    OutputIsStageFileError,
+)
 from dvc.stage import Stage
 from dvc.stage.exceptions import (
     StageExternalOutputsError,
@@ -60,7 +63,7 @@ def test_add(tmp_dir, dvc):
                 "path": "foo",
                 "size": 3,
             }
-        ],
+        ]
     }
 
 
@@ -79,7 +82,7 @@ def test_add_executable(tmp_dir, dvc):
                 "size": 3,
                 "isexec": True,
             }
-        ],
+        ]
     }
     assert os.stat("foo").st_mode & stat.S_IEXEC
 
@@ -414,7 +417,7 @@ class TestAddLocalRemoteFile(TestDvc):
         ret = main(["remote", "add", remote, cwd])
         self.assertEqual(ret, 0)
 
-        self.dvc = DvcRepo()
+        self.dvc.config.load()
 
         foo = f"remote://{remote}/{self.FOO}"
         ret = main(["add", foo])
@@ -823,7 +826,7 @@ def test_add_from_data_dir(tmp_dir, scm, dvc):
     tmp_dir.gen({"dir": {"file2": "file2 content"}})
 
     with pytest.raises(OverlappingOutputPathsError) as e:
-        dvc.add(os.path.join("dir", "file2"))
+        dvc.add(os.path.join("dir", "file2"), fname="file2.dvc")
     assert str(e.value) == (
         "Cannot add '{out}', because it is overlapping with other DVC "
         "tracked output: 'dir'.\n"
@@ -1025,6 +1028,7 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
 
     hash_info = stage.outs[0].hash_info
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+    assert hash_info.size == len("foo")
 
 
 def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
@@ -1053,7 +1057,7 @@ def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--recursive", {"targets": ["foo"], "recursive": True},),
+        ("--recursive", {"targets": ["foo"], "recursive": True}),
         ("--external", {"targets": ["foo"], "external": True}),
     ],
 )
@@ -1068,6 +1072,8 @@ def test_add_to_cache_dir(tmp_dir, dvc, local_cloud):
     (stage,) = dvc.add(str(local_cloud / "data"), out="data")
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
+    assert stage.outs[0].hash_info.size == len("foo") + len("bar")
+    assert stage.outs[0].hash_info.nfiles == 2
 
     data = tmp_dir / "data"
     assert data.read_text() == {"foo": "foo", "bar": "bar"}
@@ -1133,7 +1139,7 @@ def test_add_to_cache_not_exists(tmp_dir, dvc, local_cloud):
     [
         ("multiple targets", {"targets": ["foo", "bar", "baz"]}),
         ("--no-commit", {"targets": ["foo"], "no_commit": True}),
-        ("--recursive", {"targets": ["foo"], "recursive": True},),
+        ("--recursive", {"targets": ["foo"], "recursive": True}),
     ],
 )
 def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
@@ -1146,7 +1152,9 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
@@ -1175,3 +1183,53 @@ def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
     foo.unlink()
     dvc.checkout(str(foo))
     assert foo.read_text() == "foo"
+
+
+def test_add_ignored(tmp_dir, scm, dvc):
+    from dvc.dvcfile import FileIsGitIgnored
+
+    tmp_dir.gen({"dir": {"subdir": {"file": "content"}}, ".gitignore": "dir/"})
+    with pytest.raises(FileIsGitIgnored) as exc:
+        dvc.add(targets=[os.path.join("dir", "subdir")])
+    assert str(exc.value) == ("bad DVC file name '{}' is git-ignored.").format(
+        os.path.join("dir", "subdir.dvc")
+    )
+
+
+def test_add_on_not_existing_file_should_not_remove_stage_file(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    (tmp_dir / "foo").unlink()
+    dvcfile_contents = (tmp_dir / stage.path).read_text()
+
+    with pytest.raises(OutputDoesNotExistError):
+        dvc.add("foo")
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / stage.path).read_text() == dvcfile_contents
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "dvc.repo.Repo.check_modified_graph",
+        "dvc.stage.Stage.save",
+        "dvc.stage.Stage.commit",
+    ],
+)
+def test_add_does_not_remove_stage_file_on_failure(
+    tmp_dir, dvc, mocker, target
+):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.gen("foo", "foobar")  # update file
+    dvcfile_contents = (tmp_dir / stage.path).read_text()
+
+    exc_msg = f"raising error from mocked '{target}'"
+    mocker.patch(
+        target,
+        side_effect=DvcException(exc_msg),
+    )
+
+    with pytest.raises(DvcException) as exc_info:
+        dvc.add("foo")
+    assert str(exc_info.value) == exc_msg
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / stage.path).read_text() == dvcfile_contents

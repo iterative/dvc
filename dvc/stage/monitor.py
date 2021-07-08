@@ -11,7 +11,7 @@ from dvc.stage.decorators import relock_repo
 from dvc.stage.exceptions import StageCmdFailedError
 
 if TYPE_CHECKING:
-    from dvc.output import BaseOutput
+    from dvc.output import Output
     from dvc.stage import Stage
 
 
@@ -75,6 +75,7 @@ class CheckpointTask(MonitorTask):
     def _run_callback(stage, callback_func):
         stage.save(allow_missing=True)
         stage.commit(allow_missing=True)
+        stage.unprotect_outs()
         logger.debug("Running checkpoint callback for stage '%s'", stage)
         callback_func()
 
@@ -84,9 +85,7 @@ class LiveTask(MonitorTask):
     SIGNAL_FILE = "DVC_LIVE"
     error_cls = LiveKilledError
 
-    def __init__(
-        self, stage: "Stage", out: "BaseOutput", proc: subprocess.Popen
-    ):
+    def __init__(self, stage: "Stage", out: "Output", proc: subprocess.Popen):
         super().__init__(stage, functools.partial(create_summary, out), proc)
 
     def after_run(self):
@@ -101,7 +100,7 @@ class Monitor:
         self.done = threading.Event()
         self.tasks = tasks
         self.monitor_thread = threading.Thread(
-            target=Monitor._loop, args=(self.tasks, self.done,),
+            target=Monitor._loop, args=(self.tasks, self.done)
         )
 
     def __enter__(self):

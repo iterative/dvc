@@ -7,9 +7,13 @@ from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
 
 
 @pytest.mark.parametrize("workspace", [True, False])
+@pytest.mark.parametrize("links", ["reflink,copy", "hardlink,symlink"])
 def test_new_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace
+    tmp_dir, scm, dvc, checkpoint_stage, mocker, workspace, links
 ):
+    with dvc.config.edit() as conf:
+        conf["cache"]["type"] = links
+
     new_mock = mocker.spy(dvc.experiments, "new")
     results = dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"], tmp_dir=not workspace
@@ -85,7 +89,7 @@ def test_reset_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, caplog, workspace
 ):
     dvc.experiments.run(
-        checkpoint_stage.addressing, name="foo", tmp_dir=not workspace,
+        checkpoint_stage.addressing, name="foo", tmp_dir=not workspace
     )
 
     results = dvc.experiments.run(

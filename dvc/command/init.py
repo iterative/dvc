@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
+    from dvc.ui import ui
+
     if analytics.is_enabled():
-        logger.info(
+        ui.write(
             boxify(
                 "DVC has enabled anonymous aggregate usage analytics.\n"
                 "Read the analytics documentation (and how to opt-out) here:\n"
@@ -30,7 +32,7 @@ def _welcome_message():
         f"- Star us on GitHub: {fmt_link('https://github.com/iterative/dvc')}"
     ).format(yellow=colorama.Fore.YELLOW, nc=colorama.Fore.RESET)
 
-    logger.info(msg)
+    ui.write(msg)
 
 
 class CmdInit(CmdBaseNoRepo):
@@ -39,14 +41,14 @@ class CmdInit(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            self.repo = Repo.init(
+            with Repo.init(
                 ".",
                 no_scm=self.args.no_scm,
                 force=self.args.force,
                 subdir=self.args.subdir,
-            )
-            self.config = self.repo.config
-            _welcome_message()
+            ) as repo:
+                self.config = repo.config
+                _welcome_message()
         except InitError:
             logger.exception("failed to initiate DVC")
             return 1

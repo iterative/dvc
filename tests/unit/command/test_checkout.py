@@ -1,5 +1,3 @@
-import logging
-
 from dvc.cli import parse_args
 from dvc.command.checkout import CmdCheckout, log_changes
 
@@ -23,7 +21,7 @@ def test_checkout(tmp_dir, dvc, mocker):
     )
 
 
-def test_log_changes(caplog):
+def test_log_changes(capsys):
     stats = {
         "added": ["file1", "dir1/"],
         "deleted": ["dir2/"],
@@ -33,12 +31,11 @@ def test_log_changes(caplog):
     from itertools import zip_longest
 
     def _assert_output(stats, expected_outs):
-        with caplog.at_level(logging.INFO, logger="dvc"):
-            caplog.clear()
-            log_changes(stats)
-            actual_output = caplog.text.splitlines()
-            for out, line in zip_longest(expected_outs, actual_output):
-                assert out in line
+        log_changes(stats)
+        out, _ = capsys.readouterr()
+        actual_output = out.splitlines()
+        for out, line in zip_longest(expected_outs, actual_output):
+            assert out.expandtabs() in line
 
     _assert_output(stats, ["M\tfile2", "A\tfile1", "A\tdir1/", "D\tdir2/"])
 

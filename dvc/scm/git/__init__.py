@@ -345,7 +345,7 @@ class Git(Base):
                 pass
         raise NoGitBackendError(name)
 
-    def get_fs(self, rev: str, **kwargs):
+    def get_fs(self, rev: str):
         from dvc.fs.git import GitFileSystem
 
         from .objects import GitTrie
@@ -353,7 +353,7 @@ class Git(Base):
         resolved = self.resolve_rev(rev)
         tree_obj = self.pygit2.get_tree_obj(rev=resolved)
         trie = GitTrie(tree_obj, resolved)
-        return GitFileSystem(self.root_dir, trie, **kwargs)
+        return GitFileSystem(self.root_dir, trie)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")

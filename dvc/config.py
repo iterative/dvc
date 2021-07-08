@@ -63,7 +63,7 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True, fs=None, config=None,
+        self, dvc_dir=None, validate=True, fs=None, config=None
     ):  # pylint: disable=super-init-not-called
         from dvc.fs.local import LocalFileSystem
 
@@ -79,7 +79,7 @@ class Config(dict):
         else:
             self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
 
-        self.wfs = LocalFileSystem(None, {"url": self.dvc_dir})
+        self.wfs = LocalFileSystem(url=self.dvc_dir)
         self.fs = fs or self.wfs
 
         self.load(validate=validate, config=config)
@@ -154,7 +154,7 @@ class Config(dict):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        if fs.exists(filename, use_dvcignore=False):
+        if fs.exists(filename):
             with fs.open(filename) as fobj:
                 conf_obj = ConfigObj(fobj)
         else:

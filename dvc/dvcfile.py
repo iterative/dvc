@@ -37,8 +37,12 @@ PIPELINE_LOCK = "dvc.lock"
 
 
 class FileIsGitIgnored(DvcException):
-    def __init__(self, path):
-        super().__init__(f"'{path}' is git-ignored.")
+    def __init__(self, path, pipeline_file=False):
+        super().__init__(
+            "{}'{}' is git-ignored.".format(
+                "bad DVC file name " if pipeline_file else "", path
+            )
+        )
 
 
 class LockfileCorruptedError(DvcException):
@@ -66,7 +70,19 @@ def is_lock_file(path):
     return os.path.basename(path) == PIPELINE_LOCK
 
 
-def check_dvc_filename(path):
+def is_git_ignored(repo, path):
+    from dvc.fs.local import LocalFileSystem
+    from dvc.scm.base import NoSCMError
+
+    try:
+        return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(
+            path
+        )
+    except NoSCMError:
+        return False
+
+
+def check_dvcfile_path(repo, path):
     if not is_valid_filename(path):
         raise StageFileBadNameError(
             "bad DVC file name '{}'. DVC files should be named "
@@ -74,6 +90,9 @@ def check_dvc_filename(path):
                 relpath(path), PIPELINE_FILE, os.path.basename(path)
             )
         )
+
+    if is_git_ignored(repo, path):
+        raise FileIsGitIgnored(relpath(path), True)
 
 
 class FileMixin:
@@ -105,18 +124,15 @@ class FileMixin:
         return relpath(self.path)
 
     def exists(self):
-        return self.repo.fs.exists(self.path)
+        is_ignored = self.repo.dvcignore.is_ignored_file(self.path)
+        return self.repo.fs.exists(self.path) and not is_ignored
 
     def _is_git_ignored(self):
-        from dvc.fs.local import LocalFileSystem
-
-        return isinstance(
-            self.repo.fs, LocalFileSystem
-        ) and self.repo.scm.is_ignored(self.path)
+        return is_git_ignored(self.repo, self.path)
 
     def _verify_filename(self):
         if self.verify:
-            check_dvc_filename(self.path)
+            check_dvcfile_path(self.repo, self.path)
 
     def _check_gitignored(self):
         if self._is_git_ignored():
@@ -129,8 +145,10 @@ class FileMixin:
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
         if not self.exists():
-            is_ignored = self.repo.fs.exists(self.path, use_dvcignore=False)
-            raise StageFileDoesNotExistError(self.path, dvc_ignored=is_ignored)
+            dvc_ignored = self.repo.dvcignore.is_ignored_file(self.path)
+            raise StageFileDoesNotExistError(
+                self.path, dvc_ignored=dvc_ignored
+            )
 
         self._verify_filename()
         if not self.repo.fs.isfile(self.path):
@@ -181,7 +199,7 @@ class SingleStageFile(FileMixin):
 
         assert not isinstance(stage, PipelineStage)
         if self.verify:
-            check_dvc_filename(self.path)
+            check_dvcfile_path(self.repo, self.path)
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(self.path))
         )
@@ -218,7 +236,7 @@ class PipelineFile(FileMixin):
 
         assert isinstance(stage, PipelineStage)
         if self.verify:
-            check_dvc_filename(self.path)
+            check_dvcfile_path(self.repo, self.path)
 
         if update_pipeline and not stage.is_data_source:
             self._dump_pipeline_file(stage)

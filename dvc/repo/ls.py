@@ -4,9 +4,7 @@ from dvc.exceptions import PathMissingError
 from dvc.path_info import PathInfo
 
 
-def ls(
-    url, path=None, rev=None, recursive=None, dvc_only=False,
-):
+def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
     """Methods for getting files and outputs for the repo.
 
     Args:
@@ -30,7 +28,7 @@ def ls(
     """
     from . import Repo
 
-    with Repo.open(url, rev, subrepos=True, uninitialized=True) as repo:
+    with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
         path_info = PathInfo(repo.root_dir)
         if path:
             path_info /= path

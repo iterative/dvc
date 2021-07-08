@@ -5,14 +5,14 @@ class MemoryFileSystem(BaseFileSystem):
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
-    def __init__(self, repo, config):
+    def __init__(self, **kwargs):
         from fsspec.implementations.memory import MemoryFileSystem as MemFS
 
-        super().__init__(repo, config)
+        super().__init__(**kwargs)
 
         self.fs = MemFS()
 
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         return self.fs.exists(path_info.fspath)
 
     def open(self, path_info, mode="r", encoding=None, **kwargs):

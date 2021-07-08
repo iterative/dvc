@@ -449,9 +449,7 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
 
-    assert dvc.experiments.ls() == {
-        baseline_c: [ref_info_c.name],
-    }
+    assert dvc.experiments.ls() == {baseline_c: [ref_info_c.name]}
 
     exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
     assert {key: set(val) for key, val in exp_list.items()} == {

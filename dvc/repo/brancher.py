@@ -36,7 +36,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.fs = LocalFileSystem(self, {"url": self.root_dir}, use_dvcignore=True)
+    self.fs = LocalFileSystem(url=self.root_dir)
     yield "workspace"
 
     if revs and "workspace" in revs:
@@ -59,9 +59,7 @@ def brancher(  # noqa: E302
     try:
         if revs:
             for sha, names in group_by(scm.resolve_rev, revs).items():
-                self.fs = scm.get_fs(
-                    sha, use_dvcignore=True, dvcignore_root=self.root_dir
-                )
+                self.fs = scm.get_fs(sha)
                 # ignore revs that don't contain repo root
                 # (i.e. revs from before a subdir=True repo was init'ed)
                 if self.fs.exists(self.root_dir):

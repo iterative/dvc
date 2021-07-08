@@ -3,6 +3,7 @@ import logging
 import os
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,9 @@ class CmdConfig(CmdBaseNoRepo):
             prefix = self._config_file_prefix(
                 self.args.show_origin, self.config, level
             )
-            logger.info("\n".join(self._format_config(conf, prefix)))
+            configs = list(self._format_config(conf, prefix))
+            if configs:
+                ui.write("\n".join(configs))
 
         return 0
 
@@ -96,7 +99,7 @@ class CmdConfig(CmdBaseNoRepo):
                 prefix = self._config_file_prefix(
                     self.args.show_origin, self.config, level
                 )
-                logger.info("{}{}".format(prefix, conf[section][opt]))
+                ui.write(prefix, conf[section][opt], sep="")
                 break
 
         return 0

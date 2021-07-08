@@ -123,7 +123,10 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("azure"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("webhdfs"),
         pytest.param(
@@ -249,7 +252,9 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
@@ -278,6 +283,7 @@ def test_import_url_to_remote_single_file(
 
     hash_info = stage.outs[0].hash_info
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+    assert hash_info.size == len("foo")
 
 
 @pytest.mark.parametrize(
@@ -285,7 +291,9 @@ def test_import_url_to_remote_single_file(
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.param(
             pytest.lazy_fixture("ssh"),
@@ -363,8 +371,8 @@ empty_xfail = pytest.mark.xfail(
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("hdfs"),
+        pytest.param(pytest.lazy_fixture("s3"), marks=empty_xfail),
         pytest.param(pytest.lazy_fixture("gs"), marks=empty_xfail),
         pytest.param(pytest.lazy_fixture("azure"), marks=empty_xfail),
         pytest.param(

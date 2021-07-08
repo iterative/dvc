@@ -1,5 +1,4 @@
 import collections
-import logging
 import os
 
 import mock
@@ -21,7 +20,7 @@ def test_digest(checksum, expected):
     assert expected == _digest(checksum)
 
 
-def test_default(mocker, caplog):
+def test_default(mocker, capsys):
     args = parse_args(["diff"])
     cmd = args.func(args)
     diff = {
@@ -51,10 +50,10 @@ def test_default(mocker, caplog):
         "\n"
         "files summary: 1 added, 0 deleted, "
         "1 renamed, 0 modified, 0 not in cache"
-    ).format(sep=os.path.sep) in caplog.text
+    ).format(sep=os.path.sep) in capsys.readouterr()[0]
 
 
-def test_show_hash(mocker, caplog):
+def test_show_hash(mocker, capsys):
     args = parse_args(["diff", "--show-hash"])
     cmd = args.func(args)
     diff = {
@@ -81,6 +80,8 @@ def test_show_hash(mocker, caplog):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
     assert 0 == cmd.run()
+
+    out, _ = capsys.readouterr()
     assert (
         "Deleted:\n"
         "    XXXXXXXX  " + os.path.join("data", "") + "\n"
@@ -100,10 +101,10 @@ def test_show_hash(mocker, caplog):
         "\n"
         "files summary: 0 added, 2 deleted, "
         "1 renamed, 2 modified, 0 not in cache"
-    ) in caplog.text
+    ) in out
 
 
-def test_show_json(mocker, caplog):
+def test_show_json(mocker, capsys):
     args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
     diff = {
@@ -118,13 +119,14 @@ def test_show_json(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert '"added": [{"path": "file1"}, {"path": "file2"}]' in caplog.text
-    assert '"deleted": []' in caplog.text
-    assert '"modified": []' in caplog.text
-    assert '"not in cache": []' in caplog.text
+    out, _ = capsys.readouterr()
+    assert '"added": [{"path": "file1"}, {"path": "file2"}]' in out
+    assert '"deleted": []' in out
+    assert '"modified": []' in out
+    assert '"not in cache": []' in out
 
 
-def test_show_json_and_hash(mocker, caplog):
+def test_show_json_and_hash(mocker, capsys):
     args = parse_args(["diff", "--show-json", "--show-hash"])
     cmd = args.func(args)
 
@@ -147,20 +149,21 @@ def test_show_json_and_hash(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
+    out, _ = capsys.readouterr()
     assert (
         '"added": [{"path": "file1", "hash": "11111111"}, '
-        '{"path": "file2", "hash": "22222222"}]' in caplog.text
+        '{"path": "file2", "hash": "22222222"}]' in out
     )
-    assert '"deleted": []' in caplog.text
-    assert '"modified": []' in caplog.text
+    assert '"deleted": []' in out
+    assert '"modified": []' in out
     assert (
         '"renamed": [{"path": {"old": "file_old", '
-        '"new": "file_new"}, "hash": "11111111"}]' in caplog.text
+        '"new": "file_new"}, "hash": "11111111"}]' in out
     )
-    assert '"not in cache": []' in caplog.text
+    assert '"not in cache": []' in out
 
 
-def test_show_json_hide_missing(mocker, caplog):
+def test_show_json_hide_missing(mocker, capsys):
     args = parse_args(["diff", "--show-json", "--hide-missing"])
     cmd = args.func(args)
     diff = {
@@ -181,19 +184,17 @@ def test_show_json_hide_missing(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
-    assert '"added": [{"path": "file1"}, {"path": "file2"}]' in caplog.text
-    assert '"deleted": []' in caplog.text
-    assert (
-        '"renamed": [{"path": {"old": "file_old", "new": "file_new"}'
-        in caplog.text
-    )
-    assert '"modified": []' in caplog.text
-    assert '"not in cache": []' not in caplog.text
+    out, _ = capsys.readouterr()
+    assert '"added": [{"path": "file1"}, {"path": "file2"}]' in out
+    assert '"deleted": []' in out
+    assert '"renamed": [{"path": {"old": "file_old", "new": "file_new"}' in out
+    assert '"modified": []' in out
+    assert '"not in cache": []' not in out
 
 
 @pytest.mark.parametrize("show_hash", [None, True, False])
 @mock.patch("dvc.command.diff._show_md")
-def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
+def test_diff_show_md_and_hash(mock_show_md, mocker, show_hash):
     options = ["diff", "--show-md"] + (["--show-hash"] if show_hash else [])
     args = parse_args(options)
     cmd = args.func(args)
@@ -206,27 +207,20 @@ def test_diff_show_md_and_hash(mock_show_md, mocker, caplog, show_hash):
     mock_show_md.assert_called_once_with(diff, show_hash, False)
 
 
-def test_no_changes(mocker, caplog):
+def test_no_changes(mocker, capsys):
     args = parse_args(["diff", "--show-json"])
     cmd = args.func(args)
     mocker.patch("dvc.repo.Repo.diff", return_value={})
 
-    def info():
-        return [
-            msg
-            for name, level, msg in caplog.record_tuples
-            if name.startswith("dvc") and level == logging.INFO
-        ]
-
     assert 0 == cmd.run()
-    assert ["{}"] == info()
-
-    caplog.clear()
+    out, _ = capsys.readouterr()
+    assert "{}" in out
 
     args = parse_args(["diff"])
     cmd = args.func(args)
     assert 0 == cmd.run()
-    assert not info()
+    out, _ = capsys.readouterr()
+    assert not out
 
 
 def test_show_md(capsys):
@@ -330,7 +324,7 @@ def test_show_md_hide_missing(capsys):
     ).format(sep=os.path.sep)
 
 
-def test_hide_missing(mocker, caplog):
+def test_hide_missing(mocker, capsys):
     args = parse_args(["diff", "--hide-missing"])
     cmd = args.func(args)
     diff = {
@@ -348,6 +342,7 @@ def test_hide_missing(mocker, caplog):
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
     assert 0 == cmd.run()
+    out, _ = capsys.readouterr()
     assert (
         "Added:\n"
         "    file\n"
@@ -356,5 +351,5 @@ def test_hide_missing(mocker, caplog):
         "    file_old -> file_new\n"
         "\n"
         "files summary: 1 added, 0 deleted, 1 renamed, 0 modified"
-    ) in caplog.text
-    assert "not in cache" not in caplog.text
+    ) in out
+    assert "not in cache" not in out

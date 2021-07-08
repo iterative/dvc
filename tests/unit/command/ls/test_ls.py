@@ -1,5 +1,4 @@
 import json
-import logging
 
 from dvc.cli import parse_args
 from dvc.command.ls import CmdList
@@ -57,7 +56,7 @@ def test_list_outputs_only(mocker):
     )
 
 
-def test_show_json(mocker, caplog):
+def test_show_json(mocker, capsys):
     cli_args = parse_args(["list", "local_dir", "--show-json"])
     assert cli_args.func == CmdList
 
@@ -66,7 +65,47 @@ def test_show_json(mocker, caplog):
     result = [{"key": "val"}]
     mocker.patch("dvc.repo.Repo.ls", return_value=result)
 
-    with caplog.at_level(logging.INFO, "dvc"):
-        assert cmd.run() == 0
+    assert cmd.run() == 0
+    out, _ = capsys.readouterr()
+    assert json.dumps(result) in out
 
-    assert json.dumps(result) in caplog.messages
+
+def test_show_colors(mocker, capsys, monkeypatch):
+    cli_args = parse_args(["list", "local_dir"])
+    assert cli_args.func == CmdList
+    cmd = cli_args.func(cli_args)
+
+    monkeypatch.setenv(
+        "LS_COLORS", "ex=01;32:rs=0:di=01;34:*.xml=01;31:*.dvc=01;33:"
+    )
+    result = [
+        {"isdir": False, "isexec": 0, "isout": False, "path": ".dvcignore"},
+        {"isdir": False, "isexec": 0, "isout": False, "path": ".gitignore"},
+        {"isdir": False, "isexec": 0, "isout": False, "path": "README.md"},
+        {"isdir": True, "isexec": 0, "isout": True, "path": "data"},
+        {"isdir": False, "isexec": 0, "isout": True, "path": "structure.xml"},
+        {
+            "isdir": False,
+            "isexec": 0,
+            "isout": False,
+            "path": "structure.xml.dvc",
+        },
+        {"isdir": True, "isexec": 0, "isout": False, "path": "src"},
+        {"isdir": False, "isexec": 1, "isout": False, "path": "run.sh"},
+    ]
+    mocker.patch("dvc.repo.Repo.ls", return_value=result)
+
+    assert cmd.run() == 0
+    out, _ = capsys.readouterr()
+    entries = out.splitlines()
+
+    assert entries == [
+        ".dvcignore",
+        ".gitignore",
+        "README.md",
+        "\x1b[01;34mdata\x1b[0m",
+        "\x1b[01;31mstructure.xml\x1b[0m",
+        "\x1b[01;33mstructure.xml.dvc\x1b[0m",
+        "\x1b[01;34msrc\x1b[0m",
+        "\x1b[01;32mrun.sh\x1b[0m",
+    ]

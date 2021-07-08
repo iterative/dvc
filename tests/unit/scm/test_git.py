@@ -56,9 +56,7 @@ def test_walk_onerror(tmp_dir, scm):
     def onerror(exc):
         raise exc
 
-    tmp_dir.scm_gen(
-        {"foo": "foo"}, commit="init",
-    )
+    tmp_dir.scm_gen({"foo": "foo"}, commit="init")
     fs = scm.get_fs("HEAD")
 
     # path does not exist
@@ -334,9 +332,7 @@ def test_commit_no_verify(tmp_dir, scm, git, hook):
         pytest.skip()
 
     hook_file = os.path.join(".git", "hooks", hook)
-    tmp_dir.gen(
-        hook_file, "#!/usr/bin/env python\nimport sys\nsys.exit(1)",
-    )
+    tmp_dir.gen(hook_file, "#!/usr/bin/env python\nimport sys\nsys.exit(1)")
     os.chmod(hook_file, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
     tmp_dir.gen("foo", "foo")
@@ -400,7 +396,7 @@ def test_checkout_index(tmp_dir, scm, git):
 
 
 @pytest.mark.parametrize(
-    "strategy, expected", [("ours", "baz"), ("theirs", "bar")],
+    "strategy, expected", [("ours", "baz"), ("theirs", "bar")]
 )
 def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
     from dvc.scm.base import MergeConflictError
@@ -495,9 +491,7 @@ def test_reset(tmp_dir, scm, git):
     if git.test_backend == "dulwich":
         pytest.skip()
 
-    tmp_dir.scm_gen(
-        {"foo": "foo", "dir": {"baz": "baz"}}, commit="init",
-    )
+    tmp_dir.scm_gen({"foo": "foo", "dir": {"baz": "baz"}}, commit="init")
 
     tmp_dir.gen({"foo": "bar", "dir": {"baz": "bar"}})
     scm.add(["foo", os.path.join("dir", "baz")])
@@ -559,3 +553,30 @@ def test_add(tmp_dir, scm, git):
     assert set(staged["modify"]) == {"dir/baz"}
     assert len(unstaged) == 1
     assert len(untracked) == 1
+
+
+@pytest.mark.parametrize("use_sha", [True, False])
+def test_pygit_resolve_refish(tmp_dir, scm, git, use_sha):
+    import pygit2
+
+    if git.test_backend != "pygit2":
+        pytest.skip()
+
+    tmp_dir.scm_gen("foo", "foo", commit="foo")
+    head = scm.get_rev()
+    tag = "my_tag"
+    scm.gitpython.git.tag("-a", tag, "-m", "create annotated tag")
+
+    if use_sha:
+        # refish will be annotated tag SHA (not commit SHA)
+        ref = git.pygit2.repo.references.get(f"refs/tags/{tag}")
+        refish = str(ref.target)
+    else:
+        refish = tag
+
+    assert refish != head
+    commit, ref = git.pygit2._resolve_refish(refish)
+    assert isinstance(commit, pygit2.Commit)
+    assert str(commit.id) == head
+    if not use_sha:
+        assert ref.name == f"refs/tags/{tag}"

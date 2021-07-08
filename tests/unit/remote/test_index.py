@@ -8,7 +8,7 @@ from dvc.remote.index import RemoteIndex
 
 @pytest.fixture(scope="function")
 def index(dvc):
-    idx = RemoteIndex(dvc, "foo")
+    idx = RemoteIndex(dvc.tmp_dir, "foo")
     idx.load()
     yield idx
     idx.dump()
@@ -35,9 +35,7 @@ def test_roundtrip(dvc, index):
 
 
 def test_clear(dvc, index):
-    index.update(
-        ["1234.dir"], ["5678"],
-    )
+    index.update(["1234.dir"], ["5678"])
     index.clear()
     assert first(index.hashes()) is None
 

@@ -12,8 +12,7 @@ from .local import LocalFileSystem
 from .oss import OSSFileSystem
 from .s3 import S3FileSystem
 from .ssh import SSHFileSystem
-from .webdav import WebDAVFileSystem
-from .webdavs import WebDAVSFileSystem
+from .webdav import WebDAVFileSystem, WebDAVSFileSystem
 from .webhdfs import WebHDFSFileSystem
 
 FS_MAP = {
@@ -82,9 +81,35 @@ def get_cloud_fs(repo, **kwargs):
     from dvc.config import ConfigError
     from dvc.config_schema import SCHEMA, Invalid
 
-    remote_conf = get_fs_config(repo.config, **kwargs)
+    repo_config = repo.config if repo else {}
+    core_config = repo_config.get("core", {})
+
+    remote_conf = get_fs_config(repo_config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
         raise ConfigError(str(exc)) from None
-    return get_fs_cls(remote_conf)(repo, remote_conf)
+
+    if "jobs" not in remote_conf:
+        jobs = core_config.get("jobs")
+        if jobs:
+            remote_conf["jobs"] = jobs
+
+    if "checksum_jobs" not in remote_conf:
+        checksum_jobs = core_config.get("checksum_jobs")
+        if checksum_jobs:
+            remote_conf["checksum_jobs"] = checksum_jobs
+
+    cls = get_fs_cls(remote_conf)
+
+    if cls == GDriveFileSystem and repo:
+        remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
+
+    url = remote_conf.pop("url")
+    path_info = cls.PATH_CLS(
+        cls._strip_protocol(url)  # pylint:disable=protected-access
+    )
+
+    extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
+    conf = {**extras, **remote_conf}  # remote config takes priority
+    return cls, conf, path_info

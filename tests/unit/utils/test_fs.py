@@ -28,7 +28,7 @@ from tests.basic_env import TestDir
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        fs = LocalFileSystem(None, {"url": self.root_dir}, use_dvcignore=True)
+        fs = LocalFileSystem(url=self.root_dir)
         file_time, file_size = get_mtime_and_size(self.DATA, fs)
         dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, fs)
 
@@ -129,7 +129,7 @@ def test_path_object_and_str_are_valid_types_get_mtime_and_size(tmp_dir):
     tmp_dir.gen(
         {"dir": {"dir_file": "dir file content"}, "file": "file_content"}
     )
-    fs = LocalFileSystem(None, {"url": os.fspath(tmp_dir)}, use_dvcignore=True)
+    fs = LocalFileSystem(url=os.fspath(tmp_dir))
 
     time, size = get_mtime_and_size("dir", fs)
     object_time, object_size = get_mtime_and_size(PathInfo("dir"), fs)
@@ -214,6 +214,28 @@ def test_path_isin_with_absolute_path():
     child = os.path.join(parent, "to", "folder")
 
     assert path_isin(child, parent)
+
+
+def test_path_isin_case_sensitive():
+    child = os.path.join("path", "to", "folder")
+    parent = os.path.join("PATH", "TO")
+
+    assert path_isin(child, parent) == (os.name == "nt")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows specific")
+def test_contains_symlink_case_sensitive_win():
+    child = os.path.join("path", "to", "folder")
+    parent = os.path.join("PATH", "TO")
+    assert contains_symlink_up_to(child, parent) is False
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Posix specific")
+def test_contains_symlink_case_sensitive_posix():
+    child = os.path.join("path", "to", "folder")
+    parent = os.path.join("PATH", "TO")
+    with pytest.raises(BasePathNotInCheckedPathException):
+        contains_symlink_up_to(child, parent)
 
 
 def test_makedirs(tmp_dir):

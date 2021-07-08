@@ -4,7 +4,7 @@ import pytest
 
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PIPELINE_FILE
-from dvc.output.base import OutputDoesNotExistError
+from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 from dvc.utils.serialize import dump_yaml, load_yaml
 

@@ -8,9 +8,10 @@ from functools import partial, wraps
 
 from dvc.exceptions import DownloadError, UploadError
 from dvc.hash_info import HashInfo
+from dvc.objects.tree import Tree
 
 from ..progress import Tqdm
-from .index import RemoteIndex, RemoteIndexNoop
+from .index import RemoteIndex
 
 logger = logging.getLogger(__name__)
 
@@ -67,27 +68,39 @@ class Remote:
 
     INDEX_CLS = RemoteIndex
 
-    def __init__(self, fs):
+    def __init__(self, fs, path_info, tmp_dir, **config):
         from dvc.objects.db import get_odb
 
         self.fs = fs
-        self.repo = fs.repo
-        self.odb = get_odb(self.fs)
+        config["tmp_dir"] = tmp_dir
+        self.odb = get_odb(self.fs, path_info, **config)
 
-        config = fs.config
-        url = config.get("url")
-        if url:
-            index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
-            self.index = self.INDEX_CLS(
-                self.repo, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
-            )
-        else:
-            self.index = RemoteIndexNoop()
+        url = getattr(path_info, "fspath", path_info.url)
+        index_name = hashlib.sha256(url.encode("utf-8")).hexdigest()
+        self.index = self.INDEX_CLS(
+            tmp_dir, index_name, dir_suffix=self.fs.CHECKSUM_DIR_SUFFIX
+        )
 
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
-            path_info=self.fs.path_info or "No path",
+            path_info=self.odb.path_info or "No path",
+        )
+
+    def __eq__(self, other):
+        return self.odb == other.odb
+
+    def __hash__(self):
+        return hash(self.odb)
+
+    @classmethod
+    def from_odb(cls, odb):
+        config = odb.config
+        return cls(
+            odb.fs,
+            odb.path_info,
+            config.pop("tmp_dir"),
+            **config,
         )
 
     @index_locked
@@ -103,7 +116,7 @@ class Remote:
     def status(
         self,
         cache,
-        named_cache,
+        objs,
         jobs=None,
         show_checksums=False,
         download=False,
@@ -112,7 +125,7 @@ class Remote:
         # Return flattened dict containing all status info
         dir_status, file_status, _ = self._status(
             cache,
-            named_cache,
+            objs,
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
@@ -131,10 +144,10 @@ class Remote:
 
         return indexed_hashes + self.odb.hashes_exist(list(hashes), **kwargs)
 
-    def _status(
+    def _status(  # pylint: disable=unused-argument
         self,
         cache,
-        named_cache,
+        objs,
         jobs=None,
         show_checksums=False,
         download=False,
@@ -147,8 +160,18 @@ class Remote:
         {dir_hash: set(file_hash, ...)} which can be used to map
         a .dir file to its file contents.
         """
-        logger.debug(f"Preparing to collect status from {self.fs.path_info}")
-        md5s = set(named_cache.scheme_keys(cache.fs.scheme))
+
+        logger.debug(f"Preparing to collect status from {self.odb.path_info}")
+        md5s = set()
+        dir_objs = {}
+        for obj in objs:
+            if obj.fs.scheme != cache.fs.scheme:
+                continue
+            md5s.add(obj.hash_info.value)
+            if isinstance(obj, Tree):
+                dir_objs[obj.hash_info.value] = obj
+                for _, entry_obj in obj:
+                    md5s.add(entry_obj.hash_info.value)
 
         logger.debug("Collecting information from local cache...")
         local_exists = frozenset(
@@ -164,21 +187,18 @@ class Remote:
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = set()
-            dir_md5s = set(named_cache.dir_keys(cache.fs.scheme))
-            if dir_md5s:
-                remote_exists.update(
-                    self._indexed_dir_hashes(cache, named_cache, dir_md5s)
-                )
+            if dir_objs:
+                remote_exists.update(self._indexed_dir_hashes(dir_objs))
                 md5s.difference_update(remote_exists)
             if md5s:
                 remote_exists.update(
                     self.hashes_exist(
-                        md5s, jobs=jobs, name=str(self.fs.path_info)
+                        md5s, jobs=jobs, name=str(self.odb.path_info)
                     )
                 )
         return self._make_status(
             cache,
-            named_cache,
+            objs,
             show_checksums,
             local_exists,
             remote_exists,
@@ -188,29 +208,36 @@ class Remote:
     def _make_status(
         self,
         cache,
-        named_cache,
+        objs,
         show_checksums,
         local_exists,
         remote_exists,
         log_missing,
     ):
-        def make_names(hash_, names):
-            return {"name": hash_ if show_checksums else " ".join(names)}
+        def make_names(obj):
+            if show_checksums or obj.name is None:
+                name = obj.hash_info.value
+            else:
+                name = obj.name
+            return {"name": name}
 
         dir_status = {}
         file_status = {}
         dir_contents = {}
-        for hash_, item in named_cache[cache.fs.scheme].items():
-            if item.children:
-                dir_status[hash_] = make_names(hash_, item.names)
+        for obj in objs:
+            if obj.fs.scheme != cache.fs.scheme:
+                continue
+
+            hash_ = obj.hash_info.value
+            if isinstance(obj, Tree):
+                dir_status[hash_] = make_names(obj)
                 dir_contents[hash_] = set()
-                for child_hash, child in item.children.items():
-                    file_status[child_hash] = make_names(
-                        child_hash, child.names
-                    )
+                for _, child_obj in obj:
+                    child_hash = child_obj.hash_info.value
+                    file_status[child_hash] = make_names(child_obj)
                     dir_contents[hash_].add(child_hash)
             else:
-                file_status[hash_] = make_names(hash_, item.names)
+                file_status[hash_] = make_names(obj)
 
         self._fill_statuses(dir_status, local_exists, remote_exists)
         self._fill_statuses(file_status, local_exists, remote_exists)
@@ -220,9 +247,10 @@ class Remote:
 
         return dir_status, file_status, dir_contents
 
-    def _indexed_dir_hashes(self, cache, named_cache, dir_md5s):
+    def _indexed_dir_hashes(self, dir_objs):
         # Validate our index by verifying all indexed .dir hashes
         # still exist on the remote
+        dir_md5s = set(dir_objs.keys())
         indexed_dirs = set(self.index.dir_hashes())
         indexed_dir_exists = set()
         if indexed_dirs:
@@ -244,9 +272,9 @@ class Remote:
         # If .dir hash exists on the remote, assume directory contents
         # still exists on the remote
         for dir_hash in dir_exists:
-            file_hashes = list(
-                named_cache.child_keys(cache.fs.scheme, dir_hash)
-            )
+            file_hashes = [
+                obj.hash_info.value for _, obj in dir_objs[dir_hash]
+            ]
             if dir_hash not in self.index:
                 logger.debug(
                     "Indexing new .dir '{}' with '{}' nested files".format(
@@ -296,7 +324,7 @@ class Remote:
     def _process(
         self,
         cache,
-        named_cache,
+        objs,
         jobs=None,
         show_checksums=False,
         download=False,
@@ -304,7 +332,7 @@ class Remote:
         logger.debug(
             "Preparing to {} '{}'".format(
                 "download data from" if download else "upload data to",
-                self.fs.path_info,
+                self.odb.path_info,
             )
         )
 
@@ -322,7 +350,7 @@ class Remote:
 
         dir_status, file_status, dir_contents = self._status(
             cache,
-            named_cache,
+            objs,
             jobs=jobs,
             show_checksums=show_checksums,
             download=download,
@@ -462,37 +490,42 @@ class Remote:
             self.index.update([dir_hash], file_hashes)
 
     @index_locked
-    def push(self, cache, named_cache, jobs=None, show_checksums=False):
+    def push(self, cache, objs, jobs=None, show_checksums=False):
         ret = self._process(
             cache,
-            named_cache,
+            objs,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
 
         if self.fs.scheme == "local":
-            for checksum in named_cache.scheme_keys("local"):
+            for obj in objs:
+                if obj.fs.scheme != "local":
+                    continue
+                checksum = obj.hash_info.value
                 cache_file = self.odb.hash_to_path_info(checksum)
                 if self.fs.exists(cache_file):
                     hash_info = HashInfo(self.fs.PARAM_CHECKSUM, checksum)
-                    self.fs.repo.state.save(cache_file, self.fs, hash_info)
+                    self.odb.state.save(cache_file, self.fs, hash_info)
                     self.odb.protect(cache_file)
 
         return ret
 
     @index_locked
-    def pull(self, cache, named_cache, jobs=None, show_checksums=False):
+    def pull(self, cache, objs, jobs=None, show_checksums=False):
         ret = self._process(
             cache,
-            named_cache,
+            objs,
             jobs=jobs,
             show_checksums=show_checksums,
             download=True,
         )
 
         if not self.odb.verify:
-            for checksum in named_cache.scheme_keys("local"):
+
+            def save_state(obj):
+                checksum = obj.hash_info.value
                 cache_file = cache.hash_to_path_info(checksum)
                 if cache.fs.exists(cache_file):
                     # We can safely save here, as existing corrupted files
@@ -500,8 +533,16 @@ class Remote:
                     # during download will not be moved from tmp_file
                     # (see `BaseFileSystem.download()`)
                     hash_info = HashInfo(cache.fs.PARAM_CHECKSUM, checksum)
-                    cache.fs.repo.state.save(cache_file, cache.fs, hash_info)
+                    cache.state.save(cache_file, cache.fs, hash_info)
                     cache.protect(cache_file)
+
+            for obj in objs:
+                if obj.fs.scheme != "local":
+                    continue
+                save_state(obj)
+                if isinstance(obj, Tree):
+                    for _, entry_obj in obj:
+                        save_state(entry_obj)
 
         return ret
 

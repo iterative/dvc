@@ -19,7 +19,6 @@ from dvc.exceptions import (
 )
 from dvc.fs.local import LocalFileSystem
 from dvc.main import main
-from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -92,7 +91,8 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
-        self.dvc = DvcRepo(".")
+        self.dvc.config.load()
+
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         self.assertEqual(len(stages[0].outs), 1)
@@ -387,7 +387,7 @@ class TestCheckoutHook(TestDvc):
     @patch("sys.stdout.isatty", return_value=True)
     @patch("dvc.prompt.input", side_effect=EOFError)
     def test(self, _mock_input, _mock_isatty):
-        """ Test that dvc checkout handles EOFError gracefully, which is what
+        """Test that dvc checkout handles EOFError gracefully, which is what
         it will experience when running in a git hook.
         """
         stages = self.dvc.add(self.DATA_DIR)
@@ -676,7 +676,7 @@ def test_stats_on_removed_file_from_tracked_dir(tmp_dir, dvc, scm):
 
 
 def test_stats_on_show_changes_does_not_show_summary(
-    tmp_dir, dvc, scm, caplog
+    tmp_dir, dvc, scm, capsys
 ):
     tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}}, "other": "other"},
@@ -684,29 +684,26 @@ def test_stats_on_show_changes_does_not_show_summary(
     )
     scm.checkout("HEAD~")
 
-    with caplog.at_level(logging.INFO, logger="dvc"):
-        caplog.clear()
-        assert main(["checkout"]) == 0
-        for out in ["D\tdir" + os.sep, "D\tother"]:
-            assert out in caplog.text
-        assert "modified" not in caplog.text
-        assert "deleted" not in caplog.text
-        assert "added" not in caplog.text
+    assert main(["checkout"]) == 0
+
+    out, _ = capsys.readouterr()
+    assert out.splitlines() == [
+        f"D\tdir{os.sep}".expandtabs(),
+        "D\tother".expandtabs(),
+    ]
 
 
-def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, caplog):
+def test_stats_does_not_show_changes_by_default(tmp_dir, dvc, scm, capsys):
     tmp_dir.dvc_gen(
         {"dir": {"subdir": {"file": "file"}}, "other": "other"},
         commit="initial",
     )
     scm.checkout("HEAD~")
 
-    with caplog.at_level(logging.INFO, logger="dvc"):
-        caplog.clear()
-        assert main(["checkout", "--summary"]) == 0
-        assert "2 files deleted" in caplog.text
-        assert "dir" not in caplog.text
-        assert "other" not in caplog.text
+    assert main(["checkout", "--summary"]) == 0
+
+    out, _ = capsys.readouterr()
+    assert "2 files deleted" == out.rstrip()
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
@@ -856,7 +853,7 @@ def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
     # was attempted without force, dvc checks if it's present in its cache
     # before asking user to remove it.
     workspace.gen("foo", "foo")
-    dvc.add(str(workspace / "foo"), external=True)
+    dvc.add("remote://workspace/foo", external=True)
     scm.add(["foo.dvc"])
     scm.commit("add foo")
 

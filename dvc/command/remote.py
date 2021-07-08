@@ -1,11 +1,9 @@
 import argparse
-import logging
 
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
+from dvc.ui import ui
 from dvc.utils import format_link
-
-logger = logging.getLogger(__name__)
 
 
 class CmdRemote(CmdConfig):
@@ -27,7 +25,7 @@ class CmdRemoteAdd(CmdRemote):
         from dvc.config import ConfigError
 
         if self.args.default:
-            logger.info(f"Setting '{self.args.name}' as a default remote.")
+            ui.write(f"Setting '{self.args.name}' as a default remote.")
 
         with self.config.edit(self.args.level) as conf:
             if self.args.name in conf["remote"] and not self.args.force:
@@ -90,7 +88,7 @@ class CmdRemoteDefault(CmdRemote):
             try:
                 print(conf["core"]["remote"])
             except KeyError:
-                logger.info("No default remote set")
+                ui.write("No default remote set")
                 return 1
         else:
             with self.config.edit(self.args.level) as conf:
@@ -116,7 +114,7 @@ class CmdRemoteList(CmdRemote):
     def run(self):
         conf = self.config.read(self.args.level)
         for name, conf in conf["remote"].items():
-            logger.info("{}\t{}".format(name, conf["url"]))
+            ui.write(name, conf["url"], sep="\t")
         return 0
 
 

@@ -36,10 +36,7 @@ def external_repo(
     rev = rev or "refs/remotes/origin/HEAD"
 
     cache_config = {
-        "cache": {
-            "dir": cache_dir or _get_cache_dir(url),
-            "type": cache_types,
-        }
+        "cache": {"dir": cache_dir or _get_cache_dir(url), "type": cache_types}
     }
 
     config = _get_remote_config(url) if os.path.isdir(url) else {}

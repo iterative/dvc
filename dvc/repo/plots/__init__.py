@@ -14,7 +14,7 @@ from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
-    from dvc.output import BaseOutput
+    from dvc.output import Output
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ class Plots:
             }}}
         Data parsing is postponed, since it's affected by props.
         """
+        from dvc.config import NoRemoteError
         from dvc.fs.repo import RepoFileSystem
         from dvc.utils.collections import ensure_list
 
@@ -71,10 +72,21 @@ class Plots:
 
                 if fs.isdir(path_info):
                     plot_files = []
-                    for pi in fs.walk_files(path_info):
-                        plot_files.append(
-                            (pi, relpath(pi, self.repo.root_dir))
+                    try:
+                        for pi in fs.walk_files(path_info):
+                            plot_files.append(
+                                (pi, relpath(pi, self.repo.root_dir))
+                            )
+                    except NoRemoteError:
+                        logger.debug(
+                            (
+                                "Could not find cache for directory '%s' on "
+                                "'%s'. Files inside will not be plotted."
+                            ),
+                            path_info,
+                            rev,
                         )
+                        continue
                 else:
                     plot_files = [
                         (path_info, relpath(path_info, self.repo.root_dir))
@@ -242,7 +254,7 @@ class Plots:
         write(path, plots, metrics, html_template_path)
 
 
-def _is_plot(out: "BaseOutput") -> bool:
+def _is_plot(out: "Output") -> bool:
     return bool(out.plot) or bool(out.live)
 
 
@@ -266,7 +278,7 @@ def _collect_plots(
     return result
 
 
-def _plot_props(out: "BaseOutput") -> Dict:
+def _plot_props(out: "Output") -> Dict:
     from dvc.schema import PLOT_PROPS
 
     if not (out.plot or out.live):

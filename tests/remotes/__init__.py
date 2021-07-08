@@ -24,7 +24,14 @@ from .oss import (  # noqa: F401
     oss_server,
     real_oss,
 )
-from .s3 import S3, TEST_AWS_REPO_BUCKET, real_s3, s3  # noqa: F401
+from .s3 import (  # noqa: F401
+    S3,
+    TEST_AWS_REPO_BUCKET,
+    real_s3,
+    s3,
+    s3_fake_creds_file,
+    s3_server,
+)
 from .ssh import (  # noqa: F401; noqa: F401
     SSHMocked,
     ssh,
@@ -80,7 +87,7 @@ def docker_services(
     from pytest_docker.plugin import DockerComposeExecutor, Services
 
     executor = DockerComposeExecutor(
-        docker_compose_file, docker_compose_project_name,
+        docker_compose_file, docker_compose_project_name
     )
 
     # making sure we don't accidentally launch docker-compose in parallel,

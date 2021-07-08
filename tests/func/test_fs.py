@@ -15,7 +15,7 @@ from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 class TestLocalFileSystem(TestDir):
     def setUp(self):
         super().setUp()
-        self.fs = LocalFileSystem(None, {})
+        self.fs = LocalFileSystem()
 
     def test_open(self):
         with self.fs.open(self.FOO) as fd:
@@ -116,7 +116,7 @@ class AssertWalkEqualMixin:
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir})
+        fs = LocalFileSystem()
         self.assertWalkEqual(
             fs.walk(self._root_dir),
             [
@@ -135,7 +135,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir})
+        fs = LocalFileSystem()
         self.assertWalkEqual(
             fs.walk(join("data_dir", "data_sub_dir")),
             [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
@@ -144,9 +144,13 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        fs = LocalFileSystem(None, {"url": self._root_dir}, use_dvcignore=True)
+        fs = LocalFileSystem(url=self._root_dir)
+        walk_result = []
+        for root, dirs, files in fs.walk("."):
+            dirs[:] = [i for i in dirs if i != ".git"]
+            walk_result.append((root, dirs, files))
         self.assertWalkEqual(
-            fs.walk("."),
+            walk_result,
             [
                 (".", ["data_dir"], ["bar", "тест", "code.py", "foo"]),
                 (join("data_dir"), ["data_sub_dir"], ["data"]),
@@ -196,13 +200,11 @@ def test_cleanfs_subrepo(tmp_dir, dvc, scm, monkeypatch):
 
     path = PathInfo(subrepo_dir)
 
-    assert dvc.fs.use_dvcignore
-    assert not dvc.fs.exists(path / "foo")
-    assert not dvc.fs.isfile(path / "foo")
-    assert not dvc.fs.exists(path / "dir")
-    assert not dvc.fs.isdir(path / "dir")
+    assert dvc.fs.exists(path / "foo")
+    assert dvc.fs.isfile(path / "foo")
+    assert dvc.fs.exists(path / "dir")
+    assert dvc.fs.isdir(path / "dir")
 
-    assert subrepo.fs.use_dvcignore
     assert subrepo.fs.exists(path / "foo")
     assert subrepo.fs.isfile(path / "foo")
     assert subrepo.fs.exists(path / "dir")
@@ -219,17 +221,13 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     scm.commit("Add subrepo")
 
     dvc_fs = dvc.fs
-    dvc_fs._reset()
-    scm_fs = scm.get_fs("HEAD", use_dvcignore=True)
+    dvc._reset()
+    scm_fs = scm.get_fs("HEAD")
     path = os.fspath(tmp_dir)
     get_dirs = itemgetter(1)
 
-    assert get_dirs(next(dvc_fs.walk(path))) == []
-    assert get_dirs(next(scm_fs.walk(path))) == []
-
-    kw = {"ignore_subrepos": False}
-    assert get_dirs(next(dvc_fs.walk(path, **kw))) == ["subdir"]
-    assert get_dirs(next(scm_fs.walk(path, **kw))) == ["subdir"]
+    assert set(get_dirs(next(dvc_fs.walk(path)))) == {".dvc", "subdir", ".git"}
+    assert set(get_dirs(next(scm_fs.walk(path)))) == {".dvc", "subdir"}
 
 
 @pytest.mark.parametrize(
@@ -237,20 +235,23 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("http"),
     ],
 )
 def test_fs_getsize(dvc, cloud):
     cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
-    fs = get_cloud_fs(dvc, **cloud.config)
-    path_info = fs.path_info
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     assert fs.getsize(path_info / "baz") == 7
     assert fs.getsize(path_info / "data" / "foo") == 3
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize(
     "cloud",
     [
@@ -268,10 +269,11 @@ def test_fs_getsize(dvc, cloud):
 )
 def test_fs_upload_fobj(dvc, tmp_dir, cloud):
     tmp_dir.gen("foo", "foo")
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     from_info = tmp_dir / "foo"
-    to_info = fs.path_info / "foo"
+    to_info = path_info / "foo"
 
     with open(from_info, "rb") as stream:
         fs.upload_fobj(stream, to_info)
@@ -281,6 +283,7 @@ def test_fs_upload_fobj(dvc, tmp_dir, cloud):
         assert stream.read() == b"foo"
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("gdrive")])
 def test_fs_ls(dvc, cloud):
     cloud.gen(
@@ -293,8 +296,9 @@ def test_fs_ls(dvc, cloud):
             }
         }
     )
-    fs = get_cloud_fs(dvc, **cloud.config)
-    path_info = cloud / "directory"
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
+    path_info /= "directory"
 
     assert {os.path.basename(file_key) for file_key in fs.ls(path_info)} == {
         "foo",
@@ -309,6 +313,7 @@ def test_fs_ls(dvc, cloud):
     } == {("file", "quux"), ("directory", "egg")}
 
 
+@pytest.mark.needs_internet
 @pytest.mark.parametrize(
     "cloud",
     [
@@ -321,8 +326,8 @@ def test_fs_ls(dvc, cloud):
 )
 def test_fs_find_recursive(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
-    fs = get_cloud_fs(dvc, **cloud.config)
-    path_info = fs.path_info
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     assert {
         os.path.basename(file_key) for file_key in fs.find(path_info / "data")
@@ -334,14 +339,16 @@ def test_fs_find_recursive(dvc, cloud):
     [
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("azure"),
-        pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
         pytest.lazy_fixture("webdav"),
     ],
 )
 def test_fs_find_with_etag(dvc, cloud):
     cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}, "quux": "quux"}})
-    fs = get_cloud_fs(dvc, **cloud.config)
-    path_info = fs.path_info
+    cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     for details in fs.find(path_info / "data", detail=True):
         assert (
@@ -351,11 +358,18 @@ def test_fs_find_with_etag(dvc, cloud):
 
 
 @pytest.mark.parametrize(
-    "cloud", [pytest.lazy_fixture("azure"), pytest.lazy_fixture("gs")]
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.param(
+            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
+        ),
+    ],
 )
 def test_fs_fsspec_path_management(dvc, cloud):
     cloud.gen({"foo": "foo", "data": {"bar": "bar", "baz": {"foo": "foo"}}})
-    fs = get_cloud_fs(dvc, **cloud.config)
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
 
     root = cloud.parents[len(cloud.parents) - 1]
     bucket_details = fs.info(root)

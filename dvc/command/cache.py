@@ -1,11 +1,9 @@
 import argparse
-import logging
 
 from dvc.command import completion
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-
-logger = logging.getLogger(__name__)
+from dvc.ui import ui
 
 
 class CmdCacheDir(CmdConfig):
@@ -17,7 +15,7 @@ class CmdCacheDir(CmdConfig):
                 # Use merged config with default values
                 conf = self.config
             self._check(conf, False, "cache", "dir")
-            logger.info(conf["cache"]["dir"])
+            ui.write(conf["cache"]["dir"])
             return 0
         with self.config.edit(level=self.args.level) as conf:
             if self.args.unset:

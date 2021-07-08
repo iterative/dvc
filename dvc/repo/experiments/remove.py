@@ -56,7 +56,7 @@ def _get_ref(ref_infos, name, cur_rev):
                 f"Ambiguous name '{name}' refers to multiple "
                 "experiments. Use full refname to remove one of "
                 "the following:"
-            ),
+            )
         ]
         msg.extend([f"\t{info}" for info in ref_infos])
         raise InvalidArgumentError("\n".join(msg))

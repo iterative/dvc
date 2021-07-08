@@ -5,11 +5,10 @@ import os
 import shutil
 import threading
 from contextlib import closing, contextmanager
-from urllib.parse import urlparse
 
 from funcy import first, memoize, silent, wrap_with
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
 
@@ -30,7 +29,7 @@ def ask_password(host, user, port):
     )
 
 
-class SSHFileSystem(BaseFileSystem):
+class SSHFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
     _JOBS = 4
@@ -46,36 +45,21 @@ class SSHFileSystem(BaseFileSystem):
     DEFAULT_PORT = 22
     TIMEOUT = 1800
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
-        url = config.get("url")
-        if url:
-            parsed = urlparse(url)
-            user_ssh_config = self._load_user_ssh_config(parsed.hostname)
+    def __init__(self, **config):
+        super().__init__(**config)
+        user_ssh_config = self._load_user_ssh_config(config["host"])
 
-            host = user_ssh_config.get("hostname", parsed.hostname)
-            user = (
-                config.get("user")
-                or parsed.username
-                or user_ssh_config.get("user")
-                or getpass.getuser()
-            )
-            port = (
-                config.get("port")
-                or parsed.port
-                or self._try_get_ssh_config_port(user_ssh_config)
-                or self.DEFAULT_PORT
-            )
-            self.path_info = self.PATH_CLS.from_parts(
-                scheme=self.scheme,
-                host=host,
-                user=user,
-                port=port,
-                path=parsed.path,
-            )
-        else:
-            self.path_info = None
-            user_ssh_config = {}
+        self.host = user_ssh_config.get("hostname", config["host"])
+        self.user = (
+            config.get("user")
+            or user_ssh_config.get("user")
+            or getpass.getuser()
+        )
+        self.port = (
+            config.get("port")
+            or self._try_get_ssh_config_port(user_ssh_config)
+            or self.DEFAULT_PORT
+        )
 
         self.keyfile = config.get(
             "keyfile"
@@ -92,6 +76,16 @@ class SSHFileSystem(BaseFileSystem):
         else:
             self.sock = None
         self.allow_agent = config.get("allow_agent", True)
+
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        from fsspec.implementations.sftp import SFTPFileSystem
+
+        # pylint:disable=protected-access
+        kwargs = SFTPFileSystem._get_kwargs_from_urls(urlpath)
+        if "username" in kwargs:
+            kwargs["user"] = kwargs.pop("username")
+        return kwargs
 
     @staticmethod
     def ssh_config_filename():
@@ -120,25 +114,21 @@ class SSHFileSystem(BaseFileSystem):
     def _try_get_ssh_config_keyfile(user_ssh_config):
         return first(user_ssh_config.get("identityfile") or ())
 
-    def ensure_credentials(self, path_info=None):
-        if path_info is None:
-            path_info = self.path_info
-
+    def ensure_credentials(self):
         # NOTE: we use the same password regardless of the server :(
         if self.ask_password and self.password is None:
-            host, user, port = path_info.host, path_info.user, path_info.port
-            self.password = ask_password(host, user, port)
+            self.password = ask_password(self.host, self.user, self.port)
 
-    def ssh(self, path_info):
-        self.ensure_credentials(path_info)
+    def ssh(self):
+        self.ensure_credentials()
 
         from .connection import SSHConnection
 
         return get_connection(
             SSHConnection,
-            path_info.host,
-            username=path_info.user,
-            port=path_info.port,
+            self.host,
+            username=self.user,
+            port=self.port,
             key_filename=self.keyfile,
             timeout=self.timeout,
             password=self.password,
@@ -151,7 +141,7 @@ class SSHFileSystem(BaseFileSystem):
     def open(self, path_info, mode="r", encoding=None, **kwargs):
         assert mode in {"r", "rt", "rb", "wb"}
 
-        with self.ssh(path_info) as ssh, closing(
+        with self.ssh() as ssh, closing(
             ssh.sftp.open(path_info.path, mode)
         ) as fd:
             if "b" in mode:
@@ -159,20 +149,20 @@ class SSHFileSystem(BaseFileSystem):
             else:
                 yield io.TextIOWrapper(fd, encoding=encoding)
 
-    def exists(self, path_info, use_dvcignore=True):
-        with self.ssh(path_info) as ssh:
+    def exists(self, path_info) -> bool:
+        with self.ssh() as ssh:
             return ssh.exists(path_info.path)
 
     def isdir(self, path_info):
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             return ssh.isdir(path_info.path)
 
     def isfile(self, path_info):
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             return ssh.isfile(path_info.path)
 
     def walk_files(self, path_info, **kwargs):
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             for fname in ssh.walk_files(path_info.path):
                 yield path_info.replace(path=fname)
 
@@ -180,32 +170,32 @@ class SSHFileSystem(BaseFileSystem):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             ssh.remove(path_info.path)
 
     def makedirs(self, path_info):
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             ssh.makedirs(path_info.path)
 
     def move(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(from_info) as ssh:
+        with self.ssh() as ssh:
             ssh.move(from_info.path, to_info.path)
 
     def copy(self, from_info, to_info):
         if not from_info.scheme == to_info.scheme == self.scheme:
             raise NotImplementedError
 
-        with self.ssh(from_info) as ssh:
+        with self.ssh() as ssh:
             ssh.atomic_copy(from_info.path, to_info.path)
 
     def symlink(self, from_info, to_info):
         if not from_info.scheme == to_info.scheme == self.scheme:
             raise NotImplementedError
 
-        with self.ssh(from_info) as ssh:
+        with self.ssh() as ssh:
             ssh.symlink(from_info.path, to_info.path)
 
     def hardlink(self, from_info, to_info):
@@ -215,7 +205,7 @@ class SSHFileSystem(BaseFileSystem):
         # See dvc/remote/local/__init__.py - hardlink()
         if self.getsize(from_info) == 0:
 
-            with self.ssh(to_info) as ssh:
+            with self.ssh() as ssh:
                 ssh.sftp.open(to_info.path, "w").close()
 
             logger.debug(
@@ -225,18 +215,18 @@ class SSHFileSystem(BaseFileSystem):
             )
             return
 
-        with self.ssh(from_info) as ssh:
+        with self.ssh() as ssh:
             ssh.hardlink(from_info.path, to_info.path)
 
     def reflink(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(from_info) as ssh:
+        with self.ssh() as ssh:
             ssh.reflink(from_info.path, to_info.path)
 
     def md5(self, path_info):
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             return HashInfo(
                 "md5",
                 ssh.md5(path_info.path),
@@ -244,16 +234,16 @@ class SSHFileSystem(BaseFileSystem):
             )
 
     def info(self, path_info):
-        with self.ssh(path_info) as ssh:
+        with self.ssh() as ssh:
             return ssh.info(path_info.path)
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         with self.open(to_info, mode="wb") as fdest:
             shutil.copyfileobj(fobj, fdest)
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        with self.ssh(from_info) as ssh:
+        with self.ssh() as ssh:
             ssh.download(
                 from_info.path,
                 to_file,
@@ -264,7 +254,7 @@ class SSHFileSystem(BaseFileSystem):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        with self.ssh(to_info) as ssh:
+        with self.ssh() as ssh:
             ssh.upload(
                 from_file,
                 to_info.path,

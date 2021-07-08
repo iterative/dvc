@@ -15,11 +15,11 @@ def _upload_file(path_info, fs, odb):
     from dvc.utils import tmp_fname
     from dvc.utils.stream import HashedStreamReader
 
-    tmp_info = odb.fs.path_info / tmp_fname()
+    tmp_info = odb.path_info / tmp_fname()
     with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
         stream = HashedStreamReader(stream)
         odb.fs.upload_fobj(
-            stream, tmp_info, desc=path_info.name, total=fs.getsize(path_info)
+            stream, tmp_info, desc=path_info.name, size=fs.getsize(path_info)
         )
 
     obj = HashFile(tmp_info, odb.fs, stream.hash_info)
@@ -47,15 +47,10 @@ def _get_file_hash(path_info, fs, name):
 def get_file_hash(path_info, fs, name, state=None):
     if state:
         hash_info = state.get(  # pylint: disable=assignment-from-none
-            path_info, fs,
+            path_info, fs
         )
         if hash_info:
             return hash_info
-
-    if not fs.exists(path_info):
-        raise FileNotFoundError(
-            errno.ENOENT, os.strerror(errno.ENOENT), path_info
-        )
 
     hash_info = _get_file_hash(path_info, fs, name)
 
@@ -77,7 +72,13 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
     return path_info, obj
 
 
-def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
+def _build_objects(
+    path_info, fs, name, odb, state, upload, dvcignore=None, **kwargs
+):
+    if dvcignore:
+        walk_iterator = dvcignore.walk_files(fs, path_info)
+    else:
+        walk_iterator = fs.walk_files(path_info)
     with Tqdm(
         unit="md5",
         desc="Computing file/dir hashes (only done once)",
@@ -96,16 +97,14 @@ def _build_objects(path_info, fs, name, odb, state, upload, **kwargs):
         with ThreadPoolExecutor(
             max_workers=kwargs.pop("jobs", fs.hash_jobs)
         ) as executor:
-            yield from executor.map(worker, fs.walk_files(path_info, **kwargs))
+            yield from executor.map(worker, walk_iterator)
 
 
 def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):
     if not upload and name in fs.DETAIL_FIELDS:
         for details in fs.find(path_info, detail=True):
             file_info = path_info.replace(path=details["name"])
-            hash_info = HashInfo(
-                name, details[name], size=details.get("size"),
-            )
+            hash_info = HashInfo(name, details[name], size=details.get("size"))
             yield file_info, HashFile(file_info, fs, hash_info)
 
         return None
@@ -180,7 +179,7 @@ def stage(odb, path_info, fs, name, upload=False, **kwargs):
             errno.ENOENT, os.strerror(errno.ENOENT), path_info
         )
 
-    state = odb.repo.state
+    state = odb.state
     # pylint: disable=assignment-from-none
     hash_info = state.get(path_info, fs)
 

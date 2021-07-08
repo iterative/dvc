@@ -9,10 +9,11 @@ logger = logging.getLogger(__name__)
 
 class CmdDataBase(CmdBase):
     def log_summary(self, stats):
+        from dvc.ui import ui
         from dvc.utils.humanize import get_summary
 
         default_msg = "Everything is up to date."
-        logger.info(get_summary(stats.items()) or default_msg)
+        ui.write(get_summary(stats.items()) or default_msg)
 
 
 class CmdDataPull(CmdDataBase):
@@ -139,7 +140,7 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pull_parser.add_argument(
-        "-r", "--remote", help="Remote storage to pull from", metavar="<name>",
+        "-r", "--remote", help="Remote storage to pull from", metavar="<name>"
     )
     pull_parser.add_argument(
         "-a",
@@ -208,7 +209,7 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     push_parser.add_argument(
-        "-r", "--remote", help="Remote storage to push to", metavar="<name>",
+        "-r", "--remote", help="Remote storage to push to", metavar="<name>"
     )
     push_parser.add_argument(
         "-a",
@@ -272,10 +273,7 @@ def add_parser(subparsers, _parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     fetch_parser.add_argument(
-        "-r",
-        "--remote",
-        help="Remote storage to fetch from",
-        metavar="<name>",
+        "-r", "--remote", help="Remote storage to fetch from", metavar="<name>"
     )
     fetch_parser.add_argument(
         "-a",

@@ -107,6 +107,7 @@ def test_experiments_run(dvc, scm, mocker):
     mocker.patch.object(cmd.repo, "reproduce")
     mocker.patch.object(cmd.repo.experiments, "run")
     cmd.run()
+    # pylint: disable=no-member
     cmd.repo.experiments.run.assert_called_with(**default_arguments)
 
 
@@ -260,6 +261,4 @@ def test_experiments_remove(dvc, scm, mocker):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with(
-        cmd.repo, exp_names=[], queue=True,
-    )
+    m.assert_called_once_with(cmd.repo, exp_names=[], queue=True)

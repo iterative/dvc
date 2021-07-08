@@ -93,7 +93,7 @@ HTTP_COMMON = {
     "user": str,
     "password": str,
     "ask_password": Bool,
-    "ssl_verify": Bool,
+    "ssl_verify": Any(Bool, str),
     "method": str,
 }
 WEBDAV_COMMON = {
@@ -104,6 +104,7 @@ WEBDAV_COMMON = {
     "cert_path": str,
     "key_path": str,
     "timeout": Coerce(int),
+    "ssl_verify": Any(Bool, str),
 }
 
 SCHEMA = {
@@ -145,7 +146,7 @@ SCHEMA = {
                     "session_token": str,
                     Optional("listobjects", default=False): Bool,  # obsoleted
                     Optional("use_ssl", default=True): Bool,
-                    Optional("ssl_verify", default=True): Bool,
+                    "ssl_verify": Any(Bool, str),
                     "sse": str,
                     "sse_kms_key_id": str,
                     "acl": str,
@@ -188,6 +189,7 @@ SCHEMA = {
                     "tenant_id": str,
                     "client_id": str,
                     "client_secret": str,
+                    "allow_anonymous_login": bool,
                     **REMOTE_COMMON,
                 },
                 "oss": {

@@ -52,7 +52,7 @@ def main(argv=None):  # noqa: C901
 
         with debugtools(args):
             cmd = args.func(args)
-            ret = cmd.run()
+            ret = cmd.do_run()
     except ConfigError:
         logger.exception("configuration error")
         ret = 251

@@ -5,18 +5,21 @@ from datetime import date, datetime
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
-from funcy import constantly, iffy, lmap
+from funcy import lmap
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.ui import ui
 from dvc.utils.flatten import flatten
 
 if TYPE_CHECKING:
+    from rich.text import Text
+
     from dvc.compare import TabularData
 
 
@@ -116,6 +119,16 @@ def _collect_names(all_experiments, **kwargs):
     return metric_names, param_names
 
 
+experiment_types = {
+    "checkpoint_tip": "│ ╓",
+    "checkpoint_commit": "│ ╟",
+    "checkpoint_base": "├─╨",
+    "branch_commit": "├──",
+    "branch_base": "└──",
+    "baseline": "",
+}
+
+
 def _collect_rows(
     base_rev,
     experiments,
@@ -147,13 +160,6 @@ def _collect_rows(
             name_rev = rev[:7]
 
         exp_name = exp.get("name", "")
-        if is_baseline:
-            name = exp_name or name_rev
-        elif exp_name:
-            name = f"{rev[:7]} [[bold]{exp['name']}[/]]"
-        else:
-            name = name_rev
-
         tip = exp.get("checkpoint_tip")
 
         parent_rev = exp.get("checkpoint_parent", "")
@@ -162,27 +168,31 @@ def _collect_rows(
 
         parent = ""
         if is_baseline:
-            tree = ""
+            typ = "baseline"
         elif tip:
             if tip == parent_tip:
-                tree = "│ ╓" if new_checkpoint else "│ ╟"
+                typ = (
+                    "checkpoint_tip" if new_checkpoint else "checkpoint_commit"
+                )
             elif parent_rev == base_rev:
-                tree = "├─╨"
+                typ = "checkpoint_base"
             else:
-                tree = "│ ╟"
+                typ = "checkpoint_commit"
                 parent = parent_rev[:7]
+        elif i < len(experiments) - 1:
+            typ = "branch_commit"
         else:
-            tree = "├──" if i < len(experiments) - 1 else "└──"
+            typ = "branch_base"
 
         if not is_baseline:
             new_checkpoint = not (tip and tip == parent_tip)
 
         row = [
-            name,
+            exp_name,
+            name_rev,
             queued,
-            tree,
+            typ,
             _format_time(exp.get("timestamp")),
-            rev == "baseline",
             parent,
         ]
         _extend_row(
@@ -295,14 +305,7 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = [
-        "Experiment",
-        "queued",
-        "ident_guide",
-        "Created",
-        "is_baseline",
-        "parent",
-    ]
+    headers = ["Experiment", "rev", "queued", "typ", "Created", "parent"]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -321,17 +324,30 @@ def experiments_table(
     return td
 
 
-def prepare_exp_id(kwargs):
+def prepare_exp_id(kwargs) -> "Text":
+    from rich.text import Text
+
     exp_name = kwargs["Experiment"]
-    ident = kwargs.get("ident_guide")
-    queued = kwargs.get("queued")
+    rev = kwargs["rev"]
+    typ = kwargs.get("typ", "baseline")
+
+    if typ == "baseline" or not exp_name:
+        text = Text(exp_name or rev)
+    else:
+        text = Text.assemble(rev, " [", (exp_name, "bold"), "]")
+
     parent = kwargs.get("parent")
-    return "{}{}{}{}".format(
-        f"{ident} " if ident else "",
-        "*" if queued else "",
-        exp_name,
-        f" ({parent})" if parent else "",
-    )
+    suff = f" ({parent})" if parent else ""
+    text.append(suff)
+
+    tree = experiment_types[typ]
+    queued = "*" if kwargs.get("queued") else ""
+    pref = (f"{tree} " if tree else "") + queued
+    return Text(pref) + text
+
+
+def baseline_styler(typ):
+    return {"style": "bold"} if typ == "baseline" else {}
 
 
 def show_experiments(
@@ -366,11 +382,9 @@ def show_experiments(
     if no_timestamp:
         td.drop("Created")
 
-    baseline_styler = iffy(constantly({"style": "bold"}), default={})
-    row_styles = lmap(baseline_styler, td.column("is_baseline"))
-    td.drop("is_baseline")
+    row_styles = lmap(baseline_styler, td.column("typ"))
 
-    merge_headers = ["Experiment", "queued", "ident_guide", "parent"]
+    merge_headers = ["Experiment", "rev", "queued", "typ", "parent"]
     td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
     td.drop(*merge_headers[1:])
 
@@ -383,7 +397,7 @@ def show_experiments(
     styles.update(
         {
             header: {
-                "justify": "left" if typ == "metrics" else "params",
+                "justify": "right" if typ == "metrics" else "left",
                 "header_style": f"black on {header_bg_colors[typ]}",
                 "collapse": idx != 0,
                 "no_wrap": typ == "metrics",
@@ -437,7 +451,7 @@ class CmdExperimentsShow(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(all_experiments, default=_format_json))
+            ui.write(json.dumps(all_experiments, default=_format_json))
         else:
             show_experiments(
                 all_experiments,
@@ -481,7 +495,7 @@ class CmdExperimentsDiff(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(diff))
+            ui.write(json.dumps(diff))
         else:
             from dvc.compare import show_diff
 
@@ -489,8 +503,6 @@ class CmdExperimentsDiff(CmdBase):
             diffs = [("metrics", "Metric"), ("params", "Param")]
             for idx, (key, title) in enumerate(diffs):
                 if idx:
-                    from dvc.ui import ui
-
                     # we are printing tables even in `--quiet` mode
                     # so we should also be printing the "table" separator
                     ui.write(force=True)
@@ -524,7 +536,7 @@ class CmdExperimentsRun(CmdRepro):
                 )
 
         if self.args.reset:
-            logger.info("Any existing checkpoints will be reset and re-run.")
+            ui.write("Any existing checkpoints will be reset and re-run.")
 
         results = self.repo.experiments.run(
             name=self.args.name,
@@ -541,7 +553,7 @@ class CmdExperimentsRun(CmdRepro):
         if self.args.metrics and results:
             metrics = self.repo.metrics.show(revs=list(results))
             metrics.pop("workspace", None)
-            logger.info(show_metrics(metrics))
+            show_metrics(metrics)
 
         return 0
 
@@ -595,12 +607,13 @@ class CmdExperimentsGC(CmdRepro):
         )
 
         if removed:
-            logger.info(
-                f"Removed {removed} experiments. To remove unused cache files "
-                "use 'dvc gc'."
+            ui.write(
+                f"Removed {removed} experiments.",
+                "To remove unused cache files",
+                "use 'dvc gc'.",
             )
         else:
-            logger.info("No experiments to remove.")
+            ui.write("No experiments to remove.")
         return 0
 
 
@@ -649,15 +662,15 @@ class CmdExperimentsPush(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        logger.info(
-            "Pushed experiment '%s' to Git remote '%s'.",
-            self.args.experiment,
-            self.args.git_remote,
+        ui.write(
+            f"Pushed experiment '{self.args.experiment}'"
+            f"to Git remote '{self.args.git_remote}'."
         )
         if not self.args.push_cache:
-            logger.info(
-                "To push cached outputs for this experiment to DVC remote "
-                "storage, re-run this command without '--no-cache'."
+            ui.write(
+                "To push cached outputs",
+                "for this experiment to DVC remote storage,"
+                "re-run this command without '--no-cache'.",
             )
 
         return 0
@@ -676,15 +689,15 @@ class CmdExperimentsPull(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        logger.info(
-            "Pulled experiment '%s' from Git remote '%s'. ",
-            self.args.experiment,
-            self.args.git_remote,
+        ui.write(
+            f"Pulled experiment '{self.args.experiment}'",
+            f"from Git remote '{self.args.git_remote}'.",
         )
         if not self.args.pull_cache:
-            logger.info(
-                "To pull cached outputs for this experiment from DVC remote "
-                "storage, re-run this command without '--no-cache'."
+            ui.write(
+                "To pull cached outputs for this experiment"
+                "from DVC remote storage,"
+                "re-run this command without '--no-cache'."
             )
 
         return 0
@@ -694,7 +707,7 @@ class CmdExperimentsRemove(CmdBase):
     def run(self):
 
         self.repo.experiments.remove(
-            exp_names=self.args.experiment, queue=self.args.queue,
+            exp_names=self.args.experiment, queue=self.args.queue
         )
 
         return 0
@@ -855,7 +868,7 @@ def add_parser(subparsers, parent_parser):
         help="Fail if this command would overwrite conflicting changes.",
     )
     experiments_apply_parser.add_argument(
-        "experiment", help="Experiment to be applied.",
+        "experiment", help="Experiment to be applied."
     ).complete = completion.EXPERIMENT
     experiments_apply_parser.set_defaults(func=CmdExperimentsApply)
 
@@ -924,9 +937,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
 
-    EXPERIMENTS_RUN_HELP = (
-        "Reproduce complete or partial experiment pipelines."
-    )
+    EXPERIMENTS_RUN_HELP = "Run or resume an experiment."
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
         parents=[parent_parser],
@@ -1020,10 +1031,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_branch_parser.add_argument(
-        "experiment", help="Experiment to be promoted.",
+        "experiment", help="Experiment to be promoted."
     )
     experiments_branch_parser.add_argument(
-        "branch", help="Git branch name to use.",
+        "branch", help="Git branch name to use."
     )
     experiments_branch_parser.set_defaults(func=CmdExperimentsBranch)
 
@@ -1046,7 +1057,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<rev>",
     )
     experiments_list_parser.add_argument(
-        "--all", action="store_true", help="List all experiments.",
+        "--all", action="store_true", help="List all experiments."
     )
     experiments_list_parser.add_argument(
         "--names-only",
@@ -1118,7 +1129,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<git_remote>",
     )
     experiments_push_parser.add_argument(
-        "experiment", help="Experiment to push.", metavar="<experiment>",
+        "experiment", help="Experiment to push.", metavar="<experiment>"
     ).complete = completion.EXPERIMENT
     experiments_push_parser.set_defaults(func=CmdExperimentsPush)
 
@@ -1174,7 +1185,7 @@ def add_parser(subparsers, parent_parser):
         metavar="<git_remote>",
     )
     experiments_pull_parser.add_argument(
-        "experiment", help="Experiment to pull.", metavar="<experiment>",
+        "experiment", help="Experiment to pull.", metavar="<experiment>"
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
 
@@ -1187,7 +1198,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_remove_parser.add_argument(
-        "--queue", action="store_true", help="Remove all queued experiments.",
+        "--queue", action="store_true", help="Remove all queued experiments."
     )
     experiments_remove_parser.add_argument(
         "experiment",

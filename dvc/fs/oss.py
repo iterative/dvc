@@ -39,13 +39,9 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
 
-    def __init__(self, repo, config):
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
-        url = config.get("url")
-        self.path_info = self.PATH_CLS(url) if url else None
-
-        self.bucket = self.path_info.bucket
         self.endpoint = config.get("oss_endpoint") or os.getenv("OSS_ENDPOINT")
 
         self.key_id = (
@@ -68,27 +64,19 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         logger.debug(f"key id: {self.key_id}")
         logger.debug(f"key secret: {self.key_secret}")
 
-        auth = oss2.Auth(self.key_id, self.key_secret)
-        bucket = oss2.Bucket(auth, self.endpoint, self.bucket)
+        return oss2.Auth(self.key_id, self.key_secret)
 
-        # Ensure bucket exists
-        try:
-            bucket.get_bucket_info()
-        except oss2.exceptions.NoSuchBucket:
-            bucket.create_bucket(
-                oss2.BUCKET_ACL_PUBLIC_READ,
-                oss2.models.BucketCreateConfig(
-                    oss2.BUCKET_STORAGE_CLASS_STANDARD
-                ),
-            )
-        return bucket
+    def _get_bucket(self, bucket):
+        import oss2
+
+        return oss2.Bucket(self.oss_service, self.endpoint, bucket)
 
     def _generate_download_url(self, path_info, expires=3600):
-        assert path_info.bucket == self.bucket
+        return self._get_bucket(path_info.bucket).sign_url(
+            "GET", path_info.path, expires
+        )
 
-        return self.oss_service.sign_url("GET", path_info.path, expires)
-
-    def exists(self, path_info, use_dvcignore=True):
+    def exists(self, path_info) -> bool:
         paths = self._list_paths(path_info)
         return any(path_info.path == path for path in paths)
 
@@ -96,7 +84,7 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         import oss2
 
         for blob in oss2.ObjectIterator(
-            self.oss_service, prefix=path_info.path
+            self._get_bucket(path_info.bucket), prefix=path_info.path
         ):
             yield blob.key
 
@@ -114,16 +102,17 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             raise NotImplementedError
 
         logger.debug(f"Removing oss://{path_info}")
-        self.oss_service.delete_object(path_info.path)
+        self._get_bucket(path_info.bucket).delete_object(path_info.path)
 
-    def _upload_fobj(self, fobj, to_info):
-        self.oss_service.put_object(to_info.path, fobj)
+    def _upload_fobj(self, fobj, to_info, **kwargs):
+        self._get_bucket(to_info.bucket).put_object(to_info.path, fobj)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
-            self.oss_service.put_object_from_file(
+            bucket = self._get_bucket(to_info.bucket)
+            bucket.put_object_from_file(
                 to_info.path, from_file, progress_callback=pbar.update_to
             )
 
@@ -133,8 +122,9 @@ class OSSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
             import oss2
 
+            bucket = self._get_bucket(from_info.bucket)
             oss2.resumable_download(
-                self.oss_service,
+                bucket,
                 from_info.path,
                 to_file,
                 progress_callback=pbar.update_to,

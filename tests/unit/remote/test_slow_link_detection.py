@@ -14,9 +14,8 @@ def timeout_immediately(monkeypatch):
 def make_remote():
     def _make_remote(cache_type=None, should_warn=True):
         remote = mock.Mock()
-        remote.repo.config = {
-            "cache": {"type": cache_type, "slow_link_warning": should_warn}
-        }
+        remote.cache_types = cache_type
+        remote.slow_link_warning = should_warn
         return remote
 
     return _make_remote

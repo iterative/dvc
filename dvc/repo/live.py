@@ -8,7 +8,7 @@ from dvc.exceptions import MetricDoesNotExistError, MetricsError
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from dvc.output import BaseOutput
+    from dvc.output import Output
     from dvc.path_info import PathInfo
     from dvc.repo import Repo
 
@@ -24,13 +24,13 @@ def create_summary(out):
     logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
 
-def summary_path_info(out: "BaseOutput") -> Optional["PathInfo"]:
-    from dvc.output import BaseOutput
+def summary_path_info(out: "Output") -> Optional["PathInfo"]:
+    from dvc.output import Output
 
     assert out.live
     has_summary = True
     if isinstance(out.live, dict):
-        has_summary = out.live.get(BaseOutput.PARAM_LIVE_SUMMARY, True)
+        has_summary = out.live.get(Output.PARAM_LIVE_SUMMARY, True)
     if has_summary:
         return out.path_info.with_suffix(".json")
     return None

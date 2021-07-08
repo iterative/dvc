@@ -1,273 +1,101 @@
-import io
 import logging
 import os
 import threading
-from collections import deque
+from functools import lru_cache
 
-from funcy import cached_property, nullcontext, wrap_prop
+from funcy import cached_property, wrap_prop
 
-from dvc.config import ConfigError
-from dvc.exceptions import DvcException
-from dvc.path_info import HTTPURLInfo, WebDAVURLInfo
-from dvc.progress import Tqdm
+from dvc.path_info import WebDAVURLInfo
 from dvc.scheme import Schemes
 
-from .base import BaseFileSystem
+from .fsspec_wrapper import FSSpecWrapper
 from .http import ask_password
 
 logger = logging.getLogger(__name__)
 
 
-class WebDAVConnectionError(DvcException):
-    def __init__(self, host):
-        super().__init__(f"Unable to connect to WebDAV {host}.")
-
-
-class WebDAVFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
-    # Use webdav scheme
+class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.WEBDAV
-
-    # URLInfo for Webdav ~ replaces webdav -> http
     PATH_CLS = WebDAVURLInfo
-
-    # Traversable as walk_files is implemented
     CAN_TRAVERSE = True
-
-    # Length of walk_files prefix
     TRAVERSE_PREFIX_LEN = 2
-
-    # Implementation based on webdav3.client
-    REQUIRES = {"webdavclient3": "webdav3.client"}
-
-    # Chunk size for buffered upload/download with progress bar
-    CHUNK_SIZE = 2 ** 16
-
+    REQUIRES = {"webdav4": "webdav4"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
 
-    # Constructor
-    def __init__(self, repo, config):
-        # Call BaseFileSystem constructor
-        super().__init__(repo, config)
+    def __init__(self, **config):
+        super().__init__(**config)
 
-        # Get username from configuration
-        self.user = config.get("user", None)
+        cert_path = config.get("cert_path", None)
+        key_path = config.get("key_path", None)
+        self.prefix = config.get("prefix", "")
+        self.fs_args.update(
+            {
+                "base_url": config["url"],
+                "cert": cert_path if not key_path else (cert_path, key_path),
+                "verify": config.get("ssl_verify", True),
+                "timeout": config.get("timeout", 30),
+            }
+        )
 
-        # Get password from configuration (might be None ~ not set)
-        self.password = config.get("password", None)
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        path_info = WebDAVURLInfo(urlpath)
+        return {
+            "prefix": path_info.path.rstrip("/"),
+            "host": path_info.replace(path="").url,
+            "url": path_info.url.rstrip("/"),
+            "user": path_info.user,
+        }
 
-        # Whether to ask for password if it is not set
-        self.ask_password = config.get("ask_password", False)
+    def _prepare_credentials(self, **config):
+        user = config.get("user", None)
+        password = config.get("password", None)
 
-        # Use token for webdav auth
-        self.token = config.get("token", None)
+        headers = {}
+        token = config.get("token")
+        auth = None
+        if token:
+            headers.update({"Authorization": f"Bearer {token}"})
+        elif user:
+            if not password and config.get("ask_password"):
+                password = ask_password(config["host"], user)
+            auth = (user, password)
 
-        # Path to certificate
-        self.cert_path = config.get("cert_path", None)
+        return {"headers": headers, "auth": auth}
 
-        # Path to private key
-        self.key_path = config.get("key_path", None)
-
-        # Connection timeout
-        self.timeout = config.get("timeout", 30)
-
-        # Get URL from configuration
-        self.url = config.get("url", None)
-
-        # If URL in config parse path_info
-        if self.url:
-            self.path_info = self.PATH_CLS(self.url)
-
-            # If username not specified try to use from URL
-            if self.user is None and self.path_info.user is not None:
-                self.user = self.path_info.user
-
-            # Construct hostname from path_info by stripping path
-            http_info = HTTPURLInfo(self.path_info.url)
-            self.hostname = http_info.replace(path="").url
-
-    # Webdav client
     @wrap_prop(threading.Lock())
     @cached_property
-    def _client(self):
-        from webdav3.client import Client
+    def fs(self):
+        from webdav4.fsspec import WebdavFileSystem
 
-        # Set password or ask for it
-        if self.ask_password and self.password is None and self.token is None:
-            self.password = ask_password(self.hostname, self.user)
+        return WebdavFileSystem(**self.fs_args)
 
-        # Setup webdav client options dictionary
-        options = {
-            "webdav_hostname": self.hostname,
-            "webdav_login": self.user,
-            "webdav_password": self.password,
-            "webdav_token": self.token,
-            "webdav_cert_path": self.cert_path,
-            "webdav_key_path": self.key_path,
-            "webdav_timeout": self.timeout,
-            "webdav_chunk_size": self.CHUNK_SIZE,
-        }
+    def _upload_fobj(self, fobj, to_info, size: int = None):
+        rpath = self.translate_path_info(to_info)
+        self.makedirs(os.path.dirname(rpath))
+        # using upload_fileobj to directly upload fileobj rather than buffering
+        # and using overwrite=True to avoid check for an extra exists call,
+        # as caller should ensure that the file does not exist beforehand.
+        return self.fs.client.upload_fileobj(
+            fobj, rpath, overwrite=True, size=size
+        )
 
-        client = Client(options)
-
-        # Check whether client options are valid
-        if not client.valid():
-            raise ConfigError(
-                f"Configuration for WebDAV {self.hostname} is invalid."
-            )
-
-        # Check whether connection is valid (root should always exist)
-        if not client.check(self.path_info.path):
-            raise WebDAVConnectionError(self.hostname)
-
-        return client
-
-    def open(self, path_info, mode="r", encoding=None, **kwargs):
-        from webdav3.exceptions import RemoteResourceNotFound
-
-        assert mode in {"r", "rt", "rb"}
-
-        fobj = io.BytesIO()
-
-        try:
-            self._client.download_from(buff=fobj, remote_path=path_info.path)
-        except RemoteResourceNotFound as exc:
-            raise FileNotFoundError from exc
-
-        fobj.seek(0)
-
-        if "mode" == "rb":
-            return fobj
-
-        return io.TextIOWrapper(fobj, encoding=encoding)
-
-    # Checks whether file/directory exists at remote
-    def exists(self, path_info, use_dvcignore=True):
-        # Use webdav check to test for file existence
-        return self._client.check(path_info.path)
-
-    # Checks whether path points to directory
-    def isdir(self, path_info):
-        # Use webdav is_dir to test whether path points to a directory
-        return self._client.is_dir(path_info.path)
-
-    def walk_files(self, path_info, **kwargs):
-        if not self.exists(path_info):
-            return
-
-        for file in self.find(path_info):
-            yield path_info.replace(path=file)
-
-    def ls(self, path_info, detail=False):
-        for entry in self._client.list(path_info.path):
-            path = entry["path"]
-            if detail:
-                if entry["isdir"]:
-                    yield {"type": "directory", "name": path}
-                else:
-                    yield {
-                        "type": "file",
-                        "name": path,
-                        "size": entry["size"],
-                        "etag": entry["etag"],
-                    }
-            else:
-                yield path
-
-    def find(self, path_info, detail=False):
-        dirs = deque([path_info.path])
-
-        while dirs:
-            for entry in self._client.list(dirs.pop(), get_info=True):
-                path = entry["path"]
-                if entry["isdir"]:
-                    dirs.append(path)
-                    continue
-
-                if detail:
-                    yield {
-                        "type": "file",
-                        "name": path,
-                        "size": entry["size"],
-                        "etag": entry["etag"],
-                    }
-                else:
-                    yield path
-
-    # Removes file/directory
-    def remove(self, path_info):
-        # Use webdav client clean (DELETE) method to remove file/directory
-        self._client.clean(path_info.path)
-
-    # Creates directories
     def makedirs(self, path_info):
-        # Terminate recursion
-        if path_info.path == self.path_info.path or self.exists(path_info):
-            return
+        path = self.translate_path_info(path_info)
+        return self.fs.makedirs(path, exist_ok=True)
 
-        # Recursively descent to root
-        self.makedirs(path_info.parent)
+    @lru_cache(512)
+    def translate_path_info(self, path):
+        if isinstance(path, self.PATH_CLS):
+            return path.path[len(self.prefix) :].lstrip("/")
+        return path
 
-        # Construct directory at current recursion depth
-        self._client.mkdir(path_info.path)
+    _with_bucket = translate_path_info
 
-    # Moves file/directory at remote
-    def move(self, from_info, to_info):
-        # Webdav client move
-        self._client.move(from_info.path, to_info.path)
+    def _strip_bucket(self, entry):
+        return entry
 
-    def _upload_fobj(self, fobj, to_info):
-        # In contrast to other upload_fobj implementations, this one does not
-        # exactly do a chunked-upload but rather put everything in one request.
-        self.makedirs(to_info.parent)
-        self._client.upload_to(buff=fobj, remote_path=to_info.path)
 
-    # Downloads file from remote to file
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        # Progress from HTTPFileSystem
-        with open(to_file, "wb") as fd:
-            with Tqdm.wrapattr(
-                fd,
-                "write",
-                total=None if no_progress_bar else self.getsize(from_info),
-                leave=False,
-                desc=from_info.url if name is None else name,
-                disable=no_progress_bar,
-            ) as fd_wrapped:
-                # Download from WebDAV via buffer
-                self._client.download_from(
-                    buff=fd_wrapped, remote_path=from_info.path
-                )
-
-    # Uploads file to remote
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs,
-    ):
-        # First try to create parent directories
-        self.makedirs(to_info.parent)
-
-        file_size = os.path.getsize(from_file)
-        with open(from_file, "rb") as fd:
-            progress_context = (
-                nullcontext(fd)
-                if file_size == 0
-                else Tqdm.wrapattr(
-                    fd,
-                    "read",
-                    total=None if no_progress_bar else file_size,
-                    leave=False,
-                    desc=to_info.url if name is None else name,
-                    disable=no_progress_bar,
-                )
-            )
-            with progress_context as fd_wrapped:
-                self._client.upload_to(
-                    buff=fd_wrapped, remote_path=to_info.path
-                )
-
-    def info(self, path_info):
-        info = self._client.info(path_info.path)
-        return {
-            "size": int(info["size"]),
-            "etag": info["etag"],
-        }
+class WebDAVSFileSystem(WebDAVFileSystem):  # pylint:disable=abstract-method
+    scheme = Schemes.WEBDAVS

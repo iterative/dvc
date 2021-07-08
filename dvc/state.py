@@ -64,14 +64,15 @@ class StateNoop(StateBase):
 
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, root_dir=None, tmp_dir=None):
+    def __init__(self, root_dir=None, tmp_dir=None, dvcignore=None):
         from diskcache import Cache
 
         super().__init__()
 
         self.tmp_dir = tmp_dir
         self.root_dir = root_dir
-        self.fs = LocalFileSystem(None, {"url": self.root_dir})
+        self.dvcignore = dvcignore
+        self.fs = LocalFileSystem()
 
         if not tmp_dir:
             return
@@ -103,7 +104,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert isinstance(hash_info, HashInfo)
         assert os.path.exists(path_info)
 
-        mtime, size = get_mtime_and_size(path_info, self.fs)
+        mtime, size = get_mtime_and_size(path_info, self.fs, self.dvcignore)
         inode = get_inode(path_info)
 
         logger.debug(
@@ -135,7 +136,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return None
 
-        mtime, size = get_mtime_and_size(path, self.fs)
+        mtime, size = get_mtime_and_size(path, self.fs, self.dvcignore)
         inode = get_inode(path)
 
         value = self.md5s.get(inode)
@@ -160,7 +161,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not self.fs.exists(path_info):
             return
 
-        mtime, _ = get_mtime_and_size(path_info, self.fs)
+        mtime, _ = get_mtime_and_size(path_info, self.fs, self.dvcignore)
         inode = get_inode(path_info)
         relative_path = relpath(path_info, self.root_dir)
 
@@ -186,7 +187,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                     continue
 
                 inode = get_inode(path)
-                mtime, _ = get_mtime_and_size(path, self.fs)
+                mtime, _ = get_mtime_and_size(path, self.fs, self.dvcignore)
 
                 if ref[relative_path] == (inode, mtime):
                     logger.debug("Removing '%s' as unused link.", path)

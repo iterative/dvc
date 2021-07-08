@@ -98,7 +98,7 @@ def test_config_set_local(tmp_dir, dvc):
         ),
     ],
 )
-def test_config_get(tmp_dir, dvc, caplog, args, ret, msg):
+def test_config_get(tmp_dir, dvc, capsys, caplog, args, ret, msg):
     (tmp_dir / ".dvc" / "config").write_text(
         textwrap.dedent(
             """\
@@ -123,12 +123,12 @@ def test_config_get(tmp_dir, dvc, caplog, args, ret, msg):
         )
     )
 
-    caplog.clear()
     assert main(["config"] + args) == ret
-    assert msg in caplog.text
+    text = caplog.text if ret else capsys.readouterr()[0]
+    assert msg in text
 
 
-def test_config_list(tmp_dir, dvc, caplog):
+def test_config_list(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
         textwrap.dedent(
             """\
@@ -155,17 +155,18 @@ def test_config_list(tmp_dir, dvc, caplog):
         )
     )
 
-    caplog.clear()
     assert main(["config", "--list"]) == 0
-    assert "remote.myremote.url=s3://bucket/path" in caplog.text
-    assert "remote.myremote.region=us-east-2" in caplog.text
-    assert "remote.myremote.profile=iterative" in caplog.text
-    assert "remote.myremote.access_key_id=abcde" in caplog.text
-    assert "remote.myremote.secret_access_key=123456" in caplog.text
-    assert "remote.other.url=gs://bucket/path" in caplog.text
-    assert "core.analytics=False" in caplog.text
-    assert "core.no_scm=true" in caplog.text
-    assert "core.remote=myremote" in caplog.text
+
+    out, _ = capsys.readouterr()
+    assert "remote.myremote.url=s3://bucket/path" in out
+    assert "remote.myremote.region=us-east-2" in out
+    assert "remote.myremote.profile=iterative" in out
+    assert "remote.myremote.access_key_id=abcde" in out
+    assert "remote.myremote.secret_access_key=123456" in out
+    assert "remote.other.url=gs://bucket/path" in out
+    assert "core.analytics=False" in out
+    assert "core.no_scm=true" in out
+    assert "core.remote=myremote" in out
 
 
 @pytest.mark.parametrize(
@@ -241,57 +242,56 @@ def test_load_relative_paths(dvc, field, remote_url):
     )
 
 
-def test_config_remote(tmp_dir, dvc, caplog):
+def test_config_remote(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
         "['remote \"myremote\"']\n"
         "  url = s3://bucket/path\n"
         "  region = myregion\n"
     )
 
-    caplog.clear()
     assert main(["config", "remote.myremote.url"]) == 0
-    assert "s3://bucket/path" in caplog.text
+    out, _ = capsys.readouterr()
+    assert "s3://bucket/path" in out
 
-    caplog.clear()
     assert main(["config", "remote.myremote.region"]) == 0
-    assert "myregion" in caplog.text
+    out, _ = capsys.readouterr()
+    assert "myregion" in out
 
 
-def test_config_show_origin_single(tmp_dir, dvc, caplog):
+def test_config_show_origin_single(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
         "['remote \"myremote\"']\n"
         "  url = s3://bucket/path\n"
         "  region = myregion\n"
     )
 
-    caplog.clear()
     assert (
         main(["config", "--show-origin", "--project", "remote.myremote.url"])
         == 0
     )
+    out, _ = capsys.readouterr()
     assert (
         "{}\t{}\n".format(os.path.join(".dvc", "config"), "s3://bucket/path")
-        in caplog.text
+        in out
     )
 
-    caplog.clear()
     assert (
         main(["config", "--show-origin", "--local", "remote.myremote.url"])
         == 251
     )
 
-    caplog.clear()
     assert main(["config", "--list", "--project", "--show-origin"]) == 0
+    out, _ = capsys.readouterr()
     assert (
         "{}\t{}\n".format(
             os.path.join(".dvc", "config"),
             "remote.myremote.url=s3://bucket/path",
         )
-        in caplog.text
+        in out
     )
 
 
-def test_config_show_origin_merged(tmp_dir, dvc, caplog):
+def test_config_show_origin_merged(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
         "['remote \"myremote\"']\n"
         "  url = s3://bucket/path\n"
@@ -302,19 +302,19 @@ def test_config_show_origin_merged(tmp_dir, dvc, caplog):
         "['remote \"myremote\"']\n  timeout = 100\n"
     )
 
-    caplog.clear()
     assert main(["config", "--list", "--show-origin"]) == 0
+    out, _ = capsys.readouterr()
     assert (
         "{}\t{}\n".format(
             os.path.join(".dvc", "config"),
             "remote.myremote.url=s3://bucket/path",
         )
-        in caplog.text
+        in out
     )
+
     assert (
         "{}\t{}\n".format(
-            os.path.join(".dvc", "config.local"),
-            "remote.myremote.timeout=100",
+            os.path.join(".dvc", "config.local"), "remote.myremote.timeout=100"
         )
-        in caplog.text
+        in out
     )

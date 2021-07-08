@@ -4,6 +4,7 @@ import logging
 import shtab
 
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 FILE = shtab.FILE
@@ -67,25 +68,16 @@ _dvc_compadd_exps() {
     """,
 }
 
-DVC_FILE = {
-    "bash": "_dvc_compgen_DVCFiles",
-    "zsh": "_dvc_compadd_DVCFiles",
-}
+DVC_FILE = {"bash": "_dvc_compgen_DVCFiles", "zsh": "_dvc_compadd_DVCFiles"}
 
-STAGE = {
-    "bash": "_dvc_compgen_stages",
-    "zsh": "_dvc_compadd_stages",
-}
+STAGE = {"bash": "_dvc_compgen_stages", "zsh": "_dvc_compadd_stages"}
 
 DVCFILES_AND_STAGE = {
     "bash": "_dvc_compgen_stages_and_files",
     "zsh": "_dvc_compadd_stages_and_files",
 }
 
-EXPERIMENT = {
-    "bash": "_dvc_compgen_exps",
-    "zsh": "_dvc_compadd_exps",
-}
+EXPERIMENT = {"bash": "_dvc_compgen_exps", "zsh": "_dvc_compadd_exps"}
 
 
 class CmdCompletion(CmdBaseNoRepo):
@@ -95,7 +87,7 @@ class CmdCompletion(CmdBaseNoRepo):
         parser = get_main_parser()
         shell = self.args.shell
         script = shtab.complete(parser, shell=shell, preamble=PREAMBLE)
-        print(script)
+        ui.write(script, force=True)
         return 0
 
 

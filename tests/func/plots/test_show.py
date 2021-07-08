@@ -146,10 +146,7 @@ def test_plot_json_single_val(tmp_dir, scm, dvc, run_copy_metrics):
 
 
 def test_plot_json_multiple_val(tmp_dir, scm, dvc, run_copy_metrics):
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     _write_json(tmp_dir, metric, "metric_t.json")
     run_copy_metrics(
         "metric_t.json",
@@ -622,10 +619,7 @@ def test_multiple_plots(tmp_dir, scm, dvc, run_copy_metrics):
 
 @pytest.mark.parametrize("use_dvc", [True, False])
 def test_show_non_plot(tmp_dir, scm, use_dvc):
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     _write_json(tmp_dir, metric, "metric.json")
 
     if use_dvc:
@@ -660,10 +654,7 @@ def test_show_non_plot(tmp_dir, scm, use_dvc):
 def test_show_non_plot_and_plot_with_params(
     tmp_dir, scm, dvc, run_copy_metrics
 ):
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     _write_json(tmp_dir, metric, "metric.json")
     run_copy_metrics(
         "metric.json", "metric2.json", plots_no_cache=["metric2.json"]
@@ -684,10 +675,7 @@ def test_show_non_plot_and_plot_with_params(
 
 
 def test_show_no_repo(tmp_dir):
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     _write_json(tmp_dir, metric, "metric.json")
 
     dvc = Repo(uninitialized=True)
@@ -695,20 +683,18 @@ def test_show_no_repo(tmp_dir):
     dvc.plots.show(["metric.json"])
 
 
-def test_show_from_subdir(tmp_dir, dvc, caplog):
+def test_show_from_subdir(tmp_dir, dvc, capsys):
     subdir = tmp_dir / "subdir"
 
     subdir.mkdir()
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
     _write_json(subdir, metric, "metric.json")
 
-    with subdir.chdir(), caplog.at_level(logging.INFO, "dvc"):
+    with subdir.chdir():
         assert main(["plots", "show", "metric.json"]) == 0
 
-    assert subdir.as_uri() in caplog.text
+    out, _ = capsys.readouterr()
+    assert subdir.as_uri() in out
     assert (subdir / "plots.html").exists()
 
 
@@ -766,10 +752,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     subdir = tmp_dir / "subdir"
     subdir.mkdir()
 
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
 
     fname = "file.json"
     _write_json(tmp_dir, metric, fname)
@@ -798,10 +781,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
 def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
     subdir = tmp_dir / "subdir"
     subdir.mkdir()
-    metric = [
-        {"first_val": 100, "val": 2},
-        {"first_val": 200, "val": 3},
-    ]
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
 
     fname = "file.json"
     _write_json(tmp_dir, metric, fname)
@@ -827,6 +807,11 @@ def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
 
     result = dvc.plots.show(targets=[p1])
     assert set(result.keys()) == {p1}
+
+    remove(dvc.odb.local.cache_dir)
+    remove(subdir)
+    with pytest.raises(NoMetricsParsedError):
+        dvc.plots.show()
 
 
 def test_ignore_binary_file(tmp_dir, dvc, run_copy_metrics):

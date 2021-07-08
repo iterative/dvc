@@ -12,12 +12,13 @@ logger = logging.getLogger(__name__)
 class CmdGet(CmdBaseNoRepo):
     def _show_url(self):
         from dvc.api import get_url
+        from dvc.ui import ui
 
         try:
             url = get_url(
                 self.args.path, repo=self.args.url, rev=self.args.rev
             )
-            logger.info(url)
+            ui.write(url, force=True)
         except DvcException:
             logger.exception("failed to show URL")
             return 1
@@ -64,7 +65,7 @@ def add_parser(subparsers, parent_parser):
         "url", help="Location of DVC or Git repository to download from"
     )
     get_parser.add_argument(
-        "path", help="Path to a file or directory within the repository",
+        "path", help="Path to a file or directory within the repository"
     ).complete = completion.FILE
     get_parser.add_argument(
         "-o",

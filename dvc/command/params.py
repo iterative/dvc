@@ -4,6 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class CmdParamsDiff(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(diff))
+            ui.write(json.dumps(diff))
         else:
             from dvc.compare import show_diff
 

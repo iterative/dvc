@@ -8,7 +8,7 @@ from mock import patch
 import dvc.data_cloud as cloud
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, PathMissingError
 from dvc.objects.db import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
@@ -163,7 +163,7 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
 
     with erepo_dir.chdir():
         erepo_dir.dvc.run(
-            cmd=f"echo hello > {src}", outs_no_cache=[src], single_stage=True,
+            cmd=f"echo hello > {src}", outs_no_cache=[src], single_stage=True
         )
 
     erepo_dir.scm_add(
@@ -289,7 +289,7 @@ def test_push_wildcard_from_bare_git_repo(
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(PathMissingError):
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
@@ -347,11 +347,11 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
 
 
 def test_import_non_existing(erepo_dir, tmp_dir, dvc):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "invalid_output")
 
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "/root/", "root")
 
 
@@ -444,7 +444,7 @@ def test_import_subrepos(tmp_dir, erepo_dir, dvc, scm, is_dvc, files):
     key = next(iter(files))
     path = str((subrepo / key).relative_to(erepo_dir))
 
-    stage = dvc.imp(os.fspath(erepo_dir), path, out="out",)
+    stage = dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     assert (tmp_dir / "out").read_text() == files[key]
     assert stage.deps[0].def_path == path
@@ -530,7 +530,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    from dvc.data_cloud import DataCloud
+    import dvc as dvc_module
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
@@ -540,12 +540,62 @@ def test_import_with_jobs(mocker, dvc, erepo_dir):
                     "file2": "file2",
                     "file3": "file3",
                     "file4": "file4",
-                },
+                }
             },
             commit="init",
         )
 
-    spy = mocker.spy(DataCloud, "pull")
+    spy = mocker.spy(dvc_module.objects, "save")
     dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
     run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
     assert run_jobs == 3
+
+
+def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
+    erepo_dir.add_remote(config=local_cloud.config)
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
+    erepo_dir.dvc.push()
+    remove(erepo_dir.dvc.odb.local.cache_dir)
+    remove(os.fspath(erepo_dir / "dir"))
+
+    erepo2 = make_tmp_dir("erepo2", scm=True, dvc=True)
+    with erepo2.chdir():
+        erepo2.dvc.imp(os.fspath(erepo_dir), "dir")
+        erepo2.scm.add("dir.dvc")
+        erepo2.scm.commit("import")
+    remove(erepo2.dvc.odb.local.cache_dir)
+    remove(os.fspath(erepo2 / "dir"))
+
+    dvc.imp(os.fspath(erepo2), "dir", "dir_imported")
+    dst = tmp_dir / "dir_imported"
+    assert (dst / "foo").read_text() == "foo"
+    assert (dst / "bar").read_text() == "bar"
+
+    remove(dvc.odb.local.cache_dir)
+    remove("dir_imported")
+
+    # pulled objects should come from the original upstream repo's remote,
+    # no cache or remote should be needed from the intermediate repo
+    dvc.pull(["dir_imported.dvc"])
+    assert not os.path.exists(erepo_dir.dvc.odb.local.cache_dir)
+    assert not os.path.exists(erepo2.dvc.odb.local.cache_dir)
+    assert (dst / "foo").read_text() == "foo"
+    assert (dst / "bar").read_text() == "bar"
+
+
+def test_circular_import(tmp_dir, dvc, scm, erepo_dir):
+    from dvc.exceptions import CircularImportError
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
+
+    dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
+    scm.add("dir_imported.dvc")
+    scm.commit("import")
+
+    with erepo_dir.chdir():
+        with pytest.raises(CircularImportError):
+            erepo_dir.dvc.imp(
+                os.fspath(tmp_dir), "dir_imported", "circular_import"
+            )

@@ -100,7 +100,7 @@ class ExpRefInfo:
     namespace = EXPS_NAMESPACE
 
     def __init__(
-        self, baseline_sha: Optional[str] = None, name: Optional[str] = None,
+        self, baseline_sha: Optional[str] = None, name: Optional[str] = None
     ):
         self.baseline_sha = baseline_sha
         self.name: str = name if name else ""

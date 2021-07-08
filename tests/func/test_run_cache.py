@@ -150,7 +150,7 @@ def test_memory_runs_of_multiple_stages(tmp_dir, dvc, run_copy, mocker):
 
 
 def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
-    from dvc.output import base
+    import dvc.output as dvc_output
 
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", name="copy-foo-bar")
@@ -159,7 +159,7 @@ def test_restore_pull(tmp_dir, dvc, run_copy, mocker, local_remote):
 
     mock_restore = mocker.spy(dvc.stage_cache, "restore")
     mock_run = mocker.patch("dvc.stage.run.cmd_run")
-    mock_checkout = mocker.spy(base, "checkout")
+    mock_checkout = mocker.spy(dvc_output, "checkout")
 
     # removing any information that `dvc` could use to re-generate from
     (tmp_dir / "bar").unlink()

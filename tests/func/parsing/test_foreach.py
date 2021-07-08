@@ -130,10 +130,7 @@ def test_params_file_with_dict_tracked(tmp_dir, dvc):
 
 
 def test_params_file_tracked_for_composite_list(tmp_dir, dvc):
-    foreach_data = [
-        {"thresh": "foo"},
-        {"thresh": "bar"},
-    ]
+    foreach_data = [{"thresh": "foo"}, {"thresh": "bar"}]
     params = {"models": foreach_data}
     dump_yaml("params.yaml", params)
 

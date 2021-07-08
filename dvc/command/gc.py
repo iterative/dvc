@@ -2,8 +2,8 @@ import argparse
 import logging
 import os
 
-import dvc.prompt as prompt
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class CmdGC(CmdBase):
         logger.warning(msg)
 
         msg = "Are you sure you want to proceed?"
-        if not self.args.force and not prompt.confirm(msg):
+        if not self.args.force and not ui.confirm(msg):
             return 1
 
         self.repo.gc(

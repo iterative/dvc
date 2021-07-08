@@ -102,6 +102,7 @@ def test_stage_load_file_exists_but_dvcignored(tmp_dir, dvc, scm, file):
     (tmp_dir / file).write_text("")
     (tmp_dir / ".dvcignore").write_text(file)
 
+    dvc._reset()
     dvcfile = Dvcfile(dvc, file)
     with pytest.raises(StageFileDoesNotExistError) as exc_info:
         assert dvcfile.stages.values()
@@ -122,4 +123,4 @@ def test_try_loading_dvcfile_that_is_gitignored(tmp_dir, dvc, scm, file):
     with pytest.raises(FileIsGitIgnored) as exc_info:
         dvcfile._load()
 
-    assert str(exc_info.value) == f"'{file}' is git-ignored."
+    assert str(exc_info.value) == f"bad DVC file name '{file}' is git-ignored."

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, no_type_check
 from funcy import post_processing
 
 from dvc.dependency import ParamsDependency
-from dvc.output import BaseOutput
+from dvc.output import Output
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import parse_yaml_for_update
 
@@ -22,12 +22,12 @@ PARAM_PATH = ParamsDependency.PARAM_PATH
 PARAM_DEPS = StageParams.PARAM_DEPS
 PARAM_OUTS = StageParams.PARAM_OUTS
 
-PARAM_CACHE = BaseOutput.PARAM_CACHE
-PARAM_METRIC = BaseOutput.PARAM_METRIC
-PARAM_PLOT = BaseOutput.PARAM_PLOT
-PARAM_PERSIST = BaseOutput.PARAM_PERSIST
-PARAM_CHECKPOINT = BaseOutput.PARAM_CHECKPOINT
-PARAM_DESC = BaseOutput.PARAM_DESC
+PARAM_CACHE = Output.PARAM_CACHE
+PARAM_METRIC = Output.PARAM_METRIC
+PARAM_PLOT = Output.PARAM_PLOT
+PARAM_PERSIST = Output.PARAM_PERSIST
+PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
+PARAM_DESC = Output.PARAM_DESC
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -60,7 +60,7 @@ def _serialize_out(out):
 
 
 @no_type_check
-def _serialize_outs(outputs: List[BaseOutput]):
+def _serialize_outs(outputs: List[Output]):
     outs, metrics, plots, live = [], [], [], None
     for out in sort_by_path(outputs):
         bucket = outs

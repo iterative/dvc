@@ -10,7 +10,7 @@ from ._metadata import Metadata
 from .base import BaseFileSystem
 
 if typing.TYPE_CHECKING:
-    from dvc.output.base import BaseOutput
+    from dvc.output import Output
 
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,14 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         repo: DVC repo.
     """
 
+    sep = os.sep
+
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
-    def __init__(self, repo):
-        super().__init__(repo, {"url": repo.root_dir})
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.repo = kwargs["repo"]
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
@@ -42,7 +45,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return outs
 
     def _get_granular_hash(
-        self, path_info: PathInfo, out: "BaseOutput", remote=None
+        self, path_info: PathInfo, out: "Output", remote=None
     ):
         assert isinstance(path_info, PathInfo)
         # NOTE: use string paths here for performance reasons
@@ -67,13 +70,17 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             raise IsADirectoryError
 
         out = outs[0]
+
+        if not out.hash_info:
+            raise FileNotFoundError
+
         if out.changed_cache(filter_info=path):
             from dvc.config import NoRemoteError
 
             try:
                 remote_obj = self.repo.cloud.get_remote(remote)
-            except NoRemoteError:
-                raise FileNotFoundError
+            except NoRemoteError as exc:
+                raise FileNotFoundError from exc
             if out.is_dir_checksum:
                 checksum = self._get_granular_hash(path, out).value
             else:

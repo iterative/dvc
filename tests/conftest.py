@@ -10,6 +10,8 @@ from .remotes import *  # noqa, pylint: disable=wildcard-import
 os.environ["DVC_TEST"] = "true"
 # Ensure progress output even when not outputting to raw sys.stderr console
 os.environ["DVC_IGNORE_ISATTY"] = "true"
+# Disable system git config
+os.environ["GIT_CONFIG_NOSYSTEM"] = "1"
 
 REMOTES = {
     # remote: enabled_by_default?
@@ -19,7 +21,7 @@ REMOTES = {
     "hdfs": False,
     "http": True,
     "oss": False,
-    "s3": True,
+    "s3": False,
     "ssh": True,
     "webdav": True,
 }
@@ -110,6 +112,14 @@ def pytest_runtest_setup(item):
     # run `test_config.requires(remote_name)`.
     for marker in item.iter_markers():
         item.config.dvc_config.apply_marker(marker)
+
+    if (
+        "CI" in os.environ
+        and item.get_closest_marker("needs_internet") is not None
+    ):
+        # remotes that need internet connection might be flaky,
+        # so we rerun them in case it fails.
+        item.add_marker(pytest.mark.flaky(max_runs=5, min_passes=1))
 
 
 @pytest.fixture(scope="session")

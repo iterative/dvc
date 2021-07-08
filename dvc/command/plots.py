@@ -4,6 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.ui import ui
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class CmdPlots(CmdBase):
 
             if self.args.show_vega:
                 target = self.args.targets[0]
-                logger.info(plots[target])
+                ui.write(plots[target])
                 return 0
 
             rel: str = self.args.out or "plots.html"
@@ -53,13 +54,15 @@ class CmdPlots(CmdBase):
 
         assert path.is_absolute()  # as_uri throws ValueError if not absolute
         url = path.as_uri()
-        logger.info(url)
+        ui.write(url)
         if self.args.open:
             import webbrowser
 
             opened = webbrowser.open(rel)
             if not opened:
-                logger.error("Failed to open. Please try opening it manually.")
+                ui.error_write(
+                    "Failed to open. Please try opening it manually."
+                )
                 return 1
 
         return 0
@@ -87,7 +90,7 @@ class CmdPlotsDiff(CmdPlots):
 class CmdPlotsModify(CmdPlots):
     def run(self):
         self.repo.plots.modify(
-            self.args.target, props=self._props(), unset=self.args.unset,
+            self.args.target, props=self._props(), unset=self.args.unset
         )
         return 0
 
@@ -160,7 +163,7 @@ def add_parser(subparsers, parent_parser):
         help=argparse.SUPPRESS,
     )
     plots_diff_parser.add_argument(
-        "revisions", nargs="*", default=None, help="Git commits to plot from",
+        "revisions", nargs="*", default=None, help="Git commits to plot from"
     )
     _add_props_arguments(plots_diff_parser)
     _add_output_arguments(plots_diff_parser)
@@ -175,7 +178,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Metric file to set properties to",
+        "target", help="Metric file to set properties to"
     ).complete = completion.FILE
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(

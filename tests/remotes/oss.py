@@ -64,6 +64,8 @@ def oss_server(test_config, docker_compose, docker_services):
 
 @pytest.fixture
 def oss(oss_server):
+    import oss2
+
     url = OSS.get_url()
     ret = OSS(url)
     ret.config = {
@@ -72,6 +74,19 @@ def oss(oss_server):
         "oss_key_secret": EMULATOR_OSS_ACCESS_KEY_SECRET,
         "oss_endpoint": oss_server,
     }
+
+    auth = oss2.Auth(
+        EMULATOR_OSS_ACCESS_KEY_ID, EMULATOR_OSS_ACCESS_KEY_SECRET
+    )
+    bucket = oss2.Bucket(auth, oss_server, TEST_OSS_REPO_BUCKET)
+    try:
+        bucket.get_bucket_info()
+    except oss2.exceptions.NoSuchBucket:
+        bucket.create_bucket(
+            oss2.BUCKET_ACL_PUBLIC_READ,
+            oss2.models.BucketCreateConfig(oss2.BUCKET_STORAGE_CLASS_STANDARD),
+        )
+
     return ret
 
 

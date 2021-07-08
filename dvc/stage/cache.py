@@ -196,7 +196,8 @@ class StageCache:
         cached_stage = self._create_stage(cache, wdir=stage.wdir)
 
         if pull:
-            self.repo.cloud.pull(cached_stage.get_used_cache())
+            for objs in cached_stage.get_used_objs().values():
+                self.repo.cloud.pull(objs)
 
         if not cached_stage.outs_cached():
             raise RunCacheNotFoundError(stage)
@@ -212,15 +213,17 @@ class StageCache:
         ret = []
 
         runs = from_remote.path_info / "runs"
-        if not from_remote.exists(runs):
+        if not from_remote.fs.exists(runs):
             return []
 
-        for src in from_remote.walk_files(runs):
+        for src in from_remote.fs.walk_files(runs):
             rel = src.relative_to(from_remote.path_info)
             dst = to_remote.path_info / rel
             key = dst.parent
             # check if any build cache already exists for this key
-            if to_remote.exists(key) and first(to_remote.walk_files(key)):
+            if to_remote.fs.exists(key) and first(
+                to_remote.fs.walk_files(key)
+            ):
                 continue
             func(src, dst)
             ret.append((src.parent.name, src.name))
@@ -233,8 +236,8 @@ class StageCache:
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.fs.upload, "upload"),
-            self.repo.odb.local.fs,
-            remote.fs,
+            self.repo.odb.local,
+            remote.odb,
         )
 
     def pull(self, remote):
@@ -243,19 +246,20 @@ class StageCache:
         remote = self.repo.cloud.get_remote(remote)
         return self._transfer(
             _log_exceptions(remote.fs.download, "download"),
-            remote.fs,
-            self.repo.odb.local.fs,
+            remote.odb,
+            self.repo.odb.local,
         )
 
-    def get_used_cache(self, used_run_cache, *args, **kwargs):
-        from dvc.objects.db import NamedCache
+    def get_used_objs(self, used_run_cache, *args, **kwargs):
+        """Return used cache for the specified run-cached stages."""
+        from collections import defaultdict
 
-        cache = NamedCache()
-
+        used_objs = defaultdict(set)
         for key, value in used_run_cache:
             entry = self._load_cache(key, value)
             if not entry:
                 continue
             stage = self._create_stage(entry)
-            cache.update(stage.get_used_cache(*args, **kwargs))
-        return cache
+            for odb, objs in stage.get_used_objs(*args, **kwargs).items():
+                used_objs[odb].update(objs)
+        return used_objs
