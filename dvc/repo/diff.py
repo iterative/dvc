@@ -115,7 +115,7 @@ def _paths_checksums(repo, repo_fs, targets):
 
 def _output_paths(repo, repo_fs, targets):
     from dvc.fs.local import LocalFileSystem
-    from dvc.scheme import Schemes
+    from dvc.objects.stage import stage as ostage
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
@@ -133,8 +133,8 @@ def _output_paths(repo, repo_fs, targets):
 
     def _to_checksum(output):
         if on_working_fs:
-            return repo.odb.stage(
-                Schemes.LOCAL, output.path_info, repo.odb.local.fs, "md5"
+            return ostage(
+                repo.odb.local, output.path_info, repo.odb.local.fs, "md5"
             ).hash_info.value
         return output.hash_info.value
 
