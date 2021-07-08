@@ -449,7 +449,7 @@ class Output:
             return True
 
         try:
-            objects.check({self.odb}, obj)
+            objects.check(self.odb, obj)
             return False
         except (FileNotFoundError, ObjectFormatError):
             return True
@@ -823,13 +823,12 @@ class Output:
 
         obj = self.odb.get(self.hash_info)
         try:
-            odb = objects.check({self.odb}, obj)
+            objects.check(self.odb, obj)
         except FileNotFoundError:
             self.repo.cloud.pull([obj], show_checksums=False, **kwargs)
-            odb = self.odb
 
         try:
-            self.obj = objects.load(odb, self.hash_info)
+            self.obj = objects.load(self.odb, self.hash_info)
         except (FileNotFoundError, ObjectFormatError):
             self.obj = None
 
@@ -846,7 +845,7 @@ class Output:
             logger.debug(f"failed to pull cache for '{self}'")
 
         try:
-            objects.check({self.odb}, self.odb.get(self.hash_info))
+            objects.check(self.odb, self.odb.get(self.hash_info))
         except FileNotFoundError:
             msg = (
                 "Missing cache for directory '{}'. "

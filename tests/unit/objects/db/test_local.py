@@ -112,12 +112,14 @@ def test_staging_file(tmp_dir, dvc):
     # check for file after staging should fail since files are not added on
     # stage()
     with pytest.raises(FileNotFoundError):
-        check({local_odb, staging_odb}, obj)
+        check(local_odb, obj)
+    with pytest.raises(FileNotFoundError):
+        check(staging_odb, obj)
 
     save(local_odb, obj)
-    check({local_odb}, obj)
+    check(local_odb, obj)
     with pytest.raises(FileNotFoundError):
-        check({staging_odb}, obj)
+        check(staging_odb, obj)
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)
@@ -142,17 +144,17 @@ def test_staging_dir(tmp_dir, dvc):
     # check for raw object after staging should pass only when using the
     # staging odb
     raw = HashFile(obj.path_info, obj.fs, obj.hash_info)
-    check({local_odb, staging_odb}, raw)
     with pytest.raises(FileNotFoundError):
-        check({local_odb}, raw)
+        check(local_odb, raw)
+    check(staging_odb, raw)
 
     # checking the entire tree should fail since individual file entries are
     # not added on stage()
     with pytest.raises(FileNotFoundError):
-        check({staging_odb}, obj)
+        check(staging_odb, obj)
 
     save(local_odb, obj)
-    check({local_odb}, obj)
+    check(local_odb, obj)
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)

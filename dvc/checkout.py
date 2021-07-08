@@ -25,7 +25,7 @@ def _changed(path_info, fs, obj, cache, state=None):
     logger.trace("checking if '%s'('%s') has changed.", path_info, obj)
 
     try:
-        check({cache}, obj)
+        check(cache, obj)
     except (FileNotFoundError, ObjectFormatError):
         logger.debug(
             "cache for '%s'('%s') has changed.", path_info, obj.hash_info
@@ -64,7 +64,7 @@ def _remove(path_info, fs, cache, force=False):
     current = stage(cache, path_info, fs, fs.PARAM_CHECKSUM).hash_info
     try:
         obj = load(cache, current)
-        check({cache}, obj)
+        check(cache, obj)
     except (FileNotFoundError, ObjectFormatError):
         msg = (
             f"file/directory '{path_info}' is going to be removed. "
