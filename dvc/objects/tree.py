@@ -153,30 +153,6 @@ class Tree(HashFile):
         tree.digest()
         return tree
 
-    def insert(self, prefix: Tuple[str], obj: HashFile) -> HashFile:
-        """Return a copy of tree this tree with obj inserted at prefix.
-
-        Any items which previously existed at prefix will be replaced.
-
-        If other is a Tree, the entire contents of the tree will be inserted
-        at prefix.
-        """
-        import copy
-
-        tree = copy.deepcopy(self)
-        try:
-            key = posixpath.sep.join(prefix)
-            del tree.trie[key:]  # type: ignore[misc]
-        except KeyError:
-            pass
-        if isinstance(obj, Tree):
-            for subkey, entry in obj:
-                tree.add(prefix + subkey, entry)
-        else:
-            tree.add(prefix, obj)
-        tree.digest()
-        return tree
-
 
 def _get_dir_size(odb, tree):
     try:
