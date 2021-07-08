@@ -49,6 +49,7 @@ def gc(
 
     from contextlib import ExitStack
 
+    from dvc.objects.stage import get_staging
     from dvc.repo import Repo
 
     if not repos:
@@ -83,6 +84,7 @@ def gc(
         )
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
+        get_staging(odb).gc(set(), jobs=jobs)
 
     if not cloud:
         return
