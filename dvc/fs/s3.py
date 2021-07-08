@@ -188,7 +188,7 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
             "s3",
             endpoint_url=client_kwargs.get("endpoint_url"),
             use_ssl=login_info["use_ssl"],
-            verify=client_kwargs.get("verify")
+            verify=client_kwargs.get("verify"),
         )
 
     def _get_obj(self, path_info):
