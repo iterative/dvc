@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Optional
 
 from dvc.objects.errors import ObjectFormatError, ObjectPermissionError
 from dvc.objects.file import HashFile
-from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
@@ -67,7 +66,7 @@ class ObjectDB:
     def makedirs(self, path_info):
         self.fs.makedirs(path_info)
 
-    def get(self, hash_info):
+    def get(self, hash_info: "HashInfo"):
         """get raw object"""
         return HashFile(
             # Prefer string path over PathInfo when possible due to performance
@@ -362,6 +361,8 @@ class ObjectDB:
         pass
 
     def gc(self, used, jobs=None):
+        from ..tree import Tree
+
         if self.read_only:
             raise ObjectPermissionError("Cannot gc read-only ODB")
         used_hashes = set()
