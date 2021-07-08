@@ -1,16 +1,13 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import Optional, Tuple
 
 from funcy import cached_property
 
-from .errors import ObjectError, ObjectFormatError
+from .errors import ObjectFormatError
 from .file import HashFile
 from .stage import get_file_hash
-
-if TYPE_CHECKING:
-    from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -120,17 +117,12 @@ class Tree(HashFile):
 
         return tree
 
-    def filter(
-        self, odb: "ObjectDB", prefix: Tuple[str], digest: bool = True
-    ) -> Optional["Tree"]:
+    def filter(self, prefix: Tuple[str]) -> Optional["Tree"]:
         """Return a filtered copy of this tree that only contains entries
         inside prefix.
 
-        If digest is True, digest will be computed for the filtered tree,
-        and it will be staged in the odb.
-
-        If digest is False the returned tree will contain the original tree's
-        hash_info and path_info and odb will not be modified.
+        The returned tree will contain the original tree's hash_info and
+        path_info.
 
         Returns an empty tree if no object exists at the specified prefix.
         """
@@ -140,16 +132,10 @@ class Tree(HashFile):
                 tree.add(key, obj)
         except KeyError:
             pass
-
-        if digest:
-            tree.stage(odb)
         return tree
 
-    def get(self, odb: "ObjectDB", prefix: Tuple[str]) -> Optional[HashFile]:
+    def get(self, prefix: Tuple[str]) -> Optional[HashFile]:
         """Return object at the specified prefix in this tree.
-
-        If the returned object is a tree and stage is True, the resulting
-        tree will be staged in odb.
 
         Returns None if no object exists at the specified prefix.
         """
@@ -164,21 +150,16 @@ class Tree(HashFile):
                 tree.add(key[depth:], obj)
         except KeyError:
             return None
-
-        tree.stage(odb)
+        tree.digest()
         return tree
 
-    def insert(
-        self, odb: "ObjectDB", prefix: Tuple[str], obj: HashFile
-    ) -> HashFile:
+    def insert(self, prefix: Tuple[str], obj: HashFile) -> HashFile:
         """Return a copy of tree this tree with obj inserted at prefix.
 
         Any items which previously existed at prefix will be replaced.
 
         If other is a Tree, the entire contents of the tree will be inserted
         at prefix.
-
-        The resulting tree will be staged in odb.
         """
         import copy
 
@@ -193,27 +174,8 @@ class Tree(HashFile):
                 tree.add(prefix + subkey, entry)
         else:
             tree.add(prefix, obj)
-        tree.stage(odb)
+        tree.digest()
         return tree
-
-    def stage(self, odb: "ObjectDB"):
-        from . import load
-
-        self.digest()
-        assert self.path_info and self.fs and self.hash_info
-
-        try:
-            odb.check(self.hash_info, check_hash=False)
-        except (ObjectError, FileNotFoundError):
-            odb.add(self.path_info, self.fs, self.hash_info)
-        staged = load(odb, self.hash_info)
-
-        # cleanup the digest() generated temporary memfs path and use the
-        # staged path instead
-        if self.fs != staged.fs:
-            self.fs.remove(self.path_info)
-            self.fs = staged.fs
-        self.path_info = staged.path_info
 
 
 def _get_dir_size(odb, tree):
