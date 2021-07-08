@@ -243,7 +243,6 @@ def _stage_external_tree_info(odb, tree, name):
     odb.add(tree.path_info, tree.fs, tree.hash_info)
     raw = odb.get(tree.hash_info)
     hash_info = get_file_hash(raw.path_info, raw.fs, name, state=odb.state)
-    tree.fs.remove(tree.path_info)
     tree.path_info = raw.path_info
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name
@@ -276,11 +275,14 @@ def stage(
             path_info, fs, name, odb=odb, upload=upload, **kwargs
         )
         if name == "md5":
-            staging.add(obj.path_info, obj.fs, obj.hash_info)
-            raw = staging.get(obj.hash_info)
+            if odb and odb.exists(obj.hash_info):
+                raw = odb.get(obj.hash_info)
+            else:
+                staging.add(obj.path_info, obj.fs, obj.hash_info)
+                raw = staging.get(obj.hash_info)
             # cleanup unneeded memfs tmpfile and return obj based on staging
             # ODB fs/path
-            if obj.fs != staging.fs:
+            if obj.fs != raw.fs:
                 obj.fs.remove(obj.path_info)
             obj.fs = raw.fs
             obj.path_info = raw.path_info
