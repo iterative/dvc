@@ -78,7 +78,7 @@ install_requires = [
     "pydot>=1.2.4",
     "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
     "dataclasses==0.7; python_version < '3.7'",
-    "importlib-metadata==1.4; python_version < '3.8'",
+    "importlib-metadata>=1.4; python_version < '3.8'",
     "flatten_dict>=0.3.0,<1",
     "tabulate>=0.8.7",
     "pygtrie>=2.3.2",
