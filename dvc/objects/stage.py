@@ -171,7 +171,9 @@ def _get_tree_obj(path_info, fs, name, odb=None, **kwargs):
     return tree
 
 
-def get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
+def get_staging(
+    odb: Optional["ObjectDB"] = None, name: Optional[str] = None
+) -> "ObjectDB":
     """Return an ODB that can be used for staging objects.
 
     If odb is None, the global (temporary) memfs ODB will be returned.
@@ -187,7 +189,8 @@ def get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
 
     from .db import get_odb
 
-    if odb and odb.path_info:
+    name = name or "md5"
+    if odb and odb.path_info and name == "md5":
         fs = odb.fs
         if isinstance(odb.path_info, str):
             path_info = odb.fs.PATH_CLS(odb.path_info) / _STAGING_DIR
@@ -240,6 +243,7 @@ def _stage_external_tree_info(odb, tree, name):
     odb.add(tree.path_info, tree.fs, tree.hash_info)
     raw = odb.get(tree.hash_info)
     hash_info = get_file_hash(raw.path_info, raw.fs, name, state=odb.state)
+    tree.fs.remove(tree.path_info)
     tree.path_info = raw.path_info
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name
@@ -260,7 +264,7 @@ def stage(
     assert path_info and path_info.scheme == fs.scheme
 
     details = fs.info(path_info)
-    staging = get_staging(odb)
+    staging = get_staging(odb, name=name)
     if odb:
         try:
             return _load_from_state(odb, staging, path_info, fs, name)
@@ -281,7 +285,7 @@ def stage(
             obj.fs = raw.fs
             obj.path_info = raw.path_info
         else:
-            obj = _stage_external_tree_info(staging, obj, name)
+            obj = _stage_external_tree_info(odb, obj, name)
     else:
         _, obj = _get_file_obj(path_info, fs, name, odb=odb, upload=upload)
 
