@@ -188,7 +188,6 @@ def test_default_cache_type(dvc):
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize("group", [False, True])
 def test_shared_cache(tmp_dir, dvc, group):
-    from dvc.objects.stage import _STAGING_DIR
     from dvc.utils.fs import umask
 
     if group:
@@ -205,10 +204,6 @@ def test_shared_cache(tmp_dir, dvc, group):
 
     actual = {}
     for root, dnames, fnames in os.walk(cache_dir):
-        try:
-            dnames.remove(_STAGING_DIR)
-        except ValueError:
-            pass
         for name in dnames + fnames:
             path = os.path.join(root, name)
             actual[path] = oct(stat.S_IMODE(os.stat(path).st_mode))

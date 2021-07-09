@@ -171,32 +171,22 @@ def _get_tree_obj(path_info, fs, name, odb=None, **kwargs):
     return tree
 
 
-def get_staging(
-    odb: Optional["ObjectDB"] = None, name: Optional[str] = None
-) -> "ObjectDB":
+def get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
     """Return an ODB that can be used for staging objects.
 
-    If odb is None, the global (temporary) memfs ODB will be returned.
-    Otherwise, the returned ODB will store persistent objects in
-    `<odb.path_info>/staging`, so that staged objects are stored
-    on the same logical filesystem as the original ODB and can be
-    moved rather than copied if/when the object is saved to `odb`.
+    If odb.fs is local, .dvc/tmp/staging will be returned. Otherwise
+    the the global (temporary) memfs ODB will be returned.
     """
 
     from dvc.fs.memory import MemoryFileSystem
-    from dvc.path_info import CloudURLInfo
+    from dvc.path_info import CloudURLInfo, PathInfo
     from dvc.scheme import Schemes
 
     from .db import get_odb
 
-    name = name or "md5"
-    if odb and odb.path_info and name == "md5":
+    if odb and odb.fs.scheme == Schemes.LOCAL and odb.tmp_dir:
         fs = odb.fs
-        if isinstance(odb.path_info, str):
-            path_info = odb.fs.PATH_CLS(odb.path_info) / _STAGING_DIR
-        else:
-            path_info = odb.path_info
-        path_info /= _STAGING_DIR
+        path_info: "DvcPath" = PathInfo(odb.tmp_dir) / _STAGING_DIR
         config = odb.config
     else:
         fs = MemoryFileSystem()
@@ -263,7 +253,7 @@ def stage(
     assert path_info and path_info.scheme == fs.scheme
 
     details = fs.info(path_info)
-    staging = get_staging(odb, name=name)
+    staging = get_staging(odb)
     if odb:
         try:
             return _load_from_state(odb, staging, path_info, fs, name)

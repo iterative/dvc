@@ -26,6 +26,7 @@ def _get_odb(repo, settings):
         return None
 
     cls, config, path_info = get_cloud_fs(repo, **settings)
+    config["tmp_dir"] = repo.tmp_dir
     return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 

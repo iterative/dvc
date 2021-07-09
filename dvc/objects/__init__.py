@@ -43,7 +43,7 @@ def save(
                 future.result()
 
             # if dir cache for this tree has already been staged, move the
-            # staged object rather than uploading/copying a new object
+            # staged object when possible
             staging = get_staging(odb)
             if staging.exists(obj.hash_info):
                 obj = staging.get(obj.hash_info)
