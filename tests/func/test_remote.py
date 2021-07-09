@@ -155,6 +155,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tree = Tree.from_list(
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
+    tree.digest()
     with patch("dvc.objects.stage._get_tree_obj", return_value=tree):
         hash1 = stage(
             dvc.odb.local, path_info, dvc.odb.local.fs, "md5"
@@ -163,6 +164,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     tree = Tree.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
+    tree.digest()
     with patch("dvc.objects.stage._get_tree_obj", return_value=tree):
         hash2 = stage(
             dvc.odb.local, path_info, dvc.odb.local.fs, "md5"

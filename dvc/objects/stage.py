@@ -1,12 +1,24 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
-from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
 from dvc.utils import file_md5
+
+from .file import HashFile
+
+if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.types import DvcPath
+
+    from .db.base import ObjectDB
+
+
+_STAGING_DIR = "staging"
+_STAGING_MEMFS_PATH = f"dvc-{_STAGING_DIR}"
 
 
 def _upload_file(path_info, fs, odb):
@@ -59,11 +71,12 @@ def get_file_hash(path_info, fs, name, state=None):
     return hash_info
 
 
-def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
+def _get_file_obj(path_info, fs, name, odb=None, upload=False):
     if upload:
         assert odb and name == "md5"
         return _upload_file(path_info, fs, odb)
 
+    state = odb.state if odb else None
     obj = HashFile(
         path_info, fs, get_file_hash(path_info, fs, name, state=state)
     )
@@ -71,7 +84,13 @@ def _get_file_obj(path_info, fs, name, odb=None, state=None, upload=False):
 
 
 def _build_objects(
-    path_info, fs, name, odb, state, upload, dvcignore=None, **kwargs
+    path_info,
+    fs,
+    name,
+    odb=None,
+    upload=False,
+    dvcignore=None,
+    **kwargs,
 ):
     if dvcignore:
         walk_iterator = dvcignore.walk_files(fs, path_info)
@@ -88,7 +107,6 @@ def _build_objects(
                 fs=fs,
                 name=name,
                 odb=odb,
-                state=state,
                 upload=upload,
             )
         )
@@ -98,7 +116,7 @@ def _build_objects(
             yield from executor.map(worker, walk_iterator)
 
 
-def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):
+def _iter_objects(path_info, fs, name, upload=False, **kwargs):
     if not upload and name in fs.DETAIL_FIELDS:
         for details in fs.find(path_info, detail=True):
             file_info = path_info.replace(path=details["name"])
@@ -107,18 +125,14 @@ def _iter_objects(path_info, fs, name, odb, state, upload, **kwargs):
 
         return None
 
-    yield from _build_objects(
-        path_info, fs, name, odb, state, upload, **kwargs
-    )
+    yield from _build_objects(path_info, fs, name, upload=upload, **kwargs)
 
 
-def _build_tree(path_info, fs, name, odb, state, upload, **kwargs):
+def _build_tree(path_info, fs, name, **kwargs):
     from .tree import Tree
 
     tree = Tree(None, None, None)
-    for file_info, obj in _iter_objects(
-        path_info, fs, name, odb, state, upload, **kwargs
-    ):
+    for file_info, obj in _iter_objects(path_info, fs, name, **kwargs):
         if DvcIgnore.DVCIGNORE_FILE == file_info.name:
             raise DvcIgnoreInCollectedDirError(file_info.parent)
 
@@ -131,85 +145,143 @@ def _build_tree(path_info, fs, name, odb, state, upload, **kwargs):
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
         tree.add(file_info.relative_to(path_info).parts, obj)
-
     tree.digest()
-
     return tree
 
 
-def _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs):
+def _get_tree_obj(path_info, fs, name, odb=None, **kwargs):
     from .tree import Tree
 
     value = fs.info(path_info).get(name)
-    if value:
+    if odb and value:
         hash_info = HashInfo(name, value)
         try:
-            return Tree.load(odb, hash_info)
+            tree = Tree.load(odb, hash_info)
+            # NOTE: loaded entries are naive objects with hash_infos but no
+            # path_info. For staging trees, obj.path_info should be relative
+            # to the staging src `path_info` and src fs
+            for key, entry in tree:
+                entry.fs = fs
+                entry.path_info = path_info.joinpath(*key)
+            return tree
         except FileNotFoundError:
             pass
 
-    tree = _build_tree(path_info, fs, name, odb, state, upload, **kwargs)
-
-    odb.add(tree.path_info, tree.fs, tree.hash_info)
-    if name != "md5":
-        # NOTE: used only for external outputs. Initial reasoning was to be
-        # able to validate .dir files right in the workspace (e.g. check s3
-        # etag), but could be dropped for manual validation with regular md5,
-        # that would be universal for all clouds.
-        raw = odb.get(tree.hash_info)
-        hash_info = get_file_hash(raw.path_info, raw.fs, name, state)
-        tree.hash_info.name = hash_info.name
-        tree.hash_info.value = hash_info.value
-        if not tree.hash_info.value.endswith(".dir"):
-            tree.hash_info.value += ".dir"
-        odb.add(tree.path_info, tree.fs, tree.hash_info)
-
+    tree = _build_tree(path_info, fs, name, odb=odb, **kwargs)
     return tree
 
 
-def stage(odb, path_info, fs, name, upload=False, **kwargs):
-    assert path_info and (
-        isinstance(path_info, str) or path_info.scheme == fs.scheme
-    )
+def get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
+    """Return an ODB that can be used for staging objects.
+
+    If odb.fs is local, .dvc/tmp/staging will be returned. Otherwise
+    the the global (temporary) memfs ODB will be returned.
+    """
+
+    from dvc.fs.memory import MemoryFileSystem
+    from dvc.path_info import CloudURLInfo, PathInfo
+    from dvc.scheme import Schemes
+
+    from .db import get_odb
+
+    if odb and odb.fs.scheme == Schemes.LOCAL and odb.tmp_dir:
+        fs = odb.fs
+        path_info: "DvcPath" = PathInfo(odb.tmp_dir) / _STAGING_DIR
+        config = odb.config
+    else:
+        fs = MemoryFileSystem()
+        path_info = CloudURLInfo(f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}")
+        config = {}
+    return get_odb(fs, path_info, **config)
+
+
+def _load_from_state(odb, staging, path_info, fs, name):
+    from . import load
+    from .errors import ObjectFormatError
+    from .tree import Tree
+
+    state = odb.state
+    hash_info = state.get(path_info, fs)
+    if hash_info:
+        for odb_ in (odb, staging):
+            if odb_.exists(hash_info):
+                try:
+                    obj = load(odb_, hash_info)
+                    if isinstance(obj, Tree):
+                        obj.hash_info.nfiles = len(obj)
+                        for key, entry in obj:
+                            entry.fs = fs
+                            entry.path_info = path_info.joinpath(*key)
+                    else:
+                        obj.fs = fs
+                        obj.path_info = path_info
+                    assert obj.hash_info.name == name
+                    obj.hash_info.size = hash_info.size
+                    return obj
+                except ObjectFormatError:
+                    pass
+    raise FileNotFoundError
+
+
+def _stage_external_tree_info(odb, tree, name):
+    # NOTE: used only for external outputs. Initial reasoning was to be
+    # able to validate .dir files right in the workspace (e.g. check s3
+    # etag), but could be dropped for manual validation with regular md5,
+    # that would be universal for all clouds.
+    assert odb and name != "md5"
+
+    odb.add(tree.path_info, tree.fs, tree.hash_info)
+    raw = odb.get(tree.hash_info)
+    hash_info = get_file_hash(raw.path_info, raw.fs, name, state=odb.state)
+    tree.path_info = raw.path_info
+    tree.fs = raw.fs
+    tree.hash_info.name = hash_info.name
+    tree.hash_info.value = hash_info.value
+    if not tree.hash_info.value.endswith(".dir"):
+        tree.hash_info.value += ".dir"
+    return tree
+
+
+def stage(
+    odb: Optional["ObjectDB"],
+    path_info: "DvcPath",
+    fs: "BaseFileSystem",
+    name: str,
+    upload: bool = False,
+    **kwargs,
+) -> "HashFile":
+    assert path_info and path_info.scheme == fs.scheme
 
     details = fs.info(path_info)
-    state = odb.state
-    # pylint: disable=assignment-from-none
-    hash_info = state.get(path_info, fs)
-
-    # If we have dir hash in state db, but dir cache file is lost,
-    # then we need to recollect the dir via .get_dir_hash() call below,
-    # see https://github.com/iterative/dvc/issues/2219 for context
-    if (
-        hash_info
-        and hash_info.isdir
-        and not odb.fs.exists(odb.hash_to_path_info(hash_info.value))
-    ):
-        hash_info = None
-
-    if hash_info:
-        from . import load
-        from .tree import Tree
-
-        obj = load(odb, hash_info)
-        if isinstance(obj, Tree):
-            obj.hash_info.nfiles = len(obj)
-            for key, entry in obj:
-                entry.fs = fs
-                entry.path_info = path_info.joinpath(*key)
-        else:
-            obj.fs = fs
-            obj.path_info = path_info
-        assert obj.hash_info.name == name
-        obj.hash_info.size = hash_info.size
-        return obj
+    staging = get_staging(odb)
+    if odb:
+        try:
+            return _load_from_state(odb, staging, path_info, fs, name)
+        except FileNotFoundError:
+            pass
 
     if details["type"] == "directory":
-        obj = _get_tree_obj(path_info, fs, name, odb, state, upload, **kwargs)
+        obj = _get_tree_obj(
+            path_info, fs, name, odb=odb, upload=upload, **kwargs
+        )
+        if name == "md5":
+            if odb and odb.exists(obj.hash_info):
+                raw = odb.get(obj.hash_info)
+            else:
+                staging.add(obj.path_info, obj.fs, obj.hash_info)
+                raw = staging.get(obj.hash_info)
+            # cleanup unneeded memfs tmpfile and return obj based on staging
+            # ODB fs/path
+            if obj.fs != raw.fs:
+                obj.fs.remove(obj.path_info)
+            obj.fs = raw.fs
+            obj.path_info = raw.path_info
+        else:
+            obj = _stage_external_tree_info(odb, obj, name)
     else:
-        _, obj = _get_file_obj(path_info, fs, name, odb, state, upload)
+        _, obj = _get_file_obj(path_info, fs, name, odb=odb, upload=upload)
 
-    if obj.hash_info:
-        state.save(path_info, fs, obj.hash_info)
+    if odb and odb.state and obj.hash_info:
+        odb.state.save(path_info, fs, obj.hash_info)
 
     return obj

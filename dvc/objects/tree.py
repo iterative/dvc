@@ -1,16 +1,13 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import Optional, Tuple
 
 from funcy import cached_property
 
 from .errors import ObjectFormatError
 from .file import HashFile
 from .stage import get_file_hash
-
-if TYPE_CHECKING:
-    from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +31,11 @@ class Tree(HashFile):
 
     def digest(self):
         from dvc.fs.memory import MemoryFileSystem
-        from dvc.path_info import PathInfo
+        from dvc.path_info import CloudURLInfo
         from dvc.utils import tmp_fname
 
         memfs = MemoryFileSystem()
-        path_info = PathInfo(tmp_fname(""))
+        path_info = CloudURLInfo("memory://{}".format(tmp_fname("")))
         with memfs.open(path_info, "wb") as fobj:
             fobj.write(self.as_bytes())
         self.fs = memfs
@@ -96,7 +93,6 @@ class Tree(HashFile):
 
     @classmethod
     def load(cls, odb, hash_info):
-
         obj = odb.get(hash_info)
 
         try:
@@ -121,39 +117,40 @@ class Tree(HashFile):
 
         return tree
 
-    def filter(
-        self, odb: "ObjectDB", prefix: Tuple[str], copy: bool = False
-    ) -> Optional[HashFile]:
-        """Return filter object(s) for this tree.
+    def filter(self, prefix: Tuple[str]) -> Optional["Tree"]:
+        """Return a filtered copy of this tree that only contains entries
+        inside prefix.
 
-        If copy is True, returned object will be a Tree containing
-        filtered entries, but with hash_info copied from the original tree.
+        The returned tree will contain the original tree's hash_info and
+        path_info.
 
-        If copy is False, returned object will be a raw HashFile or Tree with
-        newly computed hash_info for the filtered object.
+        Returns an empty tree if no object exists at the specified prefix.
+        """
+        tree = Tree(self.path_info, self.fs, self.hash_info)
+        try:
+            for key, obj in self.trie.items(prefix):
+                tree.add(key, obj)
+        except KeyError:
+            pass
+        return tree
+
+    def get(self, prefix: Tuple[str]) -> Optional[HashFile]:
+        """Return object at the specified prefix in this tree.
+
+        Returns None if no object exists at the specified prefix.
         """
         obj = self._dict.get(prefix)
         if obj:
-            if copy:
-                tree = Tree(self.path_info, self.fs, self.hash_info)
-                tree.add(prefix, obj)
-                return tree
             return obj
 
-        if copy:
-            tree = Tree(self.path_info, self.fs, self.hash_info)
-            depth = 0
-        else:
-            tree = Tree(None, None, None)
-            depth = len(prefix)
+        tree = Tree(None, None, None)
+        depth = len(prefix)
         try:
             for key, obj in self.trie.items(prefix):
                 tree.add(key[depth:], obj)
         except KeyError:
             return None
-        if not copy:
-            tree.digest()
-            odb.add(tree.path_info, tree.fs, tree.hash_info)
+        tree.digest()
         return tree
 
 

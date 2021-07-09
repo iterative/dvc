@@ -36,7 +36,7 @@ def fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
-    from dvc.objects.db.git import GitObjectDB
+    from dvc.fs.memory import MemoryFileSystem
 
     if isinstance(targets, str):
         targets = [targets]
@@ -76,7 +76,7 @@ def fetch(
             )
             downloaded += d
             failed += f
-        elif isinstance(odb, GitObjectDB):
+        elif isinstance(odb.fs, MemoryFileSystem):
             # objs contains staged import objects which should be saved
             # last (after all other objects have been pulled)
             external.update(objs)

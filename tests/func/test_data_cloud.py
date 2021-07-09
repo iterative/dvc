@@ -340,7 +340,7 @@ def test_pull_git_imports(tmp_dir, dvc, scm, erepo):
     os.makedirs(dvc.odb.local.cache_dir, exist_ok=True)
     clean_repos()
 
-    assert dvc.pull(force=True)["fetched"] == 2
+    assert dvc.pull(force=True)["fetched"] == 3
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"

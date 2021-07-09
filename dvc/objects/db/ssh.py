@@ -79,7 +79,7 @@ class SSHObjectDB(ObjectDB):
         else:
             root = self.path_info.path
         with self.fs.ssh() as ssh:
-            if prefix and not ssh.exists(root):
+            if not ssh.exists(root):
                 return
             # If we simply return an iterator then with above closes instantly
             if progress_callback:

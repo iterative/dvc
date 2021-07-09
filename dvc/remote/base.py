@@ -165,8 +165,6 @@ class Remote:
         md5s = set()
         dir_objs = {}
         for obj in objs:
-            if obj.fs.scheme != cache.fs.scheme:
-                continue
             md5s.add(obj.hash_info.value)
             if isinstance(obj, Tree):
                 dir_objs[obj.hash_info.value] = obj
@@ -197,7 +195,6 @@ class Remote:
                     )
                 )
         return self._make_status(
-            cache,
             objs,
             show_checksums,
             local_exists,
@@ -207,7 +204,6 @@ class Remote:
 
     def _make_status(
         self,
-        cache,
         objs,
         show_checksums,
         local_exists,
@@ -225,8 +221,6 @@ class Remote:
         file_status = {}
         dir_contents = {}
         for obj in objs:
-            if obj.fs.scheme != cache.fs.scheme:
-                continue
 
             hash_ = obj.hash_info.value
             if isinstance(obj, Tree):
@@ -501,8 +495,6 @@ class Remote:
 
         if self.fs.scheme == "local":
             for obj in objs:
-                if obj.fs.scheme != "local":
-                    continue
                 checksum = obj.hash_info.value
                 cache_file = self.odb.hash_to_path_info(checksum)
                 if self.fs.exists(cache_file):
@@ -537,8 +529,6 @@ class Remote:
                     cache.protect(cache_file)
 
             for obj in objs:
-                if obj.fs.scheme != "local":
-                    continue
                 save_state(obj)
                 if isinstance(obj, Tree):
                     for _, entry_obj in obj:
