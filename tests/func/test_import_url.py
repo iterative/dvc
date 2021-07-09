@@ -274,6 +274,7 @@ def test_import_url_to_remote_single_file(
     url = "remote://workspace/foo"
     stage = dvc.imp_url(url, to_remote=True)
 
+    assert stage.deps[0].hash_info.value is not None
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
 
