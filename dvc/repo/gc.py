@@ -84,7 +84,7 @@ def gc(
         )
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
-        get_staging(odb).gc(set(), jobs=jobs)
+    get_staging(self.odb.local).gc(set(), jobs=jobs)
 
     if not cloud:
         return

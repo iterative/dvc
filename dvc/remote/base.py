@@ -105,10 +105,7 @@ class Remote:
 
     @index_locked
     def gc(self, *args, **kwargs):
-        from dvc.objects.stage import get_staging
-
         removed = self.odb.gc(*args, **kwargs)
-        get_staging(self.odb).gc(set(), **kwargs)
 
         if removed:
             self.index.clear()
