@@ -167,10 +167,10 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        (out,) = meta.outs
-        assert len(meta.outs) == 1
-        if fs.exists(out.path_info):
-            return False
+        for out in meta.outs:
+            if fs.exists(out.path_info):
+                return False
+
         return True
 
     def isdir(self, path):  # pylint: disable=arguments-differ
@@ -194,10 +194,10 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        (out,) = meta.outs
-        assert len(meta.outs) == 1
-        if fs.exists(out.path_info):
-            return False
+        for out in meta.outs:
+            if fs.exists(out.path_info):
+                return False
+
         return meta.isdir
 
     def isdvc(self, path, **kwargs):
