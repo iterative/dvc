@@ -42,7 +42,6 @@ class OSSFileSystem(ObjectFSWrapper):
         return _OSSFileSystem(**self.fs_args)
 
     def remove(self, path_info):
-        logger.debug(f"Removing oss://{path_info}")
         self.fs.rm_file(self._with_bucket(path_info))
 
     def _upload_fobj(self, fobj, to_info, size=None):
