@@ -134,6 +134,10 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         self.drop(*(set(self._keys) - set(col_names)))
         self._keys = list(col_names)
 
+    def is_empty(self, col_name: str) -> bool:
+        col = self.column(col_name)
+        return not any(item != self._fill_value for item in col)
+
     def to_csv(self) -> str:
         import csv
         from io import StringIO

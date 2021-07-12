@@ -7,7 +7,9 @@ from funcy import first
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
-from dvc.repo.experiments.base import ExpRefInfo
+from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
+from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo
+from dvc.utils.fs import makedirs
 from dvc.utils.serialize import dump_yaml
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
@@ -18,6 +20,8 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
             "metrics": {"metrics.yaml": {"foo": 1}},
             "params": {"params.yaml": {"foo": 1}},
             "queued": False,
+            "running": False,
+            "executor": None,
             "timestamp": None,
         }
     }
@@ -39,6 +43,8 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
         "metrics": {"metrics.yaml": {"foo": 1}},
         "params": {"params.yaml": {"foo": 1}},
         "queued": False,
+        "running": False,
+        "executor": None,
         "timestamp": timestamp,
         "name": "master",
     }
@@ -56,8 +62,6 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
 
 
 def test_show_queued(tmp_dir, scm, dvc, exp_stage):
-    from dvc.repo.experiments.base import EXPS_STASH
-
     baseline_rev = scm.get_rev()
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
@@ -346,3 +350,87 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
     assert (
         main(["exp", "show", "--no-pager", "--sort-by=metrics.yaml:foo"]) == 0
     )
+
+
+def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
+    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
+    makedirs(pid_dir, True)
+    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
+    pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
+    dump_yaml(pidfile, info.to_dict())
+
+    assert dvc.experiments.show()["workspace"] == {
+        "baseline": {
+            "metrics": {"metrics.yaml": {"foo": 1}},
+            "params": {"params.yaml": {"foo": 1}},
+            "queued": False,
+            "running": True,
+            "executor": info.location,
+            "timestamp": None,
+        }
+    }
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--no-pager"]) == 0
+    cap = capsys.readouterr()
+    assert "Running" in cap.out
+    assert info.location in cap.out
+
+
+def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
+    baseline_rev = scm.get_rev()
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
+
+    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
+    makedirs(pid_dir, True)
+    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
+    pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
+    dump_yaml(pidfile, info.to_dict())
+
+    results = dvc.experiments.show()
+    assert not results[baseline_rev][exp_rev]["queued"]
+    assert results[baseline_rev][exp_rev]["running"]
+    assert results[baseline_rev][exp_rev]["executor"] == info.location
+    assert not results["workspace"]["baseline"]["running"]
+
+
+@pytest.mark.parametrize("workspace", [True, False])
+def test_show_running_checkpoint(
+    tmp_dir, scm, dvc, checkpoint_stage, workspace, mocker
+):
+    from dvc.repo.experiments.base import EXEC_BRANCH
+    from dvc.repo.experiments.executor.local import TempDirExecutor
+    from dvc.repo.experiments.utils import exp_refs_by_rev
+
+    baseline_rev = scm.get_rev()
+    dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"], queue=True
+    )
+    stash_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
+
+    run_results = dvc.experiments.run(run_all=True)
+    checkpoint_rev = first(run_results)
+    exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
+
+    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
+    makedirs(pid_dir, True)
+    executor = (
+        BaseExecutor.DEFAULT_LOCATION
+        if workspace
+        else TempDirExecutor.DEFAULT_LOCATION
+    )
+    info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
+    rev = "workspace" if workspace else stash_rev
+    pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
+    dump_yaml(pidfile, info.to_dict())
+
+    mocker.patch.object(
+        BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]
+    )
+    if workspace:
+        scm.set_ref(EXEC_BRANCH, str(exp_ref), symbolic=True)
+    results = dvc.experiments.show()
+    assert results[baseline_rev][checkpoint_rev]["running"]
+    assert results[baseline_rev][checkpoint_rev]["executor"] == info.location
+    assert not results["workspace"]["baseline"]["running"]
