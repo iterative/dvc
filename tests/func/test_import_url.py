@@ -274,6 +274,7 @@ def test_import_url_to_remote_single_file(
     url = "remote://workspace/foo"
     stage = dvc.imp_url(url, to_remote=True)
 
+    assert stage.deps[0].hash_info.value is not None
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
 
@@ -400,3 +401,18 @@ def test_import_url_empty_directory(tmp_dir, dvc, workspace):
     empty_dir = tmp_dir / "empty_dir"
     assert empty_dir.is_dir()
     assert tuple(empty_dir.iterdir()) == ()
+
+
+def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
+    local_cloud.gen("foo", "foo")
+
+    stage = dvc.imp_url(str(local_cloud / "foo"), to_remote=True)
+    assert stage.md5 is not None
+
+    status = dvc.status()
+    assert status["foo.dvc"] == [{"changed outs": {"foo": "not in cache"}}]
+
+    dvc.pull()
+
+    status = dvc.status()
+    assert len(status) == 0
