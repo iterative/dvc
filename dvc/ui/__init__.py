@@ -61,6 +61,8 @@ class Console:
         style: str = None,
         sep: str = None,
         end: str = None,
+        styled: bool = True,
+        force: bool = True,
     ) -> None:
         return self.write(
             *objects,
@@ -68,6 +70,8 @@ class Console:
             sep=sep,
             end=end,
             stderr=True,
+            force=force,
+            styled=styled,
         )
 
     def write(

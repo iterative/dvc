@@ -43,7 +43,14 @@ def check_recursive_and_fname(args):
 
 
 def transform_targets(args):
-    args.targets = ensure_list(args.targets)
+    from funcy import count_reps
+
+    counts = count_reps(ensure_list(args.targets))
+    dupes = [key for key, count in counts.items() if count > 1]
+    if dupes:
+        msg = ", ".join(f"[b]{key}[/]" for key in dupes)
+        ui.error_write(f"ignoring duplicated targets: {msg}", styled=True)
+    args.targets = list(counts)
 
 
 def check_arg_combinations(args):

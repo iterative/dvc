@@ -1229,3 +1229,12 @@ def test_add_does_not_remove_stage_file_on_failure(
     assert str(exc_info.value) == exc_msg
     assert (tmp_dir / "foo.dvc").exists()
     assert (tmp_dir / stage.path).read_text() == dvcfile_contents
+
+
+def test_add_ignore_duplicated_targets(tmp_dir, dvc, capsys):
+    tmp_dir.gen({"foo": "foo", "bar": "bar", "foobar": "foobar"})
+    stages = dvc.add(["foo", "bar", "foobar", "bar", "foo"])
+
+    _, err = capsys.readouterr()
+    assert len(stages) == 3
+    assert "ignoring duplicated targets: foo, bar" in err
