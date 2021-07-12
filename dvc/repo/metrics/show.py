@@ -77,7 +77,6 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
     res = {}
     for metric in metrics:
-        # TODO do we need that?
         if not fs.isfile(metric):
             continue
 
