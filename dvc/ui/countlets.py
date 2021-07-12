@@ -332,5 +332,5 @@ if __name__ == "__main__":
     )
     with c:
         for _ in c.track(fake_iter(10, 1000)):
-            for _ in fake_iter(0.05, 10):
-                c.update("sizes", n=size / 10000)
+            for _ in range(10):
+                c.update("sizes", n=size / 10_000)
