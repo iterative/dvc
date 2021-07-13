@@ -16,7 +16,6 @@ def fetch(
     jobs=None,
     remote=None,
     all_branches=False,
-    show_checksums=False,
     with_deps=False,
     all_tags=False,
     recursive=False,
@@ -65,28 +64,17 @@ def fetch(
 
     external = set()
     for odb, objs in used.items():
-        if odb is None:
-            # objs contains naive objects to be pulled from specified remote
-            d, f = _fetch_naive_objs(
+        if odb and isinstance(odb.fs, MemoryFileSystem):
+            # objs contains staged git imports which should be saved
+            # last (after all other objects have been pulled)
+            external.update(objs)
+        else:
+            d, f = _fetch(
                 self,
                 objs,
                 jobs=jobs,
                 remote=remote,
-                show_checksums=show_checksums,
-            )
-            downloaded += d
-            failed += f
-        elif isinstance(odb.fs, MemoryFileSystem):
-            # objs contains staged import objects which should be saved
-            # last (after all other objects have been pulled)
-            external.update(objs)
-        else:
-            d, f = fetch_from_odb(
-                self,
-                odb,
-                objs,
-                jobs=jobs,
-                show_checksums=show_checksums,
+                odb=odb,
             )
             downloaded += d
             failed += f
@@ -102,7 +90,7 @@ def fetch(
     return downloaded
 
 
-def _fetch_naive_objs(repo, objs, **kwargs):
+def _fetch(repo, objs, **kwargs):
     # objs contains naive objects to be pulled from specified remote
     downloaded = 0
     failed = 0
@@ -111,23 +99,6 @@ def _fetch_naive_objs(repo, objs, **kwargs):
     except NoRemoteError:
         if any(obj.fs.scheme == Schemes.LOCAL for obj in objs):
             raise
-    except DownloadError as exc:
-        failed += exc.amount
-    return downloaded, failed
-
-
-def fetch_from_odb(repo, odb, objs, **kwargs):
-    from dvc.remote.base import Remote
-
-    downloaded = 0
-    failed = 0
-    remote = Remote.from_odb(odb)
-    try:
-        downloaded += remote.pull(
-            repo.odb.local,
-            objs,
-            **kwargs,
-        )
     except DownloadError as exc:
         failed += exc.amount
     return downloaded, failed

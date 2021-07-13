@@ -40,6 +40,7 @@ def push(
 
     pushed = len(used_run_cache)
     for odb, objs in used.items():
-        if odb is None:
-            pushed += self.cloud.push(objs, jobs, remote=remote)
+        if odb and odb.read_only:
+            continue
+        pushed += self.cloud.push(objs, jobs, remote=remote, odb=odb)
     return pushed

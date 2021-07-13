@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Iterable, Optional
 if TYPE_CHECKING:
     from dvc.objects.db.base import ObjectDB
     from dvc.objects.file import HashFile
-    from dvc.remote.base import Remote
 
 logger = logging.getLogger(__name__)
 
@@ -24,39 +23,6 @@ class DataCloud:
 
     def __init__(self, repo):
         self.repo = repo
-
-    def get_remote(
-        self,
-        name: Optional[str] = None,
-        command: str = "<command>",
-    ) -> "Remote":
-        from dvc.config import NoRemoteError
-
-        if not name:
-            name = self.repo.config["core"].get("remote")
-
-        if name:
-            return self._init_remote(name)
-
-        if bool(self.repo.config["remote"]):
-            error_msg = (
-                "no remote specified. Setup default remote with\n"
-                "    dvc remote default <remote name>\n"
-                "or use:\n"
-                "    dvc {} -r <remote name>".format(command)
-            )
-        else:
-            error_msg = (
-                "no remote specified. Create a default remote with\n"
-                "    dvc remote add -d <remote name> <remote url>"
-            )
-
-        raise NoRemoteError(error_msg)
-
-    def _init_remote(self, name):
-        from dvc.remote import get_remote
-
-        return get_remote(self.repo, name=name)
 
     def get_remote_odb(
         self,
@@ -99,52 +65,44 @@ class DataCloud:
         objs: Iterable["HashFile"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        show_checksums: bool = False,
+        odb: Optional["ObjectDB"] = None,
     ):
         """Push data items in a cloud-agnostic way.
 
         Args:
             objs: objects to push to the cloud.
             jobs: number of jobs that can be running simultaneously.
-            remote: optional remote to push to.
+            remote: optional name of remote to push to.
                 By default remote from core.remote config option is used.
-            show_checksums: show checksums instead of file names in
-                information messages.
+            odb: optional ODB to push to. Overrides remote.
         """
-        remote_obj = self.get_remote(remote, "push")
+        from dvc.objects.transfer import transfer
 
-        return remote_obj.push(
-            self.repo.odb.local,
-            objs,
-            jobs=jobs,
-            show_checksums=show_checksums,
-        )
+        if not odb:
+            odb = self.get_remote_odb(remote, "push")
+        return transfer(self.repo.odb.local, odb, objs, jobs=jobs)
 
     def pull(
         self,
         objs: Iterable["HashFile"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        show_checksums: bool = False,
+        odb: Optional["ObjectDB"] = None,
     ):
         """Pull data items in a cloud-agnostic way.
 
         Args:
             objs: objects to pull from the cloud.
             jobs: number of jobs that can be running simultaneously.
-            remote: optional remote to pull from.
+            remote: optional name of remote to pull from.
                 By default remote from core.remote config option is used.
-            show_checksums: show checksums instead of file names in
-                information messages.
+            odb: optional ODB to pull from. Overrides remote.
         """
-        remote_obj = self.get_remote(remote, "pull")
+        from dvc.objects.transfer import transfer
 
-        return remote_obj.pull(
-            self.repo.odb.local,
-            objs,
-            jobs=jobs,
-            show_checksums=show_checksums,
-        )
+        if not odb:
+            odb = self.get_remote_odb(remote, "pull")
+        return transfer(odb, self.repo.odb.local, objs, jobs=jobs)
 
     def status(
         self,
@@ -161,8 +119,6 @@ class DataCloud:
             remote: optional remote to compare
                 cache to. By default remote from core.remote config option
                 is used.
-            show_checksums: show checksums instead of file names in
-                information messages.
             log_missing: log warning messages if file doesn't exist
                 neither in cache, neither in cloud.
         """
@@ -178,5 +134,5 @@ class DataCloud:
         )
 
     def get_url_for(self, remote, checksum):
-        remote_obj = self.get_remote(remote)
-        return str(remote_obj.odb.hash_to_path_info(checksum))
+        remote_odb = self.get_remote_odb(remote)
+        return str(remote_odb.hash_to_path_info(checksum))
