@@ -70,7 +70,7 @@ class CmdPlots(CmdBase):
                     )
                     return_value = 1
         else:
-            ui.warn(
+            ui.error_write(
                 "No plots were loaded, visualization file will not be created."
             )
         return return_value
