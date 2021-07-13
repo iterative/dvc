@@ -63,7 +63,7 @@ def oss_server(test_config, docker_compose, docker_services):
 
 
 @pytest.fixture
-def oss(oss_server):
+def oss(real_oss):
     import oss2
 
     url = OSS.get_url()
