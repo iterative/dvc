@@ -30,14 +30,8 @@ all_clouds = [
         "hdfs",
         "webdav",
         "webhdfs",
+        "oss",
     ]
-] + [
-    pytest.param(
-        pytest.lazy_fixture("oss"),
-        marks=pytest.mark.xfail(
-            reason="https://github.com/iterative/dvc/issues/4633"
-        ),
-    )
 ]
 
 # Clouds that implement the general methods that can be tested
