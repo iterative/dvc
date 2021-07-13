@@ -139,10 +139,20 @@ def _get_supported_remotes():
 
 def get_fs_type(path):
 
-    partition = {
-        pathlib.Path(part.mountpoint): (part.fstype + " on " + part.device)
-        for part in psutil.disk_partitions(all=True)
-    }
+    # On Windows, resolve calls os.path._getfinalpathname, which calls GetFinalPathNameByHandle. 
+    # This starts from the final resolved path of the file in the NT namespace (e.g. \Device\Mup\server\share...) 
+    # and works backward as required to get the VOLUME_NAME_DOS. If the final path is a UNC share (i.e. \Device\Mup), 
+    # it returns a path of the form \?\UNC\server\share.... pathlib translates this back to a regular UNC path of the form \server\share....
+    # We fix this by calling resolve () also on the partition mountpoints
+    # We also take the opportunity to make checks in case a PermissionError is returned to us
+    partition = {}
+    for part in psutil.disk_partitions(all=True):
+        if part.fstype != '':
+            try:
+                mountpoint = pathlib.Path(part.mountpoint).resolve()
+                partition[mountpoint] = part.fstype + " on " + part.device
+            except PermissionError:
+                pass
 
     # need to follow the symlink: https://github.com/iterative/dvc/issues/5065
     path = pathlib.Path(path).resolve()
