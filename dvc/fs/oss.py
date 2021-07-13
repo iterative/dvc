@@ -44,9 +44,6 @@ class OSSFileSystem(ObjectFSWrapper):
     def remove(self, path_info):
         self.fs.rm_file(self._with_bucket(path_info))
 
-    def _upload_fobj(self, fobj, to_info, size=None):
-        self.fs.pipe_file(self._with_bucket(to_info), fobj)
-
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
