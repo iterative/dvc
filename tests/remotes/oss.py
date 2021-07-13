@@ -9,7 +9,7 @@ from dvc.utils import env2bool
 
 from .base import Base
 
-TEST_OSS_REPO_BUCKET = "dvc-temp"
+TEST_OSS_REPO_BUCKET = "dvc-test-github"
 EMULATOR_OSS_ENDPOINT = "127.0.0.1:{port}"
 EMULATOR_OSS_ACCESS_KEY_ID = "AccessKeyID"
 EMULATOR_OSS_ACCESS_KEY_SECRET = "AccessKeySecret"
