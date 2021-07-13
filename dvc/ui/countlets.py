@@ -21,7 +21,7 @@ from dvc.utils import colorize
 
 
 class Countlet:
-    def __init__(self, col):
+    def __init__(self, col: ProgressColumn):
         self.col = col
         self.task = None
 
@@ -30,11 +30,11 @@ class Countlet:
 
     @property
     def _value(self):
-        return self.col.render(self.task)
+        return self.col(self.task)
 
 
 class ETAColumn(ProgressColumn):
-    max_refresh = 0.5
+    max_refresh = 1
 
     def render(self, task: "Task") -> Text:
         """Show time remaining."""
