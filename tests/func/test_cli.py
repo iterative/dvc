@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from dvc.cli import parse_args
 from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
@@ -264,9 +266,6 @@ def test_unknown_subcommand_help(capsys):
 
 
 def test_cli_suggestions():
-    try:
+    with pytest.raises(DvcParserError):
         _ = parse_args(["psh"])
         _ = parse_args(["fileas"])
-        raise AssertionError
-    except DvcParserError:
-        assert True
