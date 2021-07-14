@@ -81,10 +81,6 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
             fobj, rpath, overwrite=True, size=size
         )
 
-    def makedirs(self, path_info):
-        path = self.translate_path_info(path_info)
-        return self.fs.makedirs(path, exist_ok=True)
-
     @lru_cache(512)
     def translate_path_info(self, path):
         if isinstance(path, self.PATH_CLS):
@@ -92,9 +88,6 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         return path
 
     _with_bucket = translate_path_info
-
-    def _strip_bucket(self, entry):
-        return entry
 
 
 class WebDAVSFileSystem(WebDAVFileSystem):  # pylint:disable=abstract-method
