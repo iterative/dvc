@@ -89,8 +89,9 @@ def gc(
     if not cloud:
         return
 
-    remote = self.cloud.get_remote(remote, "gc -c")
-    removed = remote.gc(
+    # TODO: clear index
+    odb = self.cloud.get_remote_odb(remote, "gc -c")
+    removed = odb.gc(
         {obj for obj in used_objs if obj.fs.scheme == Schemes.LOCAL},
         jobs=jobs,
     )
