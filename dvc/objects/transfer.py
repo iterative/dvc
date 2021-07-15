@@ -80,6 +80,7 @@ def _create_tasks(executor, jobs, func, src, dest, is_staged, objs):
                 dest,
                 _raw_obj(src, obj, is_staged),
                 move=False,
+                verify=src.verify,
             )
             for obj in itertools.islice(obj_iter, amount)
         }

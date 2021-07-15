@@ -81,12 +81,16 @@ class ObjectDB:
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
         move: bool = True,
+        verify: Optional[bool] = None,
         **kwargs,
     ):
         if self.read_only:
             raise ObjectDBPermissionError("Cannot add to read-only ODB")
+
+        if verify is None:
+            verify = self.verify
         try:
-            self.check(hash_info, check_hash=self.verify)
+            self.check(hash_info, check_hash=verify)
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
@@ -120,8 +124,13 @@ class ObjectDB:
             else:
                 raise
 
-        self.protect(cache_info)
-        self.state.save(cache_info, self.fs, hash_info)
+        try:
+            if verify:
+                self.check(hash_info, check_hash=True)
+            self.protect(cache_info)
+            self.state.save(cache_info, self.fs, hash_info)
+        except (ObjectFormatError, FileNotFoundError):
+            pass
 
         callback = kwargs.get("download_callback")
         if callback:
