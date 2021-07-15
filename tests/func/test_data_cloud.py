@@ -549,7 +549,7 @@ def test_pull_partial(tmp_dir, dvc, local_remote):
 def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
     # Related: https://github.com/iterative/dvc/issues/6089
 
-    fs_type = type(dvc.cloud.get_remote("upstream").fs)
+    fs_type = type(dvc.cloud.get_remote_odb("upstream").fs)
     monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
     monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
 
@@ -569,7 +569,7 @@ def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
 def test_pull_no_00_prefix(tmp_dir, dvc, remote, monkeypatch):
     # Related: https://github.com/iterative/dvc/issues/6244
 
-    fs_type = type(dvc.cloud.get_remote("upstream").fs)
+    fs_type = type(dvc.cloud.get_remote_odb("upstream").fs)
     monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
     monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
 
