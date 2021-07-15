@@ -2,6 +2,7 @@ import logging
 import os
 import sqlite3
 import threading
+from functools import wraps
 
 from funcy import lchunks
 
@@ -11,50 +12,19 @@ from dvc.utils.fs import makedirs
 logger = logging.getLogger(__name__)
 
 
-class RemoteIndexNoop:
-    """No-op class for remotes which are not indexed (i.e. local)."""
+def index_locked(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        index = kwargs.get("index", None)
+        if index:
+            with index:
+                return f(*args, **kwargs)
+        return f(*args, **kwargs)
 
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, typ, value, tbck):
-        pass
-
-    def __iter__(self):
-        return iter([])
-
-    def __contains__(self, hash_):
-        return False
-
-    @staticmethod
-    def hashes():
-        return []
-
-    @staticmethod
-    def dir_hashes():
-        return []
-
-    def load(self):
-        pass
-
-    def dump(self):
-        pass
-
-    def clear(self):
-        pass
-
-    def update(self, *args):
-        pass
-
-    @staticmethod
-    def intersection(*args):
-        return []
+    return wrapper
 
 
-class RemoteIndex:
+class ObjectDBIndex:
     """Class for indexing remote hashes in a sqlite3 database.
 
     Args:

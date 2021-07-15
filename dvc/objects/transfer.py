@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Iterable, Optional, Set
 
 from dvc.progress import Tqdm
 
+from .db import get_index
+from .db.index import index_locked
 from .file import HashFile
 from .tree import Tree
 
@@ -40,7 +42,7 @@ def _log_exceptions(func):
     return wrapper
 
 
-def _transfer(src, dest, dir_objs, file_objs, missing, jobs, index, **kwargs):
+def _transfer(src, dest, dir_objs, file_objs, missing, jobs, **kwargs):
     from . import save
     from .stage import is_memfs_staging
 
@@ -63,7 +65,7 @@ def _transfer(src, dest, dir_objs, file_objs, missing, jobs, index, **kwargs):
                 file_objs,
                 {obj.hash_info for obj in missing},
                 processor,
-                index,
+                index=get_index(dest),
                 **kwargs,
             )
     return total
@@ -99,8 +101,9 @@ def _raw_obj(odb, obj, is_staged=False):
     return odb.get(obj.hash_info)
 
 
+@index_locked
 def _do_transfer(
-    src, dest, dir_objs, file_objs, missing_hashes, processor, index
+    src, dest, dir_objs, file_objs, missing_hashes, processor, index=None
 ):
     from dvc.exceptions import FileTransferError
 
@@ -151,6 +154,10 @@ def _do_transfer(
     # insert the rest
     total_fails += processor(all_file_objs)
     if total_fails:
+        src_index = get_index(src)
+        if src_index:
+            with src_index:
+                src_index.clear()
         raise FileTransferError(total_fails)
 
     # index successfully pushed dirs
@@ -198,6 +205,4 @@ def transfer(
     if jobs is None:
         jobs = dest.fs.jobs
 
-    # TODO: indexes
-    index = None
-    return _transfer(src, dest, dirs, files, status.missing, jobs, index)
+    return _transfer(src, dest, dirs, files, status.missing, jobs)

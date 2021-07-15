@@ -34,6 +34,22 @@ def _get_odb(repo, settings):
     return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 
+def get_index(odb):
+    import hashlib
+
+    from .index import ObjectDBIndex
+
+    assert odb.fs and odb.path_info
+    if odb.fs.scheme in (Schemes.LOCAL, Schemes.MEMORY) or not odb.tmp_dir:
+        return None
+
+    return ObjectDBIndex(
+        odb.tmp_dir,
+        hashlib.sha256(odb.path_info.url.encode("utf-8")).hexdigest(),
+        odb.fs.CHECKSUM_DIR_SUFFIX,
+    )
+
+
 class ODBManager:
     CACHE_DIR = "cache"
     CLOUD_SCHEMES = [

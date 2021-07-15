@@ -11,11 +11,11 @@ from dvc.exceptions import (
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.objects import check, load
-from dvc.objects.errors import ObjectFormatError
-from dvc.objects.stage import stage
-from dvc.remote.slow_link_detection import (  # type: ignore[attr-defined]
+from dvc.objects.db.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
 )
+from dvc.objects.errors import ObjectFormatError
+from dvc.objects.stage import stage
 from dvc.types import Optional
 
 logger = logging.getLogger(__name__)

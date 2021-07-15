@@ -3,10 +3,13 @@ from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
 from dvc.hash_info import HashInfo
 
+from .db import get_index
+from .db.index import index_locked
 from .tree import Tree
 
 if TYPE_CHECKING:
     from .db.base import ObjectDB
+    from .db.index import ObjectDBIndex
     from .file import HashFile
 
 logger = logging.getLogger(__name__)
@@ -72,11 +75,12 @@ def _status_staging(objs: Iterable["HashFile"]) -> "StatusResult":
     return StatusResult(exists, set())
 
 
+@index_locked
 def status(
     odb: "ObjectDB",
     objs: Iterable["HashFile"],
     name: Optional[str] = None,
-    index=None,
+    index: Optional["ObjectDBIndex"] = None,
     **kwargs,
 ) -> "StatusResult":
     """Return status of whether or not the specified objects exist odb.
@@ -145,11 +149,10 @@ def compare_status(
         new: hashes that only exist in src
         deleted: hashes that only exist in dest
     """
-    # TODO: implement indexes
-    # src_index = get_index(src)
-    src_exists, src_missing = status(src, objs, index=None, **kwargs)
-    # dest_index = get_index(dest)
-    dest_exists, dest_missing = status(dest, objs, index=None, **kwargs)
+    src_exists, src_missing = status(src, objs, index=get_index(src), **kwargs)
+    dest_exists, dest_missing = status(
+        dest, objs, index=get_index(dest), **kwargs
+    )
     result = CompareStatusResult(
         src_exists & dest_exists,
         src_missing & dest_missing,
