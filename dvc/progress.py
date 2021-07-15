@@ -4,6 +4,7 @@ import logging
 import sys
 from threading import RLock
 
+import fsspec
 from tqdm import tqdm
 
 from dvc.env import DVC_IGNORE_ISATTY
@@ -136,6 +137,9 @@ class Tqdm(tqdm):
 
         return wrapped
 
+    def as_callback(self, fs, path_info):
+        return FsspecCallback(fs, path_info, self)
+
     def close(self):
         self.postfix["info"] = ""
         # remove ETA (either unknown or zero); remove completed bar
@@ -161,3 +165,28 @@ class Tqdm(tqdm):
             d["ncols_desc"] = d["ncols_info"] = 1
             d["prefix"] = ""
         return d
+
+
+class FsspecCallback(fsspec.Callback):
+    def __init__(self, fs, path_info, progress_bar):
+        self.fs = fs
+        self.path_info = path_info
+        self.progress_bar = progress_bar
+        super().__init__()
+
+    def set_size(self, size):
+        """``set_size()`` is an API that might be called with ``None`` if the
+        information is not already present on the caller. In that case, we'll
+        retrieve the size from an ``info()`` call."""
+        if size is None:
+            size = self.fs.info(self.path_info)["size"]
+        self.progress_bar.total = size
+        self.progress_bar.refresh()
+
+    def relative_update(self, inc=1):
+        self.progress_bar.update(inc)
+        self.progress_bar.refresh()
+
+    def absolute_update(self, value):
+        self.progress_bar.update_to(value)
+        self.progress_bar.refresh()
