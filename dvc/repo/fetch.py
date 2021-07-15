@@ -1,7 +1,7 @@
 import logging
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, FileTransferError
 
 from ..scheme import Schemes
 from . import locked
@@ -35,8 +35,6 @@ def fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
-    from dvc.fs.memory import MemoryFileSystem
-
     if isinstance(targets, str):
         targets = [targets]
 
@@ -62,25 +60,14 @@ def fetch(
     except DownloadError as exc:
         failed += exc.amount
 
-    external = set()
     for odb, objs in used.items():
-        if odb and isinstance(odb.fs, MemoryFileSystem):
-            # objs contains staged git imports which should be saved
-            # last (after all other objects have been pulled)
-            external.update(objs)
-        else:
-            d, f = _fetch(
-                self,
-                objs,
-                jobs=jobs,
-                remote=remote,
-                odb=odb,
-            )
-            downloaded += d
-            failed += f
-
-    if external:
-        d, f = _fetch_external(self, external, jobs=jobs)
+        d, f = _fetch(
+            self,
+            objs,
+            jobs=jobs,
+            remote=remote,
+            odb=odb,
+        )
         downloaded += d
         failed += f
 
@@ -91,7 +78,6 @@ def fetch(
 
 
 def _fetch(repo, objs, **kwargs):
-    # objs contains naive objects to be pulled from specified remote
     downloaded = 0
     failed = 0
     try:
@@ -99,25 +85,6 @@ def _fetch(repo, objs, **kwargs):
     except NoRemoteError:
         if any(obj.fs.scheme == Schemes.LOCAL for obj in objs):
             raise
-    except DownloadError as exc:
+    except FileTransferError as exc:
         failed += exc.amount
     return downloaded, failed
-
-
-def _fetch_external(repo, objs, **kwargs):
-    from dvc.objects import save
-    from dvc.objects.errors import ObjectError
-
-    results = []
-    failed = 0
-
-    def callback(result):
-        results.append(result)
-
-    for obj in objs:
-        try:
-            save(repo.odb.local, obj, download_callback=callback, **kwargs)
-        except ObjectError:
-            failed += 1
-
-    return sum(results), failed

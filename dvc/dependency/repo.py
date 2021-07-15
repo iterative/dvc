@@ -63,16 +63,10 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.fs.memory import MemoryFileSystem
-        from dvc.objects import save
-        from dvc.repo.fetch import fetch_from_odb
+        from dvc.objects.transfer import transfer
 
         for odb, objs in self.get_used_objs().items():
-            if isinstance(odb.fs, MemoryFileSystem):
-                for obj in objs:
-                    save(self.repo.odb.local, obj, jobs=jobs)
-            else:
-                fetch_from_odb(self.repo, odb, objs, jobs=jobs)
+            transfer(odb, self.repo.odb.local, objs, jobs=jobs)
 
         obj = self.get_obj()
         checkout(
@@ -129,7 +123,7 @@ class RepoDependency(Dependency):
                         recursive=True,
                     ).items():
                         if odb is None:
-                            odb = repo.cloud.get_remote().odb
+                            odb = repo.cloud.get_remote_odb()
                             odb.read_only = True
                         self._check_circular_import(objs)
                         used_objs[odb].update(objs)
