@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Iterable, Optional, Set
 
 from dvc.progress import Tqdm
 
+from .file import HashFile
 from .tree import Tree
 
 if TYPE_CHECKING:
     from .db.base import ObjectDB
-    from .file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,11 @@ def _log_exceptions(func):
     return wrapper
 
 
-def _transfer(src, dest, dir_objs, file_objs, missing, jobs, index):
+def _transfer(src, dest, dir_objs, file_objs, missing, jobs, index, **kwargs):
     from . import save
+    from .stage import is_memfs_staging
 
+    is_staged = is_memfs_staging(src)
     func = _log_exceptions(save)
     total = len(dir_objs) + len(file_objs)
     if total == 0:
@@ -50,7 +52,9 @@ def _transfer(src, dest, dir_objs, file_objs, missing, jobs, index):
     with Tqdm(total=total, unit="file", desc="Transferring") as pbar:
         func = pbar.wrap_fn(func)
         with ThreadPoolExecutor(max_workers=jobs) as executor:
-            processor = partial(_create_tasks, executor, jobs, func, src, dest)
+            processor = partial(
+                _create_tasks, executor, jobs, func, src, dest, is_staged
+            )
             processor.save_func = func
             _do_transfer(
                 src,
@@ -60,19 +64,23 @@ def _transfer(src, dest, dir_objs, file_objs, missing, jobs, index):
                 {obj.hash_info for obj in missing},
                 processor,
                 index,
+                **kwargs,
             )
     return total
 
 
-def _create_tasks(executor, jobs, func, src, dest, objs):
+def _create_tasks(executor, jobs, func, src, dest, is_staged, objs):
     fails = 0
     obj_iter = iter(objs)
 
     def create_taskset(amount):
-        # for obj in objs:
-        #     print(func, dest, src.get(obj.hash_info), False)
         return {
-            executor.submit(func, dest, src.get(obj.hash_info), move=False)
+            executor.submit(
+                func,
+                dest,
+                _raw_obj(src, obj, is_staged),
+                move=False,
+            )
             for obj in itertools.islice(obj_iter, amount)
         }
 
@@ -84,14 +92,21 @@ def _create_tasks(executor, jobs, func, src, dest, objs):
     return fails
 
 
+def _raw_obj(odb, obj, is_staged=False):
+    if is_staged:
+        return HashFile(obj.path_info, obj.fs, obj.hash_info)
+    return odb.get(obj.hash_info)
+
+
 def _do_transfer(
     src, dest, dir_objs, file_objs, missing_hashes, processor, index
 ):
-    from dvc.exceptions import UploadError
+    from dvc.exceptions import FileTransferError
 
     total_fails = 0
     succeeded_dir_objs = []
     all_file_objs = set(file_objs)
+
     for dir_obj in dir_objs:
         bound_file_objs = []
         directory_hashes = {entry.hash_info for _, entry in dir_obj}
@@ -135,7 +150,7 @@ def _do_transfer(
     # insert the rest
     total_fails += processor(all_file_objs)
     if total_fails:
-        raise UploadError(total_fails)
+        raise FileTransferError(total_fails)
 
     # index successfully pushed dirs
     if index:

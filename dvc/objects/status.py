@@ -63,6 +63,15 @@ def _indexed_dir_hashes(odb, index, hash_infos, name):
         yield tree.hash_info.value
 
 
+def _status_staging(objs: Iterable["HashFile"]) -> "StatusResult":
+    exists: Set["HashFile"] = set()
+    for obj in objs:
+        if isinstance(obj, Tree):
+            exists.update(entry for _, entry in obj)
+        exists.add(obj)
+    return StatusResult(exists, set())
+
+
 def status(
     odb: "ObjectDB",
     objs: Iterable["HashFile"],
@@ -76,9 +85,15 @@ def status(
         exists: objs that exist in odb
         missing: objs that do not exist in ODB
     """
+    from .stage import is_memfs_staging
+
     logger.debug("Preparing to collect status from '%s'", odb.path_info)
     if not name:
         name = odb.fs.PARAM_CHECKSUM
+
+    if is_memfs_staging(odb):
+        # assume memfs staged objects already exist
+        return _status_staging(objs)
 
     hash_objs: Dict[str, "HashFile"] = {}
     hashes: Set[str] = set()
