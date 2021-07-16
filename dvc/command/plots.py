@@ -42,29 +42,35 @@ class CmdPlots(CmdBase):
                 ui.write(plots[target])
                 return 0
 
-            rel: str = self.args.out or "plots.html"
-            path = (Path.cwd() / rel).resolve()
-            self.repo.plots.write_html(
-                path, plots=plots, html_template_path=self.args.html_template
-            )
-
         except DvcException:
             logger.exception("")
             return 1
 
-        assert path.is_absolute()  # as_uri throws ValueError if not absolute
-        url = path.as_uri()
-        ui.write(url)
-        if self.args.open:
-            import webbrowser
+        if plots:
+            rel: str = self.args.out or "plots.html"
+            path: Path = (Path.cwd() / rel).resolve()
+            self.repo.plots.write_html(
+                path, plots=plots, html_template_path=self.args.html_template
+            )
 
-            opened = webbrowser.open(rel)
-            if not opened:
-                ui.error_write(
-                    "Failed to open. Please try opening it manually."
-                )
-                return 1
+            assert (
+                path.is_absolute()
+            )  # as_uri throws ValueError if not absolute
+            url = path.as_uri()
+            ui.write(url)
+            if self.args.open:
+                import webbrowser
 
+                opened = webbrowser.open(rel)
+                if not opened:
+                    ui.error_write(
+                        "Failed to open. Please try opening it manually."
+                    )
+                    return 1
+        else:
+            ui.error_write(
+                "No plots were loaded, visualization file will not be created."
+            )
         return 0
 
 
