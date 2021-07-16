@@ -176,43 +176,39 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
-    baz = tmp_dir.dvc_gen({"baz": {"foo": "baz content"}})[0].outs[0]
+    baz = tmp_dir.dvc_gen({"baz": {"foo": "foo content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalFileSystem._upload
+    original = LocalFileSystem.upload_fobj
+    odb = dvc.cloud.get_remote_odb("upstream")
 
-    def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
-        if "foo" in name:
+    def unreliable_upload(self, fobj, to_info, **kwargs):
+        if os.path.abspath(to_info) == os.path.abspath(
+            odb.get(foo.hash_info).path_info
+        ):
             raise Exception("stop foo")
-        return original(self, from_file, to_info, name, **kwargs)
+        return original(self, fobj, to_info, **kwargs)
 
-    with patch.object(LocalFileSystem, "_upload", unreliable_upload):
+    with patch.object(LocalFileSystem, "upload_fobj", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
-        assert upload_error_info.value.amount == 3
+        assert upload_error_info.value.amount == 2
 
-        remote = dvc.cloud.get_remote("upstream")
-        assert not remote.fs.exists(
-            remote.odb.hash_to_path_info(foo.hash_info.value)
-        )
-        assert remote.fs.exists(
-            remote.odb.hash_to_path_info(bar.hash_info.value)
-        )
-        assert not remote.fs.exists(
-            remote.odb.hash_to_path_info(baz.hash_info.value)
-        )
+        assert not odb.exists(foo.hash_info)
+        assert odb.exists(bar.hash_info)
+        assert not odb.exists(baz.hash_info)
 
     # Push everything and delete local cache
     dvc.push()
     remove(dvc.odb.local.cache_dir)
 
     baz.collect_used_dir_cache()
-    with patch.object(LocalFileSystem, "_download", side_effect=Exception):
+    with patch.object(LocalFileSystem, "upload_fobj", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
         # since files inside dir are ignored if dir cache entry is missing
-        assert download_error_info.value.amount == 3
+        assert download_error_info.value.amount == 2
 
 
 def test_raise_on_too_many_open_files(
@@ -222,7 +218,7 @@ def test_raise_on_too_many_open_files(
 
     mocker.patch.object(
         LocalFileSystem,
-        "_upload",
+        "upload_fobj",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
@@ -273,16 +269,14 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     tmp_dir.dvc_gen({"baz": "baz content"})
 
     mocked_upload = mocker.patch.object(
-        LocalFileSystem, "_upload", return_value=0
+        LocalFileSystem, "upload_fobj", return_value=0
     )
     dvc.push()
 
     # foo .dir file should be uploaded after bar
-    remote = dvc.cloud.get_remote("upstream")
-    foo_path = remote.odb.hash_to_path_info(foo.hash_info.value)
-    bar_path = remote.odb.hash_to_path_info(
-        foo.obj.trie[("bar",)].hash_info.value
-    )
+    odb = dvc.cloud.get_remote_odb("upstream")
+    foo_path = odb.hash_to_path_info(foo.hash_info.value)
+    bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)].hash_info.value)
     paths = [args[1] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 
@@ -419,10 +413,8 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
     (stage,) = tmp_dir.dvc_gen("file", "file content")
 
     dvc.push()
-    remote = dvc.cloud.get_remote("upstream")
-    remote_cache_file = remote.odb.hash_to_path_info(
-        stage.outs[0].hash_info.value
-    )
+    odb = dvc.cloud.get_remote_odb("upstream")
+    remote_cache_file = odb.hash_to_path_info(stage.outs[0].hash_info.value)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444
@@ -430,7 +422,7 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
 def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     (stage,) = tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
-    remote = dvc.cloud.get_remote("upstream")
+    remote_odb = dvc.cloud.get_remote_odb("upstream")
 
     odb = dvc.odb.local
     out = stage.outs[0]
@@ -440,30 +432,24 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     remove(odb.hash_to_path_info(file_objs[0].hash_info.value))
 
     dvc.push()
-    assert not remote.fs.exists(
-        remote.odb.hash_to_path_info(out.hash_info.value)
-    )
-    assert not remote.fs.exists(
-        remote.odb.hash_to_path_info(file_objs[0].hash_info.value)
-    )
-    assert remote.fs.exists(
-        remote.odb.hash_to_path_info(file_objs[1].hash_info.value)
-    )
+    assert not remote_odb.exists(out.hash_info)
+    assert not remote_odb.exists(file_objs[0].hash_info)
+    assert remote_odb.exists(file_objs[1].hash_info)
 
 
 def test_upload_exists(tmp_dir, dvc, local_remote):
     tmp_dir.gen("foo", "foo")
-    remote = dvc.cloud.get_remote("upstream")
+    odb = dvc.cloud.get_remote_odb("upstream")
     # allow uploaded files to be writable for this test,
     # normally they are set to read-only for DVC remotes
-    remote.fs.CACHE_MODE = 0o644
+    odb.fs.CACHE_MODE = 0o644
 
     from_info = PathInfo(tmp_dir / "foo")
-    to_info = remote.odb.path_info / "foo"
-    remote.fs.upload(from_info, to_info)
-    assert remote.fs.exists(to_info)
+    to_info = odb.path_info / "foo"
+    odb.fs.upload(from_info, to_info)
+    assert odb.fs.exists(to_info)
 
     tmp_dir.gen("foo", "bar")
-    remote.fs.upload(from_info, to_info)
-    with remote.fs.open(to_info) as fobj:
+    odb.fs.upload(from_info, to_info)
+    with odb.fs.open(to_info) as fobj:
         assert fobj.read() == "bar"

@@ -3,12 +3,12 @@ import os
 import pytest
 from funcy import first
 
-from dvc.remote.index import RemoteIndex
+from dvc.objects.db.index import ObjectDBIndex
 
 
 @pytest.fixture(scope="function")
 def index(dvc):
-    idx = RemoteIndex(dvc.tmp_dir, "foo")
+    idx = ObjectDBIndex(dvc.tmp_dir, "foo")
     idx.load()
     yield idx
     idx.dump()

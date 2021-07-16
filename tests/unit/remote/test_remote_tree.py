@@ -3,8 +3,8 @@ import os
 import pytest
 
 from dvc.fs.s3 import S3FileSystem
+from dvc.objects.db import get_odb
 from dvc.path_info import PathInfo
-from dvc.remote import get_remote
 from dvc.utils.fs import walk_files
 
 remotes = [pytest.lazy_fixture(fix) for fix in ["gs", "s3"]]
@@ -29,7 +29,7 @@ FILE_WITH_CONTENTS = {
 def remote(request, dvc):
     cloud = request.param
     cloud.gen(FILE_WITH_CONTENTS)
-    return get_remote(dvc, **cloud.config)
+    return get_odb(dvc, **cloud.config)
 
 
 @pytest.mark.needs_internet
@@ -47,7 +47,7 @@ def test_isdir(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.fs.isdir(remote.odb.path_info / path) == expected
+        assert remote.fs.isdir(remote.path_info / path) == expected
 
 
 @pytest.mark.needs_internet
@@ -68,29 +68,29 @@ def test_exists(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.fs.exists(remote.odb.path_info / path) == expected
+        assert remote.fs.exists(remote.path_info / path) == expected
 
 
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_walk_files(remote):
     files = [
-        remote.odb.path_info / "data/alice",
-        remote.odb.path_info / "data/alpha",
-        remote.odb.path_info / "data/subdir-file.txt",
-        remote.odb.path_info / "data/subdir/1",
-        remote.odb.path_info / "data/subdir/2",
-        remote.odb.path_info / "data/subdir/3",
-        remote.odb.path_info / "data/subdir/empty_file",
+        remote.path_info / "data/alice",
+        remote.path_info / "data/alpha",
+        remote.path_info / "data/subdir-file.txt",
+        remote.path_info / "data/subdir/1",
+        remote.path_info / "data/subdir/2",
+        remote.path_info / "data/subdir/3",
+        remote.path_info / "data/subdir/empty_file",
     ]
 
-    assert list(remote.fs.walk_files(remote.odb.path_info / "data")) == files
+    assert list(remote.fs.walk_files(remote.path_info / "data")) == files
 
 
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("s3")])
 def test_copy_preserve_etag_across_buckets(cloud, dvc):
     cloud.gen(FILE_WITH_CONTENTS)
-    rem = get_remote(dvc, **cloud.config)
+    rem = get_odb(dvc, **cloud.config)
     s3 = rem.fs
     s3.fs.mkdir("another/")
 
@@ -100,7 +100,7 @@ def test_copy_preserve_etag_across_buckets(cloud, dvc):
 
     another = S3FileSystem(**config)
 
-    from_info = rem.odb.path_info / "foo"
+    from_info = rem.path_info / "foo"
     to_info = another.PATH_CLS("s3://another/foo")
 
     rem.fs.copy(from_info, to_info)
@@ -131,7 +131,7 @@ def test_isfile(remote):
     ]
 
     for expected, path in test_cases:
-        assert remote.fs.isfile(remote.odb.path_info / path) == expected
+        assert remote.fs.isfile(remote.path_info / path) == expected
 
 
 @pytest.mark.needs_internet
@@ -139,7 +139,7 @@ def test_isfile(remote):
 def test_download_dir(remote, tmpdir):
     path = str(tmpdir / "data")
     to_info = PathInfo(path)
-    remote.fs.download(remote.odb.path_info / "data", to_info)
+    remote.fs.download(remote.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
     assert len(list(walk_files(path))) == 7
