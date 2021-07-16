@@ -4,14 +4,12 @@ import pytest
 from funcy import first
 
 from dvc.objects.db.index import ObjectDBIndex
-from dvc.utils.fs import remove
 
 
 @pytest.fixture
 def index(dvc):
     index_ = ObjectDBIndex(dvc.tmp_dir, "foo")
     yield index_
-    remove(index_.index_dir)
 
 
 def test_init(dvc, index):
