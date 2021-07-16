@@ -4,19 +4,18 @@ import pytest
 from funcy import first
 
 from dvc.objects.db.index import ObjectDBIndex
+from dvc.utils.fs import remove
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def index(dvc):
-    idx = ObjectDBIndex(dvc.tmp_dir, "foo")
-    idx.load()
-    yield idx
-    idx.dump()
-    os.unlink(idx.path)
+    index_ = ObjectDBIndex(dvc.tmp_dir, "foo")
+    yield index_
+    remove(index_.index_dir)
 
 
 def test_init(dvc, index):
-    assert str(index.path) == os.path.join(dvc.tmp_dir, "index", "foo.idx")
+    assert str(index.index_dir) == os.path.join(dvc.tmp_dir, "index", "foo")
 
 
 def test_is_dir_hash(dvc, index):
@@ -28,10 +27,10 @@ def test_roundtrip(dvc, index):
     expected_dir = {"1234.dir"}
     expected_file = {"5678"}
     index.update(expected_dir, expected_file)
-    index.dump()
-    index.load()
-    assert set(index.dir_hashes()) == expected_dir
-    assert set(index.hashes()) == expected_dir | expected_file
+
+    new_index = ObjectDBIndex(dvc.tmp_dir, "foo")
+    assert set(new_index.dir_hashes()) == expected_dir
+    assert set(new_index.hashes()) == expected_dir | expected_file
 
 
 def test_clear(dvc, index):

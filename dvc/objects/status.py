@@ -3,8 +3,6 @@ from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
 from dvc.hash_info import HashInfo
 
-from .db import get_index
-from .db.index import index_locked
 from .tree import Tree
 
 if TYPE_CHECKING:
@@ -75,7 +73,6 @@ def _status_staging(objs: Iterable["HashFile"]) -> "StatusResult":
     return StatusResult(exists, set())
 
 
-@index_locked
 def status(
     odb: "ObjectDB",
     objs: Iterable["HashFile"],
@@ -118,7 +115,9 @@ def status(
     logger.debug("Collecting status from '%s'", odb.path_info)
     if index and hashes:
         if dir_infos:
-            exists.update(_indexed_dir_hashes(odb, index, dir_infos, name))
+            exists = hashes.intersection(
+                _indexed_dir_hashes(odb, index, dir_infos, name)
+            )
             hashes.difference_update(exists)
         if hashes:
             exists.update(index.intersection(hashes))
@@ -140,6 +139,8 @@ def compare_status(
     objs: Iterable["HashFile"],
     log_missing: bool = True,
     check_deleted: bool = True,
+    src_index: Optional["ObjectDBIndex"] = None,
+    dest_index: Optional["ObjectDBIndex"] = None,
     **kwargs,
 ) -> "CompareStatusResult":
     """Compare status for the specified objects between two ODBs.
@@ -150,15 +151,11 @@ def compare_status(
         new: hashes that only exist in src
         deleted: hashes that only exist in dest
     """
-    dest_exists, dest_missing = status(
-        dest, objs, index=get_index(dest), **kwargs
-    )
+    dest_exists, dest_missing = status(dest, objs, index=dest_index, **kwargs)
     # for transfer operations we can skip src status check when all objects
     # already exist in dest
     if dest_missing or check_deleted or log_missing:
-        src_exists, src_missing = status(
-            src, objs, index=get_index(src), **kwargs
-        )
+        src_exists, src_missing = status(src, objs, index=src_index, **kwargs)
     else:
         src_exists = dest_exists
         src_missing = set()

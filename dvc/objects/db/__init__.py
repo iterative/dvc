@@ -37,17 +37,15 @@ def _get_odb(repo, settings):
 def get_index(odb):
     import hashlib
 
-    from .index import ObjectDBIndex
+    from .index import ObjectDBIndex, ObjectDBIndexNoop
 
-    assert odb.fs and odb.path_info
-    if odb.fs.scheme in (Schemes.LOCAL, Schemes.MEMORY) or not odb.tmp_dir:
-        return None
-
-    return ObjectDBIndex(
-        odb.tmp_dir,
-        hashlib.sha256(odb.path_info.url.encode("utf-8")).hexdigest(),
-        odb.fs.CHECKSUM_DIR_SUFFIX,
-    )
+    if odb.tmp_dir:
+        return ObjectDBIndex(
+            odb.tmp_dir,
+            hashlib.sha256(odb.path_info.url.encode("utf-8")).hexdigest(),
+            odb.fs.CHECKSUM_DIR_SUFFIX,
+        )
+    return ObjectDBIndexNoop()
 
 
 class ODBManager:

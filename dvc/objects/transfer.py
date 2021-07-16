@@ -8,13 +8,12 @@ from typing import TYPE_CHECKING, Iterable, Optional, Set
 
 from dvc.progress import Tqdm
 
-from .db import get_index
-from .db.index import index_locked
 from .file import HashFile
 from .tree import Tree
 
 if TYPE_CHECKING:
     from .db.base import ObjectDB
+    from .db.index import ObjectDBIndex
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +64,6 @@ def _transfer(src, dest, dir_objs, file_objs, missing, jobs, **kwargs):
                 file_objs,
                 {obj.hash_info for obj in missing},
                 processor,
-                index=get_index(dest),
                 **kwargs,
             )
     return total
@@ -101,9 +99,16 @@ def _raw_obj(odb, obj, is_staged=False):
     return odb.get(obj.hash_info)
 
 
-@index_locked
 def _do_transfer(
-    src, dest, dir_objs, file_objs, missing_hashes, processor, index=None
+    src,
+    dest,
+    dir_objs,
+    file_objs,
+    missing_hashes,
+    processor,
+    src_index: Optional["ObjectDBIndex"] = None,
+    dest_index: Optional["ObjectDBIndex"] = None,
+    **kwargs,
 ):
     from dvc.exceptions import FileTransferError
 
@@ -154,14 +159,12 @@ def _do_transfer(
     # insert the rest
     total_fails += processor(all_file_objs)
     if total_fails:
-        src_index = get_index(src)
         if src_index:
-            with src_index:
-                src_index.clear()
+            src_index.clear()
         raise FileTransferError(total_fails)
 
     # index successfully pushed dirs
-    if index:
+    if dest_index:
         for dir_obj in succeeded_dir_objs:
             file_hashes = {entry.hash_info.value for _, entry in dir_obj}
             logger.debug(
@@ -169,7 +172,7 @@ def _do_transfer(
                 dir_obj.hash_info,
                 len(file_hashes),
             )
-            index.update([dir_obj.hash_info.value], file_hashes)
+            dest_index.update([dir_obj.hash_info.value], file_hashes)
 
 
 def transfer(
@@ -204,4 +207,12 @@ def transfer(
     if jobs is None:
         jobs = dest.fs.jobs
 
-    return _transfer(src, dest, dirs, files, status.missing, jobs)
+    return _transfer(
+        src,
+        dest,
+        dirs,
+        files,
+        status.missing,
+        jobs,
+        **kwargs,
+    )
