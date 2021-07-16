@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.fs.s3 import S3FileSystem
-from dvc.objects.db import get_odb
+from dvc.objects.db import _get_odb
 from dvc.path_info import PathInfo
 from dvc.utils.fs import walk_files
 
@@ -29,7 +29,7 @@ FILE_WITH_CONTENTS = {
 def remote(request, dvc):
     cloud = request.param
     cloud.gen(FILE_WITH_CONTENTS)
-    return get_odb(dvc, **cloud.config)
+    return _get_odb(dvc, cloud.config)
 
 
 @pytest.mark.needs_internet
@@ -90,7 +90,7 @@ def test_walk_files(remote):
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("s3")])
 def test_copy_preserve_etag_across_buckets(cloud, dvc):
     cloud.gen(FILE_WITH_CONTENTS)
-    rem = get_odb(dvc, **cloud.config)
+    rem = _get_odb(dvc, cloud.config)
     s3 = rem.fs
     s3.fs.mkdir("another/")
 
