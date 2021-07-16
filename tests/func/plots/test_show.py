@@ -1,12 +1,11 @@
 import json
 import logging
-import operator
 import os
 import shutil
 from collections import OrderedDict
-from functools import reduce
 
 import pytest
+from funcy import get_in
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
@@ -836,9 +835,7 @@ def test_log_errors(
     result = dvc.plots.collect(onerror=onerror_collect)
     _, error = capsys.readouterr()
 
-    assert isinstance(
-        reduce(operator.getitem, error_path, result), YAMLFileCorruptedError
-    )
+    assert isinstance(get_in(result, error_path), YAMLFileCorruptedError)
     assert (
         "DVC failed to load some plots for following revisions: 'workspace'."
         in error

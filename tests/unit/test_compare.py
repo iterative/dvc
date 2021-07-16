@@ -3,6 +3,7 @@ import textwrap
 import pytest
 
 from dvc.compare import diff_table, metrics_table, show_diff, show_metrics
+from dvc.utils.serialize import YAMLFileCorruptedError
 
 
 @pytest.mark.parametrize("title", ["Metric", "Param"])
@@ -494,7 +495,8 @@ def test_metrics_show_default(capsys):
             "branch_1": {
                 "data": {
                     "metrics.json": {"data": {"b": {"ad": 1, "bc": 2}, "c": 4}}
-                }
+                },
+                "error": Exception("Failed just a little bit"),
             },
             "branch_2": {
                 "data": {
@@ -527,6 +529,7 @@ def test_metrics_show_md(capsys):
                     "metrics.json": {"data": {"a": 1, "b": {"ad": 3, "bc": 4}}}
                 }
             },
+            "branch_3": {"error": YAMLFileCorruptedError("failed")},
         },
         all_branches=True,
         markdown=True,

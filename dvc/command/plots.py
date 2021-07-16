@@ -46,8 +46,6 @@ class CmdPlots(CmdBase):
             logger.exception("")
             return 1
 
-        return_value = 0
-
         if plots:
             rel: str = self.args.out or "plots.html"
             path: Path = (Path.cwd() / rel).resolve()
@@ -68,12 +66,12 @@ class CmdPlots(CmdBase):
                     ui.error_write(
                         "Failed to open. Please try opening it manually."
                     )
-                    return_value = 1
+                    return 1
         else:
             ui.error_write(
                 "No plots were loaded, visualization file will not be created."
             )
-        return return_value
+        return 0
 
 
 class CmdPlotsShow(CmdPlots):

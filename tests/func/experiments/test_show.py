@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 import pytest
-from funcy import first
+from funcy import first, get_in
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
@@ -52,7 +52,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
             "name": "master",
         }
     }
-    expected_params = {"foo": 2}
+    expected_params = {"data": {"foo": 2}}
 
     assert set(results.keys()) == {"workspace", baseline_rev}
     experiments = results[baseline_rev]
@@ -61,13 +61,8 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
         if rev == "baseline":
             assert exp == expected_baseline
         else:
-            assert (
-                exp["data"]["metrics"]["metrics.yaml"]["data"]
-                == expected_params
-            )
-            assert (
-                exp["data"]["params"]["params.yaml"]["data"] == expected_params
-            )
+            assert exp["data"]["metrics"]["metrics.yaml"] == expected_params
+            assert exp["data"]["params"]["params.yaml"] == expected_params
 
 
 def test_show_queued(tmp_dir, scm, dvc, exp_stage):
@@ -78,9 +73,9 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
 
     results = dvc.experiments.show()[baseline_rev]
     assert len(results) == 2
-    exp = results[exp_rev]
-    assert exp["data"]["queued"]
-    assert exp["data"]["params"]["params.yaml"]["data"] == {"foo": 2}
+    exp = results[exp_rev]["data"]
+    assert exp["queued"]
+    assert exp["params"]["params.yaml"] == {"data": {"foo": 2}}
 
     # test that only queued experiments for the current baseline are returned
     tmp_dir.gen("foo", "foo")
@@ -93,9 +88,9 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
 
     results = dvc.experiments.show()[new_rev]
     assert len(results) == 2
-    exp = results[exp_rev]
-    assert exp["data"]["queued"]
-    assert exp["data"]["params"]["params.yaml"]["data"] == {"foo": 3}
+    exp = results[exp_rev]["data"]
+    assert exp["queued"]
+    assert exp["params"]["params.yaml"] == {"data": {"foo": 3}}
 
 
 @pytest.mark.parametrize("workspace", [True, False])
@@ -400,9 +395,11 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     dump_yaml(pidfile, info.to_dict())
 
     results = dvc.experiments.show()
-    assert not results[baseline_rev][exp_rev]["data"]["queued"]
-    assert results[baseline_rev][exp_rev]["data"]["running"]
-    assert results[baseline_rev][exp_rev]["data"]["executor"] == info.location
+    exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
+    assert not exp_data["queued"]
+    assert exp_data["running"]
+    assert exp_data["executor"] == info.location
+
     assert not results["workspace"]["baseline"]["data"]["running"]
 
 
@@ -441,12 +438,13 @@ def test_show_running_checkpoint(
     )
     if workspace:
         scm.set_ref(EXEC_BRANCH, str(exp_ref), symbolic=True)
+
     results = dvc.experiments.show()
-    assert results[baseline_rev][checkpoint_rev]["data"]["running"]
-    assert (
-        results[baseline_rev][checkpoint_rev]["data"]["executor"]
-        == info.location
-    )
+
+    checkpoint_res = get_in(results, [baseline_rev, checkpoint_rev, "data"])
+    assert checkpoint_res["running"]
+    assert checkpoint_res["executor"] == info.location
+
     assert not results["workspace"]["baseline"]["data"]["running"]
 
 
@@ -462,13 +460,11 @@ def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
     rev1 = first(exp1)
     rev2 = first(exp2)
 
-    assert result[baseline_rev][rev1]["data"]["params"]["params.yaml"][
-        "data"
-    ] == {"foo": 2}
-    assert result[baseline_rev][rev2]["data"]["params"]["params.yaml"][
-        "data"
-    ] == {"foo": 3}
+    baseline = result[baseline_rev]
 
-    assert isinstance(
-        result["workspace"]["baseline"]["error"], YAMLFileCorruptedError
-    )
+    paths = ["data", "params", "params.yaml"]
+    assert get_in(baseline[rev1], paths) == {"data": {"foo": 2}}
+    assert get_in(baseline[rev2], paths) == {"data": {"foo": 3}}
+
+    paths = ["workspace", "baseline", "error"]
+    assert isinstance(get_in(result, paths), YAMLFileCorruptedError)

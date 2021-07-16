@@ -1,9 +1,8 @@
 import logging
-import operator
 import os
-from functools import reduce
 
 import pytest
+from funcy import get_in
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
@@ -286,9 +285,7 @@ def test_log_errors(
 
     _, error = capsys.readouterr()
 
-    assert isinstance(
-        reduce(operator.getitem, error_path, result), YAMLFileCorruptedError
-    )
+    assert isinstance(get_in(result, error_path), YAMLFileCorruptedError)
     assert (
         "DVC failed to load some metrics for following revisions: 'workspace'."
         in error
