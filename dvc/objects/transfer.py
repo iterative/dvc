@@ -112,12 +112,12 @@ def _do_transfer(
     all_file_objs = set(file_objs)
 
     for dir_obj in dir_objs:
-        bound_file_objs = []
+        bound_file_objs = set()
         directory_hashes = {entry.hash_info for _, entry in dir_obj}
 
         for file_obj in all_file_objs.copy():
             if file_obj.hash_info in directory_hashes:
-                bound_file_objs.append(file_obj)
+                bound_file_objs.add(file_obj)
                 all_file_objs.remove(file_obj)
 
         dir_fails = processor(bound_file_objs)
@@ -190,7 +190,7 @@ def transfer(
         src.path_info,
         dest.path_info,
     )
-    status = compare_status(src, dest, objs, **kwargs)
+    status = compare_status(src, dest, objs, check_deleted=False, **kwargs)
     if not status.new:
         return 0
 
@@ -199,7 +199,6 @@ def transfer(
     for obj in status.new:
         if isinstance(obj, Tree):
             dirs.add(obj)
-            files.update(entry for _, entry in obj)
         else:
             files.add(obj)
     if jobs is None:

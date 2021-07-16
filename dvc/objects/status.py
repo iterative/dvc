@@ -139,6 +139,7 @@ def compare_status(
     dest: "ObjectDB",
     objs: Iterable["HashFile"],
     log_missing: bool = True,
+    check_deleted: bool = True,
     **kwargs,
 ) -> "CompareStatusResult":
     """Compare status for the specified objects between two ODBs.
@@ -149,10 +150,18 @@ def compare_status(
         new: hashes that only exist in src
         deleted: hashes that only exist in dest
     """
-    src_exists, src_missing = status(src, objs, index=get_index(src), **kwargs)
     dest_exists, dest_missing = status(
         dest, objs, index=get_index(dest), **kwargs
     )
+    # for transfer operations we can skip src status check when all objects
+    # already exist in dest
+    if dest_missing or check_deleted or log_missing:
+        src_exists, src_missing = status(
+            src, objs, index=get_index(src), **kwargs
+        )
+    else:
+        src_exists = dest_exists
+        src_missing = set()
     result = CompareStatusResult(
         src_exists & dest_exists,
         src_missing & dest_missing,
