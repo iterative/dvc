@@ -29,7 +29,7 @@ learning projects. Key features:
 #. Helps manage experiments with Git tags/branches and **metrics** tracking.
 
 **DVC** aims to replace spreadsheet and document sharing tools (such as Excel or Google Docs)
-frequently as both knowledge repositories and team ledgers.
+frequently used as both knowledge repositories and team ledgers.
 DVC also replaces both ad-hoc scripts to track, move, and deploy different model versions
 and ad-hoc data file suffixes and prefixes.
 
