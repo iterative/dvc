@@ -96,9 +96,6 @@ def gc(
         jobs=jobs,
     )
     if removed:
-        index = get_index(odb)
-        if index:
-            with index:
-                index.clear()
+        get_index(odb).clear()
     else:
         logger.info("No unused cache to remove from remote.")

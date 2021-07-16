@@ -63,10 +63,9 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects.transfer import transfer
 
         for odb, objs in self.get_used_objs().items():
-            transfer(odb, self.repo.odb.local, objs, jobs=jobs)
+            self.repo.cloud.pull(objs, jobs=jobs, odb=odb)
 
         obj = self.get_obj()
         checkout(

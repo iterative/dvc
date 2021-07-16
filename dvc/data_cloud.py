@@ -3,6 +3,8 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
+from dvc.objects.db import get_index
+
 if TYPE_CHECKING:
     from dvc.objects.db.base import ObjectDB
     from dvc.objects.file import HashFile
@@ -80,7 +82,13 @@ class DataCloud:
 
         if not odb:
             odb = self.get_remote_odb(remote, "push")
-        return transfer(self.repo.odb.local, odb, objs, jobs=jobs)
+        return transfer(
+            self.repo.odb.local,
+            odb,
+            objs,
+            jobs=jobs,
+            dest_index=get_index(odb),
+        )
 
     def pull(
         self,
@@ -102,13 +110,20 @@ class DataCloud:
 
         if not odb:
             odb = self.get_remote_odb(remote, "pull")
-        return transfer(odb, self.repo.odb.local, objs, jobs=jobs)
+        return transfer(
+            odb,
+            self.repo.odb.local,
+            objs,
+            jobs=jobs,
+            src_index=get_index(odb),
+        )
 
     def status(
         self,
         objs: Iterable["HashFile"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
+        odb: Optional["ObjectDB"] = None,
         log_missing: bool = True,
     ):
         """Check status of data items in a cloud-agnostic way.
@@ -119,18 +134,21 @@ class DataCloud:
             remote: optional remote to compare
                 cache to. By default remote from core.remote config option
                 is used.
+            odb: optional ODB to check status from. Overrides remote.
             log_missing: log warning messages if file doesn't exist
                 neither in cache, neither in cloud.
         """
         from dvc.objects.status import compare_status
 
-        remote_odb = self.get_remote_odb(remote, "status")
+        if not odb:
+            odb = self.get_remote_odb(remote, "status")
         return compare_status(
             self.repo.odb.local,
-            remote_odb,
+            odb,
             objs,
             jobs=jobs,
             log_missing=log_missing,
+            dest_index=get_index(odb),
         )
 
     def get_url_for(self, remote, checksum):

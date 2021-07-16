@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 from funcy import first
 
-import dvc.data_cloud as cloud
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
@@ -59,7 +58,9 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     (tmp_dir / dst).unlink()
 
     remote_exception = NoRemoteError("dvc import")
-    with patch.object(cloud.DataCloud, "pull", side_effect=remote_exception):
+    with patch.object(
+        dvc.cloud, "get_remote_odb", side_effect=remote_exception
+    ):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).is_file()
