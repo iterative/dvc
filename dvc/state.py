@@ -2,33 +2,14 @@
 
 import logging
 import os
-import re
 from abc import ABC, abstractmethod
-from urllib.parse import urlencode, urlunparse
 
-from dvc.exceptions import DvcException
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.utils import relpath
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
-SQLITE_MAX_VARIABLES_NUMBER = 999
-
 logger = logging.getLogger(__name__)
-
-
-class StateVersionTooNewError(DvcException):
-    """Thrown when DVC version is older than the state database version."""
-
-    def __init__(self, dvc_version, expected, actual):
-        super().__init__(
-            "you are using an old version '{dvc_version}' of DVC that is "
-            "using state file version '{expected}', which is not compatible "
-            "with the state file version '{actual}', that is used in this "
-            "repo. Please upgrade right now!".format(
-                dvc_version=dvc_version, expected=expected, actual=actual
-            )
-        )
 
 
 class StateBase(ABC):
@@ -205,33 +186,3 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         with self.links as ref:
             for path in unused:
                 del ref[path]
-
-
-def _connect_sqlite(filename, options):
-    # Connect by URI was added in Python 3.4 and sqlite 3.7.7,
-    # we ignore options, which should be fine unless repo is on old NFS/CIFS
-    import sqlite3
-
-    if sqlite3.sqlite_version_info < (3, 7, 7):
-        return sqlite3.connect(filename)
-
-    uri = _build_sqlite_uri(filename, options)
-    return sqlite3.connect(uri, uri=True)
-
-
-def _build_sqlite_uri(filename, options):
-    # In the doc mentioned below we only need to replace ? -> %3f and
-    # # -> %23, but, if present, we also need to replace % -> %25 first
-    # (happens when we are on a weird FS that shows urlencoded filenames
-    # instead of proper ones) to not confuse sqlite.
-    uri_path = filename.replace("%", "%25")
-
-    # Convert filename to uri according to https://www.sqlite.org/uri.html, 3.1
-    uri_path = uri_path.replace("?", "%3f").replace("#", "%23")
-    if os.name == "nt":
-        uri_path = uri_path.replace("\\", "/")
-        uri_path = re.sub(r"^([a-z]:)", "/\\1", uri_path, flags=re.I)
-    uri_path = re.sub(r"/+", "/", uri_path)
-
-    # Empty netloc, params and fragment
-    return urlunparse(("file", "", uri_path, "", urlencode(options), ""))
