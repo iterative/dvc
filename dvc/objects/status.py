@@ -154,7 +154,7 @@ def compare_status(
     dest_exists, dest_missing = status(dest, objs, index=dest_index, **kwargs)
     # for transfer operations we can skip src status check when all objects
     # already exist in dest
-    if dest_missing or check_deleted or log_missing:
+    if dest_missing or check_deleted:
         src_exists, src_missing = status(src, objs, index=src_index, **kwargs)
     else:
         src_exists = dest_exists
