@@ -62,7 +62,11 @@ def move(self, from_path, to_path):
         )
         to_path = os.path.relpath(to_path, new_wdir)
         new_stage = self.stage.create(
-            single_stage=True, fname=new_fname, wdir=new_wdir, outs=[to_path]
+            single_stage=True,
+            fname=new_fname,
+            wdir=new_wdir,
+            outs=[to_path],
+            meta=stage.meta,
         )
 
         os.unlink(stage.path)

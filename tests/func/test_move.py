@@ -1,11 +1,12 @@
 import os
+import textwrap
 
 import pytest
 
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.main import main
-from dvc.utils.serialize import load_yaml
+from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.utils import cd
@@ -244,3 +245,24 @@ def test_move_output_overlap(tmp_dir, dvc):
     assert (tmp_dir / "foo.dvc").exists()
     assert not (tmp_dir / "dir" / "foo").exists()
     assert not (tmp_dir / "dir" / "foo.dvc").exists()
+
+
+def test_move_meta(tmp_dir, dvc):
+    (stage,) = tmp_dir.dvc_gen("foo", "foo")
+    data = load_yaml(stage.path)
+    data["meta"] = {"custom_key": 42}
+    dump_yaml(stage.path, data)
+
+    dvc.move("foo", "bar")
+    res = (tmp_dir / "bar.dvc").read_text()
+    print(res)
+    assert res == textwrap.dedent(
+        """\
+        outs:
+        - md5: acbd18db4cc2f85cedef654fccc4a4d8
+          size: 3
+          path: bar
+        meta:
+          custom_key: 42
+    """
+    )

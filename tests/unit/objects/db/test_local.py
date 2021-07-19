@@ -92,3 +92,69 @@ def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
     )
     dvc.odb.local.set_exec(PathInfo("foo"))
     assert mock_chmod.called
+
+
+def test_staging_file(tmp_dir, dvc):
+    from dvc.objects import check, save
+    from dvc.objects.stage import get_staging, stage
+
+    tmp_dir.gen("foo", "foo")
+    fs = LocalFileSystem()
+
+    local_odb = dvc.odb.local
+    staging_odb = get_staging(local_odb)
+    obj = stage(local_odb, tmp_dir / "foo", fs, "md5")
+
+    for odb in (local_odb, staging_odb):
+        path_info = odb.hash_to_path_info(obj.hash_info.value)
+        assert not odb.fs.exists(path_info)
+
+    # check for file after staging should fail since files are not added on
+    # stage()
+    with pytest.raises(FileNotFoundError):
+        check(local_odb, obj)
+    with pytest.raises(FileNotFoundError):
+        check(staging_odb, obj)
+
+    save(local_odb, obj)
+    check(local_odb, obj)
+    with pytest.raises(FileNotFoundError):
+        check(staging_odb, obj)
+
+    path_info = local_odb.hash_to_path_info(obj.hash_info.value)
+    assert fs.exists(path_info)
+
+
+def test_staging_dir(tmp_dir, dvc):
+    from dvc.objects import check, save
+    from dvc.objects.stage import get_staging, stage
+
+    tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
+    fs = LocalFileSystem()
+    local_odb = dvc.odb.local
+    staging_odb = get_staging(local_odb)
+
+    obj = stage(local_odb, tmp_dir / "dir", fs, "md5")
+
+    path_info = local_odb.hash_to_path_info(obj.hash_info.value)
+    assert not local_odb.fs.exists(path_info)
+    path_info = staging_odb.hash_to_path_info(obj.hash_info.value)
+    assert staging_odb.fs.exists(path_info)
+
+    # check for raw object after staging should pass only when using the
+    # staging odb
+    raw = HashFile(obj.path_info, obj.fs, obj.hash_info)
+    with pytest.raises(FileNotFoundError):
+        check(local_odb, raw)
+    check(staging_odb, raw)
+
+    # checking the entire tree should fail since individual file entries are
+    # not added on stage()
+    with pytest.raises(FileNotFoundError):
+        check(staging_odb, obj)
+
+    save(local_odb, obj)
+    check(local_odb, obj)
+
+    path_info = local_odb.hash_to_path_info(obj.hash_info.value)
+    assert fs.exists(path_info)

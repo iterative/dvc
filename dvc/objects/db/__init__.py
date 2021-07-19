@@ -5,6 +5,7 @@ def get_odb(fs, path_info, **config):
     from .base import ObjectDB
     from .gdrive import GDriveObjectDB
     from .local import LocalObjectDB
+    from .oss import OSSObjectDB
     from .ssh import SSHObjectDB
 
     if fs.scheme == Schemes.LOCAL:
@@ -16,6 +17,9 @@ def get_odb(fs, path_info, **config):
     if fs.scheme == Schemes.GDRIVE:
         return GDriveObjectDB(fs, path_info, **config)
 
+    if fs.scheme == Schemes.OSS:
+        return OSSObjectDB(fs, path_info, **config)
+
     return ObjectDB(fs, path_info, **config)
 
 
@@ -26,6 +30,7 @@ def _get_odb(repo, settings):
         return None
 
     cls, config, path_info = get_cloud_fs(repo, **settings)
+    config["tmp_dir"] = repo.tmp_dir
     return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 

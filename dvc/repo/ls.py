@@ -28,7 +28,7 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
     """
     from . import Repo
 
-    with Repo.open(url, rev, subrepos=True, uninitialized=True) as repo:
+    with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
         path_info = PathInfo(repo.root_dir)
         if path:
             path_info /= path

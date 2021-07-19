@@ -7,3 +7,11 @@ class ObjectError(DvcException):
 
 class ObjectFormatError(ObjectError):
     pass
+
+
+class ObjectDBError(DvcException):
+    pass
+
+
+class ObjectDBPermissionError(ObjectDBError):
+    pass

@@ -24,7 +24,7 @@ def push(
 
     expanded_targets = glob_targets(targets, glob=glob)
 
-    used_objs, _ = self.used_cache(
+    used = self.used_objs(
         expanded_targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -38,6 +38,8 @@ def push(
         revs=revs,
     )
 
-    return len(used_run_cache) + self.cloud.push(
-        used_objs, jobs, remote=remote
-    )
+    pushed = len(used_run_cache)
+    for odb, objs in used.items():
+        if odb is None:
+            pushed += self.cloud.push(objs, jobs, remote=remote)
+    return pushed

@@ -341,7 +341,7 @@ class Repo:
             existing_stages = self.stages if old_stages is None else old_stages
             build_graph(existing_stages + new_stages)
 
-    def used_cache(
+    def used_objs(
         self,
         targets=None,
         all_branches=False,
@@ -367,21 +367,22 @@ class Repo:
         the scope.
 
         Returns:
-            A dictionary with Schemes (representing output's location) mapped
-            to items containing the output's `dumpd` names and the output's
-            children (if the given output is a directory).
+            A dict mapping (remote) ODB instances to sets of objects that
+            belong to each ODB. If the ODB instance is None, the objects
+            are naive and do not belong to a specific remote ODB.
         """
-        used_objs = set()
-        used_external = defaultdict(set)
+        used = defaultdict(set)
 
         def _add_suffix(objs, suffix):
             from dvc.objects.tree import Tree
 
             for obj in objs:
-                obj.name += suffix
+                if obj.name is not None:
+                    obj.name += suffix
                 if isinstance(obj, Tree):
                     for _, entry_obj in obj:
-                        entry_obj.name += suffix
+                        if entry_obj.name is not None:
+                            entry_obj.name += suffix
 
         for branch in self.brancher(
             revs=revs,
@@ -400,27 +401,23 @@ class Repo:
             )
 
             for stage, filter_info in pairs:
-                objs, external = stage.get_used_cache(
+                for odb, objs in stage.get_used_objs(
                     remote=remote,
                     force=force,
                     jobs=jobs,
                     filter_info=filter_info,
-                )
-                if branch:
-                    _add_suffix(objs, f" ({branch})")
-                used_objs.update(objs)
-                for repo_pair, paths in external.items():
-                    used_external[repo_pair].update(paths)
+                ).items():
+                    if branch:
+                        _add_suffix(objs, f" ({branch})")
+                    used[odb].update(objs)
 
         if used_run_cache:
-            objs, external = self.stage_cache.get_used_cache(
+            for odb, objs in self.stage_cache.get_used_objs(
                 used_run_cache, remote=remote, force=force, jobs=jobs
-            )
-            used_objs.update(objs)
-            for repo_pair, paths in external.items():
-                used_external[repo_pair].update(paths)
+            ).items():
+                used[odb].update(objs)
 
-        return used_objs, used_external
+        return used
 
     @cached_property
     def outs_trie(self):

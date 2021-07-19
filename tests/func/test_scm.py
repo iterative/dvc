@@ -99,6 +99,35 @@ def test_ignored(tmp_dir, scm):
     assert not scm.is_ignored(tmp_dir / "dir1" / "file2.txt")
 
 
+def test_ignored_dir_unignored_subdirs(tmp_dir, scm):
+    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.csv"})
+    scm.add([".gitignore"])
+    tmp_dir.gen(
+        {
+            os.path.join("data", "raw", "tracked.csv"): "cont",
+            os.path.join("data", "raw", "not_tracked.json"): "cont",
+        }
+    )
+
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "tracked.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "not_tracked.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "non_existent.json")
+
+    assert not scm.is_ignored(f"data{os.sep}")
+    # git check-ignore would now mark "data/raw" as ignored
+    # after detecting it's a directory in the file system;
+    # instead, we rely on the trailing separator to determine if handling a
+    # a directory - for consistency between existent and non-existent paths
+    assert scm.is_ignored(os.path.join("data", "raw"))
+    assert not scm.is_ignored(os.path.join("data", f"raw{os.sep}"))
+
+    assert scm.is_ignored(os.path.join("data", "non_existent"))
+    assert not scm.is_ignored(os.path.join("data", f"non_existent{os.sep}"))
+
+
 def test_get_gitignore(tmp_dir, scm):
     tmp_dir.gen({"file1": "contents", "dir": {}})
 

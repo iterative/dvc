@@ -21,12 +21,12 @@ def test_metrics_order(tmp_dir, dvc):
     )
     with (tmp_dir / "sub").chdir():
         dvc.stage.add(
-            metrics=[str(tmp_dir / "p1.json"), str("p3.json")],
+            metrics=[str(tmp_dir / "p1.json"), "p3.json"],
             cmd="cmd2",
             name="stage2",
         )
 
-    assert list(dvc.metrics.show()[""]) == [
+    assert list(dvc.metrics.show()[""]["data"]) == [
         "p.json",
         os.path.join("sub", "p4.json"),
         "p1.json",

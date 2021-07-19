@@ -21,7 +21,7 @@ from dvc.types import Optional
 logger = logging.getLogger(__name__)
 
 
-def _changed(path_info, fs, obj, cache):
+def _changed(path_info, fs, obj, cache, state=None):
     logger.trace("checking if '%s'('%s') has changed.", path_info, obj)
 
     try:
@@ -32,11 +32,13 @@ def _changed(path_info, fs, obj, cache):
         )
         return True
 
-    try:
-        actual = stage(cache, path_info, fs, obj.hash_info.name).hash_info
-    except FileNotFoundError:
-        logger.debug("'%s' doesn't exist.", path_info)
-        return True
+    actual = state.get(path_info, fs) if state else None
+    if actual is None:
+        try:
+            actual = stage(cache, path_info, fs, obj.hash_info.name).hash_info
+        except FileNotFoundError:
+            logger.debug("'%s' doesn't exist.", path_info)
+            return True
 
     if obj.hash_info != actual:
         logger.debug(
@@ -120,9 +122,11 @@ def _try_links(cache, from_info, to_info, link_types):
 
 
 def _link(cache, from_info, to_info):
-    assert cache.fs.isfile(from_info)
     cache.makedirs(to_info.parent)
-    _try_links(cache, from_info, to_info, cache.cache_types)
+    try:
+        _try_links(cache, from_info, to_info, cache.cache_types)
+    except FileNotFoundError as exc:
+        raise CheckoutError([to_info]) from exc
 
 
 def _cache_is_copy(cache, path_info):
@@ -163,7 +167,7 @@ def _checkout_file(
     modified = False
     cache_info = cache.hash_to_path_info(obj.hash_info.value)
     if fs.exists(path_info):
-        if not relink and _changed(path_info, fs, obj, cache):
+        if not relink and _changed(path_info, fs, obj, cache, state=state):
             modified = True
             _remove(path_info, fs, cache, force=force)
             _link(cache, cache_info, path_info)
@@ -222,19 +226,23 @@ def _checkout_dir(
 
     logger.debug("Linking directory '%s'.", path_info)
 
+    failed = []
     for entry_key, entry_obj in obj:
-        entry_modified = _checkout_file(
-            path_info.joinpath(*entry_key),
-            fs,
-            entry_obj,
-            cache,
-            force,
-            progress_callback,
-            relink,
-            state=None,
-        )
-        if entry_modified:
-            modified = True
+        try:
+            entry_modified = _checkout_file(
+                path_info.joinpath(*entry_key),
+                fs,
+                entry_obj,
+                cache,
+                force,
+                progress_callback,
+                relink,
+                state=None,
+            )
+            if entry_modified:
+                modified = True
+        except CheckoutError as exc:
+            failed.extend(exc.target_infos)
 
     modified = (
         _remove_redundant_files(
@@ -242,6 +250,9 @@ def _checkout_dir(
         )
         or modified
     )
+
+    if failed:
+        raise CheckoutError(failed)
 
     if state:
         state.save(path_info, fs, obj.hash_info)
@@ -310,21 +321,9 @@ def checkout(
         _remove(path_info, fs, cache, force=force)
         failed = path_info
 
-    elif not relink and not _changed(path_info, fs, obj, cache):
+    elif not relink and not _changed(path_info, fs, obj, cache, state=state):
         logger.trace("Data '%s' didn't change.", path_info)  # type: ignore
         skip = True
-    else:
-        try:
-            check(cache, obj)
-        except (FileNotFoundError, ObjectFormatError):
-            if not quiet:
-                logger.warning(
-                    "Cache '%s' not found. File '%s' won't be created.",
-                    obj.hash_info,
-                    path_info,
-                )
-            _remove(path_info, fs, cache, force=force)
-            failed = path_info
 
     if failed or skip:
         if progress_callback and obj:

@@ -1,11 +1,9 @@
 import argparse
-import logging
 import os
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, fix_subparsers
-
-logger = logging.getLogger(__name__)
+from dvc.ui import ui
 
 
 class CmdLive(CmdBase):
@@ -14,12 +12,13 @@ class CmdLive(CmdBase):
     def _run(self, target, revs=None):
         metrics, plots = self.repo.live.show(target=target, revs=revs)
 
-        html_path = self.args.target + ".html"
-        self.repo.plots.write_html(html_path, plots, metrics)
+        if plots:
+            html_path = self.args.target + ".html"
+            self.repo.plots.write_html(html_path, plots, metrics)
 
-        logger.info(f"\nfile://{os.path.abspath(html_path)}")
-
-        return 0
+            ui.write("\nfile://", os.path.abspath(html_path), sep="")
+            return 0
+        return 1
 
 
 class CmdLiveShow(CmdLive):

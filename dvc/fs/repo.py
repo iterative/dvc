@@ -31,6 +31,8 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         kwargs: Additional keyword arguments passed to the `DvcFileSystem()`.
     """
 
+    sep = os.sep
+
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
@@ -63,6 +65,12 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         if hasattr(repo, "dvc_dir"):
             self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
+
+    @property
+    def repo_url(self):
+        if self._main_repo is None:
+            return None
+        return self._main_repo.url
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
@@ -159,10 +167,10 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        (out,) = meta.outs
-        assert len(meta.outs) == 1
-        if fs.exists(out.path_info):
-            return False
+        for out in meta.outs:
+            if fs.exists(out.path_info):
+                return False
+
         return True
 
     def isdir(self, path):  # pylint: disable=arguments-differ
@@ -186,10 +194,10 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        (out,) = meta.outs
-        assert len(meta.outs) == 1
-        if fs.exists(out.path_info):
-            return False
+        for out in meta.outs:
+            if fs.exists(out.path_info):
+                return False
+
         return meta.isdir
 
     def isdvc(self, path, **kwargs):

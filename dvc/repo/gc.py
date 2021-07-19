@@ -49,6 +49,7 @@ def gc(
 
     from contextlib import ExitStack
 
+    from dvc.objects.stage import get_staging
     from dvc.repo import Repo
 
     if not repos:
@@ -61,7 +62,7 @@ def gc(
             stack.enter_context(repo.lock)
 
         for repo in all_repos + [self]:
-            objs, _ = repo.used_cache(
+            for objs in repo.used_objs(
                 all_branches=all_branches,
                 with_deps=with_deps,
                 all_tags=all_tags,
@@ -70,8 +71,8 @@ def gc(
                 remote=remote,
                 force=force,
                 jobs=jobs,
-            )
-            used_objs.update(objs)
+            ).values():
+                used_objs.update(objs)
 
     for scheme, odb in self.odb.by_scheme():
         if not odb:
@@ -83,6 +84,7 @@ def gc(
         )
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
+    get_staging(self.odb.local).gc(set(), jobs=jobs)
 
     if not cloud:
         return

@@ -33,6 +33,8 @@ class RemoteMissingDepsError(DvcException):
 
 
 class BaseFileSystem:
+    sep = "/"
+
     scheme = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
     PATH_CLS = URLInfo  # type: Any
@@ -170,7 +172,7 @@ class BaseFileSystem:
     def ls(self, path_info, detail=False):
         raise RemoteActionNotImplemented("ls", self.scheme)
 
-    def find(self, path_info, detail=False):
+    def find(self, path_info, detail=False, prefix=None):
         raise RemoteActionNotImplemented("find", self.scheme)
 
     def is_empty(self, path_info):
@@ -185,7 +187,7 @@ class BaseFileSystem:
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
 
-    def makedirs(self, path_info):
+    def makedirs(self, path_info, **kwargs):
         """Optional: Implement only if the remote needs to create
         directories before copying/linking/moving data
         """
@@ -235,14 +237,23 @@ class BaseFileSystem:
             no_progress_bar=no_progress_bar,
         )
 
-    def upload_fobj(self, fobj, to_info, no_progress_bar=False, **pbar_args):
+    def upload_fobj(
+        self, fobj, to_info, no_progress_bar=False, size=None, **pbar_args
+    ):
         if not hasattr(self, "_upload_fobj"):
             raise RemoteActionNotImplemented("upload_fobj", self.scheme)
 
         with Tqdm.wrapattr(
-            fobj, "read", disable=no_progress_bar, bytes=True, **pbar_args
+            fobj,
+            "read",
+            disable=no_progress_bar,
+            bytes=True,
+            total=size,
+            **pbar_args,
         ) as wrapped:
-            self._upload_fobj(wrapped, to_info)  # pylint: disable=no-member
+            self._upload_fobj(  # pylint: disable=no-member
+                wrapped, to_info, size=size
+            )
 
     def download(
         self,

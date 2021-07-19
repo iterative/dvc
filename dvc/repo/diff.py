@@ -5,7 +5,6 @@ from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
 from dvc.objects.stage import get_file_hash
-from dvc.objects.stage import stage as ostage
 from dvc.repo import locked
 from dvc.repo.experiments.utils import fix_exp_head
 
@@ -116,6 +115,7 @@ def _paths_checksums(repo, repo_fs, targets):
 
 def _output_paths(repo, repo_fs, targets):
     from dvc.fs.local import LocalFileSystem
+    from dvc.objects.stage import stage as ostage
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 

@@ -23,6 +23,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         repo: DVC repo.
     """
 
+    sep = os.sep
+
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
@@ -49,6 +51,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # NOTE: use string paths here for performance reasons
         key = tuple(relpath(path_info, out.path_info).split(os.sep))
         out.get_dir_cache(remote=remote)
+        if out.obj is None:
+            raise FileNotFoundError
         obj = out.obj.trie.get(key)
         if obj:
             return obj.hash_info
@@ -231,7 +235,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def info(self, path_info):
         meta = self.metadata(path_info)
-        ret = {"type": "dir" if meta.isdir else "file"}
+        ret = {"type": "directory" if meta.isdir else "file"}
         if meta.is_output and len(meta.outs) == 1 and meta.outs[0].hash_info:
             hash_info = meta.outs[0].hash_info
             ret["size"] = hash_info.size

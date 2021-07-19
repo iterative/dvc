@@ -4,7 +4,7 @@ import io
 from funcy import cached_property
 
 from dvc.hash_info import HashInfo
-from dvc.istextfile import istextblock
+from dvc.istextfile import DEFAULT_CHUNK_SIZE, istextblock
 from dvc.utils import dos2unix
 
 
@@ -70,6 +70,7 @@ class HashedStreamReader(io.IOBase):
     def __init__(self, fobj):
         self.fobj = fobj
         self.md5 = hashlib.md5()
+        self.total_read = 0
         self.is_text_file = None
         super().__init__()
 
@@ -88,16 +89,19 @@ class HashedStreamReader(io.IOBase):
     def read(self, n=-1):
         chunk = self._reader(n)
         if self.is_text_file is None:
-            self.is_text_file = istextblock(chunk)
+            self.is_text_file = istextblock(chunk[:DEFAULT_CHUNK_SIZE])
 
         if self.is_text_file:
             data = dos2unix(chunk)
         else:
             data = chunk
         self.md5.update(data)
+        self.total_read += len(data)
 
         return chunk
 
     @property
     def hash_info(self):
-        return HashInfo(self.PARAM_CHECKSUM, self.md5.hexdigest(), nfiles=1)
+        return HashInfo(
+            self.PARAM_CHECKSUM, self.md5.hexdigest(), size=self.total_read
+        )

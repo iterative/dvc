@@ -93,7 +93,7 @@ HTTP_COMMON = {
     "user": str,
     "password": str,
     "ask_password": Bool,
-    "ssl_verify": Bool,
+    "ssl_verify": Any(Bool, str),
     "method": str,
     "chunked_upload": Bool,
 }
@@ -105,6 +105,7 @@ WEBDAV_COMMON = {
     "cert_path": str,
     "key_path": str,
     "timeout": Coerce(int),
+    "ssl_verify": Any(Bool, str),
 }
 
 SCHEMA = {
@@ -189,6 +190,7 @@ SCHEMA = {
                     "tenant_id": str,
                     "client_id": str,
                     "client_secret": str,
+                    "allow_anonymous_login": bool,
                     **REMOTE_COMMON,
                 },
                 "oss": {

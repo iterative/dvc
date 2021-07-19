@@ -30,14 +30,8 @@ all_clouds = [
         "hdfs",
         "webdav",
         "webhdfs",
+        "oss",
     ]
-] + [
-    pytest.param(
-        pytest.lazy_fixture("oss"),
-        marks=pytest.mark.xfail(
-            reason="https://github.com/iterative/dvc/issues/4633"
-        ),
-    )
 ]
 
 # Clouds that implement the general methods that can be tested
@@ -56,7 +50,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     out = stage.outs[0]
     cache = out.cache_path
     md5 = out.hash_info.value
-    foo_objs = out.get_used_objs()
+    foo_objs = out.get_used_objs().get(None, set())
 
     (stage_dir,) = tmp_dir.dvc_gen(
         {
@@ -248,7 +242,7 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
 
 def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
-    test_get_file_hash = mocker.spy(dvc_module.objects.stage, "_get_file_hash")
+    test_file_md5 = mocker.spy(dvc_module.objects.stage, "file_md5")
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])
@@ -257,7 +251,7 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     assert ret == 0
     ret = main(["run", "--single-stage", "-d", "foo", "echo foo"])
     assert ret == 0
-    assert test_get_file_hash.mock.call_count == 1
+    assert test_file_md5.mock.call_count == 1
 
 
 def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
@@ -307,7 +301,7 @@ def test_verify_hashes(
     remove("dir")
     remove(dvc.odb.local.cache_dir)
 
-    hash_spy = mocker.spy(dvc_module.objects.stage, "_get_file_hash")
+    hash_spy = mocker.spy(dvc_module.objects.stage, "file_md5")
 
     dvc.pull()
     assert hash_spy.call_count == 0
@@ -340,7 +334,7 @@ def test_pull_git_imports(tmp_dir, dvc, scm, erepo):
     os.makedirs(dvc.odb.local.cache_dir, exist_ok=True)
     clean_repos()
 
-    assert dvc.pull(force=True)["fetched"] == 2
+    assert dvc.pull(force=True)["fetched"] == 3
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo").read_text() == "foo"
@@ -475,13 +469,12 @@ def test_pipeline_file_target_ops(tmp_dir, dvc, run_copy, local_remote):
         ({}, "Everything is up to date"),
     ],
 )
-def test_push_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
+def test_push_stats(tmp_dir, dvc, fs, msg, capsys, local_remote):
     tmp_dir.dvc_gen(fs)
 
-    caplog.clear()
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["push"])
-    assert msg in caplog.text
+    main(["push"])
+    out, _ = capsys.readouterr()
+    assert msg in out
 
 
 @pytest.mark.parametrize(
@@ -492,17 +485,17 @@ def test_push_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
         ({}, "Everything is up to date."),
     ],
 )
-def test_fetch_stats(tmp_dir, dvc, fs, msg, caplog, local_remote):
+def test_fetch_stats(tmp_dir, dvc, fs, msg, capsys, local_remote):
     tmp_dir.dvc_gen(fs)
     dvc.push()
     clean(list(fs.keys()), dvc)
-    caplog.clear()
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["fetch"])
-    assert msg in caplog.text
+
+    main(["fetch"])
+    out, _ = capsys.readouterr()
+    assert msg in out
 
 
-def test_pull_stats(tmp_dir, dvc, capsys, caplog, local_remote):
+def test_pull_stats(tmp_dir, dvc, capsys, local_remote):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
     dvc.push()
     clean(["foo", "bar"], dvc)
@@ -513,12 +506,13 @@ def test_pull_stats(tmp_dir, dvc, capsys, caplog, local_remote):
     out, _ = capsys.readouterr()
     assert "M\tbar".expandtabs() in out
     assert "A\tfoo".expandtabs() in out
-    assert "2 files fetched" in caplog.text
-    assert "1 file added" in caplog.text
-    assert "1 file modified" in caplog.text
-    with caplog.at_level(level=logging.INFO, logger="dvc"):
-        main(["pull"])
-    assert "Everything is up to date." in caplog.text
+    assert "2 files fetched" in out
+    assert "1 file added" in out
+    assert "1 file modified" in out
+
+    main(["pull"])
+    out, _ = capsys.readouterr()
+    assert "Everything is up to date." in out
 
 
 @pytest.mark.parametrize(
@@ -581,6 +575,26 @@ def test_pull_00_prefix(tmp_dir, dvc, remote, monkeypatch):
     # foo's md5 checksum is 00411460f7c92d2124a67ea0f4cb5f85
     # bar's md5 checksum is 0000000018e6137ac2caab16074784a6
     tmp_dir.dvc_gen({"foo": "363", "bar": "jk8ssl"})
+
+    dvc.push()
+    clean(["foo", "bar"], dvc)
+
+    stats = dvc.pull()
+    assert stats["fetched"] == 2
+    assert set(stats["added"]) == {"foo", "bar"}
+
+
+@pytest.mark.parametrize("remote", full_clouds, indirect=True)
+def test_pull_no_00_prefix(tmp_dir, dvc, remote, monkeypatch):
+    # Related: https://github.com/iterative/dvc/issues/6244
+
+    fs_type = type(dvc.cloud.get_remote("upstream").fs)
+    monkeypatch.setattr(fs_type, "_ALWAYS_TRAVERSE", True, raising=False)
+    monkeypatch.setattr(fs_type, "LIST_OBJECT_PAGE_SIZE", 256, raising=False)
+
+    # foo's md5 checksum is 14ffd92a6cbf5f2f657067df0d5881a6
+    # bar's md5 checksum is 64020400f00960c0ef04052547b134b3
+    tmp_dir.dvc_gen({"foo": "dvc", "bar": "cml"})
 
     dvc.push()
     clean(["foo", "bar"], dvc)

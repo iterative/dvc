@@ -1,13 +1,13 @@
 from dvc.main import main
 
 
-def test_root(tmp_dir, dvc, caplog):
+def test_root(tmp_dir, dvc, capsys):
     assert main(["root"]) == 0
-    assert ".\n" in caplog.text
+    assert "." in capsys.readouterr()[0]
 
 
-def test_root_locked(tmp_dir, dvc, caplog):
+def test_root_locked(tmp_dir, dvc, capsys):
     # NOTE: check that `dvc root` is not blocked with dvc lock
     with dvc.lock:
         assert main(["root"]) == 0
-    assert ".\n" in caplog.text
+    assert "." in capsys.readouterr()[0]

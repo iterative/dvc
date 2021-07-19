@@ -9,10 +9,11 @@ logger = logging.getLogger(__name__)
 
 class CmdDataBase(CmdBase):
     def log_summary(self, stats):
+        from dvc.ui import ui
         from dvc.utils.humanize import get_summary
 
         default_msg = "Everything is up to date."
-        logger.info(get_summary(stats.items()) or default_msg)
+        ui.write(get_summary(stats.items()) or default_msg)
 
 
 class CmdDataPull(CmdDataBase):

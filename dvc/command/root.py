@@ -10,8 +10,9 @@ logger = logging.getLogger(__name__)
 class CmdRoot(CmdBaseNoRepo):
     def run(self):
         from dvc.repo import Repo
+        from dvc.ui import ui
 
-        logger.info(relpath(Repo.find_root()))
+        ui.write(relpath(Repo.find_root()))
         return 0
 
 

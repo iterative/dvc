@@ -163,7 +163,7 @@ class AsciiCanvas:
         self.point(x0 + width, y0 + height, "+")
 
 
-def _build_sugiyama_layout(vertexes, edges):
+def _build_sugiyama_layout(vertices, edges):
     #
     # Just a reminder about naming conventions:
     # +------------X
@@ -174,17 +174,17 @@ def _build_sugiyama_layout(vertexes, edges):
     # Y
     #
 
-    vertexes = {v: Vertex(f" {v} ") for v in vertexes}
+    vertices = {v: Vertex(f" {v} ") for v in vertices}
     # NOTE: reverting edges to correctly orientate the graph
-    edges = [Edge(vertexes[e], vertexes[s]) for s, e in edges]
-    vertexes = vertexes.values()
-    graph = Graph(vertexes, edges)
+    edges = [Edge(vertices[e], vertices[s]) for s, e in edges]
+    vertices = vertices.values()
+    graph = Graph(vertices, edges)
 
-    for vertex in vertexes:
+    for vertex in vertices:
         vertex.view = VertexViewer(vertex.data)
 
     # NOTE: determine min box length to create the best layout
-    minw = min(v.view.w for v in vertexes)
+    minw = min(v.view.w for v in vertices)
 
     for edge in edges:
         edge.view = EdgeViewer()
@@ -204,11 +204,11 @@ def _build_sugiyama_layout(vertexes, edges):
     return sug
 
 
-def draw(vertexes, edges):
+def draw(vertices, edges):
     """Build a DAG and draw it in ASCII.
 
     Args:
-        vertexes (list): list of graph vertexes.
+        vertices (list): list of graph vertices.
         edges (list): list of graph edges.
     """
     # pylint: disable=too-many-locals
@@ -217,7 +217,7 @@ def draw(vertexes, edges):
     Xs = []  # pylint: disable=invalid-name
     Ys = []  # pylint: disable=invalid-name
 
-    sug = _build_sugiyama_layout(vertexes, edges)
+    sug = _build_sugiyama_layout(vertices, edges)
 
     for vertex in sug.g.sV:
         # NOTE: moving boxes w/2 to the left

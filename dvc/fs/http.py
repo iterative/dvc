@@ -31,6 +31,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "etag"
     CAN_TRAVERSE = False
+    REQUIRES = {"requests": "requests"}
 
     SESSION_RETRIES = 5
     SESSION_BACKOFF_FACTOR = 0.1
@@ -146,9 +147,9 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         resp = self._head(path_info.url)
         etag = resp.headers.get("ETag") or resp.headers.get("Content-MD5")
         size = self._content_length(resp)
-        return {"etag": etag, "size": size}
+        return {"etag": etag, "size": size, "type": "file"}
 
-    def _upload_fobj_chunked(self, fobj, to_info):
+    def _upload_fobj_chunked(self, fobj, to_info, **kwargs):
         def chunks(fobj):
             while True:
                 chunk = fobj.read(self.CHUNK_SIZE)
@@ -195,9 +196,9 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             self.upload_fobj(
                 fobj,
                 to_info,
+                size=None if no_progress_bar else os.path.getsize(from_file),
                 no_progress_bar=no_progress_bar,
                 desc=name or to_info.url,
-                total=None if no_progress_bar else os.path.getsize(from_file),
             )
 
     @staticmethod

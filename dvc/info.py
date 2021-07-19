@@ -20,6 +20,11 @@ if PKG is None:
 else:
     package = f"({PKG})"
 
+try:
+    import importlib.metadata as importlib_metadata
+except ImportError:  # < 3.8
+    import importlib_metadata  # type: ignore[no-redef]
+
 
 def get_dvc_info():
     info = [
@@ -27,7 +32,7 @@ def get_dvc_info():
         "---------------------------------",
         f"Platform: Python {platform.python_version()} on "
         f"{platform.platform()}",
-        f"Supports: {_get_supported_remotes()}",
+        f"Supports:{_get_supported_remotes()}",
     ]
 
     try:
@@ -37,9 +42,7 @@ def get_dvc_info():
             # later decides to enable shared cache mode with
             # `dvc config cache.shared group`.
             if os.path.exists(repo.odb.local.cache_dir):
-                info.append(
-                    "Cache types: {}".format(_get_linktype_support_info(repo))
-                )
+                info.append(f"Cache types: {_get_linktype_support_info(repo)}")
                 fs_type = get_fs_type(repo.odb.local.cache_dir)
                 info.append(f"Cache directory: {fs_type}")
             else:
@@ -51,7 +54,7 @@ def get_dvc_info():
             root_directory = repo.root_dir
             fs_root = get_fs_type(os.path.abspath(root_directory))
             info.append(f"Workspace directory: {fs_root}")
-            info.append("Repo: {}".format(_get_dvc_repo_info(repo)))
+            info.append(f"Repo: {_get_dvc_repo_info(repo)}")
     except NotDvcRepoError:
         pass
     except SCMError:
@@ -113,19 +116,23 @@ def _get_linktype_support_info(repo):
 
 
 def _get_supported_remotes():
-
     supported_remotes = []
     for scheme, fs_cls in FS_MAP.items():
         if not fs_cls.get_missing_deps():
-            supported_remotes.append(scheme)
+            dependencies = []
+            for requirement in fs_cls.REQUIRES:
+                dependencies.append(
+                    f"{requirement} = "
+                    f"{importlib_metadata.version(requirement)}"
+                )
 
-    if len(supported_remotes) == len(FS_MAP):
-        return "All remotes"
+            remote_info = scheme
+            if dependencies:
+                remote_info += " (" + ", ".join(dependencies) + ")"
+            supported_remotes.append(remote_info)
 
-    if len(supported_remotes) == 1:
-        return supported_remotes
-
-    return ", ".join(supported_remotes)
+    assert len(supported_remotes) >= 1
+    return "\n\t" + ",\n\t".join(supported_remotes)
 
 
 def get_fs_type(path):

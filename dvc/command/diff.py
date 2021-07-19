@@ -3,10 +3,9 @@ import json
 import logging
 import os
 
-import colorama
-
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +17,12 @@ def _digest(checksum):
 
 
 def _show_md(diff, show_hash=False, hide_missing=False):
-    from dvc.ui import ui
-
     headers = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
     statuses = ["added", "deleted", "renamed", "modified"]
     if not hide_missing:
         statuses.append("not in cache")
+
     for status in statuses:
         entries = diff.get(status, [])
         if not entries:
@@ -44,7 +42,7 @@ def _show_md(diff, show_hash=False, hide_missing=False):
 
 class CmdDiff(CmdBase):
     @staticmethod
-    def _format(diff, hide_missing=False):
+    def _show_diff(diff, hide_missing=False):
         """
         Given a diff structure, generate a string of paths separated
         by new lines and grouped together by their state.
@@ -71,15 +69,14 @@ class CmdDiff(CmdBase):
         """
 
         colors = {
-            "added": colorama.Fore.GREEN,
-            "modified": colorama.Fore.YELLOW,
-            "deleted": colorama.Fore.RED,
-            "renamed": colorama.Fore.GREEN,
-            "not in cache": colorama.Fore.YELLOW,
+            "added": "green",
+            "modified": "yellow",
+            "deleted": "red",
+            "renamed": "green",
+            "not in cache": "yellow",
         }
 
         summary = {}
-        groups = []
 
         states = ["added", "deleted", "renamed", "modified"]
         if not hide_missing:
@@ -91,7 +88,8 @@ class CmdDiff(CmdBase):
             if not entries:
                 continue
 
-            content = []
+            header = state.capitalize()
+            ui.write(f"[{colors[state]}]{header}[/]:", styled=True)
 
             for entry in entries:
                 path = entry["path"]
@@ -99,7 +97,7 @@ class CmdDiff(CmdBase):
                     path = f"{path['old']} -> {path['new']}"
                 checksum = entry.get("hash")
                 summary[state] += 1 if not path.endswith(os.sep) else 0
-                content.append(
+                ui.write(
                     "{space}{checksum}{separator}{path}".format(
                         space="    ",
                         checksum=_digest(checksum) if checksum else "",
@@ -108,27 +106,17 @@ class CmdDiff(CmdBase):
                     )
                 )
 
-            groups.append(
-                "{color}{header}{nc}:\n{content}".format(
-                    color=colors[state],
-                    header=state.capitalize(),
-                    nc=colorama.Fore.RESET,
-                    content="\n".join(content),
-                )
-            )
+            ui.write()
 
         if not sum(summary.values()):
             return None
 
-        fmt = (
-            "files summary: {added} added, {deleted} deleted,"
-            " {renamed} renamed, {modified} modified"
+        states_summary = ", ".join(
+            f"{summary[state]} {state}"
+            for state in states
+            if summary[state] > 0
         )
-        if not hide_missing:
-            fmt += ", {not in cache} not in cache"
-        groups.append(fmt.format_map(summary))
-
-        return "\n\n".join(groups)
+        ui.write("files summary:", states_summary)
 
     def run(self):
         from dvc.exceptions import DvcException
@@ -155,13 +143,11 @@ class CmdDiff(CmdBase):
                 diff[key] = entries
 
             if self.args.show_json:
-                logger.info(json.dumps(diff))
+                ui.write(json.dumps(diff))
             elif self.args.show_md:
-                logger.info(_show_md(diff, show_hash, hide_missing))
+                _show_md(diff, show_hash, hide_missing)
             elif diff:
-                output = self._format(diff, hide_missing)
-                if output:
-                    logger.info(output)
+                self._show_diff(diff, hide_missing)
 
         except DvcException:
             logger.exception("failed to get diff")

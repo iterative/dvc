@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 
 from funcy import cached_property, project
 
@@ -35,8 +35,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from dvc.dependency.repo import RepoPair
     from dvc.dvcfile import DVCFile
+    from dvc.objects.db.base import ObjectDB
     from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
@@ -390,6 +390,19 @@ class Stage(params.StageParams):
         if purge:
             self.dvcfile.remove_stage(self)
 
+    def transfer(
+        self,
+        source: str,
+        odb: "ObjectDB" = None,
+        to_remote: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        assert len(self.outs) == 1
+        (out,) = self.outs
+        out.transfer(source, odb=odb, jobs=kwargs.get("jobs"))
+        if not to_remote:
+            out.checkout()
+
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
         if not (kwargs.get("force", False) or self.changed()):
@@ -624,20 +637,15 @@ class Stage(params.StageParams):
             for out in self.filter_outs(filter_info)
         )
 
-    def get_used_cache(
+    def get_used_objs(
         self, *args, **kwargs
-    ) -> Tuple[Set["HashFile"], Dict["RepoPair", Set[str]]]:
-        """Return tuple of (used_objects, used_external) for this stage."""
-        used_objs = set()
-        used_external = defaultdict(set)
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
+        """Return set of objects used by this stage."""
+        used_objs = defaultdict(set)
         for out in self.filter_outs(kwargs.get("filter_info")):
-            used_objs.update(out.get_used_objs(*args, **kwargs))
-            for repo_pair, path in out.get_used_external(
-                *args, **kwargs
-            ).items():
-                used_external[repo_pair].add(path)
-
-        return used_objs, used_external
+            for odb, objs in out.get_used_objs(*args, **kwargs).items():
+                used_objs[odb].update(objs)
+        return used_objs
 
     @staticmethod
     def _check_can_merge(stage, ancestor_out=None):

@@ -1,3 +1,4 @@
+import errno
 import io
 import logging
 import os
@@ -182,7 +183,7 @@ class HDFSFileSystem(BaseFileSystem):
                 else:
                     hdfs.delete_file(path_info.path)
 
-    def makedirs(self, path_info):
+    def makedirs(self, path_info, **kwargs):
         with self.hdfs(path_info) as hdfs:
             # NOTE: fs.create_dir creates parents by default
             hdfs.create_dir(path_info.path)
@@ -220,8 +221,19 @@ class HDFSFileSystem(BaseFileSystem):
 
     def info(self, path_info):
         with self.hdfs(path_info) as hdfs:
-            finfo = hdfs.get_file_info(path_info.path)
-            return {"size": finfo.size}
+            from pyarrow.fs import FileType
+
+            file_info = hdfs.get_file_info(path_info.path)
+            if file_info.type is FileType.Directory:
+                kind = "directory"
+            elif file_info.type is FileType.File:
+                kind = "file"
+            else:
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), path_info
+                )
+
+            return {"size": file_info.size, "type": kind}
 
     def checksum(self, path_info):
         return HashInfo(
@@ -230,7 +242,7 @@ class HDFSFileSystem(BaseFileSystem):
             size=self.getsize(path_info),
         )
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         with self.hdfs(to_info) as hdfs:
             with hdfs.open_output_stream(to_info.path) as fdest:
                 shutil.copyfileobj(fobj, fdest)

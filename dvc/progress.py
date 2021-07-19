@@ -6,6 +6,7 @@ from threading import RLock
 
 from tqdm import tqdm
 
+from dvc.env import DVC_IGNORE_ISATTY
 from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class Tqdm(tqdm):
         file=None,
         total=None,
         postfix=None,
-        **kwargs
+        **kwargs,
     ):
         """
         bytes   : shortcut for
@@ -77,7 +78,7 @@ class Tqdm(tqdm):
         # auto-disable based on TTY
         if (
             not disable
-            and not env2bool("DVC_IGNORE_ISATTY")
+            and not env2bool(DVC_IGNORE_ISATTY)
             and hasattr(file, "isatty")
         ):
             disable = not file.isatty()
@@ -89,7 +90,7 @@ class Tqdm(tqdm):
             bar_format="!",
             lock_args=(False,),
             total=total,
-            **kwargs
+            **kwargs,
         )
         self.postfix = postfix or {"info": ""}
         if bar_format is None:
@@ -105,12 +106,15 @@ class Tqdm(tqdm):
             self.bar_format = bar_format
         self.refresh()
 
-    def update_msg(self, msg, n=1):
+    def update_msg(self, msg: str, n: int = 1) -> None:
         """
         Sets `msg` as a postfix and calls `update(n)`.
         """
-        self.postfix["info"] = " %s |" % msg
+        self.set_msg(msg)
         self.update(n)
+
+    def set_msg(self, msg: str) -> None:
+        self.postfix["info"] = f" {msg} |"
 
     def update_to(self, current, total=None):
         if total:

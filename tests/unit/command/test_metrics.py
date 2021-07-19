@@ -50,7 +50,7 @@ def test_metrics_diff(dvc, mocker, capsys):
     )
 
 
-def test_metrics_diff_json(dvc, mocker, caplog, capsys):
+def test_metrics_diff_json(dvc, mocker, capsys):
     cli_args = parse_args(
         [
             "metrics",
@@ -79,6 +79,7 @@ def test_metrics_diff_json(dvc, mocker, caplog, capsys):
     show_diff_mock = mocker.patch("dvc.compare.show_diff")
 
     assert cmd.run() == 0
+    out, _ = capsys.readouterr()
     metrics_diff.assert_called_once_with(
         cmd.repo,
         targets=["target1", "target2"],
@@ -88,8 +89,7 @@ def test_metrics_diff_json(dvc, mocker, caplog, capsys):
         all=True,
     )
     show_diff_mock.assert_not_called()
-    assert json.dumps(diff) in caplog.text
-    assert capsys.readouterr() == ("", "")
+    assert json.dumps(diff) in out
 
 
 def test_metrics_show(dvc, mocker):
@@ -134,7 +134,7 @@ def test_metrics_show(dvc, mocker):
     )
 
 
-def test_metrics_show_json(dvc, mocker, caplog, capsys):
+def test_metrics_show_json(dvc, mocker, capsys):
     cli_args = parse_args(
         [
             "metrics",
@@ -161,7 +161,7 @@ def test_metrics_show_json(dvc, mocker, caplog, capsys):
     show_metrics_mock = mocker.patch("dvc.compare.show_metrics")
 
     assert cmd.run() == 0
-
+    out, _ = capsys.readouterr()
     metrics_show.assert_called_once_with(
         cmd.repo,
         ["target1", "target2"],
@@ -171,5 +171,4 @@ def test_metrics_show_json(dvc, mocker, caplog, capsys):
         all_commits=True,
     )
     show_metrics_mock.assert_not_called()
-    assert json.dumps(d) in caplog.text
-    assert capsys.readouterr() == ("", "")
+    assert json.dumps(d) in out

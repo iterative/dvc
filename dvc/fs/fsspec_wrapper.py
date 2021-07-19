@@ -22,21 +22,11 @@ class FSSpecWrapper(BaseFileSystem):
     def fs(self):
         raise NotImplementedError
 
-    @lru_cache(512)
     def _with_bucket(self, path):
-        if isinstance(path, self.PATH_CLS):
-            return f"{path.bucket}/{path.path}"
-        return path
+        return str(path)
 
     def _strip_bucket(self, entry):
-        try:
-            bucket, path = entry.split("/", 1)
-        except ValueError:
-            # If there is no path attached, only returns
-            # the bucket (top-level).
-            bucket, path = entry, None
-
-        return path or bucket
+        return entry
 
     def _strip_buckets(self, entries, detail=False):
         for entry in entries:
@@ -48,7 +38,7 @@ class FSSpecWrapper(BaseFileSystem):
             yield entry
 
     def _entry_hook(self, entry):
-        """Simple hook method to be overriden when wanted to process
+        """Simple hook method to be overridden when wanted to process
         entries within info() and ls(detail=True) calls"""
         return entry
 
@@ -86,6 +76,7 @@ class FSSpecWrapper(BaseFileSystem):
         return self.fs.open(self._with_bucket(path_info), mode=mode)
 
     def copy(self, from_info, to_info):
+        self.makedirs(to_info.parent)
         self.fs.copy(self._with_bucket(from_info), self._with_bucket(to_info))
 
     def exists(self, path_info) -> bool:
@@ -96,7 +87,8 @@ class FSSpecWrapper(BaseFileSystem):
         files = self.fs.ls(path, detail=detail)
         yield from self._strip_buckets(files, detail=detail)
 
-    def find(self, path_info, detail=False):
+    # pylint: disable=unused-argument
+    def find(self, path_info, detail=False, prefix=None):
         path = self._with_bucket(path_info)
         files = self.fs.find(path, detail=detail)
         if detail:
@@ -105,7 +97,7 @@ class FSSpecWrapper(BaseFileSystem):
         yield from self._strip_buckets(files, detail=detail)
 
     def walk_files(self, path_info, **kwargs):
-        for file in self.find(path_info):
+        for file in self.find(path_info, **kwargs):
             yield path_info.replace(path=file)
 
     def remove(self, path_info):
@@ -117,20 +109,27 @@ class FSSpecWrapper(BaseFileSystem):
         info["name"] = self._strip_bucket(info["name"])
         return info
 
-    def _upload_fobj(self, fobj, to_info):
+    def makedirs(self, path_info, **kwargs):
+        self.fs.makedirs(
+            self._with_bucket(path_info), exist_ok=kwargs.pop("exist_ok", True)
+        )
+
+    def _upload_fobj(self, fobj, to_info, size=None):
+        self.makedirs(to_info.parent)
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(fobj, fdest, length=fdest.blocksize)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
     ):
-        total = os.path.getsize(from_file)
+        self.makedirs(to_info.parent)
+        size = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
             self.upload_fobj(
                 fobj,
-                self._with_bucket(to_info),
+                to_info,
+                size=size,
                 desc=name,
-                total=total,
                 no_progress_bar=no_progress_bar,
             )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
@@ -155,6 +154,31 @@ class FSSpecWrapper(BaseFileSystem):
 
 # pylint: disable=abstract-method
 class ObjectFSWrapper(FSSpecWrapper):
+    TRAVERSE_PREFIX_LEN = 3
+
+    @lru_cache(512)
+    def _with_bucket(self, path):
+        if isinstance(path, self.PATH_CLS):
+            return f"{path.bucket}/{path.path}"
+        return path
+
+    def _strip_bucket(self, entry):
+        try:
+            bucket, path = entry.split("/", 1)
+        except ValueError:
+            # If there is no path attached, only returns
+            # the bucket (top-level).
+            bucket, path = entry, None
+        return path or bucket
+
+    def makedirs(self, path_info, **kwargs):
+        # For object storages make this method a no-op. The original
+        # fs.makedirs() method will only check if the bucket exists
+        # and create if it doesn't though we don't want to support
+        # that behavior, and the check will cost some time so we'll
+        # simply ignore all mkdir()/makedirs() calls.
+        return None
+
     def _isdir(self, path_info):
         # Directory in object storages are interpreted differently
         # among different fsspec providers, so this logic is a temporary
@@ -169,9 +193,16 @@ class ObjectFSWrapper(FSSpecWrapper):
             and entry["name"].endswith("/")
         )
 
-    def find(self, path_info, detail=False):
-        path = self._with_bucket(path_info)
-        files = self.fs.find(path, detail=detail)
+    def find(self, path_info, detail=False, prefix=None):
+        if prefix:
+            path = self._with_bucket(path_info.parent)
+            files = self.fs.find(
+                path, detail=detail, prefix=path_info.parts[-1]
+            )
+        else:
+            path = self._with_bucket(path_info)
+            files = self.fs.find(path, detail=detail)
+
         if detail:
             files = files.values()
 

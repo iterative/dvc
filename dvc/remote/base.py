@@ -72,6 +72,7 @@ class Remote:
         from dvc.objects.db import get_odb
 
         self.fs = fs
+        config["tmp_dir"] = tmp_dir
         self.odb = get_odb(self.fs, path_info, **config)
 
         url = getattr(path_info, "fspath", path_info.url)
@@ -84,6 +85,22 @@ class Remote:
         return "{class_name}: '{path_info}'".format(
             class_name=type(self).__name__,
             path_info=self.odb.path_info or "No path",
+        )
+
+    def __eq__(self, other):
+        return self.odb == other.odb
+
+    def __hash__(self):
+        return hash(self.odb)
+
+    @classmethod
+    def from_odb(cls, odb):
+        config = odb.config
+        return cls(
+            odb.fs,
+            odb.path_info,
+            config.pop("tmp_dir"),
+            **config,
         )
 
     @index_locked
@@ -121,7 +138,7 @@ class Remote:
         indexed_hashes = set(self.index.intersection(hashes))
         hashes -= indexed_hashes
         indexed_hashes = list(indexed_hashes)
-        logger.debug("Matched '{}' indexed hashes".format(len(indexed_hashes)))
+        logger.debug(f"Matched '{len(indexed_hashes)}' indexed hashes")
         if not hashes:
             return indexed_hashes
 
@@ -148,8 +165,6 @@ class Remote:
         md5s = set()
         dir_objs = {}
         for obj in objs:
-            if obj.fs.scheme != cache.fs.scheme:
-                continue
             md5s.add(obj.hash_info.value)
             if isinstance(obj, Tree):
                 dir_objs[obj.hash_info.value] = obj
@@ -180,7 +195,6 @@ class Remote:
                     )
                 )
         return self._make_status(
-            cache,
             objs,
             show_checksums,
             local_exists,
@@ -190,7 +204,6 @@ class Remote:
 
     def _make_status(
         self,
-        cache,
         objs,
         show_checksums,
         local_exists,
@@ -208,8 +221,6 @@ class Remote:
         file_status = {}
         dir_contents = {}
         for obj in objs:
-            if obj.fs.scheme != cache.fs.scheme:
-                continue
 
             hash_ = obj.hash_info.value
             if isinstance(obj, Tree):
@@ -484,8 +495,6 @@ class Remote:
 
         if self.fs.scheme == "local":
             for obj in objs:
-                if obj.fs.scheme != "local":
-                    continue
                 checksum = obj.hash_info.value
                 cache_file = self.odb.hash_to_path_info(checksum)
                 if self.fs.exists(cache_file):
@@ -520,8 +529,6 @@ class Remote:
                     cache.protect(cache_file)
 
             for obj in objs:
-                if obj.fs.scheme != "local":
-                    continue
                 save_state(obj)
                 if isinstance(obj, Tree):
                     for _, entry_obj in obj:

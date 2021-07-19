@@ -1,10 +1,8 @@
-import asyncio
 import logging
 import os
-import sys
 import threading
-from contextlib import contextmanager
 
+from fsspec.asyn import fsspec_loop
 from fsspec.utils import infer_storage_options
 from funcy import cached_property, memoize, wrap_prop
 
@@ -21,47 +19,6 @@ _DEFAULT_CREDS_STEPS = (
     "azure-identity/1.4.0/azure.identity.html#azure.identity"
     ".DefaultAzureCredential"
 )
-
-
-@contextmanager
-def _temp_event_loop():
-    """When trying to initalize azure filesystem instances
-    with DefaultCredentials, the authentication process requires
-    to have an access to a separate event loop. The normal calls
-    are run in a separate loop managed by the fsspec, but the
-    DefaultCredentials assumes that the callee is managing their
-    own event loop. This function checks whether is there any
-    event loop set, and if not it creates a temporary event loop
-    and set it. After the context is finalized, it restores the
-    original event loop back (if there is any)."""
-
-    try:
-        original_loop = asyncio.get_event_loop()
-        original_policy = asyncio.get_event_loop_policy()
-    except RuntimeError:
-        original_loop = None
-        original_policy = None
-
-    # From 3.8>= and onwards, asyncio changed the default
-    # loop policy for windows to use proactor loops instead
-    # of selector based ones. Due to that, proxied connections
-    # doesn't work with the aiohttp and this is most likely an
-    # upstream bug that needs to be solved outside of DVC. Until
-    # such issue is resolved, we need to manage this;
-    # https://github.com/aio-libs/aiohttp/issues/4536
-    if sys.version_info >= (3, 8) and os.name == "nt":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    loop = original_loop or asyncio.new_event_loop()
-
-    try:
-        asyncio.set_event_loop(loop)
-        yield
-    finally:
-        if original_loop is None:
-            loop.close()
-        asyncio.set_event_loop(original_loop)
-        asyncio.set_event_loop_policy(original_policy)
 
 
 class AzureAuthError(DvcException):
@@ -147,11 +104,12 @@ class AzureFileSystem(ObjectFSWrapper):
         if (
             login_info["account_name"]
             and not any_secondary
-            and not config.get("allow_anonymous_login")
+            and not config.get("allow_anonymous_login", False)
         ):
-            login_info["credential"] = DefaultAzureCredential(
-                exclude_interactive_browser_credential=False
-            )
+            with fsspec_loop():
+                login_info["credential"] = DefaultAzureCredential(
+                    exclude_interactive_browser_credential=False
+                )
 
         for login_method, required_keys in [  # noqa
             ("connection string", ["connection_string"]),
@@ -182,19 +140,10 @@ class AzureFileSystem(ObjectFSWrapper):
         from azure.core.exceptions import AzureError
 
         try:
-            with _temp_event_loop():
-                file_system = AzureBlobFileSystem(**self.fs_args)
+            return AzureBlobFileSystem(**self.fs_args)
         except (ValueError, AzureError) as e:
             raise AzureAuthError(
                 f"Authentication to Azure Blob Storage via {self.login_method}"
                 " failed.\nLearn more about configuration settings at"
                 f" {format_link('https://man.dvc.org/remote/modify')}"
             ) from e
-
-        return file_system
-
-    def open(
-        self, path_info, mode="r", **kwargs
-    ):  # pylint: disable=arguments-differ
-        with _temp_event_loop():
-            return self.fs.open(self._with_bucket(path_info), mode=mode)

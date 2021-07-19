@@ -14,7 +14,9 @@ from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.ui import ui
 from dvc.utils.flatten import flatten
+from dvc.utils.serialize import encode_exception
 
 if TYPE_CHECKING:
     from rich.text import Text
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 SHOW_MAX_WIDTH = 1024
 FILL_VALUE = "-"
+FILL_VALUE_ERRORED = "!"
 
 
 def _filter_name(names, label, filter_strs):
@@ -89,6 +92,7 @@ def _filter_names(
 
 def _update_names(names, items):
     for name, item in items:
+        item = item.get("data", {})
         if isinstance(item, dict):
             item = flatten(item)
             names[name].update({key: None for key in item})
@@ -99,7 +103,8 @@ def _collect_names(all_experiments, **kwargs):
     param_names = defaultdict(dict)
 
     for _, experiments in all_experiments.items():
-        for exp in experiments.values():
+        for exp_data in experiments.values():
+            exp = exp_data.get("data", {})
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
     metric_names = _filter_names(
@@ -149,8 +154,15 @@ def _collect_rows(
         )
 
     new_checkpoint = True
-    for i, (rev, exp) in enumerate(experiments.items()):
-        queued = str(exp.get("queued") or "")
+    for i, (rev, results) in enumerate(experiments.items()):
+        exp = results.get("data", {})
+        if exp.get("running"):
+            state = "Running"
+        elif exp.get("queued"):
+            state = "Queued"
+        else:
+            state = FILL_VALUE
+        executor = exp.get("executor", FILL_VALUE)
         is_baseline = rev == "baseline"
 
         if is_baseline:
@@ -162,7 +174,7 @@ def _collect_rows(
         tip = exp.get("checkpoint_tip")
 
         parent_rev = exp.get("checkpoint_parent", "")
-        parent_exp = experiments.get(parent_rev, {})
+        parent_exp = experiments.get(parent_rev, {}).get("data", {})
         parent_tip = parent_exp.get("checkpoint_tip")
 
         parent = ""
@@ -189,15 +201,27 @@ def _collect_rows(
         row = [
             exp_name,
             name_rev,
-            queued,
             typ,
             _format_time(exp.get("timestamp")),
             parent,
+            state,
+            executor,
         ]
+        fill_value = FILL_VALUE_ERRORED if results.get("error") else FILL_VALUE
         _extend_row(
-            row, metric_names, exp.get("metrics", {}).items(), precision
+            row,
+            metric_names,
+            exp.get("metrics", {}).items(),
+            precision,
+            fill_value=fill_value,
         )
-        _extend_row(row, param_names, exp.get("params", {}).items(), precision)
+        _extend_row(
+            row,
+            param_names,
+            exp.get("params", {}).items(),
+            precision,
+            fill_value=fill_value,
+        )
 
         yield row
 
@@ -260,19 +284,23 @@ def _format_time(timestamp):
     return timestamp.strftime(fmt)
 
 
-def _extend_row(row, names, items, precision):
+def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
     from rich.text import Text
 
     from dvc.compare import _format_field, with_value
 
     if not items:
-        row.extend(FILL_VALUE for keys in names.values() for _ in keys)
+        row.extend(fill_value for keys in names.values() for _ in keys)
         return
 
-    for fname, item in items:
+    for fname, data in items:
+        item = data.get("data", {})
         item = flatten(item) if isinstance(item, dict) else {fname: item}
         for name in names[fname]:
-            value = with_value(item.get(name), FILL_VALUE)
+            value = with_value(
+                item.get(name),
+                FILL_VALUE_ERRORED if data.get("error", None) else fill_value,
+            )
             # wrap field data in rich.Text, otherwise rich may
             # interpret unescaped braces from list/dict types as rich
             # markup tags
@@ -304,7 +332,15 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = ["Experiment", "rev", "queued", "typ", "Created", "parent"]
+    headers = [
+        "Experiment",
+        "rev",
+        "typ",
+        "Created",
+        "parent",
+        "State",
+        "Executor",
+    ]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
     )
@@ -340,8 +376,7 @@ def prepare_exp_id(kwargs) -> "Text":
     text.append(suff)
 
     tree = experiment_types[typ]
-    queued = "*" if kwargs.get("queued") else ""
-    pref = (f"{tree} " if tree else "") + queued
+    pref = f"{tree} " if tree else ""
     return Text(pref) + text
 
 
@@ -381,9 +416,13 @@ def show_experiments(
     if no_timestamp:
         td.drop("Created")
 
+    for col in ("State", "Executor"):
+        if td.is_empty(col):
+            td.drop(col)
+
     row_styles = lmap(baseline_styler, td.column("typ"))
 
-    merge_headers = ["Experiment", "rev", "queued", "typ", "parent"]
+    merge_headers = ["Experiment", "rev", "typ", "parent"]
     td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
     td.drop(*merge_headers[1:])
 
@@ -391,12 +430,14 @@ def show_experiments(
     styles = {
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
+        "State": {"header_style": "black on grey93"},
+        "Executor": {"header_style": "black on grey93"},
     }
     header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
     styles.update(
         {
             header: {
-                "justify": "left" if typ == "metrics" else "params",
+                "justify": "right" if typ == "metrics" else "left",
                 "header_style": f"black on {header_bg_colors[typ]}",
                 "collapse": idx != 0,
                 "no_wrap": typ == "metrics",
@@ -429,7 +470,7 @@ def _normalize_headers(names):
 def _format_json(item):
     if isinstance(item, (date, datetime)):
         return item.isoformat()
-    raise TypeError
+    return encode_exception(item)
 
 
 class CmdExperimentsShow(CmdBase):
@@ -450,7 +491,7 @@ class CmdExperimentsShow(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(all_experiments, default=_format_json))
+            ui.write(json.dumps(all_experiments, default=_format_json))
         else:
             show_experiments(
                 all_experiments,
@@ -494,7 +535,7 @@ class CmdExperimentsDiff(CmdBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(diff))
+            ui.write(json.dumps(diff))
         else:
             from dvc.compare import show_diff
 
@@ -502,8 +543,6 @@ class CmdExperimentsDiff(CmdBase):
             diffs = [("metrics", "Metric"), ("params", "Param")]
             for idx, (key, title) in enumerate(diffs):
                 if idx:
-                    from dvc.ui import ui
-
                     # we are printing tables even in `--quiet` mode
                     # so we should also be printing the "table" separator
                     ui.write(force=True)
@@ -537,7 +576,7 @@ class CmdExperimentsRun(CmdRepro):
                 )
 
         if self.args.reset:
-            logger.info("Any existing checkpoints will be reset and re-run.")
+            ui.write("Any existing checkpoints will be reset and re-run.")
 
         results = self.repo.experiments.run(
             name=self.args.name,
@@ -554,7 +593,7 @@ class CmdExperimentsRun(CmdRepro):
         if self.args.metrics and results:
             metrics = self.repo.metrics.show(revs=list(results))
             metrics.pop("workspace", None)
-            logger.info(show_metrics(metrics))
+            show_metrics(metrics)
 
         return 0
 
@@ -608,12 +647,13 @@ class CmdExperimentsGC(CmdRepro):
         )
 
         if removed:
-            logger.info(
-                f"Removed {removed} experiments. To remove unused cache files "
-                "use 'dvc gc'."
+            ui.write(
+                f"Removed {removed} experiments.",
+                "To remove unused cache files",
+                "use 'dvc gc'.",
             )
         else:
-            logger.info("No experiments to remove.")
+            ui.write("No experiments to remove.")
         return 0
 
 
@@ -662,15 +702,15 @@ class CmdExperimentsPush(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        logger.info(
-            "Pushed experiment '%s' to Git remote '%s'.",
-            self.args.experiment,
-            self.args.git_remote,
+        ui.write(
+            f"Pushed experiment '{self.args.experiment}'"
+            f"to Git remote '{self.args.git_remote}'."
         )
         if not self.args.push_cache:
-            logger.info(
-                "To push cached outputs for this experiment to DVC remote "
-                "storage, re-run this command without '--no-cache'."
+            ui.write(
+                "To push cached outputs",
+                "for this experiment to DVC remote storage,"
+                "re-run this command without '--no-cache'.",
             )
 
         return 0
@@ -689,15 +729,15 @@ class CmdExperimentsPull(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        logger.info(
-            "Pulled experiment '%s' from Git remote '%s'. ",
-            self.args.experiment,
-            self.args.git_remote,
+        ui.write(
+            f"Pulled experiment '{self.args.experiment}'",
+            f"from Git remote '{self.args.git_remote}'.",
         )
         if not self.args.pull_cache:
-            logger.info(
-                "To pull cached outputs for this experiment from DVC remote "
-                "storage, re-run this command without '--no-cache'."
+            ui.write(
+                "To pull cached outputs for this experiment"
+                "from DVC remote storage,"
+                "re-run this command without '--no-cache'."
             )
 
         return 0
@@ -937,9 +977,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_diff_parser.set_defaults(func=CmdExperimentsDiff)
 
-    EXPERIMENTS_RUN_HELP = (
-        "Reproduce complete or partial experiment pipelines."
-    )
+    EXPERIMENTS_RUN_HELP = "Run or resume an experiment."
     experiments_run_parser = experiments_subparsers.add_parser(
         "run",
         parents=[parent_parser],

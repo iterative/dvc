@@ -2,7 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from copy import copy
-from typing import TYPE_CHECKING, Dict, Set, Type
+from typing import TYPE_CHECKING, Dict, Optional, Set, Type
 from urllib.parse import urlparse
 
 from funcy import collecting, project
@@ -33,8 +33,7 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc.dependency.repo import RepoPair
-
+    from .objects.db.base import ObjectDB
     from .objects.file import HashFile
 
 logger = logging.getLogger(__name__)
@@ -46,18 +45,24 @@ CHECKSUM_SCHEMA = Any(
     And(Any(str, And(int, Coerce(str))), Length(min=3), Lower),
 )
 
+CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
+    None,
+    And(str, Length(max=0), SetTo(None)),
+    And(Any(str, And(int, Coerce(str))), Length(min=3)),
+)
+
 # NOTE: currently there are only 3 possible checksum names:
 #
 #    1) md5 (LOCAL, SSH);
-#    2) etag (S3);
+#    2) etag (S3, GS, OSS, AZURE, HTTP);
 #    3) checksum (HDFS);
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUMS_SCHEMA = {
     LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3FileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
     HDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3FileSystem.PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
 }
 
 
@@ -266,8 +271,6 @@ class Output:
     IsStageFileError = OutputIsStageFileError  # type: Type[DvcException]
     IsIgnoredError = OutputIsIgnoredError  # type: Type[DvcException]
 
-    sep = "/"
-
     def __init__(
         self,
         stage,
@@ -323,6 +326,8 @@ class Output:
 
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
+
+        self.def_remote = None
 
     def _parse_path(self, fs, path_info):
         if fs.scheme != "local":
@@ -561,14 +566,22 @@ class Output:
         assert self.hash_info
 
         if self.use_cache:
-            obj = ostage(
-                self.odb,
-                filter_info or self.path_info,
-                self.fs,
-                self.odb.fs.PARAM_CHECKSUM,
-                dvcignore=self.dvcignore,
+            granular = (
+                self.is_dir_checksum
+                and filter_info
+                and filter_info != self.path_info
             )
-            objects.save(self.odb, obj)
+            if granular:
+                obj = self._commit_granular_dir(filter_info)
+            else:
+                obj = ostage(
+                    self.odb,
+                    filter_info or self.path_info,
+                    self.fs,
+                    self.odb.fs.PARAM_CHECKSUM,
+                    dvcignore=self.dvcignore,
+                )
+                osave(self.odb, obj)
             checkout(
                 filter_info or self.path_info,
                 self.fs,
@@ -579,6 +592,20 @@ class Output:
                 state=self.repo.state,
             )
             self.set_exec()
+
+    def _commit_granular_dir(self, filter_info):
+        prefix = filter_info.relative_to(self.path_info).parts
+        save_obj = ostage(
+            self.odb,
+            self.path_info,
+            self.fs,
+            self.odb.fs.PARAM_CHECKSUM,
+            dvcignore=self.dvcignore,
+        )
+        save_obj = save_obj.filter(prefix)
+        checkout_obj = save_obj.get(prefix)
+        osave(self.odb, save_obj)
+        return checkout_obj
 
     def dumpd(self):
         ret = copy(self.hash_info.to_dict())
@@ -665,7 +692,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.filter(self.odb, prefix, **kwargs)
+            obj = obj.get(prefix)
 
         return obj
 
@@ -797,7 +824,7 @@ class Output:
         obj = self.odb.get(self.hash_info)
         try:
             objects.check(self.odb, obj)
-        except (FileNotFoundError, ObjectFormatError):
+        except FileNotFoundError:
             self.repo.cloud.pull([obj], show_checksums=False, **kwargs)
 
         try:
@@ -809,7 +836,7 @@ class Output:
 
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
-    ) -> Set["HashFile"]:
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         """Fetch dir cache and return used objects for this out."""
 
         try:
@@ -819,7 +846,7 @@ class Output:
 
         try:
             objects.check(self.odb, self.odb.get(self.hash_info))
-        except (FileNotFoundError, ObjectFormatError):
+        except FileNotFoundError:
             msg = (
                 "Missing cache for directory '{}'. "
                 "Cache for files inside will be lost. "
@@ -830,17 +857,25 @@ class Output:
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
-            return set()
+            return {}
 
-        obj = self.get_obj(filter_info=filter_info, copy=True)
+        obj = self.get_obj()
+        if filter_info and filter_info != self.path_info:
+            prefix = filter_info.relative_to(self.path_info).parts
+            obj = obj.filter(prefix)
         self._set_obj_names(obj)
-        return {obj}
+        return {None: {obj}}
 
-    def get_used_objs(self, **kwargs) -> Set["HashFile"]:
+    def get_used_objs(
+        self, **kwargs
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         """Return filtered set of used objects for this out."""
 
         if not self.use_cache:
-            return set()
+            return {}
+
+        if self.stage.is_repo_import:
+            return self.get_used_external(**kwargs)
 
         if not self.hash_info:
             msg = (
@@ -859,7 +894,7 @@ class Output:
                     )
                 )
             logger.warning(msg)
-            return set()
+            return {}
 
         if self.is_dir_checksum:
             return self.collect_used_dir_cache(**kwargs)
@@ -869,20 +904,22 @@ class Output:
             obj = self.odb.get(self.hash_info)
         self._set_obj_names(obj)
 
-        return {obj}
+        return {None: {obj}}
 
     def _set_obj_names(self, obj):
         obj.name = str(self)
         if isinstance(obj, Tree):
             for key, entry_obj in obj:
-                entry_obj.name = os.path.join(str(self), *key)
+                entry_obj.name = self.fs.sep.join([obj.name, *key])
 
-    def get_used_external(self, **kwargs) -> Dict["RepoPair", str]:
+    def get_used_external(
+        self, **kwargs
+    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
         if not self.use_cache or not self.stage.is_repo_import:
             return {}
 
         (dep,) = self.stage.deps
-        return {dep.repo_pair: dep.def_path}
+        return dep.get_used_objs(**kwargs)
 
     def _validate_output_path(self, path, stage=None):
         from dvc.dvcfile import is_valid_filename

@@ -82,7 +82,7 @@ class SSHConnection:
         st = self.sftp.stat(path)
         return {
             "size": st.st_size,
-            "type": "dir" if stat.S_ISDIR(st.st_mode) else "file",
+            "type": "directory" if stat.S_ISDIR(st.st_mode) else "file",
         }
 
     def getsize(self, path):

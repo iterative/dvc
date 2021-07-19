@@ -3,12 +3,16 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from dvc.objects.errors import ObjectFormatError
+from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
 from dvc.objects.file import HashFile
-from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
+
+if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.hash_info import HashInfo
+    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +23,7 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs, path_info, **config):
+    def __init__(self, fs: "BaseFileSystem", path_info: "AnyPath", **config):
         from dvc.state import StateNoop
 
         self.fs = fs
@@ -29,6 +33,32 @@ class ObjectDB:
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
         self.slow_link_warning = config.get("slow_link_warning", True)
+        self.tmp_dir = config.get("tmp_dir")
+        self.read_only = config.get("read_only", False)
+
+    @property
+    def config(self):
+        return {
+            "state": self.state,
+            "verify": self.verify,
+            "type": self.cache_types,
+            "slow_link_warning": self.slow_link_warning,
+            "tmp_dir": self.tmp_dir,
+            "read_only": self.read_only,
+        }
+
+    def __eq__(self, other):
+        return (
+            self.fs == other.fs
+            and self.path_info == other.path_info
+            and self.read_only == other.read_only
+        )
+
+    def __hash__(self):
+        return hash((self.fs.scheme, self.path_info))
+
+    def exists(self, hash_info: "HashInfo"):
+        return self.fs.exists(self.hash_to_path_info(hash_info.value))
 
     def move(self, from_info, to_info):
         self.fs.move(from_info, to_info)
@@ -36,7 +66,7 @@ class ObjectDB:
     def makedirs(self, path_info):
         self.fs.makedirs(path_info)
 
-    def get(self, hash_info):
+    def get(self, hash_info: "HashInfo"):
         """get raw object"""
         return HashFile(
             # Prefer string path over PathInfo when possible due to performance
@@ -45,7 +75,16 @@ class ObjectDB:
             hash_info,
         )
 
-    def add(self, path_info, fs, hash_info, move=True, **kwargs):
+    def add(
+        self,
+        path_info: "AnyPath",
+        fs: "BaseFileSystem",
+        hash_info: "HashInfo",
+        move: bool = True,
+        **kwargs,
+    ):
+        if self.read_only:
+            raise ObjectDBPermissionError("Cannot add to read-only ODB")
         try:
             self.check(hash_info, check_hash=self.verify)
             return
@@ -108,7 +147,11 @@ class ObjectDB:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def check(self, hash_info, check_hash=True):
+    def check(
+        self,
+        hash_info: "HashInfo",
+        check_hash: bool = True,
+    ):
         """Compare the given hash with the (corresponding) actual one if
         check_hash is specified, or just verify the existence of the cache
         files on the filesystem.
@@ -125,7 +168,7 @@ class ObjectDB:
 
         obj = self.get(hash_info)
         if self.is_protected(obj.path_info):
-            logger.trace(
+            logger.trace(  # type: ignore[attr-defined]
                 "Assuming '%s' is unchanged since it is read-only",
                 obj.path_info,
             )
@@ -318,6 +361,10 @@ class ObjectDB:
         pass
 
     def gc(self, used, jobs=None):
+        from ..tree import Tree
+
+        if self.read_only:
+            raise ObjectDBPermissionError("Cannot gc read-only ODB")
         used_hashes = set()
         for obj in used:
             used_hashes.add(obj.hash_info.value)
@@ -349,9 +396,7 @@ class ObjectDB:
         """Return list of the specified hashes which exist in this fs.
         Hashes will be queried individually.
         """
-        logger.debug(
-            "Querying {} hashes via object_exists".format(len(hashes))
-        )
+        logger.debug(f"Querying {len(hashes)} hashes via object_exists")
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
@@ -446,7 +491,7 @@ class ObjectDB:
                 hashes - remote_hashes, jobs, name
             )
 
-        logger.debug("Querying '{}' hashes via traverse".format(len(hashes)))
+        logger.debug(f"Querying '{len(hashes)}' hashes via traverse")
         remote_hashes = set(
             self.list_hashes_traverse(remote_size, remote_hashes, jobs, name)
         )
