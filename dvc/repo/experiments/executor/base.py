@@ -471,10 +471,7 @@ class BaseExecutor(ABC):
             if git_remote:
                 from dvc.repo.experiments.push import push
 
-                branch = dvc.experiments.get_branch_by_rev(
-                    exp_rev, allow_multiple=None
-                )
-                branch_name = ExpRefInfo.from_ref(branch).name
+                branch = scm.get_ref(EXEC_BRANCH, follow=False)
                 push(
                     dvc,
                     git_remote,
