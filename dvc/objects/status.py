@@ -25,7 +25,7 @@ class CompareStatusResult(NamedTuple):
     deleted: Set["HashFile"]
 
 
-def _indexed_dir_hashes(odb, index, hash_infos, name):
+def _indexed_dir_hashes(odb, index, hash_infos, name, cache_odb):
     from . import load
 
     # Validate our index by verifying all indexed .dir hashes
@@ -51,7 +51,7 @@ def _indexed_dir_hashes(odb, index, hash_infos, name):
     # If .dir hash exists in the ODB, assume directory contents
     # also exists
     for dir_hash in dir_exists:
-        tree = load(odb, HashInfo(name, dir_hash))
+        tree = load(cache_odb, HashInfo(name, dir_hash))
         file_hashes = [entry.hash_info.value for _, entry in tree]
         if dir_hash not in index:
             logger.debug(
@@ -78,9 +78,13 @@ def status(
     objs: Iterable["HashFile"],
     name: Optional[str] = None,
     index: Optional["ObjectDBIndexBase"] = None,
+    cache_odb: Optional["ObjectDB"] = None,
     **kwargs,
 ) -> "StatusResult":
     """Return status of whether or not the specified objects exist odb.
+
+    If cache_odb is set, trees will be loaded from cache_odb instead of odb
+    when needed.
 
     Status is returned as a tuple of:
         exists: objs that exist in odb
@@ -115,8 +119,10 @@ def status(
     logger.debug("Collecting status from '%s'", odb.path_info)
     if index and hashes:
         if dir_infos:
+            if cache_odb is None:
+                cache_odb = odb
             exists = hashes.intersection(
-                _indexed_dir_hashes(odb, index, dir_infos, name)
+                _indexed_dir_hashes(odb, index, dir_infos, name, cache_odb)
             )
             hashes.difference_update(exists)
         if hashes:

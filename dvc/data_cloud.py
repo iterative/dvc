@@ -88,6 +88,7 @@ class DataCloud:
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
+            cache_odb=self.repo.odb.local,
         )
 
     def pull(
@@ -116,6 +117,7 @@ class DataCloud:
             objs,
             jobs=jobs,
             src_index=get_index(odb),
+            cache_odb=self.repo.odb.local,
         )
 
     def status(
@@ -149,6 +151,7 @@ class DataCloud:
             jobs=jobs,
             log_missing=log_missing,
             dest_index=get_index(odb),
+            cache_odb=self.repo.odb.local,
         )
 
     def get_url_for(self, remote, checksum):
