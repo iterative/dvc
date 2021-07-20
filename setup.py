@@ -99,7 +99,7 @@ install_requires = [
 gs = ["gcsfs==2021.7.0"]
 gdrive = ["pydrive2>=1.8.1", "six >= 1.13.0"]
 s3 = ["s3fs==2021.7.0", "aiobotocore[boto3]==1.3.0"]
-azure = ["adlfs==2021.7.0", "azure-identity>=1.4.0", "knack"]
+azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
 # https://github.com/Legrandin/pycryptodome/issues/465
 oss = ["ossfs==2021.7.5"]
 ssh = ["paramiko[invoke]>=2.7.0"]
