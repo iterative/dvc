@@ -8,7 +8,6 @@ from dvc.hash_info import HashInfo
 from dvc.objects.db.local import LocalObjectDB
 from dvc.objects.file import HashFile
 from dvc.path_info import PathInfo
-from dvc.remote.index import RemoteIndexNoop
 
 
 def test_status_download_optimization(mocker, dvc):
@@ -16,8 +15,9 @@ def test_status_download_optimization(mocker, dvc):
     And the desired files to fetch are already on the local cache,
     Don't check the existence of the desired files on the remote cache
     """
-    odb = LocalObjectDB(LocalFileSystem(), PathInfo("."))
+    from dvc.objects.status import compare_status
 
+    odb = LocalObjectDB(LocalFileSystem(), PathInfo("."))
     objs = {
         HashFile(
             None, odb.fs, HashInfo("md5", "acbd18db4cc2f85cedef654fccc4a4d8")
@@ -30,14 +30,10 @@ def test_status_download_optimization(mocker, dvc):
     local_exists = [obj.hash_info.value for obj in objs]
     mocker.patch.object(odb, "hashes_exist", return_value=local_exists)
 
-    other_remote = mocker.Mock()
-    other_remote.url = "other_remote"
-    other_remote.hashes_exist.return_value = []
-    other_remote.index = RemoteIndexNoop()
+    src_odb = mocker.Mock()
 
-    other_remote.status(odb, objs, download=True)
-
-    assert other_remote.hashes_exist.call_count == 0
+    compare_status(src_odb, odb, objs, check_deleted=False)
+    assert src_odb.hashes_exist.call_count == 0
 
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])

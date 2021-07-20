@@ -825,7 +825,7 @@ class Output:
         try:
             objects.check(self.odb, obj)
         except FileNotFoundError:
-            self.repo.cloud.pull([obj], show_checksums=False, **kwargs)
+            self.repo.cloud.pull([obj], **kwargs)
 
         try:
             self.obj = objects.load(self.odb, self.hash_info)

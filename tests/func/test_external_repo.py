@@ -51,7 +51,7 @@ def test_cache_reused(erepo_dir, mocker, local_cloud):
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(LocalFileSystem, "download_file")
+    download_spy = mocker.spy(LocalFileSystem, "upload_fobj")
 
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"

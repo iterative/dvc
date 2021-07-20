@@ -228,18 +228,21 @@ class GitHookAlreadyExistsError(DvcException):
         )
 
 
-class DownloadError(DvcException):
+class FileTransferError(DvcException):
+    _METHOD = "transfer"
+
     def __init__(self, amount):
         self.amount = amount
 
-        super().__init__(f"{amount} files failed to download")
+        super().__init__(f"{amount} files failed to {self._METHOD}")
 
 
-class UploadError(DvcException):
-    def __init__(self, amount):
-        self.amount = amount
+class DownloadError(FileTransferError):
+    _METHOD = "download"
 
-        super().__init__(f"{amount} files failed to upload")
+
+class UploadError(FileTransferError):
+    _METHOD = "upload"
 
 
 class CheckoutError(DvcException):

@@ -381,6 +381,9 @@ def test_update_import_url_to_remote_directory(
     upload_file_mock = mocker.spy(type(dvc.odb.local.fs), "upload_fobj")
     stage = dvc.update(stage.path, to_remote=True)
 
+    # 2 new hashes (foo2, baz2) + 1 .dir hash
+    assert upload_file_mock.mock.call_count == 3
+
     dvc.pull("data")
     assert (tmp_dir / "data").read_text() == {
         "foo": "foo",
@@ -392,8 +395,6 @@ def test_update_import_url_to_remote_directory(
             "foo_with_different_name": "foo",
         },
     }
-    # 2 new hashes (foo2, baz2) + 1 .dir hash
-    assert upload_file_mock.mock.call_count == 3
 
 
 def test_update_import_url_to_remote_directory_changed_contents(

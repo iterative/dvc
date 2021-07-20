@@ -1,7 +1,7 @@
 import json
 import logging
 import posixpath
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from funcy import cached_property
 
@@ -17,7 +17,7 @@ class Tree(HashFile):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._dict = {}
+        self._dict: Dict[Tuple[str], "HashFile"] = {}
 
     @cached_property
     def trie(self):

@@ -25,15 +25,15 @@ this.message = (
 
 def slow_link_guard(f):
     @wraps(f)
-    def wrapper(remote, *args, **kwargs):
+    def wrapper(odb, *args, **kwargs):
         if this.already_displayed:
-            return f(remote, *args, **kwargs)
+            return f(odb, *args, **kwargs)
 
-        if not remote.slow_link_warning or remote.cache_types:
-            return f(remote, *args, **kwargs)
+        if not odb.slow_link_warning or odb.cache_types:
+            return f(odb, *args, **kwargs)
 
         start = time.time()
-        result = f(remote, *args, **kwargs)
+        result = f(odb, *args, **kwargs)
         delta = time.time() - start
 
         if delta >= this.timeout_seconds:

@@ -762,8 +762,8 @@ def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
     file_path = workspace / "foo"
     dvc.add("remote://workspace/foo")
 
-    remote = dvc.cloud.get_remote("workspace")
-    remote.fs.remove(file_path)
+    odb = dvc.cloud.get_remote_odb("workspace")
+    odb.fs.remove(file_path)
     assert not file_path.exists()
 
     stats = dvc.checkout(force=True)
