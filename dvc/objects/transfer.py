@@ -13,7 +13,7 @@ from .tree import Tree
 
 if TYPE_CHECKING:
     from .db.base import ObjectDB
-    from .db.index import ObjectDBIndex
+    from .db.index import ObjectDBIndexBase
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +106,8 @@ def _do_transfer(
     file_objs,
     missing_hashes,
     processor,
-    src_index: Optional["ObjectDBIndex"] = None,
-    dest_index: Optional["ObjectDBIndex"] = None,
+    src_index: Optional["ObjectDBIndexBase"] = None,
+    dest_index: Optional["ObjectDBIndexBase"] = None,
     **kwargs,
 ):
     from dvc.exceptions import FileTransferError

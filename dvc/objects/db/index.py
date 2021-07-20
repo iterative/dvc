@@ -1,5 +1,6 @@
 import logging
 import os
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Iterable, Optional, Set
 
 from ..errors import ObjectDBError
@@ -10,10 +11,47 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ObjectDBIndexNoop:
+class ObjectDBIndexBase(ABC):
+    @abstractmethod
+    def __init__(
+        self, tmp_dir: "StrPath", name: str, dir_suffix: Optional[str] = None
+    ):
+        pass
+
+    @abstractmethod
+    def __iter__(self):
+        pass
+
+    @abstractmethod
+    def __contains__(self, hash_):
+        pass
+
+    def hashes(self):
+        return iter(self)
+
+    @abstractmethod
+    def dir_hashes(self):
+        pass
+
+    @abstractmethod
+    def clear(self):
+        pass
+
+    @abstractmethod
+    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
+        pass
+
+    @abstractmethod
+    def intersection(self, hashes: Set[str]):
+        pass
+
+
+class ObjectDBIndexNoop(ObjectDBIndexBase):
     """No-op class for ODBs which are not indexed."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self, tmp_dir: "StrPath", name: str, dir_suffix: Optional[str] = None
+    ):  # pylint: disable=super-init-not-called
         pass
 
     def __iter__(self):
@@ -22,26 +60,20 @@ class ObjectDBIndexNoop:
     def __contains__(self, hash_):
         return False
 
-    @staticmethod
-    def hashes():
-        return []
-
-    @staticmethod
-    def dir_hashes():
+    def dir_hashes(self):
         return []
 
     def clear(self):
         pass
 
-    def update(self, *args):
+    def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
         pass
 
-    @staticmethod
-    def intersection(*args):
+    def intersection(self, hashes: Set[str]):
         return []
 
 
-class ObjectDBIndex:
+class ObjectDBIndex(ObjectDBIndexBase):
     """Class for indexing hashes in an ODB."""
 
     INDEX_SUFFIX = ".idx"
@@ -49,7 +81,7 @@ class ObjectDBIndex:
 
     def __init__(
         self, tmp_dir: "StrPath", name: str, dir_suffix: Optional[str] = None
-    ):
+    ):  # pylint: disable=super-init-not-called
         from diskcache import Index
 
         from dvc.fs.local import LocalFileSystem
@@ -69,10 +101,6 @@ class ObjectDBIndex:
 
     def __contains__(self, hash_):
         return hash_ in self.index
-
-    def hashes(self):
-        """Iterate over hashes stored in the index."""
-        return iter(self)
 
     def dir_hashes(self):
         """Iterate over .dir hashes stored in the index."""

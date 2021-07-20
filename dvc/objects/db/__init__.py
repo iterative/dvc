@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 from dvc.scheme import Schemes
+
+if TYPE_CHECKING:
+    from .index import ObjectDBIndexBase
 
 
 def get_odb(fs, path_info, **config):
@@ -34,18 +39,17 @@ def _get_odb(repo, settings):
     return get_odb(cls(**config), path_info, state=repo.state, **config)
 
 
-def get_index(odb):
+def get_index(odb) -> "ObjectDBIndexBase":
     import hashlib
 
     from .index import ObjectDBIndex, ObjectDBIndexNoop
 
-    if odb.tmp_dir:
-        return ObjectDBIndex(
-            odb.tmp_dir,
-            hashlib.sha256(odb.path_info.url.encode("utf-8")).hexdigest(),
-            odb.fs.CHECKSUM_DIR_SUFFIX,
-        )
-    return ObjectDBIndexNoop()
+    cls = ObjectDBIndex if odb.tmp_dir else ObjectDBIndexNoop
+    return cls(
+        odb.tmp_dir,
+        hashlib.sha256(odb.path_info.url.encode("utf-8")).hexdigest(),
+        odb.fs.CHECKSUM_DIR_SUFFIX,
+    )
 
 
 class ODBManager:

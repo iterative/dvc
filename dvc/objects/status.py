@@ -7,7 +7,7 @@ from .tree import Tree
 
 if TYPE_CHECKING:
     from .db.base import ObjectDB
-    from .db.index import ObjectDBIndex
+    from .db.index import ObjectDBIndexBase
     from .file import HashFile
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ def status(
     odb: "ObjectDB",
     objs: Iterable["HashFile"],
     name: Optional[str] = None,
-    index: Optional["ObjectDBIndex"] = None,
+    index: Optional["ObjectDBIndexBase"] = None,
     **kwargs,
 ) -> "StatusResult":
     """Return status of whether or not the specified objects exist odb.
@@ -139,8 +139,8 @@ def compare_status(
     objs: Iterable["HashFile"],
     log_missing: bool = True,
     check_deleted: bool = True,
-    src_index: Optional["ObjectDBIndex"] = None,
-    dest_index: Optional["ObjectDBIndex"] = None,
+    src_index: Optional["ObjectDBIndexBase"] = None,
+    dest_index: Optional["ObjectDBIndexBase"] = None,
     **kwargs,
 ) -> "CompareStatusResult":
     """Compare status for the specified objects between two ODBs.
