@@ -51,7 +51,10 @@ def _indexed_dir_hashes(odb, index, hash_infos, name, cache_odb):
     # If .dir hash exists in the ODB, assume directory contents
     # also exists
     for dir_hash in dir_exists:
-        tree = load(cache_odb, HashInfo(name, dir_hash))
+        try:
+            tree = load(cache_odb, HashInfo(name, dir_hash))
+        except FileNotFoundError:
+            continue
         file_hashes = [entry.hash_info.value for _, entry in tree]
         if dir_hash not in index:
             logger.debug(
