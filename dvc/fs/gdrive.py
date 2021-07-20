@@ -619,7 +619,7 @@ class GDriveFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         item_id = self._get_item_id(path_info)
         gdrive_file = self._drive.CreateFile({"id": item_id})
         gdrive_file.FetchMetadata(fields="fileSize")
-        return {"size": gdrive_file.get("fileSize"), "type": "file"}
+        return {"size": int(gdrive_file.get("fileSize")), "type": "file"}
 
     def _upload_fobj(self, fobj, to_info, **kwargs):
         dirname = to_info.parent
