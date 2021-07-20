@@ -41,7 +41,7 @@ def _log_exceptions(func):
     return wrapper
 
 
-def _transfer(src, dest, dir_objs, file_objs, missing, jobs, **kwargs):
+def _transfer(src, dest, dir_objs, file_objs, missing, jobs, verify, **kwargs):
     from . import save
     from .stage import is_memfs_staging
 
@@ -54,7 +54,14 @@ def _transfer(src, dest, dir_objs, file_objs, missing, jobs, **kwargs):
         func = pbar.wrap_fn(func)
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             processor = partial(
-                _create_tasks, executor, jobs, func, src, dest, is_staged
+                _create_tasks,
+                executor,
+                jobs,
+                func,
+                src,
+                dest,
+                is_staged,
+                verify,
             )
             processor.save_func = func
             _do_transfer(
@@ -69,7 +76,7 @@ def _transfer(src, dest, dir_objs, file_objs, missing, jobs, **kwargs):
     return total
 
 
-def _create_tasks(executor, jobs, func, src, dest, is_staged, objs):
+def _create_tasks(executor, jobs, func, src, dest, is_staged, verify, objs):
     fails = 0
     obj_iter = iter(objs)
 
@@ -80,7 +87,7 @@ def _create_tasks(executor, jobs, func, src, dest, is_staged, objs):
                 dest,
                 _raw_obj(src, obj, is_staged),
                 move=False,
-                verify=src.verify,
+                verify=verify,
             )
             for obj in itertools.islice(obj_iter, amount)
         }
@@ -180,6 +187,7 @@ def transfer(
     dest: "ObjectDB",
     objs: Iterable["HashFile"],
     jobs: Optional[int] = None,
+    verify: bool = False,
     **kwargs,
 ) -> int:
     """Transfer (copy) the specified objects from one ODB to another.
@@ -214,5 +222,6 @@ def transfer(
         files,
         status.missing,
         jobs,
+        verify,
         **kwargs,
     )
