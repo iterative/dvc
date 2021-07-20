@@ -265,7 +265,7 @@ def test_unknown_subcommand_help(capsys):
     assert output == help_output
 
 
-def test_cli_suggestions():
+@pytest.mark.parametrize("cmd", ("psh", "fileas"))
+def test_cli_suggestions(cmd):
     with pytest.raises(DvcParserError):
-        _ = parse_args(["psh"])
-        _ = parse_args(["fileas"])
+        parse_args([cmd])
