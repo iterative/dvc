@@ -118,6 +118,7 @@ class DataCloud:
             jobs=jobs,
             src_index=get_index(odb),
             cache_odb=self.repo.odb.local,
+            verify=odb.verify,
         )
 
     def status(
