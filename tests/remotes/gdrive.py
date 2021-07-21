@@ -113,6 +113,8 @@ class GDrive(Base, CloudURLInfo):
 
 @pytest.fixture
 def gdrive(test_config, make_tmp_dir):
+    from dvc.objects.db.base import ObjectDB
+
     test_config.requires("gdrive")
     if not GDrive.should_test():
         pytest.skip("no gdrive")
@@ -125,4 +127,5 @@ def gdrive(test_config, make_tmp_dir):
         gdrive_credentials_tmp_dir=tmp_dir.dvc.tmp_dir, **ret.config
     )
     fs._gdrive_create_dir("root", fs.path_info.path)
+    ObjectDB(fs, fs.path_info, **ret.config).gc([])
     yield ret
