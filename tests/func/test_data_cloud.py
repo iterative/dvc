@@ -68,6 +68,8 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
             expected = kwargs.get(key, set())
             assert expected == {obj.hash_info for obj in getattr(status, key)}
 
+    odb = dvc.cloud.get_remote_odb("upstream")
+    assert not odb.exists(foo_hash)
     # Check status
     status = dvc.cloud.status(foo_objs)
     _check_status(status, new={foo_hash})
