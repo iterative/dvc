@@ -61,7 +61,7 @@ class Console:
         style: str = None,
         sep: str = None,
         end: str = None,
-        styled: bool = True,
+        styled: bool = False,
         force: bool = True,
     ) -> None:
         return self.write(
