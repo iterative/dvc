@@ -32,4 +32,5 @@ def test_daemon(mocker):
 def test_no_recursive_spawn(mocker):
     mocker.patch.dict(os.environ, {daemon.DVC_DAEMON: "1"})
     mock_spawn = mocker.patch("dvc.daemon._spawn")
+    daemon.daemon(["updater"])
     mock_spawn.assert_not_called()
