@@ -18,7 +18,6 @@ all_clouds = [
         "s3",
         "gs",
         "azure",
-        "gdrive",
         "ssh",
         "http",
         "hdfs",
@@ -26,6 +25,13 @@ all_clouds = [
         "webhdfs",
         "oss",
     ]
+] + [
+    pytest.param(
+        pytest.lazy_fixture("gdrive"),
+        marks=pytest.mark.xfail(
+            reason="https://github.com/iterative/dvc/issues/6347"
+        ),
+    )
 ]
 
 # Clouds that implement the general methods that can be tested
