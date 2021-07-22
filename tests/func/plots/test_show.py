@@ -12,7 +12,7 @@ from dvc.exceptions import OverlappingOutputPathsError
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.repo.plots.data import DictData, PlotData, PlotMetricTypeError
+from dvc.repo.plots.data import PlotData, PlotMetricTypeError
 from dvc.repo.plots.template import (
     BadTemplateError,
     NoFieldInDataError,
@@ -553,19 +553,6 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
 
     with pytest.raises(NoFieldInDataError):
         dvc.plots.show("metric.json", props={"y": "no_val"})
-
-
-def test_find_data_in_dict(tmp_dir):
-    metric = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
-    dmetric = {"train": metric}
-
-    plot_data = DictData("-", "revision", dmetric)
-
-    expected = metric
-    for d in expected:
-        d["rev"] = "revision"
-
-    assert list(map(dict, plot_data.to_datapoints())) == expected
 
 
 def test_multiple_plots(tmp_dir, scm, dvc, run_copy_metrics):
