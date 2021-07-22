@@ -827,6 +827,9 @@ class Output:
         except FileNotFoundError:
             self.repo.cloud.pull([obj], **kwargs)
 
+        if self.obj:
+            return self.obj
+
         try:
             self.obj = objects.load(self.odb, self.hash_info)
         except (FileNotFoundError, ObjectFormatError):
