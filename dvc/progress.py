@@ -185,8 +185,6 @@ class FsspecCallback(fsspec.Callback):
 
     def relative_update(self, inc=1):
         self.progress_bar.update(inc)
-        self.progress_bar.refresh()
 
     def absolute_update(self, value):
         self.progress_bar.update_to(value)
-        self.progress_bar.refresh()
