@@ -2,24 +2,7 @@ from collections import OrderedDict
 
 import pytest
 
-from dvc.repo.plots.data import _apply_path, _find_data, _lists
-
-
-@pytest.mark.parametrize(
-    "path,expected_result",
-    [
-        ("$.some.path[*].a", [{"a": 1}, {"a": 4}]),
-        ("$.some.path", [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]),
-    ],
-)
-def test_parse_json(path, expected_result):
-    value = {
-        "some": {"path": [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]}
-    }
-
-    result = _apply_path(value, path=path)
-
-    assert result == expected_result
+from dvc.repo.plots.data import _find_data, _lists
 
 
 @pytest.mark.parametrize(

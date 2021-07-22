@@ -12,12 +12,7 @@ from dvc.exceptions import OverlappingOutputPathsError
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
-from dvc.repo.plots.data import (
-    JSONPlotData,
-    PlotData,
-    PlotMetricTypeError,
-    YAMLPlotData,
-)
+from dvc.repo.plots.data import DictData, PlotData, PlotMetricTypeError
 from dvc.repo.plots.template import (
     BadTemplateError,
     NoFieldInDataError,
@@ -560,12 +555,11 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
         dvc.plots.show("metric.json", props={"y": "no_val"})
 
 
-@pytest.mark.parametrize("data_class", [JSONPlotData, YAMLPlotData])
-def test_find_data_in_dict(tmp_dir, data_class):
+def test_find_data_in_dict(tmp_dir):
     metric = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
     dmetric = {"train": metric}
 
-    plot_data = data_class("-", "revision", dmetric)
+    plot_data = DictData("-", "revision", dmetric)
 
     expected = metric
     for d in expected:
