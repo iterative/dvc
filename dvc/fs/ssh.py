@@ -32,16 +32,6 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
     DEFAULT_PORT = 22
     PARAM_CHECKSUM = "md5"
 
-    @staticmethod
-    def _get_kwargs_from_urls(urlpath):
-        from fsspec.implementations.sftp import SFTPFileSystem
-
-        # pylint:disable=protected-access
-        kwargs = SFTPFileSystem._get_kwargs_from_urls(urlpath)
-        if "username" in kwargs:
-            kwargs["user"] = kwargs.pop("username")
-        return kwargs
-
     def _with_bucket(self, path):
         if isinstance(path, self.PATH_CLS):
             return path.path
@@ -62,6 +52,7 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
 
         login_info["username"] = (
             config.get("user")
+            or config.get("username")
             or user_ssh_config.get("User")
             or getpass.getuser()
         )

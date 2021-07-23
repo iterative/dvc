@@ -29,6 +29,12 @@ class FSSpecWrapper(BaseFileSystem):
     def _strip_bucket(self, entry):
         return entry
 
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        from fsspec.utils import infer_storage_options
+
+        return infer_storage_options(urlpath)
+
     def _strip_buckets(self, entries, detail=False):
         for entry in entries:
             if detail:
