@@ -1,7 +1,7 @@
 import errno
 import logging
 import os
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from .errors import ObjectFormatError
 
@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import DvcPath
+
+    from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -57,16 +59,20 @@ class HashFile:
             )
         )
 
-    def check(self, odb, check_hash=True):
-        from .stage import get_file_hash
-
+    def check(self, odb: "ObjectDB", check_hash: bool = True):
         if not check_hash:
+            assert self.fs
             if not self.fs.exists(self.path_info):
                 raise FileNotFoundError(
                     errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
                 )
             else:
                 return None
+
+        self._check_hash(odb)
+
+    def _check_hash(self, odb):
+        from .stage import get_file_hash
 
         actual = get_file_hash(
             self.path_info, self.fs, self.hash_info.name, odb.state
@@ -82,3 +88,35 @@ class HashFile:
         assert actual.name == self.hash_info.name
         if actual.value.split(".")[0] != self.hash_info.value.split(".")[0]:
             raise ObjectFormatError(f"{self} is corrupted")
+
+
+class ReferenceHashFile(HashFile):
+    def __init__(
+        self,
+        path_info: "DvcPath",
+        fs: "BaseFileSystem",
+        hash_info: "HashInfo",
+        **kwargs,
+    ):
+        super().__init__(path_info, fs, hash_info, **kwargs)
+        self.mtime, self.hash_info.size = self._get_mtime_and_size()
+
+    def check(self, odb: "ObjectDB", check_hash: bool = True):
+        if not check_hash:
+            assert self.fs
+            if not self.fs.exists(self.path_info):
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
+                )
+            if not (self.mtime, self.size) == self._get_mtime_and_size():
+                raise ObjectFormatError(f"{self} is changed")
+            return
+        self._check_hash(odb)
+
+    def _get_mtime_and_size(self) -> Tuple[Optional[int], int]:
+        from dvc.utils.fs import get_mtime_and_size
+
+        assert self.fs
+        if hasattr(self.fs, "stat"):
+            return get_mtime_and_size(self.path_info, self.fs)
+        return None, self.fs.getsize(self.path_info)
