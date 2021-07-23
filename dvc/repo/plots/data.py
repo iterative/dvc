@@ -33,14 +33,10 @@ class PlotParsingError(ParseError):
 
 def plot_data(filename, revision, content):
     _, extension = os.path.splitext(filename.lower())
-    if extension == ".json":
-        return JSONPlotData(filename, revision, content)
-    if extension == ".csv":
-        return CSVPlotData(filename, revision, content)
-    if extension == ".tsv":
-        return CSVPlotData(filename, revision, content, delimiter="\t")
-    if extension == ".yaml":
-        return YAMLPlotData(filename, revision, content)
+    if extension in (".json", ".yaml"):
+        return DictData(filename, revision, content)
+    if extension in (".csv", ".tsv"):
+        return ListData(filename, revision, content)
     raise PlotMetricTypeError(filename)
 
 
@@ -66,34 +62,6 @@ def _filter_fields(data_points, filename, revision, fields=None, **kwargs):
             del new_dp[key]
         new_data.append(new_dp)
     return new_data
-
-
-def _apply_path(data, path=None, **kwargs):
-    if not path or not isinstance(data, dict):
-        return data
-
-    import jsonpath_ng
-
-    found = jsonpath_ng.parse(path).find(data)
-    first_datum = first(found)
-    if (
-        len(found) == 1
-        and isinstance(first_datum.value, list)
-        and isinstance(first(first_datum.value), dict)
-    ):
-        data_points = first_datum.value
-    elif len(first_datum.path.fields) == 1:
-        field_name = first(first_datum.path.fields)
-        data_points = [{field_name: datum.value} for datum in found]
-    else:
-        raise PlotDataStructureError()
-
-    if not isinstance(data_points, list) or not (
-        isinstance(first(data_points), dict)
-    ):
-        raise PlotDataStructureError()
-
-    return data_points
 
 
 def _lists(dictionary):
@@ -158,17 +126,13 @@ class PlotData:
         return data
 
 
-class JSONPlotData(PlotData):
-    def _processors(self):
-        parent_processors = super()._processors()
-        return [_apply_path, _find_data] + parent_processors
-
-
-class CSVPlotData(PlotData):
-    pass
-
-
-class YAMLPlotData(PlotData):
+class DictData(PlotData):
+    # For files usually parsed as dicts: eg JSON, Yaml
     def _processors(self):
         parent_processors = super()._processors()
         return [_find_data] + parent_processors
+
+
+class ListData(PlotData):
+    # For files parsed as list: CSV, TSV
+    pass
