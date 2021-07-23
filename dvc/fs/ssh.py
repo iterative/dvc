@@ -116,3 +116,25 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
         from sshfs import SSHFileSystem as _SSHFileSystem
 
         return _SSHFileSystem(**self.fs_args)
+
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
+    ):
+        # Ensure that if an interrupt happens during the transfer, we don't
+        # pollute the cache.
+        from dvc.utils import tmp_fname
+
+        tmp_file = tmp_fname(to_info)
+        try:
+            super()._upload(
+                from_file,
+                tmp_file,
+                name=name,
+                no_progress_bar=no_progress_bar,
+                **pbar_args
+            )
+        except BaseException:
+            self.remove(tmp_file)
+            raise
+        else:
+            self.move(tmp_file, to_info)
