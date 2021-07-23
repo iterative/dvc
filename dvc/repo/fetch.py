@@ -1,9 +1,7 @@
 import logging
 
-from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, FileTransferError
 
-from ..scheme import Schemes
 from . import locked
 
 logger = logging.getLogger(__name__)
@@ -60,10 +58,10 @@ def fetch(
     except DownloadError as exc:
         failed += exc.amount
 
-    for odb, objs in used.items():
+    for odb, obj_ids in used.items():
         d, f = _fetch(
             self,
-            objs,
+            obj_ids,
             jobs=jobs,
             remote=remote,
             odb=odb,
@@ -77,14 +75,11 @@ def fetch(
     return downloaded
 
 
-def _fetch(repo, objs, **kwargs):
+def _fetch(repo, obj_ids, **kwargs):
     downloaded = 0
     failed = 0
     try:
-        downloaded += repo.cloud.pull(objs, **kwargs)
-    except NoRemoteError:
-        if any(obj.fs.scheme == Schemes.LOCAL for obj in objs):
-            raise
+        downloaded += repo.cloud.pull(obj_ids, **kwargs)
     except FileTransferError as exc:
         failed += exc.amount
     return downloaded, failed

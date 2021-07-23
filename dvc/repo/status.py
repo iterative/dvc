@@ -89,12 +89,12 @@ def _cloud_status(
     )
 
     ret = {}
-    for odb, objs in used.items():
+    for odb, obj_ids in used.items():
         if odb is not None:
             # ignore imported objects
             continue
         status_info = self.cloud.status(
-            objs, jobs, remote=remote, log_missing=False
+            obj_ids, jobs, remote=remote, log_missing=False
         )
         for status_ in ("deleted", "new", "missing"):
             for obj in getattr(status_info, status_, []):

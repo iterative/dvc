@@ -34,7 +34,6 @@ from .utils.fs import path_isin
 
 if TYPE_CHECKING:
     from .objects.db.base import ObjectDB
-    from .objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -839,8 +838,8 @@ class Output:
 
     def collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
-        """Fetch dir cache and return used objects for this out."""
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+        """Fetch dir cache and return used object IDs for this out."""
 
         try:
             self.get_dir_cache(jobs=jobs, remote=remote)
@@ -866,13 +865,12 @@ class Output:
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
             obj = obj.filter(prefix)
-        self._set_obj_names(obj)
-        return {None: {obj}}
+        return {None: set(self._named_obj_ids(obj))}
 
     def get_used_objs(
         self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
-        """Return filtered set of used objects for this out."""
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+        """Return filtered set of used object IDs for this out."""
 
         if not self.use_cache:
             return {}
@@ -905,19 +903,21 @@ class Output:
         obj = self.get_obj(filter_info=kwargs.get("filter_info"))
         if not obj:
             obj = self.odb.get(self.hash_info)
-        self._set_obj_names(obj)
 
-        return {None: {obj}}
+        return {None: set(self._named_obj_ids(obj))}
 
-    def _set_obj_names(self, obj):
-        obj.name = str(self)
+    def _named_obj_ids(self, obj):
+        name = str(self)
+        obj.hash_info.obj_name = name
+        yield obj.hash_info
         if isinstance(obj, Tree):
             for key, entry_obj in obj:
-                entry_obj.name = self.fs.sep.join([obj.name, *key])
+                entry_obj.hash_info.obj_name = self.fs.sep.join([name, *key])
+                yield entry_obj.hash_info
 
     def get_used_external(
         self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         if not self.use_cache or not self.stage.is_repo_import:
             return {}
 
