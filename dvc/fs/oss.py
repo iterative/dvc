@@ -39,6 +39,3 @@ class OSSFileSystem(CallbackMixin, ObjectFSWrapper):
         from ossfs import OSSFileSystem as _OSSFileSystem
 
         return _OSSFileSystem(**self.fs_args)
-
-    def remove(self, path_info):
-        self.fs.rm_file(self._with_bucket(path_info))
