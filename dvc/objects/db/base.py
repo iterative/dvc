@@ -76,7 +76,14 @@ class ObjectDB:
             hash_info,
         )
 
-    def _add_file(self, from_fs, from_info, to_info, move):
+    def _add_file(
+        self,
+        from_fs: "BaseFileSystem",
+        from_info: "AnyPath",
+        to_info: "AnyPath",
+        _hash_info: "HashInfo",
+        move: bool = False,
+    ):
         self.makedirs(to_info.parent)
         use_move = isinstance(from_fs, type(self.fs)) and move
         try:
@@ -131,8 +138,8 @@ class ObjectDB:
             pass
 
         cache_info = self.hash_to_path_info(hash_info.value)
-        # using our makedirs to create dirs with proper permissions
-        self._add_file(fs, path_info, cache_info, move)
+        self._add_file(fs, path_info, cache_info, hash_info, move)
+
         try:
             if verify:
                 self.check(hash_info, check_hash=True)
@@ -378,17 +385,20 @@ class ObjectDB:
     def _remove_unpacked_dir(self, hash_):
         pass
 
-    def gc(self, used, jobs=None):
+    def gc(self, used, jobs=None, cache_odb=None, shallow=True):
         from ..tree import Tree
 
         if self.read_only:
             raise ObjectDBPermissionError("Cannot gc read-only ODB")
+        if not cache_odb:
+            cache_odb = self
         used_hashes = set()
-        for obj in used:
-            used_hashes.add(obj.hash_info.value)
-            if isinstance(obj, Tree):
+        for hash_info in used:
+            used_hashes.add(hash_info.value)
+            if hash_info.isdir and not shallow:
+                tree = Tree.load(cache_odb, hash_info)
                 used_hashes.update(
-                    entry_obj.hash_info.value for _, entry_obj in obj
+                    entry_obj.hash_info.value for _, entry_obj in tree
                 )
 
         removed = False
