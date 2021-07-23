@@ -102,7 +102,7 @@ class FSSpecWrapper(BaseFileSystem):
             yield path_info.replace(path=file)
 
     def remove(self, path_info):
-        self.fs.rm(self._with_bucket(path_info))
+        self.fs.rm_file(self._with_bucket(path_info))
 
     def info(self, path_info):
         info = self.fs.info(self._with_bucket(path_info)).copy()
