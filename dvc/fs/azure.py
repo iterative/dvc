@@ -108,7 +108,19 @@ class AzureFileSystem(ObjectFSWrapper):
         ):
             with fsspec_loop():
                 login_info["credential"] = DefaultAzureCredential(
-                    exclude_interactive_browser_credential=False
+                    exclude_interactive_browser_credential=False,
+                    exclude_environment_credential=config.get(
+                        "exclude_environment_credential", False
+                    ),
+                    exclude_visual_studio_code_credential=config.get(
+                        "exclude_visual_studio_code_credential", False
+                    ),
+                    exclude_shared_token_cache_credential=config.get(
+                        "exclude_shared_token_cache_credential", False
+                    ),
+                    exclude_managed_identity_credential=config.get(
+                        "exclude_managed_identity_credential", False
+                    ),
                 )
 
         for login_method, required_keys in [  # noqa
