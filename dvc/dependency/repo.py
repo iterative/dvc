@@ -41,7 +41,7 @@ class RepoDependency(Dependency):
         return False
 
     def __str__(self):
-        return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
+        return f"{self.def_path} ({self.def_repo[self.PARAM_URL]})"
 
     def workspace_status(self):
         current = self.get_obj(locked=True).hash_info
@@ -63,16 +63,9 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.fs.memory import MemoryFileSystem
-        from dvc.objects import save
-        from dvc.repo.fetch import fetch_from_odb
 
         for odb, objs in self.get_used_objs().items():
-            if isinstance(odb.fs, MemoryFileSystem):
-                for obj in objs:
-                    save(self.repo.odb.local, obj, jobs=jobs)
-            else:
-                fetch_from_odb(self.repo, odb, objs, jobs=jobs)
+            self.repo.cloud.pull(objs, jobs=jobs, odb=odb)
 
         obj = self.get_obj()
         checkout(
@@ -129,7 +122,7 @@ class RepoDependency(Dependency):
                         recursive=True,
                     ).items():
                         if odb is None:
-                            odb = repo.cloud.get_remote().odb
+                            odb = repo.cloud.get_remote_odb()
                             odb.read_only = True
                         self._check_circular_import(objs)
                         used_objs[odb].update(objs)

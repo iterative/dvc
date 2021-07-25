@@ -81,12 +81,16 @@ class ObjectDB:
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
         move: bool = True,
+        verify: Optional[bool] = None,
         **kwargs,
     ):
         if self.read_only:
             raise ObjectDBPermissionError("Cannot add to read-only ODB")
+
+        if verify is None:
+            verify = self.verify
         try:
-            self.check(hash_info, check_hash=self.verify)
+            self.check(hash_info, check_hash=verify)
             return
         except (ObjectFormatError, FileNotFoundError):
             pass
@@ -120,8 +124,13 @@ class ObjectDB:
             else:
                 raise
 
-        self.protect(cache_info)
-        self.state.save(cache_info, self.fs, hash_info)
+        try:
+            if verify:
+                self.check(hash_info, check_hash=True)
+            self.protect(cache_info)
+            self.state.save(cache_info, self.fs, hash_info)
+        except (ObjectFormatError, FileNotFoundError):
+            pass
 
         callback = kwargs.get("download_callback")
         if callback:
@@ -396,9 +405,7 @@ class ObjectDB:
         """Return list of the specified hashes which exist in this fs.
         Hashes will be queried individually.
         """
-        logger.debug(
-            "Querying {} hashes via object_exists".format(len(hashes))
-        )
+        logger.debug(f"Querying {len(hashes)} hashes via object_exists")
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
@@ -493,7 +500,7 @@ class ObjectDB:
                 hashes - remote_hashes, jobs, name
             )
 
-        logger.debug("Querying '{}' hashes via traverse".format(len(hashes)))
+        logger.debug(f"Querying '{len(hashes)}' hashes via traverse")
         remote_hashes = set(
             self.list_hashes_traverse(remote_size, remote_hashes, jobs, name)
         )

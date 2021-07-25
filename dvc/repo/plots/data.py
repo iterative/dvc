@@ -1,13 +1,10 @@
-import csv
-import io
 import os
-from collections import OrderedDict
 from copy import copy
 
-from funcy import first, reraise
+from funcy import first
 
 from dvc.exceptions import DvcException
-from dvc.utils.serialize import ParseError, parse_json, parse_yaml
+from dvc.utils.serialize import ParseError
 
 
 class PlotMetricTypeError(DvcException):
@@ -31,19 +28,15 @@ class PlotParsingError(ParseError):
         self.path = path
         self.revision = revision
 
-        super().__init__(path, f"revision: {revision}")
+        super().__init__(path, f"revision: '{revision}'")
 
 
 def plot_data(filename, revision, content):
     _, extension = os.path.splitext(filename.lower())
-    if extension == ".json":
-        return JSONPlotData(filename, revision, content)
-    if extension == ".csv":
-        return CSVPlotData(filename, revision, content)
-    if extension == ".tsv":
-        return CSVPlotData(filename, revision, content, delimiter="\t")
-    if extension == ".yaml":
-        return YAMLPlotData(filename, revision, content)
+    if extension in (".json", ".yaml"):
+        return DictData(filename, revision, content)
+    if extension in (".csv", ".tsv"):
+        return ListData(filename, revision, content)
     raise PlotMetricTypeError(filename)
 
 
@@ -69,34 +62,6 @@ def _filter_fields(data_points, filename, revision, fields=None, **kwargs):
             del new_dp[key]
         new_data.append(new_dp)
     return new_data
-
-
-def _apply_path(data, path=None, **kwargs):
-    if not path or not isinstance(data, dict):
-        return data
-
-    import jsonpath_ng
-
-    found = jsonpath_ng.parse(path).find(data)
-    first_datum = first(found)
-    if (
-        len(found) == 1
-        and isinstance(first_datum.value, list)
-        and isinstance(first(first_datum.value), dict)
-    ):
-        data_points = first_datum.value
-    elif len(first_datum.path.fields) == 1:
-        field_name = first(first_datum.path.fields)
-        data_points = [{field_name: datum.value} for datum in found]
-    else:
-        raise PlotDataStructureError()
-
-    if not isinstance(data_points, list) or not (
-        isinstance(first(data_points), dict)
-    ):
-        raise PlotDataStructureError()
-
-    return data_points
 
 
 def _lists(dictionary):
@@ -148,18 +113,11 @@ class PlotData:
         self.revision = revision
         self.content = content
 
-    def raw(self, **kwargs):
-        raise NotImplementedError
-
     def _processors(self):
         return [_filter_fields, _append_index, _append_revision]
 
     def to_datapoints(self, **kwargs):
-        with reraise(
-            [ParseError, csv.Error],
-            PlotParsingError(self.filename, self.revision),
-        ):
-            data = self.raw(**kwargs)
+        data = self.content
 
         for data_proc in self._processors():
             data = data_proc(
@@ -168,49 +126,13 @@ class PlotData:
         return data
 
 
-class JSONPlotData(PlotData):
-    def raw(self, **kwargs):
-        return parse_json(
-            self.content, self.filename, object_pairs_hook=OrderedDict
-        )
-
-    def _processors(self):
-        parent_processors = super()._processors()
-        return [_apply_path, _find_data] + parent_processors
-
-
-class CSVPlotData(PlotData):
-    def __init__(self, filename, revision, content, delimiter=","):
-        super().__init__(filename, revision, content)
-        self.delimiter = delimiter
-
-    def raw(self, header=True, **kwargs):  # pylint: disable=arguments-differ
-        first_row = first(csv.reader(io.StringIO(self.content)))
-
-        if header:
-            reader = csv.DictReader(
-                io.StringIO(self.content), delimiter=self.delimiter
-            )
-        else:
-            reader = csv.DictReader(
-                io.StringIO(self.content),
-                delimiter=self.delimiter,
-                fieldnames=[str(i) for i in range(len(first_row))],
-            )
-
-        fieldnames = reader.fieldnames
-        data = list(reader)
-
-        return [
-            OrderedDict([(field, data_point[field]) for field in fieldnames])
-            for data_point in data
-        ]
-
-
-class YAMLPlotData(PlotData):
-    def raw(self, **kwargs):
-        return parse_yaml(self.content, self.filename, typ="rt")
-
+class DictData(PlotData):
+    # For files usually parsed as dicts: eg JSON, Yaml
     def _processors(self):
         parent_processors = super()._processors()
         return [_find_data] + parent_processors
+
+
+class ListData(PlotData):
+    # For files parsed as list: CSV, TSV
+    pass

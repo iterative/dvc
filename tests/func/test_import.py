@@ -1,11 +1,10 @@
 import filecmp
 import os
+from unittest.mock import patch
 
 import pytest
 from funcy import first
-from mock import patch
 
-import dvc.data_cloud as cloud
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
@@ -59,7 +58,9 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     (tmp_dir / dst).unlink()
 
     remote_exception = NoRemoteError("dvc import")
-    with patch.object(cloud.DataCloud, "pull", side_effect=remote_exception):
+    with patch.object(
+        dvc.cloud, "get_remote_odb", side_effect=remote_exception
+    ):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).is_file()
@@ -305,7 +306,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove(dst_cache)
 
     with patch(
-        "dvc.fs.local.LocalFileSystem._download", side_effect=Exception
+        "dvc.fs.local.LocalFileSystem.upload_fobj", side_effect=Exception
     ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
@@ -407,9 +408,7 @@ def test_import_pipeline_tracked_outs(
     dvc.scm.commit("add pipeline stage")
 
     with erepo_dir.chdir():
-        erepo_dir.dvc.imp(
-            "file:///{}".format(os.fspath(tmp_dir)), "bar", out="baz"
-        )
+        erepo_dir.dvc.imp(f"file:///{os.fspath(tmp_dir)}", "bar", out="baz")
         assert (erepo_dir / "baz").read_text() == "foo"
 
 
@@ -530,7 +529,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    import dvc as dvc_module
+    import dvc.objects.transfer as otransfer
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
@@ -545,10 +544,11 @@ def test_import_with_jobs(mocker, dvc, erepo_dir):
             commit="init",
         )
 
-    spy = mocker.spy(dvc_module.objects, "save")
+    spy = mocker.spy(otransfer, "transfer")
     dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
-    run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
-    assert run_jobs == 3
+    # the first call will be retrieving dir cache for "dir1" w/jobs None
+    for _args, kwargs in spy.call_args_list[1:]:
+        assert kwargs.get("jobs") == 3
 
 
 def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):

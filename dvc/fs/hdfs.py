@@ -183,7 +183,7 @@ class HDFSFileSystem(BaseFileSystem):
                 else:
                     hdfs.delete_file(path_info.path)
 
-    def makedirs(self, path_info):
+    def makedirs(self, path_info, **kwargs):
         with self.hdfs(path_info) as hdfs:
             # NOTE: fs.create_dir creates parents by default
             hdfs.create_dir(path_info.path)

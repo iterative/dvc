@@ -195,6 +195,11 @@ def get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
     return get_odb(fs, path_info, **config)
 
 
+def is_memfs_staging(odb: "ObjectDB"):
+    staging = get_staging()
+    return odb.fs == staging.fs and odb.path_info == staging.path_info
+
+
 def _load_from_state(odb, staging, path_info, fs, name):
     from . import load
     from .errors import ObjectFormatError

@@ -74,8 +74,8 @@ def imp_url(
     if no_exec:
         stage.ignore_outs()
     elif to_remote:
-        remote = self.cloud.get_remote(remote, "import-url")
-        stage.outs[0].transfer(url, odb=remote.odb, jobs=jobs)
+        remote_odb = self.cloud.get_remote_odb(remote, "import-url")
+        stage.outs[0].transfer(url, odb=remote_odb, jobs=jobs)
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:

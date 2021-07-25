@@ -80,15 +80,15 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             from dvc.config import NoRemoteError
 
             try:
-                remote_obj = self.repo.cloud.get_remote(remote)
+                remote_odb = self.repo.cloud.get_remote_odb(remote)
             except NoRemoteError as exc:
                 raise FileNotFoundError from exc
             if out.is_dir_checksum:
                 checksum = self._get_granular_hash(path, out).value
             else:
                 checksum = out.hash_info.value
-            remote_info = remote_obj.odb.hash_to_path_info(checksum)
-            return remote_obj.fs.open(
+            remote_info = remote_odb.hash_to_path_info(checksum)
+            return remote_odb.fs.open(
                 remote_info, mode=mode, encoding=encoding
             )
 

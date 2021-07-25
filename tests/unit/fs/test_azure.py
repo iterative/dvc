@@ -1,9 +1,6 @@
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-
 import pytest
 
-from dvc.fs.azure import AzureAuthError, AzureFileSystem, _temp_event_loop
+from dvc.fs.azure import AzureAuthError, AzureFileSystem
 from dvc.path_info import PathInfo
 
 container_name = "container-name"
@@ -48,31 +45,6 @@ def test_info(tmp_dir, azure):
     hash_ = fs.info(to_info)["etag"]
     assert isinstance(hash_, str)
     assert hash_.strip("'").strip('"') == hash_
-
-
-def test_temp_event_loop():
-    def procedure():
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.sleep(0))
-        return "yeey"
-
-    def wrapped_procedure():
-        with _temp_event_loop():
-            return procedure()
-
-        # it should clean the loop after
-        # exitting the context.
-        with pytest.raises(RuntimeError):
-            asyncio.get_event_loop()
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(procedure)
-
-        with pytest.raises(RuntimeError):
-            future.result()
-
-        future = executor.submit(wrapped_procedure)
-        assert future.result() == "yeey"
 
 
 def test_azure_login_methods():

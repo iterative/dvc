@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
+from typing import Optional
 
 from funcy import cached_property, first
 
@@ -230,23 +231,23 @@ class StageCache:
 
         return ret
 
-    def push(self, remote):
-        from dvc.remote.base import _log_exceptions
+    def push(self, remote: Optional[str]):
+        from dvc.objects.transfer import _log_exceptions
 
-        remote = self.repo.cloud.get_remote(remote)
+        odb = self.repo.cloud.get_remote_odb(remote)
         return self._transfer(
-            _log_exceptions(remote.fs.upload, "upload"),
+            _log_exceptions(odb.fs.upload),
             self.repo.odb.local,
-            remote.odb,
+            odb,
         )
 
-    def pull(self, remote):
-        from dvc.remote.base import _log_exceptions
+    def pull(self, remote: Optional[str]):
+        from dvc.objects.transfer import _log_exceptions
 
-        remote = self.repo.cloud.get_remote(remote)
+        odb = self.repo.cloud.get_remote_odb(remote)
         return self._transfer(
-            _log_exceptions(remote.fs.download, "download"),
-            remote.odb,
+            _log_exceptions(odb.fs.download),
+            odb,
             self.repo.odb.local,
         )
 

@@ -180,8 +180,7 @@ def add(  # noqa: C901
 
     odb = None
     if to_remote:
-        remote = repo.cloud.get_remote(kwargs.get("remote"), "add")
-        odb = remote.odb
+        odb = repo.cloud.get_remote_odb(kwargs.get("remote"), "add")
 
     with warn_link_failures() as link_failures:
         for stage, source in zip(progress_iter(stages), sources):
