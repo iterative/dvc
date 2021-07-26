@@ -34,8 +34,10 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
 
     def _with_bucket(self, path):
         if isinstance(path, self.PATH_CLS):
-            return path.path
-        return super()._with_bucket(path)
+            path_str = path.path
+        else:
+            path_str = super()._with_bucket(path)
+        return os.path.normpath(path_str)
 
     def _prepare_credentials(self, **config):
         self.CAN_TRAVERSE = True
@@ -70,7 +72,9 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
                 "keyfile", first(user_ssh_config.get("IdentityFile"))
             )
 
-        login_info["client_keys"] = [config.get("keyfile")]
+        keyfile = config.get("keyfile")
+        if keyfile:
+            login_info["client_keys"] = [os.path.expanduser(keyfile)]
         login_info["timeout"] = config.get("timeout", _SSH_TIMEOUT)
 
         # These two settings fine tune the asyncssh to use the

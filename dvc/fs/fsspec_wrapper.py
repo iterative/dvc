@@ -33,7 +33,10 @@ class FSSpecWrapper(BaseFileSystem):
     def _get_kwargs_from_urls(urlpath):
         from fsspec.utils import infer_storage_options
 
-        return infer_storage_options(urlpath)
+        options = infer_storage_options(urlpath)
+        options.pop("path", None)
+        options.pop("protocol", None)
+        return options
 
     def _strip_buckets(self, entries, detail=False):
         for entry in entries:
