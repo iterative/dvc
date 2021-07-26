@@ -16,6 +16,7 @@ from typing import (
 
 from funcy import cached_property
 
+from dvc.env import DVC_EXP_AUTO_PUSH
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -451,6 +452,28 @@ class BaseExecutor(ABC):
             kwargs = {}
         return args, kwargs
 
+    @staticmethod
+    def _auto_push(git_remote: str, dvc: "Repo", scm: "Git"):
+        from dvc.repo.experiments.push import push
+
+        if git_remote == scm.root_dir:
+            logger.warning(
+                f"{DVC_EXP_AUTO_PUSH} {git_remote} is the running "
+                "repository auto push will not work"
+            )
+            return
+
+        branch = scm.get_ref(EXEC_BRANCH, follow=False)
+        branch_name = ExpRefInfo.from_ref(branch).name
+        push(
+            dvc,
+            git_remote,
+            branch_name,
+            push_cache=True,
+            run_cache=True,
+        )
+        logger.info({"pushed": branch_name})
+
     @classmethod
     def checkpoint_callback(
         cls,
@@ -467,20 +490,9 @@ class BaseExecutor(ABC):
                 scm, exp_hash, exp_name=name, force=force, checkpoint=True
             )
 
-            git_remote = os.environ.get("DVC_EXP_AUTO_PUSH", None)
+            git_remote = os.environ.get(DVC_EXP_AUTO_PUSH, None)
             if git_remote:
-                from dvc.repo.experiments.push import push
-
-                branch = scm.get_ref(EXEC_BRANCH, follow=False)
-                branch_name = ExpRefInfo.from_ref(branch).name
-                push(
-                    dvc,
-                    git_remote,
-                    branch_name,
-                    push_cache=True,
-                    run_cache=True,
-                )
-                logger.info({"pushed": branch_name})
+                cls._auto_push(git_remote, dvc, scm)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
