@@ -32,8 +32,9 @@ FS_MAP = {
 }
 
 
-def get_fs_cls(remote_conf):
-    scheme = urlparse(remote_conf["url"]).scheme
+def get_fs_cls(remote_conf, scheme=None):
+    if not scheme:
+        scheme = urlparse(remote_conf["url"]).scheme
     return FS_MAP.get(scheme, LocalFileSystem)
 
 

@@ -1,6 +1,7 @@
 import errno
 import logging
 import os
+import pickle
 from typing import TYPE_CHECKING, Optional, Tuple
 
 from .errors import ObjectFormatError
@@ -91,15 +92,28 @@ class HashFile:
 
 
 class ReferenceHashFile(HashFile):
+    PARAM_PATH = "path"
+    PARAM_HASH = "hash"
+    PARAM_MTIME = "mtime"
+    PARAM_SIZE = "size"
+    PARAM_FS_CONFIG = "fs_config"
+
     def __init__(
         self,
         path_info: "AnyPath",
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
+        mtime: Optional[int] = None,
+        size: Optional[int] = None,
         **kwargs,
     ):
         super().__init__(path_info, fs, hash_info, **kwargs)
-        self.mtime, self.hash_info.size = self._get_mtime_and_size()
+        cur_mtime, cur_size = self._get_mtime_and_size()
+        self.mtime = cur_mtime if mtime is None else mtime
+        self.hash_info.size = cur_size if size is None else size
+
+    def __str__(self):
+        return f"ref object {self.hash_info} -> {self.path_info}"
 
     def check(self, odb: "ObjectDB", check_hash: bool = True):
         if not check_hash:
@@ -118,5 +132,61 @@ class ReferenceHashFile(HashFile):
 
         assert self.fs
         if hasattr(self.fs, "stat"):
-            return get_mtime_and_size(self.path_info, self.fs)
+            try:
+                return get_mtime_and_size(self.path_info, self.fs)
+            except FileNotFoundError:
+                pass
         return None, self.fs.getsize(self.path_info)
+
+    def to_bytes(self):
+        # NOTE: dumping reference FS's this way is insecure, as the
+        # fully parsed remote FS config will include credentials
+        #
+        # ReferenceHashFiles should currently only be serialized in
+        # memory and not to disk
+        dict_ = {
+            self.PARAM_PATH: self.path_info,
+            self.PARAM_HASH: self.hash_info,
+            self.PARAM_MTIME: self.mtime,
+            self.PARAM_SIZE: self.size,
+            self.PARAM_FS_CONFIG: self.fs.config,
+        }
+        try:
+            return pickle.dumps(dict_)
+        except pickle.PickleError as exc:
+            raise ObjectFormatError(f"Could not pickle {self}") from exc
+
+    @classmethod
+    def from_bytes(cls, data):
+        from dvc.external_repo import external_repo
+        from dvc.fs import get_fs_cls
+        from dvc.fs.repo import RepoFileSystem
+
+        try:
+            dict_ = pickle.loads(data)
+        except pickle.PickleError as exc:
+            raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
+
+        try:
+            path_info = dict_[cls.PARAM_PATH]
+            hash_info = dict_[cls.PARAM_HASH]
+        except KeyError as exc:
+            raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
+
+        config = dict_.get(cls.PARAM_FS_CONFIG, {})
+        if RepoFileSystem.PARAM_REPO_URL in config:
+            with external_repo(
+                config[RepoFileSystem.PARAM_REPO_URL],
+                rev=config.get(RepoFileSystem.PARAM_REV),
+            ) as repo:
+                fs = repo.repo_fs
+        else:
+            fs_cls = get_fs_cls(config, scheme=path_info.scheme)
+            fs = fs_cls(**config)
+        return ReferenceHashFile(
+            path_info,
+            fs,
+            hash_info,
+            mtime=dict_.get(cls.PARAM_MTIME),
+            size=dict_.get(cls.PARAM_SIZE),
+        )

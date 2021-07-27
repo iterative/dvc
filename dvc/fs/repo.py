@@ -35,6 +35,8 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
+    PARAM_REPO_URL = "repo_url"
+    PARAM_REV = "rev"
 
     def __init__(
         self, repo=None, subrepos=False, repo_factory: RepoFactory = None
@@ -71,6 +73,13 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if self._main_repo is None:
             return None
         return self._main_repo.url
+
+    @property
+    def config(self):
+        return {
+            self.PARAM_REPO_URL: self.repo_url,
+            self.PARAM_REV: self._main_repo.get_rev(),
+        }
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.

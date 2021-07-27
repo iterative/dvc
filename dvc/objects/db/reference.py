@@ -1,7 +1,6 @@
 import io
 import logging
 import os
-import pickle
 from typing import TYPE_CHECKING
 
 from ..errors import ObjectFormatError
@@ -29,12 +28,9 @@ class ReferenceObjectDB(ObjectDB):
         path_info = self.hash_to_path(hash_info.value)
         try:
             with self.fs.open(path_info, "rb") as fobj:
-                ref_file = pickle.load(fobj)
-        except pickle.PickleError:
-            raise ObjectFormatError(f"object at {hash_info} is corrupted")
+                ref_file = ReferenceHashFile.from_bytes(fobj.read())
         except OSError:
             raise FileNotFoundError
-        assert isinstance(ref_file, ReferenceHashFile)
         try:
             ref_file.check(self, check_hash=False)
         except ObjectFormatError:
@@ -56,11 +52,7 @@ class ReferenceObjectDB(ObjectDB):
                 from_fs, from_info, to_info, hash_info, move
             )
         ref_file = ReferenceHashFile(from_info, from_fs, hash_info)
-        ref_fobj = io.BytesIO()
-        try:
-            pickle.dump(ref_file, ref_fobj)
-        except pickle.PickleError:
-            raise ObjectFormatError(f"Could not pickle {ref_file}")
+        ref_fobj = io.BytesIO(ref_file.to_bytes())
         ref_fobj.seek(0)
         try:
             self.fs.upload_fobj(ref_fobj, to_info)
