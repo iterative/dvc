@@ -116,16 +116,15 @@ class ReferenceHashFile(HashFile):
         return f"ref object {self.hash_info} -> {self.path_info}"
 
     def check(self, odb: "ObjectDB", check_hash: bool = True):
-        if not check_hash:
-            assert self.fs
-            if not self.fs.exists(self.path_info):
-                raise FileNotFoundError(
-                    errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
-                )
-            if not (self.mtime, self.size) == self._get_mtime_and_size():
-                raise ObjectFormatError(f"{self} is changed")
-            return
-        self._check_hash(odb)
+        assert self.fs
+        if not self.fs.exists(self.path_info):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
+            )
+        if not (self.mtime, self.size) == self._get_mtime_and_size():
+            raise ObjectFormatError(f"{self} is changed")
+        if check_hash:
+            self._check_hash(odb)
 
     def _get_mtime_and_size(self) -> Tuple[Optional[str], int]:
         from dvc.utils.fs import get_mtime_and_size
