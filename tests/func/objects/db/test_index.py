@@ -63,9 +63,7 @@ def test_clear_on_download_err(tmp_dir, dvc, index, mocker):
 
     assert list(index.hashes())
 
-    mocker.patch(
-        "dvc.fs.local.LocalFileSystem.upload_fobj", side_effect=Exception
-    )
+    mocker.patch("dvc.fs.local.LocalFileSystem.upload", side_effect=Exception)
     with pytest.raises(DownloadError):
         dvc.pull()
     assert not list(index.hashes())
@@ -82,7 +80,7 @@ def test_partial_upload(tmp_dir, dvc, index, mocker):
             raise Exception("stop baz")
         return original(self, from_file, to_info, name, **kwargs)
 
-    mocker.patch.object(LocalFileSystem, "upload_fobj", unreliable_upload)
+    mocker.patch.object(LocalFileSystem, "upload", unreliable_upload)
     with pytest.raises(UploadError):
         dvc.push()
     assert not list(index.hashes())

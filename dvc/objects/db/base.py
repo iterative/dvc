@@ -86,6 +86,8 @@ class ObjectDB:
                 if not isinstance(from_info, from_fs.PATH_CLS):
                     from_info = from_fs.PATH_CLS(from_info)
                 self.fs.upload(from_info, to_info)
+            elif isinstance(self.fs, LocalFileSystem):
+                from_fs.download_file(from_info, to_info)
             else:
                 with from_fs.open(from_info, mode="rb") as fobj:
                     self.fs.upload_fobj(fobj, to_info)
