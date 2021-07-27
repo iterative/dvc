@@ -25,9 +25,9 @@ from .fs.s3 import S3FileSystem
 from .hash_info import HashInfo
 from .istextfile import istextfile
 from .objects import Tree
-from .objects import save as osave
 from .objects.errors import ObjectFormatError
 from .objects.stage import stage as ostage
+from .objects.transfer import transfer as otransfer
 from .scheme import Schemes
 from .utils import relpath
 from .utils.fs import path_isin
@@ -403,21 +403,21 @@ class Output:
         return self.odb.hash_to_path_info(self.hash_info.value).url
 
     def get_hash(self):
-        if not self.use_cache:
-            return ostage(
-                self.repo.odb.local,
-                self.path_info,
-                self.fs,
-                self.fs.PARAM_CHECKSUM,
-                dvcignore=self.dvcignore,
-            ).hash_info
-        return ostage(
-            self.odb,
+        if self.use_cache:
+            odb = self.odb
+            name = self.odb.fs.PARAM_CHECKSUM
+        else:
+            odb = self.repo.odb.local
+            name = self.fs.PARAM_CHECKSUM
+        _, obj = ostage(
+            odb,
             self.path_info,
             self.fs,
-            self.odb.fs.PARAM_CHECKSUM,
+            name,
             dvcignore=self.dvcignore,
-        ).hash_info
+            dry_run=not self.use_cache,
+        )
+        return obj.hash_info
 
     @property
     def is_dir_checksum(self):
@@ -544,7 +544,7 @@ class Output:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        self.obj = ostage(
+        _, self.obj = ostage(
             self.odb,
             self.path_info,
             self.fs,
@@ -573,14 +573,20 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info)
             else:
-                obj = ostage(
+                staging, obj = ostage(
                     self.odb,
                     filter_info or self.path_info,
                     self.fs,
                     self.odb.fs.PARAM_CHECKSUM,
                     dvcignore=self.dvcignore,
                 )
-                osave(self.odb, obj)
+                otransfer(
+                    staging,
+                    self.odb,
+                    {obj.hash_info},
+                    shallow=False,
+                    move=True,
+                )
             checkout(
                 filter_info or self.path_info,
                 self.fs,
@@ -594,7 +600,7 @@ class Output:
 
     def _commit_granular_dir(self, filter_info):
         prefix = filter_info.relative_to(self.path_info).parts
-        save_obj = ostage(
+        staging, save_obj = ostage(
             self.odb,
             self.path_info,
             self.fs,
@@ -603,7 +609,13 @@ class Output:
         )
         save_obj = save_obj.filter(prefix)
         checkout_obj = save_obj.get(prefix)
-        osave(self.odb, save_obj)
+        otransfer(
+            staging,
+            self.odb,
+            {save_obj.hash_info} | {entry.hash_info for _, entry in save_obj},
+            shallow=True,
+            move=True,
+        )
         return checkout_obj
 
     def dumpd(self):
@@ -785,7 +797,7 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        obj = ostage(
+        staging, obj = ostage(
             odb,
             from_info,
             from_fs,
@@ -794,7 +806,14 @@ class Output:
             jobs=jobs,
             no_progress_bar=no_progress_bar,
         )
-        osave(odb, obj, jobs=jobs, move=upload)
+        otransfer(
+            staging,
+            odb,
+            {obj.hash_info},
+            jobs=jobs,
+            move=upload,
+            shallow=False,
+        )
 
         self.hash_info = obj.hash_info
         return obj
@@ -824,7 +843,7 @@ class Output:
         try:
             objects.check(self.odb, obj)
         except FileNotFoundError:
-            self.repo.cloud.pull([obj], **kwargs)
+            self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
             return self.obj
