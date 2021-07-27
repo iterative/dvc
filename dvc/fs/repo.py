@@ -78,7 +78,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def config(self):
         return {
             self.PARAM_REPO_URL: self.repo_url,
-            self.PARAM_REV: self._main_repo.get_rev(),
+            self.PARAM_REV: getattr(self._main_repo.fs, "rev", None),
         }
 
     def _get_repo(self, path: str) -> Optional["Repo"]:

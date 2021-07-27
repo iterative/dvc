@@ -127,7 +127,7 @@ class ReferenceHashFile(HashFile):
             return
         self._check_hash(odb)
 
-    def _get_mtime_and_size(self) -> Tuple[Optional[int], int]:
+    def _get_mtime_and_size(self) -> Tuple[Optional[str], int]:
         from dvc.utils.fs import get_mtime_and_size
 
         assert self.fs
@@ -158,9 +158,9 @@ class ReferenceHashFile(HashFile):
 
     @classmethod
     def from_bytes(cls, data):
-        from dvc.external_repo import external_repo
         from dvc.fs import get_fs_cls
         from dvc.fs.repo import RepoFileSystem
+        from dvc.repo import Repo
 
         try:
             dict_ = pickle.loads(data)
@@ -175,9 +175,11 @@ class ReferenceHashFile(HashFile):
 
         config = dict_.get(cls.PARAM_FS_CONFIG, {})
         if RepoFileSystem.PARAM_REPO_URL in config:
-            with external_repo(
+            with Repo.open(
                 config[RepoFileSystem.PARAM_REPO_URL],
                 rev=config.get(RepoFileSystem.PARAM_REV),
+                subrepos=True,
+                uninitialized=True,
             ) as repo:
                 fs = repo.repo_fs
         else:
