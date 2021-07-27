@@ -457,25 +457,21 @@ class BaseExecutor(ABC):
 
     @staticmethod
     def _auto_push(git_remote: str, dvc: "Repo", scm: "Git"):
-        from dvc.repo.experiments.push import push
-
         if git_remote == scm.root_dir:
             logger.warning(
-                f"{DVC_EXP_AUTO_PUSH} {git_remote} is the running "
-                "repository auto push will not work"
+                f"try to auto checkpoints to {git_remote} which is the "
+                "running repository dvc cache will be pushed to the "
+                "default remote while git references will not be pushed"
             )
-            return
 
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
-        branch_name = ExpRefInfo.from_ref(branch).name
-        push(
-            dvc,
+        dvc.experiments.push(
             git_remote,
-            branch_name,
+            branch,
             push_cache=True,
             run_cache=True,
         )
-        logger.info({"pushed": branch_name})
+        logger.debug(f"pushed {branch} to {git_remote}")
 
     @classmethod
     def checkpoint_callback(

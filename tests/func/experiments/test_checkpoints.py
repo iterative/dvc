@@ -4,6 +4,7 @@ import os
 import pytest
 from funcy import first
 
+from dvc.env import DVC_EXP_AUTO_PUSH
 from dvc.exceptions import DvcException
 from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
@@ -209,7 +210,7 @@ def test_auto_push_during_iterations(
     assert git_upstream.scm.get_ref(str(ref_info)) is None
 
     # add auto push
-    os.environ["DVC_EXP_AUTO_PUSH"] = remote
+    os.environ[DVC_EXP_AUTO_PUSH] = remote
     results = dvc.experiments.run(checkpoint_stage.addressing)
     assert (tmp_dir / "foo").read_text() == "4"
     exp = first(results)
@@ -227,14 +228,14 @@ def test_auto_push_during_iterations(
     assert (git_upstream / "foo").read_text() == "4"
 
     # resume the remote checkpoint
-    os.environ.pop("DVC_EXP_AUTO_PUSH")
+    os.environ.pop(DVC_EXP_AUTO_PUSH)
     with git_upstream.chdir():
         git_upstream.dvc.experiments.run(checkpoint_stage.addressing)
     assert (git_upstream / "foo").read_text() == "6"
 
 
 def test_auto_push_error_url(dvc, scm, checkpoint_stage, local_remote):
-    os.environ["DVC_EXP_AUTO_PUSH"] = "none"
+    os.environ[DVC_EXP_AUTO_PUSH] = "none"
     assert (
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
         == {}
@@ -242,16 +243,18 @@ def test_auto_push_error_url(dvc, scm, checkpoint_stage, local_remote):
 
 
 def test_auto_push_no_remote(dvc, scm, checkpoint_stage, git_upstream):
-    os.environ["DVC_EXP_AUTO_PUSH"] = git_upstream.url
+    os.environ[DVC_EXP_AUTO_PUSH] = git_upstream.url
     assert (
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
         == {}
     )
 
 
-def test_auto_push_self_remote(tmp_dir, dvc, scm, checkpoint_stage, caplog):
+def test_auto_push_self_remote(
+    tmp_dir, dvc, scm, checkpoint_stage, local_remote, caplog
+):
     root_dir = str(tmp_dir)
-    os.environ["DVC_EXP_AUTO_PUSH"] = root_dir
+    os.environ[DVC_EXP_AUTO_PUSH] = root_dir
     assert (
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
         != {}
@@ -259,6 +262,8 @@ def test_auto_push_self_remote(tmp_dir, dvc, scm, checkpoint_stage, caplog):
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert (
-            f"DVC_EXP_AUTO_PUSH {root_dir} is the running "
-            "repository auto push will not work" in caplog.messages
+            f"try to auto checkpoints to {root_dir} which is the "
+            "running repository dvc cache will be pushed to the "
+            "default remote while git references will not be pushed"
+            in caplog.text
         )
