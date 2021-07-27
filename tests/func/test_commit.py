@@ -7,6 +7,7 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
 from dvc.utils.serialize import dump_yaml, load_yaml
+from tests.utils import clean_staging
 
 
 def test_commit_recursive(tmp_dir, dvc):
@@ -53,6 +54,8 @@ def test_commit_with_deps(tmp_dir, dvc, run_copy, run_kw):
     assert foo_stage.outs[0].changed_cache()
     assert stage.outs[0].changed_cache()
 
+    clean_staging()
+
     dvc.commit(stage.path, with_deps=True)
     assert not foo_stage.outs[0].changed_cache()
     assert not stage.outs[0].changed_cache()
@@ -66,6 +69,8 @@ def test_commit_changed_md5(tmp_dir, dvc):
     stage_file_content["md5"] = "1111111111"
     dump_yaml(stage.path, stage_file_content)
 
+    clean_staging()
+
     with pytest.raises(StageCommitError):
         dvc.commit(stage.path)
 
@@ -78,6 +83,8 @@ def test_commit_no_exec(tmp_dir, dvc):
     stage = dvc.run(
         name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
     )
+    clean_staging()
+
     assert dvc.status(stage.path)
     dvc.commit(stage.path, force=True)
     assert dvc.status(stage.path) == {}
@@ -90,6 +97,7 @@ def test_commit_granular_output(tmp_dir, dvc):
         outs=["foo", "bar"],
         no_commit=True,
     )
+    clean_staging()
 
     cache = tmp_dir / ".dvc" / "cache"
     assert not list(cache.glob("*/*"))
@@ -103,6 +111,7 @@ def test_commit_granular_output(tmp_dir, dvc):
 def test_commit_granular_output_file(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     dvc.add("foo", no_commit=True)
+    clean_staging()
     dvc.commit("foo")
     assert dvc.status() == {}
 
@@ -135,21 +144,18 @@ def test_commit_granular_dir(tmp_dir, dvc):
         }
     )
     dvc.add("data", no_commit=True)
+    clean_staging()
 
     cache = tmp_dir / ".dvc" / "cache"
-    staging = tmp_dir / ".dvc" / "tmp" / _STAGING_DIR
 
     assert set(cache.glob("*/*")) == set()
-    assert set(staging.glob("*/*")) == {
-        staging / "1a" / "ca2c799df82929bbdd976557975546.dir"
-    }
 
     dvc.commit(os.path.join("data", "foo"))
     assert set(cache.glob("*/*")) == {
         cache / "1a" / "ca2c799df82929bbdd976557975546.dir",
         cache / "ac" / "bd18db4cc2f85cedef654fccc4a4d8",
     }
-    assert set(staging.glob("*/*")) == set()
+    clean_staging()
 
     dvc.commit(os.path.join("data", "subdir"))
     assert set(cache.glob("*/*")) == {
@@ -158,7 +164,7 @@ def test_commit_granular_dir(tmp_dir, dvc):
         cache / "4c" / "e8d2a2cf314a52fa7f315ca37ca445",
         cache / "68" / "dde2c3c4e7953c2290f176bbdc9a54",
     }
-    assert set(staging.glob("*/*")) == set()
+    clean_staging()
 
     dvc.commit(os.path.join("data"))
     assert set(cache.glob("*/*")) == {
@@ -168,13 +174,13 @@ def test_commit_granular_dir(tmp_dir, dvc):
         cache / "68" / "dde2c3c4e7953c2290f176bbdc9a54",
         cache / "37" / "b51d194a7513e45b56f6524f2d51f2",
     }
-    assert set(staging.glob("*/*")) == set()
 
 
 def test_commit_no_exec_missing_dep(tmp_dir, dvc):
     stage = dvc.run(
         name="my", cmd="mycmd", deps=["dep"], outs=["out"], no_exec=True
     )
+    clean_staging()
     assert dvc.status(stage.path)
 
     with pytest.raises(DependencyDoesNotExistError):
@@ -183,6 +189,7 @@ def test_commit_no_exec_missing_dep(tmp_dir, dvc):
 
 def test_commit_no_exec_missing_out(tmp_dir, dvc):
     stage = dvc.run(name="my", cmd="mycmd", outs=["out"], no_exec=True)
+    clean_staging()
     assert dvc.status(stage.path)
 
     with pytest.raises(OutputDoesNotExistError):
@@ -192,6 +199,7 @@ def test_commit_no_exec_missing_out(tmp_dir, dvc):
 def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
     tmp_dir.gen("foo", "foo")
     stage = run_copy("foo", "bar", no_commit=True, name="copy-foo-bar")
+    clean_staging()
     assert dvc.status(stage.addressing)
     assert dvc.commit(stage.addressing, force=True) == [stage]
     assert not dvc.status(stage.addressing)
@@ -205,6 +213,7 @@ def test_commit_pipeline_stage(tmp_dir, dvc, run_copy):
 def test_imported_entries_unchanged(tmp_dir, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "file content", "initial commit")
+    clean_staging()
 
     stage = dvc.imp(os.fspath(erepo_dir), "file")
 

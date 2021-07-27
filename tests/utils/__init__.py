@@ -42,3 +42,9 @@ def dump_sv(stream, metrics, delimiter=",", header=True):
         writer = csv.writer(stream)
         for d in metrics:
             writer.writerow(list(d.values()))
+
+
+def clean_staging():
+    from dvc.objects.stage import _get_staging
+
+    _get_staging().gc([])

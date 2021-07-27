@@ -900,10 +900,13 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         self.dvc = DvcRepo(".")
 
     def test(self):
+        from tests.utils import clean_staging
+
         cmd = f"python {self.CODE} {self.FOO} {self.BAR}"
         stage = self.dvc.run(
             deps=[self.FOO], outs=[self.BAR], cmd=cmd, single_stage=True
         )
+        clean_staging()
 
         os.chmod(self.BAR, 0o644)
         with open(self.BAR, "w") as fd:
