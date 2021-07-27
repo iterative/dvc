@@ -580,6 +580,8 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
+    from dvc.objects.stage import get_file_hash
+
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
     clean_staging()
@@ -594,8 +596,12 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
         fs.info(PathInfo(tmp_dir) / "file")["md5"]
         == "8c7dd922ad47494fc02c388e12c00eac"
     )
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
-    assert obj.hash_info == HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
+    with pytest.raises(FileNotFoundError):
+        stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    hash_info = get_file_hash(
+        PathInfo(tmp_dir) / "file", fs, "md5", state=dvc.state
+    )
+    assert hash_info == HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
 
 
 def test_get_hash_dirty_dir(tmp_dir, dvc):
