@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import TYPE_CHECKING, Optional
 
+from dvc.fs.local import LocalFileSystem
 from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
 from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
@@ -75,6 +76,40 @@ class ObjectDB:
             hash_info,
         )
 
+    def _add_file(self, from_fs, from_info, to_info, move):
+        self.makedirs(to_info.parent)
+        use_move = isinstance(from_fs, type(self.fs)) and move
+        try:
+            if use_move:
+                self.fs.move(from_info, to_info)
+            elif isinstance(from_fs, LocalFileSystem):
+                if not isinstance(from_info, from_fs.PATH_CLS):
+                    from_info = from_fs.PATH_CLS(from_info)
+                self.fs.upload(from_info, to_info)
+            elif isinstance(self.fs, LocalFileSystem):
+                from_fs.download_file(from_info, to_info)
+            else:
+                with from_fs.open(from_info, mode="rb") as fobj:
+                    self.fs.upload_fobj(fobj, to_info)
+        except OSError as exc:
+            # If the target file already exists, we are going to simply
+            # ignore the exception (#4992).
+            #
+            # On Windows, it is not always guaranteed that you'll get
+            # FileExistsError (it might be PermissionError or a bare OSError)
+            # but all of those exceptions raised from the original
+            # FileExistsError so we have a separate check for that.
+            if isinstance(exc, FileExistsError) or (
+                os.name == "nt"
+                and exc.__context__
+                and isinstance(exc.__context__, FileExistsError)
+            ):
+                logger.debug("'%s' file already exists, skipping", to_info)
+                if use_move:
+                    from_fs.remove(from_info)
+            else:
+                raise
+
     def add(
         self,
         path_info: "AnyPath",
@@ -97,33 +132,7 @@ class ObjectDB:
 
         cache_info = self.hash_to_path_info(hash_info.value)
         # using our makedirs to create dirs with proper permissions
-        self.makedirs(cache_info.parent)
-        use_move = isinstance(fs, type(self.fs)) and move
-        try:
-            if use_move:
-                self.fs.move(path_info, cache_info)
-            else:
-                with fs.open(path_info, mode="rb") as fobj:
-                    self.fs.upload_fobj(fobj, cache_info)
-        except OSError as exc:
-            # If the target file already exists, we are going to simply
-            # ignore the exception (#4992).
-            #
-            # On Windows, it is not always guaranteed that you'll get
-            # FileExistsError (it might be PermissionError or a bare OSError)
-            # but all of those exceptions raised from the original
-            # FileExistsError so we have a separate check for that.
-            if isinstance(exc, FileExistsError) or (
-                os.name == "nt"
-                and exc.__context__
-                and isinstance(exc.__context__, FileExistsError)
-            ):
-                logger.debug("'%s' file already exists, skipping", path_info)
-                if use_move:
-                    fs.remove(path_info)
-            else:
-                raise
-
+        self._add_file(fs, path_info, cache_info, move)
         try:
             if verify:
                 self.check(hash_info, check_hash=True)

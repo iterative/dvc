@@ -179,7 +179,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     baz = tmp_dir.dvc_gen({"baz": {"foo": "foo content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalFileSystem.upload_fobj
+    original = LocalFileSystem.upload
     odb = dvc.cloud.get_remote_odb("upstream")
 
     def unreliable_upload(self, fobj, to_info, **kwargs):
@@ -189,7 +189,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
             raise Exception("stop foo")
         return original(self, fobj, to_info, **kwargs)
 
-    with patch.object(LocalFileSystem, "upload_fobj", unreliable_upload):
+    with patch.object(LocalFileSystem, "upload", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 2
@@ -203,7 +203,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     remove(dvc.odb.local.cache_dir)
 
     baz.collect_used_dir_cache()
-    with patch.object(LocalFileSystem, "upload_fobj", side_effect=Exception):
+    with patch.object(LocalFileSystem, "upload", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -218,7 +218,7 @@ def test_raise_on_too_many_open_files(
 
     mocker.patch.object(
         LocalFileSystem,
-        "upload_fobj",
+        "upload",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
@@ -269,7 +269,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     tmp_dir.dvc_gen({"baz": "baz content"})
 
     mocked_upload = mocker.patch.object(
-        LocalFileSystem, "upload_fobj", return_value=0
+        LocalFileSystem, "upload", return_value=0
     )
     dvc.push()
 
