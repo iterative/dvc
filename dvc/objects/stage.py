@@ -1,7 +1,7 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
@@ -145,7 +145,6 @@ def _build_tree(path_info, fs, name, **kwargs):
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
         tree.add(file_info.relative_to(path_info).parts, obj)
-    tree.digest()
     return tree
 
 
@@ -168,11 +167,25 @@ def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
             pass
 
     tree = _build_tree(path_info, fs, name, odb=odb, **kwargs)
-    odb.add(tree.path_info, tree.fs, tree.hash_info, move=False)
+    state = odb.state if odb and odb.state else None
+    hash_info = None
+    if state:
+        hash_info = state.get(  # pylint: disable=assignment-from-none
+            path_info, fs
+        )
+    if hash_info:
+        tree.path_info = path_info
+        tree.fs = fs
+        hash_info.size = sum(obj.size for _, obj in tree)
+        hash_info.nfiles = len(tree)
+        tree.hash_info = hash_info
+    else:
+        tree.digest()
+    odb.add(tree.path_info, tree.fs, tree.hash_info, move=hash_info is None)
     return tree
 
 
-def _get_staging() -> "ObjectDB":
+def _get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
     """Return an ODB that can be used for staging objects.
 
     Staging will be a reference ODB stored in the the global memfs.
@@ -181,11 +194,12 @@ def _get_staging() -> "ObjectDB":
     from dvc.fs.memory import MemoryFileSystem
     from dvc.path_info import CloudURLInfo
     from dvc.scheme import Schemes
+    from dvc.state import StateNoop
 
     fs = MemoryFileSystem()
     path_info = CloudURLInfo(f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}")
-    config: Dict[str, Any] = {}
-    return ReferenceObjectDB(fs, path_info, **config)
+    state = odb.state if odb else StateNoop()
+    return ReferenceObjectDB(fs, path_info, state=state)
 
 
 def _load_from_state(odb, staging, path_info, fs, name):
@@ -200,7 +214,7 @@ def _load_from_state(odb, staging, path_info, fs, name):
             if odb_.exists(hash_info):
                 try:
                     obj = load(odb_, hash_info)
-                    check(odb_, obj)
+                    check(odb_, obj, check_hash=False)
                     if isinstance(obj, Tree):
                         obj.hash_info.nfiles = len(obj)
                         for key, entry in obj:
@@ -261,7 +275,7 @@ def stage(
     assert path_info and path_info.scheme == fs.scheme
 
     details = fs.info(path_info)
-    staging = _get_staging()
+    staging = _get_staging(odb)
     if odb:
         try:
             return _load_from_state(odb, staging, path_info, fs, name)
@@ -280,19 +294,7 @@ def stage(
             **kwargs,
         )
         logger.debug("staged tree '%s'", obj)
-        if name == "md5":
-            if odb and odb.exists(obj.hash_info):
-                raw = odb.get(obj.hash_info)
-            else:
-                staging.add(obj.path_info, obj.fs, obj.hash_info)
-                raw = staging.get(obj.hash_info)
-            # cleanup unneeded memfs tmpfile and return obj based on staging
-            # ODB fs/path
-            if obj.fs != raw.fs:
-                obj.fs.remove(obj.path_info)
-            obj.fs = raw.fs
-            obj.path_info = raw.path_info
-        else:
+        if name != "md5":
             obj = _stage_external_tree_info(odb, obj, name)
     else:
         _, obj = _get_file_obj(
