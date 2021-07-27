@@ -1,4 +1,3 @@
-import json
 import os
 
 import pytest
@@ -94,8 +93,5 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     dvc.plots.modify("subdir", {"title": "TITLE"})
 
     result = dvc.plots.show()
-    p1_content = json.loads(result[p1])
-    p2_content = json.loads(result[p2])
-
-    assert p1_content["title"] == p2_content["title"] == "TITLE"
-    assert p1_content == p2_content
+    assert result["workspace"]["data"][p1]["props"]["title"] == "TITLE"
+    assert result["workspace"]["data"][p2]["props"]["title"] == "TITLE"

@@ -1,10 +1,14 @@
 import json
 
+import pytest
+
 from dvc.repo.plots.data import PlotData
 from tests.func.plots.utils import _write_json
 
 
+@pytest.mark.skip
 def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
+
     metric_1 = [{"y": 2}, {"y": 3}]
     _write_json(tmp_dir, metric_1, "metric_t.json")
     run_copy_metrics(

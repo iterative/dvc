@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from dvc.exceptions import DvcException
@@ -56,15 +58,6 @@ class HTML:
         self.elements.append(tabulate.tabulate(rows, header, tablefmt="html"))
         return self
 
-    def with_plots(self, plots: Dict[str, Dict]) -> "HTML":
-        self.elements.extend(
-            [
-                VEGA_DIV_HTML.format(id=f"plot{i}", vega_json=plot)
-                for i, plot in enumerate(plots.values())
-            ]
-        )
-        return self
-
     def with_element(self, html: str) -> "HTML":
         self.elements.append(html)
         return self
@@ -76,10 +69,13 @@ class HTML:
 
 def write(
     path: StrPath,
-    plots: Dict[str, Dict],
+    plots: list,
     metrics: Optional[Dict[str, Dict]] = None,
     template_path: Optional[StrPath] = None,
 ):
+
+    os.makedirs(path, exist_ok=True)
+
     page_html = None
     if template_path:
         with open(template_path) as fobj:
@@ -90,7 +86,12 @@ def write(
         document.with_metrics(metrics)
         document.with_element("<br>")
 
-    document.with_plots(plots)
+    for renderer in plots:
+        document.with_element(renderer.get_html())
 
-    with open(path, "w") as fd:
+    index = Path(os.path.join(path, "index.html"))
+
+    # TODO remember to try/catch remove on exception
+    with open(index, "w") as fd:
         fd.write(document.embed())
+    return index
