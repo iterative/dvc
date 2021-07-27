@@ -173,15 +173,15 @@ def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
         hash_info = state.get(  # pylint: disable=assignment-from-none
             path_info, fs
         )
-    if hash_info:
-        tree.path_info = path_info
-        tree.fs = fs
-        hash_info.size = sum(obj.size for _, obj in tree)
-        hash_info.nfiles = len(tree)
-        tree.hash_info = hash_info
-    else:
-        tree.digest()
-    odb.add(tree.path_info, tree.fs, tree.hash_info, move=hash_info is None)
+    tree.digest(hash_info=hash_info)
+    odb.add(tree.path_info, tree.fs, tree.hash_info, move=True)
+    raw = odb.get(tree.hash_info)
+    # cleanup unneeded memfs tmpfile and return tree based on the
+    # ODB fs/path
+    if odb.fs != tree.fs:
+        tree.fs.remove(tree.path_info)
+    tree.fs = raw.fs
+    tree.path_info = raw.path_info
     return tree
 
 
