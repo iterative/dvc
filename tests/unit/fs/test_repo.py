@@ -8,6 +8,7 @@ from dvc.fs.repo import RepoFileSystem
 from dvc.hash_info import HashInfo
 from dvc.objects.stage import stage
 from dvc.path_info import PathInfo
+from tests.utils import clean_staging
 
 
 def test_exists(tmp_dir, dvc):
@@ -512,9 +513,8 @@ def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     expected = "acbd18db4cc2f85cedef654fccc4a4d8"
     assert fs.info(PathInfo(tmp_dir) / "foo").get("md5") is None
-    assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5"
-    ).hash_info == HashInfo("md5", expected)
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5")
+    assert obj.hash_info == HashInfo("md5", expected)
     (tmp_dir / "foo").unlink()
     assert fs.info(PathInfo(tmp_dir) / "foo")["md5"] == expected
 
@@ -526,15 +526,17 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     expected = "8761c4e9acad696bee718615e23e22db.dir"
     assert fs.info(PathInfo(tmp_dir) / "dir").get("md5") is None
-    assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir")
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "8761c4e9acad696bee718615e23e22db.dir"
+    )
 
     shutil.rmtree(tmp_dir / "dir")
     assert fs.info(PathInfo(tmp_dir) / "dir")["md5"] == expected
-    assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir")
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "8761c4e9acad696bee718615e23e22db.dir"
+    )
 
 
 def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
@@ -544,13 +546,13 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert fs.info(subdir).get("md5") is None
-    assert stage(dvc.odb.local, subdir, fs, "md5").hash_info == HashInfo(
+    _, obj = stage(dvc.odb.local, subdir, fs, "md5")
+    assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
     assert fs.info(subdir / "data").get("md5") is None
-    assert stage(
-        dvc.odb.local, subdir / "data", fs, "md5"
-    ).hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
+    _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5")
+    assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
     (tmp_dir / "dir" / "subdir" / "data").unlink()
     assert (
         fs.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
@@ -568,50 +570,45 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
         ]
     )
     tmp_dir.scm.commit("add dir")
+    clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
-    assert actual == expected
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir"
+    )
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
+    clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
     assert fs.info(PathInfo(tmp_dir) / "file").get("md5") is None
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
-    assert actual == expected
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    assert obj.hash_info == HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
 
     (tmp_dir / "file").unlink()
     assert (
         fs.info(PathInfo(tmp_dir) / "file")["md5"]
         == "8c7dd922ad47494fc02c388e12c00eac"
     )
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
-    assert actual == expected
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    assert obj.hash_info == HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
 
 
 def test_get_hash_dirty_dir(tmp_dir, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     (tmp_dir / "dir" / "baz").write_text("baz")
+    clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
-    assert actual == expected
-    assert actual.nfiles == 3
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "ba75a2162ca9c29acecb7957105a0bc2.dir"
+    )
+    assert obj.hash_info.nfiles == 3
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])
