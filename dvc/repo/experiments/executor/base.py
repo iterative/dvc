@@ -471,7 +471,6 @@ class BaseExecutor(ABC):
             push_cache=True,
             run_cache=True,
         )
-        logger.debug(f"pushed {branch} to {git_remote}")
 
     @classmethod
     def checkpoint_callback(
