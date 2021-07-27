@@ -364,6 +364,9 @@ class BaseExecutor(ABC):
                         force=repro_force,
                         checkpoint=is_checkpoint,
                     )
+                    git_remote = os.environ.get(DVC_EXP_AUTO_PUSH, None)
+                    if git_remote:
+                        cls._auto_push(git_remote, dvc, dvc.scm)
                 except UnchangedExperimentError:
                     pass
                 ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
