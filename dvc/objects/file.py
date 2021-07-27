@@ -103,7 +103,7 @@ class ReferenceHashFile(HashFile):
         path_info: "AnyPath",
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
-        mtime: Optional[int] = None,
+        mtime: Optional[str] = None,
         size: Optional[int] = None,
         **kwargs,
     ):

@@ -91,12 +91,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         logger.debug(
             "state save (%s, %s, %s) %s",
             inode,
-            str(mtime),
+            mtime,
             str(size),
             hash_info.value,
         )
 
-        self.md5s[inode] = (mtime, size, hash_info.value)
+        self.md5s[inode] = (mtime, str(size), hash_info.value)
 
     def get(self, path_info, fs):
         """Gets the hash for the specified path info. Hash will be
@@ -126,10 +126,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         value = self.md5s.get(inode)
 
-        if not value or value[0] != mtime or value[1] != size:
+        if not value or value[0] != mtime or value[1] != str(size):
             return None
 
-        return HashInfo("md5", value[2], size=int(size))
+        return HashInfo("md5", value[2], size=size)
 
     def save_link(self, path_info, fs):
         """Adds the specified path to the list of links created by dvc. This

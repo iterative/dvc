@@ -65,7 +65,7 @@ def get_mtime_and_size(path, fs, dvcignore=None):
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
 
-    return mtime, size
+    return str(mtime), size
 
 
 class BasePathNotInCheckedPathException(DvcException):

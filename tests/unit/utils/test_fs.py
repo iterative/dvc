@@ -38,11 +38,11 @@ class TestMtimeAndSize(TestDir):
         )
 
         self.assertIs(type(file_time), str)
-        self.assertIs(type(file_size), str)
-        self.assertEqual(file_size, str(actual_file_size))
+        self.assertIs(type(file_size), int)
+        self.assertEqual(file_size, actual_file_size)
         self.assertIs(type(dir_time), str)
-        self.assertIs(type(dir_size), str)
-        self.assertEqual(dir_size, str(actual_dir_size))
+        self.assertIs(type(dir_size), int)
+        self.assertEqual(dir_size, actual_dir_size)
 
 
 class TestContainsLink(TestCase):
