@@ -127,13 +127,12 @@ def test_commit_granular_output_dir(tmp_dir, dvc):
         }
     )
     dvc.add("data", no_commit=True)
+    clean_staging()
     dvc.commit("data")
     assert dvc.status() == {}
 
 
 def test_commit_granular_dir(tmp_dir, dvc):
-    from dvc.objects.stage import _STAGING_DIR
-
     tmp_dir.gen(
         {
             "data": {
