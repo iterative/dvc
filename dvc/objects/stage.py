@@ -200,7 +200,7 @@ def _load_from_state(odb, staging, path_info, fs, name):
             if odb_.exists(hash_info):
                 try:
                     obj = load(odb_, hash_info)
-                    check(odb_, obj, check_hash=False)
+                    check(odb_, obj)
                     if isinstance(obj, Tree):
                         obj.hash_info.nfiles = len(obj)
                         for key, entry in obj:
