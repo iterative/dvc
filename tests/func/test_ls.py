@@ -524,7 +524,7 @@ def test_subrepo(dvc_top_level, erepo):
             repo.scm_gen(scm_files, commit=f"scm track for top {repo}")
             if hasattr(repo, "dvc"):
                 repo.dvc_gen(dvc_files, commit=f"dvc track for {repo}")
-    clean_staging()
+        clean_staging()
 
     def _list_files(repo, path=None):
         return set(map(itemgetter("path"), Repo.ls(os.fspath(repo), path)))
