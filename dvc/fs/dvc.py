@@ -32,6 +32,10 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         super().__init__(**kwargs)
         self.repo = kwargs["repo"]
 
+    @property
+    def config(self):
+        raise NotImplementedError
+
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
 
