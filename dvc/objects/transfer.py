@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 def _log_exceptions(func):
     @wraps(func)
-    def wrapper(path_info, fs, hash_info, **kwargs):
+    def wrapper(path_info, *args, **kwargs):
         try:
-            func(path_info, fs, hash_info, **kwargs)
+            func(path_info, *args, **kwargs)
             return 0
         except Exception as exc:  # pylint: disable=broad-except
             # NOTE: this means we ran out of file descriptors and there is no
@@ -67,6 +67,7 @@ def _transfer(
                 processor,
                 verify=verify,
                 move=move,
+                **kwargs,
             )
     return total
 
@@ -113,18 +114,25 @@ def _do_transfer(
     **kwargs,
 ):
     from dvc.exceptions import FileTransferError
+    from dvc.objects.errors import ObjectFormatError
 
     total_fails = 0
     succeeded_dir_objs = []
     all_file_ids = set(file_ids)
-    if not cache_odb:
-        cache_odb = src
 
     for dir_hash in dir_ids:
         from .tree import Tree
 
         bound_file_ids = set()
-        dir_obj = Tree.load(cache_odb, dir_hash)
+        dir_obj: Optional["Tree"] = None
+        for odb in (cache_odb, src):
+            if odb is not None:
+                try:
+                    dir_obj = Tree.load(odb, dir_hash)
+                    break
+                except (FileNotFoundError, ObjectFormatError):
+                    pass
+        assert dir_obj
         entry_ids = {entry.hash_info for _, entry in dir_obj}
 
         for file_hash in all_file_ids.copy():
@@ -183,6 +191,7 @@ def _do_transfer(
                 dir_obj.hash_info,
                 len(file_hashes),
             )
+            assert dir_obj.hash_info and dir_obj.hash_info.value
             dest_index.update([dir_obj.hash_info.value], file_hashes)
 
 
