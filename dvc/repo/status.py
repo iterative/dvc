@@ -97,8 +97,8 @@ def _cloud_status(
             obj_ids, jobs, remote=remote, log_missing=False
         )
         for status_ in ("deleted", "new", "missing"):
-            for obj in getattr(status_info, status_, []):
-                ret[obj.name] = status_
+            for hash_info in getattr(status_info, status_, []):
+                ret[hash_info.obj_name] = status_
 
     return ret
 
