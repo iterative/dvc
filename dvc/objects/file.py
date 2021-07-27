@@ -139,13 +139,20 @@ class ReferenceHashFile(HashFile):
         return None, self.fs.getsize(self.path_info)
 
     def to_bytes(self):
+        from dvc.fs.repo import RepoFileSystem
+        from dvc.path_info import PathInfo
+
         # NOTE: dumping reference FS's this way is insecure, as the
         # fully parsed remote FS config will include credentials
         #
         # ReferenceHashFiles should currently only be serialized in
         # memory and not to disk
+        path_info = self.path_info
+        if isinstance(self.fs, RepoFileSystem):
+            path_info = PathInfo(path_info).relative_to(self.fs.root_dir)
+
         dict_ = {
-            self.PARAM_PATH: self.path_info,
+            self.PARAM_PATH: path_info,
             self.PARAM_HASH: self.hash_info,
             self.PARAM_MTIME: self.mtime,
             self.PARAM_SIZE: self.size,
@@ -174,14 +181,17 @@ class ReferenceHashFile(HashFile):
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
 
         config = dict_.get(cls.PARAM_FS_CONFIG, {})
-        if RepoFileSystem.PARAM_REPO_URL in config:
+        url = config.get(RepoFileSystem.PARAM_REPO_URL)
+        if url is not None:
+            rev = config.get(RepoFileSystem.PARAM_REV)
             with Repo.open(
-                config[RepoFileSystem.PARAM_REPO_URL],
-                rev=config.get(RepoFileSystem.PARAM_REV),
+                url,
+                rev=rev,
                 subrepos=True,
                 uninitialized=True,
             ) as repo:
                 fs = repo.repo_fs
+                path_info = repo.root_dir / path_info
         else:
             fs_cls = get_fs_cls(config, scheme=path_info.scheme)
             fs = fs_cls(**config)

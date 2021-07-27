@@ -212,7 +212,7 @@ def _load_from_state(odb, staging, path_info, fs, name):
                     assert obj.hash_info.name == name
                     obj.hash_info.size = hash_info.size
                     return odb_, obj
-                except ObjectFormatError:
+                except (ObjectFormatError, FileNotFoundError):
                     pass
     raise FileNotFoundError
 

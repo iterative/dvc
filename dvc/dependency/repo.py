@@ -164,7 +164,11 @@ class RepoDependency(Dependency):
             return
 
         self_url = self.repo.url or self.repo.root_dir
-        if obj.fs.repo_url is not None and obj.fs.repo_url == self_url:
+        if (
+            obj.fs.repo_url is not None
+            and obj.fs.repo_url == self_url
+            or obj.fs.root_dir == self.repo.root_dir
+        ):
             raise CircularImportError(self, obj.fs.repo_url, self_url)
 
     def get_obj(self, filter_info=None, **kwargs):
