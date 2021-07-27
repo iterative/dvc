@@ -6,6 +6,7 @@ from funcy import cached_property, first, memoize, silent, wrap_prop, wrap_with
 
 import dvc.prompt as prompt
 from dvc.scheme import Schemes
+from dvc.utils.fs import as_atomic
 
 from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
 
@@ -112,24 +113,13 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
 
         return _SSHFileSystem(**self.fs_args)
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
-    ):
-        # Ensure that if an interrupt happens during the transfer, we don't
-        # pollute the cache.
-        from dvc.utils import tmp_fname
+    # Ensure that if an interrupt happens during the transfer, we don't
+    # pollute the cache.
 
-        tmp_file = tmp_fname(to_info)
-        try:
-            super()._upload(
-                from_file,
-                tmp_file,
-                name=name,
-                no_progress_bar=no_progress_bar,
-                **pbar_args
-            )
-        except BaseException:
-            self.remove(tmp_file)
-            raise
-        else:
-            self.move(tmp_file, to_info)
+    def _upload_fobj(self, fobj, to_info, *args, **kwargs):
+        with as_atomic(self, to_info) as tmp_file:
+            super()._upload_fobj(fobj, tmp_file, *args, **kwargs)
+
+    def _upload(self, from_file, to_info, *args, **kwargs):
+        with as_atomic(self, to_info) as tmp_file:
+            super()._upload(from_file, tmp_file, *args, **kwargs)

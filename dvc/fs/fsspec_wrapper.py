@@ -245,7 +245,7 @@ class CallbackMixin:
             **pbar_args,
         ) as pbar:
             self.fs.put_file(
-                self._with_bucket(from_file),
+                os.fspath(from_file),
                 self._with_bucket(to_info),
                 callback=pbar.as_callback(_LOCAL_FS, from_file),
             )
@@ -263,6 +263,6 @@ class CallbackMixin:
         ) as pbar:
             self.fs.get_file(
                 self._with_bucket(from_info),
-                self._with_bucket(to_file),
+                os.fspath(to_file),
                 callback=pbar.as_callback(self, from_info),
             )
