@@ -206,9 +206,10 @@ class ObjectDB:
             self.fs.remove(obj.path_info)
             raise
 
-        # making cache file read-only so we don't need to check it
-        # next time
-        self.protect(obj.path_info)
+        if check_hash:
+            # making cache file read-only so we don't need to check it
+            # next time
+            self.protect(obj.path_info)
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
