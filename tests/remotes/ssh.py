@@ -18,6 +18,7 @@ TEST_SSH_KEY_PATH = os.path.join(
 )
 
 
+# See: https://github.com/carletes/mock-ssh-server/issues/22
 class SSHMockHandler(Handler):
     def handle_client(self, channel):
         try:
