@@ -1,9 +1,11 @@
 import locale
 import os
-from contextlib import contextmanager
+import subprocess
 
+import mockssh
 import pytest
 from funcy import cached_property
+from mockssh.server import Handler
 
 from dvc.path_info import URLInfo
 
@@ -14,6 +16,40 @@ TEST_SSH_USER = "user"
 TEST_SSH_KEY_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), f"{TEST_SSH_USER}.key"
 )
+
+
+# See: https://github.com/carletes/mock-ssh-server/issues/22
+class SSHMockHandler(Handler):
+    def handle_client(self, channel):
+        try:
+            command = self.command_queues[channel.chanid].get(block=True)
+            self.log.debug("Executing %s", command)
+            if isinstance(command, bytes):
+                command = command.decode()
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            stdout, stderr = p.communicate()
+            channel.sendall(stdout)
+            channel.sendall_stderr(stderr)
+            channel.send_exit_status(p.returncode)
+        except Exception:  # pylint: disable=broad-except
+            self.log.error(
+                "Error handling client (channel: %s)", channel, exc_info=True
+            )
+        finally:
+            try:
+                channel.close()
+            except EOFError:
+                self.log.debug("Tried to close already closed channel")
+
+
+class SSHMockServer(mockssh.Server):
+    handler_cls = SSHMockHandler
 
 
 class SSHMocked(Base, URLInfo):
@@ -48,52 +84,40 @@ class SSHMocked(Base, URLInfo):
     def config(self):
         return {"url": self.url, "keyfile": TEST_SSH_KEY_PATH}
 
-    @contextmanager
+    @cached_property
     def _ssh(self):
-        from dvc.fs.ssh.connection import SSHConnection
+        from sshfs import SSHFileSystem
 
-        conn = SSHConnection(
+        return SSHFileSystem(
             host=self.host,
             port=self.port,
             username=TEST_SSH_USER,
-            key_filename=TEST_SSH_KEY_PATH,
+            client_keys=[TEST_SSH_KEY_PATH],
         )
-        try:
-            yield conn
-        finally:
-            conn.close()
 
     def is_file(self):
-        with self._ssh() as _ssh:
-            return _ssh.isfile(self.path)
+        return self._ssh.isfile(self.path)
 
     def is_dir(self):
-        with self._ssh() as _ssh:
-            return _ssh.isdir(self.path)
+        return self._ssh.isdir(self.path)
 
     def exists(self):
-        with self._ssh() as _ssh:
-            return _ssh.exists(self.path)
+        return self._ssh.exists(self.path)
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         assert mode == 0o777
         assert parents
 
-        with self._ssh() as _ssh:
-            _ssh.makedirs(self.path)
+        self._ssh.makedirs(self.path, exist_ok=exist_ok)
 
     def write_bytes(self, contents):
         assert isinstance(contents, bytes)
-        with self._ssh() as _ssh:
-            with _ssh.open(self.path, "w+") as fobj:
-                # NOTE: accepts both str and bytes
-                fobj.write(contents)
+        with self._ssh.open(self.path, "wb") as fobj:
+            fobj.write(contents)
 
     def read_bytes(self):
-        with self._ssh() as _ssh:
-            # NOTE: sftp always reads in binary format
-            with _ssh.open(self.path, "r") as fobj:
-                return fobj.read()
+        with self._ssh.open(self.path, "rb") as fobj:
+            return fobj.read()
 
     def read_text(self, encoding=None, errors=None):
         if not encoding:
@@ -104,23 +128,21 @@ class SSHMocked(Base, URLInfo):
 
 @pytest.fixture
 def ssh_server(test_config):
-    import mockssh
-
     test_config.requires("ssh")
     users = {TEST_SSH_USER: TEST_SSH_KEY_PATH}
-    with mockssh.Server(users) as s:
+    with SSHMockServer(users) as s:
         yield s
 
 
 @pytest.fixture
 def ssh_connection(ssh_server):
-    from dvc.fs.ssh.connection import SSHConnection
+    from sshfs import SSHFileSystem
 
-    yield SSHConnection(
+    yield SSHFileSystem(
         host=ssh_server.host,
         port=ssh_server.port,
         username=TEST_SSH_USER,
-        key_filename=TEST_SSH_KEY_PATH,
+        client_files=[TEST_SSH_KEY_PATH],
     )
 
 
