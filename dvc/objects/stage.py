@@ -1,7 +1,10 @@
+import hashlib
 import logging
+import os
+import pathlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
@@ -14,15 +17,15 @@ from .file import HashFile
 
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
-    from dvc.types import DvcPath
+    from dvc.types import AnyPath, DvcPath
 
     from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
 
-_STAGING_DIR = "staging"
-_STAGING_MEMFS_PATH = f"dvc-{_STAGING_DIR}"
+_STAGING_MEMFS_PATH = "dvc-staging"
+_STAGING_GLOBAL_NAMESPACE = "dvc-global"
 
 
 def _upload_file(path_info, fs, odb, upload_odb):
@@ -185,6 +188,27 @@ def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
     return tree
 
 
+_url_cache: Dict[str, str] = {}
+
+
+def _make_staging_url(path_info: Optional["AnyPath"]):
+    from dvc.path_info import CloudURLInfo
+    from dvc.scheme import Schemes
+
+    url = CloudURLInfo(f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}")
+    if path_info:
+        if isinstance(path_info, (str, pathlib.PurePath)):
+            path = os.path.abspath(path_info)
+        else:
+            path = str(path_info)
+        if path not in _url_cache:
+            _url_cache[path] = hashlib.sha256(path.encode("utf-8")).hexdigest()
+        url /= _url_cache[path]
+    else:
+        url /= _STAGING_GLOBAL_NAMESPACE
+    return url
+
+
 def _get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
     """Return an ODB that can be used for staging objects.
 
@@ -192,12 +216,10 @@ def _get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
     """
 
     from dvc.fs.memory import MemoryFileSystem
-    from dvc.path_info import CloudURLInfo
-    from dvc.scheme import Schemes
     from dvc.state import StateNoop
 
     fs = MemoryFileSystem()
-    path_info = CloudURLInfo(f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}")
+    path_info = _make_staging_url(odb.path_info if odb else None)
     state = odb.state if odb else StateNoop()
     return ReferenceObjectDB(fs, path_info, state=state)
 
