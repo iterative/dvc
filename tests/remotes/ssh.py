@@ -1,8 +1,11 @@
 import locale
 import os
+import subprocess
 
+import mockssh
 import pytest
 from funcy import cached_property
+from mockssh.server import Handler
 
 from dvc.path_info import URLInfo
 
@@ -13,6 +16,39 @@ TEST_SSH_USER = "user"
 TEST_SSH_KEY_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), f"{TEST_SSH_USER}.key"
 )
+
+
+class SSHMockHandler(Handler):
+    def handle_client(self, channel):
+        try:
+            command = self.command_queues[channel.chanid].get(block=True)
+            self.log.debug("Executing %s", command)
+            if isinstance(command, bytes):
+                command = command.decode()
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            stdout, stderr = p.communicate()
+            channel.sendall(stdout)
+            channel.sendall_stderr(stderr)
+            channel.send_exit_status(p.returncode)
+        except Exception:  # pylint: disable=broad-except
+            self.log.error(
+                "Error handling client (channel: %s)", channel, exc_info=True
+            )
+        finally:
+            try:
+                channel.close()
+            except EOFError:
+                self.log.debug("Tried to close already closed channel")
+
+
+class SSHMockServer(mockssh.Server):
+    handler_cls = SSHMockHandler
 
 
 class SSHMocked(Base, URLInfo):
@@ -91,11 +127,9 @@ class SSHMocked(Base, URLInfo):
 
 @pytest.fixture
 def ssh_server(test_config):
-    import mockssh
-
     test_config.requires("ssh")
     users = {TEST_SSH_USER: TEST_SSH_KEY_PATH}
-    with mockssh.Server(users) as s:
+    with SSHMockServer(users) as s:
         yield s
 
 
