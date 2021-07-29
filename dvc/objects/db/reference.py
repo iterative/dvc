@@ -1,7 +1,9 @@
 import io
 import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
+
+from dvc.scheme import Schemes
 
 from ..errors import ObjectFormatError
 from ..reference import ReferenceHashFile
@@ -22,13 +24,19 @@ class ReferenceObjectDB(ObjectDB):
     of the staging ODB fs. Tree objects are stored natively.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._fs_cache: Dict[tuple, "BaseFileSystem"] = {}
+
     def get(self, hash_info: "HashInfo"):
         if hash_info.isdir:
             return super().get(hash_info)
         path_info = self.hash_to_path(hash_info.value)
         try:
             with self.fs.open(path_info, "rb") as fobj:
-                ref_file = ReferenceHashFile.from_bytes(fobj.read())
+                ref_file = ReferenceHashFile.from_bytes(
+                    fobj.read(), fs_cache=self._fs_cache
+                )
         except OSError:
             raise FileNotFoundError
         try:
@@ -65,3 +73,5 @@ class ReferenceObjectDB(ObjectDB):
                 logger.debug("'%s' file already exists, skipping", to_info)
             else:
                 raise
+        if fs.scheme != Schemes.LOCAL:
+            self._fs_cache[ReferenceHashFile.config_tuple(fs)] = fs

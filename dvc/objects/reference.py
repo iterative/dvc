@@ -76,19 +76,12 @@ class ReferenceHashFile(HashFile):
         if isinstance(self.fs, RepoFileSystem):
             path_info = PathInfo(path_info).relative_to(self.fs.root_dir)
 
-        config_pairs = tuple(
-            (key, value)
-            for key, value in sorted(
-                self.fs.config.items(), key=lambda item: item[0]
-            )
-        )
-
         dict_ = {
             self.PARAM_PATH: path_info,
             self.PARAM_HASH: self.hash_info,
             self.PARAM_MTIME: self.mtime,
             self.PARAM_SIZE: self.size,
-            self.PARAM_FS_CONFIG: config_pairs,
+            self.PARAM_FS_CONFIG: self.config_tuple(self.fs),
         }
         try:
             return pickle.dumps(dict_)
@@ -96,7 +89,7 @@ class ReferenceHashFile(HashFile):
             raise ObjectFormatError(f"Could not pickle {self}") from exc
 
     @classmethod
-    def from_bytes(cls, data: bytes):
+    def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
         from dvc.fs import get_fs_cls
         from dvc.fs.repo import RepoFileSystem
         from dvc.repo import Repo
@@ -112,29 +105,43 @@ class ReferenceHashFile(HashFile):
         except KeyError as exc:
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
 
-        config_pairs = dict_.get(cls.PARAM_FS_CONFIG)
-        config = dict(config_pairs)
-        url = config.get(RepoFileSystem.PARAM_REPO_URL)
-        if url is not None:
-            rev = config.get(RepoFileSystem.PARAM_REV)
-            with Repo.open(
-                url,
-                rev=rev,
-                subrepos=True,
-                uninitialized=True,
-            ) as repo:
-                cache_dir = config.get(RepoFileSystem.PARAM_CACHE_DIR)
-                if cache_dir:
-                    repo.odb.local.cache_dir = cache_dir
-                fs = repo.repo_fs
-                path_info = repo.root_dir / path_info
-        else:
-            fs_cls = get_fs_cls(config, scheme=path_info.scheme)
-            fs = fs_cls(**config)
+        scheme, config_pairs = dict_.get(cls.PARAM_FS_CONFIG)
+        fs = fs_cache.get((scheme, config_pairs)) if fs_cache else None
+        if not fs:
+            config = dict(config_pairs)
+            url = config.get(RepoFileSystem.PARAM_REPO_URL)
+            if url is not None:
+                rev = config.get(RepoFileSystem.PARAM_REV)
+                with Repo.open(
+                    url,
+                    rev=rev,
+                    subrepos=True,
+                    uninitialized=True,
+                ) as repo:
+                    cache_dir = config.get(RepoFileSystem.PARAM_CACHE_DIR)
+                    if cache_dir:
+                        repo.odb.local.cache_dir = cache_dir
+                    fs = repo.repo_fs
+                    path_info = repo.root_dir / path_info
+            else:
+                fs_cls = get_fs_cls(config, scheme=path_info.scheme)
+                fs = fs_cls(**config)
         return ReferenceHashFile(
             path_info,
             fs,
             hash_info,
             mtime=dict_.get(cls.PARAM_MTIME),
             size=dict_.get(cls.PARAM_SIZE),
+        )
+
+    @staticmethod
+    def config_tuple(fs: "BaseFileSystem"):
+        return (
+            fs.scheme,
+            tuple(
+                (key, value)
+                for key, value in sorted(
+                    fs.config.items(), key=lambda item: item[0]
+                )
+            ),
         )
