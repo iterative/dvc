@@ -45,6 +45,12 @@ def dump_sv(stream, metrics, delimiter=",", header=True):
 
 
 def clean_staging():
-    from dvc.objects.stage import _get_staging
+    from dvc.fs.memory import MemoryFileSystem
+    from dvc.objects.stage import _STAGING_MEMFS_PATH
 
-    _get_staging().gc([])
+    try:
+        MemoryFileSystem().fs.rm(
+            f"memory://{_STAGING_MEMFS_PATH}", recursive=True
+        )
+    except FileNotFoundError:
+        pass
