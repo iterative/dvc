@@ -1,6 +1,7 @@
 import pytest
 
-from dvc.fs import get_fs_cls
+from dvc.config import RemoteNotFoundError
+from dvc.fs import get_fs_cls, get_fs_config
 from dvc.fs.hdfs import HDFSFileSystem
 from dvc.fs.http import HTTPFileSystem
 from dvc.fs.https import HTTPSFileSystem
@@ -29,3 +30,8 @@ from dvc.fs.ssh import SSHFileSystem
 )
 def test_get_fs_cls(url, cls):
     assert get_fs_cls({"url": url}) == cls
+
+
+def test_get_fs_config():
+    with pytest.raises(RemoteNotFoundError):
+        get_fs_config({"remote": {}}, name="myremote")
