@@ -110,6 +110,9 @@ class FSSpecWrapper(BaseFileSystem):
         for file in self.find(path_info, **kwargs):
             yield path_info.replace(path=file)
 
+    def move(self, from_info, to_info):
+        self.fs.move(self._with_bucket(from_info), self._with_bucket(to_info))
+
     def remove(self, path_info):
         self.fs.rm_file(self._with_bucket(path_info))
 
