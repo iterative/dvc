@@ -4,7 +4,7 @@ import os
 from typing import TYPE_CHECKING
 
 from ..errors import ObjectFormatError
-from ..file import ReferenceHashFile
+from ..reference import ReferenceHashFile
 from .base import ObjectDB
 
 if TYPE_CHECKING:

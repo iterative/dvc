@@ -37,6 +37,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     PARAM_CHECKSUM = "md5"
     PARAM_REPO_URL = "repo_url"
     PARAM_REV = "rev"
+    PARAM_CACHE_DIR = "cache_dir"
 
     def __init__(
         self, repo=None, subrepos=False, repo_factory: RepoFactory = None
@@ -79,6 +80,9 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return {
             self.PARAM_REPO_URL: self.repo_url,
             self.PARAM_REV: getattr(self._main_repo.fs, "rev", None),
+            self.PARAM_CACHE_DIR: os.path.abspath(
+                self._main_repo.odb.local.cache_dir
+            ),
         }
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
