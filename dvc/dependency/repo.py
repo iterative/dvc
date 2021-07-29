@@ -3,7 +3,6 @@ from collections import defaultdict
 from copy import copy
 from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
-from funcy import first
 from voluptuous import Required
 
 from dvc.path_info import PathInfo
@@ -134,7 +133,7 @@ class RepoDependency(Dependency):
 
             try:
                 staging, staged_obj = stage(
-                    None,
+                    local_odb,
                     path_info,
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
@@ -157,19 +156,37 @@ class RepoDependency(Dependency):
     def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
         from dvc.fs.repo import RepoFileSystem
+        from dvc.objects.db.reference import ReferenceObjectDB
+        from dvc.objects.tree import Tree
 
-        hash_info = first(obj_id for obj_id in obj_ids if not obj_id.isdir)
-        obj = odb.get(hash_info)
-        if not isinstance(obj.fs, RepoFileSystem):
+        if not isinstance(odb, ReferenceObjectDB):
             return
 
-        self_url = self.repo.url or self.repo.root_dir
-        if (
-            obj.fs.repo_url is not None
-            and obj.fs.repo_url == self_url
-            or obj.fs.root_dir == self.repo.root_dir
-        ):
-            raise CircularImportError(self, obj.fs.repo_url, self_url)
+        def iter_objs():
+            for hash_info in obj_ids:
+                if hash_info.isdir:
+                    tree = Tree.load(odb, hash_info)
+                    yield from (odb.get(entry.hash_info) for _, entry in tree)
+                else:
+                    yield odb.get(hash_info)
+
+        checked_urls = set()
+        for obj in iter_objs():
+            if not isinstance(obj.fs, RepoFileSystem):
+                continue
+            if (
+                obj.fs.repo_url in checked_urls
+                or obj.fs.root_dir in checked_urls
+            ):
+                continue
+            self_url = self.repo.url or self.repo.root_dir
+            if (
+                obj.fs.repo_url is not None
+                and obj.fs.repo_url == self_url
+                or obj.fs.root_dir == self.repo.root_dir
+            ):
+                raise CircularImportError(self, obj.fs.repo_url, self_url)
+            checked_urls.update([obj.fs.repo_url, obj.fs.root_dir])
 
     def get_obj(self, filter_info=None, **kwargs):
         locked = kwargs.get("locked", True)
