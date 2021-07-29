@@ -4,7 +4,7 @@ import os
 import pathlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Tuple
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 _STAGING_MEMFS_PATH = "dvc-staging"
-_STAGING_GLOBAL_NAMESPACE = "dvc-global"
 
 
 def _upload_file(path_info, fs, odb, upload_odb):
@@ -191,7 +190,7 @@ def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
 _url_cache: Dict[str, str] = {}
 
 
-def _make_staging_url(path_info: Optional["AnyPath"]):
+def _make_staging_url(path_info: "AnyPath"):
     from dvc.path_info import CloudURLInfo
     from dvc.scheme import Schemes
 
@@ -204,23 +203,20 @@ def _make_staging_url(path_info: Optional["AnyPath"]):
         if path not in _url_cache:
             _url_cache[path] = hashlib.sha256(path.encode("utf-8")).hexdigest()
         url /= _url_cache[path]
-    else:
-        url /= _STAGING_GLOBAL_NAMESPACE
     return url
 
 
-def _get_staging(odb: Optional["ObjectDB"] = None) -> "ObjectDB":
+def _get_staging(odb: "ObjectDB") -> "ObjectDB":
     """Return an ODB that can be used for staging objects.
 
     Staging will be a reference ODB stored in the the global memfs.
     """
 
     from dvc.fs.memory import MemoryFileSystem
-    from dvc.state import StateNoop
 
     fs = MemoryFileSystem()
-    path_info = _make_staging_url(odb.path_info if odb else None)
-    state = odb.state if odb else StateNoop()
+    path_info = _make_staging_url(odb.path_info)
+    state = odb.state
     return ReferenceObjectDB(fs, path_info, state=state)
 
 
@@ -273,7 +269,7 @@ def _stage_external_tree_info(odb, tree, name):
 
 
 def stage(
-    odb: Optional["ObjectDB"],
+    odb: "ObjectDB",
     path_info: "DvcPath",
     fs: "BaseFileSystem",
     name: str,
