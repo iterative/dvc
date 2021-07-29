@@ -1,6 +1,7 @@
 import logging
 
 from dvc.exceptions import DownloadError, FileTransferError
+from dvc.scheme import Schemes
 
 from . import locked
 
@@ -58,7 +59,10 @@ def fetch(
     except DownloadError as exc:
         failed += exc.amount
 
-    for odb, obj_ids in used.items():
+    for odb, obj_ids in sorted(
+        used.items(),
+        key=lambda item: item[0] and item[0].fs.scheme == Schemes.MEMORY,
+    ):
         d, f = _fetch(
             self,
             obj_ids,
