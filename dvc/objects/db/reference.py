@@ -12,7 +12,7 @@ from .base import ObjectDB
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
+    from dvc.types import AnyPath, DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class ReferenceObjectDB(ObjectDB):
         self,
         from_fs: "BaseFileSystem",
         from_info: "AnyPath",
-        to_info: "AnyPath",
+        to_info: "DvcPath",
         hash_info: "HashInfo",
         move: bool = False,
     ):
@@ -73,5 +73,5 @@ class ReferenceObjectDB(ObjectDB):
                 logger.debug("'%s' file already exists, skipping", to_info)
             else:
                 raise
-        if fs.scheme != Schemes.LOCAL:
-            self._fs_cache[ReferenceHashFile.config_tuple(fs)] = fs
+        if from_fs.scheme != Schemes.LOCAL:
+            self._fs_cache[ReferenceHashFile.config_tuple(from_fs)] = from_fs

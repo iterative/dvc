@@ -13,7 +13,7 @@ from dvc.progress import Tqdm
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
+    from dvc.types import AnyPath, DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class ObjectDB:
         self,
         from_fs: "BaseFileSystem",
         from_info: "AnyPath",
-        to_info: "AnyPath",
+        to_info: "DvcPath",
         _hash_info: "HashInfo",
         move: bool = False,
     ):
@@ -152,7 +152,7 @@ class ObjectDB:
         if callback:
             callback(1)
 
-    def hash_to_path_info(self, hash_):
+    def hash_to_path_info(self, hash_) -> "DvcPath":
         return self.path_info / hash_[0:2] / hash_[2:]
 
     # Override to return path as a string instead of PathInfo for clouds
