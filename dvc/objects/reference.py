@@ -92,7 +92,6 @@ class ReferenceHashFile(HashFile):
     def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
         from dvc.fs import get_fs_cls
         from dvc.fs.repo import RepoFileSystem
-        from dvc.repo import Repo
 
         try:
             dict_ = pickle.loads(data)
@@ -109,20 +108,9 @@ class ReferenceHashFile(HashFile):
         fs = fs_cache.get((scheme, config_pairs)) if fs_cache else None
         if not fs:
             config = dict(config_pairs)
-            url = config.get(RepoFileSystem.PARAM_REPO_URL)
-            if url is not None:
-                rev = config.get(RepoFileSystem.PARAM_REV)
-                with Repo.open(
-                    url,
-                    rev=rev,
-                    subrepos=True,
-                    uninitialized=True,
-                ) as repo:
-                    cache_dir = config.get(RepoFileSystem.PARAM_CACHE_DIR)
-                    if cache_dir:
-                        repo.odb.local.cache_dir = cache_dir
-                    fs = repo.repo_fs
-                    path_info = repo.root_dir / path_info
+            if RepoFileSystem.PARAM_REPO_URL in config:
+                fs = RepoFileSystem(**config)
+                path_info = fs.root_dir / path_info
             else:
                 fs_cls = get_fs_cls(config, scheme=path_info.scheme)
                 fs = fs_cls(**config)

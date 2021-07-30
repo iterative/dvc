@@ -36,11 +36,18 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     scheme = "local"
     PARAM_CHECKSUM = "md5"
     PARAM_REPO_URL = "repo_url"
+    PARAM_REPO_ROOT = "repo_root"
     PARAM_REV = "rev"
     PARAM_CACHE_DIR = "cache_dir"
+    PARAM_CACHE_TYPES = "cache_types"
+    PARAM_SUBREPOS = "subrepos"
 
     def __init__(
-        self, repo=None, subrepos=False, repo_factory: RepoFactory = None
+        self,
+        repo: Optional["Repo"] = None,
+        subrepos=False,
+        repo_factory: RepoFactory = None,
+        **kwargs,
     ):
         super().__init__()
 
@@ -53,6 +60,8 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         else:
             self.repo_factory = repo_factory
 
+        if repo is None:
+            repo = self._repo_from_fs_config(subrepos=subrepos, **kwargs)
         self._main_repo = repo
         self.hash_jobs = repo.fs.hash_jobs
         self.root_dir = repo.root_dir
@@ -79,11 +88,52 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def config(self):
         return {
             self.PARAM_REPO_URL: self.repo_url,
+            self.PARAM_REPO_ROOT: self.root_dir,
             self.PARAM_REV: getattr(self._main_repo.fs, "rev", None),
             self.PARAM_CACHE_DIR: os.path.abspath(
                 self._main_repo.odb.local.cache_dir
             ),
+            self.PARAM_CACHE_TYPES: self._main_repo.odb.local.cache_types,
+            self.PARAM_SUBREPOS: self._traverse_subrepos,
         }
+
+    @classmethod
+    def _repo_from_fs_config(cls, **config) -> "Repo":
+        from dvc.external_repo import external_repo
+        from dvc.repo import Repo
+
+        url = config.get(cls.PARAM_REPO_URL)
+        root = config.get(cls.PARAM_REPO_ROOT)
+        assert url or root
+
+        def _open(*args, **kwargs):
+            # NOTE: if original repo was an erepo (and has a URL),
+            # we cannot use Repo.open() since it will skip erepo
+            # cache/remote setup for local URLs
+            if url is None:
+                return Repo.open(*args, **kwargs)
+            return external_repo(*args, **kwargs)
+
+        cache_dir = config.get(cls.PARAM_CACHE_DIR)
+        repo_kwargs: dict = {}
+        if url is None:
+            if cache_dir is not None:
+                repo_kwargs["config"] = {
+                    "cache": {
+                        "dir": cache_dir,
+                        "type": config.get(cls.PARAM_CACHE_TYPES),
+                    }
+                }
+        else:
+            repo_kwargs["cache_dir"] = cache_dir
+        with _open(
+            url if url else root,
+            rev=config.get(cls.PARAM_REV),
+            subrepos=config.get(cls.PARAM_SUBREPOS, False),
+            uninitialized=True,
+            **repo_kwargs,
+        ) as repo:
+            return repo
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
