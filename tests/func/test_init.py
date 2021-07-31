@@ -1,53 +1,52 @@
 import logging
 import os
 
+import pytest
+
 from dvc.config import Config
 from dvc.exceptions import InitError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from tests.basic_env import TestDir, TestGit
 
 
-class TestInit(TestGit):
-    def _test_init(self):
-        self.assertTrue(os.path.exists(DvcRepo.DVC_DIR))
-        self.assertTrue(os.path.isdir(DvcRepo.DVC_DIR))
-
-    def test_api(self):
-        DvcRepo.init().close()
-
-        self._test_init()
-
-    def test_cli(self):
-        ret = main(["init"])
-        self.assertEqual(ret, 0)
-
-        self._test_init()
+def _check_dirs():
+    assert os.path.exists(DvcRepo.DVC_DIR)
+    assert os.path.isdir(DvcRepo.DVC_DIR)
 
 
-class TestDoubleInit(TestInit):
-    def test(self):
-        ret = main(["init"])
-        self.assertEqual(ret, 0)
-        self._test_init()
-
-        ret = main(["init"])
-        self.assertNotEqual(ret, 0)
-        self._test_init()
-
-        ret = main(["init", "--force"])
-        self.assertEqual(ret, 0)
-        self._test_init()
+def test_api_init(scm):
+    DvcRepo.init().close()
+    _check_dirs()
 
 
-class TestInitNoSCMFail(TestDir):
-    def test_api(self):
-        with self.assertRaises(InitError):
-            DvcRepo.init()
+def test_cli_init(scm):
+    ret = main(["init"])
+    assert ret == 0
+    _check_dirs()
 
-    def test_cli(self):
-        ret = main(["init"])
-        self.assertNotEqual(ret, 0)
+
+def test_double_init(scm):
+    ret = main(["init"])
+    assert ret == 0
+    _check_dirs()
+
+    ret = main(["init"])
+    assert ret != 0
+    _check_dirs()
+
+    ret = main(["init", "--force"])
+    assert ret == 0
+    _check_dirs()
+
+
+def test_init_no_scm_fail_api(tmp_dir):
+    with pytest.raises(InitError):
+        DvcRepo.init()
+
+
+def test_init_no_scm_fail_cli(tmp_dir):
+    ret = main(["init"])
+    assert ret != 0
 
 
 def test_init_no_scm_api(tmp_dir):
