@@ -88,7 +88,8 @@ def merge_params(src: Dict, to_update: Dict) -> Dict:
         benedict(src).merge(to_update, overwrite=True)
     else:
         # benedict has issues keeping references to an empty dictionary
-        # see: https://github.com/iterative/dvc/issues/6374
+        # see: https://github.com/iterative/dvc/issues/6374.
+        # Also, passing to_update through benedict to expand the syntax.
         src.update(benedict(to_update))
     return src
 
