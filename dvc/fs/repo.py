@@ -53,6 +53,11 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         from dvc.utils.collections import PathStringTrie
 
+        if repo is None:
+            repo, repo_factory = self._repo_from_fs_config(
+                subrepos=subrepos, **kwargs
+            )
+
         if not repo_factory:
             from dvc.repo import Repo
 
@@ -60,8 +65,6 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         else:
             self.repo_factory = repo_factory
 
-        if repo is None:
-            repo = self._repo_from_fs_config(subrepos=subrepos, **kwargs)
         self._main_repo = repo
         self.hash_jobs = repo.fs.hash_jobs
         self.root_dir = repo.root_dir
@@ -98,8 +101,10 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         }
 
     @classmethod
-    def _repo_from_fs_config(cls, **config) -> "Repo":
-        from dvc.external_repo import external_repo
+    def _repo_from_fs_config(
+        cls, **config
+    ) -> Tuple["Repo", Optional["RepoFactory"]]:
+        from dvc.external_repo import erepo_factory, external_repo
         from dvc.repo import Repo
 
         url = config.get(cls.PARAM_REPO_URL)
@@ -115,25 +120,33 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return external_repo(*args, **kwargs)
 
         cache_dir = config.get(cls.PARAM_CACHE_DIR)
-        repo_kwargs: dict = {}
-        if url is None:
-            if cache_dir is not None:
-                repo_kwargs["config"] = {
-                    "cache": {
-                        "dir": cache_dir,
-                        "type": config.get(cls.PARAM_CACHE_TYPES),
-                    }
+        cache_config = (
+            {}
+            if not cache_dir
+            else {
+                "cache": {
+                    "dir": cache_dir,
+                    "type": config.get(cls.PARAM_CACHE_TYPES),
                 }
+            }
+        )
+        repo_kwargs: dict = {
+            "rev": config.get(cls.PARAM_REV),
+            "subrepos": config.get(cls.PARAM_SUBREPOS, False),
+            "uninitialized": True,
+        }
+        factory: Optional["RepoFactory"] = None
+        if url is None:
+            repo_kwargs["config"] = cache_config
         else:
             repo_kwargs["cache_dir"] = cache_dir
+            factory = erepo_factory(url, cache_config)
+
         with _open(
             url if url else root,
-            rev=config.get(cls.PARAM_REV),
-            subrepos=config.get(cls.PARAM_SUBREPOS, False),
-            uninitialized=True,
             **repo_kwargs,
         ) as repo:
-            return repo
+            return repo, factory
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
