@@ -580,28 +580,43 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
+    from dvc.objects import check
+    from dvc.objects.errors import ObjectFormatError
     from dvc.objects.stage import get_file_hash
 
     tmp_dir.dvc_gen("file", "file")
+    file_hash_info = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
+
     (tmp_dir / "file").write_text("something")
+    something_hash_info = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
+
     clean_staging()
 
+    # file is modified in workspace
+    # get_file_hash(file) should return workspace hash, not DVC cached hash
     fs = RepoFileSystem(repo=dvc)
     assert fs.info(PathInfo(tmp_dir) / "file").get("md5") is None
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
-    assert obj.hash_info == HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
+    staging, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    assert obj.hash_info == something_hash_info
+    check(staging, obj)
 
+    # file is removed in workspace
+    # any staged object referring to modified workspace obj is now invalid
     (tmp_dir / "file").unlink()
-    assert (
-        fs.info(PathInfo(tmp_dir) / "file")["md5"]
-        == "8c7dd922ad47494fc02c388e12c00eac"
-    )
-    with pytest.raises(FileNotFoundError):
-        stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    with pytest.raises(ObjectFormatError):
+        check(staging, obj)
+
+    # get_file_hash(file) should return DVC cached hash
+    assert fs.info(PathInfo(tmp_dir) / "file")["md5"] == file_hash_info.value
     hash_info = get_file_hash(
         PathInfo(tmp_dir) / "file", fs, "md5", state=dvc.state
     )
-    assert hash_info == HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
+    assert hash_info == file_hash_info
+
+    # tmp_dir/file can be staged even though it is missing in workspace since
+    # repofs will use the DVC cached hash (and refer to the local cache object)
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    assert obj.hash_info == file_hash_info
 
 
 def test_get_hash_dirty_dir(tmp_dir, dvc):
