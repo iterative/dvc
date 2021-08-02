@@ -7,7 +7,7 @@ from git import Repo
 from dvc.scm import SCM, Git, NoSCM
 from dvc.scm.base import SCMError
 from dvc.system import System
-from tests.basic_env import TestGit, TestGitSubmodule
+from tests.basic_env import TestGitSubmodule
 from tests.utils import get_gitignore_content
 
 
@@ -34,27 +34,27 @@ def test_init_sub_dir(tmp_dir):
     assert scm.root_dir == os.fspath(tmp_dir)
 
 
-class TestSCMGit(TestGit):
-    def test_commit(self):
-        G = Git(self._root_dir)
-        G.add(["foo"])
-        G.commit("add")
-        self.assertIn("foo", self.git.git.ls_files())
+def test_commit(tmp_dir, scm):
+    tmp_dir.gen({"foo": "foo"})
+    scm.add(["foo"])
+    scm.commit("add")
+    assert "foo" in Repo(tmp_dir).git.ls_files()
 
-    def test_is_tracked(self):
-        foo = os.path.abspath(self.FOO)
-        G = Git(self._root_dir)
-        G.add([self.FOO, self.UNICODE])
-        self.assertTrue(G.is_tracked(foo))
-        self.assertTrue(G.is_tracked(self.FOO))
-        self.assertTrue(G.is_tracked(self.UNICODE))
-        G.commit("add")
-        self.assertTrue(G.is_tracked(foo))
-        self.assertTrue(G.is_tracked(self.FOO))
-        G.gitpython.repo.index.remove([self.FOO], working_tree=True)
-        self.assertFalse(G.is_tracked(foo))
-        self.assertFalse(G.is_tracked(self.FOO))
-        self.assertFalse(G.is_tracked("not-existing-file"))
+
+def test_is_tracked(tmp_dir, scm):
+    tmp_dir.gen({"foo": "foo", "тест": "проверка"})
+    scm.add(["foo", "тест"])
+    abs_foo = os.path.abspath("foo")
+    assert scm.is_tracked(abs_foo)
+    assert scm.is_tracked("foo")
+    assert scm.is_tracked("тест")
+    scm.commit("add")
+    assert scm.is_tracked(abs_foo)
+    assert scm.is_tracked("foo")
+    scm.gitpython.repo.index.remove(["foo"], working_tree=True)
+    assert not scm.is_tracked(abs_foo)
+    assert not scm.is_tracked("foo")
+    assert not scm.is_tracked("not-existing-file")
 
 
 class TestSCMGitSubmodule(TestGitSubmodule):
