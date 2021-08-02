@@ -251,6 +251,28 @@ class BaseExecutor(ABC):
         return refs
 
     @classmethod
+    def _auto_push_check(cls, dvc: "Repo"):
+        git_remote = os.environ.get(DVC_EXP_AUTO_PUSH, None)
+        if git_remote == dvc.root_dir:
+            logger.warning(
+                f"'{git_remote}' points to the current Git repo, experiment "
+                "Git refs will not be pushed. But DVC cache and run cache "
+                "will automatically be pushed to the default DVC remote "
+                "(if any) on each experiment commit."
+            )
+        try:
+            for ref in dvc.scm.iter_remote_refs(
+                git_remote, base=EXPS_NAMESPACE
+            ):
+                if ref:
+                    break
+        except BaseException as e:
+            print(e)
+            raise e
+
+        dvc.cloud.get_remote_odb()
+
+    @classmethod
     def reproduce(
         cls,
         dvc_dir: Optional[str],
@@ -294,6 +316,9 @@ class BaseExecutor(ABC):
             log_errors,
             **kwargs,
         ) as dvc:
+            if os.environ.get(DVC_EXP_AUTO_PUSH, None):
+                cls._auto_push_check(dvc)
+
             args, kwargs = cls._repro_args(dvc)
             if args:
                 targets: Optional[Union[list, str]] = args[0]
@@ -457,13 +482,6 @@ class BaseExecutor(ABC):
 
     @staticmethod
     def _auto_push(git_remote: str, dvc: "Repo", scm: "Git"):
-        if git_remote == scm.root_dir:
-            logger.warning(
-                f"try to auto checkpoints to {git_remote} which is the "
-                "running repository dvc cache will be pushed to the "
-                "default remote while git references will not be pushed"
-            )
-
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
         dvc.experiments.push(
             git_remote,

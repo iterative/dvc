@@ -4,11 +4,13 @@ import os
 import pytest
 from funcy import first
 
+from dvc.config import NoRemoteError
 from dvc.env import DVC_EXP_AUTO_PUSH
 from dvc.exceptions import DvcException
 from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.utils import exp_refs_by_rev
+from dvc.scm.base import SCMError
 
 
 @pytest.mark.parametrize("workspace", [True, False])
@@ -236,18 +238,14 @@ def test_auto_push_during_iterations(
 
 def test_auto_push_error_url(dvc, scm, checkpoint_stage, local_remote):
     os.environ[DVC_EXP_AUTO_PUSH] = "none"
-    assert (
+    with pytest.raises(SCMError):
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
-        == {}
-    )
 
 
 def test_auto_push_no_remote(dvc, scm, checkpoint_stage, git_upstream):
     os.environ[DVC_EXP_AUTO_PUSH] = git_upstream.url
-    assert (
+    with pytest.raises(NoRemoteError):
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
-        == {}
-    )
 
 
 def test_auto_push_self_remote(
@@ -260,10 +258,10 @@ def test_auto_push_self_remote(
         != {}
     )
 
-    with caplog.at_level(logging.WARNING, logger="dvc"):
+    with caplog.at_level(logging.WARNING, logger="dvc.repo.experiments"):
         assert (
-            f"try to auto checkpoints to {root_dir} which is the "
-            "running repository dvc cache will be pushed to the "
-            "default remote while git references will not be pushed"
-            in caplog.text
+            f"'{root_dir}' points to the current Git repo, experiment "
+            "Git refs will not be pushed. But DVC cache and run cache will "
+            "automatically be pushed to the default DVC remote (if any) "
+            "on each experiment commit." in caplog.text
         )
