@@ -1,7 +1,13 @@
 # pylint: disable=unidiomatic-typecheck
+import pytest
 from mock import create_autospec
 
-from dvc.utils.collections import apply_diff, chunk_dict, validate
+from dvc.utils.collections import (
+    apply_diff,
+    chunk_dict,
+    merge_params,
+    validate,
+)
 
 
 class MyDict(dict):
@@ -135,3 +141,71 @@ def test_post_validate_decorator(mocker):
     result = func()
     test_func.assert_called_once()
     assert result == [1, 2]
+
+
+@pytest.mark.parametrize(
+    "changes, expected",
+    [
+        [{"foo": "baz"}, {"foo": "baz", "goo": {"bag": 3}, "lorem": False}],
+        [
+            {"foo": "baz", "goo": "bar"},
+            {"foo": "baz", "goo": "bar", "lorem": False},
+        ],
+        [
+            {"goo.bag": 4},
+            {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 4}, "lorem": False},
+        ],
+        [
+            {"foo[0]": "bar"},
+            {
+                "foo": {"bar": 1, "baz": 2, 0: "bar"},
+                "goo": {"bag": 3},
+                "lorem": False,
+            },
+        ],
+        [
+            {"foo[1].baz": 3},
+            {
+                "foo": {"bar": 1, "baz": 2, 1: {"baz": 3}},
+                "goo": {"bag": 3},
+                "lorem": False,
+            },
+        ],
+        [
+            {"foo[1]": ["baz", "goo"]},
+            {
+                "foo": {"bar": 1, "baz": 2, 1: ["baz", "goo"]},
+                "goo": {"bag": 3},
+                "lorem": False,
+            },
+        ],
+        [
+            {"lorem.ipsum": 3},
+            {
+                "foo": {"bar": 1, "baz": 2},
+                "goo": {"bag": 3},
+                "lorem": {"ipsum": 3},
+            },
+        ],
+        [{}, {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}],
+    ],
+)
+def test_merge_params(changes, expected):
+    params = {"foo": {"bar": 1, "baz": 2}, "goo": {"bag": 3}, "lorem": False}
+    merged = merge_params(params, changes)
+    assert merged == expected == params
+    assert params is merged  # references should be preserved
+
+
+@pytest.mark.parametrize(
+    "changes, expected",
+    [
+        [{"foo": "baz"}, {"foo": "baz"}],
+        [{"foo": "baz", "goo": "bar"}, {"foo": "baz", "goo": "bar"}],
+    ],
+)
+def test_merge_params_on_empty_src(changes, expected):
+    params = {}
+    merged = merge_params(params, changes)
+    assert merged == expected == params
+    assert params is merged  # references should be preserved
