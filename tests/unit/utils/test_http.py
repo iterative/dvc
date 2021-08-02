@@ -49,8 +49,8 @@ def test_open_url_peek_rb(tmp_path, monkeypatch, http):
 
     with open_url((http / "sample.txt").url, mode="rb") as fd:
         text = text.encode("utf8")
-        assert fd.peek(len(text)) == text
+        assert fd.peek(len(text)) == text  # pylint: disable=no-member
         assert read_nbytes(fd, len(text), mode="rb") == text
-        assert fd.peek(len(text)) == text
+        assert fd.peek(len(text)) == text  # pylint: disable=no-member
         assert fd.read() == text
         assert fd.read() == b""

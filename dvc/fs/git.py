@@ -36,8 +36,8 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return tuple(relparts)
 
     def open(
-        self, path, mode="r", encoding=None
-    ):  # pylint: disable=arguments-differ
+        self, path, mode="r", encoding=None, **kwargs
+    ):  # pylint: disable=arguments-renamed
         # NOTE: this is incorrect, we need to use locale to determine default
         # encoding.
         encoding = encoding or "utf-8"
