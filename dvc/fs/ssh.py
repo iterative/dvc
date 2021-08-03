@@ -4,7 +4,7 @@ import threading
 
 from funcy import cached_property, first, memoize, silent, wrap_prop, wrap_with
 
-import dvc.prompt as prompt
+from dvc import prompt
 from dvc.scheme import Schemes
 from dvc.utils.fs import as_atomic
 

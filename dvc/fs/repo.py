@@ -136,7 +136,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
-    ):  # pylint: disable=arguments-differ
+    ):  # pylint: disable=arguments-renamed
         if "b" in mode:
             encoding = None
 
@@ -173,7 +173,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         return True
 
-    def isdir(self, path):  # pylint: disable=arguments-differ
+    def isdir(self, path):  # pylint: disable=arguments-renamed
         fs, dvc_fs = self._get_fs_pair(path)
 
         if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(path):
@@ -204,7 +204,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         _, dvc_fs = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(path, **kwargs)
 
-    def isfile(self, path):  # pylint: disable=arguments-differ
+    def isfile(self, path):  # pylint: disable=arguments-renamed
         fs, dvc_fs = self._get_fs_pair(path)
 
         if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(path):
