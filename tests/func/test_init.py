@@ -9,34 +9,29 @@ from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 
 
-def _check_dirs():
-    assert os.path.exists(DvcRepo.DVC_DIR)
-    assert os.path.isdir(DvcRepo.DVC_DIR)
-
-
 def test_api_init(scm):
     DvcRepo.init().close()
-    _check_dirs()
+    assert os.path.isdir(DvcRepo.DVC_DIR)
 
 
 def test_cli_init(scm):
     ret = main(["init"])
     assert ret == 0
-    _check_dirs()
+    assert os.path.isdir(DvcRepo.DVC_DIR)
 
 
 def test_double_init(scm):
     ret = main(["init"])
     assert ret == 0
-    _check_dirs()
+    assert os.path.isdir(DvcRepo.DVC_DIR)
 
     ret = main(["init"])
     assert ret != 0
-    _check_dirs()
+    assert os.path.isdir(DvcRepo.DVC_DIR)
 
     ret = main(["init", "--force"])
     assert ret == 0
-    _check_dirs()
+    assert os.path.isdir(DvcRepo.DVC_DIR)
 
 
 def test_init_no_scm_fail_api(tmp_dir):
