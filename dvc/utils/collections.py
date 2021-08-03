@@ -84,13 +84,17 @@ def merge_params(src: Dict, to_update: Dict) -> Dict:
     """Recursively merges params with benedict's syntax support in-place."""
     from benedict import benedict
 
+    data = benedict(src)
     if src:
-        benedict(src).merge(to_update, overwrite=True)
+        data.merge(to_update, overwrite=True)
     else:
+        # NOTE: the following line may seem like an unnecessary duplication
+        # data.merge might affect the `src` if it's not empty, so we cannot
+        # check `if src` later, as it may have been mutated already.
+        data.merge(to_update, overwrite=True)
         # benedict has issues keeping references to an empty dictionary
         # see: https://github.com/iterative/dvc/issues/6374.
-        # Also, passing to_update through benedict to expand the syntax.
-        src.update(benedict(to_update))
+        src.update(data)
     return src
 
 
