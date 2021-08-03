@@ -38,7 +38,7 @@ def test_commit(tmp_dir, scm):
     tmp_dir.gen({"foo": "foo"})
     scm.add(["foo"])
     scm.commit("add")
-    assert "foo" in Repo(tmp_dir).git.ls_files()
+    assert scm.is_tracked("foo")
 
 
 def test_is_tracked(tmp_dir, scm):
