@@ -202,6 +202,7 @@ def test_merge_params(changes, expected):
     [
         [{"foo": "baz"}, {"foo": "baz"}],
         [{"foo": "baz", "goo": "bar"}, {"foo": "baz", "goo": "bar"}],
+        [{"foo[1]": ["baz", "goo"]}, {"foo": [None, ["baz", "goo"]]}],
     ],
 )
 def test_merge_params_on_empty_src(changes, expected):
