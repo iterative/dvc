@@ -61,10 +61,7 @@ def _collect_experiment_commit(
                 if name:
                     break
             if not name:
-                if stash:
-                    pass
-                else:
-                    name = repo.experiments.get_exact_name(rev)
+                name = repo.experiments.get_exact_name(rev)
             if name:
                 name = name.rsplit("/")[-1]
                 res["name"] = name
@@ -187,6 +184,7 @@ def show(
                     experiment = _collect_experiment_commit(
                         repo,
                         stash_rev,
+                        sha_only=sha_only,
                         stash=stash_rev not in running,
                         param_deps=param_deps,
                         running=running,

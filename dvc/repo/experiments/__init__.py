@@ -880,7 +880,7 @@ class Experiments:
         ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
         if ref:
             return ExpRefInfo.from_ref(ref).name
-        return None
+        return self.stash_revs[rev].name
 
     def get_running_exps(self) -> Dict[str, int]:
         """Return info for running experiments."""
