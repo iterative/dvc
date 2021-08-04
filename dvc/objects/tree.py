@@ -1,13 +1,16 @@
 import json
 import logging
 import posixpath
-from typing import Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from funcy import cached_property
 
 from .errors import ObjectFormatError
 from .file import HashFile
 from .stage import get_file_hash
+
+if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,7 @@ class Tree(HashFile):
         self.__dict__.pop("trie", None)
         self._dict[key] = obj
 
-    def digest(self):
+    def digest(self, hash_info: Optional["HashInfo"] = None):
         from dvc.fs.memory import MemoryFileSystem
         from dvc.path_info import CloudURLInfo
         from dvc.utils import tmp_fname
@@ -40,8 +43,12 @@ class Tree(HashFile):
             fobj.write(self.as_bytes())
         self.fs = memfs
         self.path_info = path_info
-        self.hash_info = get_file_hash(path_info, memfs, "md5")
-        self.hash_info.value += ".dir"
+        if hash_info:
+            self.hash_info = hash_info
+        else:
+            self.hash_info = get_file_hash(path_info, memfs, "md5")
+            assert self.hash_info.value
+            self.hash_info.value += ".dir"
         try:
             self.hash_info.size = sum(obj.size for _, obj in self)
         except TypeError:

@@ -42,14 +42,6 @@ def external_repo(
     config = _get_remote_config(url) if os.path.isdir(url) else {}
     config.update(cache_config)
 
-    def make_repo(path, **_kwargs):
-        _config = cache_config.copy()
-        if os.path.isdir(url):
-            rel = os.path.relpath(path, _kwargs["scm"].root_dir)
-            repo_path = os.path.join(url, rel)
-            _config.update(_get_remote_config(repo_path))
-        return Repo(path, config=_config, **_kwargs)
-
     root_dir = path if for_write else os.path.realpath(path)
     repo_kwargs = dict(
         root_dir=root_dir,
@@ -57,7 +49,7 @@ def external_repo(
         scm=None if for_write else Git(root_dir),
         rev=None if for_write else rev,
         config=config,
-        repo_factory=make_repo,
+        repo_factory=erepo_factory(url, cache_config),
         **kwargs,
     )
 
@@ -85,6 +77,18 @@ def external_repo(
         repo.close()
         if for_write:
             _remove(path)
+
+
+def erepo_factory(url, cache_config, *args, **kwargs):
+    def make_repo(path, **_kwargs):
+        _config = cache_config.copy()
+        if os.path.isdir(url):
+            rel = os.path.relpath(path, _kwargs["scm"].root_dir)
+            repo_path = os.path.join(url, rel)
+            _config.update(_get_remote_config(repo_path))
+        return Repo(path, config=_config, **_kwargs)
+
+    return make_repo
 
 
 CLONES: Dict[str, str] = {}

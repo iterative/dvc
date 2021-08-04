@@ -65,9 +65,7 @@ def get_mtime_and_size(path, fs, dvcignore=None):
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
 
-    # State of files handled by dvc is stored in db as TEXT.
-    # We cast results to string for later comparisons with stored values.
-    return str(mtime), str(size)
+    return str(mtime), size
 
 
 class BasePathNotInCheckedPathException(DvcException):

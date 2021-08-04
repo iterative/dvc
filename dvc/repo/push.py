@@ -41,11 +41,11 @@ def push(
     )
 
     pushed = len(used_run_cache)
-    for odb, objs in used.items():
+    for odb, obj_ids in used.items():
         if odb and odb.read_only:
             continue
         try:
-            pushed += self.cloud.push(objs, jobs, remote=remote, odb=odb)
+            pushed += self.cloud.push(obj_ids, jobs, remote=remote, odb=odb)
         except FileTransferError as exc:
             raise UploadError(exc.amount)
     return pushed

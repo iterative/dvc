@@ -13,7 +13,7 @@ from dvc.progress import Tqdm
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
+    from dvc.types import AnyPath, DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,14 @@ class ObjectDB:
             hash_info,
         )
 
-    def _add_file(self, from_fs, from_info, to_info, move):
+    def _add_file(
+        self,
+        from_fs: "BaseFileSystem",
+        from_info: "AnyPath",
+        to_info: "DvcPath",
+        _hash_info: "HashInfo",
+        move: bool = False,
+    ):
         self.makedirs(to_info.parent)
         use_move = isinstance(from_fs, type(self.fs)) and move
         try:
@@ -131,8 +138,8 @@ class ObjectDB:
             pass
 
         cache_info = self.hash_to_path_info(hash_info.value)
-        # using our makedirs to create dirs with proper permissions
-        self._add_file(fs, path_info, cache_info, move)
+        self._add_file(fs, path_info, cache_info, hash_info, move)
+
         try:
             if verify:
                 self.check(hash_info, check_hash=True)
@@ -145,7 +152,7 @@ class ObjectDB:
         if callback:
             callback(1)
 
-    def hash_to_path_info(self, hash_):
+    def hash_to_path_info(self, hash_) -> "DvcPath":
         return self.path_info / hash_[0:2] / hash_[2:]
 
     # Override to return path as a string instead of PathInfo for clouds
@@ -199,9 +206,10 @@ class ObjectDB:
             self.fs.remove(obj.path_info)
             raise
 
-        # making cache file read-only so we don't need to check it
-        # next time
-        self.protect(obj.path_info)
+        if check_hash:
+            # making cache file read-only so we don't need to check it
+            # next time
+            self.protect(obj.path_info)
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
@@ -378,17 +386,20 @@ class ObjectDB:
     def _remove_unpacked_dir(self, hash_):
         pass
 
-    def gc(self, used, jobs=None):
+    def gc(self, used, jobs=None, cache_odb=None, shallow=True):
         from ..tree import Tree
 
         if self.read_only:
             raise ObjectDBPermissionError("Cannot gc read-only ODB")
+        if not cache_odb:
+            cache_odb = self
         used_hashes = set()
-        for obj in used:
-            used_hashes.add(obj.hash_info.value)
-            if isinstance(obj, Tree):
+        for hash_info in used:
+            used_hashes.add(hash_info.value)
+            if hash_info.isdir and not shallow:
+                tree = Tree.load(cache_odb, hash_info)
                 used_hashes.update(
-                    entry_obj.hash_info.value for _, entry_obj in obj
+                    entry_obj.hash_info.value for _, entry_obj in tree
                 )
 
         removed = False

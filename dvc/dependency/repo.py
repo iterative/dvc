@@ -1,8 +1,8 @@
 import os
 from collections import defaultdict
+from copy import copy
 from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
-from funcy import first
 from voluptuous import Required
 
 from dvc.path_info import PathInfo
@@ -10,6 +10,7 @@ from dvc.path_info import PathInfo
 from .base import Dependency
 
 if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
     from dvc.objects.db.base import ObjectDB
     from dvc.objects.file import HashFile
 
@@ -91,23 +92,24 @@ class RepoDependency(Dependency):
 
     def get_used_objs(
         self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         used, _ = self._get_used_and_obj(**kwargs)
         return used
 
     def _get_used_and_obj(
         self, obj_only=False, **kwargs
-    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashFile"]], "HashFile"]:
+    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
-        from dvc.objects.stage import get_staging, stage
+        from dvc.objects.stage import stage
+        from dvc.objects.tree import Tree
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
         with self._make_repo(
             locked=locked, cache_dir=local_odb.cache_dir
         ) as repo:
-            used_objs = defaultdict(set)
+            used_obj_ids = defaultdict(set)
             rev = repo.get_rev()
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = rev
@@ -115,7 +117,7 @@ class RepoDependency(Dependency):
             path_info = PathInfo(repo.root_dir) / str(self.def_path)
             if not obj_only:
                 try:
-                    for odb, objs in repo.used_objs(
+                    for odb, obj_ids in repo.used_objs(
                         [os.fspath(path_info)],
                         force=True,
                         jobs=kwargs.get("jobs"),
@@ -124,14 +126,14 @@ class RepoDependency(Dependency):
                         if odb is None:
                             odb = repo.cloud.get_remote_odb()
                             odb.read_only = True
-                        self._check_circular_import(objs)
-                        used_objs[odb].update(objs)
+                        self._check_circular_import(odb, obj_ids)
+                        used_obj_ids[odb].update(obj_ids)
                 except (NoRemoteError, NoOutputOrStageError):
                     pass
 
             try:
-                staged_obj = stage(
-                    None,
+                staging, staged_obj = stage(
+                    local_odb,
                     path_info,
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
@@ -140,27 +142,51 @@ class RepoDependency(Dependency):
                 raise PathMissingError(
                     self.def_path, self.def_repo[self.PARAM_URL]
                 ) from exc
-            staging = get_staging()
+            staging = copy(staging)
             staging.read_only = True
 
             self._staged_objs[rev] = staged_obj
-            used_objs[staging].add(staged_obj)
-            return used_objs, staged_obj
+            used_obj_ids[staging].add(staged_obj.hash_info)
+            if isinstance(staged_obj, Tree):
+                used_obj_ids[staging].update(
+                    entry.hash_info for _, entry in staged_obj
+                )
+            return used_obj_ids, staged_obj
 
-    def _check_circular_import(self, objs):
+    def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
         from dvc.fs.repo import RepoFileSystem
+        from dvc.objects.db.reference import ReferenceObjectDB
         from dvc.objects.tree import Tree
 
-        obj = first(objs)
-        if isinstance(obj, Tree):
-            _, obj = first(obj)
-        if not isinstance(obj.fs, RepoFileSystem):
+        if not isinstance(odb, ReferenceObjectDB):
             return
 
-        self_url = self.repo.url or self.repo.root_dir
-        if obj.fs.repo_url is not None and obj.fs.repo_url == self_url:
-            raise CircularImportError(self, obj.fs.repo_url, self_url)
+        def iter_objs():
+            for hash_info in obj_ids:
+                if hash_info.isdir:
+                    tree = Tree.load(odb, hash_info)
+                    yield from (odb.get(entry.hash_info) for _, entry in tree)
+                else:
+                    yield odb.get(hash_info)
+
+        checked_urls = set()
+        for obj in iter_objs():
+            if not isinstance(obj.fs, RepoFileSystem):
+                continue
+            if (
+                obj.fs.repo_url in checked_urls
+                or obj.fs.root_dir in checked_urls
+            ):
+                continue
+            self_url = self.repo.url or self.repo.root_dir
+            if (
+                obj.fs.repo_url is not None
+                and obj.fs.repo_url == self_url
+                or obj.fs.root_dir == self.repo.root_dir
+            ):
+                raise CircularImportError(self, obj.fs.repo_url, self_url)
+            checked_urls.update([obj.fs.repo_url, obj.fs.root_dir])
 
     def get_obj(self, filter_info=None, **kwargs):
         locked = kwargs.get("locked", True)

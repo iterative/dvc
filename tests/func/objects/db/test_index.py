@@ -4,6 +4,7 @@ from dvc.exceptions import DownloadError, UploadError
 from dvc.fs.local import LocalFileSystem
 from dvc.objects.db import get_index
 from dvc.utils.fs import remove
+from tests.utils import clean_staging
 
 
 @pytest.fixture
@@ -16,6 +17,7 @@ def test_indexed_on_status(tmp_dir, dvc, index):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
     baz_hash = bar.obj.trie.get(("baz",)).hash_info
+    clean_staging()
     dvc.push()
     index.clear()
 
@@ -29,6 +31,7 @@ def test_indexed_on_push(tmp_dir, dvc, index):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
     baz_hash = bar.obj.trie.get(("baz",)).hash_info
+    clean_staging()
 
     dvc.push()
     assert {bar.hash_info.value, baz_hash.value} == set(index.hashes())

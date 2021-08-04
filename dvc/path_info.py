@@ -64,6 +64,8 @@ class PathInfo(pathlib.PurePath, _BasePath):
 
     url = fspath
 
+    path = fspath
+
     def relpath(self, other):
         return self.__class__(relpath(self, other))
 

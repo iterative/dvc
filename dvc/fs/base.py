@@ -59,6 +59,11 @@ class BaseFileSystem:
 
         self.jobs = kwargs.get("jobs") or self._JOBS
         self.hash_jobs = kwargs.get("checksum_jobs") or self.HASH_JOBS
+        self._config = kwargs
+
+    @property
+    def config(self):
+        return self._config
 
     @classmethod
     def _strip_protocol(cls, path: str):

@@ -3,13 +3,14 @@ from unittest.mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
 from dvc.fs.local import LocalFileSystem
-from dvc.objects import save
 from dvc.objects.stage import stage
+from dvc.objects.transfer import transfer
 from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
 from tests.unit.fs.test_repo import make_subrepo
+from tests.utils import clean_staging
 
 
 def test_external_repo(erepo_dir):
@@ -198,16 +199,23 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         # clear cache to test saving to cache
         cache_dir = tmp_dir / repo.odb.local.cache_dir
         remove(cache_dir)
+        clean_staging()
         makedirs(cache_dir)
 
-        obj = stage(
+        staging, obj = stage(
             repo.odb.local,
             PathInfo(repo.root_dir) / "dir",
             repo.repo_fs,
             "md5",
             dvcignore=repo.dvcignore,
         )
-        save(repo.odb.local, obj)
+        transfer(
+            staging,
+            repo.odb.local,
+            {obj.hash_info},
+            shallow=False,
+            move=True,
+        )
         assert set(cache_dir.glob("??/*")) == {
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
