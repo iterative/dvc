@@ -142,7 +142,7 @@ def _output_paths(repo, repo_fs, targets):
             )[1].hash_info.value
         return output.hash_info.value
 
-    for stage in repo.stages:
+    for stage in repo.index.stages:
         for output in stage.outs:
             if _exists(output):
                 yield_output = targets is None or any(

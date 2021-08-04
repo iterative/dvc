@@ -30,7 +30,7 @@ def _fspath_dir(path):
 def _remove_unused_links(repo):
     used = [
         out.fspath
-        for stage in repo.stages
+        for stage in repo.index.stages
         for out in stage.outs
         if out.scheme == "local"
     ]

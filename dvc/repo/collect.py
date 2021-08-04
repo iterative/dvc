@@ -20,12 +20,9 @@ DvcPaths = List[DvcPath]
 def _collect_outs(
     repo: "Repo", output_filter: FilterFn = None, deps: bool = False
 ) -> Outputs:
-    outs = [
-        out
-        for stage in repo.graph  # using `graph` to ensure graph checks run
-        for out in (stage.deps if deps else stage.outs)
-    ]
-    return list(filter(output_filter, outs)) if output_filter else outs
+    index = repo.index
+    index.check_graph()  # ensure graph is correct
+    return list(filter(output_filter, index.deps if deps else index.outs))
 
 
 def _collect_paths(
