@@ -79,6 +79,7 @@ def fill_stage_outputs(stage, **kwargs):
 def _load_live_output(
     stage,
     live=None,
+    live_path="dvclive",
     live_no_cache=None,
     live_summary=False,
     live_html=False,
@@ -90,10 +91,9 @@ def _load_live_output(
     if live or live_no_cache:
         assert bool(live) != bool(live_no_cache)
 
-        path = live or live_no_cache
         outs += loads_from(
             stage,
-            [path],
+            [live_path],
             use_cache=not bool(live_no_cache),
             live={
                 Output.PARAM_LIVE_SUMMARY: live_summary,

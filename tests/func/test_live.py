@@ -61,13 +61,12 @@ def live_stage(tmp_dir, scm, dvc, mocker):
     mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(
+        live_path="dvclive",
         summary=True,
         html=True,
-        live=None,
-        live_no_cache=None,
+        live_no_cache=False,
         code=LIVE_SCRIPT,
     ):
-        assert bool(live) != bool(live_no_cache)
         tmp_dir.gen("train.py", code)
         tmp_dir.gen("params.yaml", "foo: 1")
         stage = dvc.run(
@@ -75,7 +74,8 @@ def live_stage(tmp_dir, scm, dvc, mocker):
             params=["foo"],
             deps=["train.py"],
             name="live_stage",
-            live=live,
+            live=not live_no_cache,
+            live_path=live_path,
             live_no_cache=live_no_cache,
             live_no_summary=not summary,
             live_no_html=not html,
@@ -92,13 +92,13 @@ def live_stage(tmp_dir, scm, dvc, mocker):
 @pytest.mark.parametrize("summary", (True, False))
 def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
     run_spy = mocker.spy(stage_module.run, "_run")
-    live_stage(summary=summary, html=html, live="logs")
+    live_stage(summary=summary, html=html)
 
     assert run_spy.call_count == 1
     _, kwargs = run_spy.call_args
 
     assert "DVCLIVE_PATH" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
+    assert kwargs["env"]["DVCLIVE_PATH"] == "dvclive"
 
     assert "DVCLIVE_SUMMARY" in kwargs["env"]
     assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
@@ -108,7 +108,27 @@ def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
 
 
 def test_live_provides_metrics(tmp_dir, dvc, live_stage):
-    live_stage(summary=True, live="logs")
+    live_stage(summary=True)
+
+    assert (tmp_dir / "dvclive.json").is_file()
+    assert dvc.metrics.show() == {
+        "": {
+            "data": {
+                "dvclive.json": {
+                    "data": {"accuracy": 0.5, "loss": 0.5, "step": 1}
+                }
+            }
+        }
+    }
+
+    assert (tmp_dir / "dvclive").is_dir()
+    plots = dvc.plots.show()
+    assert os.path.join("dvclive", "accuracy.tsv") in plots
+    assert os.path.join("dvclive", "loss.tsv") in plots
+
+
+def test_live_custom_path(tmp_dir, dvc, live_stage):
+    live_stage(summary=True, live_path="logs")
 
     assert (tmp_dir / "logs.json").is_file()
     assert dvc.metrics.show() == {
@@ -128,20 +148,20 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
-    live_stage(summary=False, live="logs")
+    live_stage(summary=False)
 
-    assert not (tmp_dir / "logs.json").is_file()
+    assert not (tmp_dir / "dvclive.json").is_file()
     assert dvc.metrics.show() == {"": {}}
 
-    assert (tmp_dir / "logs").is_dir()
+    assert (tmp_dir / "dvclive").is_dir()
     plots = dvc.plots.show()
-    assert os.path.join("logs", "accuracy.tsv") in plots
-    assert os.path.join("logs", "loss.tsv") in plots
+    assert os.path.join("dvclive", "accuracy.tsv") in plots
+    assert os.path.join("dvclive", "loss.tsv") in plots
 
 
-@pytest.mark.parametrize("typ", ("live", "live_no_cache"))
-def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
-    live_stage(summary=True, **{typ: "logs"})
+@pytest.mark.parametrize("live_no_cache", (True, False))
+def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, live_no_cache):
+    live_stage(summary=True, live_no_cache=live_no_cache)
     baseline_rev = scm.get_rev()
 
     experiments = dvc.experiments.run(targets=["live_stage"], params=["foo=2"])
@@ -149,14 +169,14 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
     ((exp_rev, _),) = experiments.items()
 
     res = dvc.experiments.show()
-    assert "logs.json" in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
+    assert "dvclive.json" in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
 
 
 @pytest.mark.parametrize("html", [True, False])
 def test_live_html(tmp_dir, dvc, live_stage, html):
-    live_stage(html=html, live="logs")
+    live_stage(html=html)
 
-    assert (tmp_dir / "logs.html").is_file() == html
+    assert (tmp_dir / "dvclive.html").is_file() == html
 
 
 @pytest.fixture
@@ -168,8 +188,7 @@ def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
 
     mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
-    def make(live=None, live_no_cache=None):
-        assert bool(live) != bool(live_no_cache)
+    def make(live_no_cache=False):
 
         tmp_dir.gen("train.py", LIVE_CHECKPOINT_SCRIPT)
         tmp_dir.gen("params.yaml", "foo: 1")
@@ -178,7 +197,7 @@ def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
             params=["foo"],
             deps=["train.py"],
             name="live_stage",
-            live=live,
+            live=not live_no_cache,
             live_no_cache=live_no_cache,
             checkpoints=["checkpoint"],
             no_exec=True,
@@ -206,11 +225,11 @@ def checkpoints_metric(show_results, metric_file, metric_name):
     )
 
 
-@pytest.mark.parametrize("typ", ("live", "live_no_cache"))
+@pytest.mark.parametrize("live_no_cache", (True, False))
 def test_live_checkpoints_resume(
-    tmp_dir, scm, dvc, live_checkpoint_stage, typ
+    tmp_dir, scm, dvc, live_checkpoint_stage, live_no_cache
 ):
-    stage = live_checkpoint_stage(**{typ: "logs"})
+    stage = live_checkpoint_stage(live_no_cache=live_no_cache)
     results = dvc.experiments.run(
         stage.addressing, params=["foo=2"], tmp_dir=False
     )
@@ -222,9 +241,9 @@ def test_live_checkpoints_resume(
     )
 
     results = dvc.experiments.show()
-    assert checkpoints_metric(results, "logs.json", "step") == [3, 2, 1, 0]
-    assert checkpoints_metric(results, "logs.json", "metric1") == [4, 3, 2, 1]
-    assert checkpoints_metric(results, "logs.json", "metric2") == [8, 6, 4, 2]
+    assert checkpoints_metric(results, "dvclive.json", "step") == [3, 2, 1, 0]
+    assert checkpoints_metric(results, "dvclive.json", "metric1") == [4, 3, 2, 1]
+    assert checkpoints_metric(results, "dvclive.json", "metric2") == [8, 6, 4, 2]
 
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
@@ -246,6 +265,56 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
             str(monitor_await_time * 2)
         )
     )
-    live_stage(summary=True, live="logs", code=script)
+    live_stage(summary=True, code=script)
 
     assert show_spy.call_count == 2
+
+
+@pytest.fixture
+def live_stage_defaults(tmp_dir, scm, dvc, mocker):
+    try:
+        import dvclive  # noqa, pylint:disable=unused-import
+    except ImportError:
+        pytest.skip("no dvclive")
+
+    mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
+
+    def make(
+        code=LIVE_SCRIPT,
+    ):
+        tmp_dir.gen("train.py", code)
+        tmp_dir.gen("params.yaml", "foo: 1")
+        stage = dvc.run(
+            cmd="python train.py",
+            params=["foo"],
+            deps=["train.py"],
+            name="live_stage",
+            live=True
+        )
+
+        scm.add(["dvc.yaml", "dvc.lock", "train.py", "params.yaml"])
+        scm.commit("initial: live_stage")
+        return stage
+
+    yield make
+
+def test_live_defaults(tmp_dir, dvc, live_stage_defaults):
+    live_stage_defaults()
+
+    assert (tmp_dir / "dvclive.json").is_file()
+    assert dvc.metrics.show() == {
+        "": {
+            "data": {
+                "dvclive.json": {
+                    "data": {"accuracy": 0.5, "loss": 0.5, "step": 1}
+                }
+            }
+        }
+    }
+
+    assert (tmp_dir / "dvclive").is_dir()
+    plots = dvc.plots.show()
+    assert os.path.join("dvclive", "accuracy.tsv") in plots
+    assert os.path.join("dvclive", "loss.tsv") in plots
+
+    assert (tmp_dir / "dvclive.html").is_file() == True
