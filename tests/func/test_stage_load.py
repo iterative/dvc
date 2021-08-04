@@ -86,7 +86,9 @@ def test_collect_with_not_existing_output_or_stage_name(
 
 def test_stages(tmp_dir, dvc):
     def collect_stages():
-        return {stage.relpath for stage in Repo(os.fspath(tmp_dir)).stages}
+        return {
+            stage.relpath for stage in Repo(os.fspath(tmp_dir)).index.stages
+        }
 
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
@@ -149,7 +151,7 @@ def test_collect_generated(tmp_dir, dvc):
     }
     dump_yaml("dvc.yaml", d)
 
-    all_stages = set(dvc.stages)
+    all_stages = set(dvc.index.stages)
     assert len(all_stages) == 5
 
     assert set(dvc.stage.collect()) == all_stages
@@ -412,7 +414,7 @@ def test_collect_optimization(tmp_dir, dvc, mocker):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.Repo.stages",
+        "dvc.repo.index.Index.stages",
         property(raiser(Exception("Should not collect"))),
     )
 
@@ -427,7 +429,7 @@ def test_collect_optimization_on_stage_name(tmp_dir, dvc, mocker, run_copy):
     # Forget cached stages and graph and error out on collection
     dvc._reset()
     mocker.patch(
-        "dvc.repo.Repo.stages",
+        "dvc.repo.index.Index.stages",
         property(raiser(Exception("Should not collect"))),
     )
 
@@ -444,7 +446,7 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
     dump_yaml(tmp_dir / PIPELINE_FILE, {"stages": {"cmd": "echo hello world"}})
 
     dvc._reset()
-    assert dvc.stages == [stage]
+    assert dvc.index.stages == [stage]
     mock.assert_called_once()
 
     file_path, exc = mock.call_args[0]
