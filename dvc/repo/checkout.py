@@ -28,13 +28,7 @@ def _fspath_dir(path):
 
 
 def _remove_unused_links(repo):
-    used = [
-        out.fspath
-        for stage in repo.index.stages
-        for out in stage.outs
-        if out.scheme == "local"
-    ]
-
+    used = [out.fspath for out in repo.index.outs if out.scheme == "local"]
     unused = repo.state.get_unused_links(used, repo.fs)
     ret = [_fspath_dir(u) for u in unused]
     repo.state.remove_links(unused, repo.fs)
