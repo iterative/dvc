@@ -35,7 +35,7 @@ class Index:
     def __init__(
         self,
         repo: "Repo",  # pylint: disable=redefined-outer-name
-        fs: "BaseFileSystem",
+        fs: "BaseFileSystem" = None,
         stages: List["Stage"] = None,
     ) -> None:
         """Index is an immutable collection of stages.
@@ -57,8 +57,8 @@ class Index:
         Some `views` might not make sense when sliced (eg: pipelines/graph).
         """
 
-        self.fs: "BaseFileSystem" = fs
         self.repo: "Repo" = repo
+        self.fs: "BaseFileSystem" = fs or repo.fs
         self.stage_collector: "StageLoad" = repo.stage
         if stages is not None:
             self.stages: List["Stage"] = stages
@@ -93,8 +93,11 @@ class Index:
         stages_it = filter(filter_fn, self)
         return Index(self.repo, self.fs, stages=list(stages_it))
 
-    def slice(self, target_path: "StrPath") -> "Index":
+    def slice(self, path: "StrPath") -> "Index":
+        from dvc.utils import relpath
         from dvc.utils.fs import path_isin
+
+        target_path = relpath(path, self.repo.root_dir)
 
         def is_stage_inside_path(stage: "Stage") -> bool:
             return path_isin(stage.path_in_repo, target_path)

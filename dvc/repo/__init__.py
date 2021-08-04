@@ -208,7 +208,7 @@ class Repo:
     def index(self):
         from dvc.repo.index import Index
 
-        return Index(self, self.fs)
+        return Index(self)
 
     @staticmethod
     def open(url, *args, **kwargs):
