@@ -16,7 +16,7 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.env import DVC_EXP_AUTO_PUSH
+from dvc.env import DVC_EXP_CHECKPOINT_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -38,7 +38,7 @@ from dvc.scm import SCM
 from dvc.stage import PipelineStage
 from dvc.stage.monitor import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
-from dvc.utils import dict_sha256
+from dvc.utils import dict_sha256, getenv_bool
 from dvc.utils.fs import remove
 
 if TYPE_CHECKING:
@@ -252,7 +252,7 @@ class BaseExecutor(ABC):
 
     @classmethod
     def _auto_push_check(cls, dvc: "Repo"):
-        git_remote = os.environ.get(DVC_EXP_AUTO_PUSH, None)
+        git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
         if git_remote == dvc.root_dir:
             logger.warning(
                 f"'{git_remote}' points to the current Git repo, experiment "
@@ -316,7 +316,7 @@ class BaseExecutor(ABC):
             log_errors,
             **kwargs,
         ) as dvc:
-            if os.environ.get(DVC_EXP_AUTO_PUSH, None):
+            if getenv_bool(DVC_EXP_CHECKPOINT_PUSH):
                 cls._auto_push_check(dvc)
 
             args, kwargs = cls._repro_args(dvc)
@@ -389,9 +389,8 @@ class BaseExecutor(ABC):
                         force=repro_force,
                         checkpoint=is_checkpoint,
                     )
-                    git_remote = os.environ.get(DVC_EXP_AUTO_PUSH, None)
-                    if git_remote:
-                        cls._auto_push(git_remote, dvc, dvc.scm)
+                    if getenv_bool(DVC_EXP_CHECKPOINT_PUSH):
+                        cls._auto_push(dvc, dvc.scm)
                 except UnchangedExperimentError:
                     pass
                 ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
@@ -481,7 +480,8 @@ class BaseExecutor(ABC):
         return args, kwargs
 
     @staticmethod
-    def _auto_push(git_remote: str, dvc: "Repo", scm: "Git"):
+    def _auto_push(dvc: "Repo", scm: "Git"):
+        git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
         dvc.experiments.push(
             git_remote,
@@ -506,9 +506,8 @@ class BaseExecutor(ABC):
                 scm, exp_hash, exp_name=name, force=force, checkpoint=True
             )
 
-            git_remote = os.environ.get(DVC_EXP_AUTO_PUSH, None)
-            if git_remote:
-                cls._auto_push(git_remote, dvc, scm)
+            if getenv_bool(DVC_EXP_CHECKPOINT_PUSH):
+                cls._auto_push(dvc, scm)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass

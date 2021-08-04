@@ -1,11 +1,10 @@
 import logging
-import os
 
 import pytest
 from funcy import first
 
 from dvc.config import NoRemoteError
-from dvc.env import DVC_EXP_AUTO_PUSH
+from dvc.env import DVC_EXP_CHECKPOINT_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
@@ -197,13 +196,29 @@ def test_resume_non_head_checkpoint(
     assert orig_branch != dvc.experiments.get_branch_by_rev(new_head)
 
 
+@pytest.fixture
+def clear_env(monkeypatch):
+    yield
+    monkeypatch.delenv(DVC_EXP_GIT_REMOTE, raising=False)
+    monkeypatch.delenv(DVC_EXP_CHECKPOINT_PUSH, raising=False)
+
+
 @pytest.mark.parametrize("use_url", [True, False])
 def test_auto_push_during_iterations(
-    tmp_dir, scm, dvc, checkpoint_stage, git_upstream, local_remote, use_url
+    tmp_dir,
+    scm,
+    dvc,
+    checkpoint_stage,
+    git_upstream,
+    local_remote,
+    use_url,
+    monkeypatch,
+    clear_env,
 ):
     # set up remote repo
     remote = git_upstream.url if use_url else git_upstream.remote
     git_upstream.scm.fetch_refspecs(str(tmp_dir), ["master:master"])
+    monkeypatch.setenv(DVC_EXP_GIT_REMOTE, remote)
 
     # without auto push
     results = dvc.experiments.run(checkpoint_stage.addressing)
@@ -212,7 +227,7 @@ def test_auto_push_during_iterations(
     assert git_upstream.scm.get_ref(str(ref_info)) is None
 
     # add auto push
-    os.environ[DVC_EXP_AUTO_PUSH] = remote
+    monkeypatch.setenv(DVC_EXP_CHECKPOINT_PUSH, "true")
     results = dvc.experiments.run(checkpoint_stage.addressing)
     assert (tmp_dir / "foo").read_text() == "4"
     exp = first(results)
@@ -230,29 +245,43 @@ def test_auto_push_during_iterations(
     assert (git_upstream / "foo").read_text() == "4"
 
     # resume the remote checkpoint
-    os.environ.pop(DVC_EXP_AUTO_PUSH)
+    monkeypatch.delenv(DVC_EXP_CHECKPOINT_PUSH, raising=False)
     with git_upstream.chdir():
         git_upstream.dvc.experiments.run(checkpoint_stage.addressing)
     assert (git_upstream / "foo").read_text() == "6"
 
 
-def test_auto_push_error_url(dvc, scm, checkpoint_stage, local_remote):
-    os.environ[DVC_EXP_AUTO_PUSH] = "none"
+def test_auto_push_error_url(
+    dvc, scm, checkpoint_stage, local_remote, monkeypatch, clear_env
+):
+    monkeypatch.setenv(DVC_EXP_GIT_REMOTE, "true")
+    monkeypatch.setenv(DVC_EXP_CHECKPOINT_PUSH, "true")
     with pytest.raises(SCMError):
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
 
 
-def test_auto_push_no_remote(dvc, scm, checkpoint_stage, git_upstream):
-    os.environ[DVC_EXP_AUTO_PUSH] = git_upstream.url
+def test_auto_push_no_remote(
+    dvc, scm, checkpoint_stage, git_upstream, monkeypatch, clear_env
+):
+    monkeypatch.setenv(DVC_EXP_GIT_REMOTE, git_upstream.url)
+    monkeypatch.setenv(DVC_EXP_CHECKPOINT_PUSH, "true")
     with pytest.raises(NoRemoteError):
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
 
 
 def test_auto_push_self_remote(
-    tmp_dir, dvc, scm, checkpoint_stage, local_remote, caplog
+    tmp_dir,
+    dvc,
+    scm,
+    checkpoint_stage,
+    local_remote,
+    caplog,
+    monkeypatch,
+    clear_env,
 ):
     root_dir = str(tmp_dir)
-    os.environ[DVC_EXP_AUTO_PUSH] = root_dir
+    monkeypatch.setenv(DVC_EXP_GIT_REMOTE, root_dir)
+    monkeypatch.setenv(DVC_EXP_CHECKPOINT_PUSH, "true")
     assert (
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
         != {}
