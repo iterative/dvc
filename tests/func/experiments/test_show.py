@@ -68,12 +68,15 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
 def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     baseline_rev = scm.get_rev()
 
-    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], queue=True, name="test_name"
+    )
     exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     results = dvc.experiments.show()[baseline_rev]
     assert len(results) == 2
     exp = results[exp_rev]["data"]
+    assert exp["name"] == "test_name"
     assert exp["queued"]
     assert exp["params"]["params.yaml"] == {"data": {"foo": 2}}
 
