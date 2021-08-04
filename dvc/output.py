@@ -254,7 +254,6 @@ class Output:
     PARAM_DESC = "desc"
     PARAM_ISEXEC = "isexec"
     PARAM_LIVE = "live"
-    PARAM_LIVE_PATH = "dvclive"
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
 
