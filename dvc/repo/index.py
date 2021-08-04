@@ -21,14 +21,14 @@ if TYPE_CHECKING:
 
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs.base import BaseFileSystem
-    from dvc.objects import HashFile, ObjectDB
+    from dvc.objects import HashInfo, ObjectDB
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
 
 
-ObjectContainer = Dict[Optional["ObjectDB"], Set["HashFile"]]
+ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
 
 
 class Index:
