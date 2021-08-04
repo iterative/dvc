@@ -68,7 +68,6 @@ LIVE_PROPS = {
     Output.PARAM_LIVE_SUMMARY: bool,
     Output.PARAM_LIVE_HTML: bool,
     Output.PARAM_CACHE: bool,
-
 }
 LIVE_PROPS_SCHEMA = {**LIVE_PROPS}
 LIVE_PSTAGE_SCHEMA = {str: LIVE_PROPS_SCHEMA}

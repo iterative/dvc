@@ -160,7 +160,9 @@ def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
 
 
 @pytest.mark.parametrize("live_no_cache", (True, False))
-def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, live_no_cache):
+def test_experiments_track_summary(
+    tmp_dir, scm, dvc, live_stage, live_no_cache
+):
     live_stage(summary=True, live_no_cache=live_no_cache)
     baseline_rev = scm.get_rev()
 
@@ -169,7 +171,9 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, live_no_cache)
     ((exp_rev, _),) = experiments.items()
 
     res = dvc.experiments.show()
-    assert "dvclive.json" in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
+    assert (
+        "dvclive.json" in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
+    )
 
 
 @pytest.mark.parametrize("html", [True, False])
@@ -242,8 +246,18 @@ def test_live_checkpoints_resume(
 
     results = dvc.experiments.show()
     assert checkpoints_metric(results, "dvclive.json", "step") == [3, 2, 1, 0]
-    assert checkpoints_metric(results, "dvclive.json", "metric1") == [4, 3, 2, 1]
-    assert checkpoints_metric(results, "dvclive.json", "metric2") == [8, 6, 4, 2]
+    assert checkpoints_metric(results, "dvclive.json", "metric1") == [
+        4,
+        3,
+        2,
+        1,
+    ]
+    assert checkpoints_metric(results, "dvclive.json", "metric2") == [
+        8,
+        6,
+        4,
+        2,
+    ]
 
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
@@ -289,7 +303,7 @@ def live_stage_defaults(tmp_dir, scm, dvc, mocker):
             params=["foo"],
             deps=["train.py"],
             name="live_stage",
-            live=True
+            live=True,
         )
 
         scm.add(["dvc.yaml", "dvc.lock", "train.py", "params.yaml"])
@@ -297,6 +311,7 @@ def live_stage_defaults(tmp_dir, scm, dvc, mocker):
         return stage
 
     yield make
+
 
 def test_live_defaults(tmp_dir, dvc, live_stage_defaults):
     live_stage_defaults()
@@ -317,4 +332,4 @@ def test_live_defaults(tmp_dir, dvc, live_stage_defaults):
     assert os.path.join("dvclive", "accuracy.tsv") in plots
     assert os.path.join("dvclive", "loss.tsv") in plots
 
-    assert (tmp_dir / "dvclive.html").is_file() == True
+    assert (tmp_dir / "dvclive.html").is_file()

@@ -202,22 +202,19 @@ def _add_common_args(parser):
         metavar="<path>",
     )
     parser.add_argument(
-        "--live", 
-        action="store_true",
-        default=False,
-        help="Enable DVCLive."
+        "--live", action="store_true", default=False, help="Enable DVCLive."
     )
     parser.add_argument(
         "--live-no-cache",
         action="store_true",
         default=False,
-        help="Enable DVCLive (do not put into DVC cache)."
+        help="Enable DVCLive (do not put into DVC cache).",
     )
     parser.add_argument(
-        "--live-path", 
+        "--live-path",
         default="dvclive",
         help="Set DVCLive {path}. Defaults to 'dvclive'",
-        metavar="<path>"
+        metavar="<path>",
     )
     parser.add_argument(
         "--live-no-summary",
