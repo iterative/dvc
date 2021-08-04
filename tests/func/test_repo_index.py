@@ -1,9 +1,11 @@
+import os
 from itertools import chain
 
+import pytest
 from pygtrie import Trie
 
 from dvc.repo.index import Index
-from dvc.stage import Stage
+from dvc.stage import PipelineStage, Stage
 from dvc.utils import relpath
 from tests.func.plots.utils import _write_json
 
@@ -25,8 +27,7 @@ def test_index(tmp_dir, scm, dvc, run_copy):
     assert index.graph
     assert index.build_graph()
     assert isinstance(index.outs_trie, Trie)
-
-    assert index.identifier == "2ba7c7c5b395d4211348d6274b869fc7"
+    assert index.identifier
     index.check_graph()
 
 
@@ -151,21 +152,96 @@ def test_add_update(dvc):
     assert set(map(id, dup_index.stages)) == {id(dup_stage1), id(dup_stage2)}
 
 
+def assert_index_equal(first, second, strict=True, ordered=True):
+    assert len(first) == len(second), "Index have different no. of stages"
+    assert set(first) == set(second), "Index does not have same stages"
+    if ordered:
+        assert list(first) == list(
+            second
+        ), "Index does not have same sequence of stages"
+    if strict:
+        assert set(map(id, first)) == set(
+            map(id, second)
+        ), "Index is not strictly equal"
+
+
 def test_discard_remove(dvc):
-    pass
+    stage = Stage(dvc, path="path1")
+    index = Index(dvc, stages=[stage])
+
+    assert list(index.discard(Stage(dvc, "path2"))) == list(index)
+    new_index = index.discard(stage)
+    assert len(new_index) == 0
+
+    with pytest.raises(ValueError):
+        index.remove(Stage(dvc, "path2"))
+    assert index.stages == [stage]
+    assert list(index.remove(stage)) == []
 
 
-def test_difference():
-    pass
+def test_difference(dvc):
+    stages = [Stage(dvc, path=f"path{i}") for i in range(10)]
+    index = Index(dvc, stages=stages)
+
+    new_index = index.difference([*stages[:5], Stage(dvc, path="path100")])
+    assert index.stages == stages
+    assert set(new_index) == set(stages[5:])
 
 
-def test_used_objs():
-    pass
+def test_dumpd(dvc):
+    stages = [
+        PipelineStage(dvc, "dvc.yaml", name="stage1"),
+        Stage(dvc, "path"),
+    ]
+    index = Index(dvc, stages=stages)
+    assert index.dumpd() == {"dvc.yaml:stage1": {}, "path": {}}
+    assert index.identifier == "d43da84e9001540c26abf2bf4541c275"
 
 
-def test_dumpd():
-    pass
+def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
+    dvc.config["core"]["autostage"] = True
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar", name="copy-foo-bar")
+
+    revs = []
+    n_commits = 5
+    for i in range(n_commits):
+        # create a few empty commits
+        scm.commit(f"commit {i}")
+        revs.append(scm.get_rev())
+    assert len(set(revs)) == n_commits  # the commit revs should be unique
+
+    ids = []
+    for _ in dvc.brancher(revs=revs):
+        index = Index(dvc)
+        assert index.stages
+        ids.append(index.identifier)
+
+    # we get "workspace" as well from the brancher by default
+    assert len(revs) + 1 == len(ids)
+    possible_ids = {
+        True: "2ba7c7c5b395d4211348d6274b869fc7",
+        False: "8406970ad2fcafaa84d9310330a67576",
+    }
+    assert set(ids) == {possible_ids[os.name == "posix"]}
 
 
-def test_unique_identifier():
-    pass
+def test_skip_graph_checks(dvc, mocker):
+    # See https://github.com/iterative/dvc/issues/2671 for more info
+    mock_build_graph = mocker.spy(Index, "build_graph")
+
+    # sanity check
+    Index(dvc).check_graph()
+    assert mock_build_graph.called
+    mock_build_graph.reset_mock()
+
+    # check that our hack can be enabled
+    dvc._skip_graph_checks = True
+    Index(dvc).check_graph()
+    assert not mock_build_graph.called
+    mock_build_graph.reset_mock()
+
+    # check that our hack can be disabled
+    dvc._skip_graph_checks = False
+    Index(dvc).check_graph()
+    assert mock_build_graph.called

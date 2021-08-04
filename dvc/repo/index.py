@@ -226,7 +226,7 @@ class Index:
         self, stage: "Stage", ignore_not_existing: bool = False
     ) -> List["Stage"]:
         stages = self.stages[:]
-        ctx = suppress(ValueError) if ignore_not_existing else nullcontext
+        ctx = suppress(ValueError) if ignore_not_existing else nullcontext()
         with ctx:
             stages.remove(stage)
         return stages
@@ -257,7 +257,9 @@ class Index:
         """Unique identifier for the index.
 
         We can use this to optimize and skip opening some indices
-        eg: on push/pull/fetch/gc --all-commits
+        eg: on push/pull/fetch/gc --all-commits.
+
+        Currently, it is unique to the platform (windows vs posix).
         """
         return dict_md5(self.dumpd())
 
