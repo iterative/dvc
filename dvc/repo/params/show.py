@@ -83,7 +83,7 @@ def _read_params(
 
 def _collect_vars(repo, params) -> Dict:
     vars_params: Dict[str, Dict] = defaultdict(dict)
-    for stage in repo.stages:
+    for stage in repo.index.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
                 # `params` file are shown regardless of `tracked` or not

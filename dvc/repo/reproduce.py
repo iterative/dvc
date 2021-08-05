@@ -108,7 +108,7 @@ def reproduce(
 
     stages = set()
     if pipeline or all_pipelines:
-        pipelines = get_pipelines(self.graph)
+        pipelines = get_pipelines(self.index.graph)
         if all_pipelines:
             used_pipelines = pipelines
         else:
@@ -132,7 +132,7 @@ def reproduce(
                 )
             )
 
-    return _reproduce_stages(self.graph, list(stages), **kwargs)
+    return _reproduce_stages(self.index.graph, list(stages), **kwargs)
 
 
 def _reproduce_stages(

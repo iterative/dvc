@@ -158,32 +158,31 @@ class TmpDir(pathlib.Path):
         paths = self.gen(struct, text)
         return self.scm_add(paths, commit=commit)
 
+    def commit(self, output_paths, msg):
+        def to_gitignore(stage_path):
+            from dvc.scm import Git
+
+            return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
+
+        gitignores = [
+            to_gitignore(s)
+            for s in output_paths
+            if os.path.exists(to_gitignore(s))
+        ]
+        return self.scm_add(output_paths + gitignores, commit=msg)
+
     def dvc_add(self, filenames, commit=None):
         self._require("dvc")
         filenames = _coerce_filenames(filenames)
 
         stages = self.dvc.add(filenames)
         if commit:
-            stage_paths = [s.path for s in stages]
-
-            def to_gitignore(stage_path):
-                from dvc.scm import Git
-
-                return os.path.join(os.path.dirname(stage_path), Git.GITIGNORE)
-
-            gitignores = [
-                to_gitignore(s)
-                for s in stage_paths
-                if os.path.exists(to_gitignore(s))
-            ]
-            self.scm_add(stage_paths + gitignores, commit=commit)
-
+            self.commit([s.path for s in stages], msg=commit)
         return stages
 
     def scm_add(self, filenames, commit=None):
         self._require("scm")
         filenames = _coerce_filenames(filenames)
-
         self.scm.add(filenames)
         if commit:
             self.scm.commit(commit)
