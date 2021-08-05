@@ -16,7 +16,7 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.env import DVC_EXP_CHECKPOINT_PUSH, DVC_EXP_GIT_REMOTE
+from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.repo import Repo
@@ -316,7 +316,7 @@ class BaseExecutor(ABC):
             log_errors,
             **kwargs,
         ) as dvc:
-            if getenv_bool(DVC_EXP_CHECKPOINT_PUSH):
+            if getenv_bool(DVC_EXP_AUTO_PUSH):
                 cls._auto_push_check(dvc)
 
             args, kwargs = cls._repro_args(dvc)
@@ -389,7 +389,7 @@ class BaseExecutor(ABC):
                         force=repro_force,
                         checkpoint=is_checkpoint,
                     )
-                    if getenv_bool(DVC_EXP_CHECKPOINT_PUSH):
+                    if getenv_bool(DVC_EXP_AUTO_PUSH):
                         cls._auto_push(dvc, dvc.scm)
                 except UnchangedExperimentError:
                     pass
@@ -506,7 +506,7 @@ class BaseExecutor(ABC):
                 scm, exp_hash, exp_name=name, force=force, checkpoint=True
             )
 
-            if getenv_bool(DVC_EXP_CHECKPOINT_PUSH):
+            if getenv_bool(DVC_EXP_AUTO_PUSH):
                 cls._auto_push(dvc, scm)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
