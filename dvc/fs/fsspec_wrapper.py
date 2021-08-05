@@ -29,6 +29,15 @@ class FSSpecWrapper(BaseFileSystem):
     def _strip_bucket(self, entry):
         return entry
 
+    @staticmethod
+    def _get_kwargs_from_urls(urlpath):
+        from fsspec.utils import infer_storage_options
+
+        options = infer_storage_options(urlpath)
+        options.pop("path", None)
+        options.pop("protocol", None)
+        return options
+
     def _strip_buckets(self, entries, detail=False):
         for entry in entries:
             if detail:
@@ -100,6 +109,9 @@ class FSSpecWrapper(BaseFileSystem):
     def walk_files(self, path_info, **kwargs):
         for file in self.find(path_info, **kwargs):
             yield path_info.replace(path=file)
+
+    def move(self, from_info, to_info):
+        self.fs.move(self._with_bucket(from_info), self._with_bucket(to_info))
 
     def remove(self, path_info):
         self.fs.rm_file(self._with_bucket(path_info))
@@ -236,7 +248,7 @@ class CallbackMixin:
             **pbar_args,
         ) as pbar:
             self.fs.put_file(
-                self._with_bucket(from_file),
+                os.fspath(from_file),
                 self._with_bucket(to_info),
                 callback=pbar.as_callback(_LOCAL_FS, from_file),
             )
@@ -254,6 +266,6 @@ class CallbackMixin:
         ) as pbar:
             self.fs.get_file(
                 self._with_bucket(from_info),
-                self._with_bucket(to_file),
+                os.fspath(to_file),
                 callback=pbar.as_callback(self, from_info),
             )

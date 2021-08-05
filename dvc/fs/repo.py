@@ -35,13 +35,28 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     scheme = "local"
     PARAM_CHECKSUM = "md5"
+    PARAM_REPO_URL = "repo_url"
+    PARAM_REPO_ROOT = "repo_root"
+    PARAM_REV = "rev"
+    PARAM_CACHE_DIR = "cache_dir"
+    PARAM_CACHE_TYPES = "cache_types"
+    PARAM_SUBREPOS = "subrepos"
 
     def __init__(
-        self, repo=None, subrepos=False, repo_factory: RepoFactory = None
+        self,
+        repo: Optional["Repo"] = None,
+        subrepos=False,
+        repo_factory: RepoFactory = None,
+        **kwargs,
     ):
         super().__init__()
 
         from dvc.utils.collections import PathStringTrie
+
+        if repo is None:
+            repo, repo_factory = self._repo_from_fs_config(
+                subrepos=subrepos, **kwargs
+            )
 
         if not repo_factory:
             from dvc.repo import Repo
@@ -71,6 +86,67 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if self._main_repo is None:
             return None
         return self._main_repo.url
+
+    @property
+    def config(self):
+        return {
+            self.PARAM_REPO_URL: self.repo_url,
+            self.PARAM_REPO_ROOT: self.root_dir,
+            self.PARAM_REV: getattr(self._main_repo.fs, "rev", None),
+            self.PARAM_CACHE_DIR: os.path.abspath(
+                self._main_repo.odb.local.cache_dir
+            ),
+            self.PARAM_CACHE_TYPES: self._main_repo.odb.local.cache_types,
+            self.PARAM_SUBREPOS: self._traverse_subrepos,
+        }
+
+    @classmethod
+    def _repo_from_fs_config(
+        cls, **config
+    ) -> Tuple["Repo", Optional["RepoFactory"]]:
+        from dvc.external_repo import erepo_factory, external_repo
+        from dvc.repo import Repo
+
+        url = config.get(cls.PARAM_REPO_URL)
+        root = config.get(cls.PARAM_REPO_ROOT)
+        assert url or root
+
+        def _open(*args, **kwargs):
+            # NOTE: if original repo was an erepo (and has a URL),
+            # we cannot use Repo.open() since it will skip erepo
+            # cache/remote setup for local URLs
+            if url is None:
+                return Repo.open(*args, **kwargs)
+            return external_repo(*args, **kwargs)
+
+        cache_dir = config.get(cls.PARAM_CACHE_DIR)
+        cache_config = (
+            {}
+            if not cache_dir
+            else {
+                "cache": {
+                    "dir": cache_dir,
+                    "type": config.get(cls.PARAM_CACHE_TYPES),
+                }
+            }
+        )
+        repo_kwargs: dict = {
+            "rev": config.get(cls.PARAM_REV),
+            "subrepos": config.get(cls.PARAM_SUBREPOS, False),
+            "uninitialized": True,
+        }
+        factory: Optional["RepoFactory"] = None
+        if url is None:
+            repo_kwargs["config"] = cache_config
+        else:
+            repo_kwargs["cache_dir"] = cache_dir
+            factory = erepo_factory(url, cache_config)
+
+        with _open(
+            url if url else root,
+            **repo_kwargs,
+        ) as repo:
+            return repo, factory
 
     def _get_repo(self, path: str) -> Optional["Repo"]:
         """Returns repo that the path falls in, using prefix.
@@ -136,7 +212,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
-    ):  # pylint: disable=arguments-differ
+    ):  # pylint: disable=arguments-renamed
         if "b" in mode:
             encoding = None
 
@@ -173,7 +249,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         return True
 
-    def isdir(self, path):  # pylint: disable=arguments-differ
+    def isdir(self, path):  # pylint: disable=arguments-renamed
         fs, dvc_fs = self._get_fs_pair(path)
 
         if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(path):
@@ -204,7 +280,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         _, dvc_fs = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(path, **kwargs)
 
-    def isfile(self, path):  # pylint: disable=arguments-differ
+    def isfile(self, path):  # pylint: disable=arguments-renamed
         fs, dvc_fs = self._get_fs_pair(path)
 
         if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(path):

@@ -20,7 +20,15 @@ class ConfigError(DvcException):
         super().__init__(f"config file error: {msg}")
 
 
-class NoRemoteError(ConfigError):
+class RemoteConfigError(ConfigError):
+    pass
+
+
+class NoRemoteError(RemoteConfigError):
+    pass
+
+
+class RemoteNotFoundError(RemoteConfigError):
     pass
 
 

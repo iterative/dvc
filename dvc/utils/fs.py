@@ -4,6 +4,7 @@ import os
 import shutil
 import stat
 import sys
+from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
@@ -64,9 +65,7 @@ def get_mtime_and_size(path, fs, dvcignore=None):
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
 
-    # State of files handled by dvc is stored in db as TEXT.
-    # We cast results to string for later comparisons with stored values.
-    return str(mtime), str(size)
+    return str(mtime), size
 
 
 class BasePathNotInCheckedPathException(DvcException):
@@ -233,3 +232,21 @@ def walk_files(directory):
     for root, _, files in os.walk(directory):
         for f in files:
             yield os.path.join(root, f)
+
+
+@contextmanager
+def as_atomic(fs, to_info):
+    from dvc.utils import tmp_fname
+
+    tmp_info = to_info.parent / tmp_fname()
+    try:
+        yield tmp_info
+    except BaseException:
+        # Handle stuff like KeyboardInterrupt
+        # as well as other errors that might
+        # arise during file transfer.
+        with suppress(FileNotFoundError):
+            fs.remove(tmp_info)
+        raise
+    else:
+        fs.move(tmp_info, to_info)

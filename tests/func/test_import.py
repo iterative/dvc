@@ -13,6 +13,7 @@ from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
 from tests.unit.fs.test_repo import make_subrepo
+from tests.utils import clean_staging
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -290,6 +291,8 @@ def test_push_wildcard_from_bare_git_repo(
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
+        clean_staging()
+
         with pytest.raises(PathMissingError):
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
@@ -306,7 +309,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove(dst_cache)
 
     with patch(
-        "dvc.fs.local.LocalFileSystem.upload_fobj", side_effect=Exception
+        "dvc.fs.local.LocalFileSystem.upload", side_effect=Exception
     ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
@@ -593,6 +596,7 @@ def test_circular_import(tmp_dir, dvc, scm, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
     scm.add("dir_imported.dvc")
     scm.commit("import")
+    clean_staging()
 
     with erepo_dir.chdir():
         with pytest.raises(CircularImportError):

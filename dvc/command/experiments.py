@@ -629,7 +629,7 @@ class CmdExperimentsGC(CmdRepro):
         msg += " of the current repo."
         if self.args.queued:
             msg += " Run queued experiments will be preserved."
-        if self.args.queued:
+        else:
             msg += " Run queued experiments will be removed."
 
         logger.warning(msg)

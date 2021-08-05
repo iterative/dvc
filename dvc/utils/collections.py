@@ -80,6 +80,24 @@ def chunk_dict(d: Dict[_KT, _VT], size: int = 1) -> List[Dict[_KT, _VT]]:
     return [{key: d[key] for key in chunk} for chunk in chunks(size, d)]
 
 
+def merge_params(src: Dict, to_update: Dict) -> Dict:
+    """Recursively merges params with benedict's syntax support in-place."""
+    from benedict import benedict
+
+    data = benedict(src)
+    if src:
+        data.merge(to_update, overwrite=True)
+    else:
+        # NOTE: the following line may seem like an unnecessary duplication
+        # data.merge might affect the `src` if it's not empty, so we cannot
+        # check `if src` later, as it may have been mutated already.
+        data.merge(to_update, overwrite=True)
+        # benedict has issues keeping references to an empty dictionary
+        # see: https://github.com/iterative/dvc/issues/6374.
+        src.update(data)
+    return src
+
+
 class _NamespacedDict(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

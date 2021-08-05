@@ -32,6 +32,10 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         super().__init__(**kwargs)
         self.repo = kwargs["repo"]
 
+    @property
+    def config(self):
+        raise NotImplementedError
+
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
 
@@ -99,14 +103,14 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             cache_path = out.cache_path
         return open(cache_path, mode=mode, encoding=encoding)
 
-    def exists(self, path):  # pylint: disable=arguments-differ
+    def exists(self, path):  # pylint: disable=arguments-renamed
         try:
             self.metadata(path)
             return True
         except FileNotFoundError:
             return False
 
-    def isdir(self, path):  # pylint: disable=arguments-differ
+    def isdir(self, path):  # pylint: disable=arguments-renamed
         try:
             meta = self.metadata(path)
             return meta.isdir
@@ -129,7 +133,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return True
 
-    def isfile(self, path):  # pylint: disable=arguments-differ
+    def isfile(self, path):  # pylint: disable=arguments-renamed
         try:
             meta = self.metadata(path)
             return meta.isfile

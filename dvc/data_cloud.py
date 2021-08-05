@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from dvc.objects.db import get_index
 
 if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
     from dvc.objects.db.base import ObjectDB
-    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class DataCloud:
 
     def push(
         self,
-        objs: Iterable["HashFile"],
+        objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
         odb: Optional["ObjectDB"] = None,
@@ -93,7 +93,7 @@ class DataCloud:
 
     def pull(
         self,
-        objs: Iterable["HashFile"],
+        objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
         odb: Optional["ObjectDB"] = None,
@@ -123,7 +123,7 @@ class DataCloud:
 
     def status(
         self,
-        objs: Iterable["HashFile"],
+        objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
         odb: Optional["ObjectDB"] = None,

@@ -352,8 +352,7 @@ class Experiments:
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
-        from benedict import benedict
-
+        from dvc.utils.collections import merge_params
         from dvc.utils.serialize import MODIFIERS
 
         logger.debug("Using experiment params '%s'", params)
@@ -363,7 +362,7 @@ class Experiments:
             suffix = path.suffix.lower()
             modify_data = MODIFIERS[suffix]
             with modify_data(path, fs=self.repo.fs) as data:
-                benedict(data).merge(params[params_fname], overwrite=True)
+                merge_params(data, params[params_fname])
 
         # Force params file changes to be staged in git
         # Otherwise in certain situations the changes to params file may be

@@ -35,7 +35,9 @@ def _changed(path_info, fs, obj, cache, state=None):
     actual = state.get(path_info, fs) if state else None
     if actual is None:
         try:
-            actual = stage(cache, path_info, fs, obj.hash_info.name).hash_info
+            actual = stage(
+                cache, path_info, fs, obj.hash_info.name, dry_run=True
+            )[1].hash_info
         except FileNotFoundError:
             logger.debug("'%s' doesn't exist.", path_info)
             return True
@@ -61,7 +63,9 @@ def _remove(path_info, fs, cache, force=False):
         fs.remove(path_info)
         return
 
-    current = stage(cache, path_info, fs, fs.PARAM_CHECKSUM).hash_info
+    current = stage(cache, path_info, fs, fs.PARAM_CHECKSUM, dry_run=True)[
+        1
+    ].hash_info
     try:
         obj = load(cache, current)
         check(cache, obj)

@@ -42,3 +42,15 @@ def dump_sv(stream, metrics, delimiter=",", header=True):
         writer = csv.writer(stream)
         for d in metrics:
             writer.writerow(list(d.values()))
+
+
+def clean_staging():
+    from dvc.fs.memory import MemoryFileSystem
+    from dvc.objects.stage import _STAGING_MEMFS_PATH
+
+    try:
+        MemoryFileSystem().fs.rm(
+            f"memory://{_STAGING_MEMFS_PATH}", recursive=True
+        )
+    except FileNotFoundError:
+        pass

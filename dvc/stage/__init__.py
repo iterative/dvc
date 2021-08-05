@@ -36,8 +36,8 @@ from .utils import (
 
 if TYPE_CHECKING:
     from dvc.dvcfile import DVCFile
+    from dvc.hash_info import HashInfo
     from dvc.objects.db.base import ObjectDB
-    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
@@ -639,8 +639,8 @@ class Stage(params.StageParams):
 
     def get_used_objs(
         self, *args, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
-        """Return set of objects used by this stage."""
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+        """Return set of object IDs used by this stage."""
         used_objs = defaultdict(set)
         for out in self.filter_outs(kwargs.get("filter_info")):
             for odb, objs in out.get_used_objs(*args, **kwargs).items():

@@ -8,7 +8,9 @@ from .errors import ObjectFormatError
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import DvcPath
+    from dvc.types import AnyPath
+
+    from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 class HashFile:
     def __init__(
         self,
-        path_info: Optional["DvcPath"],
+        path_info: Optional["AnyPath"],
         fs: Optional["BaseFileSystem"],
         hash_info: "HashInfo",
         name: Optional[str] = None,
@@ -57,16 +59,20 @@ class HashFile:
             )
         )
 
-    def check(self, odb, check_hash=True):
-        from .stage import get_file_hash
-
+    def check(self, odb: "ObjectDB", check_hash: bool = True):
         if not check_hash:
+            assert self.fs
             if not self.fs.exists(self.path_info):
                 raise FileNotFoundError(
                     errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
                 )
             else:
                 return None
+
+        self._check_hash(odb)
+
+    def _check_hash(self, odb):
+        from .stage import get_file_hash
 
         actual = get_file_hash(
             self.path_info, self.fs, self.hash_info.name, odb.state

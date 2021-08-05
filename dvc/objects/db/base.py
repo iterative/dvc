@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import TYPE_CHECKING, Optional
 
+from dvc.fs.local import LocalFileSystem
 from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
 from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
@@ -12,7 +13,7 @@ from dvc.progress import Tqdm
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
+    from dvc.types import AnyPath, DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,47 @@ class ObjectDB:
             hash_info,
         )
 
+    def _add_file(
+        self,
+        from_fs: "BaseFileSystem",
+        from_info: "AnyPath",
+        to_info: "DvcPath",
+        _hash_info: "HashInfo",
+        move: bool = False,
+    ):
+        self.makedirs(to_info.parent)
+        use_move = isinstance(from_fs, type(self.fs)) and move
+        try:
+            if use_move:
+                self.fs.move(from_info, to_info)
+            elif isinstance(from_fs, LocalFileSystem):
+                if not isinstance(from_info, from_fs.PATH_CLS):
+                    from_info = from_fs.PATH_CLS(from_info)
+                self.fs.upload(from_info, to_info)
+            elif isinstance(self.fs, LocalFileSystem):
+                from_fs.download_file(from_info, to_info)
+            else:
+                with from_fs.open(from_info, mode="rb") as fobj:
+                    self.fs.upload_fobj(fobj, to_info)
+        except OSError as exc:
+            # If the target file already exists, we are going to simply
+            # ignore the exception (#4992).
+            #
+            # On Windows, it is not always guaranteed that you'll get
+            # FileExistsError (it might be PermissionError or a bare OSError)
+            # but all of those exceptions raised from the original
+            # FileExistsError so we have a separate check for that.
+            if isinstance(exc, FileExistsError) or (
+                os.name == "nt"
+                and exc.__context__
+                and isinstance(exc.__context__, FileExistsError)
+            ):
+                logger.debug("'%s' file already exists, skipping", to_info)
+                if use_move:
+                    from_fs.remove(from_info)
+            else:
+                raise
+
     def add(
         self,
         path_info: "AnyPath",
@@ -96,33 +138,7 @@ class ObjectDB:
             pass
 
         cache_info = self.hash_to_path_info(hash_info.value)
-        # using our makedirs to create dirs with proper permissions
-        self.makedirs(cache_info.parent)
-        use_move = isinstance(fs, type(self.fs)) and move
-        try:
-            if use_move:
-                self.fs.move(path_info, cache_info)
-            else:
-                with fs.open(path_info, mode="rb") as fobj:
-                    self.fs.upload_fobj(fobj, cache_info)
-        except OSError as exc:
-            # If the target file already exists, we are going to simply
-            # ignore the exception (#4992).
-            #
-            # On Windows, it is not always guaranteed that you'll get
-            # FileExistsError (it might be PermissionError or a bare OSError)
-            # but all of those exceptions raised from the original
-            # FileExistsError so we have a separate check for that.
-            if isinstance(exc, FileExistsError) or (
-                os.name == "nt"
-                and exc.__context__
-                and isinstance(exc.__context__, FileExistsError)
-            ):
-                logger.debug("'%s' file already exists, skipping", path_info)
-                if use_move:
-                    fs.remove(path_info)
-            else:
-                raise
+        self._add_file(fs, path_info, cache_info, hash_info, move)
 
         try:
             if verify:
@@ -136,7 +152,7 @@ class ObjectDB:
         if callback:
             callback(1)
 
-    def hash_to_path_info(self, hash_):
+    def hash_to_path_info(self, hash_) -> "DvcPath":
         return self.path_info / hash_[0:2] / hash_[2:]
 
     # Override to return path as a string instead of PathInfo for clouds
@@ -190,9 +206,10 @@ class ObjectDB:
             self.fs.remove(obj.path_info)
             raise
 
-        # making cache file read-only so we don't need to check it
-        # next time
-        self.protect(obj.path_info)
+        if check_hash:
+            # making cache file read-only so we don't need to check it
+            # next time
+            self.protect(obj.path_info)
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
@@ -369,17 +386,20 @@ class ObjectDB:
     def _remove_unpacked_dir(self, hash_):
         pass
 
-    def gc(self, used, jobs=None):
+    def gc(self, used, jobs=None, cache_odb=None, shallow=True):
         from ..tree import Tree
 
         if self.read_only:
             raise ObjectDBPermissionError("Cannot gc read-only ODB")
+        if not cache_odb:
+            cache_odb = self
         used_hashes = set()
-        for obj in used:
-            used_hashes.add(obj.hash_info.value)
-            if isinstance(obj, Tree):
+        for hash_info in used:
+            used_hashes.add(hash_info.value)
+            if hash_info.isdir and not shallow:
+                tree = Tree.load(cache_odb, hash_info)
                 used_hashes.update(
-                    entry_obj.hash_info.value for _, entry_obj in obj
+                    entry_obj.hash_info.value for _, entry_obj in tree
                 )
 
         removed = False

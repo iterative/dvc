@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
 from dvc.hash_info import HashInfo
+from dvc.scheme import Schemes
 
 from .tree import Tree
 
@@ -14,23 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 class StatusResult(NamedTuple):
-    exists: Set["HashFile"]
-    missing: Set["HashFile"]
+    exists: Set["HashInfo"]
+    missing: Set["HashInfo"]
 
 
 class CompareStatusResult(NamedTuple):
-    ok: Set["HashFile"]
-    missing: Set["HashFile"]
-    new: Set["HashFile"]
-    deleted: Set["HashFile"]
+    ok: Set["HashInfo"]
+    missing: Set["HashInfo"]
+    new: Set["HashInfo"]
+    deleted: Set["HashInfo"]
 
 
-def _indexed_dir_hashes(odb, index, hash_infos, name, cache_odb):
-    from . import load
-
+def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb):
     # Validate our index by verifying all indexed .dir hashes
     # still exist on the remote
-    dir_hashes = {hash_info.value for hash_info in hash_infos}
+    dir_hashes = set(dir_objs.keys())
     indexed_dirs = set(index.dir_hashes())
     indexed_dir_exists = set()
     if indexed_dirs:
@@ -51,10 +50,12 @@ def _indexed_dir_hashes(odb, index, hash_infos, name, cache_odb):
     # If .dir hash exists in the ODB, assume directory contents
     # also exists
     for dir_hash in dir_exists:
-        try:
-            tree = load(cache_odb, HashInfo(name, dir_hash))
-        except FileNotFoundError:
-            continue
+        tree = dir_objs.get(dir_hash)
+        if not tree:
+            try:
+                tree = Tree.load(cache_odb, HashInfo(name, dir_hash))
+            except FileNotFoundError:
+                continue
         file_hashes = [entry.hash_info.value for _, entry in tree]
         if dir_hash not in index:
             logger.debug(
@@ -67,21 +68,13 @@ def _indexed_dir_hashes(odb, index, hash_infos, name, cache_odb):
         yield tree.hash_info.value
 
 
-def _status_staging(objs: Iterable["HashFile"]) -> "StatusResult":
-    exists: Set["HashFile"] = set()
-    for obj in objs:
-        if isinstance(obj, Tree):
-            exists.update(entry for _, entry in obj)
-        exists.add(obj)
-    return StatusResult(exists, set())
-
-
 def status(
     odb: "ObjectDB",
-    objs: Iterable["HashFile"],
+    obj_ids: Iterable["HashInfo"],
     name: Optional[str] = None,
     index: Optional["ObjectDBIndexBase"] = None,
     cache_odb: Optional["ObjectDB"] = None,
+    shallow: bool = True,
     **kwargs,
 ) -> "StatusResult":
     """Return status of whether or not the specified objects exist odb.
@@ -93,39 +86,41 @@ def status(
         exists: objs that exist in odb
         missing: objs that do not exist in ODB
     """
-    from .stage import is_memfs_staging
-
     logger.debug("Preparing to collect status from '%s'", odb.path_info)
     if not name:
         name = odb.fs.PARAM_CHECKSUM
 
-    if is_memfs_staging(odb):
-        # assume memfs staged objects already exist
-        return _status_staging(objs)
+    if cache_odb is None:
+        cache_odb = odb
 
-    hash_objs: Dict[str, "HashFile"] = {}
-    hashes: Set[str] = set()
-    dir_infos: Set["HashInfo"] = set()
-    exists: Set[str] = set()
-    for obj in objs:
-        assert obj.hash_info and obj.hash_info.value
-        if isinstance(obj, Tree):
-            for _, entry in obj:
-                assert entry.hash_info and entry.hash_info.value
-                hash_objs[entry.hash_info.value] = entry
-                hashes.add(entry.hash_info.value)
+    hash_infos: Dict[str, "HashInfo"] = {}
+    dir_objs: Dict[str, Optional["HashFile"]] = {}
+    for hash_info in obj_ids:
+        assert hash_info.value
+        if hash_info.isdir:
+            if shallow:
+                tree = None
+            else:
+                tree = Tree.load(cache_odb, hash_info)
+                for _, entry in tree:
+                    assert entry.hash_info and entry.hash_info.value
+                    hash_infos[entry.hash_info.value] = entry.hash_info
             if index:
-                dir_infos.add(obj.hash_info)
-        hashes.add(obj.hash_info.value)
-        hash_objs[obj.hash_info.value] = obj
+                dir_objs[hash_info.value] = tree
+        hash_infos[hash_info.value] = hash_info
+
+    if odb.fs.scheme == Schemes.MEMORY:
+        # assume memfs staged objects already exist
+        return StatusResult(set(hash_infos.values()), set())
+
+    hashes: Set[str] = set(hash_infos.keys())
+    exists: Set[str] = set()
 
     logger.debug("Collecting status from '%s'", odb.path_info)
     if index and hashes:
-        if dir_infos:
-            if cache_odb is None:
-                cache_odb = odb
+        if dir_objs:
             exists = hashes.intersection(
-                _indexed_dir_hashes(odb, index, dir_infos, name, cache_odb)
+                _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb)
             )
             hashes.difference_update(exists)
         if hashes:
@@ -137,15 +132,15 @@ def status(
             odb.hashes_exist(hashes, name=str(odb.path_info), **kwargs)
         )
     return StatusResult(
-        {hash_objs[hash_] for hash_ in exists},
-        {hash_objs[hash_] for hash_ in (hashes - exists)},
+        {hash_infos[hash_] for hash_ in exists},
+        {hash_infos[hash_] for hash_ in (hashes - exists)},
     )
 
 
 def compare_status(
     src: "ObjectDB",
     dest: "ObjectDB",
-    objs: Iterable["HashFile"],
+    obj_ids: Iterable["HashInfo"],
     log_missing: bool = True,
     check_deleted: bool = True,
     src_index: Optional["ObjectDBIndexBase"] = None,
@@ -160,11 +155,17 @@ def compare_status(
         new: hashes that only exist in src
         deleted: hashes that only exist in dest
     """
-    dest_exists, dest_missing = status(dest, objs, index=dest_index, **kwargs)
+    if "cache_odb" not in kwargs:
+        kwargs["cache_odb"] = src
+    dest_exists, dest_missing = status(
+        dest, obj_ids, index=dest_index, **kwargs
+    )
     # for transfer operations we can skip src status check when all objects
     # already exist in dest
     if dest_missing or check_deleted:
-        src_exists, src_missing = status(src, objs, index=src_index, **kwargs)
+        src_exists, src_missing = status(
+            src, obj_ids, index=src_index, **kwargs
+        )
     else:
         src_exists = dest_exists
         src_missing = set()
@@ -176,7 +177,8 @@ def compare_status(
     )
     if log_missing and result.missing:
         missing_desc = "\n".join(
-            f"name: {obj.name}, {obj.hash_info}" for obj in result.missing
+            f"name: {hash_info.obj_name}, {hash_info}"
+            for hash_info in result.missing
         )
         logger.warning(
             "Some of the cache files do not exist neither locally "
