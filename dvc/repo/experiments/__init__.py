@@ -879,7 +879,11 @@ class Experiments:
         exclude = f"{EXEC_NAMESPACE}/*"
         ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
         if ref:
-            return ExpRefInfo.from_ref(ref).name
+            name = ExpRefInfo.from_ref(ref).name
+            if name:
+                return name
+        if rev in self.stash_revs:
+            return self.stash_revs[rev].name
         return None
 
     def get_running_exps(self) -> Dict[str, int]:
