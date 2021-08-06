@@ -123,7 +123,7 @@ def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
 
     assert outputs_equal(index.outs, expected_outs)
     assert outputs_equal(index.deps, expected_deps)
-    assert outputs_equal(index.decorated_outputs, [metrics, plots])
+    assert outputs_equal(index.decorated_outs, [metrics, plots])
     assert outputs_equal(index.metrics, [metrics])
     assert outputs_equal(index.plots, [plots])
     assert outputs_equal(index.params, [params])
@@ -245,3 +245,52 @@ def test_skip_graph_checks(dvc, mocker):
     dvc._skip_graph_checks = False
     Index(dvc).check_graph()
     assert mock_build_graph.called
+
+
+def get_index(dvc, rev):
+    if rev:
+        brancher = dvc.brancher(revs=[rev])
+        if rev != "workspace":
+            assert next(brancher) == "workspace"
+        next(brancher)
+    return Index(dvc)
+
+
+@pytest.mark.parametrize("rev", ["workspace", "HEAD"])
+def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
+    from dvc.hash_info import HashInfo
+
+    dvc.config["core"]["autostage"] = True
+    tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}}, "foo": "foo"})
+    run_copy("foo", "bar", name="copy-foo-bar")
+    scm.commit("commit")
+
+    index = get_index(dvc, rev)
+
+    expected_objs = [
+        HashInfo(
+            name="md5",
+            value="acbd18db4cc2f85cedef654fccc4a4d8",
+            size=3,
+            obj_name="bar",
+        ),
+        HashInfo(
+            name="md5",
+            value="8c7dd922ad47494fc02c388e12c00eac",
+            obj_name="dir/subdir/file",
+        ),
+        HashInfo(
+            name="md5",
+            value="d28c9e28591aeb7e303dc6772ffa6f6b.dir",
+            size=4,
+            nfiles=1,
+            obj_name="dir",
+        ),
+    ]
+
+    assert index.used_objs() == {None: set(expected_objs)}
+    assert index.used_objs("dir") == {None: set(expected_objs[1:])}
+    assert index.used_objs(".", recursive=True) == {None: set(expected_objs)}
+    assert index.used_objs("copy-foo-bar", with_deps=True) == {
+        None: {expected_objs[0]}
+    }
