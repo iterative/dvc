@@ -348,11 +348,18 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         from dulwich.client import get_transport_and_path
+        from dulwich.errors import NotGitRepository
         from dulwich.porcelain import get_remote_repo
 
         try:
             _remote, location = get_remote_repo(self.repo, url)
             client, path = get_transport_and_path(location)
+        except Exception as exc:
+            raise SCMError(
+                f"'{url}' is not a valid Git remote or URL"
+            ) from exc
+
+        try:
             if base:
                 yield from (
                     os.fsdecode(ref)
@@ -361,11 +368,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 )
             else:
                 yield from (os.fsdecode(ref) for ref in client.get_refs(path))
-
-        except Exception as exc:
-            raise SCMError(
-                f"'{url}' is not a valid Git remote or URL"
-            ) from exc
+        except NotGitRepository as exc:
+            raise SCMError(f"{url} is not a git repository") from exc
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
