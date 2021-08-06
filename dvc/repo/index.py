@@ -110,7 +110,7 @@ class Index:
             yield from stage.outs
 
     @property
-    def decorated_outputs(self) -> Iterator["Output"]:
+    def decorated_outs(self) -> Iterator["Output"]:
         for output in self.outs:
             if output.is_decorated:
                 yield output
@@ -218,7 +218,6 @@ class Index:
         return self.remove(stage, ignore_not_existing=True)
 
     def difference(self, stages: Iterable["Stage"]) -> "Index":
-        # this does not preserve the order
         stages_set = set(self.stages) - set(stages)
         return Index(self.repo, self.fs, stages=list(stages_set))
 
