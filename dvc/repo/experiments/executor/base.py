@@ -251,7 +251,7 @@ class BaseExecutor(ABC):
         return refs
 
     @classmethod
-    def _auto_push_check(cls, dvc: "Repo"):
+    def _validate_remotes(cls, dvc: "Repo"):
         git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
         if git_remote == dvc.root_dir:
             logger.warning(
@@ -267,7 +267,6 @@ class BaseExecutor(ABC):
                 if ref:
                     break
         except BaseException as e:
-            print(e)
             raise e
 
         dvc.cloud.get_remote_odb()
@@ -317,7 +316,7 @@ class BaseExecutor(ABC):
             **kwargs,
         ) as dvc:
             if env2bool(DVC_EXP_AUTO_PUSH):
-                cls._auto_push_check(dvc)
+                cls._validate_remotes(dvc)
 
             args, kwargs = cls._repro_args(dvc)
             if args:
