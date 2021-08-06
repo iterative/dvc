@@ -1,6 +1,5 @@
 """Helpers for other modules."""
 
-import ast
 import hashlib
 import json
 import logging
@@ -513,11 +512,3 @@ def errored_revisions(rev_data: Dict) -> List:
         if nested_contains(data, "error"):
             result.append(revision)
     return result
-
-
-def getenv_bool(name: str, default: str = "False"):
-    raw = os.getenv(name, default).title()
-    try:
-        return bool(ast.literal_eval(raw))
-    except ValueError:
-        return False

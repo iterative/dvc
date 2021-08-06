@@ -9,7 +9,6 @@ from dvc.utils import (
     dict_sha256,
     file_md5,
     fix_env,
-    getenv_bool,
     parse_target,
     relpath,
     resolve_output,
@@ -233,22 +232,3 @@ def test_hint_on_lockfile():
 )
 def test_dict_sha256(d, sha):
     assert dict_sha256(d) == sha
-
-
-@pytest.mark.parametrize(
-    "value, result",
-    [
-        ("true", True),
-        ("True", True),
-        ("1", True),
-        ("false", False),
-        ("False", False),
-        ("0", False),
-        ("other", False),
-    ],
-)
-def test_getenv_bool(monkeypatch, value, result):
-    env = "env"
-    monkeypatch.setenv(env, value)
-    assert getenv_bool(env) == result
-    monkeypatch.delenv(env)

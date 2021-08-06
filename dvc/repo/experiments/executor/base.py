@@ -38,7 +38,7 @@ from dvc.scm import SCM
 from dvc.stage import PipelineStage
 from dvc.stage.monitor import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
-from dvc.utils import dict_sha256, getenv_bool
+from dvc.utils import dict_sha256, env2bool
 from dvc.utils.fs import remove
 
 if TYPE_CHECKING:
@@ -316,7 +316,7 @@ class BaseExecutor(ABC):
             log_errors,
             **kwargs,
         ) as dvc:
-            if getenv_bool(DVC_EXP_AUTO_PUSH):
+            if env2bool(DVC_EXP_AUTO_PUSH):
                 cls._auto_push_check(dvc)
 
             args, kwargs = cls._repro_args(dvc)
@@ -389,7 +389,7 @@ class BaseExecutor(ABC):
                         force=repro_force,
                         checkpoint=is_checkpoint,
                     )
-                    if getenv_bool(DVC_EXP_AUTO_PUSH):
+                    if env2bool(DVC_EXP_AUTO_PUSH):
                         cls._auto_push(dvc, dvc.scm)
                 except UnchangedExperimentError:
                     pass
@@ -506,7 +506,7 @@ class BaseExecutor(ABC):
                 scm, exp_hash, exp_name=name, force=force, checkpoint=True
             )
 
-            if getenv_bool(DVC_EXP_AUTO_PUSH):
+            if env2bool(DVC_EXP_AUTO_PUSH):
                 cls._auto_push(dvc, scm)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
