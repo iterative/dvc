@@ -747,7 +747,9 @@ class CmdExperimentsRemove(CmdBase):
     def run(self):
 
         self.repo.experiments.remove(
-            exp_names=self.args.experiment, queue=self.args.queue
+            exp_names=self.args.experiment,
+            queue=self.args.queue,
+            workspace=self.args.workspace,
         )
 
         return 0
@@ -1237,8 +1239,14 @@ def add_parser(subparsers, parent_parser):
         help=EXPERIMENTS_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_remove_parser.add_argument(
+    remove_group = experiments_remove_parser.add_mutually_exclusive_group()
+    remove_group.add_argument(
         "--queue", action="store_true", help="Remove all queued experiments."
+    )
+    remove_group.add_argument(
+        "--workspace",
+        action="store_true",
+        help="Remove all experiments in current workspace.",
     )
     experiments_remove_parser.add_argument(
         "experiment",

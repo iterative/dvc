@@ -260,5 +260,18 @@ def test_experiments_remove(dvc, scm, mocker):
     m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
 
     assert cmd.run() == 0
+    m.assert_called_once_with(
+        cmd.repo, exp_names=[], queue=True, workspace=False
+    )
 
-    m.assert_called_once_with(cmd.repo, exp_names=[], queue=True)
+    cli_args = parse_args(["experiments", "remove", "--workspace"])
+    assert cli_args.func == CmdExperimentsRemove
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        cmd.repo, exp_names=[], queue=False, workspace=True
+    )

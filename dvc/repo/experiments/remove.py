@@ -7,21 +7,25 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import exp_refs_by_name, remove_exp_refs
+from .utils import exp_refs, exp_refs_by_name, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def remove(repo, exp_names=None, queue=False, **kwargs):
-    if not exp_names and not queue:
+def remove(repo, exp_names=None, queue=False, workspace=False, **kwargs):
+    if not any([exp_names, queue, workspace]):
         return 0
 
     removed = 0
-    if queue:
+    if queue or workspace:
         removed += len(repo.experiments.stash)
         repo.experiments.stash.clear()
+    if workspace:
+        ref_infos = list(exp_refs(repo.scm))
+        remove_exp_refs(repo.scm, ref_infos)
+        removed += len(ref_infos)
     if exp_names:
         remained = _remove_commited_exps(repo, exp_names)
         remained = _remove_queued_exps(repo, remained)
