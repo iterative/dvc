@@ -580,11 +580,28 @@ def test_remove(tmp_dir, scm, dvc, exp_stage):
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
-    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=3"], queue=True, name="queue1"
+    )
+    queue1 = first(results)
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=4"], queue=True, name="queue2"
+    )
+    queue2 = first(results)
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=5"], queue=True, name="queue3"
+    )
+    queue3 = first(results)
 
     removed = dvc.experiments.remove([str(ref_info)])
     assert removed == 1
     assert scm.get_ref(str(ref_info)) is None
+
+    removed = dvc.experiments.remove(["queue1", "queue2"])
+    assert removed == 2
+    assert queue1 not in dvc.experiments.stash_revs
+    assert queue2 not in dvc.experiments.stash_revs
+    assert queue3 in dvc.experiments.stash_revs
 
     removed = dvc.experiments.remove(queue=True)
     assert removed == 1
