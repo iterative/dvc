@@ -2,6 +2,7 @@ import itertools
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from copy import copy
 from typing import TYPE_CHECKING, Optional
 
@@ -203,7 +204,8 @@ class ObjectDB:
             obj.check(self, check_hash=check_hash)
         except ObjectFormatError:
             logger.warning("corrupted cache file '%s'.", obj.path_info)
-            self.fs.remove(obj.path_info)
+            with suppress(FileNotFoundError):
+                self.fs.remove(obj.path_info)
             raise
 
         if check_hash:
