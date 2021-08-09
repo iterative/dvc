@@ -35,7 +35,11 @@ class HTML:
     REFRESH_PLACEHOLDER = "refresh_tag"
     REFRESH_TAG = '<meta http-equiv="refresh" content="{}">'
 
-    def __init__(self, template: Optional[str] = None, refresh_seconds: Optional[int] = None):
+    def __init__(
+        self,
+        template: Optional[str] = None,
+        refresh_seconds: Optional[int] = None,
+    ):
         template = template or PAGE_HTML
         if self.PLACEHOLDER_FORMAT_STR not in template:
             raise MissingPlaceholderError(self.PLACEHOLDER_FORMAT_STR)
@@ -78,7 +82,7 @@ class HTML:
     def embed(self) -> str:
         kwargs = {
             self.PLACEHOLDER: "\n".join(self.elements),
-            self.REFRESH_PLACEHOLDER: self.refresh_tag
+            self.REFRESH_PLACEHOLDER: self.refresh_tag,
         }
         return self.template.format(**kwargs)
 
