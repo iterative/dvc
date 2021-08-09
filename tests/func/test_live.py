@@ -161,6 +161,7 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
         html_text = (tmp_dir / "logs.html").read_text()
         assert 'http-equiv="refresh"' in html_text
 
+
 @pytest.fixture
 def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
     try:
