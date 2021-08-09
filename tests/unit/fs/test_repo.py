@@ -8,6 +8,7 @@ from dvc.fs.repo import RepoFileSystem
 from dvc.hash_info import HashInfo
 from dvc.objects.stage import stage
 from dvc.path_info import PathInfo
+from tests.utils import clean_staging
 
 
 def test_exists(tmp_dir, dvc):
@@ -68,7 +69,22 @@ def test_open_in_history(tmp_dir, scm, dvc):
 
 
 def test_isdir_isfile(tmp_dir, dvc):
-    tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
+    tmp_dir.gen(
+        {
+            "datafile": "data",
+            "datadir": {
+                "foo": "foo",
+                "bar": "bar",
+            },
+            "subdir": {
+                "baz": "baz",
+                "data": {
+                    "abc": "abc",
+                    "xyz": "xyz",
+                },
+            },
+        },
+    )
 
     fs = RepoFileSystem(repo=dvc)
     assert fs.isdir("datadir")
@@ -78,9 +94,18 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert fs.isfile("datafile")
     assert not fs.isdvc("datafile")
 
-    dvc.add(["datadir", "datafile"])
+    dvc.add(
+        [
+            "datadir",
+            "datafile",
+            os.path.join("subdir", "baz"),
+            os.path.join("subdir", "data"),
+        ]
+    )
     shutil.rmtree(tmp_dir / "datadir")
+    shutil.rmtree(tmp_dir / "subdir" / "data")
     (tmp_dir / "datafile").unlink()
+    (tmp_dir / "subdir" / "baz").unlink()
 
     assert fs.isdir("datadir")
     assert not fs.isfile("datadir")
@@ -88,6 +113,12 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert not fs.isdir("datafile")
     assert fs.isfile("datafile")
     assert fs.isdvc("datafile")
+
+    assert fs.isdir("subdir")
+    assert not fs.isfile("subdir")
+    assert not fs.isdvc("subdir")
+    assert fs.isfile(os.path.join("subdir", "baz"))
+    assert fs.isdir(os.path.join("subdir", "data"))
 
 
 def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
@@ -482,9 +513,8 @@ def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     expected = "acbd18db4cc2f85cedef654fccc4a4d8"
     assert fs.info(PathInfo(tmp_dir) / "foo").get("md5") is None
-    assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5"
-    ).hash_info == HashInfo("md5", expected)
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5")
+    assert obj.hash_info == HashInfo("md5", expected)
     (tmp_dir / "foo").unlink()
     assert fs.info(PathInfo(tmp_dir) / "foo")["md5"] == expected
 
@@ -496,15 +526,17 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     expected = "8761c4e9acad696bee718615e23e22db.dir"
     assert fs.info(PathInfo(tmp_dir) / "dir").get("md5") is None
-    assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir")
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "8761c4e9acad696bee718615e23e22db.dir"
+    )
 
     shutil.rmtree(tmp_dir / "dir")
     assert fs.info(PathInfo(tmp_dir) / "dir")["md5"] == expected
-    assert stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info == HashInfo("md5", "8761c4e9acad696bee718615e23e22db.dir")
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "8761c4e9acad696bee718615e23e22db.dir"
+    )
 
 
 def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
@@ -514,13 +546,13 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert fs.info(subdir).get("md5") is None
-    assert stage(dvc.odb.local, subdir, fs, "md5").hash_info == HashInfo(
+    _, obj = stage(dvc.odb.local, subdir, fs, "md5")
+    assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
     assert fs.info(subdir / "data").get("md5") is None
-    assert stage(
-        dvc.odb.local, subdir / "data", fs, "md5"
-    ).hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
+    _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5")
+    assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
     (tmp_dir / "dir" / "subdir" / "data").unlink()
     assert (
         fs.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
@@ -538,50 +570,66 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
         ]
     )
     tmp_dir.scm.commit("add dir")
+    clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir")
-    assert actual == expected
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir"
+    )
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
-    tmp_dir.dvc_gen("file", "file")
-    (tmp_dir / "file").write_text("something")
+    from dvc.objects import check
+    from dvc.objects.errors import ObjectFormatError
+    from dvc.objects.stage import get_file_hash
 
+    tmp_dir.dvc_gen("file", "file")
+    file_hash_info = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
+
+    (tmp_dir / "file").write_text("something")
+    something_hash_info = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
+
+    clean_staging()
+
+    # file is modified in workspace
+    # get_file_hash(file) should return workspace hash, not DVC cached hash
     fs = RepoFileSystem(repo=dvc)
     assert fs.info(PathInfo(tmp_dir) / "file").get("md5") is None
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
-    assert actual == expected
+    staging, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    assert obj.hash_info == something_hash_info
+    check(staging, obj)
 
+    # file is removed in workspace
+    # any staged object referring to modified workspace obj is now invalid
     (tmp_dir / "file").unlink()
-    assert (
-        fs.info(PathInfo(tmp_dir) / "file")["md5"]
-        == "8c7dd922ad47494fc02c388e12c00eac"
+    with pytest.raises(ObjectFormatError):
+        check(staging, obj)
+
+    # get_file_hash(file) should return DVC cached hash
+    assert fs.info(PathInfo(tmp_dir) / "file")["md5"] == file_hash_info.value
+    hash_info = get_file_hash(
+        PathInfo(tmp_dir) / "file", fs, "md5", state=dvc.state
     )
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
-    assert actual == expected
+    assert hash_info == file_hash_info
+
+    # tmp_dir/file can be staged even though it is missing in workspace since
+    # repofs will use the DVC cached hash (and refer to the local cache object)
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    assert obj.hash_info == file_hash_info
 
 
 def test_get_hash_dirty_dir(tmp_dir, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     (tmp_dir / "dir" / "baz").write_text("baz")
+    clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    actual = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5"
-    ).hash_info
-    expected = HashInfo("md5", "ba75a2162ca9c29acecb7957105a0bc2.dir")
-    assert actual == expected
-    assert actual.nfiles == 3
+    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    assert obj.hash_info == HashInfo(
+        "md5", "ba75a2162ca9c29acecb7957105a0bc2.dir"
+    )
+    assert obj.hash_info.nfiles == 3
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])

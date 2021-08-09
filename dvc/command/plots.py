@@ -4,6 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.ui import ui
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
@@ -38,30 +39,38 @@ class CmdPlots(CmdBase):
 
             if self.args.show_vega:
                 target = self.args.targets[0]
-                logger.info(plots[target])
+                ui.write(plots[target])
                 return 0
-
-            rel: str = self.args.out or "plots.html"
-            path = (Path.cwd() / rel).resolve()
-            self.repo.plots.write_html(
-                path, plots=plots, html_template_path=self.args.html_template
-            )
 
         except DvcException:
             logger.exception("")
             return 1
 
-        assert path.is_absolute()  # as_uri throws ValueError if not absolute
-        url = path.as_uri()
-        logger.info(url)
-        if self.args.open:
-            import webbrowser
+        if plots:
+            rel: str = self.args.out or "plots.html"
+            path: Path = (Path.cwd() / rel).resolve()
+            self.repo.plots.write_html(
+                path, plots=plots, html_template_path=self.args.html_template
+            )
 
-            opened = webbrowser.open(rel)
-            if not opened:
-                logger.error("Failed to open. Please try opening it manually.")
-                return 1
+            assert (
+                path.is_absolute()
+            )  # as_uri throws ValueError if not absolute
+            url = path.as_uri()
+            ui.write(url)
+            if self.args.open:
+                import webbrowser
 
+                opened = webbrowser.open(rel)
+                if not opened:
+                    ui.error_write(
+                        "Failed to open. Please try opening it manually."
+                    )
+                    return 1
+        else:
+            ui.error_write(
+                "No plots were loaded, visualization file will not be created."
+            )
         return 0
 
 

@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class LocalFileSystem(BaseFileSystem):
+    sep = os.sep
+
     scheme = Schemes.LOCAL
     PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
@@ -77,8 +79,8 @@ class LocalFileSystem(BaseFileSystem):
                 raise NotImplementedError
         remove(path_info)
 
-    def makedirs(self, path_info):
-        makedirs(path_info, exist_ok=True)
+    def makedirs(self, path_info, **kwargs):
+        makedirs(path_info, exist_ok=kwargs.pop("exist_ok", True))
 
     def isexec(self, path_info):
         mode = self.stat(path_info).st_mode
@@ -88,7 +90,9 @@ class LocalFileSystem(BaseFileSystem):
         return os.stat(path)
 
     def move(self, from_info, to_info):
-        if from_info.scheme != "local" or to_info.scheme != "local":
+        if (
+            isinstance(from_info, PathInfo) and from_info.scheme != "local"
+        ) or (isinstance(to_info, PathInfo) and to_info.scheme != "local"):
             raise NotImplementedError
 
         self.makedirs(to_info.parent)
@@ -103,7 +107,7 @@ class LocalFileSystem(BaseFileSystem):
             self.remove(tmp_info)
             raise
 
-    def _upload_fobj(self, fobj, to_info):
+    def _upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:
@@ -155,7 +159,7 @@ class LocalFileSystem(BaseFileSystem):
         st = os.stat(path_info)
         return {
             "size": st.st_size,
-            "type": "dir" if stat.S_ISDIR(st.st_mode) else "file",
+            "type": "directory" if stat.S_ISDIR(st.st_mode) else "file",
         }
 
     def _upload(

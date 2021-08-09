@@ -14,6 +14,7 @@ class HashInfo:
     value: Optional[str]
     size: Optional[int] = field(default=None, compare=False)
     nfiles: Optional[int] = field(default=None, compare=False)
+    obj_name: Optional[str] = field(default=None, compare=False)
 
     def __bool__(self):
         return bool(self.value)

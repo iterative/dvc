@@ -3,9 +3,9 @@ import os
 import re
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
-from mock import patch
 
 from dvc.dvcfile import DVC_FILE, Dvcfile
 from dvc.exceptions import (
@@ -169,10 +169,12 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
-        self.dvc.stages = [
-            nested_stage,
-            Dvcfile(self.dvc, error_stage_path).stage,
-        ]
+        self.dvc.index = self.dvc.index.update(
+            [
+                nested_stage,
+                Dvcfile(self.dvc, error_stage_path).stage,
+            ]
+        )
 
         with patch.object(self.dvc, "_reset"):  # to prevent `stages` resetting
             with self.assertRaises(StagePathAsOutputError):

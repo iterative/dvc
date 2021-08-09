@@ -45,16 +45,17 @@ def test_cloud_status(tmp_dir, dvc, mocker):
 
 
 @pytest.mark.parametrize("status", [{}, {"a": "b", "c": [1, 2, 3]}, [1, 2, 3]])
-def test_status_show_json(dvc, mocker, caplog, status):
+def test_status_show_json(dvc, mocker, capsys, status):
     cli_args = parse_args(["status", "--show-json"])
     assert cli_args.func == CmdDataStatus
 
     cmd = cli_args.func(cli_args)
 
     mocker.patch.object(cmd.repo, "status", autospec=True, return_value=status)
-    caplog.clear()
+
     assert cmd.run() == 0
-    assert caplog.messages == [json.dumps(status)]
+    out, _ = capsys.readouterr()
+    assert json.dumps(status) in out
 
 
 @pytest.mark.parametrize(
@@ -80,7 +81,7 @@ def test_status_empty(dvc, mocker, capsys):
 
     cmd = cli_args.func(cli_args)
 
-    spy = mocker.spy(cmd.repo.stage, "collect_repo")
+    spy = mocker.spy(cmd.repo.stage, "_collect_repo")
 
     assert cmd.run() == 0
 
@@ -107,7 +108,7 @@ def test_status_up_to_date(dvc, mocker, capsys, cloud_opts, expected_message):
     mocker.patch.dict(cmd.repo.config, {"core": {"remote": "default"}})
     mocker.patch.object(cmd.repo, "status", autospec=True, return_value={})
     mocker.patch.object(
-        cmd.repo.stage, "collect_repo", return_value=[object()], autospec=True
+        cmd.repo.stage, "_collect_repo", return_value=[object()], autospec=True
     )
 
     assert cmd.run() == 0

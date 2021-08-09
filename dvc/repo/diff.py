@@ -5,7 +5,6 @@ from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
 from dvc.objects.stage import get_file_hash
-from dvc.objects.stage import stage as ostage
 from dvc.repo import locked
 from dvc.repo.experiments.utils import fix_exp_head
 
@@ -116,6 +115,7 @@ def _paths_checksums(repo, repo_fs, targets):
 
 def _output_paths(repo, repo_fs, targets):
     from dvc.fs.local import LocalFileSystem
+    from dvc.objects.stage import stage as ostage
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
@@ -134,25 +134,28 @@ def _output_paths(repo, repo_fs, targets):
     def _to_checksum(output):
         if on_working_fs:
             return ostage(
-                repo.odb.local, output.path_info, repo.odb.local.fs, "md5"
-            ).hash_info.value
+                repo.odb.local,
+                output.path_info,
+                repo.odb.local.fs,
+                "md5",
+                dry_run=True,
+            )[1].hash_info.value
         return output.hash_info.value
 
-    for stage in repo.stages:
-        for output in stage.outs:
-            if _exists(output):
-                yield_output = targets is None or any(
-                    output.path_info.isin_or_eq(target) for target in targets
-                )
+    for output in repo.index.outs:
+        if _exists(output):
+            yield_output = targets is None or any(
+                output.path_info.isin_or_eq(target) for target in targets
+            )
 
-                if yield_output:
-                    yield _to_path(output), _to_checksum(output)
+            if yield_output:
+                yield _to_path(output), _to_checksum(output)
 
-                if output.is_dir_checksum and (
-                    yield_output
-                    or any(target.isin(output.path_info) for target in targets)
-                ):
-                    yield from _dir_output_paths(repo_fs, output, targets)
+            if output.is_dir_checksum and (
+                yield_output
+                or any(target.isin(output.path_info) for target in targets)
+            ):
+                yield from _dir_output_paths(repo_fs, output, targets)
 
 
 def _dir_output_paths(repo_fs, output, targets=None):

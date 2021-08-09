@@ -1,19 +1,19 @@
 import filecmp
 import os
+from unittest.mock import patch
 
 import pytest
 from funcy import first
-from mock import patch
 
-import dvc.data_cloud as cloud
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, PathMissingError
 from dvc.objects.db import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
 from tests.unit.fs.test_repo import make_subrepo
+from tests.utils import clean_staging
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):
@@ -59,7 +59,9 @@ def test_import_cached_file(erepo_dir, tmp_dir, dvc, scm, monkeypatch):
     (tmp_dir / dst).unlink()
 
     remote_exception = NoRemoteError("dvc import")
-    with patch.object(cloud.DataCloud, "pull", side_effect=remote_exception):
+    with patch.object(
+        dvc.cloud, "get_remote_odb", side_effect=remote_exception
+    ):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).is_file()
@@ -289,7 +291,9 @@ def test_push_wildcard_from_bare_git_repo(
     dvc_repo = make_tmp_dir("dvc-repo", scm=True, dvc=True)
     with dvc_repo.chdir():
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
-        with pytest.raises(FileNotFoundError):
+        clean_staging()
+
+        with pytest.raises(PathMissingError):
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 
@@ -305,7 +309,7 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove(dst_cache)
 
     with patch(
-        "dvc.fs.local.LocalFileSystem._download", side_effect=Exception
+        "dvc.fs.local.LocalFileSystem.upload", side_effect=Exception
     ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
@@ -347,11 +351,11 @@ def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir):
 
 
 def test_import_non_existing(erepo_dir, tmp_dir, dvc):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "invalid_output")
 
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(PathMissingError):
         tmp_dir.dvc.imp(os.fspath(erepo_dir), "/root/", "root")
 
 
@@ -407,9 +411,7 @@ def test_import_pipeline_tracked_outs(
     dvc.scm.commit("add pipeline stage")
 
     with erepo_dir.chdir():
-        erepo_dir.dvc.imp(
-            "file:///{}".format(os.fspath(tmp_dir)), "bar", out="baz"
-        )
+        erepo_dir.dvc.imp(f"file:///{os.fspath(tmp_dir)}", "bar", out="baz")
         assert (erepo_dir / "baz").read_text() == "foo"
 
 
@@ -530,7 +532,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    import dvc as dvc_module
+    import dvc.objects.transfer as otransfer
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
@@ -545,10 +547,11 @@ def test_import_with_jobs(mocker, dvc, erepo_dir):
             commit="init",
         )
 
-    spy = mocker.spy(dvc_module.objects, "save")
+    spy = mocker.spy(otransfer, "transfer")
     dvc.imp(os.fspath(erepo_dir), "dir1", jobs=3)
-    run_jobs = tuple(spy.call_args_list[0])[1].get("jobs")
-    assert run_jobs == 3
+    # the first call will be retrieving dir cache for "dir1" w/jobs None
+    for _args, kwargs in spy.call_args_list[1:]:
+        assert kwargs.get("jobs") == 3
 
 
 def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
@@ -593,6 +596,7 @@ def test_circular_import(tmp_dir, dvc, scm, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
     scm.add("dir_imported.dvc")
     scm.commit("import")
+    clean_staging()
 
     with erepo_dir.chdir():
         with pytest.raises(CircularImportError):

@@ -4,10 +4,15 @@ import os
 import shutil
 import stat
 import sys
+from contextlib import contextmanager, suppress
+from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import dict_md5
+
+if TYPE_CHECKING:
+    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +65,7 @@ def get_mtime_and_size(path, fs, dvcignore=None):
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
 
-    # State of files handled by dvc is stored in db as TEXT.
-    # We cast results to string for later comparisons with stored values.
-    return str(mtime), str(size)
+    return str(mtime), size
 
 
 class BasePathNotInCheckedPathException(DvcException):
@@ -73,9 +76,9 @@ class BasePathNotInCheckedPathException(DvcException):
         super().__init__(msg)
 
 
-def contains_symlink_up_to(path, base_path):
-    base_path = os.fspath(base_path)
-    path = os.fspath(path)
+def contains_symlink_up_to(path: "StrPath", base_path: "StrPath"):
+    base_path = os.path.normcase(os.fspath(base_path))
+    path = os.path.normcase(os.fspath(path))
 
     if base_path not in path:
         raise BasePathNotInCheckedPathException(path, base_path)
@@ -144,11 +147,11 @@ def remove(path):
             raise
 
 
-def path_isin(child, parent):
+def path_isin(child: "StrPath", parent: "StrPath") -> bool:
     """Check if given `child` path is inside `parent`."""
 
-    def normalize_path(path):
-        return os.path.normpath(path)
+    def normalize_path(path) -> str:
+        return os.path.normcase(os.path.normpath(path))
 
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
@@ -229,3 +232,21 @@ def walk_files(directory):
     for root, _, files in os.walk(directory):
         for f in files:
             yield os.path.join(root, f)
+
+
+@contextmanager
+def as_atomic(fs, to_info):
+    from dvc.utils import tmp_fname
+
+    tmp_info = to_info.parent / tmp_fname()
+    try:
+        yield tmp_info
+    except BaseException:
+        # Handle stuff like KeyboardInterrupt
+        # as well as other errors that might
+        # arise during file transfer.
+        with suppress(FileNotFoundError):
+            fs.remove(tmp_info)
+        raise
+    else:
+        fs.move(tmp_info, to_info)

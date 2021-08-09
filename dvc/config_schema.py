@@ -189,7 +189,11 @@ SCHEMA = {
                     "tenant_id": str,
                     "client_id": str,
                     "client_secret": str,
-                    "allow_anonymous_login": bool,
+                    "allow_anonymous_login": Bool,
+                    "exclude_environment_credential": Bool,
+                    "exclude_visual_studio_code_credential": Bool,
+                    "exclude_shared_token_cache_credential": Bool,
+                    "exclude_managed_identity_credential": Bool,
                     **REMOTE_COMMON,
                 },
                 "oss": {

@@ -134,6 +134,10 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         self.drop(*(set(self._keys) - set(col_names)))
         self._keys = list(col_names)
 
+    def is_empty(self, col_name: str) -> bool:
+        col = self.column(col_name)
+        return not any(item != self._fill_value for item in col)
+
     def to_csv(self) -> str:
         import csv
         from io import StringIO
@@ -277,8 +281,9 @@ def metrics_table(
     td = TabularData(["Revision", "Path"], fill_value="-")
 
     for branch, val in metrics.items():
-        for fname, metric in val.items():
+        for fname, metric in val.get("data", {}).items():
             row_data: Dict[str, str] = {"Revision": branch, "Path": fname}
+            metric = metric.get("data", {})
             flattened = (
                 flatten(format_dict(metric))
                 if isinstance(metric, dict)

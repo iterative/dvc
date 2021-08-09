@@ -2,13 +2,19 @@ import itertools
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from copy import copy
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from dvc.objects.errors import ObjectFormatError
+from dvc.fs.local import LocalFileSystem
+from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
 from dvc.objects.file import HashFile
-from dvc.objects.tree import Tree
 from dvc.progress import Tqdm
+
+if TYPE_CHECKING:
+    from dvc.fs.base import BaseFileSystem
+    from dvc.hash_info import HashInfo
+    from dvc.types import AnyPath, DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +25,7 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs, path_info, **config):
+    def __init__(self, fs: "BaseFileSystem", path_info: "AnyPath", **config):
         from dvc.state import StateNoop
 
         self.fs = fs
@@ -30,6 +36,7 @@ class ObjectDB:
         self.cache_type_confirmed = False
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
+        self.read_only = config.get("read_only", False)
 
     @property
     def config(self):
@@ -39,13 +46,21 @@ class ObjectDB:
             "type": self.cache_types,
             "slow_link_warning": self.slow_link_warning,
             "tmp_dir": self.tmp_dir,
+            "read_only": self.read_only,
         }
 
     def __eq__(self, other):
-        return self.fs == other.fs and self.path_info == other.path_info
+        return (
+            self.fs == other.fs
+            and self.path_info == other.path_info
+            and self.read_only == other.read_only
+        )
 
     def __hash__(self):
         return hash((self.fs.scheme, self.path_info))
+
+    def exists(self, hash_info: "HashInfo"):
+        return self.fs.exists(self.hash_to_path_info(hash_info.value))
 
     def move(self, from_info, to_info):
         self.fs.move(from_info, to_info)
@@ -53,7 +68,7 @@ class ObjectDB:
     def makedirs(self, path_info):
         self.fs.makedirs(path_info)
 
-    def get(self, hash_info):
+    def get(self, hash_info: "HashInfo"):
         """get raw object"""
         return HashFile(
             # Prefer string path over PathInfo when possible due to performance
@@ -62,23 +77,28 @@ class ObjectDB:
             hash_info,
         )
 
-    def add(self, path_info, fs, hash_info, move=True, **kwargs):
-        try:
-            self.check(hash_info, check_hash=self.verify)
-            return
-        except (ObjectFormatError, FileNotFoundError):
-            pass
-
-        cache_info = self.hash_to_path_info(hash_info.value)
-        # using our makedirs to create dirs with proper permissions
-        self.makedirs(cache_info.parent)
-        use_move = isinstance(fs, type(self.fs)) and move
+    def _add_file(
+        self,
+        from_fs: "BaseFileSystem",
+        from_info: "AnyPath",
+        to_info: "DvcPath",
+        _hash_info: "HashInfo",
+        move: bool = False,
+    ):
+        self.makedirs(to_info.parent)
+        use_move = isinstance(from_fs, type(self.fs)) and move
         try:
             if use_move:
-                self.fs.move(path_info, cache_info)
+                self.fs.move(from_info, to_info)
+            elif isinstance(from_fs, LocalFileSystem):
+                if not isinstance(from_info, from_fs.PATH_CLS):
+                    from_info = from_fs.PATH_CLS(from_info)
+                self.fs.upload(from_info, to_info)
+            elif isinstance(self.fs, LocalFileSystem):
+                from_fs.download_file(from_info, to_info)
             else:
-                with fs.open(path_info, mode="rb") as fobj:
-                    self.fs.upload_fobj(fobj, cache_info)
+                with from_fs.open(from_info, mode="rb") as fobj:
+                    self.fs.upload_fobj(fobj, to_info)
         except OSError as exc:
             # If the target file already exists, we are going to simply
             # ignore the exception (#4992).
@@ -92,20 +112,48 @@ class ObjectDB:
                 and exc.__context__
                 and isinstance(exc.__context__, FileExistsError)
             ):
-                logger.debug("'%s' file already exists, skipping", path_info)
+                logger.debug("'%s' file already exists, skipping", to_info)
                 if use_move:
-                    fs.remove(path_info)
+                    from_fs.remove(from_info)
             else:
                 raise
 
-        self.protect(cache_info)
-        self.state.save(cache_info, self.fs, hash_info)
+    def add(
+        self,
+        path_info: "AnyPath",
+        fs: "BaseFileSystem",
+        hash_info: "HashInfo",
+        move: bool = True,
+        verify: Optional[bool] = None,
+        **kwargs,
+    ):
+        if self.read_only:
+            raise ObjectDBPermissionError("Cannot add to read-only ODB")
+
+        if verify is None:
+            verify = self.verify
+        try:
+            self.check(hash_info, check_hash=verify)
+            return
+        except (ObjectFormatError, FileNotFoundError):
+            pass
+
+        cache_info = self.hash_to_path_info(hash_info.value)
+        self._add_file(fs, path_info, cache_info, hash_info, move)
+
+        try:
+            if verify:
+                self.check(hash_info, check_hash=True)
+            self.protect(cache_info)
+            self.state.save(cache_info, self.fs, hash_info)
+        except (ObjectFormatError, FileNotFoundError):
+            pass
 
         callback = kwargs.get("download_callback")
         if callback:
             callback(1)
 
-    def hash_to_path_info(self, hash_):
+    def hash_to_path_info(self, hash_) -> "DvcPath":
         return self.path_info / hash_[0:2] / hash_[2:]
 
     # Override to return path as a string instead of PathInfo for clouds
@@ -125,7 +173,11 @@ class ObjectDB:
     def set_exec(self, path_info):  # pylint: disable=unused-argument
         pass
 
-    def check(self, hash_info, check_hash=True):
+    def check(
+        self,
+        hash_info: "HashInfo",
+        check_hash: bool = True,
+    ):
         """Compare the given hash with the (corresponding) actual one if
         check_hash is specified, or just verify the existence of the cache
         files on the filesystem.
@@ -142,7 +194,7 @@ class ObjectDB:
 
         obj = self.get(hash_info)
         if self.is_protected(obj.path_info):
-            logger.trace(
+            logger.trace(  # type: ignore[attr-defined]
                 "Assuming '%s' is unchanged since it is read-only",
                 obj.path_info,
             )
@@ -152,12 +204,14 @@ class ObjectDB:
             obj.check(self, check_hash=check_hash)
         except ObjectFormatError:
             logger.warning("corrupted cache file '%s'.", obj.path_info)
-            self.fs.remove(obj.path_info)
+            with suppress(FileNotFoundError):
+                self.fs.remove(obj.path_info)
             raise
 
-        # making cache file read-only so we don't need to check it
-        # next time
-        self.protect(obj.path_info)
+        if check_hash:
+            # making cache file read-only so we don't need to check it
+            # next time
+            self.protect(obj.path_info)
 
     def _list_paths(self, prefix=None, progress_callback=None):
         if prefix:
@@ -334,13 +388,20 @@ class ObjectDB:
     def _remove_unpacked_dir(self, hash_):
         pass
 
-    def gc(self, used, jobs=None):
+    def gc(self, used, jobs=None, cache_odb=None, shallow=True):
+        from ..tree import Tree
+
+        if self.read_only:
+            raise ObjectDBPermissionError("Cannot gc read-only ODB")
+        if not cache_odb:
+            cache_odb = self
         used_hashes = set()
-        for obj in used:
-            used_hashes.add(obj.hash_info.value)
-            if isinstance(obj, Tree):
+        for hash_info in used:
+            used_hashes.add(hash_info.value)
+            if hash_info.isdir and not shallow:
+                tree = Tree.load(cache_odb, hash_info)
                 used_hashes.update(
-                    entry_obj.hash_info.value for _, entry_obj in obj
+                    entry_obj.hash_info.value for _, entry_obj in tree
                 )
 
         removed = False
@@ -366,9 +427,7 @@ class ObjectDB:
         """Return list of the specified hashes which exist in this fs.
         Hashes will be queried individually.
         """
-        logger.debug(
-            "Querying {} hashes via object_exists".format(len(hashes))
-        )
+        logger.debug(f"Querying {len(hashes)} hashes via object_exists")
         with Tqdm(
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
@@ -463,7 +522,7 @@ class ObjectDB:
                 hashes - remote_hashes, jobs, name
             )
 
-        logger.debug("Querying '{}' hashes via traverse".format(len(hashes)))
+        logger.debug(f"Querying '{len(hashes)}' hashes via traverse")
         remote_hashes = set(
             self.list_hashes_traverse(remote_size, remote_hashes, jobs, name)
         )

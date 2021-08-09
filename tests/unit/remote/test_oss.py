@@ -16,6 +16,6 @@ def test_init(dvc):
         "oss_endpoint": endpoint,
     }
     fs = OSSFileSystem(**config)
-    assert fs.endpoint == endpoint
-    assert fs.key_id == key_id
-    assert fs.key_secret == key_secret
+    assert fs.fs_args["endpoint"] == endpoint
+    assert fs.fs_args["key"] == key_id
+    assert fs.fs_args["secret"] == key_secret

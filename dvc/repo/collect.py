@@ -20,12 +20,9 @@ DvcPaths = List[DvcPath]
 def _collect_outs(
     repo: "Repo", output_filter: FilterFn = None, deps: bool = False
 ) -> Outputs:
-    outs = [
-        out
-        for stage in repo.graph  # using `graph` to ensure graph checks run
-        for out in (stage.deps if deps else stage.outs)
-    ]
-    return list(filter(output_filter, outs)) if output_filter else outs
+    index = repo.index
+    index.check_graph()  # ensure graph is correct
+    return list(filter(output_filter, index.deps if deps else index.outs))
 
 
 def _collect_paths(
@@ -46,15 +43,12 @@ def _collect_paths(
             target_infos.extend(repo.dvcignore.walk_files(fs, path_info))
 
         if not fs.exists(path_info):
-            if not recursive:
-                if rev == "workspace" or rev == "":
-                    logger.warning(
-                        "'%s' was not found in current workspace.", path_info
-                    )
-                else:
-                    logger.warning(
-                        "'%s' was not found at: '%s'.", path_info, rev
-                    )
+            if rev == "workspace" or rev == "":
+                logger.warning(
+                    "'%s' was not found in current workspace.", path_info
+                )
+            else:
+                logger.warning("'%s' was not found at: '%s'.", path_info, rev)
             continue
         target_infos.append(path_info)
     return target_infos

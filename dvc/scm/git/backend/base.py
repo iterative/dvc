@@ -187,7 +187,7 @@ class BaseGitBackend(ABC):
 
     @abstractmethod
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
-        """Iterate over all git refs containing the specfied revision."""
+        """Iterate over all git refs containing the specified revision."""
 
     @abstractmethod
     def push_refspec(

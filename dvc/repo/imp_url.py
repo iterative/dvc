@@ -67,15 +67,18 @@ def imp_url(
     dvcfile.remove()
 
     try:
-        self.check_modified_graph([stage])
+        new_index = self.index.add(stage)
+        new_index.check_graph()
     except OutputDuplicationError as exc:
         raise OutputDuplicationError(exc.output, set(exc.stages) - {stage})
 
     if no_exec:
         stage.ignore_outs()
     elif to_remote:
-        remote = self.cloud.get_remote(remote, "import-url")
-        stage.outs[0].transfer(url, odb=remote.odb, jobs=jobs)
+        remote_odb = self.cloud.get_remote_odb(remote, "import-url")
+        stage.outs[0].transfer(url, odb=remote_odb, jobs=jobs)
+        stage.save_deps()
+        stage.md5 = stage.compute_md5()
     else:
         stage.run(jobs=jobs)
 

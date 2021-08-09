@@ -123,6 +123,7 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
     [
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("azure"),
         pytest.param(
             pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
         ),
@@ -161,6 +162,12 @@ def test_import_url(tmp_dir, dvc, workspace):
             "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
         ),
         (
+            pytest.lazy_fixture("azure"),
+            None,  # ETags for azure are not consistent with the actual
+            None,  # content of the object, so they will change every time
+            # we create new objects. We'll skip stage content check for Azure.
+        ),
+        (
             pytest.lazy_fixture("hdfs"),
             "ec0943f83357f702033c98e70b853c8c",
             "e6dcd267966dc628d732874f94ef4280.dir",
@@ -191,22 +198,23 @@ def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
     assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
     assert (tmp_dir / "dir" / "subdir" / "subfile").read_text() == "subfile"
 
-    assert (tmp_dir / "dir.dvc").read_text() == (
-        f"md5: {stage_md5}\n"
-        "frozen: true\n"
-        "deps:\n"
-        f"- md5: {dir_md5}\n"
-        "  size: 11\n"
-        "  nfiles: 2\n"
-        "  path: remote://workspace/dir\n"
-        "outs:\n"
-        "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
-        "  size: 11\n"
-        "  nfiles: 2\n"
-        "  path: dir\n"
-    )
-
     assert dvc.status() == {}
+
+    if stage_md5 is not None and dir_md5 is not None:
+        assert (tmp_dir / "dir.dvc").read_text() == (
+            f"md5: {stage_md5}\n"
+            "frozen: true\n"
+            "deps:\n"
+            f"- md5: {dir_md5}\n"
+            "  size: 11\n"
+            "  nfiles: 2\n"
+            "  path: remote://workspace/dir\n"
+            "outs:\n"
+            "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
+            "  size: 11\n"
+            "  nfiles: 2\n"
+            "  path: dir\n"
+        )
 
 
 def test_import_url_preserve_meta(tmp_dir, dvc):
@@ -273,6 +281,7 @@ def test_import_url_to_remote_single_file(
     url = "remote://workspace/foo"
     stage = dvc.imp_url(url, to_remote=True)
 
+    assert stage.deps[0].hash_info.value is not None
     assert not (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
 
@@ -399,3 +408,18 @@ def test_import_url_empty_directory(tmp_dir, dvc, workspace):
     empty_dir = tmp_dir / "empty_dir"
     assert empty_dir.is_dir()
     assert tuple(empty_dir.iterdir()) == ()
+
+
+def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
+    local_cloud.gen("foo", "foo")
+
+    stage = dvc.imp_url(str(local_cloud / "foo"), to_remote=True)
+    assert stage.md5 is not None
+
+    status = dvc.status()
+    assert status["foo.dvc"] == [{"changed outs": {"foo": "not in cache"}}]
+
+    dvc.pull()
+
+    status = dvc.status()
+    assert len(status) == 0

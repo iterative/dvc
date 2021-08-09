@@ -5,7 +5,7 @@ from . import locked
 
 @locked
 def _destroy_stages(repo):
-    for stage in repo.stages:
+    for stage in repo.index.stages:
         stage.unprotect_outs()
         stage.dvcfile.remove(force=True)
 

@@ -4,7 +4,7 @@ import string
 from collections import defaultdict
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 
 from funcy import cached_property, project
 
@@ -36,8 +36,8 @@ from .utils import (
 
 if TYPE_CHECKING:
     from dvc.dvcfile import DVCFile
+    from dvc.hash_info import HashInfo
     from dvc.objects.db.base import ObjectDB
-    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore
@@ -392,6 +392,20 @@ class Stage(params.StageParams):
         if purge:
             self.dvcfile.remove_stage(self)
 
+    def transfer(
+        self,
+        source: str,
+        odb: "ObjectDB" = None,
+        to_remote: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        assert len(self.outs) == 1
+        (out,) = self.outs
+        out.transfer(source, odb=odb, jobs=kwargs.get("jobs"))
+        if not to_remote:
+            out.checkout()
+
+    @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
         if not (kwargs.get("force", False) or self.changed()):
             if not isinstance(self, PipelineStage) and self.is_data_source:
@@ -639,8 +653,8 @@ class Stage(params.StageParams):
 
     def get_used_objs(
         self, *args, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
-        """Return set of objects used by this stage."""
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+        """Return set of object IDs used by this stage."""
         used_objs = defaultdict(set)
         for out in self.filter_outs(kwargs.get("filter_info")):
             for odb, objs in out.get_used_objs(*args, **kwargs).items():

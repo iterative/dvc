@@ -23,12 +23,18 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         repo: DVC repo.
     """
 
+    sep = os.sep
+
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.repo = kwargs["repo"]
+
+    @property
+    def config(self):
+        raise NotImplementedError
 
     def _find_outs(self, path, *args, **kwargs):
         outs = self.repo.find_outs_by_path(path, *args, **kwargs)
@@ -49,6 +55,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         # NOTE: use string paths here for performance reasons
         key = tuple(relpath(path_info, out.path_info).split(os.sep))
         out.get_dir_cache(remote=remote)
+        if out.obj is None:
+            raise FileNotFoundError
         obj = out.obj.trie.get(key)
         if obj:
             return obj.hash_info
@@ -76,15 +84,15 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             from dvc.config import NoRemoteError
 
             try:
-                remote_obj = self.repo.cloud.get_remote(remote)
+                remote_odb = self.repo.cloud.get_remote_odb(remote)
             except NoRemoteError as exc:
                 raise FileNotFoundError from exc
             if out.is_dir_checksum:
                 checksum = self._get_granular_hash(path, out).value
             else:
                 checksum = out.hash_info.value
-            remote_info = remote_obj.odb.hash_to_path_info(checksum)
-            return remote_obj.fs.open(
+            remote_info = remote_odb.hash_to_path_info(checksum)
+            return remote_odb.fs.open(
                 remote_info, mode=mode, encoding=encoding
             )
 
@@ -95,14 +103,14 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             cache_path = out.cache_path
         return open(cache_path, mode=mode, encoding=encoding)
 
-    def exists(self, path):  # pylint: disable=arguments-differ
+    def exists(self, path):  # pylint: disable=arguments-renamed
         try:
             self.metadata(path)
             return True
         except FileNotFoundError:
             return False
 
-    def isdir(self, path):  # pylint: disable=arguments-differ
+    def isdir(self, path):  # pylint: disable=arguments-renamed
         try:
             meta = self.metadata(path)
             return meta.isdir
@@ -125,7 +133,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return True
 
-    def isfile(self, path):  # pylint: disable=arguments-differ
+    def isfile(self, path):  # pylint: disable=arguments-renamed
         try:
             meta = self.metadata(path)
             return meta.isfile
@@ -231,7 +239,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def info(self, path_info):
         meta = self.metadata(path_info)
-        ret = {"type": "dir" if meta.isdir else "file"}
+        ret = {"type": "directory" if meta.isdir else "file"}
         if meta.is_output and len(meta.outs) == 1 and meta.outs[0].hash_info:
             hash_info = meta.outs[0].hash_info
             ret["size"] = hash_info.size

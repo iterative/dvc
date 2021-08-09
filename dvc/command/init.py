@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
+    from dvc.ui import ui
+
     if analytics.is_enabled():
-        logger.info(
+        ui.write(
             boxify(
                 "DVC has enabled anonymous aggregate usage analytics.\n"
                 "Read the analytics documentation (and how to opt-out) here:\n"
@@ -30,7 +32,7 @@ def _welcome_message():
         f"- Star us on GitHub: {fmt_link('https://github.com/iterative/dvc')}"
     ).format(yellow=colorama.Fore.YELLOW, nc=colorama.Fore.RESET)
 
-    logger.info(msg)
+    ui.write(msg)
 
 
 class CmdInit(CmdBaseNoRepo):

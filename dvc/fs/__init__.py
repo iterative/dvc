@@ -32,15 +32,21 @@ FS_MAP = {
 }
 
 
-def get_fs_cls(remote_conf):
-    scheme = urlparse(remote_conf["url"]).scheme
+def get_fs_cls(remote_conf, scheme=None):
+    if not scheme:
+        scheme = urlparse(remote_conf["url"]).scheme
     return FS_MAP.get(scheme, LocalFileSystem)
 
 
 def get_fs_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
-        remote_conf = config["remote"][name.lower()]
+        try:
+            remote_conf = config["remote"][name.lower()]
+        except KeyError:
+            from dvc.config import RemoteNotFoundError
+
+            raise RemoteNotFoundError(f"remote '{name}' doesn't exist")
     else:
         remote_conf = kwargs
     return _resolve_remote_refs(config, remote_conf)

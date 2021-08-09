@@ -1,13 +1,8 @@
 import logging
-from typing import TYPE_CHECKING, Set
 
 from dvc.exceptions import InvalidArgumentError
 
-from ..scheme import Schemes
 from . import locked
-
-if TYPE_CHECKING:
-    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +44,20 @@ def gc(
 
     from contextlib import ExitStack
 
+    from dvc.objects.db import get_index
     from dvc.repo import Repo
 
     if not repos:
         repos = []
     all_repos = [Repo(path) for path in repos]
 
-    used_objs: Set["HashFile"] = set()
+    used_obj_ids = set()
     with ExitStack() as stack:
         for repo in all_repos:
             stack.enter_context(repo.lock)
 
         for repo in all_repos + [self]:
-            for objs in repo.used_objs(
+            for obj_ids in repo.used_objs(
                 all_branches=all_branches,
                 with_deps=with_deps,
                 all_tags=all_tags,
@@ -71,26 +67,22 @@ def gc(
                 force=force,
                 jobs=jobs,
             ).values():
-                used_objs.update(objs)
+                used_obj_ids.update(obj_ids)
 
     for scheme, odb in self.odb.by_scheme():
         if not odb:
             continue
 
-        removed = odb.gc(
-            {obj for obj in used_objs if obj.fs.scheme == scheme},
-            jobs=jobs,
-        )
+        removed = odb.gc(used_obj_ids, jobs=jobs)
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
 
     if not cloud:
         return
 
-    remote = self.cloud.get_remote(remote, "gc -c")
-    removed = remote.gc(
-        {obj for obj in used_objs if obj.fs.scheme == Schemes.LOCAL},
-        jobs=jobs,
-    )
-    if not removed:
+    odb = self.cloud.get_remote_odb(remote, "gc -c")
+    removed = odb.gc(used_obj_ids)
+    if removed:
+        get_index(odb).clear()
+    else:
         logger.info("No unused cache to remove from remote.")

@@ -76,8 +76,6 @@ def _cloud_status(
 
             { "bar": "deleted" }
     """
-    import dvc.remote.base as cloud
-
     used = self.used_objs(
         targets,
         all_branches=all_branches,
@@ -91,26 +89,16 @@ def _cloud_status(
     )
 
     ret = {}
-    for odb, objs in used.items():
+    for odb, obj_ids in used.items():
         if odb is not None:
             # ignore imported objects
             continue
         status_info = self.cloud.status(
-            objs, jobs, remote=remote, log_missing=False
+            obj_ids, jobs, remote=remote, log_missing=False
         )
-        for info in status_info.values():
-            name = info["name"]
-            status_ = info["status"]
-            if status_ == cloud.STATUS_OK:
-                continue
-
-            prefix_map = {
-                cloud.STATUS_DELETED: "deleted",
-                cloud.STATUS_NEW: "new",
-                cloud.STATUS_MISSING: "missing",
-            }
-
-            ret[name] = prefix_map[status_]
+        for status_ in ("deleted", "new", "missing"):
+            for hash_info in getattr(status_info, status_, []):
+                ret[hash_info.obj_name] = status_
 
     return ret
 

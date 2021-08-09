@@ -17,7 +17,7 @@ def test_dag(tmp_dir, dvc, mocker, fmt):
 
     cmd = cli_args.func(cli_args)
 
-    mocker.patch("dvc.command.dag._build", return_value=dvc.graph)
+    mocker.patch("dvc.command.dag._build", return_value=dvc.index.graph)
 
     assert cmd.run() == 0
 
@@ -46,7 +46,7 @@ def repo(tmp_dir, dvc):
 
 
 def test_build(repo):
-    assert nx.is_isomorphic(_build(repo), repo.graph)
+    assert nx.is_isomorphic(_build(repo), repo.index.graph)
 
 
 def test_build_target(repo):
@@ -69,7 +69,7 @@ def test_build_granular_target_with_outs(repo):
 
 def test_build_full(repo):
     G = _build(repo, target="3", full=True)
-    assert nx.is_isomorphic(G, repo.graph)
+    assert nx.is_isomorphic(G, repo.index.graph)
 
 
 # NOTE: granular or not, full outs DAG should be the same
@@ -94,7 +94,7 @@ def test_build_full_outs(repo, granular):
 
 def test_show_ascii(repo):
     assert [
-        line.rstrip() for line in _show_ascii(repo.graph).splitlines()
+        line.rstrip() for line in _show_ascii(repo.index.graph).splitlines()
     ] == [
         "                        +----------------+                          +----------------+",  # noqa: E501
         "                        | stage: 'a.dvc' |                          | stage: 'b.dvc' |",  # noqa: E501
@@ -115,7 +115,7 @@ def test_show_ascii(repo):
 
 
 def test_show_dot(repo):
-    assert _show_dot(repo.graph) == (
+    assert _show_dot(repo.index.graph) == (
         "strict digraph  {\n"
         "stage;\n"
         "stage;\n"

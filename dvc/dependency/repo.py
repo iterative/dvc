@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional, Set
+from copy import copy
+from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
 from voluptuous import Required
 
@@ -9,6 +10,7 @@ from dvc.path_info import PathInfo
 from .base import Dependency
 
 if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
     from dvc.objects.db.base import ObjectDB
     from dvc.objects.file import HashFile
 
@@ -40,7 +42,7 @@ class RepoDependency(Dependency):
         return False
 
     def __str__(self):
-        return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
+        return f"{self.def_path} ({self.def_repo[self.PARAM_URL]})"
 
     def workspace_status(self):
         current = self.get_obj(locked=True).hash_info
@@ -62,16 +64,11 @@ class RepoDependency(Dependency):
 
     def download(self, to, jobs=None):
         from dvc.checkout import checkout
-        from dvc.objects import save
-        from dvc.objects.db.git import GitObjectDB
-        from dvc.repo.fetch import fetch_from_odb
 
         for odb, objs in self.get_used_objs().items():
-            if not isinstance(odb, GitObjectDB):
-                fetch_from_odb(self.repo, odb, objs, jobs=jobs)
+            self.repo.cloud.pull(objs, jobs=jobs, odb=odb)
 
         obj = self.get_obj()
-        save(self.repo.odb.local, obj, jobs=jobs)
         checkout(
             to.path_info,
             to.fs,
@@ -95,81 +92,111 @@ class RepoDependency(Dependency):
 
     def get_used_objs(
         self, **kwargs
-    ) -> Dict[Optional["ObjectDB"], Set["HashFile"]]:
+    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+        used, _ = self._get_used_and_obj(**kwargs)
+        return used
+
+    def _get_used_and_obj(
+        self, obj_only=False, **kwargs
+    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "HashFile"]:
         from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError
-        from dvc.objects.db.git import GitObjectDB
+        from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.objects.stage import stage
+        from dvc.objects.tree import Tree
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
         with self._make_repo(
             locked=locked, cache_dir=local_odb.cache_dir
         ) as repo:
-            used_objs = defaultdict(set)
+            used_obj_ids = defaultdict(set)
             rev = repo.get_rev()
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = rev
 
             path_info = PathInfo(repo.root_dir) / str(self.def_path)
+            if not obj_only:
+                try:
+                    for odb, obj_ids in repo.used_objs(
+                        [os.fspath(path_info)],
+                        force=True,
+                        jobs=kwargs.get("jobs"),
+                        recursive=True,
+                    ).items():
+                        if odb is None:
+                            odb = repo.cloud.get_remote_odb()
+                            odb.read_only = True
+                        self._check_circular_import(odb, obj_ids)
+                        used_obj_ids[odb].update(obj_ids)
+                except (NoRemoteError, NoOutputOrStageError):
+                    pass
+
             try:
-                for odb, objs in repo.used_objs(
-                    [os.fspath(path_info)],
-                    force=True,
-                    jobs=kwargs.get("jobs"),
-                    recursive=True,
-                ).items():
-                    if odb is None:
-                        odb = repo.cloud.get_remote().odb
-                    self._check_circular_import(odb)
-                    used_objs[odb].update(objs)
-            except (NoRemoteError, NoOutputOrStageError):
-                pass
+                staging, staged_obj = stage(
+                    local_odb,
+                    path_info,
+                    repo.repo_fs,
+                    local_odb.fs.PARAM_CHECKSUM,
+                )
+            except FileNotFoundError as exc:
+                raise PathMissingError(
+                    self.def_path, self.def_repo[self.PARAM_URL]
+                ) from exc
+            staging = copy(staging)
+            staging.read_only = True
 
-            staged_obj = stage(
-                local_odb,
-                path_info,
-                repo.repo_fs,
-                local_odb.fs.PARAM_CHECKSUM,
-            )
             self._staged_objs[rev] = staged_obj
-            git_odb = GitObjectDB(repo.repo_fs, repo.root_dir)
-            used_objs[git_odb].add(staged_obj)
-            return used_objs
+            used_obj_ids[staging].add(staged_obj.hash_info)
+            if isinstance(staged_obj, Tree):
+                used_obj_ids[staging].update(
+                    entry.hash_info for _, entry in staged_obj
+                )
+            return used_obj_ids, staged_obj
 
-    def _check_circular_import(self, odb):
+    def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
         from dvc.fs.repo import RepoFileSystem
+        from dvc.objects.db.reference import ReferenceObjectDB
+        from dvc.objects.tree import Tree
 
-        if not odb or not isinstance(odb.fs, RepoFileSystem):
+        if not isinstance(odb, ReferenceObjectDB):
             return
 
-        self_url = self.repo.url or self.repo.root_dir
-        if odb.fs.repo_url is not None and odb.fs.repo_url == self_url:
-            raise CircularImportError(self, odb.fs.repo_url, self_url)
+        def iter_objs():
+            for hash_info in obj_ids:
+                if hash_info.isdir:
+                    tree = Tree.load(odb, hash_info)
+                    yield from (odb.get(entry.hash_info) for _, entry in tree)
+                else:
+                    yield odb.get(hash_info)
+
+        checked_urls = set()
+        for obj in iter_objs():
+            if not isinstance(obj.fs, RepoFileSystem):
+                continue
+            if (
+                obj.fs.repo_url in checked_urls
+                or obj.fs.root_dir in checked_urls
+            ):
+                continue
+            self_url = self.repo.url or self.repo.root_dir
+            if (
+                obj.fs.repo_url is not None
+                and obj.fs.repo_url == self_url
+                or obj.fs.root_dir == self.repo.root_dir
+            ):
+                raise CircularImportError(self, obj.fs.repo_url, self_url)
+            checked_urls.update([obj.fs.repo_url, obj.fs.root_dir])
 
     def get_obj(self, filter_info=None, **kwargs):
-        from dvc.objects.stage import stage
-
-        odb = self.repo.odb.local
-        locked = kwargs.pop("locked", True)
-        with self._make_repo(locked=locked, cache_dir=odb.cache_dir) as repo:
-            rev = repo.get_rev()
-            if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
-                self.def_repo[self.PARAM_REV_LOCK] = rev
-            obj = self._staged_objs.get(rev)
-            if obj is not None:
-                return obj
-
-            path_info = PathInfo(repo.root_dir) / str(self.def_path)
-            obj = stage(
-                odb,
-                path_info,
-                repo.repo_fs,
-                odb.fs.PARAM_CHECKSUM,
-            )
-            self._staged_objs[rev] = obj
-            return obj
+        locked = kwargs.get("locked", True)
+        rev = self._get_rev(locked=locked)
+        if rev in self._staged_objs:
+            return self._staged_objs[rev]
+        _, obj = self._get_used_and_obj(
+            obj_only=True, filter_info=filter_info, **kwargs
+        )
+        return obj
 
     def _make_repo(self, locked=True, **kwargs):
         from dvc.external_repo import external_repo

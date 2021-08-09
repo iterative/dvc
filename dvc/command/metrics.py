@@ -3,7 +3,9 @@ import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
-from dvc.exceptions import BadMetricError, DvcException
+from dvc.exceptions import DvcException
+from dvc.ui import ui
+from dvc.utils.serialize import encode_exception
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +34,9 @@ class CmdMetricsShow(CmdMetricsBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(metrics))
+            ui.write(json.dumps(metrics, default=encode_exception))
         else:
             from dvc.compare import show_metrics
-
-            # When `metrics` contains a `None` key, it means that some files
-            # specified as `targets` in `repo.metrics.show` didn't contain any
-            # metrics.
-            missing = metrics.pop(None, None)
-            if missing:
-                raise BadMetricError(missing)
 
             show_metrics(
                 metrics,
@@ -73,7 +68,7 @@ class CmdMetricsDiff(CmdMetricsBase):
         if self.args.show_json:
             import json
 
-            logger.info(json.dumps(diff))
+            ui.write(json.dumps(diff))
         else:
             from dvc.compare import show_diff
 

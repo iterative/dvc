@@ -45,8 +45,6 @@ def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):
     [os.path.join("dir", "subdir", "file"), os.path.join("dir", "subdir")],
 )
 def test_used_objs(tmp_dir, dvc, path):
-    from dvc.objects.tree import Tree
-
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
 
     expected = {
@@ -55,11 +53,8 @@ def test_used_objs(tmp_dir, dvc, path):
     }
 
     used = set()
-    for _, objs in dvc.used_objs([path]).items():
-        for obj in objs:
-            used.add(obj.hash_info)
-            if isinstance(obj, Tree):
-                used.update(entry_obj.hash_info for _, entry_obj in obj)
+    for _, obj_ids in dvc.used_objs([path]).items():
+        used.update(obj_ids)
 
     assert used == expected
 
@@ -82,7 +77,7 @@ def test_locked(mocker):
 
 def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
     # See https://github.com/iterative/dvc/issues/2671 for more info
-    mock_build_graph = mocker.patch("dvc.repo.build_graph")
+    mock_build_graph = mocker.patch("dvc.repo.index.Index.build_graph")
 
     # sanity check
     tmp_dir.gen("foo", "foo text")

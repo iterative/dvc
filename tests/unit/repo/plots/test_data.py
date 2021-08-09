@@ -1,25 +1,9 @@
 from collections import OrderedDict
+from typing import Dict, List
 
 import pytest
 
-from dvc.repo.plots.data import _apply_path, _find_data, _lists
-
-
-@pytest.mark.parametrize(
-    "path,expected_result",
-    [
-        ("$.some.path[*].a", [{"a": 1}, {"a": 4}]),
-        ("$.some.path", [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]),
-    ],
-)
-def test_parse_json(path, expected_result):
-    value = {
-        "some": {"path": [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]}
-    }
-
-    result = _apply_path(value, path=path)
-
-    assert result == expected_result
+from dvc.repo.plots.data import DictData, _lists
 
 
 @pytest.mark.parametrize(
@@ -39,10 +23,22 @@ def test_finding_lists(dictionary, expected_result):
     assert list(result) == expected_result
 
 
-@pytest.mark.parametrize("fields", [{"x"}, set()])
-def test_finding_data(fields):
-    data = {"a": {"b": [{"x": 2, "y": 3}, {"x": 1, "y": 5}]}}
+def test_find_data_in_dict(tmp_dir):
+    m1 = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    m2 = [{"x": 1}, {"x": 2}]
+    dmetric = OrderedDict([("t1", m1), ("t2", m2)])
 
-    result = _find_data(data, fields=fields)
+    plot_data = DictData("-", "revision", dmetric)
 
-    assert result == [{"x": 2, "y": 3}, {"x": 1, "y": 5}]
+    def points_with(datapoints: List, additional_info: Dict):
+        for datapoint in datapoints:
+            datapoint.update(additional_info)
+
+        return datapoints
+
+    assert list(map(dict, plot_data.to_datapoints())) == points_with(
+        m1, {"rev": "revision"}
+    )
+    assert list(
+        map(dict, plot_data.to_datapoints(fields={"x"}))
+    ) == points_with(m2, {"rev": "revision"})

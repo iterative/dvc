@@ -7,7 +7,7 @@ from git import Repo
 from dvc.scm import SCM, Git, NoSCM
 from dvc.scm.base import SCMError
 from dvc.system import System
-from tests.basic_env import TestGit, TestGitSubmodule
+from tests.basic_env import TestGitSubmodule
 from tests.utils import get_gitignore_content
 
 
@@ -34,27 +34,27 @@ def test_init_sub_dir(tmp_dir):
     assert scm.root_dir == os.fspath(tmp_dir)
 
 
-class TestSCMGit(TestGit):
-    def test_commit(self):
-        G = Git(self._root_dir)
-        G.add(["foo"])
-        G.commit("add")
-        self.assertIn("foo", self.git.git.ls_files())
+def test_commit(tmp_dir, scm):
+    tmp_dir.gen({"foo": "foo"})
+    scm.add(["foo"])
+    scm.commit("add")
+    assert "foo" in scm.gitpython.git.ls_files()
 
-    def test_is_tracked(self):
-        foo = os.path.abspath(self.FOO)
-        G = Git(self._root_dir)
-        G.add([self.FOO, self.UNICODE])
-        self.assertTrue(G.is_tracked(foo))
-        self.assertTrue(G.is_tracked(self.FOO))
-        self.assertTrue(G.is_tracked(self.UNICODE))
-        G.commit("add")
-        self.assertTrue(G.is_tracked(foo))
-        self.assertTrue(G.is_tracked(self.FOO))
-        G.gitpython.repo.index.remove([self.FOO], working_tree=True)
-        self.assertFalse(G.is_tracked(foo))
-        self.assertFalse(G.is_tracked(self.FOO))
-        self.assertFalse(G.is_tracked("not-existing-file"))
+
+def test_is_tracked(tmp_dir, scm):
+    tmp_dir.gen({"foo": "foo", "тест": "проверка"})
+    scm.add(["foo", "тест"])
+    abs_foo = os.path.abspath("foo")
+    assert scm.is_tracked(abs_foo)
+    assert scm.is_tracked("foo")
+    assert scm.is_tracked("тест")
+    scm.commit("add")
+    assert scm.is_tracked(abs_foo)
+    assert scm.is_tracked("foo")
+    scm.gitpython.repo.index.remove(["foo"], working_tree=True)
+    assert not scm.is_tracked(abs_foo)
+    assert not scm.is_tracked("foo")
+    assert not scm.is_tracked("not-existing-file")
 
 
 class TestSCMGitSubmodule(TestGitSubmodule):
@@ -97,6 +97,35 @@ def test_ignored(tmp_dir, scm):
 
     assert scm.is_ignored(tmp_dir / "dir1" / "file1.jpg")
     assert not scm.is_ignored(tmp_dir / "dir1" / "file2.txt")
+
+
+def test_ignored_dir_unignored_subdirs(tmp_dir, scm):
+    tmp_dir.gen({".gitignore": "data/**\n!data/**/\n!data/**/*.csv"})
+    scm.add([".gitignore"])
+    tmp_dir.gen(
+        {
+            os.path.join("data", "raw", "tracked.csv"): "cont",
+            os.path.join("data", "raw", "not_tracked.json"): "cont",
+        }
+    )
+
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "tracked.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "not_tracked.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "raw" / "non_existent.json")
+    assert not scm.is_ignored(tmp_dir / "data" / "non_existent.csv")
+    assert scm.is_ignored(tmp_dir / "data" / "non_existent.json")
+
+    assert not scm.is_ignored(f"data{os.sep}")
+    # git check-ignore would now mark "data/raw" as ignored
+    # after detecting it's a directory in the file system;
+    # instead, we rely on the trailing separator to determine if handling a
+    # a directory - for consistency between existent and non-existent paths
+    assert scm.is_ignored(os.path.join("data", "raw"))
+    assert not scm.is_ignored(os.path.join("data", f"raw{os.sep}"))
+
+    assert scm.is_ignored(os.path.join("data", "non_existent"))
+    assert not scm.is_ignored(os.path.join("data", f"non_existent{os.sep}"))
 
 
 def test_get_gitignore(tmp_dir, scm):

@@ -1,5 +1,3 @@
-import logging
-
 from dvc.cli import parse_args
 from dvc.command.params import CmdParamsDiff
 
@@ -50,14 +48,19 @@ def test_params_diff_from_cli(dvc, mocker):
     assert cmd.run() == 0
 
     params_diff.assert_called_once_with(
-        cmd.repo, a_rev=None, b_rev=None, all=False, targets=None, deps=False
+        cmd.repo,
+        a_rev=None,
+        b_rev=None,
+        all=False,
+        targets=None,
+        deps=False,
     )
     show_diff_mock.assert_called_once_with(
         {}, title="Param", markdown=False, no_path=False, show_changes=False
     )
 
 
-def test_params_diff_show_json(dvc, mocker, caplog, capsys):
+def test_params_diff_show_json(dvc, mocker, capsys):
     cli_args = parse_args(
         ["params", "diff", "HEAD~10", "HEAD~1", "--show-json"]
     )
@@ -67,9 +70,7 @@ def test_params_diff_show_json(dvc, mocker, caplog, capsys):
     )
     show_diff_mock = mocker.patch("dvc.compare.show_diff")
 
-    with caplog.at_level(logging.INFO, logger="dvc"):
-        assert cmd.run() == 0
-        assert '{"params.yaml": {"a": "b"}}\n' in caplog.text
-
+    assert cmd.run() == 0
+    out, _ = capsys.readouterr()
+    assert '{"params.yaml": {"a": "b"}}\n' in out
     show_diff_mock.assert_not_called()
-    assert capsys.readouterr() == ("", "")
