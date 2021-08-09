@@ -61,6 +61,13 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
             if not password and config.get("ask_password"):
                 password = ask_password(config["host"], user)
             auth = (user, password)
+        else:
+            # check environment variables
+            user = os.getenv("WEBDAV_USER", None)
+            password = os.getenv("WEBDAV_PASSWORD", None)
+
+            if user and password:
+                auth = (user, password)
 
         return {"headers": headers, "auth": auth}
 
