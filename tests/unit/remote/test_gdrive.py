@@ -29,7 +29,7 @@ class TestRemoteGDrive:
             USER_CREDS_TOKEN_REFRESH_ERROR,
         )
         with pytest.raises(GDriveAuthError):
-            assert fs._drive
+            assert fs.fs
 
         monkeypatch.setenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA, "")
         fs = GDriveFileSystem(
@@ -40,4 +40,4 @@ class TestRemoteGDrive:
             USER_CREDS_MISSED_KEY_ERROR,
         )
         with pytest.raises(GDriveAuthError):
-            assert fs._drive
+            assert fs.fs
