@@ -223,6 +223,7 @@ class Plots:
         plots: Dict[str, Dict],
         metrics: Optional[Dict[str, Dict]] = None,
         html_template_path: Optional[StrPath] = None,
+        refresh_seconds: Optional[int] = None,
     ):
         if not html_template_path:
             html_template_path = self.repo.config.get("plots", {}).get(
@@ -235,7 +236,7 @@ class Plots:
 
         from dvc.utils.html import write
 
-        write(path, plots, metrics, html_template_path)
+        write(path, plots, metrics, html_template_path, refresh_seconds)
 
 
 def _is_plot(out: "Output") -> bool:

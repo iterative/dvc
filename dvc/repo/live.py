@@ -17,7 +17,7 @@ def create_summary(out):
 
     html_path = out.path_info.with_suffix(".html")
 
-    out.repo.plots.write_html(html_path, plots, metrics)
+    out.repo.plots.write_html(html_path, plots, metrics, refresh_seconds=5)
     logger.info(f"\nfile://{os.path.abspath(html_path)}")
 
 
