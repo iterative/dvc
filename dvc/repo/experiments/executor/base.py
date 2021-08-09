@@ -251,8 +251,12 @@ class BaseExecutor(ABC):
         return refs
 
     @classmethod
-    def _validate_remotes(cls, dvc: "Repo"):
-        git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
+    def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
+        from dulwich.client import get_transport_and_path
+        from dulwich.porcelain import get_remote_repo
+
+        from dvc.scm.base import SCMError
+
         if git_remote == dvc.root_dir:
             logger.warning(
                 f"'{git_remote}' points to the current Git repo, experiment "
@@ -261,13 +265,12 @@ class BaseExecutor(ABC):
                 "(if any) on each experiment commit."
             )
         try:
-            for ref in dvc.scm.iter_remote_refs(
-                git_remote, base=EXPS_NAMESPACE
-            ):
-                if ref:
-                    break
-        except BaseException as e:
-            raise e
+            _, location = get_remote_repo(dvc.scm.dulwich.repo, git_remote)
+            get_transport_and_path(location)
+        except Exception as exc:
+            raise SCMError(
+                f"'{git_remote}' is not a valid Git remote or URL"
+            ) from exc
 
         dvc.cloud.get_remote_odb()
 
@@ -293,6 +296,9 @@ class BaseExecutor(ABC):
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.repo.reproduce import reproduce as dvc_reproduce
 
+        auto_push = env2bool(DVC_EXP_AUTO_PUSH)
+        git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
+
         unchanged = []
 
         if queue is not None:
@@ -315,8 +321,8 @@ class BaseExecutor(ABC):
             log_errors,
             **kwargs,
         ) as dvc:
-            if env2bool(DVC_EXP_AUTO_PUSH):
-                cls._validate_remotes(dvc)
+            if auto_push:
+                cls._validate_remotes(dvc, git_remote)
 
             args, kwargs = cls._repro_args(dvc)
             if args:
@@ -388,8 +394,8 @@ class BaseExecutor(ABC):
                         force=repro_force,
                         checkpoint=is_checkpoint,
                     )
-                    if env2bool(DVC_EXP_AUTO_PUSH):
-                        cls._auto_push(dvc, dvc.scm)
+                    if auto_push:
+                        cls._auto_push(dvc, dvc.scm, git_remote)
                 except UnchangedExperimentError:
                     pass
                 ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
@@ -479,15 +485,26 @@ class BaseExecutor(ABC):
         return args, kwargs
 
     @staticmethod
-    def _auto_push(dvc: "Repo", scm: "Git"):
-        git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
+    def _auto_push(
+        dvc: "Repo",
+        scm: "Git",
+        git_remote: Optional[str],
+        push_cache=True,
+        run_cache=True,
+    ):
         branch = scm.get_ref(EXEC_BRANCH, follow=False)
-        dvc.experiments.push(
-            git_remote,
-            branch,
-            push_cache=True,
-            run_cache=True,
-        )
+        try:
+            dvc.experiments.push(
+                git_remote,
+                branch,
+                push_cache=push_cache,
+                run_cache=run_cache,
+            )
+        except BaseException:
+            logger.warning(
+                "Something went wrong while auto pushing checkpoint cache "
+                f"to the remote {git_remote}"
+            )
 
     @classmethod
     def checkpoint_callback(
@@ -506,7 +523,8 @@ class BaseExecutor(ABC):
             )
 
             if env2bool(DVC_EXP_AUTO_PUSH):
-                cls._auto_push(dvc, scm)
+                git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
+                cls._auto_push(dvc, scm, git_remote)
             logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
         except UnchangedExperimentError:
             pass
