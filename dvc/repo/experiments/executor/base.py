@@ -489,10 +489,10 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException:
+        except BaseException as exc:
             logger.warning(
-                "Something went wrong while auto pushing checkpoint cache "
-                f"to the remote {git_remote}"
+                "Something went wrong while auto pushing experiment "
+                f"to the remote '{git_remote}': {exc}"
             )
 
     @classmethod
