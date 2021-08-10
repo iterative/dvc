@@ -1,9 +1,10 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
+from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
 from .utils import exp_refs_by_name, remove_exp_refs
@@ -22,9 +23,16 @@ def remove(repo, refs_or_revs=None, queue=False, **kwargs):
         removed += len(repo.experiments.stash)
         repo.experiments.stash.clear()
     if refs_or_revs:
-        for ref_or_rev in refs_or_revs:
-            _remove_exp_by_ref_or_rev(repo, ref_or_rev)
-            removed += 1
+        remained = _remove_commited_experiments(repo, refs_or_revs)
+        remained = _remove_queued_experiements(repo, remained)
+        if remained:
+            logger.warning(
+                "'{}' is neither a valid experiment reference"
+                " nor a revision of queued experiment".format(
+                    ";".join(remained)
+                )
+            )
+        removed += len(refs_or_revs) - len(remained)
     return removed
 
 
@@ -33,10 +41,12 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     for _, ref_info in stash_revs.items():
         if ref_info.name == ref_or_rev:
             return ref_info.index
-    rev = repo.scm.resolve_rev(ref_or_rev)
-    if rev in stash_revs:
-        return stash_revs.get(rev).index
-
+    try:
+        rev = repo.scm.resolve_rev(ref_or_rev)
+        if rev in stash_revs:
+            return stash_revs.get(rev).index
+    except RevError:
+        pass
     return None
 
 
@@ -71,15 +81,26 @@ def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
     return ref_infos[0]
 
 
-def _remove_exp_by_ref_or_rev(repo, ref_or_rev: str):
-    ref_info = _get_exp_ref(repo, ref_or_rev)
-    if ref_info is not None:
-        remove_exp_refs(repo.scm, [ref_info])
-    else:
+def _remove_commited_experiments(repo, refs: List[str]) -> List[str]:
+    remain_list = []
+    remove_list = []
+    for ref in refs:
+        ref_info = _get_exp_ref(repo, ref)
+        if ref_info:
+            remove_list.append(ref_info)
+        else:
+            remain_list.append(ref)
+    if remove_list:
+        remove_exp_refs(repo.scm, remove_list)
+    return remain_list
+
+
+def _remove_queued_experiements(repo, refs_or_revs: List[str]) -> List[str]:
+    remain_list = []
+    for ref_or_rev in refs_or_revs:
         stash_index = _get_exp_stash_index(repo, ref_or_rev)
         if stash_index is None:
-            raise InvalidArgumentError(
-                f"'{ref_or_rev}' is neither a valid experiment reference"
-                " nor a queued experiment revision"
-            )
-        repo.experiments.stash.drop(stash_index)
+            remain_list.append(ref_or_rev)
+        else:
+            repo.experiments.stash.drop(stash_index)
+    return remain_list

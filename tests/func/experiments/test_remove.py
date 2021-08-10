@@ -3,10 +3,16 @@ from funcy import first
 from dvc.repo.experiments.utils import exp_refs_by_rev
 
 
-def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage):
+def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
+
+    assert dvc.experiments.remove(["non-exist"]) == 0
+    assert (
+        "'non-exist' is neither a valid experiment "
+        "reference nor a revision of queued experiment"
+    ) in caplog.text
 
     removed = dvc.experiments.remove([str(ref_info)])
     assert removed == 1
