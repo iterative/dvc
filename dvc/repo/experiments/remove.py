@@ -29,14 +29,14 @@ def remove(repo, refs_or_revs=None, queue=False, **kwargs):
 
 
 def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
-    stash_ref_infos = repo.experiments.stash_revs
-    print("*" * 100)
-    for rev, ref_info in stash_ref_infos.items():
-        print(rev, ref_info)
+    stash_revs = repo.experiments.stash_revs
+    for _, ref_info in stash_revs.items():
         if ref_info.name == ref_or_rev:
             return ref_info.index
-        if rev == ref_or_rev:
-            return ref_info.index
+    rev = repo.scm.resolve_rev(ref_or_rev)
+    if rev in stash_revs:
+        return stash_revs.get(rev).index
+
     return None
 
 

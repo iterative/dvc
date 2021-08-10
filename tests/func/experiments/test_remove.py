@@ -42,5 +42,5 @@ def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert rev1 not in dvc.experiments.stash_revs
     assert rev2 in dvc.experiments.stash_revs
 
-    assert dvc.experiments.remove([rev2]) == 1
+    assert dvc.experiments.remove([rev2[:5]]) == 1
     assert len(dvc.experiments.stash) == 0
