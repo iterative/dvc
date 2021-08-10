@@ -32,7 +32,7 @@ def collect_and_send_report(args=None, return_code=None):
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
-        daemon(["analytics", fobj.name])
+    daemon(["analytics", fobj.name])
 
 
 def is_enabled():
