@@ -30,6 +30,12 @@ if TYPE_CHECKING:
     from dvc.types import StrPath
 
 
+# NOTE: constant from libgit2 git2/checkout.h
+# This can be removed after next pygit2 release:
+# see https://github.com/libgit2/pygit2/pull/1087
+GIT_CHECKOUT_SKIP_LOCKED_DIRECTORIES = 1 << 18
+
+
 class Pygit2Object(GitObject):
     def __init__(self, obj):
         self.obj = obj
@@ -112,6 +118,16 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 "Git username and email must be configured"
             ) from exc
 
+    @staticmethod
+    def _get_checkout_strategy(strategy: Optional[int] = None):
+        from pygit2 import GIT_CHECKOUT_RECREATE_MISSING, GIT_CHECKOUT_SAFE
+
+        if strategy is None:
+            strategy = GIT_CHECKOUT_SAFE | GIT_CHECKOUT_RECREATE_MISSING
+        if os.name == "nt":
+            strategy |= GIT_CHECKOUT_SKIP_LOCKED_DIRECTORIES
+        return strategy
+
     # Workaround to force git_backend_odb_pack to release open file handles
     # in DVC's mixed git-backend environment.
     # See https://github.com/iterative/dvc/issues/5641
@@ -151,13 +167,15 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     ):
         from pygit2 import GIT_CHECKOUT_FORCE, GitError
 
-        checkout_strategy = GIT_CHECKOUT_FORCE if force else None
+        strategy = self._get_checkout_strategy(
+            GIT_CHECKOUT_FORCE if force else None
+        )
 
         with self.release_odb_handles():
             if create_new:
                 commit = self.repo.revparse_single("HEAD")
                 new_branch = self.repo.branches.local.create(branch, commit)
-                self.repo.checkout(new_branch, strategy=checkout_strategy)
+                self.repo.checkout(new_branch, strategy=strategy)
             else:
                 if branch == "-":
                     branch = "@{-1}"
@@ -165,7 +183,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                     commit, ref = self._resolve_refish(branch)
                 except (KeyError, GitError):
                     raise RevError(f"unknown Git revision '{branch}'")
-                self.repo.checkout_tree(commit, strategy=checkout_strategy)
+                self.repo.checkout_tree(commit, strategy=strategy)
                 detach = kwargs.get("detach", False)
                 if ref and not detach:
                     self.repo.set_head(ref.name)
@@ -384,11 +402,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         return str(oid), False
 
     def _stash_apply(self, rev: str):
-        from pygit2 import (
-            GIT_CHECKOUT_RECREATE_MISSING,
-            GIT_CHECKOUT_SAFE,
-            GitError,
-        )
+        from pygit2 import GitError
 
         from dvc.scm.git import Stash
 
@@ -396,8 +410,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             try:
                 self.repo.index.read(False)
                 self.repo.stash_apply(
-                    index,
-                    strategy=GIT_CHECKOUT_SAFE | GIT_CHECKOUT_RECREATE_MISSING,
+                    index, strategy=self._get_checkout_strategy()
                 )
             except GitError as exc:
                 raise MergeConflictError(
@@ -481,6 +494,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
 
         if ours or theirs:
             strategy |= GIT_CHECKOUT_ALLOW_CONFLICTS
+        strategy = self._get_checkout_strategy(strategy)
 
         index = self.repo.index
         if paths:
