@@ -1,4 +1,4 @@
-wheel==0.36.2
+wheel==0.37.0
 
 # Test requirements
 pytest==6.2.4
