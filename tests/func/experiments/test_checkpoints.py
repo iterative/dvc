@@ -9,7 +9,7 @@ from dvc.exceptions import DvcException
 from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm.base import SCMError
+from dvc.scm.base import InvalidRemoteSCMRepo
 
 
 @pytest.mark.parametrize("workspace", [True, False])
@@ -256,7 +256,7 @@ def test_auto_push_error_url(
 ):
     monkeypatch.setenv(DVC_EXP_GIT_REMOTE, "true")
     monkeypatch.setenv(DVC_EXP_AUTO_PUSH, "true")
-    with pytest.raises(SCMError):
+    with pytest.raises(InvalidRemoteSCMRepo):
         dvc.experiments.run(checkpoint_stage.addressing, params=["foo=2"])
 
 

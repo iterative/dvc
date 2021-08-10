@@ -20,7 +20,7 @@ from funcy import cached_property
 
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
-from dvc.scm.base import SCMError
+from dvc.scm.base import InvalidRemoteSCMRepo, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
@@ -355,9 +355,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             _remote, location = get_remote_repo(self.repo, url)
             client, path = get_transport_and_path(location)
         except Exception as exc:
-            raise SCMError(
-                f"'{url}' is not a valid Git remote or URL"
-            ) from exc
+            raise InvalidRemoteSCMRepo(url) from exc
 
         try:
             if base:
@@ -369,7 +367,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 yield from (os.fsdecode(ref) for ref in client.get_refs(path))
         except NotGitRepository as exc:
-            raise SCMError(f"{url} is not a git repository") from exc
+            raise InvalidRemoteSCMRepo(url) from exc
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
@@ -655,8 +653,6 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             _, location = get_remote_repo(self.repo, url)
             client, path = get_transport_and_path(location)
         except Exception as exc:
-            raise SCMError(
-                f"'{url}' is not a valid Git remote or URL"
-            ) from exc
+            raise InvalidRemoteSCMRepo(url) from exc
         if isinstance(client, LocalGitClient) and not os.path.exists(path):
-            raise SCMError(f"'{url}' is not a valid Git remote or URL")
+            raise InvalidRemoteSCMRepo(url)
