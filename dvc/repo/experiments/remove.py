@@ -23,8 +23,8 @@ def remove(repo, exp_names=None, queue=False, **kwargs):
         removed += len(repo.experiments.stash)
         repo.experiments.stash.clear()
     if exp_names:
-        remained = _remove_commited_experiments(repo, exp_names)
-        remained = _remove_queued_experiements(repo, remained)
+        remained = _remove_commited_exps(repo, exp_names)
+        remained = _remove_queued_exps(repo, remained)
         if remained:
             logger.warning(
                 "'{}' is neither a valid experiment reference"
@@ -81,7 +81,7 @@ def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
     return ref_infos[0]
 
 
-def _remove_commited_experiments(repo, refs: List[str]) -> List[str]:
+def _remove_commited_exps(repo, refs: List[str]) -> List[str]:
     remain_list = []
     remove_list = []
     for ref in refs:
@@ -95,7 +95,7 @@ def _remove_commited_experiments(repo, refs: List[str]) -> List[str]:
     return remain_list
 
 
-def _remove_queued_experiements(repo, refs_or_revs: List[str]) -> List[str]:
+def _remove_queued_exps(repo, refs_or_revs: List[str]) -> List[str]:
     remain_list = []
     for ref_or_rev in refs_or_revs:
         stash_index = _get_exp_stash_index(repo, ref_or_rev)
