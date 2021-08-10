@@ -14,16 +14,16 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def remove(repo, refs_or_revs=None, queue=False, **kwargs):
-    if not refs_or_revs and not queue:
+def remove(repo, exp_names=None, queue=False, **kwargs):
+    if not exp_names and not queue:
         return 0
 
     removed = 0
     if queue:
         removed += len(repo.experiments.stash)
         repo.experiments.stash.clear()
-    if refs_or_revs:
-        remained = _remove_commited_experiments(repo, refs_or_revs)
+    if exp_names:
+        remained = _remove_commited_experiments(repo, exp_names)
         remained = _remove_queued_experiements(repo, remained)
         if remained:
             logger.warning(
@@ -32,7 +32,7 @@ def remove(repo, refs_or_revs=None, queue=False, **kwargs):
                     ";".join(remained)
                 )
             )
-        removed += len(refs_or_revs) - len(remained)
+        removed += len(exp_names) - len(remained)
     return removed
 
 
