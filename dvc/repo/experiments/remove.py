@@ -13,25 +13,29 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def remove(repo, exp_names=None, queue=False, **kwargs):
-    if not exp_names and not queue:
+def remove(repo, refs_or_revs=None, queue=False, **kwargs):
+    if not refs_or_revs and not queue:
         return 0
 
     removed = 0
     if queue:
         removed += len(repo.experiments.stash)
         repo.experiments.stash.clear()
-    if exp_names:
-        for exp_name in exp_names:
-            _remove_exp_by_name(repo, exp_name)
+    if refs_or_revs:
+        for ref_or_rev in refs_or_revs:
+            _remove_exp_by_ref_or_rev(repo, ref_or_rev)
             removed += 1
     return removed
 
 
-def _get_exp_stash_index(repo, exp_name: str) -> Optional[int]:
+def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     stash_ref_infos = repo.experiments.stash_revs
-    for _, ref_info in stash_ref_infos.items():
-        if ref_info.name == exp_name:
+    print("*" * 100)
+    for rev, ref_info in stash_ref_infos.items():
+        print(rev, ref_info)
+        if ref_info.name == ref_or_rev:
+            return ref_info.index
+        if rev == ref_or_rev:
             return ref_info.index
     return None
 
@@ -67,14 +71,15 @@ def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
     return ref_infos[0]
 
 
-def _remove_exp_by_name(repo, exp_name: str):
-    ref_info = _get_exp_ref(repo, exp_name)
+def _remove_exp_by_ref_or_rev(repo, ref_or_rev: str):
+    ref_info = _get_exp_ref(repo, ref_or_rev)
     if ref_info is not None:
         remove_exp_refs(repo.scm, [ref_info])
     else:
-        stash_index = _get_exp_stash_index(repo, exp_name)
+        stash_index = _get_exp_stash_index(repo, ref_or_rev)
         if stash_index is None:
             raise InvalidArgumentError(
-                f"'{exp_name}' is not a valid experiment name"
+                f"'{ref_or_rev}' is neither a valid experiment reference"
+                " nor a queued experiment revision"
             )
         repo.experiments.stash.drop(stash_index)
