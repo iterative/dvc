@@ -252,10 +252,6 @@ class BaseExecutor(ABC):
 
     @classmethod
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
-        from dulwich.client import get_transport_and_path
-        from dulwich.porcelain import get_remote_repo
-
-        from dvc.scm.base import SCMError
 
         if git_remote == dvc.root_dir:
             logger.warning(
@@ -264,14 +260,7 @@ class BaseExecutor(ABC):
                 "will automatically be pushed to the default DVC remote "
                 "(if any) on each experiment commit."
             )
-        try:
-            _, location = get_remote_repo(dvc.scm.dulwich.repo, git_remote)
-            get_transport_and_path(location)
-        except Exception as exc:
-            raise SCMError(
-                f"'{git_remote}' is not a valid Git remote or URL"
-            ) from exc
-
+        dvc.scm.validate_git_repo(git_remote)
         dvc.cloud.get_remote_odb()
 
     @classmethod
