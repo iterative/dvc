@@ -8,6 +8,7 @@ from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
+from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm.base import InvalidRemoteSCMRepo
 
@@ -213,18 +214,18 @@ def test_auto_push_during_iterations(
     local_remote,
     use_url,
     monkeypatch,
+    mocker,
     clear_env,
 ):
     # set up remote repo
     remote = git_upstream.url if use_url else git_upstream.remote
     git_upstream.scm.fetch_refspecs(str(tmp_dir), ["master:master"])
     monkeypatch.setenv(DVC_EXP_GIT_REMOTE, remote)
+    auto_push_spy = mocker.spy(BaseExecutor, "_auto_push")
 
     # without auto push
     results = dvc.experiments.run(checkpoint_stage.addressing)
-    exp = first(results)
-    ref_info = first(exp_refs_by_rev(scm, exp))
-    assert git_upstream.scm.get_ref(str(ref_info)) is None
+    assert auto_push_spy.call_count == 0
 
     # add auto push
     monkeypatch.setenv(DVC_EXP_AUTO_PUSH, "true")
@@ -233,6 +234,9 @@ def test_auto_push_during_iterations(
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
     assert git_upstream.scm.get_ref(str(ref_info)) == exp
+
+    assert auto_push_spy.call_count == 2
+    assert auto_push_spy.call_args[0][2] == remote
 
     # check the data
     with git_upstream.dvc.config.edit() as conf:
