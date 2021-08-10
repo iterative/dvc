@@ -747,7 +747,7 @@ class CmdExperimentsRemove(CmdBase):
     def run(self):
 
         self.repo.experiments.remove(
-            exp_names=self.args.experiment, queue=self.args.queue
+            refs_or_revs=self.args.experiment, queue=self.args.queue
         )
 
         return 0
