@@ -126,3 +126,17 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"
+
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
+    ):
+        import shutil
+
+        from dvc.progress import Tqdm
+
+        with open(to_file, "wb+") as to_fobj:
+            with Tqdm.wrapattr(
+                to_fobj, "write", desc=name, disable=no_progress_bar
+            ) as wrapped:
+                with self.open(from_info, "rb", **kwargs) as from_fobj:
+                    shutil.copyfileobj(from_fobj, wrapped)

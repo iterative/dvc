@@ -80,7 +80,7 @@ class CmdDataStatus(CmdDataBase):
                 return 0
 
             # additional hints for the user
-            if not self.repo.stages:
+            if not self.repo.index.stages:
                 ui.write(self.EMPTY_PROJECT_MSG)
             elif self.args.cloud or self.args.remote:
                 remote = self.args.remote or self.repo.config["core"].get(

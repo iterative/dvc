@@ -81,18 +81,15 @@ def dict_filter(d, exclude=()):
     """
     Exclude specified keys from a nested dict
     """
+    if not exclude or not isinstance(d, (list, dict)):
+        return d
 
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
-    if isinstance(d, dict):
-        return {
-            k: dict_filter(v, exclude)
-            for k, v in d.items()
-            if k not in exclude
-        }
-
-    return d
+    return {
+        k: dict_filter(v, exclude) for k, v in d.items() if k not in exclude
+    }
 
 
 def dict_hash(d, typ, exclude=()):

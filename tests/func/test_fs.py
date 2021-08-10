@@ -301,7 +301,9 @@ def test_fs_ls(dvc, cloud):
     fs = cls(**config)
     path_info /= "directory"
 
-    assert {os.path.basename(file_key) for file_key in fs.ls(path_info)} == {
+    assert {
+        os.path.basename(file_key.rstrip("/")) for file_key in fs.ls(path_info)
+    } == {
         "foo",
         "bar",
         "baz",
@@ -309,7 +311,7 @@ def test_fs_ls(dvc, cloud):
     }
     assert set(fs.ls(path_info / "empty")) == set()
     assert {
-        (detail["type"], os.path.basename(detail["name"]))
+        (detail["type"], os.path.basename(detail["name"].rstrip("/")))
         for detail in fs.ls(path_info / "baz", detail=True)
     } == {("file", "quux"), ("directory", "egg")}
 

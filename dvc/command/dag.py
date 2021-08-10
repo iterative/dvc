@@ -36,18 +36,20 @@ def _collect_targets(repo, target, outs):
         return [stage.addressing for stage, _ in pairs]
 
     targets = []
+
+    outs_trie = repo.index.outs_trie
     for stage, info in pairs:
         if not info:
             targets.extend([str(out) for out in stage.outs])
             continue
 
-        for out in repo.outs_trie.itervalues(prefix=info.parts):  # noqa: B301
+        for out in outs_trie.itervalues(prefix=info.parts):  # noqa: B301
             targets.extend(str(out))
 
     return targets
 
 
-def _transform(repo, outs):
+def _transform(index, outs):
     import networkx as nx
 
     from dvc.stage import Stage
@@ -55,7 +57,7 @@ def _transform(repo, outs):
     def _relabel(node) -> str:
         return node.addressing if isinstance(node, Stage) else str(node)
 
-    G = repo.outs_graph if outs else repo.graph
+    G = index.outs_graph if outs else index.graph
     return nx.relabel_nodes(G, _relabel, copy=True)
 
 
@@ -85,7 +87,7 @@ def _filter(G, targets, full):
 
 def _build(repo, target=None, full=False, outs=False):
     targets = _collect_targets(repo, target, outs)
-    G = _transform(repo, outs)
+    G = _transform(repo.index, outs)
     return _filter(G, targets, full)
 
 

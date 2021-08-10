@@ -147,7 +147,7 @@ def remove(path):
             raise
 
 
-def path_isin(child: "StrPath", parent: "StrPath"):
+def path_isin(child: "StrPath", parent: "StrPath") -> bool:
     """Check if given `child` path is inside `parent`."""
 
     def normalize_path(path) -> str:

@@ -453,19 +453,20 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
-    ):
-        import shutil
+    def _download(self, from_info, to_file, **kwargs):
+        fs, dvc_fs = self._get_fs_pair(from_info)
+        try:
+            fs._download(  # pylint: disable=protected-access
+                from_info, to_file, **kwargs
+            )
+            return
+        except FileNotFoundError:
+            if not dvc_fs:
+                raise
 
-        from dvc.progress import Tqdm
-
-        with open(to_file, "wb+") as to_fobj:
-            with Tqdm.wrapattr(
-                to_fobj, "write", desc=name, disable=no_progress_bar
-            ) as wrapped:
-                with self.open(from_info, "rb", **kwargs) as from_fobj:
-                    shutil.copyfileobj(from_fobj, wrapped)
+        dvc_fs._download(  # pylint: disable=protected-access
+            from_info, to_file, **kwargs
+        )
 
     def metadata(self, path):
         abspath = os.path.abspath(path)

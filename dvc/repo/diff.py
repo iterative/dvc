@@ -142,21 +142,20 @@ def _output_paths(repo, repo_fs, targets):
             )[1].hash_info.value
         return output.hash_info.value
 
-    for stage in repo.stages:
-        for output in stage.outs:
-            if _exists(output):
-                yield_output = targets is None or any(
-                    output.path_info.isin_or_eq(target) for target in targets
-                )
+    for output in repo.index.outs:
+        if _exists(output):
+            yield_output = targets is None or any(
+                output.path_info.isin_or_eq(target) for target in targets
+            )
 
-                if yield_output:
-                    yield _to_path(output), _to_checksum(output)
+            if yield_output:
+                yield _to_path(output), _to_checksum(output)
 
-                if output.is_dir_checksum and (
-                    yield_output
-                    or any(target.isin(output.path_info) for target in targets)
-                ):
-                    yield from _dir_output_paths(repo_fs, output, targets)
+            if output.is_dir_checksum and (
+                yield_output
+                or any(target.isin(output.path_info) for target in targets)
+            ):
+                yield from _dir_output_paths(repo_fs, output, targets)
 
 
 def _dir_output_paths(repo_fs, output, targets=None):
