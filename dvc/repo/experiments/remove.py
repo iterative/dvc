@@ -7,7 +7,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import exp_refs, exp_refs_by_name, remove_exp_refs
+from .utils import exp_refs_by_baseline, exp_refs_by_name, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,8 @@ def remove(repo, exp_names=None, queue=False, workspace=False, **kwargs):
         removed += len(repo.experiments.stash)
         repo.experiments.stash.clear()
     if workspace:
-        ref_infos = list(exp_refs(repo.scm))
+        head = repo.scm.get_ref("HEAD")
+        ref_infos = list(exp_refs_by_baseline(repo.scm, head))
         remove_exp_refs(repo.scm, ref_infos)
         removed += len(ref_infos)
     if exp_names:

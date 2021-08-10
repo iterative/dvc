@@ -72,3 +72,22 @@ def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert rev3 in dvc.experiments.stash_revs
     assert scm.get_ref(str(ref_info1)) is None
     assert scm.get_ref(str(ref_info2)) is not None
+
+
+def test_remove_workspace(tmp_dir, scm, dvc, exp_stage):
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    exp = first(results)
+    ref_info1 = first(exp_refs_by_rev(scm, exp))
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("update baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp = first(results)
+    ref_info2 = first(exp_refs_by_rev(scm, exp))
+    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
+
+    removed = dvc.experiments.remove(workspace=True)
+    assert removed == 2
+    assert len(dvc.experiments.stash) == 0
+    assert scm.get_ref(str(ref_info2)) is None
+    assert scm.get_ref(str(ref_info1)) is not None
