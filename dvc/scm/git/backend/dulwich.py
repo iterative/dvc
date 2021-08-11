@@ -654,5 +654,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             client, path = get_transport_and_path(location)
         except Exception as exc:
             raise InvalidRemoteSCMRepo(url) from exc
-        if isinstance(client, LocalGitClient) and not os.path.exists(os.path.join("", path)):
+        if isinstance(client, LocalGitClient) and not os.path.exists(
+            os.path.join("", path)
+        ):
             raise InvalidRemoteSCMRepo(url)
