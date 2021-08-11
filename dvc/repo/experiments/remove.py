@@ -27,10 +27,7 @@ def remove(repo, exp_names=None, queue=False, **kwargs):
         remained = _remove_queued_exps(repo, remained)
         if remained:
             logger.warning(
-                "'{}' is neither a valid experiment reference"
-                " nor a revision of queued experiment".format(
-                    ";".join(remained)
-                )
+                "'{}' is not a valid experiment".format(";".join(remained))
             )
         removed += len(exp_names) - len(remained)
     return removed
@@ -63,8 +60,6 @@ def _get_exp_ref(repo, exp_name: str) -> Optional[ExpRefInfo]:
 
 
 def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
-    if len(ref_infos) == 0:
-        return None
     if len(ref_infos) > 1:
         for info in ref_infos:
             if info.baseline_sha == cur_rev:

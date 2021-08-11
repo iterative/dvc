@@ -9,10 +9,7 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
     ref_info = first(exp_refs_by_rev(scm, exp))
 
     assert dvc.experiments.remove(["non-exist"]) == 0
-    assert (
-        "'non-exist' is neither a valid experiment "
-        "reference nor a revision of queued experiment"
-    ) in caplog.text
+    assert ("'non-exist' is not a valid experiment") in caplog.text
 
     removed = dvc.experiments.remove([str(ref_info)])
     assert removed == 1
