@@ -619,5 +619,5 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Merge failed") from exc
         return None
 
-    def validate_git_repo(self, url: str):
+    def validate_git_remote(self, url: str):
         raise NotImplementedError

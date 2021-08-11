@@ -645,7 +645,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     ) -> Optional[str]:
         raise NotImplementedError
 
-    def validate_git_repo(self, url: str):
+    def validate_git_remote(self, url: str):
         from dulwich.client import LocalGitClient, get_transport_and_path
         from dulwich.porcelain import get_remote_repo
 

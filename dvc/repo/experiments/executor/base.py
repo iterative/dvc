@@ -260,7 +260,7 @@ class BaseExecutor(ABC):
                 "will automatically be pushed to the default DVC remote "
                 "(if any) on each experiment commit."
             )
-        dvc.scm.validate_git_repo(git_remote)
+        dvc.scm.validate_git_remote(git_remote)
         dvc.cloud.get_remote_odb()
 
     @classmethod

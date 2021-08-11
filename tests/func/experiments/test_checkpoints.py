@@ -238,22 +238,6 @@ def test_auto_push_during_iterations(
     assert auto_push_spy.call_count == 2
     assert auto_push_spy.call_args[0][2] == remote
 
-    # check the data
-    with git_upstream.dvc.config.edit() as conf:
-        conf["remote"]["local"] = local_remote.config
-        conf["core"]["remote"] = "local"
-
-    git_upstream.dvc.experiments.apply(ref_info.name)
-    git_upstream.dvc.experiments.apply(exp)
-    git_upstream.dvc.pull()
-    assert (git_upstream / "foo").read_text() == "4"
-
-    # resume the remote checkpoint
-    monkeypatch.delenv(DVC_EXP_AUTO_PUSH, raising=False)
-    with git_upstream.chdir():
-        git_upstream.dvc.experiments.run(checkpoint_stage.addressing)
-    assert (git_upstream / "foo").read_text() == "6"
-
 
 def test_auto_push_error_url(
     dvc, scm, checkpoint_stage, local_remote, monkeypatch, clear_env
