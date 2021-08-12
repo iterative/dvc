@@ -59,7 +59,7 @@ class DataCloud:
         from dvc.objects.db import get_odb
 
         cls, config, path_info = get_cloud_fs(self.repo, name=name)
-        config["tmp_dir"] = self.repo.tmp_dir
+        config["tmp_dir"] = self.repo.index_db_dir
         return get_odb(cls(**config), path_info, **config)
 
     def push(
