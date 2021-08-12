@@ -1,5 +1,7 @@
+import pytest
 from funcy import first
 
+from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.utils import exp_refs_by_rev
 
 
@@ -14,8 +16,8 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
         ref_info = first(exp_refs_by_rev(scm, first(results)))
         ref_list.append(str(ref_info))
 
-    assert dvc.experiments.remove(ref_list[:2] + ["non-exist"]) == 2
-    assert ("'non-exist' is not a valid experiment") in caplog.text
+    with pytest.raises(InvalidArgumentError):
+        assert dvc.experiments.remove(ref_list[:2] + ["non-exist"])
     assert scm.get_ref(str(ref_list[0])) is None
     assert scm.get_ref(str(ref_list[1])) is None
     assert scm.get_ref(str(ref_list[2])) is not None

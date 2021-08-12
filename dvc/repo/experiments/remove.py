@@ -26,7 +26,7 @@ def remove(repo, exp_names=None, queue=False, **kwargs):
         remained = _remove_commited_exps(repo, exp_names)
         remained = _remove_queued_exps(repo, remained)
         if remained:
-            logger.warning(
+            raise InvalidArgumentError(
                 "'{}' is not a valid experiment".format(";".join(remained))
             )
         removed += len(exp_names) - len(remained)
