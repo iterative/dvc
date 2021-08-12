@@ -41,6 +41,12 @@ class MergeConflictError(SCMError):
     pass
 
 
+class InvalidRemoteSCMRepo(SCMError):
+    def __init__(self, url: str):
+        msg = f"'{url}' is not a valid Git remote or URL"
+        super().__init__(msg)
+
+
 class Base:
     """Base class for source control management driver implementations."""
 

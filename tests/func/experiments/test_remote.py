@@ -7,24 +7,6 @@ from dvc.exceptions import DvcException
 from dvc.repo.experiments.utils import exp_refs_by_rev
 
 
-@pytest.fixture
-def git_upstream(tmp_dir, erepo_dir):
-    url = f"file://{erepo_dir.resolve().as_posix()}"
-    tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
-    erepo_dir.url = url
-    return erepo_dir
-
-
-@pytest.fixture
-def git_downstream(tmp_dir, erepo_dir):
-    url = f"file://{tmp_dir.resolve().as_posix()}"
-    erepo_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
-    erepo_dir.url = url
-    return erepo_dir
-
-
 @pytest.mark.parametrize("use_url", [True, False])
 def test_push(tmp_dir, scm, dvc, git_upstream, exp_stage, use_url):
     from dvc.exceptions import InvalidArgumentError

@@ -347,3 +347,7 @@ class BaseGitBackend(ABC):
 
         Returns revision of the merge commit or None if no commit was made.
         """
+
+    @abstractmethod
+    def validate_git_remote(self, url: str):
+        """Verify that url is a valid git URL or remote name."""
