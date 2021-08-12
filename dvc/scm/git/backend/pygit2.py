@@ -575,3 +575,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 self.repo.state_cleanup()
                 self.repo.index.write()
         return None
+
+    def validate_git_remote(self, url: str):
+        raise NotImplementedError

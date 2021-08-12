@@ -618,3 +618,6 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 raise MergeConflictError("Merge contained conflicts") from exc
             raise SCMError("Merge failed") from exc
         return None
+
+    def validate_git_remote(self, url: str):
+        raise NotImplementedError

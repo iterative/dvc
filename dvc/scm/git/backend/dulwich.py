@@ -20,7 +20,7 @@ from funcy import cached_property
 
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
-from dvc.scm.base import SCMError
+from dvc.scm.base import InvalidRemoteSCMRepo, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
@@ -348,24 +348,26 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
         from dulwich.client import get_transport_and_path
+        from dulwich.errors import NotGitRepository
         from dulwich.porcelain import get_remote_repo
 
         try:
             _remote, location = get_remote_repo(self.repo, url)
             client, path = get_transport_and_path(location)
         except Exception as exc:
-            raise SCMError(
-                f"'{url}' is not a valid Git remote or URL"
-            ) from exc
+            raise InvalidRemoteSCMRepo(url) from exc
 
-        if base:
-            yield from (
-                os.fsdecode(ref)
-                for ref in client.get_refs(path)
-                if ref.startswith(os.fsencode(base))
-            )
-        else:
-            yield from (os.fsdecode(ref) for ref in client.get_refs(path))
+        try:
+            if base:
+                yield from (
+                    os.fsdecode(ref)
+                    for ref in client.get_refs(path)
+                    if ref.startswith(os.fsencode(base))
+                )
+            else:
+                yield from (os.fsdecode(ref) for ref in client.get_refs(path))
+        except NotGitRepository as exc:
+            raise InvalidRemoteSCMRepo(url) from exc
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
@@ -642,3 +644,17 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         squash: bool = False,
     ) -> Optional[str]:
         raise NotImplementedError
+
+    def validate_git_remote(self, url: str):
+        from dulwich.client import LocalGitClient, get_transport_and_path
+        from dulwich.porcelain import get_remote_repo
+
+        try:
+            _, location = get_remote_repo(self.repo, url)
+            client, path = get_transport_and_path(location)
+        except Exception as exc:
+            raise InvalidRemoteSCMRepo(url) from exc
+        if isinstance(client, LocalGitClient) and not os.path.exists(
+            os.path.join("", path)
+        ):
+            raise InvalidRemoteSCMRepo(url)
