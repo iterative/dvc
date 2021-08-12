@@ -1,10 +1,10 @@
-import pytest
 import os
+
+import pytest
 
 from dvc.fs import get_cloud_fs
 from dvc.fs.gs import GSFileSystem
 from dvc.fs.s3 import S3FileSystem
-
 from dvc.objects.db import get_index
 
 

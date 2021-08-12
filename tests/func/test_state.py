@@ -80,6 +80,7 @@ def test_get_unused_links(tmp_dir, dvc):
         == {"bar"}
     )
 
+
 def test_state_dir_config(dvc):
     assert dvc.state.tmp_dir == dvc.tmp_dir
 
