@@ -103,8 +103,7 @@ azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
 oss = ["ossfs==2021.7.5"]
 ssh = ["sshfs>=2021.7.1"]
 
-# Remove the env marker if/when pyarrow is available for Python3.9
-hdfs = ["pyarrow>=2.0.0"]
+hdfs = ["pyarrow>=2.0.0; python_version < '3.10'"]
 webhdfs = ["hdfs==2.5.8"]
 webdav = ["webdav4>=0.9.0"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
