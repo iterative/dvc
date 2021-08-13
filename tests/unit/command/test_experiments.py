@@ -252,8 +252,18 @@ def test_experiments_pull(dvc, scm, mocker):
     )
 
 
-def test_experiments_remove(dvc, scm, mocker):
-    cli_args = parse_args(["experiments", "remove", "--queue"])
+@pytest.mark.parametrize(
+    "queue,workspace,all_baseline",
+    [(True, False, False), (False, True, False), (False, False, True)],
+)
+def test_experiments_remove(dvc, scm, mocker, queue, workspace, all_baseline):
+    if queue:
+        args = "--queue"
+    if workspace:
+        args = "--workspace"
+    if all_baseline:
+        args = "--all"
+    cli_args = parse_args(["experiments", "remove", args])
     assert cli_args.func == CmdExperimentsRemove
 
     cmd = cli_args.func(cli_args)
@@ -261,17 +271,9 @@ def test_experiments_remove(dvc, scm, mocker):
 
     assert cmd.run() == 0
     m.assert_called_once_with(
-        cmd.repo, exp_names=[], queue=True, workspace=False
-    )
-
-    cli_args = parse_args(["experiments", "remove", "--workspace"])
-    assert cli_args.func == CmdExperimentsRemove
-
-    cmd = cli_args.func(cli_args)
-    m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
-
-    assert cmd.run() == 0
-
-    m.assert_called_once_with(
-        cmd.repo, exp_names=[], queue=False, workspace=True
+        cmd.repo,
+        exp_names=[],
+        queue=queue,
+        workspace=workspace,
+        all_baseline=all_baseline,
     )

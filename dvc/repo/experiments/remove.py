@@ -7,26 +7,37 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import exp_refs_by_baseline, exp_refs_by_name, remove_exp_refs
+from .utils import (
+    exp_refs,
+    exp_refs_by_baseline,
+    exp_refs_by_name,
+    remove_exp_refs,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def remove(repo, exp_names=None, queue=False, workspace=False, **kwargs):
-    if not any([exp_names, queue, workspace]):
+def remove(
+    repo,
+    exp_names=None,
+    queue=False,
+    workspace=False,
+    all_baseline=False,
+    **kwargs,
+):
+    if not any([exp_names, queue, workspace, all_baseline]):
         return 0
 
     removed = 0
-    if queue or workspace:
-        removed += len(repo.experiments.stash)
-        repo.experiments.stash.clear()
+    if queue:
+        removed += _clear_workspace_stash(repo)
     if workspace:
-        head = repo.scm.get_ref("HEAD")
-        ref_infos = list(exp_refs_by_baseline(repo.scm, head))
-        remove_exp_refs(repo.scm, ref_infos)
-        removed += len(ref_infos)
+        removed += _clear_workspace(repo)
+    if all_baseline:
+        removed += _clear_all_baseline(repo)
+
     if exp_names:
         remained = _remove_commited_exps(repo, exp_names)
         remained = _remove_queued_exps(repo, remained)
@@ -36,6 +47,33 @@ def remove(repo, exp_names=None, queue=False, workspace=False, **kwargs):
             )
         removed += len(exp_names) - len(remained)
     return removed
+
+
+def _clear_workspace_stash(repo):
+    removed = len(repo.experiments.stash)
+    repo.experiments.stash.clear()
+    return removed
+
+
+def _clear_workspace(repo):
+    head = repo.scm.get_ref("HEAD")
+    ref_infos = list(exp_refs_by_baseline(repo.scm, head))
+    remove_exp_refs(repo.scm, ref_infos)
+    stashed = 0
+    stash_revs = repo.experiments.stash_revs
+    for _, ref_info in stash_revs.items():
+        if head == ref_info.baseline_rev:
+            repo.experiments.stash.drop(ref_info.index)
+            stashed += 1
+    return stashed + len(ref_infos)
+
+
+def _clear_all_baseline(repo):
+    ref_infos = list(exp_refs(repo.scm))
+    remove_exp_refs(repo.scm, ref_infos)
+    removed = len(repo.experiments.stash)
+    repo.experiments.stash.clear()
+    return removed + len(ref_infos)
 
 
 def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
@@ -58,9 +96,9 @@ def _get_exp_ref(repo, exp_name: str) -> Optional[ExpRefInfo]:
         if repo.scm.get_ref(exp_name):
             return ExpRefInfo.from_ref(exp_name)
     else:
-        exp_refs = list(exp_refs_by_name(repo.scm, exp_name))
-        if exp_refs:
-            return _get_ref(exp_refs, exp_name, cur_rev)
+        exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))
+        if exp_ref_list:
+            return _get_ref(exp_ref_list, exp_name, cur_rev)
     return None
 
 

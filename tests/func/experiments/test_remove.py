@@ -76,18 +76,39 @@ def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
 
 def test_remove_workspace(tmp_dir, scm, dvc, exp_stage):
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
-    exp = first(results)
-    ref_info1 = first(exp_refs_by_rev(scm, exp))
+    ref_info1 = first(exp_refs_by_rev(scm, first(results)))
+    results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], queue=True
+    )
+    rev1 = first(results)
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("update baseline")
 
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
-    exp = first(results)
-    ref_info2 = first(exp_refs_by_rev(scm, exp))
-    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    ref_info2 = first(exp_refs_by_rev(scm, first(results)))
+    dvc.experiments.run(exp_stage.addressing, params=["foo=4"], queue=True)
 
     removed = dvc.experiments.remove(workspace=True)
     assert removed == 2
-    assert len(dvc.experiments.stash) == 0
+    assert len(dvc.experiments.stash) == 1
+    assert rev1 in dvc.experiments.stash_revs
     assert scm.get_ref(str(ref_info2)) is None
     assert scm.get_ref(str(ref_info1)) is not None
+
+
+def test_remove_all(tmp_dir, scm, dvc, exp_stage):
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    ref_info1 = first(exp_refs_by_rev(scm, first(results)))
+    dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("update baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    ref_info2 = first(exp_refs_by_rev(scm, first(results)))
+    dvc.experiments.run(exp_stage.addressing, params=["foo=4"], queue=True)
+
+    removed = dvc.experiments.remove(all_baseline=True)
+    assert removed == 4
+    assert len(dvc.experiments.stash) == 0
+    assert scm.get_ref(str(ref_info2)) is None
+    assert scm.get_ref(str(ref_info1)) is None
