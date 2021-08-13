@@ -41,16 +41,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
-        pyv: ["3.6", "3.7", "3.8", "3.9", "3.10.0-rc.1"]
-# macos 11.0 workers take too long to start up
-#        include:
-#          - os: "macos-11.0"
-#            pyv: "3.9"
+        pyv: ["3.6", "3.7", "3.8", "3.9"]
+        include:
+          - os: "macos-10.15"
+            pyv: "3.10.0-rc.1"
         exclude:
           - os: macos-10.15
             pyv: "3.9"
-          - os: windows-2019
-            pyv: "3.10.0-rc.1"
+          - os: macos-10.15
+            pyv: "3.7"
 
     steps:
     - uses: actions/checkout@v2.3.4
@@ -70,10 +69,6 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: install libgit2 on Python3.10 in Linux
-      if: matrix.pyv == '3.10.0-rc.1' && matrix.os == 'ubuntu-18.04'
-      run: |
-        sudo apt install libgit2-dev
     - name: install libgit2 on Python3.10 in macOS
       if: matrix.pyv == '3.10.0-rc.1' && matrix.os == 'macos-10.15'
       run: |
