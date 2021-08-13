@@ -70,6 +70,10 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+    - name: install libgit2 on Python3.10
+      if: matrix.pyv == '3.10.0-rc.1'
+      run:
+        - sudo apt install libgit2
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
