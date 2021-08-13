@@ -49,6 +49,8 @@ jobs:
         exclude:
           - os: macos-10.15
             pyv: "3.9"
+          - os: windows-2019
+            pyv: "3.10.0-rc.1"
 
     steps:
     - uses: actions/checkout@v2.3.4
@@ -71,7 +73,7 @@ jobs:
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
-        pip install wheel
+        pip install --upgrade pip setuptools wheel
         pip install -e ".[all,tests]"
     - name: install temporary dependencies
       run: |

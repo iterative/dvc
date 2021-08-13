@@ -71,7 +71,7 @@ install_requires = [
     "zc.lockfile>=1.2.1",
     "flufl.lock>=3.2,<4",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
-    "pywin32>=225; sys_platform == 'win32'",
+    "pywin32>=225; sys_platform == 'win32' and python_version < '3.10'",
     "networkx~=2.5",
     "psutil>=5.8.0",
     "pydot>=1.2.4",
@@ -99,7 +99,6 @@ gs = ["gcsfs==2021.7.0"]
 gdrive = ["pydrive2[fsspec]>=1.9.0"]
 s3 = ["s3fs==2021.7.0", "aiobotocore[boto3]>1.0.1"]
 azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
-# https://github.com/Legrandin/pycryptodome/issues/465
 oss = ["ossfs==2021.7.5"]
 ssh = ["sshfs>=2021.7.1"]
 
