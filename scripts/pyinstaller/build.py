@@ -20,3 +20,11 @@ check_call(
     cwd=path,
     stderr=STDOUT,
 )
+
+check_call(
+    [
+        path / "dist" / "dvc" / "dvc",
+        "doctor",
+    ],
+    stderr=STDOUT,
+)
