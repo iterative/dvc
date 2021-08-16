@@ -78,7 +78,7 @@ def _clear_workspace(repo):
     return stashed + len(ref_infos)
 
 
-def _clear_all_baseline(repo):
+def _clear_all(repo):
     ref_infos = list(exp_refs(repo.scm))
     remove_exp_refs(repo.scm, ref_infos)
     removed = len(repo.experiments.stash)
