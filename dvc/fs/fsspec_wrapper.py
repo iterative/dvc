@@ -217,7 +217,7 @@ class ObjectFSWrapper(FSSpecWrapper):
             files = self.fs.find(path, detail=detail)
 
         if detail:
-            files = files.values()
+            files = list(files.values())
 
         # When calling find() on a file, it returns the same file in a list.
         # For object-based storages, the same behavior applies to empty

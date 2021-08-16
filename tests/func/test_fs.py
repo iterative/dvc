@@ -335,6 +335,10 @@ def test_fs_find(dvc, cloud):
     assert {
         os.path.basename(file_key) for file_key in fs.find(path_info / "data")
     } == {"foo", "baz", "quux"}
+    assert {
+        os.path.basename(file_info["name"])
+        for file_info in fs.find(path_info / "data", detail=True)
+    } == {"foo", "baz", "quux"}
 
 
 @pytest.mark.parametrize(
