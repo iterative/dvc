@@ -7,9 +7,9 @@ PAGE_HTML = """<!DOCTYPE html>
 <html>
 <head>
     <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
 </head>
 <body>
     {plot_divs}
