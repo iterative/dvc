@@ -55,16 +55,26 @@ def _clear_stash(repo):
     return removed
 
 
+def _clear_workspack_stash(repo, head):
+    stashed = 0
+    stash_revs = repo.experiments.stash_revs
+    remove_index = []
+    for _, ref_info in stash_revs.items():
+        if head == ref_info.baseline_rev:
+            remove_index.append(ref_info.index)
+
+    for index in sorted(remove_index, reverse=True):
+        repo.experiments.stash.drop(index)
+        stashed += 1
+    return stashed
+
+
 def _clear_workspace(repo):
     head = repo.scm.get_ref("HEAD")
     ref_infos = list(exp_refs_by_baseline(repo.scm, head))
     remove_exp_refs(repo.scm, ref_infos)
-    stashed = 0
-    stash_revs = repo.experiments.stash_revs
-    for _, ref_info in stash_revs.items():
-        if head == ref_info.baseline_rev:
-            repo.experiments.stash.drop(ref_info.index)
-            stashed += 1
+    stashed = _clear_workspack_stash(repo, head)
+
     return stashed + len(ref_infos)
 
 

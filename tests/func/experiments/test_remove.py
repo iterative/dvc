@@ -87,9 +87,10 @@ def test_remove_workspace(tmp_dir, scm, dvc, exp_stage):
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
     ref_info2 = first(exp_refs_by_rev(scm, first(results)))
     dvc.experiments.run(exp_stage.addressing, params=["foo=4"], queue=True)
+    dvc.experiments.run(exp_stage.addressing, params=["foo=5"], queue=True)
 
     removed = dvc.experiments.remove(workspace=True)
-    assert removed == 2
+    assert removed == 3
     assert len(dvc.experiments.stash) == 1
     assert rev1 in dvc.experiments.stash_revs
     assert scm.get_ref(str(ref_info2)) is None
