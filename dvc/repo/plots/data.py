@@ -1,4 +1,3 @@
-import os
 from copy import copy
 
 from funcy import first
@@ -32,15 +31,7 @@ class PlotParsingError(ParseError):
 
 
 def plot_data(filename, revision, content):
-    _, extension = os.path.splitext(filename.lower())
-    if extension in (".json", ".yaml"):
-        # TODO DO SOMETHING ABOUT THAT
-        return DictData(filename, revision, content)
-    if extension in (".csv", ".tsv"):
-        return ListData(filename, revision, content)
-    if extension in (".jpeg", ".jpg", ".gif", ".png"):
-        return BinaryData(filename, revision, content)
-    raise PlotMetricTypeError(filename)
+    return PlotData(filename, revision, content)
 
 
 def _filter_fields(data_points, filename, revision, fields=None, **kwargs):
@@ -116,10 +107,8 @@ class PlotData:
         self.revision = revision
         self.content = content
 
-
-class StructuredData(PlotData):
     def _processors(self):
-        return [_filter_fields, _append_index, _append_revision]
+        return [_find_data, _filter_fields, _append_index, _append_revision]
 
     def to_datapoints(self, **kwargs):
         data = self.content
@@ -129,19 +118,3 @@ class StructuredData(PlotData):
                 data, filename=self.filename, revision=self.revision, **kwargs
             )
         return data
-
-
-class DictData(StructuredData):
-    # For files usually parsed as dicts: eg JSON, Yaml
-    def _processors(self):
-        parent_processors = super()._processors()
-        return [_find_data] + parent_processors
-
-
-class ListData(StructuredData):
-    # For files parsed as list: CSV, TSV
-    pass
-
-
-class BinaryData(PlotData):
-    pass

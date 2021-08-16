@@ -3,7 +3,9 @@ from typing import Dict, List
 
 import pytest
 
-from dvc.repo.plots.data import DictData, _lists
+from dvc.repo.plots.data import PlotData, _lists
+
+# TODO do we need those tests?
 
 
 @pytest.mark.parametrize(
@@ -28,7 +30,7 @@ def test_find_data_in_dict(tmp_dir):
     m2 = [{"x": 1}, {"x": 2}]
     dmetric = OrderedDict([("t1", m1), ("t2", m2)])
 
-    plot_data = DictData("-", "revision", dmetric)
+    plot_data = PlotData("-", "revision", dmetric)
 
     def points_with(datapoints: List, additional_info: Dict):
         for datapoint in datapoints:

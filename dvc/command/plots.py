@@ -66,12 +66,6 @@ class CmdPlots(CmdBase):
             url = index_path.as_uri()
             ui.write(url)
 
-            # TODO show first vega plot
-            # if self.args.show_vega:
-            #     target = self.args.targets[0]
-            #     ui.write(plots[target])
-            #     return 0
-
             if self.args.open:
                 import webbrowser
 
