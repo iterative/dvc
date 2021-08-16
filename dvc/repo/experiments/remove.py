@@ -49,7 +49,7 @@ def remove(
     return removed
 
 
-def _clear_workspace_stash(repo):
+def _clear_stash(repo):
     removed = len(repo.experiments.stash)
     repo.experiments.stash.clear()
     return removed
