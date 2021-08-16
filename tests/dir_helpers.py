@@ -47,6 +47,7 @@ from global repo template to creating everything inplace, which:
 
 import os
 import pathlib
+import sys
 from contextlib import contextmanager
 from textwrap import dedent
 
@@ -81,12 +82,17 @@ class TmpDir(pathlib.Path):
             cls = (  # pylint: disable=self-cls-assignment
                 WindowsTmpDir if os.name == "nt" else PosixTmpDir
             )
-        self = cls._from_parts(args, init=False)
+        # init parameter and `_init` method has been removed in Python 3.10.
+        kw = {"init": False} if sys.version_info < (3, 10) else {}
+        self = cls._from_parts(  # pylint: disable=unexpected-keyword-arg
+            args, **kw
+        )
         if not self._flavour.is_supported:
             raise NotImplementedError(
                 f"cannot instantiate {cls.__name__!r} on your system"
             )
-        self._init()
+        if sys.version_info < (3, 10):
+            self._init()  # pylint: disable=no-member
         return self
 
     def init(self, *, scm=False, dvc=False, subdir=False):
