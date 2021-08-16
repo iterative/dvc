@@ -750,7 +750,7 @@ class CmdExperimentsRemove(CmdBase):
             exp_names=self.args.experiment,
             queue=self.args.queue,
             workspace=self.args.workspace,
-            all_baseline=self.args.all,
+            clear_all=self.args.all,
         )
 
         return 0
@@ -1245,11 +1245,13 @@ def add_parser(subparsers, parent_parser):
         "--queue", action="store_true", help="Remove all queued experiments."
     )
     remove_group.add_argument(
+        "-w",
         "--workspace",
         action="store_true",
         help="Remove all experiments based on current workspace.",
     )
     remove_group.add_argument(
+        "-A",
         "--all",
         action="store_true",
         help="Remove all experiments.",

@@ -107,7 +107,7 @@ def test_remove_all(tmp_dir, scm, dvc, exp_stage):
     ref_info2 = first(exp_refs_by_rev(scm, first(results)))
     dvc.experiments.run(exp_stage.addressing, params=["foo=4"], queue=True)
 
-    removed = dvc.experiments.remove(all_baseline=True)
+    removed = dvc.experiments.remove(clear_all=True)
     assert removed == 4
     assert len(dvc.experiments.stash) == 0
     assert scm.get_ref(str(ref_info2)) is None

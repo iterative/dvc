@@ -24,18 +24,18 @@ def remove(
     exp_names=None,
     queue=False,
     workspace=False,
-    all_baseline=False,
+    clear_all=False,
     **kwargs,
 ):
-    if not any([exp_names, queue, workspace, all_baseline]):
+    if not any([exp_names, queue, workspace, clear_all]):
         return 0
 
     removed = 0
     if queue:
-        removed += _clear_workspace_stash(repo)
+        removed += _clear_stash(repo)
     if workspace:
         removed += _clear_workspace(repo)
-    if all_baseline:
+    if clear_all:
         removed += _clear_all_baseline(repo)
 
     if exp_names:
