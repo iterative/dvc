@@ -36,7 +36,7 @@ def remove(
     if workspace:
         removed += _clear_workspace(repo)
     if clear_all:
-        removed += _clear_all_baseline(repo)
+        removed += _clear_all(repo)
 
     if exp_names:
         remained = _remove_commited_exps(repo, exp_names)
