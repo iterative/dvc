@@ -2,6 +2,8 @@ import json
 import logging
 import os
 
+from .env import DVC_ANALYTICS
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,9 +44,12 @@ def is_enabled():
     if env2bool("DVC_TEST"):
         return False
 
-    enabled = to_bool(
-        Config(validate=False).get("core", {}).get("analytics", "true")
-    )
+    enabled = env2bool(DVC_ANALYTICS, None)
+    if enabled is None:
+        enabled = to_bool(
+            Config(validate=False).get("core", {}).get("analytics", "true")
+        )
+
     logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
 
     return enabled
