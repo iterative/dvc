@@ -61,7 +61,8 @@ def fetch(
 
     for odb, obj_ids in sorted(
         used.items(),
-        key=lambda item: item[0] and item[0].fs.scheme == Schemes.MEMORY,
+        key=lambda item: item[0] is not None
+        and item[0].fs.scheme == Schemes.MEMORY,
     ):
         d, f = _fetch(
             self,
