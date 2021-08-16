@@ -350,6 +350,27 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
     assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
 
 
+def test_pull_external_dvc_imports_mixed(
+    tmp_dir, dvc, scm, erepo_dir, local_remote
+):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="first")
+        os.remove("foo")
+
+    # imported: foo
+    dvc.imp(os.fspath(erepo_dir), "foo")
+
+    # local-object: bar
+    tmp_dir.dvc_gen("bar", "bar")
+    dvc.push("bar")
+
+    clean(["foo", "bar"], dvc)
+
+    assert dvc.pull()["fetched"] == 2
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "bar").read_text() == "bar"
+
+
 def clean(outs, dvc=None):
     from tests.utils import clean_staging
 
