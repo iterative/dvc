@@ -1,9 +1,11 @@
-from copy import copy
+from copy import copy, deepcopy
 
 from funcy import first
 
 from dvc.exceptions import DvcException
-from dvc.utils.serialize import ParseError
+
+REVISION_FIELD = "rev"
+INDEX_FIELD = "step"
 
 
 class PlotMetricTypeError(DvcException):
@@ -20,18 +22,6 @@ class PlotDataStructureError(DvcException):
             "Plot data extraction failed. Please see "
             "https://man.dvc.org/plot for supported data formats."
         )
-
-
-class PlotParsingError(ParseError):
-    def __init__(self, path, revision):
-        self.path = path
-        self.revision = revision
-
-        super().__init__(path, f"revision: '{revision}'")
-
-
-def plot_data(filename, revision, content):
-    return PlotData(filename, revision, content)
 
 
 def _filter_fields(data_points, filename, revision, fields=None, **kwargs):
@@ -84,37 +74,30 @@ def _find_data(data, fields=None, **kwargs):
 
 
 def _append_index(data_points, append_index=False, **kwargs):
-    if not append_index or PlotData.INDEX_FIELD in first(data_points).keys():
+    if not append_index or INDEX_FIELD in first(data_points).keys():
         return data_points
 
     for index, data_point in enumerate(data_points):
-        data_point[PlotData.INDEX_FIELD] = index
+        data_point[INDEX_FIELD] = index
     return data_points
 
 
 def _append_revision(data_points, revision, **kwargs):
     for data_point in data_points:
-        data_point[PlotData.REVISION_FIELD] = revision
+        data_point[REVISION_FIELD] = revision
     return data_points
 
 
-class PlotData:
-    REVISION_FIELD = "rev"
-    INDEX_FIELD = "step"
+def to_datapoints(data, revision, filename, **kwargs):
+    result = deepcopy(data)
+    for processor in [
+        _find_data,
+        _filter_fields,
+        _append_index,
+        _append_revision,
+    ]:
+        result = processor(
+            result, revision=revision, filename=filename, **kwargs
+        )
 
-    def __init__(self, filename, revision, content, **kwargs):
-        self.filename = filename
-        self.revision = revision
-        self.content = content
-
-    def _processors(self):
-        return [_find_data, _filter_fields, _append_index, _append_revision]
-
-    def to_datapoints(self, **kwargs):
-        data = self.content
-
-        for data_proc in self._processors():
-            data = data_proc(
-                data, filename=self.filename, revision=self.revision, **kwargs
-            )
-        return data
+    return result

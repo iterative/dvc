@@ -36,7 +36,6 @@ class CmdPlots(CmdBase):
                 return 1
 
         try:
-            # TODO collect raw data and apply props later?
             plots_data = self._func(
                 targets=self.args.targets, props=self._props()
             )

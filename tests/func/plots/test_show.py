@@ -9,7 +9,11 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.repo.plots.data import PlotData, PlotMetricTypeError
+from dvc.repo.plots.data import (
+    INDEX_FIELD,
+    REVISION_FIELD,
+    PlotMetricTypeError,
+)
 from dvc.repo.plots.render import VegaRenderer
 from dvc.repo.plots.template import (
     BadTemplateError,
@@ -49,10 +53,10 @@ def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     plot_content = json.loads(plot_string)
     assert plot_content["title"] == "mytitle"
     assert plot_content["data"]["values"] == [
-        {"val": 2, PlotData.INDEX_FIELD: 0, "rev": "workspace"},
-        {"val": 3, PlotData.INDEX_FIELD: 1, "rev": "workspace"},
+        {"val": 2, INDEX_FIELD: 0, REVISION_FIELD: "workspace"},
+        {"val": 3, INDEX_FIELD: 1, REVISION_FIELD: "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "val"
     assert plot_content["encoding"]["x"]["title"] == "x_title"
     assert plot_content["encoding"]["y"]["title"] == "y_title"
@@ -74,20 +78,20 @@ def test_plot_csv_multiple_columns(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["data"]["values"] == [
         {
             "val": 2,
-            PlotData.INDEX_FIELD: 0,
-            "rev": "workspace",
+            INDEX_FIELD: 0,
+            REVISION_FIELD: "workspace",
             "first_val": 100,
             "second_val": 100,
         },
         {
             "val": 3,
-            PlotData.INDEX_FIELD: 1,
-            "rev": "workspace",
+            INDEX_FIELD: 1,
+            REVISION_FIELD: "workspace",
             "first_val": 200,
             "second_val": 300,
         },
     ]
-    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "val"
 
 
@@ -108,13 +112,13 @@ def test_plot_csv_choose_axes(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["data"]["values"] == [
         {
             "val": 2,
-            "rev": "workspace",
+            REVISION_FIELD: "workspace",
             "first_val": 100,
             "second_val": 100,
         },
         {
             "val": 3,
-            "rev": "workspace",
+            REVISION_FIELD: "workspace",
             "first_val": 200,
             "second_val": 300,
         },
@@ -140,8 +144,8 @@ def test_plot_confusion(tmp_dir, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"predicted": "B", "actual": "A", "rev": "workspace"},
-        {"predicted": "A", "actual": "A", "rev": "workspace"},
+        {"predicted": "B", "actual": "A", REVISION_FIELD: "workspace"},
+        {"predicted": "A", "actual": "A", REVISION_FIELD: "workspace"},
     ]
     assert plot_content["spec"]["transform"][0]["groupby"] == [
         "actual",
@@ -173,14 +177,17 @@ def test_plot_confusion_normalized(tmp_dir, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"predicted": "B", "actual": "A", "rev": "workspace"},
-        {"predicted": "A", "actual": "A", "rev": "workspace"},
+        {"predicted": "B", "actual": "A", REVISION_FIELD: "workspace"},
+        {"predicted": "A", "actual": "A", REVISION_FIELD: "workspace"},
     ]
     assert plot_content["spec"]["transform"][0]["groupby"] == [
         "actual",
         "predicted",
     ]
-    assert plot_content["spec"]["transform"][1]["groupby"] == ["rev", "actual"]
+    assert plot_content["spec"]["transform"][1]["groupby"] == [
+        REVISION_FIELD,
+        "actual",
+    ]
     assert plot_content["spec"]["encoding"]["x"]["field"] == "predicted"
     assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
 
@@ -212,14 +219,14 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"y": 5, PlotData.INDEX_FIELD: 0, "rev": "HEAD"},
-        {"y": 6, PlotData.INDEX_FIELD: 1, "rev": "HEAD"},
-        {"y": 3, PlotData.INDEX_FIELD: 0, "rev": "v2"},
-        {"y": 5, PlotData.INDEX_FIELD: 1, "rev": "v2"},
-        {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v1"},
-        {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v1"},
+        {"y": 5, INDEX_FIELD: 0, REVISION_FIELD: "HEAD"},
+        {"y": 6, INDEX_FIELD: 1, REVISION_FIELD: "HEAD"},
+        {"y": 3, INDEX_FIELD: 0, REVISION_FIELD: "v2"},
+        {"y": 5, INDEX_FIELD: 1, REVISION_FIELD: "v2"},
+        {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v1"},
+        {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v1"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "y"
 
 
@@ -239,10 +246,10 @@ def test_plot_even_if_metric_missing(
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v2"},
-        {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v2"},
+        {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v2"},
+        {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v2"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
     assert plot_content["encoding"]["y"]["field"] == "y"
 
 
@@ -274,8 +281,8 @@ def test_plot_even_if_metric_missing(
 # plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
 # plot_content = json.loads(plots["metric.json"])
 # assert plot_content["data"]["values"] == [
-#     {"y": 2, PlotData.INDEX_FIELD: 0, "rev": "v1"},
-#     {"y": 3, PlotData.INDEX_FIELD: 1, "rev": "v1"},
+#     {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v1"},
+#     {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v1"},
 # ]
 
 
@@ -290,8 +297,8 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"a": 1, "b": 2, "rev": "workspace"},
-        {"a": 2, "b": 3, "rev": "workspace"},
+        {"a": 1, "b": 2, REVISION_FIELD: "workspace"},
+        {"a": 2, "b": 3, REVISION_FIELD: "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "a"
     assert plot_content["encoding"]["y"]["field"] == "b"
@@ -355,8 +362,8 @@ def test_plot_choose_columns(
 
     plot_content = json.loads(plot_string)
     assert plot_content["data"]["values"] == [
-        {"b": 2, "c": 3, "rev": "workspace"},
-        {"b": 3, "c": 4, "rev": "workspace"},
+        {"b": 2, "c": 3, REVISION_FIELD: "workspace"},
+        {"b": 3, "c": 4, REVISION_FIELD: "workspace"},
     ]
     assert plot_content["encoding"]["x"]["field"] == "b"
     assert plot_content["encoding"]["y"]["field"] == "c"
@@ -378,10 +385,10 @@ def test_plot_choose_columns(
 #
 #     plot_content = json.loads(plot_string)
 #     assert plot_content["data"]["values"] == [
-#         {PlotData.INDEX_FIELD: 0, "b": 2, "rev": "workspace"},
-#         {PlotData.INDEX_FIELD: 1, "b": 3, "rev": "workspace"},
+#         {INDEX_FIELD: 0, "b": 2, REVISION_FIELD: "workspace"},
+#         {INDEX_FIELD: 1, "b": 3, REVISION_FIELD: "workspace"},
 #     ]
-#     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+#     assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
 #     assert plot_content["encoding"]["y"]["field"] == "b"
 #
 
@@ -415,18 +422,18 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
 #     assert plot_content["data"]["values"] == [
 #         {
 #             "val": 2,
-#             PlotData.INDEX_FIELD: 0,
+#             INDEX_FIELD: 0,
 #             "first_val": 100,
-#             "rev": "workspace",
+#             REVISION_FIELD: "workspace",
 #         },
 #         {
 #             "val": 3,
-#             PlotData.INDEX_FIELD: 1,
+#             INDEX_FIELD: 1,
 #             "first_val": 200,
-#             "rev": "workspace",
+#             REVISION_FIELD: "workspace",
 #         },
 #     ]
-#     assert plot_content["encoding"]["x"]["field"] == PlotData.INDEX_FIELD
+#     assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
 #     assert plot_content["encoding"]["y"]["field"] == "val"
 #
 #     if not use_dvc:

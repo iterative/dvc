@@ -4,7 +4,7 @@ import os.path
 import dpath
 from funcy import first
 
-from dvc.repo.plots.data import PlotData, plot_data
+from dvc.repo.plots.data import INDEX_FIELD, REVISION_FIELD, to_datapoints
 from dvc.utils import relpath
 from dvc.utils.html import VEGA_DIV_HTML
 
@@ -62,19 +62,6 @@ def render(repo, plots_data, metrics=None, path=None, html_template_path=None):
     )
 
 
-def _resolve_props(data):
-    # TODO resolving props from latest
-    resolved = None
-    for _, rev_data in data.items():
-        for _, file_data in rev_data.get("data", {}).items():
-            props = file_data.get("props")
-            if resolved is None:
-                resolved = props
-            else:
-                resolved = {**resolved, **props}
-    return resolved
-
-
 class VegaRenderer:
     def __init__(self, data, templates=None):
         self.data = data
@@ -84,10 +71,17 @@ class VegaRenderer:
         assert len(files) == 1
         self.filename = files.pop()
 
-    # TODO RETURN dict?
+    def _squash_props(self):
+        resolved = {}
+        for rev_data in self.data.values():
+            for file_data in rev_data.get("data", {}).values():
+                props = file_data.get("props", {})
+                resolved = {**resolved, **props}
+        return resolved
+
     def get_vega(self):
-        # TODO
-        props = _resolve_props(self.data)
+        props = self._squash_props()
+
         template = self.templates.load(props.get("template") or "default")
         fields = props.get("fields")
         if fields is not None:
@@ -95,16 +89,17 @@ class VegaRenderer:
 
         if not props.get("x") and template.has_anchor("x"):
             props["append_index"] = True
-            props["x"] = PlotData.INDEX_FIELD
+            props["x"] = INDEX_FIELD
 
         datapoints = []
         for rev, rev_data in self.data.items():
             for file, file_data in rev_data.get("data", {}).items():
                 if "data" in file_data:
                     datapoints.extend(
-                        plot_data(
-                            file, rev, file_data.get("data", [])
-                        ).to_datapoints(
+                        to_datapoints(
+                            file_data.get("data", []),
+                            revision=rev,
+                            filename=file,
                             fields=fields,
                             path=props.get("path"),
                             append_index=props.get("append_index", False),
@@ -114,7 +109,7 @@ class VegaRenderer:
         if datapoints:
             if not props.get("y") and template.has_anchor("y"):
                 fields = list(first(datapoints))
-                skip = (PlotData.REVISION_FIELD, props.get("x"))
+                skip = (REVISION_FIELD, props.get("x"))
                 props["y"] = first(
                     f for f in reversed(fields) if f not in skip
                 )
