@@ -3,7 +3,7 @@ from typing import Dict, List
 
 import pytest
 
-from dvc.repo.plots.data import PlotData, _lists
+from dvc.repo.plots.data import _lists, to_datapoints
 
 # TODO do we need those tests?
 
@@ -30,17 +30,15 @@ def test_find_data_in_dict(tmp_dir):
     m2 = [{"x": 1}, {"x": 2}]
     dmetric = OrderedDict([("t1", m1), ("t2", m2)])
 
-    plot_data = PlotData("-", "revision", dmetric)
-
     def points_with(datapoints: List, additional_info: Dict):
         for datapoint in datapoints:
             datapoint.update(additional_info)
 
         return datapoints
 
-    assert list(map(dict, plot_data.to_datapoints())) == points_with(
-        m1, {"rev": "revision"}
-    )
     assert list(
-        map(dict, plot_data.to_datapoints(fields={"x"}))
+        map(dict, to_datapoints(dmetric, "revision", "file"))
+    ) == points_with(m1, {"rev": "revision"})
+    assert list(
+        map(dict, to_datapoints(dmetric, "revision", "file", fields={"x"}))
     ) == points_with(m2, {"rev": "revision"})

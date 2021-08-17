@@ -1,17 +1,21 @@
 import logging
 import os.path
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 import dpath
 from funcy import first
 
 from dvc.repo.plots.data import INDEX_FIELD, REVISION_FIELD, to_datapoints
 from dvc.utils import relpath
-from dvc.utils.html import VEGA_DIV_HTML
+
+if TYPE_CHECKING:
+    from dvc.repo.plots.template import PlotTemplates
+    from dvc.types import StrPath
 
 logger = logging.getLogger(__name__)
 
 
-def get_files(data):
+def get_files(data: Dict) -> Set:
     files = set()
     for rev in data.keys():
         for file in data[rev].get("data", {}).keys():
@@ -19,7 +23,7 @@ def get_files(data):
     return files
 
 
-def group(data):
+def group(data: Dict) -> List[Dict]:
     files = get_files(data)
     grouped = []
     for file in files:
@@ -36,18 +40,18 @@ def find_vega(repo, plots_data, target):
     return ""
 
 
-def prepare_renderers(plots_data, templates, path):
+def match_renderers(plots_data, templates):
     renderers = []
     for g in group(plots_data):
         if VegaRenderer.matches(g):
             renderers.append(VegaRenderer(g, templates))
         if ImageRenderer.matches(g):
-            renderers.append(ImageRenderer(g, document_path=path))
+            renderers.append(ImageRenderer(g))
     return renderers
 
 
 def render(repo, plots_data, metrics=None, path=None, html_template_path=None):
-    renderers = prepare_renderers(plots_data, repo.plots.templates, path)
+    renderers = match_renderers(plots_data, repo.plots.templates)
     if not html_template_path:
         html_template_path = repo.config.get("plots", {}).get(
             "html_template", None
@@ -62,24 +66,52 @@ def render(repo, plots_data, metrics=None, path=None, html_template_path=None):
     )
 
 
-class VegaRenderer:
-    def __init__(self, data, templates=None):
+class Renderer:
+    def __init__(self, data: Dict):
         self.data = data
-        self.templates = templates
 
+        # we assume comparison of same file between revisions
         files = get_files(self.data)
         assert len(files) == 1
         self.filename = files.pop()
 
-    def _squash_props(self):
-        resolved = {}
+    def _convert(self, path):
+        raise NotImplementedError
+
+    @property
+    def DIV(self):
+        raise NotImplementedError
+
+    def generate_html(self, path):
+        """this method might edit content of path"""
+        partial = self._convert(path)
+        div_id = f"plot_{self.filename.replace('.', '_').replace('/', '_')}"
+        return self.DIV.format(id=div_id, partial=partial)
+
+
+class VegaRenderer(Renderer):
+    DIV = """
+    <div id = "{id}">
+        <script type = "text/javascript">
+            var spec = {partial};
+            vegaEmbed('#{id}', spec);
+        </script>
+    </div>
+    """
+
+    def __init__(self, data: Dict, templates: "PlotTemplates"):
+        super().__init__(data)
+        self.templates = templates
+
+    def _squash_props(self) -> Dict:
+        resolved: Dict[str, str] = {}
         for rev_data in self.data.values():
             for file_data in rev_data.get("data", {}).values():
                 props = file_data.get("props", {})
                 resolved = {**resolved, **props}
         return resolved
 
-    def get_vega(self):
+    def get_vega(self) -> Optional[str]:
         props = self._squash_props()
 
         template = self.templates.load(props.get("template") or "default")
@@ -116,16 +148,8 @@ class VegaRenderer:
             return template.render(datapoints, props=props)
         return None
 
-    # TODO this name
-    def get_html(self):
-        plot_string = self.get_vega()
-        if plot_string:
-            html = VEGA_DIV_HTML.format(
-                id=f"plot_{self.filename.replace('.', '_').replace('/', '_')}",
-                vega_json=plot_string,
-            )
-            return html
-        return None
+    def _convert(self, path):
+        return self.get_vega()
 
     @staticmethod
     def matches(data):
@@ -134,42 +158,45 @@ class VegaRenderer:
         return extensions.issubset({".yml", ".yaml", ".json", ".csv", ".tsv"})
 
 
-class ImageRenderer:
-    def __init__(self, data, document_path=None):
-        self.document_path = document_path
-        self.data = data
+class ImageRenderer(Renderer):
+    def _image(self, revision, image_path):
+        return """
+        <div>
+            <p>{title}</p>
+            <img src="{src}">
+        </div>""".format(
+            title=revision, src=image_path
+        )
 
-    def get_html(self):
-        static = os.path.join(self.document_path, "static")
+    DIV = """
+    <div
+        id="{id}"
+        style="overflow:auto;
+               white-space:nowrap;
+               padding-left:10px;
+               border: 1px solid;">
+        {partial}
+    </div>"""
+
+    def _convert(self, path: "StrPath"):
+        static = os.path.join(path, "static")
         os.makedirs(static, exist_ok=True)
-        div = ""
+        div_content = []
         for rev, rev_data in self.data.items():
             if "data" in rev_data:
                 for file, file_data in rev_data.get("data", {}).items():
                     if "data" in file_data:
-                        if not div:
-                            div += f"<p>{file}</p>"
-                        img_path = os.path.join(
+                        img_save_path = os.path.join(
                             static, f"{rev}_{file.replace('/', '_')}"
                         )
-                        rel_img_path = relpath(img_path, self.document_path)
-                        with open(img_path, "wb") as fd:
+                        rel_img_path = relpath(img_save_path, path)
+                        with open(img_save_path, "wb") as fd:
                             fd.write(file_data["data"])
-                        div += (
-                            f"<div><p>{rev}</p>"
-                            f'<img src="{rel_img_path}"></div>'
-                        )
-        if div:
-            div = (
-                '<div style="'
-                "overflow:auto;"
-                "white-space:nowrap;"
-                "padding-left:10px;"
-                'border: 1px solid;">'
-                f"{div}"
-                "</div>"
-            )
-        return div
+                        div_content.append(self._image(rev, rel_img_path))
+        if div_content:
+            div_content.insert(0, f"<p>{self.filename}</p>")
+            return "\n".join(div_content)
+        return ""
 
     @staticmethod
     def matches(data):

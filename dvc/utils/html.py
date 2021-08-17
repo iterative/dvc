@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from dvc.exceptions import DvcException
-from dvc.types import StrPath
+
+if TYPE_CHECKING:
+    from dvc.repo.plots.render import Renderer
+    from dvc.types import StrPath
 
 PAGE_HTML = """<!DOCTYPE html>
 <html>
@@ -17,12 +20,6 @@ PAGE_HTML = """<!DOCTYPE html>
     {plot_divs}
 </body>
 </html>"""
-
-VEGA_DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
 
 
 class MissingPlaceholderError(DvcException):
@@ -68,10 +65,10 @@ class HTML:
 
 
 def write(
-    path: StrPath,
-    plots: list,
+    path: "StrPath",
+    renderers: List["Renderer"],
     metrics: Optional[Dict[str, Dict]] = None,
-    template_path: Optional[StrPath] = None,
+    template_path: Optional["StrPath"] = None,
 ):
 
     os.makedirs(path, exist_ok=True)
@@ -86,8 +83,8 @@ def write(
         document.with_metrics(metrics)
         document.with_element("<br>")
 
-    for renderer in plots:
-        document.with_element(renderer.get_html())
+    for renderer in renderers:
+        document.with_element(renderer.generate_html(path))
 
     index = Path(os.path.join(path, "index.html"))
 
