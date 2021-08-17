@@ -87,7 +87,7 @@ def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_dir):
 
     # reset DVC_TEST env var, which affects `is_enabled()`
     monkeypatch.delenv("DVC_TEST")
-    monkeypatch.delenv("DVC_ANALYTICS", raising=False)
+    monkeypatch.delenv("DVC_NO_ANALYTICS", raising=False)
 
     assert result == analytics.is_enabled()
 
@@ -96,20 +96,23 @@ def test_is_enabled(dvc, config, result, monkeypatch, tmp_global_dir):
     "config, env, result",
     [
         (None, None, True),
-        (None, "true", True),
-        (None, "false", False),
+        (None, "true", False),
+        (None, "false", False),  # only checking if env is set
         ("false", None, False),
-        ("false", "true", True),
+        ("false", "true", False),
         ("false", "false", False),
         ("true", None, True),
-        ("true", "true", True),
-        ("true", "false", False),
+        ("true", "true", False),
+        ("true", "false", False),  # we checking if env is set
     ],
 )
-def test_is_enabled_env(dvc, config, env, result, monkeypatch, tmp_global_dir):
+def test_is_enabled_env_neg(
+    dvc, config, env, result, monkeypatch, tmp_global_dir
+):
     # reset DVC_TEST env var, which affects `is_enabled()`
     monkeypatch.delenv("DVC_TEST")
-    monkeypatch.delenv("DVC_ANALYTICS", raising=False)
+    monkeypatch.delenv("DVC_NO_ANALYTICS", raising=False)
+
     with dvc.config.edit() as conf:
         conf["core"] = {}
 
@@ -120,7 +123,7 @@ def test_is_enabled_env(dvc, config, env, result, monkeypatch, tmp_global_dir):
             conf["core"] = {"analytics": config}
 
     if env is not None:
-        monkeypatch.setenv("DVC_ANALYTICS", env)
+        monkeypatch.setenv("DVC_NO_ANALYTICS", env)
 
     assert result == analytics.is_enabled()
 
