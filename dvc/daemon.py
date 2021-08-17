@@ -12,29 +12,34 @@ from dvc.utils import fix_env, is_binary
 
 logger = logging.getLogger(__name__)
 
-CREATE_NEW_PROCESS_GROUP = 0x00000200
-DETACHED_PROCESS = 0x00000008
+CREATE_NO_WINDOW = 0x08000000  # only available since Python 3.7 in subprocess.
 
 
 def _popen(cmd, **kwargs):
     prefix = [sys.executable]
     if not is_binary():
-        prefix += [sys.argv[0]]
+        dvc_exec = sys.argv[0]
+        if os.name == "nt":
+            # python -m /path/to/dvc does not work?
+            # as /path/to/dvc is a path to .exe and itself is executable
+            prefix = [dvc_exec]
+        else:
+            prefix += [dvc_exec]
 
     return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)
 
 
 def _spawn_windows(cmd, env):
-    from subprocess import STARTF_USESHOWWINDOW, STARTUPINFO
+    from subprocess import CREATE_NEW_PROCESS_GROUP, STARTUPINFO, STARTF_USESHOWWINDOW
 
-    creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
+    # https://stackoverflow.com/a/7006424
+    # https://bugs.python.org/issue41619
+    creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
 
     startupinfo = STARTUPINFO()
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-    _popen(
-        cmd, env=env, creationflags=creationflags, startupinfo=startupinfo
-    ).communicate()
+    _popen(cmd, env=env, creationflags=creationflags, startupinfo=startupinfo)
 
 
 def _spawn_posix(cmd, env):
