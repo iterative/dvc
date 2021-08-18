@@ -7,12 +7,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import (
-    exp_refs,
-    exp_refs_by_baseline,
-    exp_refs_by_name,
-    remove_exp_refs,
-)
+from .utils import exp_refs, exp_refs_by_name, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +18,15 @@ def remove(
     repo,
     exp_names=None,
     queue=False,
-    workspace=False,
     clear_all=False,
     **kwargs,
 ):
-    if not any([exp_names, queue, workspace, clear_all]):
+    if not any([exp_names, queue, clear_all]):
         return 0
 
     removed = 0
     if queue:
         removed += _clear_stash(repo)
-    if workspace:
-        removed += _clear_workspace(repo)
     if clear_all:
         removed += _clear_all(repo)
 
@@ -55,35 +47,10 @@ def _clear_stash(repo):
     return removed
 
 
-def _clear_workspack_stash(repo, head):
-    stashed = 0
-    stash_revs = repo.experiments.stash_revs
-    remove_index = []
-    for _, ref_info in stash_revs.items():
-        if head == ref_info.baseline_rev:
-            remove_index.append(ref_info.index)
-
-    for index in sorted(remove_index, reverse=True):
-        repo.experiments.stash.drop(index)
-        stashed += 1
-    return stashed
-
-
-def _clear_workspace(repo):
-    head = repo.scm.get_ref("HEAD")
-    ref_infos = list(exp_refs_by_baseline(repo.scm, head))
-    remove_exp_refs(repo.scm, ref_infos)
-    stashed = _clear_workspack_stash(repo, head)
-
-    return stashed + len(ref_infos)
-
-
 def _clear_all(repo):
     ref_infos = list(exp_refs(repo.scm))
     remove_exp_refs(repo.scm, ref_infos)
-    removed = len(repo.experiments.stash)
-    repo.experiments.stash.clear()
-    return removed + len(ref_infos)
+    return len(ref_infos)
 
 
 def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:

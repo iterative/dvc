@@ -253,14 +253,12 @@ def test_experiments_pull(dvc, scm, mocker):
 
 
 @pytest.mark.parametrize(
-    "queue,workspace,clear_all",
-    [(True, False, False), (False, True, False), (False, False, True)],
+    "queue,clear_all",
+    [(True, False), (False, True)],
 )
-def test_experiments_remove(dvc, scm, mocker, queue, workspace, clear_all):
+def test_experiments_remove(dvc, scm, mocker, queue, clear_all):
     if queue:
         args = "--queue"
-    if workspace:
-        args = "--workspace"
     if clear_all:
         args = "--all"
     cli_args = parse_args(["experiments", "remove", args])
@@ -274,6 +272,5 @@ def test_experiments_remove(dvc, scm, mocker, queue, workspace, clear_all):
         cmd.repo,
         exp_names=[],
         queue=queue,
-        workspace=workspace,
         clear_all=clear_all,
     )
