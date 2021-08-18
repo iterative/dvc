@@ -123,6 +123,11 @@ class TmpDir(pathlib.Path):
         if hasattr(self, "dvc"):
             self.dvc.close()
 
+    def rmtree(self, **kwargs):
+        import shutil
+
+        return shutil.rmtree(self, **kwargs)
+
     def _require(self, name):
         if not hasattr(self, name):
             raise TypeError(
