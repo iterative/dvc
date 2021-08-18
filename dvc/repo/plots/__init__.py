@@ -135,11 +135,10 @@ class Plots:
     ):
         if onerror is None:
             onerror = onerror_collect
-        data = self.collect(
+
+        return self.collect(
             targets, revs, recursive, onerror=onerror, props=props
         )
-
-        return data
 
     def diff(self, *args, **kwargs):
         from .diff import diff

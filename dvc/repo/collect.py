@@ -42,6 +42,7 @@ def _collect_paths(
         if recursive and fs.isdir(path_info):
             target_infos.extend(repo.dvcignore.walk_files(fs, path_info))
 
+        # TODO should we check it at all? we will get FileNotFound in results
         if not fs.exists(path_info):
             if rev == "workspace" or rev == "":
                 logger.warning(
@@ -49,7 +50,6 @@ def _collect_paths(
                 )
             else:
                 logger.warning("'%s' was not found at: '%s'.", path_info, rev)
-            continue
         target_infos.append(path_info)
     return target_infos
 

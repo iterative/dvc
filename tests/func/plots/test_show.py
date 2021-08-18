@@ -9,6 +9,7 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.main import main
 from dvc.path_info import PathInfo
+from dvc.repo import Repo
 from dvc.repo.plots.data import (
     INDEX_FIELD,
     REVISION_FIELD,
@@ -20,7 +21,7 @@ from dvc.repo.plots.template import (
     NoFieldInDataError,
     TemplateNotFoundError,
 )
-from dvc.utils import onerror_collect, relpath
+from dvc.utils import onerror_collect
 from dvc.utils.fs import remove
 from dvc.utils.serialize import (
     EncodingError,
@@ -28,7 +29,7 @@ from dvc.utils.serialize import (
     dump_yaml,
     modify_yaml,
 )
-from tests.func.plots.utils import _write_csv
+from tests.func.plots.utils import _write_json
 
 
 # RENDER
@@ -253,37 +254,35 @@ def test_plot_even_if_metric_missing(
     assert plot_content["encoding"]["y"]["field"] == "y"
 
 
-# TODO to collect?
-# def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
-#     metric = [{"y": 2}, {"y": 3}]
-#     _write_json(tmp_dir, metric, "metric_t.json")
-#     stage = run_copy_metrics(
-#         "metric_t.json",
-#         "metric.json",
-#         plots=["metric.json"],
-#         commit="there is metric",
-#     )
-#     scm.tag("v1")
-#
-#     Make a different plot and then remove its datafile
-# metric = [{"y": 3}, {"y": 4}]
-# _write_json(tmp_dir, metric, "metric_t.json")
-# stage = run_copy_metrics(
-#     "metric_t.json",
-#     "metric.json",
-#     plots=["metric.json"],
-#     commit="there is an another metric",
-# )
-# scm.tag("v2")
-# remove(stage.outs[0].fspath)
-# remove(stage.outs[0].cache_path)
-#
-# plots = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
-# plot_content = json.loads(plots["metric.json"])
-# assert plot_content["data"]["values"] == [
-#     {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v1"},
-#     {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v1"},
-# ]
+def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
+    metric1 = [{"y": 2}, {"y": 3}]
+    _write_json(tmp_dir, metric1, "metric_t.json")
+    run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots=["metric.json"],
+        commit="there is metric",
+    )
+    scm.tag("v1")
+
+    # Make a different plot and then remove its datafile
+    metric2 = [{"y": 3}, {"y": 4}]
+    _write_json(tmp_dir, metric2, "metric_t.json")
+    stage = run_copy_metrics(
+        "metric_t.json",
+        "metric.json",
+        plots=["metric.json"],
+        commit="there is an another metric",
+    )
+    scm.tag("v2")
+    remove(stage.outs[0].fspath)
+    remove(stage.outs[0].cache_path)
+
+    plots_data = dvc.plots.show(revs=["v1", "v2"], targets=["metric.json"])
+    assert plots_data["v1"]["data"]["metric.json"]["data"] == metric1
+    assert isinstance(
+        plots_data["v2"]["data"]["metric.json"]["error"], FileNotFoundError
+    )
 
 
 def test_custom_template(tmp_dir, scm, dvc, custom_template):
@@ -370,26 +369,25 @@ def test_plot_choose_columns(
 
 
 # TODO ??
-# def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
-#     metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
-#     _write_json(tmp_dir, metric, "metric_t.json")
-#     run_copy_metrics(
-#         "metric_t.json",
-#         "metric.json",
-#         plots_no_cache=["metric.json"],
-#         commit="init",
-#         tag="v1",
-#     )
-#
-#     plot_string = dvc.plots.show(props={"fields": {"b"}})["metric.json"]
-#
-#     plot_content = json.loads(plot_string)
-#     assert plot_content["data"]["values"] == [
-#         {INDEX_FIELD: 0, "b": 2, REVISION_FIELD: "workspace"},
-#         {INDEX_FIELD: 1, "b": 3, REVISION_FIELD: "workspace"},
-#     ]
-#     assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-#     assert plot_content["encoding"]["y"]["field"] == "b"
+def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
+    metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
+    data = {
+        "workspace": {
+            "data": {"file.json": {"data": metric, "props": {"fields": {"b"}}}}
+        }
+    }
+
+    plot_string = VegaRenderer(data, dvc.plots.templates).get_vega()
+    plot_content = json.loads(plot_string)
+
+    assert plot_content["data"]["values"] == [
+        {INDEX_FIELD: 0, "b": 2, REVISION_FIELD: "workspace"},
+        {INDEX_FIELD: 1, "b": 3, REVISION_FIELD: "workspace"},
+    ]
+    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
+    assert plot_content["encoding"]["y"]["field"] == "b"
+
+
 #
 
 
@@ -405,93 +403,61 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
         VegaRenderer(data, dvc.plots.templates).get_vega()
 
 
-# TODO move to collect?
-# @pytest.mark.parametrize("use_dvc", [True, False])
-# def test_show_non_plot(tmp_dir, scm, use_dvc):
-#     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-#     _write_json(tmp_dir, metric, "metric.json")
-#
-#     if use_dvc:
-#         dvc = Repo.init()
-#     else:
-#         dvc = Repo(uninitialized=True)
-#
-#     plot_string = dvc.plots.show(targets=["metric.json"])["metric.json"]
-#
-#     plot_content = json.loads(plot_string)
-#     assert plot_content["data"]["values"] == [
-#         {
-#             "val": 2,
-#             INDEX_FIELD: 0,
-#             "first_val": 100,
-#             REVISION_FIELD: "workspace",
-#         },
-#         {
-#             "val": 3,
-#             INDEX_FIELD: 1,
-#             "first_val": 200,
-#             REVISION_FIELD: "workspace",
-#         },
-#     ]
-#     assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-#     assert plot_content["encoding"]["y"]["field"] == "val"
-#
-#     if not use_dvc:
-#         assert not (tmp_dir / ".dvc").exists()
-#
+@pytest.mark.parametrize("use_dvc", [True, False])
+def test_show_non_plot(tmp_dir, scm, use_dvc):
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    _write_json(tmp_dir, metric, "metric.json")
 
-# TODO?
-# def test_show_non_plot_and_plot_with_params(
-#     tmp_dir, scm, dvc, run_copy_metrics
-# ):
-#     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-#     _write_json(tmp_dir, metric, "metric.json")
-#     run_copy_metrics(
-#         "metric.json", "metric2.json", plots_no_cache=["metric2.json"]
-#     )
+    if use_dvc:
+        dvc = Repo.init()
+    else:
+        dvc = Repo(uninitialized=True)
 
-# dvc.plots.modify("metric2.json", props={"title": "TITLE"})
-# result = dvc.plots.show(targets=["metric.json", "metric2.json"])
+    plots = dvc.plots.show(targets=["metric.json"])
 
-# plot_content = json.loads(result["metric.json"])
-# plot2_content = json.loads(result["metric2.json"])
-
-# assert plot2_content["title"] == "TITLE"
-
-# assert plot_content != plot2_content
-# plot_content.pop("title")
-# plot2_content.pop("title")
-# assert plot_content == plot2_content
-
-# TODO?
-# def test_show_no_repo(tmp_dir):
-#     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-#     _write_json(tmp_dir, metric, "metric.json")
-
-# dvc = Repo(uninitialized=True)
-
-# dvc.plots.show(["metric.json"])
+    assert plots["workspace"]["data"]["metric.json"]["data"] == metric
 
 
-# TODO?
-# def test_show_from_subdir(tmp_dir, dvc, capsys):
-#     subdir = tmp_dir / "subdir"
+def test_show_non_plot_and_plot_with_params(
+    tmp_dir, scm, dvc, run_copy_metrics
+):
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    _write_json(tmp_dir, metric, "metric.json")
+    run_copy_metrics(
+        "metric.json", "metric2.json", plots_no_cache=["metric2.json"]
+    )
+    props = {"title": "TITLE"}
+    dvc.plots.modify("metric2.json", props=props)
 
-# subdir.mkdir()
-# metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-# _write_json(subdir, metric, "metric.json")
+    result = dvc.plots.show(targets=["metric.json", "metric2.json"])
+    assert "metric.json" in result["workspace"]["data"]
+    assert "metric2.json" in result["workspace"]["data"]
+    assert result["workspace"]["data"]["metric2.json"]["props"] == props
 
-# with subdir.chdir():
-#     assert main(["plots", "show", "metric.json"]) == 0
 
-# out, _ = capsys.readouterr()
-# assert subdir.as_uri() in out
-# assert (subdir / "dvc_plots").is_dir()
-# assert (subdir / "dvc_plots" / "index.html").is_file()
+def test_show_from_subdir(tmp_dir, dvc, capsys):
+    subdir = tmp_dir / "subdir"
 
-# TODO collect format
-# def test_plots_show_non_existing(tmp_dir, dvc):
-#     assert dvc.plots.show(targets=["plot.json"]) == {}
+    subdir.mkdir()
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    _write_json(subdir, metric, "metric.json")
+
+    with subdir.chdir():
+        assert main(["plots", "show", "metric.json"]) == 0
+
+    out, _ = capsys.readouterr()
+    assert subdir.as_uri() in out
+    assert (subdir / "dvc_plots").is_dir()
+    assert (subdir / "dvc_plots" / "index.html").is_file()
+
+
+def test_plots_show_non_existing(tmp_dir, dvc, caplog):
+    result = dvc.plots.show(targets=["plot.json"])
+    assert isinstance(
+        result["workspace"]["data"]["plot.json"]["error"], FileNotFoundError
+    )
+
+    assert "'plot.json' was not found in current workspace." in caplog.text
 
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
@@ -529,72 +495,34 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
     )
 
 
-# TODO
-# def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
-#     subdir = tmp_dir / "subdir"
-#     subdir.mkdir()
-#
-#     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-#
-#     fname = "file.json"
-#     _write_json(tmp_dir, metric, fname)
-#
-#     p1 = os.path.join("subdir", "p1.json")
-#     p2 = os.path.join("subdir", "p2.json")
-#     tmp_dir.dvc.run(
-#         cmd=(
-#             f"mkdir subdir && python copy.py {fname} {p1} && "
-#             f"python copy.py {fname} {p2}"
-#         ),
-#         deps=[fname],
-#         single_stage=False,
-#         plots=["subdir"],
-#         name="copy_double",
-#     )
-#     dvc.plots.modify("subdir", {"title": "TITLE"})
-#
-#     result = dvc.plots.show()
-#     p1_content = json.loads(result[p1])
-#     p2_content = json.loads(result[p2])
-#
-#     assert p1_content["title"] == p2_content["title"] == "TITLE"
+def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
 
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
 
-# TODO?
-# def test_show_dir_plots(tmp_dir, dvc, run_copy_metrics):
-#     subdir = tmp_dir / "subdir"
-#     subdir.mkdir()
-#     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-#
-#     fname = "file.json"
-#     _write_json(tmp_dir, metric, fname)
-#
-#     p1 = os.path.join("subdir", "p1.json")
-#     p2 = os.path.join("subdir", "p2.json")
-#     tmp_dir.dvc.run(
-#         cmd=(
-#             f"mkdir subdir && python copy.py {fname} {p1} && "
-#             f"python copy.py {fname} {p2}"
-#         ),
-#         deps=[fname],
-#         single_stage=False,
-#         plots=["subdir"],
-#         name="copy_double",
-#     )
-#
-#     result = dvc.plots.show(targets=["subdir"])
-#     p1_content = json.loads(result[p1])
-#     p2_content = json.loads(result[p2])
-#
-#     assert p1_content == p2_content
-#
-#     result = dvc.plots.show(targets=[p1])
-#     assert set(result.keys()) == {p1}
-#
-#     remove(dvc.odb.local.cache_dir)
-#     remove(subdir)
-#
-#     assert dvc.plots.show() == {}
+    fname = "file.json"
+    _write_json(tmp_dir, metric, fname)
+
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {fname} {p1} && "
+            f"python copy.py {fname} {p2}"
+        ),
+        deps=[fname],
+        single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
+    )
+    props = {"title": "TITLE"}
+    dvc.plots.modify("subdir", {"title": "TITLE"})
+
+    result = dvc.plots.show()
+    assert set(result["workspace"]["data"]) == {p1, p2}
+    assert result["workspace"]["data"][p1]["props"] == props
+    assert result["workspace"]["data"][p2]["props"] == props
 
 
 def test_ignore_binary_file(tmp_dir, dvc, run_copy_metrics):
@@ -647,17 +575,7 @@ def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template):
     with open("image.jpg", "wb") as fd:
         fd.write(b"content")
 
-    metric = [{"val": 2}, {"val": 3}]
-    _write_csv(metric, "metric_t.csv")
-
-    dvc.add(["image.jpg", "metric_t.csv"])
-    run_copy_metrics(
-        "metric_t.csv",
-        "metric.csv",
-        plots=["metric.csv"],
-        name="s1",
-        single_stage=False,
-    )
+    dvc.add(["image.jpg"])
     run_copy_metrics(
         "image.jpg",
         "plot.jpg",
@@ -666,9 +584,7 @@ def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template):
         name="s2",
         single_stage=False,
     )
-    dvc.plots.modify(
-        "metric.csv", props={"template": relpath(custom_template)}
-    )
+
     scm.add(["dvc.yaml", "dvc.lock"])
     scm.commit("initial")
 
@@ -677,7 +593,6 @@ def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template):
     with open("plot.jpg", "wb") as fd:
         fd.write(b"content2")
 
-    _write_csv([{"val": 3}, {"val": 4}], "metric.csv")
-
-    # dvc.plots.show(revs=["v1", "workspace"])
-    main(["plots", "diff", "v1"])
+    result = dvc.plots.show(revs=["v1", "workspace"])
+    assert result["v1"]["data"]["plot.jpg"]["data"] == b"content"
+    assert result["workspace"]["data"]["plot.jpg"]["data"] == b"content2"

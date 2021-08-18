@@ -5,8 +5,6 @@ import pytest
 
 from dvc.repo.plots.data import _lists, to_datapoints
 
-# TODO do we need those tests?
-
 
 @pytest.mark.parametrize(
     "dictionary, expected_result",

@@ -88,7 +88,6 @@ def write(
 
     index = Path(os.path.join(path, "index.html"))
 
-    # TODO remember to try/catch remove on exception
     with open(index, "w") as fd:
         fd.write(document.embed())
     return index
