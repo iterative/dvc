@@ -4,6 +4,7 @@ from typing import Dict, List
 import pytest
 
 from dvc.repo.plots.data import _lists, to_datapoints
+from dvc.repo.plots.render import group
 
 
 @pytest.mark.parametrize(
@@ -40,3 +41,53 @@ def test_find_data_in_dict(tmp_dir):
     assert list(
         map(dict, to_datapoints(dmetric, "revision", "file", fields={"x"}))
     ) == points_with(m2, {"rev": "revision"})
+
+
+def test_group_plots_data():
+    error = FileNotFoundError()
+    data = {
+        "v2": {
+            "data": {
+                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
+                "other_file.jpg": {"data": "content"},
+            }
+        },
+        "v1": {
+            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
+        },
+        "workspace": {
+            "data": {
+                "file.json": {"error": error, "props": {}},
+                "other_file.jpg": {"data": "content2"},
+            }
+        },
+    }
+
+    results = group(data)
+    assert {
+        "v2": {
+            "data": {
+                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
+            }
+        },
+        "v1": {
+            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
+        },
+        "workspace": {
+            "data": {
+                "file.json": {"error": error, "props": {}},
+            }
+        },
+    } in results
+    assert {
+        "v2": {
+            "data": {
+                "other_file.jpg": {"data": "content"},
+            }
+        },
+        "workspace": {
+            "data": {
+                "other_file.jpg": {"data": "content2"},
+            }
+        },
+    } in results

@@ -34,9 +34,7 @@ from tests.func.plots.utils import _write_json
 
 # RENDER
 def test_plot_csv_one_column(tmp_dir, scm, dvc, run_copy_metrics):
-    # no header
     props = {
-        "header": False,
         "x_label": "x_title",
         "y_label": "y_title",
         "title": "mytitle",
@@ -231,7 +229,6 @@ def test_plot_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["encoding"]["y"]["field"] == "y"
 
 
-# TODO add tests for grouping
 def test_plot_even_if_metric_missing(
     tmp_dir, scm, dvc, caplog, run_copy_metrics
 ):

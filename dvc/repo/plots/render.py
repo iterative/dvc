@@ -2,7 +2,7 @@ import logging
 import os.path
 from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
-import dpath
+import dpath.util
 from funcy import first
 
 from dvc.repo.plots.data import INDEX_FIELD, REVISION_FIELD, to_datapoints
@@ -23,13 +23,34 @@ def get_files(data: Dict) -> Set:
     return files
 
 
+# def group(data: Dict) -> List[Dict]:
+#     files = get_files(data)
+#     grouped = []
+#     for file in files:
+#         found = dpath.util.search(data, ["*", "*", file])
+#         if found:
+#             grouped.append(found)
+#     return grouped
+
+
 def group(data: Dict) -> List[Dict]:
+    # TODO use dpath.util.search once
+    #  https://github.com/dpath-maintainers/dpath-python/issues/147 is released
+    #  now we cannot search when errors are present in data
     files = get_files(data)
     grouped = []
+
     for file in files:
-        found = dpath.util.search(data, ["*", "*", file])
-        if found:
-            grouped.append(found)
+        tmp: Dict = {}
+        for revision, revision_data in data.items():
+            if file in revision_data.get("data", {}):
+                if "data" not in tmp:
+                    tmp[revision] = {"data": {}}
+                tmp[revision]["data"].update(
+                    {file: revision_data["data"][file]}
+                )
+        grouped.append(tmp)
+
     return grouped
 
 
