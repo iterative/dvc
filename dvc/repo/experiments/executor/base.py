@@ -348,6 +348,7 @@ class BaseExecutor(ABC):
                     quiet=True,
                     allow_missing=True,
                     checkpoint_reset=checkpoint_reset,
+                    recursive=kwargs.get("recursive", False),
                 )
 
             checkpoint_func = partial(

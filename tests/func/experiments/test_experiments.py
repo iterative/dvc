@@ -8,7 +8,7 @@ from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.utils.serialize import PythonFileCorruptedError
+from dvc.utils.serialize import PythonFileCorruptedError, load_yaml
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -657,3 +657,12 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
     if workspace:
         assert (tmp_dir / "metrics.yaml").read_text().strip() == params
         assert (tmp_dir / "data").read_text().strip() == "modified"
+
+
+def test_exp_run_recursive(tmp_dir, scm, dvc, run_copy_metrics):
+    tmp_dir.dvc_gen("metric_t.json", "foo: 1")
+    run_copy_metrics(
+        "metric_t.json", "metric.json", metrics=["metric.json"], no_exec=True
+    )
+    assert dvc.experiments.run(".", recursive=True)
+    assert load_yaml(tmp_dir / "metric.json") == {"foo": 1}
