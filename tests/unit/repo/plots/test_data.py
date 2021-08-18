@@ -4,7 +4,7 @@ from typing import Dict, List
 import pytest
 
 from dvc.repo.plots.data import _lists, to_datapoints
-from dvc.repo.plots.render import group
+from dvc.repo.plots.render import group_by_filename
 
 
 @pytest.mark.parametrize(
@@ -63,7 +63,7 @@ def test_group_plots_data():
         },
     }
 
-    results = group(data)
+    results = group_by_filename(data)
     assert {
         "v2": {
             "data": {

@@ -23,20 +23,10 @@ def get_files(data: Dict) -> Set:
     return files
 
 
-# def group(data: Dict) -> List[Dict]:
-#     files = get_files(data)
-#     grouped = []
-#     for file in files:
-#         found = dpath.util.search(data, ["*", "*", file])
-#         if found:
-#             grouped.append(found)
-#     return grouped
-
-
-def group(data: Dict) -> List[Dict]:
+def group_by_filename(data: Dict) -> List[Dict]:
     # TODO use dpath.util.search once
     #  https://github.com/dpath-maintainers/dpath-python/issues/147 is released
-    #  now we cannot search when errors are present in data
+    #  now cannot search when errors are present in data
     files = get_files(data)
     grouped = []
 
@@ -63,7 +53,7 @@ def find_vega(repo, plots_data, target):
 
 def match_renderers(plots_data, templates):
     renderers = []
-    for g in group(plots_data):
+    for g in group_by_filename(plots_data):
         if VegaRenderer.matches(g):
             renderers.append(VegaRenderer(g, templates))
         if ImageRenderer.matches(g):
