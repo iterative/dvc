@@ -18,6 +18,7 @@ from .command import (
     data_sync,
     destroy,
     diff,
+    executor,
     experiments,
     freeze,
     gc,
@@ -87,6 +88,7 @@ COMMANDS = [
     experiments,
     check_ignore,
     live,
+    executor,
 ]
 
 

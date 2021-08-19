@@ -179,7 +179,7 @@ class Config(dict):
                 conf_obj = ConfigObj(fobj)
         else:
             conf_obj = ConfigObj()
-        return _parse_remotes(_lower_keys(conf_obj.dict()))
+        return _parse_named(_lower_keys(conf_obj.dict()))
 
     def _save_config(self, level, conf_dict):
         from configobj import ConfigObj
@@ -191,7 +191,7 @@ class Config(dict):
 
         fs.makedirs(os.path.dirname(filename))
 
-        config = ConfigObj(_pack_remotes(conf_dict))
+        config = ConfigObj(_pack_named(conf_dict))
         with fs.open(filename, "wb") as fobj:
             config.write(fobj)
         config.filename = filename
@@ -312,27 +312,29 @@ class Config(dict):
             raise ConfigError(str(exc)) from None
 
 
-def _parse_remotes(conf):
-    result = {"remote": {}}
+def _parse_named(conf):
+    result = {"remote": {}, "executor": {}}
 
     for section, val in conf.items():
-        name = re_find(r'^\s*remote\s*"(.*)"\s*$', section)
-        if name:
-            result["remote"][name] = val
+        match = re_find(r'^\s*(remote|executor)\s*"(.*)"\s*$', section)
+        if match:
+            key, name = match
+            result[key][name] = val
         else:
             result[section] = val
 
     return result
 
 
-def _pack_remotes(conf):
+def _pack_named(conf):
     # Drop empty sections
     result = compact(conf)
 
     # Transform remote.name -> 'remote "name"'
-    for name, val in conf["remote"].items():
-        result[f'remote "{name}"'] = val
-    result.pop("remote", None)
+    for key in ("remote", "executor"):
+        for name, val in conf[key].items():
+            result[f'{key} "{name}"'] = val
+        result.pop(key, None)
 
     return result
 

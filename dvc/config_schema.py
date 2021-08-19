@@ -118,6 +118,7 @@ SCHEMA = {
         Optional("autostage", default=False): Bool,
         Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
+        "executor": Lower,
     },
     "cache": {
         "local": str,
