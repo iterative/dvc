@@ -5,7 +5,6 @@ import pytest
 
 from dvc.cli import parse_args
 from dvc.command.plots import CmdPlotsDiff, CmdPlotsShow
-from dvc.path_info import PathInfo
 
 
 @pytest.fixture
@@ -13,7 +12,8 @@ def plots_data():
     yield {
         "revision": {
             "data": {
-                "plot.csv": {"data": [{"val": 1}, {"val": 2}], "props": {}}
+                "plot.csv": {"data": [{"val": 1}, {"val": 2}], "props": {}},
+                "other.jpg": {"data": b"content"},
             }
         }
     }
@@ -51,6 +51,9 @@ def test_plots_diff(dvc, mocker, plots_data):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
+    render_mock = mocker.patch(
+        "dvc.command.plots.render", return_value="html_path"
+    )
 
     assert cmd.run() == 0
 
@@ -68,6 +71,7 @@ def test_plots_diff(dvc, mocker, plots_data):
         },
         experiment=True,
     )
+    render_mock.assert_not_called()
 
 
 def test_plots_show_vega(dvc, mocker, plots_data):
@@ -92,6 +96,9 @@ def test_plots_show_vega(dvc, mocker, plots_data):
         "dvc.repo.plots.Plots.show",
         return_value=plots_data,
     )
+    render_mock = mocker.patch(
+        "dvc.command.plots.render", return_value="html_path"
+    )
 
     assert cmd.run() == 0
 
@@ -99,6 +106,7 @@ def test_plots_show_vega(dvc, mocker, plots_data):
         targets=["datafile"],
         props={"template": "template", "header": False},
     )
+    render_mock.assert_not_called()
 
 
 def test_plots_diff_vega(dvc, mocker, capsys, plots_data):
@@ -118,11 +126,15 @@ def test_plots_diff_vega(dvc, mocker, capsys, plots_data):
     mocker.patch(
         "dvc.command.plots.find_vega", return_value="vega_json_content"
     )
+    render_mock = mocker.patch(
+        "dvc.command.plots.render", return_value="html_path"
+    )
     assert cmd.run() == 0
 
     out, _ = capsys.readouterr()
 
     assert "vega_json_content" in out
+    render_mock.assert_not_called()
 
 
 def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data):
@@ -133,14 +145,14 @@ def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data):
     cmd = cli_args.func(cli_args)
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
 
-    rel = PathInfo("dvc_plots") / "index.html"
-    absolute_path = tmp_dir / rel
+    index_path = tmp_dir / "dvc_plots" / "index.html"
+    mocker.patch("dvc.command.plots.render", return_value=index_path)
 
     assert cmd.run() == 0
-    mocked_open.assert_called_once_with(absolute_path)
+    mocked_open.assert_called_once_with(index_path)
 
     out, _ = capsys.readouterr()
-    assert absolute_path.as_uri() in out
+    assert index_path.as_uri() in out
 
 
 def test_plots_diff_open_failed(tmp_dir, dvc, mocker, capsys, plots_data):
@@ -194,3 +206,29 @@ def test_plots_path_is_quoted_and_resolved_properly(
 
     out, _ = capsys.readouterr()
     assert expected_url in out
+
+
+@pytest.mark.parametrize(
+    "output", ("some_out", os.path.join("to", "subdir"), None)
+)
+def test_should_call_render(tmp_dir, mocker, capsys, plots_data, output):
+    cli_args = parse_args(
+        ["plots", "diff", "--targets", "plots.csv", "--out", output]
+    )
+    cmd = cli_args.func(cli_args)
+    mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
+
+    output = output or "dvc_plots"
+    index_path = tmp_dir / output / "index.html"
+    render_mock = mocker.patch(
+        "dvc.command.plots.render", return_value=index_path
+    )
+
+    assert cmd.run() == 0
+
+    out, _ = capsys.readouterr()
+    assert index_path.as_uri() in out
+
+    render_mock.assert_called_once_with(
+        cmd.repo, plots_data, path=tmp_dir / output, html_template_path=None
+    )

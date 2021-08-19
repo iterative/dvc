@@ -13,7 +13,7 @@ from dvc.repo.plots.template import (
 )
 
 
-def test_one_column(tmp_dir, scm, dvc, run_copy_metrics):
+def test_one_column(tmp_dir, scm, dvc):
     props = {
         "x_label": "x_title",
         "y_label": "y_title",
@@ -41,7 +41,7 @@ def test_one_column(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["encoding"]["y"]["title"] == "y_title"
 
 
-def test_multiple_columns(tmp_dir, scm, dvc, run_copy_metrics):
+def test_multiple_columns(tmp_dir, scm, dvc):
     metric = [
         OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
         OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
@@ -74,7 +74,7 @@ def test_multiple_columns(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["encoding"]["y"]["field"] == "val"
 
 
-def test_choose_axes(tmp_dir, scm, dvc, run_copy_metrics):
+def test_choose_axes(tmp_dir, scm, dvc):
     metric = [
         OrderedDict([("first_val", 100), ("second_val", 100), ("val", 2)]),
         OrderedDict([("first_val", 200), ("second_val", 300), ("val", 3)]),
@@ -106,7 +106,7 @@ def test_choose_axes(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["encoding"]["y"]["field"] == "second_val"
 
 
-def test_confusion(tmp_dir, dvc, run_copy_metrics):
+def test_confusion(tmp_dir, dvc):
     confusion_matrix = [
         {"predicted": "B", "actual": "A"},
         {"predicted": "A", "actual": "A"},
@@ -134,7 +134,7 @@ def test_confusion(tmp_dir, dvc, run_copy_metrics):
     assert plot_content["spec"]["encoding"]["y"]["field"] == "actual"
 
 
-def test_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
+def test_multiple_revs_default(tmp_dir, scm, dvc):
     metric_1 = [{"y": 2}, {"y": 3}]
     metric_2 = [{"y": 3}, {"y": 5}]
     metric_3 = [{"y": 5}, {"y": 6}]
@@ -172,7 +172,7 @@ def test_multiple_revs_default(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["encoding"]["y"]["field"] == "y"
 
 
-def test_metric_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
+def test_metric_missing(tmp_dir, scm, dvc, caplog):
 
     metric = [{"y": 2}, {"y": 3}]
     data = {
@@ -210,7 +210,7 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
     assert plot_content["encoding"]["y"]["field"] == "b"
 
 
-def test_raise_on_no_template(tmp_dir, dvc, run_copy_metrics):
+def test_raise_on_no_template(tmp_dir, dvc):
     metric = [{"val": 2}, {"val": 3}]
     props = {"template": "non_existing_template.json"}
     data = {
@@ -233,9 +233,7 @@ def test_bad_template(tmp_dir, dvc):
         VegaRenderer(data, dvc.plots.templates).get_vega()
 
 
-def test_plot_choose_columns(
-    tmp_dir, scm, dvc, custom_template, run_copy_metrics
-):
+def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
     metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
     props = {
         "template": os.fspath(custom_template),
@@ -258,7 +256,7 @@ def test_plot_choose_columns(
     assert plot_content["encoding"]["y"]["field"] == "c"
 
 
-def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
+def test_plot_default_choose_column(tmp_dir, scm, dvc):
     metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
     data = {
         "workspace": {
@@ -277,7 +275,7 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc, run_copy_metrics):
     assert plot_content["encoding"]["y"]["field"] == "b"
 
 
-def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
+def test_raise_on_wrong_field(tmp_dir, scm, dvc):
     metric = [{"val": 2}, {"val": 3}]
     data = {
         "workspace": {
@@ -287,3 +285,25 @@ def test_raise_on_wrong_field(tmp_dir, scm, dvc, run_copy_metrics):
 
     with pytest.raises(NoFieldInDataError):
         VegaRenderer(data, dvc.plots.templates).get_vega()
+
+
+@pytest.mark.parametrize(
+    "extension, matches",
+    (
+        (".csv", True),
+        (".json", True),
+        (".tsv", True),
+        (".yaml", True),
+        (".jpg", False),
+        (".gif", False),
+        (".jpeg", False),
+        (".png", False),
+    ),
+)
+def test_matches(extension, matches):
+    filename = "file" + extension
+    data = {
+        "HEAD": {"data": {filename: {}}},
+        "v1": {"data": {filename: {}}},
+    }
+    assert VegaRenderer.matches(data) == matches
