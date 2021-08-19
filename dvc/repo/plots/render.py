@@ -2,7 +2,6 @@ import logging
 import os.path
 from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
-import dpath.util
 from funcy import first
 
 from dvc.repo.plots.data import INDEX_FIELD, REVISION_FIELD, to_datapoints
@@ -45,7 +44,17 @@ def group_by_filename(data: Dict) -> List[Dict]:
 
 
 def find_vega(repo, plots_data, target):
-    found = dpath.util.search(plots_data, ["*", "*", target])
+    # TODO same as group_by_filename
+    grouped = group_by_filename(plots_data)
+    found = None
+    for plot_group in grouped:
+        files = get_files(plot_group)
+        assert len(files) == 1
+        file = files.pop()
+        if file == target:
+            found = plot_group
+            break
+
     if found and VegaRenderer.matches(found):
         return VegaRenderer(found, repo.plots.templates).get_vega()
     return ""
