@@ -32,6 +32,18 @@ class RemoteNotFoundError(RemoteConfigError):
     pass
 
 
+class ExecutorConfigError(ConfigError):
+    pass
+
+
+class NoExecutorError(ExecutorConfigError):
+    pass
+
+
+class ExecutorNotFoundError(ExecutorConfigError):
+    pass
+
+
 @memoize
 def get_compiled_schema():
     from voluptuous import Schema
