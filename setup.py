@@ -61,7 +61,7 @@ install_requires = [
     "grandalf==0.6",
     "distro>=1.3.0",
     "appdirs>=1.4.3",
-    "ruamel.yaml>=0.16.1",
+    "ruamel.yaml>=0.17.11",
     "toml>=0.10.1",
     "funcy>=1.14",
     "pathspec>=0.6.0,<0.9.0",
