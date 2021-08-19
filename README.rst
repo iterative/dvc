@@ -20,7 +20,7 @@ learning projects. Key features:
 #. Simple **command line** Git-like experience. Does not require installing and maintaining
    any databases. Does not depend on any proprietary online services.
 
-#. Management and versioning of **datasets** and **machine learning models**. Data is saved in
+#. Management and versioning of **datasets** and **machine learning models**. Data can be saved in
    S3, Google cloud, Azure, Alibaba cloud, SSH server, HDFS, or even local HDD RAID.
 
 #. Makes projects **reproducible** and **shareable**; helping to answer questions about how
@@ -182,30 +182,30 @@ Fedora / CentOS (rpm)
 Comparison to related technologies
 ==================================
 
-#. *Data Engineering* tools such as `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_ and
-   others - in DVC data, model and ML pipelines represent a single ML project and focuses on data scientist' experience while
-   data engineering pipeline orchestrates multiple data projects and focuses on efficient execution. DVC project can be used
-   from data pipeline as a single execution step. `AirFlow DVC <https://github.com/covid-genomics/airflow-dvc>`_ is an example
+#. **Data Engineering tools such as** `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_ **and
+   others** - in DVC data, model and ML pipelines represent a single ML project and focus on data scientist's experience while
+   data engineering tools orchestrate multiple data projects and focus on efficient execution. A DVC project can be used
+   from a data pipeline as a single execution step. `AirFlow DVC <https://github.com/covid-genomics/airflow-dvc>`_ is an example
    of such integration.
 
 #. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (which should
    not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of
    copying/duplicating files.
 
-#. `Git-LFS <https://git-lfs.github.com/>`_ - DVC is compatible with any remote storage (S3, Google Cloud, Azure, SSH,
+#. `Git-LFS <https://git-lfs.github.com/>`_ - DVC is compatible with many remote storage services (S3, Google Cloud, Azure, SSH,
    etc). DVC also uses reflinks or hardlinks to avoid copy operations on checkouts; thus handling large data files
    much more efficiently.
 
-#. *Makefile* (and analogues including ad-hoc scripts) - DVC tracks dependencies (in a directed acyclic graph).
+#. **Makefile (and analogues including ad-hoc scripts)** - DVC tracks dependencies (in a directed acyclic graph).
 
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_ - DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
-#. `DAGsHub <https://dagshub.com/>`_ - online service of Git+DVC repositories with pipeline and metrics visualization and
-   DVC-specific cloud storage.
+#. `DAGsHub <https://dagshub.com/>`_ - An online service that integrates Git & DVC. Used to version and catalog data and models, 
+   track experiments, visualize pipelines. 
 
-#. `DVC Studio <https://studio.iterative.ai/>`_ - online service of DVC repositories visualisation from DVC team. Also,
-   integrated with `CML (CI/CD for ML) <https://cml.dev/>`_ for training models in clouds and Kubernetes.
+#. `DVC Studio <https://studio.iterative.ai/>`_ - An online service from the DVC team to manage data and models, run and track 
+   experiments, and visualize and share results.
 
 
 Contributing
