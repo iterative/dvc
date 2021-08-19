@@ -201,7 +201,7 @@ class ImageRenderer(Renderer):
         os.makedirs(static, exist_ok=True)
 
         img_path = os.path.join(
-            static, f"{revision}_{filename.replace('/', '_')}"
+            static, f"{revision}_{filename.replace(os.sep, '_')}"
         )
         rel_img_path = relpath(img_path, page_dir_path)
         with open(img_path, "wb") as fd:
