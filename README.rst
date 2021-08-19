@@ -182,11 +182,10 @@ Fedora / CentOS (rpm)
 Comparison to related technologies
 ==================================
 
-#. **Data Engineering tools such as** `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_ **and
-   others** - in DVC data, model and ML pipelines represent a single ML project and focus on data scientist's experience while
-   data engineering tools orchestrate multiple data projects and focus on efficient execution. A DVC project can be used
-   from a data pipeline as a single execution step. `AirFlow DVC <https://github.com/covid-genomics/airflow-dvc>`_ is an example
-   of such integration.
+#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`, `Luigi <https://github.com/spotify/luigi>`, and
+   others - in DVC data, model and ML pipelines represent a single ML project focused on data scientists' experience.
+   Data engineering tools orchestrate multiple data projects and focus on efficient execution. A DVC project can be used
+   from existing data pipelines as a single execution step.
 
 #. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (which should
    not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of
@@ -196,7 +195,7 @@ Comparison to related technologies
    etc). DVC also uses reflinks or hardlinks to avoid copy operations on checkouts; thus handling large data files
    much more efficiently.
 
-#. **Makefile (and analogues including ad-hoc scripts)** - DVC tracks dependencies (in a directed acyclic graph).
+#. Makefile (and analogues including ad-hoc scripts) - DVC tracks dependencies (in a directed acyclic graph).
 
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_ - DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
@@ -204,8 +203,9 @@ Comparison to related technologies
 #. `DAGsHub <https://dagshub.com/>`_ - An online service that integrates Git & DVC. Used to version and catalog data and models, 
    track experiments, visualize pipelines. 
 
-#. `DVC Studio <https://studio.iterative.ai/>`_ - An online service from the DVC team to manage data and models, run and track 
-   experiments, and visualize and share results.
+#. `DVC Studio <https://studio.iterative.ai/>`_ - official online platform for DVC projects.
+  It can be used to manage data and models, run and track experiments, and visualize and share results.
+  Also, it integrates with `CML (CI/CD for ML) <https://cml.dev/>` for training models in the cloud or Kubernetes.
 
 
 Contributing
