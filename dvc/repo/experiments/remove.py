@@ -7,21 +7,29 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import exp_refs_by_name, remove_exp_refs
+from .utils import exp_refs, exp_refs_by_name, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def remove(repo, exp_names=None, queue=False, **kwargs):
-    if not exp_names and not queue:
+def remove(
+    repo,
+    exp_names=None,
+    queue=False,
+    clear_all=False,
+    **kwargs,
+):
+    if not any([exp_names, queue, clear_all]):
         return 0
 
     removed = 0
     if queue:
-        removed += len(repo.experiments.stash)
-        repo.experiments.stash.clear()
+        removed += _clear_stash(repo)
+    if clear_all:
+        removed += _clear_all(repo)
+
     if exp_names:
         remained = _remove_commited_exps(repo, exp_names)
         remained = _remove_queued_exps(repo, remained)
@@ -31,6 +39,18 @@ def remove(repo, exp_names=None, queue=False, **kwargs):
             )
         removed += len(exp_names) - len(remained)
     return removed
+
+
+def _clear_stash(repo):
+    removed = len(repo.experiments.stash)
+    repo.experiments.stash.clear()
+    return removed
+
+
+def _clear_all(repo):
+    ref_infos = list(exp_refs(repo.scm))
+    remove_exp_refs(repo.scm, ref_infos)
+    return len(ref_infos)
 
 
 def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
@@ -53,9 +73,9 @@ def _get_exp_ref(repo, exp_name: str) -> Optional[ExpRefInfo]:
         if repo.scm.get_ref(exp_name):
             return ExpRefInfo.from_ref(exp_name)
     else:
-        exp_refs = list(exp_refs_by_name(repo.scm, exp_name))
-        if exp_refs:
-            return _get_ref(exp_refs, exp_name, cur_rev)
+        exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))
+        if exp_ref_list:
+            return _get_ref(exp_ref_list, exp_name, cur_rev)
     return None
 
 
