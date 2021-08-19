@@ -86,16 +86,16 @@ class Renderer:
         assert len(files) == 1
         self.filename = files.pop()
 
-    def _convert(self, path):
+    def _convert(self, page_dir_path: "StrPath"):
         raise NotImplementedError
 
     @property
     def DIV(self):
         raise NotImplementedError
 
-    def generate_html(self, path):
+    def generate_html(self, page_dir_path: "StrPath"):
         """this method might edit content of path"""
-        partial = self._convert(path)
+        partial = self._convert(page_dir_path)
         div_id = f"plot_{self.filename.replace('.', '_').replace('/', '_')}"
         return self.DIV.format(id=div_id, partial=partial)
 
@@ -159,7 +159,8 @@ class VegaRenderer(Renderer):
             return template.render(datapoints, props=props)
         return None
 
-    def _convert(self, path):
+    # TODO naming?
+    def _convert(self, page_dir_path: "StrPath"):
         return self.get_vega()
 
     @staticmethod
@@ -170,40 +171,51 @@ class VegaRenderer(Renderer):
 
 
 class ImageRenderer(Renderer):
-    def _image(self, revision, image_path):
+    DIV = """
+        <div
+            id="{id}"
+            style="overflow:auto;
+                   white-space:nowrap;
+                   padding-left:10px;
+                   border: 1px solid;">
+            {partial}
+        </div>"""
+
+    def _write_image(
+        self,
+        page_dir_path: "StrPath",
+        revision: str,
+        filename: str,
+        image_data: bytes,
+    ):
+        static = os.path.join(page_dir_path, "static")
+        os.makedirs(static, exist_ok=True)
+
+        img_path = os.path.join(
+            static, f"{revision}_{filename.replace('/', '_')}"
+        )
+        rel_img_path = relpath(img_path, page_dir_path)
+        with open(img_path, "wb") as fd:
+            fd.write(image_data)
         return """
         <div>
             <p>{title}</p>
             <img src="{src}">
         </div>""".format(
-            title=revision, src=image_path
+            title=revision, src=rel_img_path
         )
 
-    DIV = """
-    <div
-        id="{id}"
-        style="overflow:auto;
-               white-space:nowrap;
-               padding-left:10px;
-               border: 1px solid;">
-        {partial}
-    </div>"""
-
-    def _convert(self, path: "StrPath"):
-        static = os.path.join(path, "static")
-        os.makedirs(static, exist_ok=True)
+    def _convert(self, page_dir_path: "StrPath"):
         div_content = []
         for rev, rev_data in self.data.items():
             if "data" in rev_data:
                 for file, file_data in rev_data.get("data", {}).items():
                     if "data" in file_data:
-                        img_save_path = os.path.join(
-                            static, f"{rev}_{file.replace('/', '_')}"
+                        div_content.append(
+                            self._write_image(
+                                page_dir_path, rev, file, file_data["data"]
+                            )
                         )
-                        rel_img_path = relpath(img_save_path, path)
-                        with open(img_save_path, "wb") as fd:
-                            fd.write(file_data["data"])
-                        div_content.append(self._image(rev, rel_img_path))
         if div_content:
             div_content.insert(0, f"<p>{self.filename}</p>")
             return "\n".join(div_content)

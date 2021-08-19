@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from dvc.repo.plots.render import ImageRenderer
@@ -23,3 +25,20 @@ def test_matches(extension, matches):
         "v1": {"data": {filename: {}}},
     }
     assert ImageRenderer.matches(data) == matches
+
+
+def test_render(tmp_dir):
+    data = {"workspace": {"data": {"file.jpg": {"data": b"content"}}}}
+
+    page_dir = os.path.join("some", "path")
+    html = ImageRenderer(data).generate_html(page_dir)
+
+    assert (tmp_dir / page_dir).is_dir()
+    image_file = tmp_dir / page_dir / "static" / "workspace_file.jpg"
+    assert image_file.is_file()
+
+    with open(image_file, "rb") as fobj:
+        assert fobj.read() == b"content"
+
+    assert "<p>file.jpg</p>" in html
+    assert '<img src="static/workspace_file.jpg">' in html

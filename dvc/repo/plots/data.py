@@ -89,6 +89,7 @@ def _append_revision(data_points, revision, **kwargs):
 
 
 def to_datapoints(data, revision, filename, **kwargs):
+    # TODO data assumes single file, but it does not have to be, assert?
     result = deepcopy(data)
     for processor in [
         _find_data,
