@@ -224,10 +224,16 @@ SCHEMA = {
         "row_limit": All(Coerce(int), Range(1)),  # obsoleted
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
     },
+    "executor": {
+        str: {
+            "cloud": All(Lower, Choices("aws", "azure")),
+        },
+    },
     # section for experimental features
     "feature": {
+        Optional("executor", default=False): Bool,
         # enabled by default. It's of no use, kept for backward compatibility.
-        Optional("parametrization", default=True): Bool
+        Optional("parametrization", default=True): Bool,
     },
     "plots": {"html_template": str},
 }

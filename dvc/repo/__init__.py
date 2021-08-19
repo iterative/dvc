@@ -132,6 +132,7 @@ class Repo:
     ):
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
+        from dvc.executor import ExecutorManager
         from dvc.fs.local import LocalFileSystem
         from dvc.lock import LockNoop, make_lock
         from dvc.objects.db import ODBManager
@@ -195,6 +196,11 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
         self.live = Live(self)
+
+        if self.config["feature"].get("executor", False):
+            self.executor = ExecutorManager(self)
+        else:
+            self.executor = None
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]
