@@ -18,19 +18,19 @@ CREATE_NO_WINDOW = 0x08000000  # only available since Python 3.7 in subprocess.
 def _popen(cmd, **kwargs):
     prefix = [sys.executable]
     if not is_binary():
-        dvc_exec = sys.argv[0]
-        if os.name == "nt":
-            # python -m /path/to/dvc does not work?
-            # as /path/to/dvc is a path to .exe and itself is executable
-            prefix = [dvc_exec]
-        else:
-            prefix += [dvc_exec]
-
+        main_entrypoint = os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), "__main__.py"
+        )
+        prefix += [main_entrypoint]
     return Popen(prefix + cmd, close_fds=True, shell=False, **kwargs)
 
 
 def _spawn_windows(cmd, env):
-    from subprocess import CREATE_NEW_PROCESS_GROUP, STARTUPINFO, STARTF_USESHOWWINDOW
+    from subprocess import (
+        CREATE_NEW_PROCESS_GROUP,
+        STARTF_USESHOWWINDOW,
+        STARTUPINFO,
+    )
 
     # https://stackoverflow.com/a/7006424
     # https://bugs.python.org/issue41619
