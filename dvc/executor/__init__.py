@@ -1,6 +1,14 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, Iterable, Mapping, Optional, Type
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterable,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+)
 
 from dvc.types import StrPath
 
@@ -79,17 +87,19 @@ class ExecutorManager:
         tmp_dir = os.path.join(self.repo.tmp_dir, "exec")
         self.backends = ExecutorBackends(backends, tmp_dir=tmp_dir, **kwargs)
 
-    def get_executor_config(
+    def get_config_and_backend(
         self,
         name: Optional[str] = None,
-    ):
+    ) -> Tuple[dict, "BaseExecutorBackend"]:
         from dvc.config import NoExecutorError
 
         if not name:
             name = self.repo.config["core"].get("executor")
 
         if name:
-            return self._get_config(name=name)
+            config = self._get_config(name=name)
+            backend = self._get_backend(config["cloud"])
+            return config, backend
 
         if bool(self.repo.config["executor"]):
             error_msg = (
@@ -110,6 +120,7 @@ class ExecutorManager:
         if name:
             try:
                 conf = config["executor"][name.lower()]
+                conf["name"] = name
             except KeyError:
                 from dvc.config import ExecutorNotFoundError
 
@@ -126,3 +137,13 @@ class ExecutorManager:
             return self.backends[backend]
         except KeyError:
             raise NoExecutorError(f"Executor platform '{cloud}' unsupported")
+
+    def init(self, name: Optional[str]):
+        """Initialize the specified executor instance."""
+        config, backend = self.get_config_and_backend(name)
+        return backend.init(**config)
+
+    def destroy(self, name: Optional[str]):
+        """Destroy the specified executor instance."""
+        config, backend = self.get_config_and_backend(name)
+        return backend.destroy(**config)
