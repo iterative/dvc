@@ -51,7 +51,8 @@ class CmdPlots(CmdBase):
             if self.args.show_vega:
                 target = self.args.targets[0]
                 plot_json = find_vega(self.repo, plots_data, target)
-                ui.write(plot_json)
+                if plot_json:
+                    ui.write(plot_json)
                 return 0
 
             index_path = render(
