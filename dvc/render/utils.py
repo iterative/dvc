@@ -65,6 +65,7 @@ def match_renderers(plots_data, templates):
 
 
 def render(repo, plots_data, metrics=None, path=None, html_template_path=None):
+    # TODO we could probably remove repo usages (here and in VegaRenderer)
     renderers = match_renderers(plots_data, repo.plots.templates)
     if not html_template_path:
         html_template_path = repo.config.get("plots", {}).get(

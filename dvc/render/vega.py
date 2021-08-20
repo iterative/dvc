@@ -165,8 +165,7 @@ class VegaRenderer(Renderer):
             return template.render(datapoints, props=props)
         return None
 
-    # TODO naming?
-    def _convert(self, page_dir_path: "StrPath"):
+    def _convert(self, path: "StrPath"):
         return self.get_vega()
 
     @staticmethod

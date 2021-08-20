@@ -11,22 +11,23 @@ class Renderer:
     def __init__(self, data: Dict):
         self.data = data
 
-        # we assume comparison of same file between revisions
         from dvc.render.utils import get_files
 
         files = get_files(self.data)
+
+        # we assume comparison of same file between revisions for now
         assert len(files) == 1
         self.filename = files.pop()
 
-    def _convert(self, page_dir_path: "StrPath"):
+    def _convert(self, path: "StrPath"):
         raise NotImplementedError
 
     @property
     def DIV(self):
         raise NotImplementedError
 
-    def generate_html(self, page_dir_path: "StrPath"):
+    def generate_html(self, path: "StrPath"):
         """this method might edit content of path"""
-        partial = self._convert(page_dir_path)
+        partial = self._convert(path)
         div_id = f"plot_{self.filename.replace('.', '_').replace('/', '_')}"
         return self.DIV.format(id=div_id, partial=partial)

@@ -44,7 +44,7 @@ class ImageRenderer(Renderer):
             title=revision, src=rel_img_path
         )
 
-    def _convert(self, page_dir_path: "StrPath"):
+    def _convert(self, path: "StrPath"):
         div_content = []
         for rev, rev_data in self.data.items():
             if "data" in rev_data:
@@ -52,7 +52,7 @@ class ImageRenderer(Renderer):
                     if "data" in file_data:
                         div_content.append(
                             self._write_image(
-                                page_dir_path, rev, file, file_data["data"]
+                                path, rev, file, file_data["data"]
                             )
                         )
         if div_content:
