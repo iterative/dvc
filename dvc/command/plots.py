@@ -4,7 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.repo.plots.render import find_vega, render
+from dvc.render.utils import find_vega, render
 from dvc.ui import ui
 from dvc.utils import format_link
 

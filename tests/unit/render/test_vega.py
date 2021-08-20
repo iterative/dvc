@@ -4,13 +4,95 @@ from collections import OrderedDict
 
 import pytest
 
-from dvc.repo.plots.data import INDEX_FIELD, REVISION_FIELD
-from dvc.repo.plots.render import VegaRenderer, find_vega
+from dvc.render.utils import find_vega, group_by_filename
+from dvc.render.vega import (
+    INDEX_FIELD,
+    REVISION_FIELD,
+    VegaRenderer,
+    _find_data,
+    _lists,
+)
 from dvc.repo.plots.template import (
     BadTemplateError,
     NoFieldInDataError,
     TemplateNotFoundError,
 )
+
+
+@pytest.mark.parametrize(
+    "dictionary, expected_result",
+    [
+        ({}, []),
+        ({"x": ["a", "b", "c"]}, [["a", "b", "c"]]),
+        (
+            OrderedDict([("x", {"y": ["a", "b"]}), ("z", {"w": ["c", "d"]})]),
+            [["a", "b"], ["c", "d"]],
+        ),
+    ],
+)
+def test_finding_lists(dictionary, expected_result):
+    result = _lists(dictionary)
+
+    assert list(result) == expected_result
+
+
+def test_find_data_in_dict(tmp_dir):
+    m1 = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    m2 = [{"x": 1}, {"x": 2}]
+    dmetric = OrderedDict([("t1", m1), ("t2", m2)])
+
+    assert _find_data(dmetric) == m1
+    assert _find_data(dmetric, fields={"x"}) == m2
+
+
+def test_group_plots_data():
+    error = FileNotFoundError()
+    data = {
+        "v2": {
+            "data": {
+                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
+                "other_file.jpg": {"data": "content"},
+            }
+        },
+        "v1": {
+            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
+        },
+        "workspace": {
+            "data": {
+                "file.json": {"error": error, "props": {}},
+                "other_file.jpg": {"data": "content2"},
+            }
+        },
+    }
+
+    results = group_by_filename(data)
+    assert {
+        "v2": {
+            "data": {
+                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
+            }
+        },
+        "v1": {
+            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
+        },
+        "workspace": {
+            "data": {
+                "file.json": {"error": error, "props": {}},
+            }
+        },
+    } in results
+    assert {
+        "v2": {
+            "data": {
+                "other_file.jpg": {"data": "content"},
+            }
+        },
+        "workspace": {
+            "data": {
+                "other_file.jpg": {"data": "content2"},
+            }
+        },
+    } in results
 
 
 def test_one_column(tmp_dir, scm, dvc):

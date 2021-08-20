@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.repo.plots.render import ImageRenderer
+from dvc.render.image import ImageRenderer
 
 
 @pytest.mark.parametrize(

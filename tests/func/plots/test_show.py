@@ -7,8 +7,8 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.main import main
 from dvc.path_info import PathInfo
+from dvc.render.vega import PlotMetricTypeError
 from dvc.repo import Repo
-from dvc.repo.plots.data import PlotMetricTypeError
 from dvc.utils import onerror_collect
 from dvc.utils.fs import remove
 from dvc.utils.serialize import (

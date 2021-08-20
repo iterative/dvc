@@ -2,7 +2,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
-from dvc.repo.plots.render import render
+from dvc.render.utils import render
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.repo.plots.render import Renderer
+    from dvc.render import Renderer
     from dvc.types import StrPath
 
 PAGE_HTML = """<!DOCTYPE html>

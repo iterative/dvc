@@ -3,13 +3,12 @@ import io
 import logging
 import os
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException
-from dvc.repo.plots.data import PlotMetricTypeError
-from dvc.types import StrPath
+from dvc.render.vega import PlotMetricTypeError
 from dvc.utils import (
     error_handler,
     errored_revisions,
@@ -191,26 +190,6 @@ class Plots:
         from .template import PlotTemplates
 
         return PlotTemplates(self.repo.dvc_dir)
-
-    def write_html(
-        self,
-        path: StrPath,
-        plots: List[Any],
-        metrics: Optional[Dict[str, Dict]] = None,
-        html_template_path: Optional[StrPath] = None,
-    ):
-        if not html_template_path:
-            html_template_path = self.repo.config.get("plots", {}).get(
-                "html_template", None
-            )
-            if html_template_path and not os.path.isabs(html_template_path):
-                html_template_path = os.path.join(
-                    self.repo.dvc_dir, html_template_path
-                )
-
-        from dvc.utils.html import write
-
-        return write(path, plots, metrics, html_template_path)
 
 
 def _is_plot(out: "Output") -> bool:
