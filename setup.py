@@ -97,7 +97,7 @@ install_requires = [
 
 gs = ["gcsfs==2021.7.0"]
 gdrive = ["pydrive2[fsspec]>=1.9.1"]
-s3 = ["s3fs==2021.7.0", "aiobotocore[boto3]>1.0.1"]
+s3 = ["s3fs==2021.8.0", "aiobotocore[boto3]>1.0.1"]
 azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
 oss = ["ossfs==2021.7.5"]
 ssh = ["sshfs>=2021.7.1"]
