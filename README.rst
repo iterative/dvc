@@ -200,8 +200,8 @@ Comparison to related technologies
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_ - DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
-#. `DAGsHub <https://dagshub.com/>`_ - An online service that integrates Git & DVC. Used to version and catalog data and models, 
-   track experiments, visualize pipelines. 
+#. `DAGsHub <https://dagshub.com/>`_ - online service to host DVC projects.
+   It provides a useful UI around DVC repositories and integrates other tools.
 
 #. `DVC Studio <https://studio.iterative.ai/>`_ - official online platform for DVC projects.
   It can be used to manage data and models, run and track experiments, and visualize and share results.
