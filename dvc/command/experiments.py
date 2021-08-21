@@ -384,21 +384,9 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def show_experiments(
-    all_experiments, pager=True, no_timestamp=False, **kwargs
-):
-    include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
-    exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
-    include_params = _parse_filter_list(kwargs.pop("include_params", []))
-    exclude_params = _parse_filter_list(kwargs.pop("exclude_params", []))
-
-    metric_names, param_names = _collect_names(
-        all_experiments,
-        include_metrics=include_metrics,
-        exclude_metrics=exclude_metrics,
-        include_params=include_params,
-        exclude_params=exclude_params,
-    )
+def _experiments_td(
+    all_experiments, metric_names, param_names, no_timestamp=False, **kwargs
+) -> "TabularData":
     metric_headers = _normalize_headers(metric_names)
     param_headers = _normalize_headers(param_names)
 
@@ -419,14 +407,21 @@ def show_experiments(
     for col in ("State", "Executor"):
         if td.is_empty(col):
             td.drop(col)
+    return td
 
-    row_styles = lmap(baseline_styler, td.column("typ"))
 
+def _post_process_td(td):
     merge_headers = ["Experiment", "rev", "typ", "parent"]
     td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
     td.drop(*merge_headers[1:])
+    return td
 
+
+def get_styples(metric_names: Dict, param_names: Dict) -> Dict:
+    metric_headers = _normalize_headers(metric_names)
+    param_headers = _normalize_headers(param_names)
     headers = {"metrics": metric_headers, "params": param_headers}
+
     styles = {
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
@@ -447,13 +442,7 @@ def show_experiments(
         }
     )
 
-    td.render(
-        pager=pager,
-        borders=True,
-        rich_table=True,
-        header_styles=styles,
-        row_styles=row_styles,
-    )
+    return styles
 
 
 def _normalize_headers(names):
@@ -474,6 +463,17 @@ def _format_json(item):
 
 
 class CmdExperimentsShow(CmdBase):
+    @staticmethod
+    def _show_csv(td):
+        _post_process_td(td)
+        ui.write(td.to_csv())
+
+    @staticmethod
+    def _show_json(all_experiments):
+        import json
+
+        ui.write(json.dumps(all_experiments, default=_format_json))
+
     def run(self):
         try:
             all_experiments = self.repo.experiments.show(
@@ -489,21 +489,39 @@ class CmdExperimentsShow(CmdBase):
             return 1
 
         if self.args.show_json:
-            import json
+            self._show_json(all_experiments)
+            return 0
 
-            ui.write(json.dumps(all_experiments, default=_format_json))
+        metric_names, param_names = _collect_names(
+            all_experiments,
+            include_metrics=_parse_filter_list(self.args.include_metrics),
+            exclude_metrics=_parse_filter_list(self.args.exclude_metrics),
+            include_params=_parse_filter_list(self.args.include_params),
+            exclude_params=_parse_filter_list(self.args.exclude_params),
+        )
+
+        td = _experiments_td(
+            all_experiments,
+            metric_names,
+            param_names,
+            no_timestamp=self.args.no_timestamp,
+            sort_by=self.args.sort_by,
+            sort_order=self.args.sort_order,
+            precision=self.args.precision or DEFAULT_PRECISION,
+        )
+
+        if self.args.show_csv:
+            self._show_csv(td)
         else:
-            show_experiments(
-                all_experiments,
-                include_metrics=self.args.include_metrics,
-                exclude_metrics=self.args.exclude_metrics,
-                include_params=self.args.include_params,
-                exclude_params=self.args.exclude_params,
-                no_timestamp=self.args.no_timestamp,
-                sort_by=self.args.sort_by,
-                sort_order=self.args.sort_order,
-                precision=self.args.precision or DEFAULT_PRECISION,
+            row_styles = lmap(baseline_styler, td.column("typ"))
+            styles = get_styples(metric_names, param_names)
+            _post_process_td(td)
+            td.render(
                 pager=not self.args.no_pager,
+                borders=True,
+                rich_table=True,
+                header_styles=styles,
+                row_styles=row_styles,
             )
         return 0
 
@@ -881,6 +899,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
+    )
+    experiments_show_parser.add_argument(
+        "--show-csv",
+        action="store_true",
+        default=False,
+        help="Print output in csv format instead of a human-readable table.",
     )
     experiments_show_parser.add_argument(
         "--precision",

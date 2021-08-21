@@ -58,6 +58,32 @@ def test_experiments_diff(dvc, scm, mocker):
     )
 
 
+@pytest.mark.parametrize("show_json,show_csv", [(True, False), (False, True)])
+def test_experiments_show_format(dvc, scm, mocker, show_json, show_csv):
+    if show_json:
+        args = "--show-json"
+    elif show_csv:
+        args = "--show-csv"
+    cli_args = parse_args(["experiments", "show", args])
+    assert cli_args.func == CmdExperimentsShow
+
+    cmd = cli_args.func(cli_args)
+
+    if show_json:
+        m = mocker.patch(
+            "dvc.command.experiments.CmdExperimentsShow._show_json",
+            return_value={},
+        )
+    elif show_csv:
+        m = mocker.patch(
+            "dvc.command.experiments.CmdExperimentsShow._show_csv",
+            return_value={},
+        )
+    assert cmd.run() == 0
+
+    m.assert_called_once()
+
+
 def test_experiments_show(dvc, scm, mocker):
     cli_args = parse_args(
         [
