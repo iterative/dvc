@@ -45,8 +45,6 @@ class CmdPlots(CmdBase):
                     "No plots were loaded, "
                     "visualization file will not be created."
                 )
-            rel: str = self.args.out or "dvc_plots"
-            path: Path = (Path.cwd() / rel).resolve()
 
             if self.args.show_vega:
                 target = self.args.targets[0]
@@ -55,6 +53,8 @@ class CmdPlots(CmdBase):
                     ui.write(plot_json)
                 return 0
 
+            rel: str = self.args.out or "dvc_plots"
+            path: Path = (Path.cwd() / rel).resolve()
             index_path = render(
                 self.repo,
                 plots_data,

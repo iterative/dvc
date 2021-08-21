@@ -51,14 +51,13 @@ def find_vega(repo, plots_data, target):
 
 
 def match_renderers(plots_data, templates):
+    from dvc.render.image import ImageRenderer
+    from dvc.render.vega import VegaRenderer
+
     renderers = []
     for g in group_by_filename(plots_data):
-        from dvc.render.vega import VegaRenderer
-
         if VegaRenderer.matches(g):
             renderers.append(VegaRenderer(g, templates))
-        from dvc.render.image import ImageRenderer
-
         if ImageRenderer.matches(g):
             renderers.append(ImageRenderer(g))
     return renderers

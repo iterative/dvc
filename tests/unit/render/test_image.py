@@ -41,4 +41,6 @@ def test_render(tmp_dir):
         assert fobj.read() == b"content"
 
     assert "<p>file.jpg</p>" in html
-    assert '<img src="static/workspace_file.jpg">' in html
+    assert (
+        f'<img src="{os.path.join("static", "workspace_file.jpg")}">' in html
+    )

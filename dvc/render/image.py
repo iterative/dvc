@@ -13,10 +13,7 @@ class ImageRenderer(Renderer):
     DIV = """
         <div
             id="{id}"
-            style="overflow:auto;
-                   white-space:nowrap;
-                   padding-left:10px;
-                   border: 1px solid;">
+            style="border: 1px solid;">
             {partial}
         </div>"""
 
