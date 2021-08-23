@@ -417,7 +417,7 @@ def _post_process_td(td):
     return td
 
 
-def get_styples(metric_names: Dict, param_names: Dict) -> Dict:
+def get_styles(metric_names: Dict, param_names: Dict) -> Dict:
     metric_headers = _normalize_headers(metric_names)
     param_headers = _normalize_headers(param_names)
     headers = {"metrics": metric_headers, "params": param_headers}
