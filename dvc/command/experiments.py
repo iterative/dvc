@@ -417,7 +417,7 @@ def _post_process_td(td):
     return td
 
 
-def get_styles(metric_names: Dict, param_names: Dict) -> Dict:
+def _get_styles(metric_names: Dict, param_names: Dict) -> Dict:
     metric_headers = _normalize_headers(metric_names)
     param_headers = _normalize_headers(param_names)
     headers = {"metrics": metric_headers, "params": param_headers}
@@ -514,7 +514,7 @@ class CmdExperimentsShow(CmdBase):
             self._show_csv(td)
         else:
             row_styles = lmap(baseline_styler, td.column("typ"))
-            styles = get_styples(metric_names, param_names)
+            styles = _get_styles(metric_names, param_names)
             _post_process_td(td)
             td.render(
                 pager=not self.args.no_pager,
