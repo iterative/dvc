@@ -750,6 +750,7 @@ class CmdExperimentsRemove(CmdBase):
             exp_names=self.args.experiment,
             queue=self.args.queue,
             clear_all=self.args.all,
+            remote=self.args.git_remote,
         )
 
         return 0
@@ -1248,6 +1249,12 @@ def add_parser(subparsers, parent_parser):
         "--all",
         action="store_true",
         help="Remove all committed experiments.",
+    )
+    remove_group.add_argument(
+        "-r",
+        "--git-remote",
+        metavar="<git_remote>",
+        help="Name of the Git remote to GC all of the experiment branches.",
     )
     experiments_remove_parser.add_argument(
         "experiment",

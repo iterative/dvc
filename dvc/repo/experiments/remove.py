@@ -7,7 +7,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
 from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import exp_refs, exp_refs_by_name, remove_exp_refs
+from .utils import exp_refs, exp_refs_by_name, remote_exp_refs, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,10 @@ def remove(
     exp_names=None,
     queue=False,
     clear_all=False,
+    remote=None,
     **kwargs,
 ):
-    if not any([exp_names, queue, clear_all]):
+    if not any([exp_names, queue, clear_all, remote]):
         return 0
 
     removed = 0
@@ -29,6 +30,8 @@ def remove(
         removed += _clear_stash(repo)
     if clear_all:
         removed += _clear_all(repo)
+    if remote:
+        removed += _clear_remote(repo, remote)
 
     if exp_names:
         remained = _remove_commited_exps(repo, exp_names)
@@ -39,6 +42,14 @@ def remove(
             )
         removed += len(exp_names) - len(remained)
     return removed
+
+
+def _clear_remote(repo, remote: str):
+    ref_infos = list(remote_exp_refs(repo.scm, remote))
+    for ref_info in ref_infos:
+        ref_name = str(ref_info)
+        repo.scm.push_refspec(remote, None, ref_name)
+    return len(ref_infos)
 
 
 def _clear_stash(repo):
