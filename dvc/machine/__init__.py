@@ -23,6 +23,19 @@ logger = logging.getLogger(__name__)
 BackendCls = Type[BaseMachineBackend]
 
 
+RESERVED_NAMES = {"local", "localhost"}
+
+
+def validate_name(name: str):
+    from dvc.exceptions import InvalidArgumentError
+
+    name = name.lower()
+    if name in RESERVED_NAMES:
+        raise InvalidArgumentError(
+            f"Machine name '{name}' is reserved for internal DVC use."
+        )
+
+
 class MachineBackends(Mapping):
     DEFAULT: Dict[str, BackendCls] = {
         "terraform": TerraformBackend,

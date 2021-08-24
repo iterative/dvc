@@ -24,6 +24,10 @@ class CmdMachineConfig(CmdConfig):
 
 class CmdMachineAdd(CmdMachineConfig):
     def run(self):
+        from dvc.machine import validate_name
+
+        validate_name(self.args.name)
+
         if self.args.default:
             ui.write(f"Setting '{self.args.name}' as a default machine.")
 
