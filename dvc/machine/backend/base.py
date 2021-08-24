@@ -8,22 +8,22 @@ from dvc.utils.fs import makedirs
 logger = logging.getLogger(__name__)
 
 
-class BaseExecutorBackend(ABC):
+class BaseMachineBackend(ABC):
     def __init__(self, tmp_dir: StrPath, **kwargs):
         self.tmp_dir = tmp_dir
         makedirs(self.tmp_dir, exist_ok=True)
 
     @abstractmethod
     def init(self, **config):
-        """Initialize an instance of the specified executor."""
+        """Initialize an instance of the specified machine."""
 
     @abstractmethod
     def destroy(self, **config):
-        """Destroy all instances of the specified executor."""
+        """Destroy all instances of the specified machine."""
 
     @abstractmethod
     def instances(self, **config) -> Iterable[dict]:
-        """Iterate over status of all instances of the specified executor."""
+        """Iterate over status of all instances of the specified machine."""
 
     def close(self):
         pass

@@ -12,7 +12,7 @@ from typing import (
 
 from dvc.types import StrPath
 
-from .backend.base import BaseExecutorBackend
+from .backend.base import BaseMachineBackend
 from .backend.terraform import TerraformBackend
 
 if TYPE_CHECKING:
@@ -20,15 +20,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-BackendCls = Type[BaseExecutorBackend]
+BackendCls = Type[BaseMachineBackend]
 
 
-class ExecutorBackends(Mapping):
+class MachineBackends(Mapping):
     DEFAULT: Dict[str, BackendCls] = {
         "terraform": TerraformBackend,
     }
 
-    def __getitem__(self, key: str) -> BaseExecutorBackend:
+    def __getitem__(self, key: str) -> BaseMachineBackend:
         """Lazily initialize backends and cache it afterwards"""
         initialized = self.initialized.get(key)
         if not initialized:
@@ -48,7 +48,7 @@ class ExecutorBackends(Mapping):
         selected = selected or list(self.DEFAULT)
         self.backends = {key: self.DEFAULT[key] for key in selected}
 
-        self.initialized: Dict[str, BaseExecutorBackend] = {}
+        self.initialized: Dict[str, BaseMachineBackend] = {}
 
         self.tmp_dir = tmp_dir
         self.kwargs = kwargs
@@ -64,8 +64,8 @@ class ExecutorBackends(Mapping):
             backend.close()
 
 
-class ExecutorManager:
-    """Class that manages dvc executors.
+class MachineManager:
+    """Class that manages dvc cloud machines.
 
     Args:
         repo (dvc.repo.Repo): repo instance that belongs to the repo that
@@ -84,66 +84,66 @@ class ExecutorManager:
         self, repo: "Repo", backends: Optional[Iterable[str]] = None, **kwargs
     ):
         self.repo = repo
-        tmp_dir = os.path.join(self.repo.tmp_dir, "exec")
-        self.backends = ExecutorBackends(backends, tmp_dir=tmp_dir, **kwargs)
+        tmp_dir = os.path.join(self.repo.tmp_dir, "machine")
+        self.backends = MachineBackends(backends, tmp_dir=tmp_dir, **kwargs)
 
     def get_config_and_backend(
         self,
         name: Optional[str] = None,
-    ) -> Tuple[dict, "BaseExecutorBackend"]:
-        from dvc.config import NoExecutorError
+    ) -> Tuple[dict, "BaseMachineBackend"]:
+        from dvc.config import NoMachineError
 
         if not name:
-            name = self.repo.config["core"].get("executor")
+            name = self.repo.config["core"].get("machine")
 
         if name:
             config = self._get_config(name=name)
             backend = self._get_backend(config["cloud"])
             return config, backend
 
-        if bool(self.repo.config["executor"]):
+        if bool(self.repo.config["machine"]):
             error_msg = (
-                "no executor specified. Setup default executor with\n"
-                "    dvc executor default <name>\n"
+                "no machine specified. Setup default machine with\n"
+                "    dvc machine default <name>\n"
             )
         else:
             error_msg = (
-                "no executor specified. Create a default executor with\n"
-                "    dvc executor add -d <name> <cloud>"
+                "no machine specified. Create a default machine with\n"
+                "    dvc machine add -d <name> <cloud>"
             )
 
-        raise NoExecutorError(error_msg)
+        raise NoMachineError(error_msg)
 
     def _get_config(self, **kwargs):
         config = self.repo.config
         name = kwargs.get("name")
         if name:
             try:
-                conf = config["executor"][name.lower()]
+                conf = config["machine"][name.lower()]
                 conf["name"] = name
             except KeyError:
-                from dvc.config import ExecutorNotFoundError
+                from dvc.config import MachineNotFoundError
 
-                raise ExecutorNotFoundError(f"executor '{name}' doesn't exist")
+                raise MachineNotFoundError(f"machine '{name}' doesn't exist")
         else:
             conf = kwargs
         return conf
 
-    def _get_backend(self, cloud: str) -> BaseExecutorBackend:
-        from dvc.config import NoExecutorError
+    def _get_backend(self, cloud: str) -> BaseMachineBackend:
+        from dvc.config import NoMachineError
 
         try:
             backend = self.CLOUD_BACKENDS[cloud]
             return self.backends[backend]
         except KeyError:
-            raise NoExecutorError(f"Executor platform '{cloud}' unsupported")
+            raise NoMachineError(f"Machine platform '{cloud}' unsupported")
 
     def init(self, name: Optional[str]):
-        """Initialize the specified executor instance."""
+        """Initialize the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
         return backend.init(**config)
 
     def destroy(self, name: Optional[str]):
-        """Destroy the specified executor instance."""
+        """Destroy the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
         return backend.destroy(**config)

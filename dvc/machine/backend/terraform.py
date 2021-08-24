@@ -5,7 +5,7 @@ from typing import Iterable
 from dvc.exceptions import DvcException
 from dvc.types import StrPath
 
-from .base import BaseExecutorBackend
+from .base import BaseMachineBackend
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class TerraformError(DvcException):
     pass
 
 
-class TerraformBackend(BaseExecutorBackend):
+class TerraformBackend(BaseMachineBackend):
     def __init__(self, tmp_dir: StrPath, **kwargs):
         from python_terraform import Terraform
 
@@ -58,7 +58,7 @@ class TerraformBackend(BaseExecutorBackend):
         try:
             name = config["name"]
         except KeyError:
-            raise DvcException("Invalid executor")
+            raise DvcException("Invalid machine")
         state = self._load_state()
         for resource in state.get("resources", []):
             if (

@@ -18,7 +18,6 @@ from .command import (
     data_sync,
     destroy,
     diff,
-    executor,
     experiments,
     freeze,
     gc,
@@ -31,6 +30,7 @@ from .command import (
     install,
     live,
     ls,
+    machine,
     metrics,
     move,
     params,
@@ -88,7 +88,7 @@ COMMANDS = [
     experiments,
     check_ignore,
     live,
-    executor,
+    machine,
 ]
 
 

@@ -32,15 +32,15 @@ class RemoteNotFoundError(RemoteConfigError):
     pass
 
 
-class ExecutorConfigError(ConfigError):
+class MachineConfigError(ConfigError):
     pass
 
 
-class NoExecutorError(ExecutorConfigError):
+class NoMachineError(MachineConfigError):
     pass
 
 
-class ExecutorNotFoundError(ExecutorConfigError):
+class MachineNotFoundError(MachineConfigError):
     pass
 
 
@@ -313,10 +313,10 @@ class Config(dict):
 
 
 def _parse_named(conf):
-    result = {"remote": {}, "executor": {}}
+    result = {"remote": {}, "machine": {}}
 
     for section, val in conf.items():
-        match = re_find(r'^\s*(remote|executor)\s*"(.*)"\s*$', section)
+        match = re_find(r'^\s*(remote|machine)\s*"(.*)"\s*$', section)
         if match:
             key, name = match
             result[key][name] = val
@@ -331,7 +331,7 @@ def _pack_named(conf):
     result = compact(conf)
 
     # Transform remote.name -> 'remote "name"'
-    for key in ("remote", "executor"):
+    for key in ("remote", "machine"):
         for name, val in conf[key].items():
             result[f'{key} "{name}"'] = val
         result.pop(key, None)
