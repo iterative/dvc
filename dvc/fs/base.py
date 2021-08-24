@@ -9,7 +9,6 @@ from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
-from dvc.utils.http import open_url
 
 logger = logging.getLogger(__name__)
 
@@ -126,12 +125,6 @@ class BaseFileSystem:
         )
 
     def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
-        if hasattr(self, "_generate_download_url"):
-            # pylint:disable=no-member
-            func = self._generate_download_url  # type: ignore[attr-defined]
-            get_url = partial(func, path_info)
-            return open_url(get_url, mode=mode, encoding=encoding, **kwargs)
-
         raise RemoteActionNotImplemented("open", self.scheme)
 
     def exists(self, path_info) -> bool:
