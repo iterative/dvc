@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Iterable, Optional
 
 from dvc.types import StrPath
 from dvc.utils.fs import makedirs
@@ -14,15 +14,17 @@ class BaseMachineBackend(ABC):
         makedirs(self.tmp_dir, exist_ok=True)
 
     @abstractmethod
-    def init(self, **config):
+    def init(self, name: Optional[str] = None, **config):
         """Initialize an instance of the specified machine."""
 
     @abstractmethod
-    def destroy(self, **config):
+    def destroy(self, name: Optional[str] = None, **config):
         """Destroy all instances of the specified machine."""
 
     @abstractmethod
-    def instances(self, **config) -> Iterable[dict]:
+    def instances(
+        self, name: Optional[str] = None, **config
+    ) -> Iterable[dict]:
         """Iterate over status of all instances of the specified machine."""
 
     def close(self):
