@@ -154,7 +154,7 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
         [["foo=bar"], "foo: bar"],
         [
             ["lorem.ipsum=3"],
-            "lorem: ipsum: 3",
+            "lorem:\n  ipsum: 3",
         ],
     ],
 )

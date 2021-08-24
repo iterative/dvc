@@ -1,6 +1,7 @@
 import io
 from collections import OrderedDict
 from contextlib import contextmanager
+from benedict.dicts import benedict
 
 from funcy import reraise
 
@@ -50,6 +51,8 @@ def _get_yaml():
     # tell Dumper to represent OrderedDict as normal dict
     yaml_repr_cls = yaml.Representer
     yaml_repr_cls.add_representer(OrderedDict, yaml_repr_cls.represent_dict)
+    yaml_repr_cls.add_representer(benedict, yaml_repr_cls.represent_dict)
+
     return yaml
 
 
