@@ -1,8 +1,8 @@
 import io
 from collections import OrderedDict
 from contextlib import contextmanager
-from benedict.dicts import benedict
 
+from benedict.dicts import benedict
 from funcy import reraise
 
 from ._common import ParseError, _dump_data, _load_data, _modify_data
