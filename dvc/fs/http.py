@@ -192,6 +192,7 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
     def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         from dvc.utils.http import open_url
+
         return open_url(
             path_info.url,
             mode=mode,
