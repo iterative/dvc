@@ -131,8 +131,39 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     )
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
         params=["foo", "goo", "lorem"],
+        metrics_no_cache=["metrics.yaml"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+
+    new_mock = mocker.spy(dvc.experiments, "new")
+    results = dvc.experiments.run(stage.addressing, params=changes)
+    exp = first(results)
+
+    new_mock.assert_called_once()
+    fs = scm.get_fs(exp)
+    with fs.open(tmp_dir / "metrics.yaml") as fobj:
+        assert fobj.read().strip() == expected
+
+
+@pytest.mark.parametrize(
+    "changes, expected",
+    [
+        [["foo=bar"], "foo: bar"],
+        [
+            ["lorem.ipsum=3"],
+            "lorem: ipsum: 3",
+        ],
+    ],
+)
+def test_modify_empty_params(tmp_dir, scm, dvc, mocker, changes, expected):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "")
+    stage = dvc.stage.add(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
         name="copy-file",
     )
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
