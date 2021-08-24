@@ -160,3 +160,7 @@ class MachineManager:
         """Destroy the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
         return backend.destroy(**config)
+
+    def get_sshfs(self, name: Optional[str]):
+        config, backend = self.get_config_and_backend(name)
+        return backend.get_sshfs(**config)

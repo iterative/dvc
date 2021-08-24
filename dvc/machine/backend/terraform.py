@@ -1,14 +1,19 @@
 import logging
 import os
+import tempfile
 from contextlib import contextmanager
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterator, Optional
 
 from funcy import first
 from python_terraform import Terraform
 
 from dvc.exceptions import DvcException
+from dvc.fs.ssh import SSHFileSystem
 
 from .base import BaseMachineBackend
+
+if TYPE_CHECKING:
+    from dvc.repo.experiments.executor.base import BaseExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +43,19 @@ class DvcTerraform(Terraform):
                     instance.get("attributes", {})
                     for instance in resource.get("instances", [])
                 )
+
+    @staticmethod
+    @contextmanager
+    def pemfile(resource: dict):
+        """Generate a temporary SSH key (PEM) file for the specified resource.
+
+        The path to the file will be yielded, and the file will be removed
+        upon exiting the yielded context.
+        """
+        with tempfile.NamedTemporaryFile() as fobj:
+            fobj.write(resource["ssh_private"].encode("ascii"))
+            fobj.seek(0)
+            yield fobj.name
 
 
 class TerraformBackend(BaseMachineBackend):
@@ -78,8 +96,28 @@ class TerraformBackend(BaseMachineBackend):
 
     def instances(
         self, name: Optional[str] = None, **config
-    ) -> Iterable[dict]:
+    ) -> Iterator[dict]:
         assert name
 
         with self.make_tf(name) as tf:
             yield from tf.iter_instances(name)
+
+    def get_executor(
+        self, name: Optional[str] = None, **config
+    ) -> "BaseExecutor":
+        raise NotImplementedError
+
+    @contextmanager
+    def get_sshfs(
+        self, name: Optional[str] = None, **config
+    ) -> Iterator["SSHFileSystem"]:
+        resource = first(self.instances(name))
+        if not resource:
+            raise TerraformError(f"No active '{name}' instances")
+        with DvcTerraform.pemfile(resource) as pem:
+            fs = SSHFileSystem(
+                host=resource["instance_ip"],
+                user="ubuntu",
+                keyfile=pem,
+            )
+            yield fs
