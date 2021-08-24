@@ -138,10 +138,10 @@ class MachineManager:
         except KeyError:
             raise NoMachineError(f"Machine platform '{cloud}' unsupported")
 
-    def init(self, name: Optional[str]):
-        """Initialize the specified machine instance."""
+    def create(self, name: Optional[str]):
+        """Create and start the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
-        return backend.init(**config)
+        return backend.create(**config)
 
     def destroy(self, name: Optional[str]):
         """Destroy the specified machine instance."""

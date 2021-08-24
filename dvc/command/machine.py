@@ -109,9 +109,9 @@ class CmdMachineDefault(CmdMachineConfig):
         return 0
 
 
-class CmdMachineInit(CmdBase):
+class CmdMachineCreate(CmdBase):
     def run(self):
-        self.repo.machine.init(self.args.name)
+        self.repo.machine.create(self.args.name)
 
 
 class CmdMachineDestroy(CmdBase):
@@ -230,18 +230,18 @@ def add_parser(subparsers, parent_parser):
     )
     machine_remove_parser.set_defaults(func=CmdMachineRemove)
 
-    machine_INIT_HELP = "Initialize an machine instance."
-    machine_init_parser = machine_subparsers.add_parser(
-        "init",
+    machine_CREATE_HELP = "Create and start a machine instance."
+    machine_create_parser = machine_subparsers.add_parser(
+        "create",
         parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(machine_INIT_HELP, "machine/init"),
-        help=machine_INIT_HELP,
+        description=append_doc_link(machine_CREATE_HELP, "machine/create"),
+        help=machine_CREATE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    machine_init_parser.add_argument(
-        "name", help="Name of the machine to initialize."
+    machine_create_parser.add_argument(
+        "name", help="Name of the machine to create."
     )
-    machine_init_parser.set_defaults(func=CmdMachineInit)
+    machine_create_parser.set_defaults(func=CmdMachineCreate)
 
     machine_DESTROY_HELP = "Destroy an machine instance."
     machine_destroy_parser = machine_subparsers.add_parser(

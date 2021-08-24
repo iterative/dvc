@@ -14,12 +14,12 @@ class BaseMachineBackend(ABC):
         makedirs(self.tmp_dir, exist_ok=True)
 
     @abstractmethod
-    def init(self, name: Optional[str] = None, **config):
-        """Initialize an instance of the specified machine."""
+    def create(self, name: Optional[str] = None, **config):
+        """Create and start an instance of the specified machine."""
 
     @abstractmethod
     def destroy(self, name: Optional[str] = None, **config):
-        """Destroy all instances of the specified machine."""
+        """Stop and destroy all instances of the specified machine."""
 
     @abstractmethod
     def instances(

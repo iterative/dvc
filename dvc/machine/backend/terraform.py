@@ -54,7 +54,7 @@ class TerraformBackend(BaseMachineBackend):
         except Exception as exc:
             raise TerraformError("terraform failed") from exc
 
-    def init(self, name: Optional[str] = None, **config):
+    def create(self, name: Optional[str] = None, **config):
         from python_terraform import IsFlagged
 
         from dvc.tpi import render_json
