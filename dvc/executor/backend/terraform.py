@@ -40,12 +40,12 @@ class TerraformBackend(BaseExecutorBackend):
     def init(self, **config):
         from python_terraform import IsFlagged
 
-        from dvc.tpi import render_config
+        from dvc.tpi import render_json
 
         assert "name" in config and "cloud" in config
-        tf_file = os.path.join(self.tmp_dir, "main.tf")
+        tf_file = os.path.join(self.tmp_dir, "main.tf.json")
         with open(tf_file, "w", encoding="utf-8") as fobj:
-            fobj.write(render_config(**config))
+            fobj.write(render_json(**config, indent=2))
         self._run("init")
         self._run("apply", auto_approve=IsFlagged)
 
