@@ -24,7 +24,7 @@ def open_url(url, mode="r", encoding=None, **iter_opts):
 
 
 @contextmanager
-def iter_url(url, auth=None, chunk_size=io.DEFAULT_BUFFER_SIZE):
+def iter_url(url, chunk_size=io.DEFAULT_BUFFER_SIZE, auth=None):
     """Iterate over chunks requested from url."""
     import requests
 
