@@ -190,6 +190,15 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 desc=name or to_info.url,
             )
 
+    def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
+        return super().open(
+            path_info,
+            mode,
+            encoding,
+            auth=self._auth_method(path_info),
+            **kwargs,
+        )
+
     @staticmethod
     def _content_length(response) -> Optional[int]:
         res = response.headers.get("Content-Length")

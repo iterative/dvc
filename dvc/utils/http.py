@@ -24,13 +24,15 @@ def open_url(url, mode="r", encoding=None, **iter_opts):
 
 
 @contextmanager
-def iter_url(url, chunk_size=io.DEFAULT_BUFFER_SIZE):
+def iter_url(url, auth, chunk_size=io.DEFAULT_BUFFER_SIZE):
     """Iterate over chunks requested from url."""
     import requests
 
     def request(headers=None):
         the_url = url() if callable(url) else url
-        response = requests.get(the_url, stream=True, headers=headers)
+        response = requests.get(
+            the_url, stream=True, headers=headers, auth=auth
+        )
         if response.status_code == 404:
             raise FileNotFoundError(f"Can't open {the_url}")
         response.raise_for_status()
