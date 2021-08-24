@@ -176,7 +176,7 @@ def test_modify_empty_params(tmp_dir, scm, dvc, mocker, changes, expected):
     new_mock.assert_called_once()
     fs = scm.get_fs(exp)
     with fs.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip() == expected
+        assert fobj.read().strip().replace(r"\r", "") == expected
 
 
 @pytest.mark.parametrize("queue", [True, False])
