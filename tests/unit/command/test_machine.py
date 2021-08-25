@@ -1,5 +1,43 @@
+import configobj
+
 from dvc.cli import parse_args
-from dvc.command.machine import CmdMachineCreate, CmdMachineDestroy
+from dvc.command.machine import (
+    CmdMachineAdd,
+    CmdMachineCreate,
+    CmdMachineDestroy,
+    CmdMachineRemove,
+)
+
+
+def test_add(tmp_dir):
+    tmp_dir.gen({".dvc": {"config": "[feature]\n  machine = true"}})
+    cli_args = parse_args(["machine", "add", "foo", "aws"])
+    assert cli_args.func == CmdMachineAdd
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+    config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
+    assert config['machine "foo"']["cloud"] == "aws"
+
+
+def test_remove(tmp_dir):
+    tmp_dir.gen(
+        {
+            ".dvc": {
+                "config": (
+                    "[feature]\n"
+                    "  machine = true\n"
+                    "['machine \"foo\"']\n"
+                    "  cloud = aws"
+                )
+            }
+        }
+    )
+    cli_args = parse_args(["machine", "remove", "foo"])
+    assert cli_args.func == CmdMachineRemove
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+    config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
+    assert list(config.keys()) == ["feature"]
 
 
 def test_create(tmp_dir, dvc, mocker):
