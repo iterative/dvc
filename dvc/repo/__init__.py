@@ -12,6 +12,7 @@ from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
+from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
 
 if TYPE_CHECKING:
@@ -197,7 +198,10 @@ class Repo:
         self.params = Params(self)
         self.live = Live(self)
 
-        if self.config["feature"].get("machine", False):
+        if self.tmp_dir and (
+            self.config["feature"].get("machine", False)
+            or env2bool("DVC_TEST")
+        ):
             self.machine = MachineManager(self)
         else:
             self.machine = None

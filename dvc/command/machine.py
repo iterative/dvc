@@ -7,12 +7,17 @@ from dvc.ui import ui
 from dvc.utils import format_link
 
 
+class MachineDisabledError(ConfigError):
+    def __init__(self):
+        super().__init__("Machine feature is disabled")
+
+
 class CmdMachineConfig(CmdConfig):
     def __init__(self, args):
 
         super().__init__(args)
         if not self.config["feature"].get("machine", False):
-            raise ConfigError("machine feature is disabled")
+            raise MachineDisabledError
 
         if getattr(self.args, "name", None):
             self.args.name = self.args.name.lower()
@@ -115,12 +120,18 @@ class CmdMachineDefault(CmdMachineConfig):
 
 class CmdMachineCreate(CmdBase):
     def run(self):
+        if self.repo.machine is None:
+            raise MachineDisabledError
+
         self.repo.machine.create(self.args.name)
         return 0
 
 
 class CmdMachineDestroy(CmdBase):
     def run(self):
+        if self.repo.machine is None:
+            raise MachineDisabledError
+
         self.repo.machine.destroy(self.args.name)
         return 0
 
