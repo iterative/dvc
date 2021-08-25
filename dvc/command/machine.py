@@ -116,11 +116,13 @@ class CmdMachineDefault(CmdMachineConfig):
 class CmdMachineCreate(CmdBase):
     def run(self):
         self.repo.machine.create(self.args.name)
+        return 0
 
 
 class CmdMachineDestroy(CmdBase):
     def run(self):
         self.repo.machine.destroy(self.args.name)
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
