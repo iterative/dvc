@@ -1,4 +1,3 @@
-import os
 import stat
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -43,6 +42,16 @@ class GitObject(ABC):
     @property
     def issubmodule(self) -> bool:
         return S_ISGITLINK(self.mode)
+
+    @property
+    @abstractmethod
+    def size(self) -> int:
+        pass
+
+    @property
+    @abstractmethod
+    def sha(self) -> str:
+        pass
 
 
 class GitTrie:
@@ -116,9 +125,14 @@ class GitTrie:
         if not topdown:
             yield top, dirs, nondirs
 
-    def stat(self, key: tuple) -> os.stat_result:
+    def info(self, key: tuple) -> dict:
         obj = self.trie[key]
-        return os.stat_result((obj.mode, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        return {
+            "size": obj.size,
+            "type": "directory" if stat.S_ISDIR(obj.mode) else "file",
+            "sha": obj.sha,
+            "mode": obj.mode,
+        }
 
 
 @dataclass
