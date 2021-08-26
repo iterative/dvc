@@ -52,10 +52,14 @@ class DvcTerraform(Terraform):
         The path to the file will be yielded, and the file will be removed
         upon exiting the yielded context.
         """
-        with tempfile.NamedTemporaryFile() as fobj:
-            fobj.write(resource["ssh_private"].encode("ascii"))
-            fobj.seek(0)
-            yield fobj.name
+        fobj = tempfile.NamedTemporaryFile(delete=False)
+        fobj.write(resource["ssh_private"].encode("ascii"))
+        name = fobj.name
+        fobj.close()
+        try:
+            yield name
+        finally:
+            os.unlink(name)
 
 
 class TerraformBackend(BaseMachineBackend):
