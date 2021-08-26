@@ -1111,9 +1111,9 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=None,
         help=(
-            "Optional Git remote name or SSH Git URL. If provided, "
-            "experiments from the specified Git repository will be "
-            "listed instead of local experiments."
+            "Optional Git remote name or Git URL. If provided, experiments "
+            "from the specified Git repository will be listed instead of "
+            "local experiments."
         ),
         metavar="[<git_remote>]",
     )
