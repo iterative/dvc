@@ -49,7 +49,6 @@ def _collect_paths(
                 )
             else:
                 logger.warning("'%s' was not found at: '%s'.", path_info, rev)
-            continue
         target_infos.append(path_info)
     return target_infos
 
