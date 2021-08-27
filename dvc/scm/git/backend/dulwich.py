@@ -39,7 +39,7 @@ class DulwichObject(GitObject):
         self.repo = repo
         self._name = name
         self._mode = mode
-        self.sha = sha
+        self._sha = sha
 
     def open(self, mode: str = "r", encoding: str = None):
         if not encoding:
@@ -67,6 +67,14 @@ class DulwichObject(GitObject):
             yield DulwichObject(
                 self.repo, entry.path.decode(), entry.mode, entry.sha
             )
+
+    @property
+    def size(self) -> int:
+        return len(self.repo[self.sha].as_raw_string())
+
+    @property
+    def sha(self) -> str:
+        return self._sha
 
 
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
