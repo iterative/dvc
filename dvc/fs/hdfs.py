@@ -65,6 +65,8 @@ class HDFSFileSystem(BaseFileSystem):
     PARAM_CHECKSUM = "checksum"
     TRAVERSE_PREFIX_LEN = 2
 
+    BLOCK_SIZE = 2 ** 26  # 128MB
+
     def __init__(self, **config):
         super().__init__(**config)
 
@@ -245,7 +247,7 @@ class HDFSFileSystem(BaseFileSystem):
     def _upload_fobj(self, fobj, to_info, **kwargs):
         with self.hdfs(to_info) as hdfs:
             with hdfs.open_output_stream(to_info.path) as fdest:
-                shutil.copyfileobj(fobj, fdest)
+                shutil.copyfileobj(fobj, fdest, self.BLOCK_SIZE)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
@@ -262,7 +264,7 @@ class HDFSFileSystem(BaseFileSystem):
                     disable=no_progress_bar,
                 ) as wrapped:
                     with hdfs.open_output_stream(tmp_file) as sobj:
-                        shutil.copyfileobj(wrapped, sobj)
+                        shutil.copyfileobj(wrapped, sobj, self.BLOCK_SIZE)
             hdfs.move(tmp_file, to_info.path)
 
     def _download(
@@ -280,4 +282,4 @@ class HDFSFileSystem(BaseFileSystem):
                     disable=no_progress_bar,
                 ) as wrapped:
                     with hdfs.open_input_stream(from_info.path) as sobj:
-                        shutil.copyfileobj(sobj, wrapped)
+                        shutil.copyfileobj(sobj, wrapped, self.BLOCK_SIZE)
