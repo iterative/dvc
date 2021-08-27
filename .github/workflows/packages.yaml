@@ -20,7 +20,7 @@ jobs:
         ruby-version: 2.4
     - name: Install deps
       run: |
-        pip install .[all]
+        pip install .[all,terraform]
         pip install -r scripts/build-requirements.txt
         gem install --no-document fpm
     - name: Build deb
