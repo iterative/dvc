@@ -262,7 +262,7 @@ class HDFSFileSystem(BaseFileSystem):
                     disable=no_progress_bar,
                 ) as wrapped:
                     with hdfs.open_output_stream(tmp_file) as sobj:
-                        sobj.write(wrapped.read())
+                        shutil.copyfileobj(wrapped, sobj)
             hdfs.move(tmp_file, to_info.path)
 
     def _download(
@@ -280,4 +280,4 @@ class HDFSFileSystem(BaseFileSystem):
                     disable=no_progress_bar,
                 ) as wrapped:
                     with hdfs.open_input_stream(from_info.path) as sobj:
-                        wrapped.write(sobj.read())
+                        shutil.copyfileobj(sobj, wrapped)
