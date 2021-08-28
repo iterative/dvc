@@ -36,9 +36,6 @@ def pull(
 
 
 def _get_exp_ref(repo, git_remote, exp_name):
-    if exp_name.startswith("refs/"):
-        return exp_name
-
     exp_refs = list(remote_exp_refs_by_name(repo.scm, git_remote, exp_name))
     if not exp_refs:
         raise InvalidArgumentError(

@@ -1250,7 +1250,7 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         help="Remove all committed experiments.",
     )
-    remove_group.add_argument(
+    experiments_remove_parser.add_argument(
         "-r",
         "--git-remote",
         metavar="<git_remote>",

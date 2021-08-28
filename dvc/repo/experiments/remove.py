@@ -6,8 +6,13 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
-from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import exp_refs, exp_refs_by_name, remote_exp_refs, remove_exp_refs
+from .base import ExpRefInfo
+from .utils import (
+    exp_refs,
+    exp_refs_by_name,
+    remote_exp_refs_by_name,
+    remove_exp_refs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +27,7 @@ def remove(
     remote=None,
     **kwargs,
 ):
-    if not any([exp_names, queue, clear_all, remote]):
+    if not any([exp_names, queue, clear_all]):
         return 0
 
     removed = 0
@@ -30,26 +35,10 @@ def remove(
         removed += _clear_stash(repo)
     if clear_all:
         removed += _clear_all(repo)
-    if remote:
-        removed += _clear_remote(repo, remote)
 
     if exp_names:
-        remained = _remove_commited_exps(repo, exp_names)
-        remained = _remove_queued_exps(repo, remained)
-        if remained:
-            raise InvalidArgumentError(
-                "'{}' is not a valid experiment".format(";".join(remained))
-            )
-        removed += len(exp_names) - len(remained)
+        removed += _remove_exp_by_names(repo, remote, exp_names)
     return removed
-
-
-def _clear_remote(repo, remote: str):
-    ref_infos = list(remote_exp_refs(repo.scm, remote))
-    for ref_info in ref_infos:
-        ref_name = str(ref_info)
-        repo.scm.push_refspec(remote, None, ref_name)
-    return len(ref_infos)
 
 
 def _clear_stash(repo):
@@ -78,15 +67,16 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     return None
 
 
-def _get_exp_ref(repo, exp_name: str) -> Optional[ExpRefInfo]:
+def _get_exp_ref(repo, remote: str, exp_name: str) -> Optional[ExpRefInfo]:
     cur_rev = repo.scm.get_rev()
-    if exp_name.startswith(EXPS_NAMESPACE):
-        if repo.scm.get_ref(exp_name):
-            return ExpRefInfo.from_ref(exp_name)
-    else:
+    if not remote:
         exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))
-        if exp_ref_list:
-            return _get_ref(exp_ref_list, exp_name, cur_rev)
+    else:
+        exp_ref_list = list(
+            remote_exp_refs_by_name(repo.scm, remote, exp_name)
+        )
+    if exp_ref_list:
+        return _get_ref(exp_ref_list, exp_name, cur_rev)
     return None
 
 
@@ -107,17 +97,21 @@ def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
     return ref_infos[0]
 
 
-def _remove_commited_exps(repo, refs: List[str]) -> List[str]:
+def _remove_commited_exps(repo, remote: str, refs: List[str]) -> List[str]:
     remain_list = []
     remove_list = []
     for ref in refs:
-        ref_info = _get_exp_ref(repo, ref)
+        ref_info = _get_exp_ref(repo, remote, ref)
+
         if ref_info:
             remove_list.append(ref_info)
         else:
             remain_list.append(ref)
     if remove_list:
-        remove_exp_refs(repo.scm, remove_list)
+        if not remote:
+            remove_exp_refs(repo.scm, remove_list)
+        else:
+            repo.scm.push_refspec(remote, None, str(ref_info))
     return remain_list
 
 
@@ -130,3 +124,14 @@ def _remove_queued_exps(repo, refs_or_revs: List[str]) -> List[str]:
         else:
             repo.experiments.stash.drop(stash_index)
     return remain_list
+
+
+def _remove_exp_by_names(repo, remote, exp_names: List[str]) -> int:
+    remained = _remove_commited_exps(repo, remote, exp_names)
+    if not remote:
+        remained = _remove_queued_exps(repo, remained)
+    if remained:
+        raise InvalidArgumentError(
+            "'{}' is not a valid experiment".format(";".join(remained))
+        )
+    return len(exp_names) - len(remained)

@@ -96,21 +96,23 @@ def test_remove_all(tmp_dir, scm, dvc, exp_stage):
 def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
     remote = git_upstream.url if use_url else git_upstream.remote
 
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
-    exp1 = first(results)
-    ref_info1 = first(exp_refs_by_rev(scm, exp1))
+    ref_info_list = []
+    exp_list = []
+    for i in range(3):
+        results = dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"]
+        )
+        exp = first(results)
+        exp_list.append(exp)
+        ref_info = first(exp_refs_by_rev(scm, exp))
+        ref_info_list.append(ref_info)
+        dvc.experiments.push(remote, ref_info.name)
+        assert git_upstream.scm.get_ref(str(ref_info)) == exp
 
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
-    exp2 = first(results)
-    ref_info2 = first(exp_refs_by_rev(scm, exp2))
+    dvc.experiments.remove(experiments=ref_info_list)
 
-    dvc.experiments.push(remote, ref_info1.name)
-    dvc.experiments.push(remote, ref_info2.name)
-    assert git_upstream.scm.get_ref(str(ref_info1)) == exp1
-    assert git_upstream.scm.get_ref(str(ref_info2)) == exp2
+    dvc.experiments.remove(remote=remote, experiments=ref_info_list[:2])
 
-    dvc.experiments.remove(experiments=[ref_info1])
-    dvc.experiments.remove(remote=remote)
-
-    assert git_upstream.scm.get_ref(str(ref_info1)) is None
-    assert git_upstream.scm.get_ref(str(ref_info2)) is None
+    assert git_upstream.scm.get_ref(str(ref_info_list[0])) is None
+    assert git_upstream.scm.get_ref(str(ref_info_list[1])) is None
+    assert git_upstream.scm.get_ref(str(ref_info_list[2])) == exp_list[2]

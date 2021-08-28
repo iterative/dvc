@@ -262,7 +262,7 @@ def test_experiments_remove(dvc, scm, mocker, queue, clear_all, remote):
     if clear_all:
         args = ["--all"]
     if remote:
-        args = ["--git-remote", "myremote"]
+        args = ["--git-remote", "myremote", "exp-123", "exp-234"]
     cli_args = parse_args(["experiments", "remove"] + args)
     assert cli_args.func == CmdExperimentsRemove
 
@@ -272,7 +272,7 @@ def test_experiments_remove(dvc, scm, mocker, queue, clear_all, remote):
     assert cmd.run() == 0
     m.assert_called_once_with(
         cmd.repo,
-        exp_names=[],
+        exp_names=["exp-123", "exp-234"] if remote else [],
         queue=queue,
         clear_all=clear_all,
         remote="myremote" if remote else None,
