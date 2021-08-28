@@ -109,9 +109,9 @@ def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
         dvc.experiments.push(remote, ref_info.name)
         assert git_upstream.scm.get_ref(str(ref_info)) == exp
 
-    dvc.experiments.remove(experiments=ref_info_list)
-
-    dvc.experiments.remove(remote=remote, experiments=ref_info_list[:2])
+    dvc.experiments.remove(
+        remote=remote, exp_names=[str(ref_info_list[0]), ref_info_list[1].name]
+    )
 
     assert git_upstream.scm.get_ref(str(ref_info_list[0])) is None
     assert git_upstream.scm.get_ref(str(ref_info_list[1])) is None

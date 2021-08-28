@@ -1232,7 +1232,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
 
-    EXPERIMENTS_REMOVE_HELP = "Remove local experiments."
+    EXPERIMENTS_REMOVE_HELP = "Remove experiments."
     experiments_remove_parser = experiments_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
@@ -1251,10 +1251,11 @@ def add_parser(subparsers, parent_parser):
         help="Remove all committed experiments.",
     )
     experiments_remove_parser.add_argument(
-        "-r",
+        "-g",
         "--git-remote",
         metavar="<git_remote>",
-        help="Name of the Git remote to GC all of the experiment branches.",
+        help="Name or URL of the Git remote to delete the experiment "
+        "references",
     )
     experiments_remove_parser.add_argument(
         "experiment",

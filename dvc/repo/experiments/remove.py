@@ -111,7 +111,8 @@ def _remove_commited_exps(repo, remote: str, refs: List[str]) -> List[str]:
         if not remote:
             remove_exp_refs(repo.scm, remove_list)
         else:
-            repo.scm.push_refspec(remote, None, str(ref_info))
+            for ref_info in remove_list:
+                repo.scm.push_refspec(remote, None, str(ref_info))
     return remain_list
 
 
