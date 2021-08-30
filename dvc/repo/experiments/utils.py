@@ -1,4 +1,4 @@
-from typing import Generator, Iterable, Optional, Set
+from typing import Generator, Iterable, List, Optional, Set
 
 from dvc.scm.git import Git
 
@@ -115,3 +115,27 @@ def fix_exp_head(scm: "Git", ref: Optional[str]) -> Optional[str]:
         if name == "HEAD" and scm.get_ref(EXEC_BASELINE):
             return "".join((EXEC_BASELINE, tail))
     return ref
+
+
+def get_exp_ref_list(
+    repo, exp_name: str, git_remote: Optional[str] = None
+) -> List[ExpRefInfo]:
+    if exp_name.startswith("refs/"):
+        return [ExpRefInfo.from_ref(exp_name)]
+
+    if git_remote:
+        exp_ref_list = list(
+            remote_exp_refs_by_name(repo.scm, git_remote, exp_name)
+        )
+    else:
+        exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))
+
+    if not exp_ref_list:
+        return []
+    if len(exp_ref_list) > 1:
+        cur_rev = repo.scm.get_rev()
+        for info in exp_ref_list:
+            if info.baseline_sha == cur_rev:
+                exp_ref_list = [info]
+                break
+    return exp_ref_list

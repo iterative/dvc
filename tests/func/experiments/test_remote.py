@@ -151,7 +151,7 @@ def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 
     git_downstream.scm.remove_ref(str(ref_info))
 
-    downstream_exp.pull(remote, str(ref_info))
+    downstream_exp.pull(remote, str(ref_info), pull_cache=True)
     assert git_downstream.scm.get_ref(str(ref_info)) == exp
 
 

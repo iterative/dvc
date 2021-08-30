@@ -6,13 +6,8 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
-from .base import EXPS_NAMESPACE, ExpRefInfo
-from .utils import (
-    exp_refs,
-    exp_refs_by_name,
-    remote_exp_refs_by_name,
-    remove_exp_refs,
-)
+from .base import ExpRefInfo
+from .utils import exp_refs, get_exp_ref_list, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
@@ -67,34 +62,18 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     return None
 
 
-def _get_exp_ref(
-    repo, remote: Optional[str], exp_name: str
-) -> Optional[ExpRefInfo]:
-    if exp_name.startswith(EXPS_NAMESPACE):
-        if repo.scm.get_ref(exp_name):
-            return ExpRefInfo.from_ref(exp_name)
-
-    cur_rev = repo.scm.get_rev()
-    if not remote:
-        exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))
-    else:
-        exp_ref_list = list(
-            remote_exp_refs_by_name(repo.scm, remote, exp_name)
-        )
-
-    if exp_ref_list:
-        return _get_ref(exp_ref_list, exp_name, cur_rev)
-    return None
-
-
-def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
+def _get_exp_ref(repo, remote, exp_name) -> Optional[ExpRefInfo]:
+    ref_infos = get_exp_ref_list(repo, exp_name, remote)
+    if not ref_infos:
+        return None
     if len(ref_infos) > 1:
+        cur_rev = repo.scm.get_rev()
         for info in ref_infos:
             if info.baseline_sha == cur_rev:
                 return info
         msg = [
             (
-                f"Ambiguous name '{name}' refers to multiple "
+                f"Ambiguous name '{exp_name}' refers to multiple "
                 "experiments. Use full refname to remove one of "
                 "the following:"
             )
@@ -104,16 +83,18 @@ def _get_ref(ref_infos, name, cur_rev) -> Optional[ExpRefInfo]:
     return ref_infos[0]
 
 
-def _remove_commited_exps(repo, remote: str, refs: List[str]) -> List[str]:
+def _remove_commited_exps(
+    repo, remote: Optional[str], exp_names: List[str]
+) -> List[str]:
     remain_list = []
     remove_list = []
-    for ref in refs:
-        ref_info = _get_exp_ref(repo, remote, ref)
+    for exp_name in exp_names:
+        ref_info = _get_exp_ref(repo, remote, exp_name)
 
         if ref_info:
             remove_list.append(ref_info)
         else:
-            remain_list.append(ref)
+            remain_list.append(exp_name)
     if remove_list:
         if not remote:
             remove_exp_refs(repo.scm, remove_list)

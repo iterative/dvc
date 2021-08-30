@@ -4,7 +4,8 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 
-from .utils import exp_commits, remote_exp_refs_by_name
+from .base import ExpRefInfo
+from .utils import exp_commits, get_exp_ref_list
 
 logger = logging.getLogger(__name__)
 
@@ -35,20 +36,14 @@ def pull(
         _pull_cache(repo, exp_ref, **kwargs)
 
 
-def _get_exp_ref(repo, git_remote, exp_name):
-    if exp_name.startswith("refs/"):
-        return exp_name
+def _get_exp_ref(repo, git_remote: str, exp_name: str) -> ExpRefInfo:
+    exp_refs = get_exp_ref_list(repo, exp_name, git_remote)
 
-    exp_refs = list(remote_exp_refs_by_name(repo.scm, git_remote, exp_name))
     if not exp_refs:
         raise InvalidArgumentError(
             f"Experiment '{exp_name}' does not exist in '{git_remote}'"
         )
     if len(exp_refs) > 1:
-        cur_rev = repo.scm.get_rev()
-        for info in exp_refs:
-            if info.baseline_sha == cur_rev:
-                return info
         msg = [
             (
                 f"Ambiguous name '{exp_name}' refers to multiple "

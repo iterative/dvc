@@ -2,10 +2,10 @@ import logging
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.scm_context import scm_context
 
-from .utils import exp_commits, exp_refs_by_name
+from .base import ExpRefInfo
+from .utils import exp_commits, get_exp_ref_list
 
 logger = logging.getLogger(__name__)
 
@@ -43,19 +43,12 @@ def push(
 
 
 def _get_exp_ref(repo, exp_name: str) -> ExpRefInfo:
-    if exp_name.startswith("refs/"):
-        return ExpRefInfo.from_ref(exp_name)
-
-    exp_refs = list(exp_refs_by_name(repo.scm, exp_name))
+    exp_refs = get_exp_ref_list(repo, exp_name)
     if not exp_refs:
         raise InvalidArgumentError(
             f"'{exp_name}' is not a valid experiment name"
         )
     if len(exp_refs) > 1:
-        cur_rev = repo.scm.get_rev()
-        for info in exp_refs:
-            if info.baseline_sha == cur_rev:
-                return info
         msg = [
             (
                 f"Ambiguous name '{exp_name}' refers to multiple "
