@@ -6,8 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
-from .base import ExpRefInfo
-from .utils import exp_refs, get_exp_ref_list, remove_exp_refs
+from .utils import exp_refs, remove_exp_refs, resolve_exp_ref
 
 logger = logging.getLogger(__name__)
 
@@ -62,34 +61,13 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     return None
 
 
-def _get_exp_ref(repo, remote, exp_name) -> Optional[ExpRefInfo]:
-    ref_infos = get_exp_ref_list(repo, exp_name, remote)
-    if not ref_infos:
-        return None
-    if len(ref_infos) > 1:
-        cur_rev = repo.scm.get_rev()
-        for info in ref_infos:
-            if info.baseline_sha == cur_rev:
-                return info
-        msg = [
-            (
-                f"Ambiguous name '{exp_name}' refers to multiple "
-                "experiments. Use full refname to remove one of "
-                "the following:"
-            )
-        ]
-        msg.extend([f"\t{info}" for info in ref_infos])
-        raise InvalidArgumentError("\n".join(msg))
-    return ref_infos[0]
-
-
 def _remove_commited_exps(
     repo, remote: Optional[str], exp_names: List[str]
 ) -> List[str]:
     remain_list = []
     remove_list = []
     for exp_name in exp_names:
-        ref_info = _get_exp_ref(repo, remote, exp_name)
+        ref_info = resolve_exp_ref(repo, exp_name, remote)
 
         if ref_info:
             remove_list.append(ref_info)
