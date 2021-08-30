@@ -1,8 +1,12 @@
+import asyncio
 import logging
+import os
+import sys
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
+from dvc.exceptions import DvcException
 from dvc.types import StrPath
 from dvc.utils.fs import makedirs
 
@@ -50,3 +54,33 @@ class BaseMachineBackend(ABC):
     ) -> Iterator["SSHFileSystem"]:
         """Return an sshfs instance for the default directory on the
         specified machine."""
+
+    @abstractmethod
+    def run_shell(self, name: Optional[str] = None, **config):
+        """Spawn an interactive SSH shell for the specified machine.
+
+        Requires a valid 'ssh' client in the user's PATH.
+        """
+
+    def _shell(self, *args, **kwargs):
+        """Spawn an interactive asyncssh shell session.
+
+        Args will be passed into asyncssh.connect().
+        """
+        import asyncssh
+
+        try:
+            asyncio.run(self._shell_async(*args, **kwargs))
+        except (OSError, asyncssh.Error) as exc:
+            raise DvcException("SSH connection failed") from exc
+
+    async def _shell_async(self, *args, **kwargs):
+        import asyncssh
+
+        async with asyncssh.connect(*args, **kwargs) as conn:
+            await conn.run(
+                term_type=os.environ.get("TERM", "xterm"),
+                stdin=sys.stdin,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+            )

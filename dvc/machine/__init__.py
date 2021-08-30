@@ -164,3 +164,7 @@ class MachineManager:
     def get_sshfs(self, name: Optional[str]):
         config, backend = self.get_config_and_backend(name)
         return backend.get_sshfs(**config)
+
+    def run_shell(self, name: Optional[str]):
+        config, backend = self.get_config_and_backend(name)
+        return backend.run_shell(**config)

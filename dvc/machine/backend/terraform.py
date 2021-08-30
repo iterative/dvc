@@ -109,13 +109,17 @@ class TerraformBackend(BaseMachineBackend):
     ) -> "BaseExecutor":
         raise NotImplementedError
 
+    def _default_resource(self, name):
+        resource = first(self.instances(name))
+        if not resource:
+            raise TerraformError(f"No active '{name}' instances")
+        return resource
+
     @contextmanager
     def get_sshfs(
         self, name: Optional[str] = None, **config
     ) -> Iterator["SSHFileSystem"]:
-        resource = first(self.instances(name))
-        if not resource:
-            raise TerraformError(f"No active '{name}' instances")
+        resource = self._default_resource(name)
         with DvcTerraform.pemfile(resource) as pem:
             fs = SSHFileSystem(
                 host=resource["instance_ip"],
@@ -123,3 +127,13 @@ class TerraformBackend(BaseMachineBackend):
                 keyfile=pem,
             )
             yield fs
+
+    def run_shell(self, name: Optional[str] = None, **config):
+        resource = self._default_resource(name)
+        with DvcTerraform.pemfile(resource) as pem:
+            self._shell(
+                host=resource["instance_ip"],
+                username="ubuntu",
+                client_keys=pem,
+                known_hosts=None,
+            )
