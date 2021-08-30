@@ -87,7 +87,9 @@ install_requires = [
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
-    "typing_extensions>=3.7.4",
+    "typing_extensions>=3.7.4; python_version < '3.10'",
+    # until https://github.com/python/typing/issues/865 is fixed for python3.10
+    "typing_extensions==3.10.0.0; python_version >= '3.10'",
     "fsspec>=2021.7.0",
     "diskcache>=5.2.1",
 ]
