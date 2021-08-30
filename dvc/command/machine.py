@@ -136,6 +136,15 @@ class CmdMachineDestroy(CmdBase):
         return 0
 
 
+class CmdMachineSsh(CmdBase):
+    def run(self):
+        if self.repo.machine is None:
+            raise MachineDisabledError
+
+        self.repo.machine.run_shell(self.args.name)
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
@@ -272,3 +281,16 @@ def add_parser(subparsers, parent_parser):
         "name", help="Name of the machine instance to destroy."
     )
     machine_destroy_parser.set_defaults(func=CmdMachineDestroy)
+
+    machine_SSH_HELP = "Connect to a machine via SSH."
+    machine_ssh_parser = machine_subparsers.add_parser(
+        "ssh",
+        parents=[parent_config_parser, parent_parser],
+        description=append_doc_link(machine_SSH_HELP, "machine/ssh"),
+        help=machine_SSH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    machine_ssh_parser.add_argument(
+        "name", help="Name of the machine instance to connect to."
+    )
+    machine_ssh_parser.set_defaults(func=CmdMachineSsh)
