@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm.base import RevError
 
-from .base import ExpRefInfo
+from .base import EXPS_NAMESPACE, ExpRefInfo
 from .utils import (
     exp_refs,
     exp_refs_by_name,
@@ -68,6 +68,10 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
 
 
 def _get_exp_ref(repo, remote: str, exp_name: str) -> Optional[ExpRefInfo]:
+    if exp_name.startswith(EXPS_NAMESPACE):
+        if repo.scm.get_ref(exp_name):
+            return ExpRefInfo.from_ref(exp_name)
+
     cur_rev = repo.scm.get_rev()
     if not remote:
         exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))

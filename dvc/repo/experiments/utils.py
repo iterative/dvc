@@ -63,7 +63,7 @@ def remote_exp_refs_by_name(
 ) -> Generator["ExpRefInfo", None, None]:
     """Iterate over all remote experiment refs matching the specified name."""
     for ref_info in remote_exp_refs(scm, url):
-        if ref_info.name == name or str(ref_info) == name:
+        if ref_info.name == name:
             yield ref_info
 
 

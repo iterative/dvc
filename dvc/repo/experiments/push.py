@@ -43,6 +43,9 @@ def push(
 
 
 def _get_exp_ref(repo, exp_name: str) -> ExpRefInfo:
+    if exp_name.startswith("refs/"):
+        return ExpRefInfo.from_ref(exp_name)
+
     exp_refs = list(exp_refs_by_name(repo.scm, exp_name))
     if not exp_refs:
         raise InvalidArgumentError(
