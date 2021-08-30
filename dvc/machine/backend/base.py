@@ -66,10 +66,15 @@ class BaseMachineBackend(ABC):
         """
         import asyncssh
 
+        loop = asyncio.new_event_loop()
         try:
-            asyncio.run(self._shell_async(*args, **kwargs))
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self._shell_async(*args, **kwargs))
         except (OSError, asyncssh.Error) as exc:
             raise DvcException("SSH connection failed") from exc
+        finally:
+            asyncio.set_event_loop(None)
+            loop.close()
 
     async def _shell_async(self, *args, **kwargs):
         import asyncssh
