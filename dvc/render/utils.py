@@ -63,7 +63,14 @@ def match_renderers(plots_data, templates):
     return renderers
 
 
-def render(repo, plots_data, metrics=None, path=None, html_template_path=None, refresh_seconds=None):
+def render(
+    repo,
+    plots_data,
+    metrics=None,
+    path=None,
+    html_template_path=None,
+    refresh_seconds=None,
+):
     # TODO we could probably remove repo usages (here and in VegaRenderer)
     renderers = match_renderers(plots_data, repo.plots.templates)
     if not html_template_path:
@@ -76,6 +83,9 @@ def render(repo, plots_data, metrics=None, path=None, html_template_path=None, r
     from dvc.render.html import write
 
     return write(
-        path, renderers, metrics=metrics, template_path=html_template_path,
-        refresh_seconds=refresh_seconds
+        path,
+        renderers,
+        metrics=metrics,
+        template_path=html_template_path,
+        refresh_seconds=refresh_seconds,
     )
