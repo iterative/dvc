@@ -1,6 +1,6 @@
 import json
 import os
-from unittest.mock import ANY
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from python_terraform import IsFlagged
@@ -130,10 +130,21 @@ def test_instances(tmp_dir, terraform, resource):
     assert list(terraform.instances(resource)) == [expected]
 
 
+# NOTE: native MagicMock doesn't support async context managers in Python < 3.8
+class ConnectionMock(MagicMock):
+    async def __aenter__(self, *args, **kwargs):
+        return MagicMock()
+
+    async def __aexit__(self, *args, **kwargs):
+        return MagicMock()
+
+
 def test_shell(tmp_dir, terraform, resource, mocker):
     data = json.loads(TEST_RESOURCE_STATE)
     expected = data["resources"][0]["instances"][0]["attributes"]
-    mock_connect = mocker.patch("asyncssh.connect")
+    mock_connect = mocker.patch(
+        "asyncssh.connect", return_value=ConnectionMock()
+    )
     terraform.run_shell(name=resource)
     mock_connect.assert_called_once_with(
         host=expected["instance_ip"],
