@@ -463,18 +463,9 @@ def _format_json(item):
 
 
 class CmdExperimentsShow(CmdBase):
-    @staticmethod
-    def _show_csv(td):
-        _post_process_td(td)
-        ui.write(td.to_csv())
-
-    @staticmethod
-    def _show_json(all_experiments):
+    def run(self):
         import json
 
-        ui.write(json.dumps(all_experiments, default=_format_json))
-
-    def run(self):
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -489,7 +480,7 @@ class CmdExperimentsShow(CmdBase):
             return 1
 
         if self.args.show_json:
-            self._show_json(all_experiments)
+            ui.write(json.dumps(all_experiments, default=_format_json))
             return 0
 
         metric_names, param_names = _collect_names(
@@ -511,7 +502,7 @@ class CmdExperimentsShow(CmdBase):
         )
 
         if self.args.show_csv:
-            self._show_csv(td)
+            ui.write(td.to_csv(), end="")
         else:
             row_styles = lmap(baseline_styler, td.column("typ"))
             styles = _get_styles(metric_names, param_names)
