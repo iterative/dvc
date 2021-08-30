@@ -81,7 +81,7 @@ def write(
     path: "StrPath",
     renderers: List["Renderer"],
     metrics: Optional[Dict[str, Dict]] = None,
-    template_path: Optional[StrPath] = None,
+    template_path: Optional["StrPath"] = None,
     refresh_seconds: Optional[int] = None,
 ):
 
