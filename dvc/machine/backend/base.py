@@ -57,13 +57,10 @@ class BaseMachineBackend(ABC):
 
     @abstractmethod
     def run_shell(self, name: Optional[str] = None, **config):
-        """Spawn an interactive SSH shell for the specified machine.
-
-        Requires a valid 'ssh' client in the user's PATH.
-        """
+        """Spawn an interactive SSH shell for the specified machine."""
 
     def _shell(self, *args, **kwargs):
-        """Spawn an interactive asyncssh shell session.
+        """Sync wrapper for an asyncssh shell session.
 
         Args will be passed into asyncssh.connect().
         """
