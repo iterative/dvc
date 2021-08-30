@@ -2,17 +2,20 @@ import logging
 import os
 import sys
 import time
+from typing import TYPE_CHECKING, Optional
 
-import colorama
 from packaging import version
 
 from dvc import __version__
 from dvc.utils.pkg import PKG
 
+if TYPE_CHECKING:
+    from rich.text import Text
+
 logger = logging.getLogger(__name__)
 
 
-class Updater:  # pragma: no cover
+class Updater:
     URL = "https://updater.dvc.org"
     UPDATER_FILE = "updater"
     TIMEOUT = 24 * 60 * 60  # every day
@@ -105,57 +108,58 @@ class Updater:  # pragma: no cover
         with open(self.updater_file, "w+") as fobj:
             json.dump(info, fobj)
 
-    def _notify(self, latest):
+    def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:
+        from dvc.ui import ui
+
         if not sys.stdout.isatty():
             return
 
-        message = (
-            "Update available {red}{current}{reset} -> {green}{latest}{reset}"
-            + "\n"
-            + self._get_update_instructions()
-        ).format(
-            red=colorama.Fore.RED,
-            reset=colorama.Fore.RESET,
-            green=colorama.Fore.GREEN,
-            yellow=colorama.Fore.YELLOW,
-            blue=colorama.Fore.BLUE,
-            current=self.current,
-            latest=latest,
+        message = self._get_message(latest, pkg=pkg)
+        return ui.error_write(message, styled=True)
+
+    def _get_message(
+        self,
+        latest: str,
+        current: str = None,
+        color: str = "yellow",
+        pkg: Optional[str] = None,
+    ) -> "Text":
+        from rich.text import Text
+
+        current = current or self.current
+        update_message = Text.from_markup(
+            f"You are using dvc version [bold]{current}[/]; "
+            f"however, version [bold]{latest}[/] is available."
+        )
+        instruction = Text.from_markup(self._get_update_instructions(pkg=pkg))
+        return Text.assemble(
+            "\n", update_message, "\n", instruction, style=color
         )
 
-        from dvc.utils import boxify
+    def _get_update_instructions(self, pkg: Optional[str] = None) -> str:
+        if pkg in ("osxpkg", "exe", "binary"):
+            return (
+                "To upgrade, uninstall dvc and reinstall from "
+                "[blue]https://dvc.org[/]."
+            )
 
-        logger.info(boxify(message, border_color="yellow"))
-
-    def _get_update_instructions(self):
         instructions = {
-            "pip": "Run `{yellow}pip{reset} install dvc "
-            "{blue}--upgrade{reset}`",
-            "rpm": "Run `{yellow}yum{reset} update dvc`",
-            "brew": "Run `{yellow}brew{reset} upgrade dvc`",
-            "deb": (
-                "Run `{yellow}apt-get{reset} install"
-                " {blue}--only-upgrade{reset} dvc`"
-            ),
-            "binary": (
-                "To upgrade follow these steps:\n"
-                "1. Uninstall dvc binary\n"
-                "2. Go to {blue}https://dvc.org{reset}\n"
-                "3. Download and install new binary"
-            ),
-            "conda": "Run `{yellow}conda{reset} update dvc`",
-            "choco": "Run `{yellow}choco{reset} upgrade dvc`",
-            None: (
-                "Find the latest release at\n"
-                "{blue}https://github.com/iterative/dvc/releases/latest{reset}"
-            ),
+            "pip": "pip install --upgrade dvc",
+            "rpm": "yum update dvc",
+            "brew": "brew upgrade dvc",
+            "deb": "apt-get install --only-upgrade dvc",
+            "conda": "conda update dvc",
+            "choco": "choco upgrade dvc",
         }
 
-        package_manager = PKG
-        if package_manager in ("osxpkg", "exe"):
-            package_manager = "binary"
+        if pkg not in instructions:
+            return (
+                "Find the latest release at "
+                "[blue]https://github.com/iterative/dvc/releases/latest[/]."
+            )
 
-        return instructions[package_manager]
+        instruction = instructions[pkg]
+        return f"To upgrade, run '{instruction}'."
 
     def is_enabled(self):
         from dvc.config import Config, to_bool
@@ -167,3 +171,14 @@ class Updater:  # pragma: no cover
             "Check for update is {}abled.".format("en" if enabled else "dis")
         )
         return enabled
+
+
+def notify_updates():
+    from contextlib import suppress
+
+    from dvc.repo import NotDvcRepoError, Repo
+
+    with suppress(NotDvcRepoError), Repo() as repo:
+        hardlink_lock = repo.config["core"].get("hardlink_lock", False)
+        updater = Updater(repo.tmp_dir, hardlink_lock=hardlink_lock)
+        updater.check()

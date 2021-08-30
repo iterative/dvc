@@ -580,3 +580,17 @@ def test_pygit_resolve_refish(tmp_dir, scm, git, use_sha):
     assert str(commit.id) == head
     if not use_sha:
         assert ref.name == f"refs/tags/{tag}"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows only")
+def test_pygit_checkout_subdir(tmp_dir, scm, git):
+    if git.test_backend != "pygit2":
+        pytest.skip()
+
+    tmp_dir.scm_gen("foo", "foo", commit="init")
+    rev = scm.get_rev()
+    tmp_dir.scm_gen({"dir": {"bar": "bar"}}, commit="dir")
+
+    with (tmp_dir / "dir").chdir():
+        git.checkout(rev)
+        assert not (tmp_dir / "dir" / "bar").exists()

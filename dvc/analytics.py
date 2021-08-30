@@ -2,6 +2,8 @@ import json
 import logging
 import os
 
+from .env import DVC_NO_ANALYTICS
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +34,7 @@ def collect_and_send_report(args=None, return_code=None):
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
-        daemon(["analytics", fobj.name])
+    daemon(["analytics", fobj.name])
 
 
 def is_enabled():
@@ -42,9 +44,12 @@ def is_enabled():
     if env2bool("DVC_TEST"):
         return False
 
-    enabled = to_bool(
-        Config(validate=False).get("core", {}).get("analytics", "true")
-    )
+    enabled = not os.getenv(DVC_NO_ANALYTICS)
+    if enabled:
+        enabled = to_bool(
+            Config(validate=False).get("core", {}).get("analytics", "true")
+        )
+
     logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
 
     return enabled

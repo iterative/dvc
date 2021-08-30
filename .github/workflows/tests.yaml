@@ -27,7 +27,7 @@ jobs:
     - name: Install requirements
       run: |
         pip install wheel
-        pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+        pip install ".[all,tests,terraform]" Pygments collective.checkdocs pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -42,13 +42,14 @@ jobs:
       matrix:
         os: [ubuntu-18.04, windows-2019, macos-10.15]
         pyv: ["3.6", "3.7", "3.8", "3.9"]
-# macos 11.0 workers take too long to start up
-#        include:
-#          - os: "macos-11.0"
-#            pyv: "3.9"
+        include:
+          - os: "macos-10.15"
+            pyv: "3.10.0-rc.1"
         exclude:
           - os: macos-10.15
             pyv: "3.9"
+          - os: macos-10.15
+            pyv: "3.7"
 
     steps:
     - uses: actions/checkout@v2.3.4
@@ -68,11 +69,15 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+    - name: install libgit2 on Python3.10 in macOS
+      if: matrix.pyv == '3.10.0-rc.1' && matrix.os == 'macos-10.15'
+      run: |
+        brew install libgit2
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
-        pip install wheel
-        pip install -e ".[all,tests]"
+        pip install --upgrade pip setuptools wheel
+        pip install -e ".[all,tests,terraform]"
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -108,7 +113,7 @@ jobs:
         --cov-report=xml --cov-report=term
         --all ${{ env.extra_test_args }}
     - name: upload coverage report
-      uses: codecov/codecov-action@v2.0.2
+      uses: codecov/codecov-action@v2.0.3
       with:
         file: ./coverage.xml
         fail_ci_if_error: false

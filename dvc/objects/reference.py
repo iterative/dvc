@@ -2,7 +2,7 @@ import errno
 import logging
 import os
 import pickle
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from .errors import ObjectFormatError
 from .file import HashFile
@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 class ReferenceHashFile(HashFile):
     PARAM_PATH = "path"
     PARAM_HASH = "hash"
-    PARAM_MTIME = "mtime"
-    PARAM_SIZE = "size"
+    PARAM_CHECKSUM = "checksum"
     PARAM_FS_CONFIG = "fs_config"
 
     def __init__(
@@ -29,14 +28,11 @@ class ReferenceHashFile(HashFile):
         path_info: "AnyPath",
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
-        mtime: Optional[str] = None,
-        size: Optional[int] = None,
+        checksum: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(path_info, fs, hash_info, **kwargs)
-        cur_mtime, cur_size = self._get_mtime_and_size()
-        self.mtime = cur_mtime if mtime is None else mtime
-        self.hash_info.size = cur_size if size is None else size
+        self.checksum = checksum or fs.checksum(path_info)
 
     def __str__(self):
         return f"ref object {self.hash_info} -> {self.path_info}"
@@ -47,21 +43,14 @@ class ReferenceHashFile(HashFile):
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
             )
-        if not (self.mtime, self.size) == self._get_mtime_and_size():
+        if self.checksum != self._get_checksum():
             raise ObjectFormatError(f"{self} is changed")
         if check_hash:
             self._check_hash(odb)
 
-    def _get_mtime_and_size(self) -> Tuple[Optional[str], int]:
-        from dvc.utils.fs import get_mtime_and_size
-
+    def _get_checksum(self) -> str:
         assert self.fs
-        if hasattr(self.fs, "stat"):
-            try:
-                return get_mtime_and_size(self.path_info, self.fs)
-            except FileNotFoundError:
-                pass
-        return None, self.fs.getsize(self.path_info)
+        return self.fs.checksum(self.path_info)
 
     def to_bytes(self):
         from dvc.fs.repo import RepoFileSystem
@@ -79,8 +68,7 @@ class ReferenceHashFile(HashFile):
         dict_ = {
             self.PARAM_PATH: path_info,
             self.PARAM_HASH: self.hash_info,
-            self.PARAM_MTIME: self.mtime,
-            self.PARAM_SIZE: self.size,
+            self.PARAM_CHECKSUM: self.checksum,
             self.PARAM_FS_CONFIG: self.config_tuple(self.fs),
         }
         try:
@@ -118,8 +106,7 @@ class ReferenceHashFile(HashFile):
             path_info,
             fs,
             hash_info,
-            mtime=dict_.get(cls.PARAM_MTIME),
-            size=dict_.get(cls.PARAM_SIZE),
+            checksum=dict_.get(cls.PARAM_CHECKSUM),
         )
 
     @staticmethod

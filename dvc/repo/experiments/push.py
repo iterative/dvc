@@ -2,6 +2,7 @@ import logging
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
+from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.scm_context import scm_context
 
 from .utils import exp_commits, exp_refs_by_name
@@ -12,7 +13,13 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def push(
-    repo, git_remote, exp_name, *args, force=False, push_cache=False, **kwargs
+    repo,
+    git_remote,
+    exp_name: str,
+    *args,
+    force=False,
+    push_cache=False,
+    **kwargs,
 ):
     exp_ref = _get_exp_ref(repo, exp_name)
 
@@ -35,9 +42,9 @@ def push(
         _push_cache(repo, exp_ref, **kwargs)
 
 
-def _get_exp_ref(repo, exp_name):
+def _get_exp_ref(repo, exp_name: str) -> ExpRefInfo:
     if exp_name.startswith("refs/"):
-        return exp_name
+        return ExpRefInfo.from_ref(exp_name)
 
     exp_refs = list(exp_refs_by_name(repo.scm, exp_name))
     if not exp_refs:

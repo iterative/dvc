@@ -2,6 +2,8 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
+from dvc.render.utils import render
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -15,10 +17,10 @@ def create_summary(out):
 
     metrics, plots = out.repo.live.show(str(out.path_info))
 
-    html_path = out.path_info.with_suffix(".html")
+    html_path = out.path_info.fspath + "_dvc_plots"
 
-    out.repo.plots.write_html(html_path, plots, metrics, refresh_seconds=5)
-    logger.info(f"\nfile://{os.path.abspath(html_path)}")
+    index_path = render(out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5)
+    logger.info(f"\nfile://{os.path.abspath(index_path)}")
 
 
 def summary_path_info(out: "Output") -> Optional["PathInfo"]:

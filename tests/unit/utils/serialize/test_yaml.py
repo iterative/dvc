@@ -1,6 +1,11 @@
 import pytest
 
-from dvc.utils.serialize import EncodingError, YAMLError, load_yaml, parse_yaml
+from dvc.utils.serialize import (
+    EncodingError,
+    YAMLFileCorruptedError,
+    load_yaml,
+    parse_yaml,
+)
 
 
 def test_parse_yaml_duplicate_key_error():
@@ -10,7 +15,7 @@ def test_parse_yaml_duplicate_key_error():
     mykey:
     - bar
     """
-    with pytest.raises(YAMLError, match='found duplicate key "mykey"'):
+    with pytest.raises(YAMLFileCorruptedError):
         parse_yaml(text, "mypath")
 
 

@@ -1,4 +1,4 @@
-wheel==0.36.2
+wheel==0.37.0
 
 # Test requirements
 pytest==6.2.4
@@ -20,15 +20,15 @@ wsgidav==3.1.1
 crc32c==2.2.post0
 xmltodict==0.12.0
 google-compute-engine==2.8.13
-google-cloud-storage==1.41.1
+google-cloud-storage==1.42.0
 
 urllib3==1.26.6
 
 # required by collective.checkdocs
-Pygments==2.9.0
+Pygments==2.10.0
 collective.checkdocs==0.2
 pydocstyle==6.1.1
-jaraco.windows==5.5.0
+jaraco.windows==5.6.0
 
 # pylint requirements
 pylint==2.9.6

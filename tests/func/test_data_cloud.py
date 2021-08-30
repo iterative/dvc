@@ -24,14 +24,8 @@ all_clouds = [
         "webdav",
         "webhdfs",
         "oss",
+        "gdrive",
     ]
-] + [
-    pytest.param(
-        pytest.lazy_fixture("gdrive"),
-        marks=pytest.mark.xfail(
-            reason="https://github.com/iterative/dvc/issues/6347"
-        ),
-    )
 ]
 
 # Clouds that implement the general methods that can be tested
@@ -356,6 +350,27 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
     assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
 
 
+def test_pull_external_dvc_imports_mixed(
+    tmp_dir, dvc, scm, erepo_dir, local_remote
+):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo", commit="first")
+        os.remove("foo")
+
+    # imported: foo
+    dvc.imp(os.fspath(erepo_dir), "foo")
+
+    # local-object: bar
+    tmp_dir.dvc_gen("bar", "bar")
+    dvc.push("bar")
+
+    clean(["foo", "bar"], dvc)
+
+    assert dvc.pull()["fetched"] == 2
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert (tmp_dir / "bar").read_text() == "bar"
+
+
 def clean(outs, dvc=None):
     from tests.utils import clean_staging
 
@@ -594,3 +609,47 @@ def test_pull_no_00_prefix(tmp_dir, dvc, remote, monkeypatch):
     stats = dvc.pull()
     assert stats["fetched"] == 2
     assert set(stats["added"]) == {"foo", "bar"}
+
+
+def test_output_remote(tmp_dir, dvc, make_remote):
+    from dvc.utils.serialize import modify_yaml
+
+    make_remote("default", default=True)
+    make_remote("for_foo", default=False)
+    make_remote("for_data", default=False)
+
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("bar", "bar")
+    tmp_dir.dvc_gen("data", {"one": "one", "two": "two"})
+
+    with modify_yaml("foo.dvc") as d:
+        d["outs"][0]["remote"] = "for_foo"
+
+    with modify_yaml("data.dvc") as d:
+        d["outs"][0]["remote"] = "for_data"
+
+    dvc.push()
+
+    default = dvc.cloud.get_remote_odb("default")
+    for_foo = dvc.cloud.get_remote_odb("for_foo")
+    for_data = dvc.cloud.get_remote_odb("for_data")
+
+    assert set(default.all()) == {"37b51d194a7513e45b56f6524f2d51f2"}
+    assert set(for_foo.all()) == {"acbd18db4cc2f85cedef654fccc4a4d8"}
+    assert set(for_data.all()) == {
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
+
+    clean(["foo", "bar", "data"], dvc)
+
+    dvc.pull()
+
+    assert set(dvc.odb.local.all()) == {
+        "37b51d194a7513e45b56f6524f2d51f2",
+        "acbd18db4cc2f85cedef654fccc4a4d8",
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }

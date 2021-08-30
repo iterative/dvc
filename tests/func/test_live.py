@@ -6,6 +6,7 @@ import pytest
 from funcy import first
 
 from dvc import stage as stage_module
+from dvc.render.utils import get_files
 
 LIVE_SCRIPT = dedent(
     """
@@ -122,9 +123,10 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
     }
 
     assert (tmp_dir / "logs").is_dir()
-    plots = dvc.plots.show()
-    assert os.path.join("logs", "accuracy.tsv") in plots
-    assert os.path.join("logs", "loss.tsv") in plots
+    plots_data = dvc.plots.show()
+    files = get_files(plots_data)
+    assert os.path.join("logs", "accuracy.tsv") in files
+    assert os.path.join("logs", "loss.tsv") in files
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
@@ -134,9 +136,10 @@ def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
     assert dvc.metrics.show() == {"": {}}
 
     assert (tmp_dir / "logs").is_dir()
-    plots = dvc.plots.show()
-    assert os.path.join("logs", "accuracy.tsv") in plots
-    assert os.path.join("logs", "loss.tsv") in plots
+    plots_data = dvc.plots.show()
+    files = get_files(plots_data)
+    assert os.path.join("logs", "accuracy.tsv") in files
+    assert os.path.join("logs", "loss.tsv") in files
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
@@ -156,9 +159,9 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
 def test_live_html(tmp_dir, dvc, live_stage, html):
     live_stage(html=html, live="logs")
 
-    assert (tmp_dir / "logs.html").is_file() == html
+    assert (tmp_dir / "logs_dvc_plots" / "index.html").is_file() == html
     if html:
-        html_text = (tmp_dir / "logs.html").read_text()
+        html_text = (tmp_dir / "logs_dvc_plots" / "index.html").read_text()
         assert 'http-equiv="refresh"' in html_text
 
 

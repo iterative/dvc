@@ -1,6 +1,5 @@
 import logging
 import os
-import stat
 import threading
 from contextlib import suppress
 from itertools import takewhile
@@ -256,8 +255,8 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return False
 
         try:
-            st = fs.stat(path)
-            return stat.S_ISDIR(st.st_mode)
+            info = fs.info(path)
+            return info["type"] == "directory"
         except (OSError, ValueError):
             # from CPython's os.path.isdir()
             pass
@@ -287,8 +286,8 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return False
 
         try:
-            st = fs.stat(path)
-            return stat.S_ISREG(st.st_mode)
+            info = fs.info(path)
+            return info["type"] == "file"
         except (OSError, ValueError):
             # from CPython's os.path.isfile()
             pass
@@ -312,10 +311,6 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if dvc_fs and dvc_fs.exists(path_info):
             return dvc_fs.isexec(path_info)
         return fs.isexec(path_info)
-
-    def stat(self, path):
-        fs, _ = self._get_fs_pair(path)
-        return fs.stat(path)
 
     def _dvc_walk(self, walk):
         try:
@@ -453,19 +448,20 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
-    ):
-        import shutil
+    def _download(self, from_info, to_file, **kwargs):
+        fs, dvc_fs = self._get_fs_pair(from_info)
+        try:
+            fs._download(  # pylint: disable=protected-access
+                from_info, to_file, **kwargs
+            )
+            return
+        except FileNotFoundError:
+            if not dvc_fs:
+                raise
 
-        from dvc.progress import Tqdm
-
-        with open(to_file, "wb+") as to_fobj:
-            with Tqdm.wrapattr(
-                to_fobj, "write", desc=name, disable=no_progress_bar
-            ) as wrapped:
-                with self.open(from_info, "rb", **kwargs) as from_fobj:
-                    shutil.copyfileobj(from_fobj, wrapped)
+        dvc_fs._download(  # pylint: disable=protected-access
+            from_info, to_file, **kwargs
+        )
 
     def metadata(self, path):
         abspath = os.path.abspath(path)
@@ -477,11 +473,11 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             with suppress(FileNotFoundError):
                 dvc_meta = dvc_fs.metadata(path_info)
 
-        stat_result = None
+        info_result = None
         with suppress(FileNotFoundError):
-            stat_result = fs.stat(path_info)
+            info_result = fs.info(path_info)
 
-        if not stat_result and not dvc_meta:
+        if not info_result and not dvc_meta:
             raise FileNotFoundError
 
         from ._metadata import Metadata
@@ -491,13 +487,13 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             repo=self._get_repo(abspath) or self._main_repo,
         )
 
-        isdir = bool(stat_result) and stat.S_ISDIR(stat_result.st_mode)
+        isdir = bool(info_result) and info_result["type"] == "directory"
         meta.isdir = meta.isdir or isdir
 
         if not dvc_meta:
             from dvc.utils import is_exec
 
-            meta.is_exec = bool(stat_result) and is_exec(stat_result.st_mode)
+            meta.is_exec = bool(info_result) and is_exec(info_result["mode"])
         return meta
 
     def info(self, path_info):
@@ -507,3 +503,11 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return fs.info(path_info)
         except FileNotFoundError:
             return dvc_fs.info(path_info)
+
+    def checksum(self, path_info):
+        fs, dvc_fs = self._get_fs_pair(path_info)
+
+        try:
+            return fs.checksum(path_info)
+        except FileNotFoundError:
+            return dvc_fs.checksum(path_info)

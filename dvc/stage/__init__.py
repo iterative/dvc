@@ -315,6 +315,7 @@ class Stage(params.StageParams):
 
         return self._changed_deps()
 
+    @rwlocked(read=["deps"])
     def _changed_deps(self):
         for dep in self.deps:
             status = dep.status()
@@ -328,6 +329,7 @@ class Stage(params.StageParams):
                 return True
         return False
 
+    @rwlocked(read=["outs"])
     def changed_outs(self):
         for out in self.outs:
             status = out.status()
@@ -513,7 +515,7 @@ class Stage(params.StageParams):
         if link_failures:
             raise CacheLinkError(link_failures)
 
-    @rwlocked(read=["deps"], write=["outs"])
+    @rwlocked(read=["deps", "outs"])
     def run(
         self,
         dry=False,
@@ -527,16 +529,16 @@ class Stage(params.StageParams):
 
         if not self.frozen and self.is_import:
             jobs = kwargs.get("jobs", None)
-            sync_import(self, dry, force, jobs)
+            self._sync_import(dry, force, jobs)
         elif not self.frozen and self.cmd:
-            run_stage(self, dry, force, **kwargs)
+            self._run_stage(dry, force, **kwargs)
         else:
             args = (
                 ("outputs", "frozen ") if self.frozen else ("data sources", "")
             )
             logger.info("Verifying %s in %s%s", *args, self)
             if not dry:
-                check_missing_outputs(self)
+                self._check_missing_outputs()
 
         if not dry:
             if kwargs.get("checkpoint_func", None):
@@ -544,6 +546,18 @@ class Stage(params.StageParams):
             self.save(allow_missing=allow_missing)
             if not no_commit:
                 self.commit(allow_missing=allow_missing)
+
+    @rwlocked(read=["deps"], write=["outs"])
+    def _run_stage(self, dry, force, **kwargs):
+        return run_stage(self, dry, force, **kwargs)
+
+    @rwlocked(read=["deps"], write=["outs"])
+    def _sync_import(self, dry, force, jobs):
+        sync_import(self, dry, force, jobs)
+
+    @rwlocked(read=["outs"])
+    def _check_missing_outputs(self):
+        check_missing_outputs(self)
 
     def filter_outs(self, path_info):
         def _func(o):

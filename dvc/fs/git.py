@@ -1,6 +1,5 @@
 import errno
 import os
-import stat
 
 from dvc.utils import is_exec, relpath
 
@@ -96,33 +95,37 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         if not self.exists(path_info):
             return False
 
-        mode = self.stat(path_info).st_mode
+        mode = self.info(path_info)["mode"]
         return is_exec(mode)
 
     def info(self, path_info):
         key = self._get_key(path_info)
         try:
-            st = self.trie.stat(key)
+            return self.trie.info(key)
         except KeyError:
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), path_info
             )
-        return {
-            "size": st.st_size,
-            "type": "directory" if stat.S_ISDIR(st.st_mode) else "file",
-        }
 
-    def stat(self, path):
-        key = self._get_key(path)
-        try:
-            return self.trie.stat(key)
-        except KeyError:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), path
-            )
+    def checksum(self, path_info):
+        return self.info(path_info)["sha"]
 
     def walk_files(self, path_info, **kwargs):
         for root, _, files in self.walk(path_info, **kwargs):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"
+
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
+    ):
+        import shutil
+
+        from dvc.progress import Tqdm
+
+        with open(to_file, "wb+") as to_fobj:
+            with Tqdm.wrapattr(
+                to_fobj, "write", desc=name, disable=no_progress_bar
+            ) as wrapped:
+                with self.open(from_info, "rb", **kwargs) as from_fobj:
+                    shutil.copyfileobj(from_fobj, wrapped)

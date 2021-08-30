@@ -27,10 +27,15 @@ class ReferenceObjectDB(ObjectDB):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._fs_cache: Dict[tuple, "BaseFileSystem"] = {}
+        self._obj_cache: Dict["HashInfo", "ReferenceHashFile"] = {}
 
     def get(self, hash_info: "HashInfo"):
         if hash_info.isdir:
             return super().get(hash_info)
+        try:
+            return self._obj_cache[hash_info]
+        except KeyError:
+            pass
         path_info = self.hash_to_path(hash_info.value)
         try:
             with self.fs.open(path_info, "rb") as fobj:
@@ -44,6 +49,7 @@ class ReferenceObjectDB(ObjectDB):
         except ObjectFormatError:
             self.fs.remove(path_info)
             raise
+        self._obj_cache[hash_info] = ref_file
         return ref_file
 
     def _add_file(
@@ -60,6 +66,7 @@ class ReferenceObjectDB(ObjectDB):
                 from_fs, from_info, to_info, hash_info, move
             )
         ref_file = ReferenceHashFile(from_info, from_fs, hash_info)
+        self._obj_cache[hash_info] = ref_file
         ref_fobj = io.BytesIO(ref_file.to_bytes())
         ref_fobj.seek(0)
         try:

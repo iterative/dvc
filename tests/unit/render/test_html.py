@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.utils.html import HTML, PAGE_HTML, MissingPlaceholderError
+from dvc.render.html import HTML, PAGE_HTML, MissingPlaceholderError
 
 CUSTOM_PAGE_HTML = """<!DOCTYPE html>
 <html>

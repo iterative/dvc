@@ -49,6 +49,7 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
         Output.PARAM_PERSIST: bool,
         Output.PARAM_CHECKPOINT: bool,
         Output.PARAM_DESC: str,
+        Output.PARAM_REMOTE: str,
     }
 }
 

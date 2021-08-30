@@ -28,6 +28,7 @@ PARAM_PLOT = Output.PARAM_PLOT
 PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
 PARAM_DESC = Output.PARAM_DESC
+PARAM_REMOTE = Output.PARAM_REMOTE
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -52,6 +53,8 @@ def _get_flags(out):
         yield from out.plot.items()
     if out.live and isinstance(out.live, dict):
         yield from out.live.items()
+    if out.remote:
+        yield PARAM_REMOTE, out.remote
 
 
 def _serialize_out(out):

@@ -8,6 +8,7 @@ import pytest
 
 from dvc import __version__
 from dvc.updater import Updater
+from tests.func.parsing.test_errors import escape_ansi
 
 
 @pytest.fixture
@@ -85,19 +86,26 @@ def test_check_update_respect_config(mock_check, result, updater, mocker):
     ],
     ids=["uptodate", "behind", "ahead"],
 )
-def test_check_updates(mock_tty, updater, caplog, current, latest, notify):
+def test_check_updates(mocker, capsys, updater, current, latest, notify):
+    mocker.patch("sys.stdout.isatty", return_value=True)
+
     updater.current = current
     with open(updater.updater_file, "w+") as f:
         json.dump({"version": latest}, f)
 
-    caplog.clear()
-    with caplog.at_level(logging.INFO, logger="dvc.updater"):
-        updater.check()
+    updater.check()
+    out, err = capsys.readouterr()
+    expected_message = (
+        (
+            f"You are using dvc version {current}; "
+            f"however, version {latest} is available.\n"
+        )
+        if notify
+        else ""
+    )
 
-    if notify:
-        assert f"Update available {current} -> {latest}" in caplog.text
-    else:
-        assert not caplog.text
+    assert expected_message in escape_ansi(err)
+    assert not out
 
 
 def test_check_refetches_each_day(mock_tty, updater, caplog, mocker):
@@ -138,3 +146,45 @@ def test_check(mock_check, updater):
     updater.check()
 
     assert mock_check.call_count == 3
+
+
+@pytest.mark.parametrize(
+    "pkg, instruction",
+    [
+        ("pip", "To upgrade, run 'pip install --upgrade dvc'."),
+        ("rpm", "To upgrade, run 'yum update dvc'."),
+        ("brew", "To upgrade, run 'brew upgrade dvc'."),
+        ("deb", "To upgrade, run 'apt-get install --only-upgrade dvc'."),
+        ("conda", "To upgrade, run 'conda update dvc'."),
+        ("choco", "To upgrade, run 'choco upgrade dvc'."),
+        (
+            "osxpkg",
+            "To upgrade, uninstall dvc and reinstall from https://dvc.org.",
+        ),
+        (
+            "exe",
+            "To upgrade, uninstall dvc and reinstall from https://dvc.org.",
+        ),
+        (
+            "binary",
+            "To upgrade, uninstall dvc and reinstall from https://dvc.org.",
+        ),
+        (
+            None,
+            "Find the latest release at "
+            "https://github.com/iterative/dvc/releases/latest.",
+        ),
+        (
+            "unknown",
+            "Find the latest release at "
+            "https://github.com/iterative/dvc/releases/latest.",
+        ),
+    ],
+)
+def test_notify_message(updater, pkg, instruction):
+    update_message = (
+        "You are using dvc version 0.0.2; however, version 0.0.3 is available."
+    )
+
+    message = updater._get_message("0.0.3", current="0.0.2", pkg=pkg)
+    assert message.plain.splitlines() == ["", update_message, instruction]

@@ -62,9 +62,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return obj.hash_info
         raise FileNotFoundError
 
-    def open(  # type: ignore
-        self, path: PathInfo, mode="r", encoding=None, remote=None, **kwargs
-    ):  # pylint: disable=arguments-differ
+    def _get_fs_path(self, path: PathInfo, remote=None):
         try:
             outs = self._find_outs(path, strict=False)
         except OutputNotFoundError as exc:
@@ -92,16 +90,20 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             else:
                 checksum = out.hash_info.value
             remote_info = remote_odb.hash_to_path_info(checksum)
-            return remote_odb.fs.open(
-                remote_info, mode=mode, encoding=encoding
-            )
+            return remote_odb.fs, remote_info
 
         if out.is_dir_checksum:
             checksum = self._get_granular_hash(path, out).value
             cache_path = out.odb.hash_to_path_info(checksum).url
         else:
             cache_path = out.cache_path
-        return open(cache_path, mode=mode, encoding=encoding)
+        return out.odb.fs, cache_path
+
+    def open(  # type: ignore
+        self, path: PathInfo, mode="r", encoding=None, **kwargs
+    ):  # pylint: disable=arguments-renamed
+        fs, fspath = self._get_fs_path(path, **kwargs)
+        return fs.open(fspath, mode=mode, encoding=encoding)
 
     def exists(self, path):  # pylint: disable=arguments-renamed
         try:
@@ -253,3 +255,16 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 ret[obj.hash_info.name] = obj.hash_info.value
 
         return ret
+
+    def _download(self, from_info, to_file, **kwargs):
+        fs, path = self._get_fs_path(from_info)
+        fs._download(  # pylint: disable=protected-access
+            path, to_file, **kwargs
+        )
+
+    def checksum(self, path_info):
+        info = self.info(path_info)
+        md5 = info.get("md5")
+        if md5:
+            return md5
+        raise NotImplementedError

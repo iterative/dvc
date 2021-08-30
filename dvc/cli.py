@@ -30,6 +30,7 @@ from .command import (
     install,
     live,
     ls,
+    machine,
     metrics,
     move,
     params,
@@ -87,6 +88,7 @@ COMMANDS = [
     experiments,
     check_ignore,
     live,
+    machine,
 ]
 
 
