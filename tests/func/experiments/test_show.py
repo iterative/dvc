@@ -9,6 +9,7 @@ from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo
+from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml
 from tests.func.test_repro_multistage import COPY_SCRIPT
@@ -176,84 +177,84 @@ def test_show_checkpoint_branch(
     "i_metrics,i_params,e_metrics,e_params,included,excluded",
     [
         (
-            "foo",
-            "foo",
+            "f",
+            "f",
             None,
             None,
-            ["foo"],
-            ["bar", "train/foo", "nested.foo"],
+            ["f"],
+            ["b", "t/f", "n.f"],
         ),
         (
             None,
             None,
-            "foo",
-            "foo",
-            ["bar", "train/foo", "nested.foo"],
-            ["foo"],
+            "f",
+            "f",
+            ["b", "t/f", "n.f"],
+            ["f"],
         ),
         (
-            "foo,bar",
-            "foo,bar",
+            "f,b",
+            "f,b",
             None,
             None,
-            ["foo", "bar"],
-            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
+            ["f", "b"],
+            ["t/f", "t/b", "n.f", "n.b"],
         ),
         (
-            "metrics.yaml:foo,bar",
-            "params.yaml:foo,bar",
+            "f,b",
+            "f,b",
             None,
             None,
-            ["foo", "bar"],
-            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
+            ["f", "b"],
+            ["t/f", "t/b", "n.f", "n.b"],
         ),
         (
-            "train/*",
-            "train/*",
+            "t/*",
+            "t/*",
             None,
             None,
-            ["train/foo", "train/bar"],
-            ["foo", "bar", "nested.foo", "nested.bar"],
-        ),
-        (
-            None,
-            None,
-            "train/*",
-            "train/*",
-            ["foo", "bar", "nested.foo", "nested.bar"],
-            ["train/foo", "train/bar"],
-        ),
-        (
-            "train/*",
-            "train/*",
-            "*foo",
-            "*foo",
-            ["train/bar"],
-            ["train/foo", "foo", "bar", "nested.foo", "nested.bar"],
-        ),
-        (
-            "nested.*",
-            "nested.*",
-            None,
-            None,
-            ["nested.foo", "nested.bar"],
-            ["foo", "bar", "train/foo", "train/bar"],
+            ["t/f", "t/b"],
+            ["f", "b", "n.f", "n.b"],
         ),
         (
             None,
             None,
-            "nested.*",
-            "nested.*",
-            ["foo", "bar", "train/foo", "train/bar"],
-            ["nested.foo", "nested.bar"],
+            "t/*",
+            "t/*",
+            ["f", "b", "n.f", "n.b"],
+            ["t/f", "t/b"],
+        ),
+        (
+            "t/*",
+            "t/*",
+            "*f",
+            "*f",
+            ["t/b"],
+            ["t/f", "f", "b", "n.f", "n.b"],
+        ),
+        (
+            "n.*",
+            "n.*",
+            None,
+            None,
+            ["n.f", "n.b"],
+            ["f", "b", "t/f", "t/b"],
+        ),
+        (
+            None,
+            None,
+            "n.*",
+            "n.*",
+            ["f", "b", "t/f", "t/b"],
+            ["n.f", "n.b"],
         ),
         (
             "*.*",
             "*.*",
-            "*.bar",
-            "*.bar",
-            ["nested.foo"],
-            ["foo", "bar", "nested.bar", "train/foo", "train/bar"],
+            "*.b",
+            "*.b",
+            ["n.f"],
+            ["f", "b", "n.b", "t/f", "t/b"],
         ),
     ],
 )
@@ -273,20 +274,20 @@ def test_show_filter(
     div = "│" if os.name == "nt" else "┃"
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
-    params_file = tmp_dir / "params.yaml"
+    params_file = tmp_dir / "p"
     params_data = {
-        "foo": 1,
-        "bar": 1,
-        "train/foo": 1,
-        "train/bar": 1,
-        "nested": {"foo": 1, "bar": 1},
+        "f": 1,
+        "b": 1,
+        "t/f": 1,
+        "t/b": 1,
+        "n": {"f": 1, "b": 1},
     }
     dump_yaml(params_file, params_data)
 
     dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo"],
+        cmd="python copy.py p m",
+        metrics_no_cache=["m"],
+        params=["p:f"],
         name="copy-file",
         deps=["copy.py"],
     )
@@ -295,8 +296,8 @@ def test_show_filter(
             "dvc.yaml",
             "dvc.lock",
             "copy.py",
-            "params.yaml",
-            "metrics.yaml",
+            "p",
+            "m",
             ".gitignore",
         ]
     )
@@ -314,11 +315,12 @@ def test_show_filter(
 
     assert main(command) == 0
     cap = capsys.readouterr()
+    print(cap.out)
 
     for i in included:
-        assert f"{div} {i} {div}" in cap.out
+        assert f"{div} m:{i} {div}" in cap.out
     for e in excluded:
-        assert f"{div} {e} {div}" not in cap.out
+        assert f"{div} m:{e} {div}" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
@@ -412,7 +414,6 @@ def test_show_running_checkpoint(
 ):
     from dvc.repo.experiments.base import EXEC_BRANCH
     from dvc.repo.experiments.executor.local import TempDirExecutor
-    from dvc.repo.experiments.utils import exp_refs_by_rev
 
     baseline_rev = scm.get_rev()
     dvc.experiments.run(
@@ -471,3 +472,47 @@ def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
 
     paths = ["workspace", "baseline", "error"]
     assert isinstance(get_in(result, paths), YAMLFileCorruptedError)
+
+
+def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
+    baseline_rev = scm.get_rev()
+
+    def _get_rev_isotimestamp(rev):
+        return datetime.fromtimestamp(
+            scm.gitpython.repo.rev_parse(rev).committed_date
+        ).isoformat()
+
+    result1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    rev1 = first(result1)
+    ref_info1 = first(exp_refs_by_rev(scm, rev1))
+    result2 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    rev2 = first(result2)
+    ref_info2 = first(exp_refs_by_rev(scm, rev2))
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--show-csv"]) == 0
+    cap = capsys.readouterr()
+    print(cap.out)
+    assert (
+        "Experiment,rev,typ,Created,parent,metrics.yaml:foo,params.yaml:foo"
+        in cap.out
+    )
+    assert ",workspace,baseline,,,3,3" in cap.out
+    assert (
+        "master,{},baseline,{},,1,1".format(
+            baseline_rev[:7], _get_rev_isotimestamp(baseline_rev)
+        )
+        in cap.out
+    )
+    assert (
+        "{},{},branch_base,{},,2,2".format(
+            ref_info1.name, rev1[:7], _get_rev_isotimestamp(rev1)
+        )
+        in cap.out
+    )
+    assert (
+        "{},{},branch_commit,{},,3,3".format(
+            ref_info2.name, rev2[:7], _get_rev_isotimestamp(rev2)
+        )
+        in cap.out
+    )

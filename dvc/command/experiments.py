@@ -141,6 +141,8 @@ def _collect_rows(
     precision=DEFAULT_PRECISION,
     sort_by=None,
     sort_order=None,
+    fill_value=FILL_VALUE,
+    iso=False,
 ):
     from dvc.scm.git import Git
 
@@ -161,8 +163,8 @@ def _collect_rows(
         elif exp.get("queued"):
             state = "Queued"
         else:
-            state = FILL_VALUE
-        executor = exp.get("executor", FILL_VALUE)
+            state = fill_value
+        executor = exp.get("executor", fill_value)
         is_baseline = rev == "baseline"
 
         if is_baseline:
@@ -202,12 +204,12 @@ def _collect_rows(
             exp_name,
             name_rev,
             typ,
-            _format_time(exp.get("timestamp")),
+            _format_time(exp.get("timestamp"), fill_value, iso),
             parent,
             state,
             executor,
         ]
-        fill_value = FILL_VALUE_ERRORED if results.get("error") else FILL_VALUE
+        fill_value = FILL_VALUE_ERRORED if results.get("error") else fill_value
         _extend_row(
             row,
             metric_names,
@@ -274,14 +276,16 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     return ret
 
 
-def _format_time(timestamp):
-    if timestamp is None:
-        return FILL_VALUE
-    if timestamp.date() == date.today():
+def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
+    if datetime_obj is None:
+        return fill_value
+    if datetime_obj.date() == date.today():
         fmt = "%I:%M %p"
     else:
         fmt = "%b %d, %Y"
-    return timestamp.strftime(fmt)
+    if iso:
+        return datetime_obj.isoformat()
+    return datetime_obj.strftime(fmt)
 
 
 def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
@@ -327,6 +331,8 @@ def experiments_table(
     sort_by=None,
     sort_order=None,
     precision=DEFAULT_PRECISION,
+    fill_value=FILL_VALUE,
+    iso=False,
 ) -> "TabularData":
     from funcy import lconcat
 
@@ -342,7 +348,7 @@ def experiments_table(
         "Executor",
     ]
     td = TabularData(
-        lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
+        lconcat(headers, metric_headers, param_headers), fill_value=fill_value
     )
     for base_rev, experiments in all_experiments.items():
         rows = _collect_rows(
@@ -353,6 +359,8 @@ def experiments_table(
             sort_by=sort_by,
             sort_order=sort_order,
             precision=precision,
+            fill_value=fill_value,
+            iso=iso,
         )
         td.extend(rows)
 
@@ -384,11 +392,31 @@ def baseline_styler(typ):
     return {"style": "bold"} if typ == "baseline" else {}
 
 
-def _experiments_td(
-    all_experiments, metric_names, param_names, no_timestamp=False, **kwargs
-) -> "TabularData":
-    metric_headers = _normalize_headers(metric_names)
-    param_headers = _normalize_headers(param_names)
+def show_experiments(
+    all_experiments, pager=True, no_timestamp=False, show_csv=False, **kwargs
+):
+    include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
+    exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
+    include_params = _parse_filter_list(kwargs.pop("include_params", []))
+    exclude_params = _parse_filter_list(kwargs.pop("exclude_params", []))
+
+    metric_names, param_names = _collect_names(
+        all_experiments,
+        include_metrics=include_metrics,
+        exclude_metrics=exclude_metrics,
+        include_params=include_params,
+        exclude_params=exclude_params,
+    )
+
+    names = {**metric_names, **param_names}
+    counter = Counter(
+        name for path in names for name in names[path] for path in names
+    )
+    metric_headers = _normalize_headers(metric_names, counter)
+    param_headers = _normalize_headers(param_names, counter)
+
+    precision = None if show_csv else kwargs.get("precision")
+    fill_value = "" if show_csv else FILL_VALUE
 
     td = experiments_table(
         all_experiments,
@@ -398,7 +426,9 @@ def _experiments_td(
         param_names,
         kwargs.get("sort_by"),
         kwargs.get("sort_order"),
-        kwargs.get("precision"),
+        precision,
+        fill_value,
+        True if show_csv else False,
     )
 
     if no_timestamp:
@@ -407,21 +437,17 @@ def _experiments_td(
     for col in ("State", "Executor"):
         if td.is_empty(col):
             td.drop(col)
-    return td
 
+    row_styles = lmap(baseline_styler, td.column("typ"))
 
-def _post_process_td(td):
-    merge_headers = ["Experiment", "rev", "typ", "parent"]
-    td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
-    td.drop(*merge_headers[1:])
-    return td
+    if not show_csv:
+        merge_headers = ["Experiment", "rev", "typ", "parent"]
+        td.column("Experiment")[:] = map(
+            prepare_exp_id, td.as_dict(merge_headers)
+        )
+        td.drop(*merge_headers[1:])
 
-
-def _get_styles(metric_names: Dict, param_names: Dict) -> Dict:
-    metric_headers = _normalize_headers(metric_names)
-    param_headers = _normalize_headers(param_names)
     headers = {"metrics": metric_headers, "params": param_headers}
-
     styles = {
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
@@ -442,13 +468,17 @@ def _get_styles(metric_names: Dict, param_names: Dict) -> Dict:
         }
     )
 
-    return styles
-
-
-def _normalize_headers(names):
-    count = Counter(
-        name for path in names for name in names[path] for path in names
+    td.render(
+        pager=pager,
+        borders=True,
+        rich_table=True,
+        header_styles=styles,
+        row_styles=row_styles,
+        show_csv=show_csv,
     )
+
+
+def _normalize_headers(names, count):
     return [
         name if count[name] == 1 else f"{path}:{name}"
         for path in names
@@ -464,8 +494,6 @@ def _format_json(item):
 
 class CmdExperimentsShow(CmdBase):
     def run(self):
-        import json
-
         try:
             all_experiments = self.repo.experiments.show(
                 all_branches=self.args.all_branches,
@@ -480,39 +508,22 @@ class CmdExperimentsShow(CmdBase):
             return 1
 
         if self.args.show_json:
+            import json
+
             ui.write(json.dumps(all_experiments, default=_format_json))
-            return 0
-
-        metric_names, param_names = _collect_names(
-            all_experiments,
-            include_metrics=_parse_filter_list(self.args.include_metrics),
-            exclude_metrics=_parse_filter_list(self.args.exclude_metrics),
-            include_params=_parse_filter_list(self.args.include_params),
-            exclude_params=_parse_filter_list(self.args.exclude_params),
-        )
-
-        td = _experiments_td(
-            all_experiments,
-            metric_names,
-            param_names,
-            no_timestamp=self.args.no_timestamp,
-            sort_by=self.args.sort_by,
-            sort_order=self.args.sort_order,
-            precision=self.args.precision or DEFAULT_PRECISION,
-        )
-
-        if self.args.show_csv:
-            ui.write(td.to_csv(), end="")
         else:
-            row_styles = lmap(baseline_styler, td.column("typ"))
-            styles = _get_styles(metric_names, param_names)
-            _post_process_td(td)
-            td.render(
+            show_experiments(
+                all_experiments,
+                include_metrics=self.args.include_metrics,
+                exclude_metrics=self.args.exclude_metrics,
+                include_params=self.args.include_params,
+                exclude_params=self.args.exclude_params,
+                no_timestamp=self.args.no_timestamp,
+                sort_by=self.args.sort_by,
+                sort_order=self.args.sort_order,
+                precision=self.args.precision or DEFAULT_PRECISION,
                 pager=not self.args.no_pager,
-                borders=True,
-                rich_table=True,
-                header_styles=styles,
-                row_styles=row_styles,
+                show_csv=self.args.show_csv,
             )
         return 0
 
