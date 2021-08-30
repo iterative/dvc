@@ -131,8 +131,8 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     )
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
-        params=["foo", "goo", "lorem"],
         metrics_no_cache=["metrics.yaml"],
+        params=["foo", "goo", "lorem"],
         name="copy-file",
     )
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
@@ -171,6 +171,7 @@ def test_set_empty_params(tmp_dir, scm, dvc, mocker, changes, expected):
 
     if any("." in x for x in changes):
         from ruamel.yaml.representer import RepresenterError
+
         with pytest.raises(RepresenterError):
             dvc.experiments.run(stage.addressing, params=changes)
     else:
