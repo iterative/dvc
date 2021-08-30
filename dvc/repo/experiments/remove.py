@@ -67,7 +67,9 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     return None
 
 
-def _get_exp_ref(repo, remote: str, exp_name: str) -> Optional[ExpRefInfo]:
+def _get_exp_ref(
+    repo, remote: Optional[str], exp_name: str
+) -> Optional[ExpRefInfo]:
     if exp_name.startswith(EXPS_NAMESPACE):
         if repo.scm.get_ref(exp_name):
             return ExpRefInfo.from_ref(exp_name)
@@ -79,6 +81,7 @@ def _get_exp_ref(repo, remote: str, exp_name: str) -> Optional[ExpRefInfo]:
         exp_ref_list = list(
             remote_exp_refs_by_name(repo.scm, remote, exp_name)
         )
+
     if exp_ref_list:
         return _get_ref(exp_ref_list, exp_name, cur_rev)
     return None
