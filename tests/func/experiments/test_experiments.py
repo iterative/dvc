@@ -8,7 +8,7 @@ from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.utils.serialize import PythonFileCorruptedError
+from dvc.utils.serialize import PythonFileCorruptedError, load_yaml
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -576,21 +576,6 @@ def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
     assert show_mock.called_once()
 
 
-def test_remove(tmp_dir, scm, dvc, exp_stage):
-    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
-    exp = first(results)
-    ref_info = first(exp_refs_by_rev(scm, exp))
-    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
-
-    removed = dvc.experiments.remove([str(ref_info)])
-    assert removed == 1
-    assert scm.get_ref(str(ref_info)) is None
-
-    removed = dvc.experiments.remove(queue=True)
-    assert removed == 1
-    assert len(dvc.experiments.stash) == 0
-
-
 def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
     from dvc.utils.fs import remove
 
@@ -672,3 +657,12 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
     if workspace:
         assert (tmp_dir / "metrics.yaml").read_text().strip() == params
         assert (tmp_dir / "data").read_text().strip() == "modified"
+
+
+def test_exp_run_recursive(tmp_dir, scm, dvc, run_copy_metrics):
+    tmp_dir.dvc_gen("metric_t.json", "foo: 1")
+    run_copy_metrics(
+        "metric_t.json", "metric.json", metrics=["metric.json"], no_exec=True
+    )
+    assert dvc.experiments.run(".", recursive=True)
+    assert load_yaml(tmp_dir / "metric.json") == {"foo": 1}

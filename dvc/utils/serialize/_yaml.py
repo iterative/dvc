@@ -23,17 +23,10 @@ def load_yaml(path, fs=None):
 def parse_yaml(text, path, typ="safe"):
     from ruamel.yaml import YAML
     from ruamel.yaml import YAMLError as _YAMLError
-    from ruamel.yaml.constructor import DuplicateKeyError
 
     yaml = YAML(typ=typ)
-    try:
-        with reraise(_YAMLError, YAMLFileCorruptedError(path)):
-            return yaml.load(text) or {}
-    except DuplicateKeyError as exc:
-        # NOTE: unfortunately this one doesn't inherit from YAMLError, so we
-        # have to catch it by-hand. See
-        # https://yaml.readthedocs.io/en/latest/api.html#duplicate-keys
-        raise YAMLError(path, exc.problem)
+    with reraise(_YAMLError, YAMLFileCorruptedError(path)):
+        return yaml.load(text) or {}
 
 
 def parse_yaml_for_update(text, path):

@@ -92,6 +92,14 @@ class GitPythonObject(GitObject):
         for obj in self.obj:
             yield GitPythonObject(obj)
 
+    @property
+    def size(self) -> int:
+        return self.obj.size
+
+    @property
+    def sha(self) -> str:
+        return self.obj.hexsha
+
 
 class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """git-python Git backend."""

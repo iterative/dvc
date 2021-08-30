@@ -47,22 +47,22 @@ def get_mtime_and_size(path, fs, dvcignore=None):
             walk_iterator = fs.walk_files(path)
         for file_path in walk_iterator:
             try:
-                stats = fs.stat(file_path)
+                stats = fs.info(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
                     raise
                 continue
-            size += stats.st_size
-            files_mtimes[os.fspath(file_path)] = stats.st_mtime
+            size += stats["size"]
+            files_mtimes[os.fspath(file_path)] = stats["mtime"]
 
         # We track file changes and moves, which cannot be detected with simply
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-        base_stat = fs.stat(path)
-        size = base_stat.st_size
-        mtime = base_stat.st_mtime
+        base_stat = fs.info(path)
+        size = base_stat["size"]
+        mtime = base_stat["mtime"]
         mtime = int(nanotime.timestamp(mtime))
 
     return str(mtime), size

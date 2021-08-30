@@ -2,6 +2,7 @@ import locale
 import os
 import platform
 import subprocess
+import sys
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -73,6 +74,9 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 @pytest.fixture(scope="session")
 def hadoop(test_config):
     test_config.requires("hdfs")
+
+    if sys.version_info >= (3, 10):
+        pytest.skip("pyarrow is not available for 3.10 yet.")
 
     if platform.system() != "Linux":
         pytest.skip("only supported on Linux")
@@ -240,11 +244,16 @@ class FakeHadoopFileSystem:
 
 
 @pytest.fixture
-def hdfs(mocker):
+def hdfs(test_config, mocker):
     # Windows might not have Visual C++ Redistributable for Visual Studio
     # 2015 installed, which will result in the following error:
     # "The pyarrow installation is not built with support for
     # 'HadoopFileSystem'"
+    test_config.requires("hdfs")
+
+    if sys.version_info >= (3, 10):
+        pytest.skip("pyarrow is not available for 3.10 yet.")
+
     mocker.patch("pyarrow.fs._not_imported", [])
     mocker.patch(
         "pyarrow.fs.HadoopFileSystem", FakeHadoopFileSystem, create=True

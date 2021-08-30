@@ -455,7 +455,7 @@ class Experiments:
             )
         logger.info(
             "\nTo promote an experiment to a Git branch run:\n\n"
-            "\tdvc exp branch <exp>\n"
+            "\tdvc exp branch <exp> <branch>\n"
         )
 
     @scm_locked

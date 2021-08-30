@@ -1,26 +1,25 @@
-from typing import Dict, List, Optional
+import os
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from dvc.exceptions import DvcException
-from dvc.types import StrPath
+
+if TYPE_CHECKING:
+    from dvc.render import Renderer
+    from dvc.types import StrPath
 
 PAGE_HTML = """<!DOCTYPE html>
 <html>
 <head>
     <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.8.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.5.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
 </head>
 <body>
     {plot_divs}
 </body>
 </html>"""
-
-VEGA_DIV_HTML = """<div id = "{id}"></div>
-<script type = "text/javascript">
-    var spec = {vega_json};
-    vegaEmbed('#{id}', spec);
-</script>"""
 
 
 class MissingPlaceholderError(DvcException):
@@ -56,15 +55,6 @@ class HTML:
         self.elements.append(tabulate.tabulate(rows, header, tablefmt="html"))
         return self
 
-    def with_plots(self, plots: Dict[str, Dict]) -> "HTML":
-        self.elements.extend(
-            [
-                VEGA_DIV_HTML.format(id=f"plot{i}", vega_json=plot)
-                for i, plot in enumerate(plots.values())
-            ]
-        )
-        return self
-
     def with_element(self, html: str) -> "HTML":
         self.elements.append(html)
         return self
@@ -75,11 +65,14 @@ class HTML:
 
 
 def write(
-    path: StrPath,
-    plots: Dict[str, Dict],
+    path: "StrPath",
+    renderers: List["Renderer"],
     metrics: Optional[Dict[str, Dict]] = None,
-    template_path: Optional[StrPath] = None,
+    template_path: Optional["StrPath"] = None,
 ):
+
+    os.makedirs(path, exist_ok=True)
+
     page_html = None
     if template_path:
         with open(template_path) as fobj:
@@ -90,7 +83,11 @@ def write(
         document.with_metrics(metrics)
         document.with_element("<br>")
 
-    document.with_plots(plots)
+    for renderer in renderers:
+        document.with_element(renderer.generate_html(path))
 
-    with open(path, "w") as fd:
+    index = Path(os.path.join(path, "index.html"))
+
+    with open(index, "w") as fd:
         fd.write(document.embed())
+    return index

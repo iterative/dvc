@@ -252,13 +252,25 @@ def test_experiments_pull(dvc, scm, mocker):
     )
 
 
-def test_experiments_remove(dvc, scm, mocker):
-    cli_args = parse_args(["experiments", "remove", "--queue"])
+@pytest.mark.parametrize(
+    "queue,clear_all",
+    [(True, False), (False, True)],
+)
+def test_experiments_remove(dvc, scm, mocker, queue, clear_all):
+    if queue:
+        args = "--queue"
+    if clear_all:
+        args = "--all"
+    cli_args = parse_args(["experiments", "remove", args])
     assert cli_args.func == CmdExperimentsRemove
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
 
     assert cmd.run() == 0
-
-    m.assert_called_once_with(cmd.repo, exp_names=[], queue=True)
+    m.assert_called_once_with(
+        cmd.repo,
+        exp_names=[],
+        queue=queue,
+        clear_all=clear_all,
+    )

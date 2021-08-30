@@ -200,7 +200,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     dvc.push()
     remove(dvc.odb.local.cache_dir)
 
-    baz.collect_used_dir_cache()
+    baz._collect_used_dir_cache()
     with patch.object(LocalFileSystem, "upload", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
