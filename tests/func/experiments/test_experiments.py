@@ -158,7 +158,7 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
         ],
     ],
 )
-def test_modify_empty_params(tmp_dir, scm, dvc, mocker, changes, expected):
+def test_set_empty_params(tmp_dir, scm, dvc, mocker, changes, expected):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "")
     stage = dvc.stage.add(
@@ -169,14 +169,17 @@ def test_modify_empty_params(tmp_dir, scm, dvc, mocker, changes, expected):
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("init")
 
-    new_mock = mocker.spy(dvc.experiments, "new")
-    results = dvc.experiments.run(stage.addressing, params=changes)
-    exp = first(results)
+    if any("." in x for x in changes):
+        from ruamel.yaml.representer import RepresenterError
+        with pytest.raises(RepresenterError):
+            dvc.experiments.run(stage.addressing, params=changes)
+    else:
+        results = dvc.experiments.run(stage.addressing, params=changes)
+        exp = first(results)
 
-    new_mock.assert_called_once()
-    fs = scm.get_fs(exp)
-    with fs.open(tmp_dir / "metrics.yaml") as fobj:
-        assert fobj.read().strip().replace("\r", "") == expected
+        fs = scm.get_fs(exp)
+        with fs.open(tmp_dir / "metrics.yaml") as fobj:
+            assert fobj.read().strip().replace("\r", "") == expected
 
 
 @pytest.mark.parametrize("queue", [True, False])
