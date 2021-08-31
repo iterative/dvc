@@ -60,8 +60,8 @@ def test_makedirs_not_create_for_top_level_path(fs_cls, dvc, mocker):
     assert not mocked_client.called
 
 
-def test_remote_index_dir_config(dvc):
-    index_dir = "/tmp"
+def test_remote_index_dir_config(make_tmp_dir, dvc):
+    index_dir = str(make_tmp_dir("tmp_index"))
     with dvc.config.edit() as conf:
         conf["index"]["dir"] = index_dir
         conf["remote"]["s3"] = {"url": "s3://bucket/name"}

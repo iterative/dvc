@@ -81,10 +81,10 @@ def test_get_unused_links(tmp_dir, dvc):
     )
 
 
-def test_state_dir_config(dvc):
+def test_state_dir_config(make_tmp_dir, dvc):
     assert dvc.state.tmp_dir == dvc.tmp_dir
 
-    index_dir = "/tmp"
+    index_dir = str(make_tmp_dir("tmp_index"))
     repo = Repo(config={"state": {"dir": index_dir}})
     assert os.path.dirname(repo.state.tmp_dir) == os.path.join(
         index_dir, ".dvc"
