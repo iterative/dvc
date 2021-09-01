@@ -23,7 +23,7 @@ google-compute-engine==2.8.13
 google-cloud-storage==1.42.0
 # until 3.10 support is added for google-crc32c
 # see: https://github.com/googleapis/python-crc32c/issues/49
-google-crc32c<=1.1.2; python_version >= '3.10'
+google-crc32c<1.1.4; python_version >= '3.10'
 urllib3==1.26.6
 
 # required by collective.checkdocs
