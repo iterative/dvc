@@ -19,7 +19,9 @@ def create_summary(out):
 
     html_path = out.path_info.fspath + "_dvc_plots"
 
-    index_path = render(out.repo, plots, metrics=metrics, path=html_path)
+    index_path = render(
+        out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5
+    )
     logger.info(f"\nfile://{os.path.abspath(index_path)}")
 
 

@@ -160,6 +160,9 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
     live_stage(html=html, live="logs")
 
     assert (tmp_dir / "logs_dvc_plots" / "index.html").is_file() == html
+    if html:
+        html_text = (tmp_dir / "logs_dvc_plots" / "index.html").read_text()
+        assert 'http-equiv="refresh"' in html_text
 
 
 @pytest.fixture
