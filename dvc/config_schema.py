@@ -118,6 +118,7 @@ SCHEMA = {
         Optional("autostage", default=False): Bool,
         Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
+        "machine": Lower,
     },
     "cache": {
         "local": str,
@@ -228,10 +229,16 @@ SCHEMA = {
     "index": {
         "dir": str,
     },
+    "machine": {
+        str: {
+            "cloud": All(Lower, Choices("aws", "azure")),
+        },
+    },
     # section for experimental features
     "feature": {
+        Optional("machine", default=False): Bool,
         # enabled by default. It's of no use, kept for backward compatibility.
-        Optional("parametrization", default=True): Bool
+        Optional("parametrization", default=True): Bool,
     },
     "plots": {"html_template": str},
 }

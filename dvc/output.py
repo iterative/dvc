@@ -81,6 +81,7 @@ def loadd_from(stage, d_list):
         desc = d.pop(Output.PARAM_DESC, False)
         isexec = d.pop(Output.PARAM_ISEXEC, False)
         live = d.pop(Output.PARAM_LIVE, False)
+        remote = d.pop(Output.PARAM_REMOTE, None)
         ret.append(
             _get(
                 stage,
@@ -94,6 +95,7 @@ def loadd_from(stage, d_list):
                 desc=desc,
                 isexec=isexec,
                 live=live,
+                remote=remote,
             )
         )
     return ret
@@ -109,6 +111,7 @@ def loads_from(
     checkpoint=False,
     isexec=False,
     live=False,
+    remote=None,
 ):
     return [
         _get(
@@ -122,6 +125,7 @@ def loads_from(
             checkpoint=checkpoint,
             isexec=isexec,
             live=live,
+            remote=remote,
         )
         for s in s_list
     ]
@@ -162,7 +166,6 @@ def load_from_pipeline(stage, data, typ="outs"):
     metric = typ == stage.PARAM_METRICS
     plot = typ == stage.PARAM_PLOTS
     live = typ == stage.PARAM_LIVE
-
     if live:
         # `live` is single object
         data = [data]
@@ -185,6 +188,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_CACHE,
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
+                Output.PARAM_REMOTE,
             ],
         )
 
@@ -255,6 +259,7 @@ class Output:
     PARAM_LIVE = "live"
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
+    PARAM_REMOTE = "remote"
 
     METRIC_SCHEMA = Any(
         None,
@@ -283,6 +288,7 @@ class Output:
         live=False,
         desc=None,
         isexec=False,
+        remote=None,
     ):
         self.repo = stage.repo if stage else None
 
@@ -326,7 +332,7 @@ class Output:
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
 
-        self.def_remote = None
+        self.remote = remote
 
     def _parse_path(self, fs, path_info):
         if fs.scheme != "local":
@@ -843,7 +849,8 @@ class Output:
         try:
             objects.check(self.odb, obj)
         except FileNotFoundError:
-            self.repo.cloud.pull([obj.hash_info], **kwargs)
+            remote = self.repo.cloud.get_remote_odb(self.remote)
+            self.repo.cloud.pull([obj.hash_info], odb=remote, **kwargs)
 
         if self.obj:
             return self.obj
@@ -855,9 +862,9 @@ class Output:
 
         return self.obj
 
-    def collect_used_dir_cache(
+    def _collect_used_dir_cache(
         self, remote=None, force=False, jobs=None, filter_info=None
-    ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
+    ) -> Optional["Tree"]:
         """Fetch dir cache and return used object IDs for this out."""
 
         try:
@@ -878,13 +885,13 @@ class Output:
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
-            return {}
+            return None
 
         obj = self.get_obj()
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
             obj = obj.filter(prefix)
-        return {None: set(self._named_obj_ids(obj))}
+        return obj
 
     def get_used_objs(
         self, **kwargs
@@ -917,22 +924,31 @@ class Output:
             return {}
 
         if self.is_dir_checksum:
-            return self.collect_used_dir_cache(**kwargs)
+            obj = self._collect_used_dir_cache(**kwargs)
+        else:
+            obj = self.get_obj(filter_info=kwargs.get("filter_info"))
+            if not obj:
+                obj = self.odb.get(self.hash_info)
 
-        obj = self.get_obj(filter_info=kwargs.get("filter_info"))
         if not obj:
-            obj = self.odb.get(self.hash_info)
+            return {}
 
-        return {None: set(self._named_obj_ids(obj))}
+        if self.remote:
+            remote = self.repo.cloud.get_remote_odb(name=self.remote)
+        else:
+            remote = None
+
+        return {remote: self._named_obj_ids(obj)}
 
     def _named_obj_ids(self, obj):
         name = str(self)
         obj.hash_info.obj_name = name
-        yield obj.hash_info
+        oids = {obj.hash_info}
         if isinstance(obj, Tree):
             for key, entry_obj in obj:
                 entry_obj.hash_info.obj_name = self.fs.sep.join([name, *key])
-                yield entry_obj.hash_info
+                oids.add(entry_obj.hash_info)
+        return oids
 
     def get_used_external(
         self, **kwargs
@@ -1033,4 +1049,5 @@ SCHEMA = {
     Output.PARAM_CACHE: bool,
     Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_DESC: str,
+    Output.PARAM_REMOTE: str,
 }

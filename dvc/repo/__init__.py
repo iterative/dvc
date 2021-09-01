@@ -12,6 +12,7 @@ from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
+from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
 
 if TYPE_CHECKING:
@@ -162,6 +163,7 @@ class Repo:
         from dvc.data_cloud import DataCloud
         from dvc.fs.local import LocalFileSystem
         from dvc.lock import LockNoop, make_lock
+        from dvc.machine import MachineManager
         from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
@@ -221,6 +223,14 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
         self.live = Live(self)
+
+        if self.tmp_dir and (
+            self.config["feature"].get("machine", False)
+            or env2bool("DVC_TEST")
+        ):
+            self.machine = MachineManager(self)
+        else:
+            self.machine = None
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]

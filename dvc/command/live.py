@@ -1,5 +1,5 @@
 import argparse
-import os
+from pathlib import Path
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, fix_subparsers
@@ -13,10 +13,11 @@ class CmdLive(CmdBase):
         metrics, plots = self.repo.live.show(target=target, revs=revs)
 
         if plots:
-            html_path = self.args.target + ".html"
-            self.repo.plots.write_html(html_path, plots, metrics)
+            html_path = Path.cwd() / (self.args.target + "_html")
+            from dvc.render.utils import render
 
-            ui.write("\nfile://", os.path.abspath(html_path), sep="")
+            index_path = render(self.repo, plots, metrics, html_path)
+            ui.write(index_path.as_uri())
             return 0
         return 1
 

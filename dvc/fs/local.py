@@ -1,6 +1,5 @@
 import logging
 import os
-import stat
 
 from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
@@ -35,6 +34,9 @@ class LocalFileSystem(BaseFileSystem):
     def exists(self, path_info) -> bool:
         assert isinstance(path_info, str) or path_info.scheme == "local"
         return self.fs.exists(path_info)
+
+    def checksum(self, path_info) -> str:
+        return self.fs.checksum(path_info)
 
     def isfile(self, path_info) -> bool:
         return os.path.isfile(path_info)
@@ -83,11 +85,8 @@ class LocalFileSystem(BaseFileSystem):
         makedirs(path_info, exist_ok=kwargs.pop("exist_ok", True))
 
     def isexec(self, path_info):
-        mode = self.stat(path_info).st_mode
+        mode = self.info(path_info)["mode"]
         return is_exec(mode)
-
-    def stat(self, path):
-        return os.stat(path)
 
     def move(self, from_info, to_info):
         if (
@@ -154,13 +153,8 @@ class LocalFileSystem(BaseFileSystem):
     def reflink(self, from_info, to_info):
         System.reflink(from_info, to_info)
 
-    @staticmethod
-    def info(path_info):
-        st = os.stat(path_info)
-        return {
-            "size": st.st_size,
-            "type": "directory" if stat.S_ISDIR(st.st_mode) else "file",
-        }
+    def info(self, path_info):
+        return self.fs.info(path_info)
 
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs

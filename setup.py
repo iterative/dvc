@@ -87,7 +87,9 @@ install_requires = [
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
-    "typing_extensions>=3.7.4",
+    "typing_extensions>=3.7.4; python_version < '3.10'",
+    # until https://github.com/python/typing/issues/865 is fixed for python3.10
+    "typing_extensions==3.10.0.0; python_version >= '3.10'",
     "fsspec>=2021.7.0",
     "diskcache>=5.2.1",
 ]
@@ -112,9 +114,11 @@ webdav = ["webdav4>=0.9.0"]
 ssh_gssapi = ["sshfs[gssapi]>=2021.7.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
+terraform = ["python-terraform>=0.10.1", "jinja2>=2.0.0"]
+
 tests_requirements = (
     Path("test_requirements.txt").read_text().strip().splitlines()
-)
+) + terraform
 
 setup(
     name="dvc",
@@ -138,6 +142,7 @@ setup(
         "hdfs": hdfs,
         "webhdfs": webhdfs,
         "webdav": webdav,
+        "terraform": terraform,
         "tests": tests_requirements,
     },
     keywords="data-science data-version-control machine-learning git"

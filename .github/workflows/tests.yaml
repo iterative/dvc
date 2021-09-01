@@ -27,7 +27,7 @@ jobs:
     - name: Install requirements
       run: |
         pip install wheel
-        pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+        pip install ".[all,tests,terraform]" Pygments collective.checkdocs pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -77,7 +77,7 @@ jobs:
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
         pip install --upgrade pip setuptools wheel
-        pip install -e ".[all,tests]"
+        pip install -e ".[all,tests,terraform]"
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -113,7 +113,7 @@ jobs:
         --cov-report=xml --cov-report=term
         --all ${{ env.extra_test_args }}
     - name: upload coverage report
-      uses: codecov/codecov-action@v2.0.2
+      uses: codecov/codecov-action@v2.0.3
       with:
         file: ./coverage.xml
         fail_ci_if_error: false

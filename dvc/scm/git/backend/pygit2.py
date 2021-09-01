@@ -58,6 +58,14 @@ class Pygit2Object(GitObject):
             return stat.S_IFDIR
         return self.obj.filemode
 
+    @property
+    def size(self) -> int:
+        return len(self.obj.read_raw())
+
+    @property
+    def sha(self) -> str:
+        return self.obj.hex
+
     def scandir(self) -> Iterable["Pygit2Object"]:
         for entry in self.obj:  # noqa: B301
             yield Pygit2Object(entry)

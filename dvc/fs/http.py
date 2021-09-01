@@ -65,9 +65,6 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 self.headers.update({self.custom_auth_header: self.password})
         return None
 
-    def _generate_download_url(self, path_info):
-        return path_info.url
-
     @wrap_prop(threading.Lock())
     @cached_property
     def _session(self):
@@ -189,6 +186,17 @@ class HTTPFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 no_progress_bar=no_progress_bar,
                 desc=name or to_info.url,
             )
+
+    def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
+        from dvc.utils.http import open_url
+
+        return open_url(
+            path_info.url,
+            mode=mode,
+            encoding=encoding,
+            auth=self._auth_method(path_info),
+            **kwargs,
+        )
 
     @staticmethod
     def _content_length(response) -> Optional[int]:
