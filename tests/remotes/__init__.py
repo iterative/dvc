@@ -32,12 +32,7 @@ from .s3 import (  # noqa: F401
     s3_fake_creds_file,
     s3_server,
 )
-from .ssh import (  # noqa: F401; noqa: F401
-    SSHMocked,
-    ssh,
-    ssh_connection,
-    ssh_server,
-)
+from .ssh import SSH, ssh, ssh_connection, ssh_server  # noqa: F401; noqa: F401
 from .webdav import Webdav, webdav, webdav_server  # noqa: F401
 from .webhdfs import WebHDFS, real_webhdfs, webhdfs  # noqa: F401
 

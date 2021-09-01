@@ -1,16 +1,13 @@
 import locale
 import os
-import subprocess
+import uuid
 
-import mockssh
 import pytest
 from funcy import cached_property
-from mockssh.server import Handler
 
 from dvc.path_info import URLInfo
 
 from .base import Base
-from .local import Local
 
 TEST_SSH_USER = "user"
 TEST_SSH_KEY_PATH = os.path.join(
@@ -18,71 +15,18 @@ TEST_SSH_KEY_PATH = os.path.join(
 )
 
 
-# See: https://github.com/carletes/mock-ssh-server/issues/22
-class SSHMockHandler(Handler):
-    def handle_client(self, channel):
-        try:
-            command = self.command_queues[channel.chanid].get(block=True)
-            self.log.debug("Executing %s", command)
-            if isinstance(command, bytes):
-                command = command.decode()
-            p = subprocess.Popen(
-                command,
-                shell=True,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            stdout, stderr = p.communicate()
-            channel.sendall(stdout)
-            channel.sendall_stderr(stderr)
-            channel.send_exit_status(p.returncode)
-        except Exception:  # pylint: disable=broad-except
-            self.log.error(
-                "Error handling client (channel: %s)", channel, exc_info=True
-            )
-        finally:
-            try:
-                channel.close()
-            except EOFError:
-                self.log.debug("Tried to close already closed channel")
-
-
-class SSHMockServer(mockssh.Server):
-    handler_cls = SSHMockHandler
-
-
-class SSHMocked(Base, URLInfo):
+class SSH(Base, URLInfo):
     @staticmethod
-    def get_url(user, port):  # pylint: disable=arguments-differ
-        path = Local.get_storagepath()
-        if os.name == "nt":
-            # NOTE: On Windows Local.get_storagepath() will return an
-            # ntpath that looks something like `C:\some\path`, which is not
-            # compatible with SFTP paths [1], so we need to convert it to
-            # a proper posixpath.
-            # To do that, we should construct a posixpath that would be
-            # relative to the server's root.
-            # Our URL format requires absolute paths, so the
-            # resulting path would look like `/some/path`.
-            #
-            # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
-            drive, path = os.path.splitdrive(path)
-
-            # Hackish way to make sure SSH server runs on same drive as tests
-            # and temporary directories are.
-            # Context: https://github.com/iterative/dvc/pull/4660
-            test_drive, _ = os.path.splitdrive(os.getcwd())
-            if drive.lower() != test_drive.lower():
-                raise Exception("Did you forget to use `tmp_dir?`")
-
-            path = path.replace("\\", "/")
-        url = f"ssh://{user}@127.0.0.1:{port}{path}"
-        return url
+    def get_url(host, port):  # pylint: disable=arguments-differ
+        return f"ssh://{host}:{port}/tmp/data/{uuid.uuid4()}"
 
     @cached_property
     def config(self):
-        return {"url": self.url, "keyfile": TEST_SSH_KEY_PATH}
+        return {
+            "url": self.url,
+            "user": TEST_SSH_USER,
+            "keyfile": TEST_SSH_KEY_PATH,
+        }
 
     @cached_property
     def _ssh(self):
@@ -126,12 +70,34 @@ class SSHMocked(Base, URLInfo):
         return self.read_bytes().decode(encoding)
 
 
-@pytest.fixture
-def ssh_server(test_config):
+@pytest.fixture(scope="session")
+def ssh_server(test_config, docker_compose, docker_services):
+    import asyncssh
+    from sshfs import SSHFileSystem
+
     test_config.requires("ssh")
-    users = {TEST_SSH_USER: TEST_SSH_KEY_PATH}
-    with SSHMockServer(users) as s:
-        yield s
+    conn_info = {
+        "host": "127.0.0.1",
+        "port": docker_services.port_for("openssh-server", 2222),
+    }
+
+    def get_fs():
+        return SSHFileSystem(
+            **conn_info,
+            username=TEST_SSH_USER,
+            client_keys=[TEST_SSH_KEY_PATH],
+        )
+
+    def _check():
+        try:
+            get_fs().exists("/")
+        except asyncssh.Error:
+            return False
+        else:
+            return True
+
+    docker_services.wait_until_responsive(timeout=30.0, pause=1, check=_check)
+    return conn_info
 
 
 @pytest.fixture
@@ -139,8 +105,8 @@ def ssh_connection(ssh_server):
     from sshfs import SSHFileSystem
 
     yield SSHFileSystem(
-        host=ssh_server.host,
-        port=ssh_server.port,
+        host=ssh_server["host"],
+        port=ssh_server["port"],
         username=TEST_SSH_USER,
         client_files=[TEST_SSH_KEY_PATH],
     )
@@ -153,4 +119,6 @@ def ssh(ssh_server, monkeypatch):
     # NOTE: see http://github.com/iterative/dvc/pull/3501
     monkeypatch.setattr(SSHFileSystem, "CAN_TRAVERSE", False)
 
-    return SSHMocked(SSHMocked.get_url(TEST_SSH_USER, ssh_server.port))
+    url = SSH(SSH.get_url(**ssh_server))
+    url.mkdir(exist_ok=True, parents=True)
+    return url
