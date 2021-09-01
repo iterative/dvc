@@ -6,6 +6,7 @@ from dvc.command.machine import (
     CmdMachineCreate,
     CmdMachineDestroy,
     CmdMachineRemove,
+    CmdMachineSsh,
 )
 
 
@@ -60,6 +61,19 @@ def test_destroy(tmp_dir, dvc, mocker):
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(
         cmd.repo.machine, "destroy", autospec=True, return_value=0
+    )
+
+    assert cmd.run() == 0
+    m.assert_called_once_with("foo")
+
+
+def test_ssh(tmp_dir, dvc, mocker):
+    cli_args = parse_args(["machine", "ssh", "foo"])
+    assert cli_args.func == CmdMachineSsh
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(
+        cmd.repo.machine, "run_shell", autospec=True, return_value=0
     )
 
     assert cmd.run() == 0

@@ -2,6 +2,7 @@ import json
 import os
 
 import pytest
+from mock import ANY, MagicMock
 from python_terraform import IsFlagged
 
 from dvc.machine.backend.terraform import DvcTerraform, TerraformError
@@ -127,3 +128,16 @@ def test_instances(tmp_dir, terraform, resource):
     data = json.loads(TEST_RESOURCE_STATE)
     expected = data["resources"][0]["instances"][0]["attributes"]
     assert list(terraform.instances(resource)) == [expected]
+
+
+def test_shell(tmp_dir, terraform, resource, mocker):
+    data = json.loads(TEST_RESOURCE_STATE)
+    expected = data["resources"][0]["instances"][0]["attributes"]
+    mock_connect = mocker.patch("asyncssh.connect", return_value=MagicMock())
+    terraform.run_shell(name=resource)
+    mock_connect.assert_called_once_with(
+        host=expected["instance_ip"],
+        username="ubuntu",
+        client_keys=ANY,
+        known_hosts=None,
+    )
