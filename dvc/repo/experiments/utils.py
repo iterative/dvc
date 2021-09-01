@@ -119,22 +119,20 @@ def fix_exp_head(scm: "Git", ref: Optional[str]) -> Optional[str]:
 
 
 def resolve_exp_ref(
-    repo, exp_name: str, git_remote: Optional[str] = None
+    scm, exp_name: str, git_remote: Optional[str] = None
 ) -> Optional[ExpRefInfo]:
     if exp_name.startswith("refs/"):
         return ExpRefInfo.from_ref(exp_name)
 
     if git_remote:
-        exp_ref_list = list(
-            remote_exp_refs_by_name(repo.scm, git_remote, exp_name)
-        )
+        exp_ref_list = list(remote_exp_refs_by_name(scm, git_remote, exp_name))
     else:
-        exp_ref_list = list(exp_refs_by_name(repo.scm, exp_name))
+        exp_ref_list = list(exp_refs_by_name(scm, exp_name))
 
     if not exp_ref_list:
         return None
     if len(exp_ref_list) > 1:
-        cur_rev = repo.scm.get_rev()
+        cur_rev = scm.get_rev()
         for info in exp_ref_list:
             if info.baseline_sha == cur_rev:
                 return info

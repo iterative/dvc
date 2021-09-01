@@ -67,7 +67,7 @@ def _remove_commited_exps(
     remain_list = []
     remove_list = []
     for exp_name in exp_names:
-        ref_info = resolve_exp_ref(repo, exp_name, remote)
+        ref_info = resolve_exp_ref(repo.scm, exp_name, remote)
 
         if ref_info:
             remove_list.append(ref_info)

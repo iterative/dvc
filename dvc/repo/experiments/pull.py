@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def pull(
     repo, git_remote, exp_name, *args, force=False, pull_cache=False, **kwargs
 ):
-    exp_ref = resolve_exp_ref(repo, exp_name, git_remote)
+    exp_ref = resolve_exp_ref(repo.scm, exp_name, git_remote)
     if not exp_ref:
         raise InvalidArgumentError(
             f"Experiment '{exp_name}' does not exist in '{git_remote}'"

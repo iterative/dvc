@@ -20,7 +20,7 @@ def push(
     push_cache=False,
     **kwargs,
 ):
-    exp_ref = resolve_exp_ref(repo, exp_name)
+    exp_ref = resolve_exp_ref(repo.scm, exp_name)
     if not exp_ref:
         raise InvalidArgumentError(
             f"'{exp_name}' is not a valid experiment name"
