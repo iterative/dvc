@@ -7,6 +7,7 @@ import pytest
 from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
+from dvc.exceptions import DvcException
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
@@ -146,6 +147,28 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     fs = scm.get_fs(exp)
     with fs.open(tmp_dir / "metrics.yaml") as fobj:
         assert fobj.read().strip() == expected
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [["lorem.ipsum=3"], ["foo[0].bazar=3"]],
+)
+def test_add_params(tmp_dir, scm, dvc, changes):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen(
+        "params.yaml", "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: false}"
+    )
+    stage = dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo", "goo", "lorem"],
+        name="copy-file",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
+    scm.commit("init")
+
+    with pytest.raises(DvcException):
+        dvc.experiments.run(stage.addressing, params=changes)
 
 
 @pytest.mark.parametrize("queue", [True, False])
