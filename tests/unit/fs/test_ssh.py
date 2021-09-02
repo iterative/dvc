@@ -135,6 +135,24 @@ def test_ssh_keyfile(mock_file, config, expected_keyfile):
     assert fs.fs_args.get("client_keys") == expected_keyfile
 
 
+mock_ssh_multi_key_config = """
+IdentityFile file_1
+
+Host example.com
+    IdentityFile file_2
+"""
+
+
+@patch(
+    "builtins.open",
+    new_callable=mock_open,
+    read_data=mock_ssh_multi_key_config,
+)
+def test_ssh_multi_identity_files(mock_file):
+    fs = SSHFileSystem(host="example.com")
+    assert fs.fs_args.get("client_keys") == ["file_1", "file_2"]
+
+
 @pytest.mark.parametrize(
     "config,expected_gss_auth",
     [

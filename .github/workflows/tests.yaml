@@ -1,12 +1,8 @@
 name: Tests
 
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
+  pull_request: {}
+  push: {}
   schedule:
     - cron: '5 1 * * *'  # every day at 01:05
 
