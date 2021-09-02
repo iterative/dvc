@@ -5,7 +5,7 @@ import pytest
 from mock import ANY, MagicMock
 from python_terraform import IsFlagged
 
-from dvc.machine.backend.terraform import DvcTerraform, TerraformError
+from dvc.tpi import DvcTerraform, TerraformError
 
 TEST_RESOURCE_STATE = """{
   "version": 4,
