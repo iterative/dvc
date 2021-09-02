@@ -102,7 +102,7 @@ def git_upstream(tmp_dir, erepo_dir):
 @pytest.fixture
 def git_downstream(tmp_dir, erepo_dir):
     url = "file://{}".format(tmp_dir.resolve().as_posix())
-    erepo_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
+    erepo_dir.scm.gitpython.repo.create_remote("downstream", url)
+    erepo_dir.remote = "downstream"
     erepo_dir.url = url
     return erepo_dir
