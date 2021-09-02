@@ -4,16 +4,6 @@ from dvc.repo.experiments.base import EXPS_NAMESPACE, ExpRefInfo
 from dvc.repo.experiments.utils import resolve_exp_ref
 
 
-@pytest.fixture
-def git_upstream(scm, make_tmp_dir, name="origin"):
-    remote_dir = make_tmp_dir("git-remote", scm=True)
-    url = f"file://{remote_dir.resolve().as_posix()}"
-    scm.gitpython.repo.create_remote(name, url)
-    remote_dir.remote = name
-    remote_dir.url = url
-    return remote_dir
-
-
 def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
     tmp_dir.scm_gen(file, contents, commit="init")
     rev = scm.get_rev()
