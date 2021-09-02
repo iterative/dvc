@@ -67,6 +67,8 @@ __all__ = [
     "erepo_dir",
     "git_dir",
     "git_init",
+    "git_upstream",
+    "git_downstream",
 ]
 
 
@@ -411,24 +413,19 @@ def git_dir(make_tmp_dir):
 
 @pytest.fixture
 def git_upstream(tmp_dir, erepo_dir, git_dir, request):
-    if "dvc" in request.fixturenames:
-        url = "file://{}".format(erepo_dir.resolve().as_posix())
-    else:
-        url = "file://{}".format(git_dir.resolve().as_posix())
+    remote = erepo_dir if "dvc" in request.fixturenames else git_dir
+    url = "file://{}".format(remote.resolve().as_posix())
     tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
-    erepo_dir.url = url
-    return erepo_dir
+    remote.remote = "upstream"
+    remote.url = url
+    return remote
 
 
 @pytest.fixture
 def git_downstream(tmp_dir, erepo_dir, git_dir, request):
-    if "dvc" in request.fixturenames:
-        url = "file://{}".format(erepo_dir.resolve().as_posix())
-    else:
-        url = "file://{}".format(git_dir.resolve().as_posix())
+    remote = erepo_dir if "dvc" in request.fixturenames else git_dir
     url = "file://{}".format(tmp_dir.resolve().as_posix())
-    erepo_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
-    erepo_dir.url = url
-    return erepo_dir
+    remote.scm.gitpython.repo.create_remote("upstream", url)
+    remote.remote = "upstream"
+    remote.url = url
+    return remote
