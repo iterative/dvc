@@ -177,84 +177,84 @@ def test_show_checkpoint_branch(
     "i_metrics,i_params,e_metrics,e_params,included,excluded",
     [
         (
-            "f",
-            "f",
+            "foo",
+            "foo",
             None,
             None,
-            ["f"],
-            ["b", "t/f", "n.f"],
+            ["foo"],
+            ["bar", "train/foo", "nested.foo"],
         ),
         (
             None,
             None,
-            "f",
-            "f",
-            ["b", "t/f", "n.f"],
-            ["f"],
+            "foo",
+            "foo",
+            ["bar", "train/foo", "nested.foo"],
+            ["foo"],
         ),
         (
-            "f,b",
-            "f,b",
+            "foo,bar",
+            "foo,bar",
             None,
             None,
-            ["f", "b"],
-            ["t/f", "t/b", "n.f", "n.b"],
+            ["foo", "bar"],
+            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
         ),
         (
-            "f,b",
-            "f,b",
+            "metrics.yaml:foo,bar",
+            "params.yaml:foo,bar",
             None,
             None,
-            ["f", "b"],
-            ["t/f", "t/b", "n.f", "n.b"],
+            ["foo", "bar"],
+            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
         ),
         (
-            "t/*",
-            "t/*",
+            "train/*",
+            "train/*",
             None,
             None,
-            ["t/f", "t/b"],
-            ["f", "b", "n.f", "n.b"],
-        ),
-        (
-            None,
-            None,
-            "t/*",
-            "t/*",
-            ["f", "b", "n.f", "n.b"],
-            ["t/f", "t/b"],
-        ),
-        (
-            "t/*",
-            "t/*",
-            "*f",
-            "*f",
-            ["t/b"],
-            ["t/f", "f", "b", "n.f", "n.b"],
-        ),
-        (
-            "n.*",
-            "n.*",
-            None,
-            None,
-            ["n.f", "n.b"],
-            ["f", "b", "t/f", "t/b"],
+            ["train/foo", "train/bar"],
+            ["foo", "bar", "nested.foo", "nested.bar"],
         ),
         (
             None,
             None,
-            "n.*",
-            "n.*",
-            ["f", "b", "t/f", "t/b"],
-            ["n.f", "n.b"],
+            "train/*",
+            "train/*",
+            ["foo", "bar", "nested.foo", "nested.bar"],
+            ["train/foo", "train/bar"],
+        ),
+        (
+            "train/*",
+            "train/*",
+            "*foo",
+            "*foo",
+            ["train/bar"],
+            ["train/foo", "foo", "bar", "nested.foo", "nested.bar"],
+        ),
+        (
+            "nested.*",
+            "nested.*",
+            None,
+            None,
+            ["nested.foo", "nested.bar"],
+            ["foo", "bar", "train/foo", "train/bar"],
+        ),
+        (
+            None,
+            None,
+            "nested.*",
+            "nested.*",
+            ["foo", "bar", "train/foo", "train/bar"],
+            ["nested.foo", "nested.bar"],
         ),
         (
             "*.*",
             "*.*",
-            "*.b",
-            "*.b",
-            ["n.f"],
-            ["f", "b", "n.b", "t/f", "t/b"],
+            "*.bar",
+            "*.bar",
+            ["nested.foo"],
+            ["foo", "bar", "nested.bar", "train/foo", "train/bar"],
         ),
     ],
 )
@@ -270,24 +270,28 @@ def test_show_filter(
     included,
     excluded,
 ):
+    from contextlib import contextmanager
+
+    from dvc.ui import ui
+
     capsys.readouterr()
     div = "│" if os.name == "nt" else "┃"
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
-    params_file = tmp_dir / "p"
+    params_file = tmp_dir / "params.yaml"
     params_data = {
-        "f": 1,
-        "b": 1,
-        "t/f": 1,
-        "t/b": 1,
-        "n": {"f": 1, "b": 1},
+        "foo": 1,
+        "bar": 1,
+        "train/foo": 1,
+        "train/bar": 1,
+        "nested": {"foo": 1, "bar": 1},
     }
     dump_yaml(params_file, params_data)
 
     dvc.run(
-        cmd="python copy.py p m",
-        metrics_no_cache=["m"],
-        params=["p:f"],
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
         name="copy-file",
         deps=["copy.py"],
     )
@@ -296,8 +300,8 @@ def test_show_filter(
             "dvc.yaml",
             "dvc.lock",
             "copy.py",
-            "p",
-            "m",
+            "params.yaml",
+            "metrics.yaml",
             ".gitignore",
         ]
     )
@@ -313,14 +317,30 @@ def test_show_filter(
     if e_params is not None:
         command.append(f"--exclude-params={e_params}")
 
-    assert main(command) == 0
+    @contextmanager
+    def console_with(console, width):
+        console_options = console.options
+        original = console_options.max_width
+        con_width = console._width
+
+        try:
+            console_options.max_width = width
+            console._width = width
+            yield
+        finally:
+            console_options.max_width = original
+            console._width = con_width
+
+    with console_with(ui.rich_console, 255):
+        assert main(command) == 0
     cap = capsys.readouterr()
-    print(cap.out)
 
     for i in included:
-        assert f"{div} m:{i} {div}" in cap.out
+        assert f"{div} params.yaml:{i} {div}" in cap.out
+        assert f"{div} metrics.yaml:{i} {div}" in cap.out
     for e in excluded:
-        assert f"{div} m:{e} {div}" not in cap.out
+        assert f"{div} params.yaml:{e} {div}" not in cap.out
+        assert f"{div} metrics.yaml:{e} {div}" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
