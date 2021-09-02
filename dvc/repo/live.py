@@ -12,12 +12,17 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
 
-def create_summary(out):
+LIVE_HTML_PATH = "html"
+LIVE_PLOTS_PATH = "tsv"
+LIVE_SUMMARY_PATH = "summary.json"
+
+
+def create_live_html(out):
     assert out.live and out.live["html"]
 
     metrics, plots = out.repo.live.show(str(out.path_info))
 
-    html_path = out.path_info.fspath + "_dvc_plots"
+    html_path = os.path.join(out.path_info, LIVE_HTML_PATH)
 
     index_path = render(
         out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5
@@ -33,7 +38,7 @@ def summary_path_info(out: "Output") -> Optional["PathInfo"]:
     if isinstance(out.live, dict):
         has_summary = out.live.get(Output.PARAM_LIVE_SUMMARY, True)
     if has_summary:
-        return out.path_info.with_suffix(".json")
+        return out.path_info / LIVE_SUMMARY_PATH
     return None
 
 
@@ -45,9 +50,10 @@ class Live:
         if revs:
             revs = ["workspace", *revs]
 
-        metrics_path = target + ".json"
+        metrics_path = os.path.join(target, LIVE_SUMMARY_PATH)
+        plots_path = os.path.join(target, LIVE_PLOTS_PATH)
 
         metrics = self.repo.metrics.show(targets=[metrics_path])
-        plots = self.repo.plots.show(target, recursive=True, revs=revs)
+        plots = self.repo.plots.show(plots_path, recursive=True, revs=revs)
 
         return metrics, plots

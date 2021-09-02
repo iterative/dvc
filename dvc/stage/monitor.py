@@ -6,7 +6,7 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List
 
-from dvc.repo.live import create_summary
+from dvc.repo.live import create_live_html
 from dvc.stage.decorators import relock_repo
 from dvc.stage.exceptions import StageCmdFailedError
 
@@ -86,7 +86,7 @@ class LiveTask(MonitorTask):
     error_cls = LiveKilledError
 
     def __init__(self, stage: "Stage", out: "Output", proc: subprocess.Popen):
-        super().__init__(stage, functools.partial(create_summary, out), proc)
+        super().__init__(stage, functools.partial(create_live_html, out), proc)
 
     def after_run(self):
         # make sure summary is prepared for all the data

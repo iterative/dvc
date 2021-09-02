@@ -7,6 +7,7 @@ from funcy import first
 
 from dvc import stage as stage_module
 from dvc.render.utils import get_files
+from dvc.repo.live import LIVE_HTML_PATH, LIVE_PLOTS_PATH, LIVE_SUMMARY_PATH
 
 LIVE_SCRIPT = dedent(
     """
@@ -111,7 +112,9 @@ def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
 def test_live_provides_metrics(tmp_dir, dvc, live_stage):
     live_stage(summary=True, live="logs")
 
-    assert (tmp_dir / "logs.json").is_file()
+    assert (tmp_dir / "logs").is_dir()
+
+    assert (tmp_dir / "logs" / LIVE_SUMMARY_PATH).is_file()
     assert dvc.metrics.show() == {
         "": {
             "data": {
@@ -122,24 +125,24 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
         }
     }
 
-    assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
     files = get_files(plots_data)
-    assert os.path.join("logs", "accuracy.tsv") in files
-    assert os.path.join("logs", "loss.tsv") in files
+    assert os.path.join("logs", LIVE_PLOTS_PATH, "accuracy.tsv") in files
+    assert os.path.join("logs", LIVE_PLOTS_PATH, "loss.tsv") in files
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
     live_stage(summary=False, live="logs")
 
-    assert not (tmp_dir / "logs.json").is_file()
+    assert (tmp_dir / "logs").is_dir()
+
+    assert not (tmp_dir / "logs" / LIVE_SUMMARY_PATH).is_file()
     assert dvc.metrics.show() == {"": {}}
 
-    assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
     files = get_files(plots_data)
-    assert os.path.join("logs", "accuracy.tsv") in files
-    assert os.path.join("logs", "loss.tsv") in files
+    assert os.path.join("logs", LIVE_PLOTS_PATH, "accuracy.tsv") in files
+    assert os.path.join("logs", LIVE_PLOTS_PATH, "loss.tsv") in files
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
@@ -152,16 +155,19 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
     ((exp_rev, _),) = experiments.items()
 
     res = dvc.experiments.show()
-    assert "logs.json" in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
+    assert (
+        os.path.join("logs", LIVE_SUMMARY_PATH)
+        in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
+    )
 
 
 @pytest.mark.parametrize("html", [True, False])
 def test_live_html(tmp_dir, dvc, live_stage, html):
     live_stage(html=html, live="logs")
 
-    assert (tmp_dir / "logs_dvc_plots" / "index.html").is_file() == html
+    assert (tmp_dir / "logs" / LIVE_HTML_PATH).is_file() == html
     if html:
-        html_text = (tmp_dir / "logs_dvc_plots" / "index.html").read_text()
+        html_text = (tmp_dir / "logs" / LIVE_HTML_PATH).read_text()
         assert 'http-equiv="refresh"' in html_text
 
 
@@ -228,9 +234,15 @@ def test_live_checkpoints_resume(
     )
 
     results = dvc.experiments.show()
-    assert checkpoints_metric(results, "logs.json", "step") == [3, 2, 1, 0]
-    assert checkpoints_metric(results, "logs.json", "metric1") == [4, 3, 2, 1]
-    assert checkpoints_metric(results, "logs.json", "metric2") == [8, 6, 4, 2]
+    assert checkpoints_metric(
+        results, os.path.join("logs", LIVE_SUMMARY_PATH), "step"
+    ) == [3, 2, 1, 0]
+    assert checkpoints_metric(
+        results, os.path.join("logs", LIVE_SUMMARY_PATH), "metric1"
+    ) == [4, 3, 2, 1]
+    assert checkpoints_metric(
+        results, os.path.join("logs", LIVE_SUMMARY_PATH), "metric2"
+    ) == [8, 6, 4, 2]
 
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
