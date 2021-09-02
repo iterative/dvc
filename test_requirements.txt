@@ -25,6 +25,7 @@ google-cloud-storage==1.42.0
 # see: https://github.com/googleapis/python-crc32c/issues/49
 google-crc32c<=1.1.2; python_version >= '3.10'
 urllib3==1.26.6
+dvclive>=0.2.1
 
 # required by collective.checkdocs
 Pygments==2.10.0

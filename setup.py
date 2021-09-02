@@ -115,13 +115,9 @@ ssh_gssapi = ["sshfs[gssapi]>=2021.7.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
 terraform = ssh + ["python-terraform>=0.10.1", "jinja2>=2.0.0"]
-dvclive = ["dvclive>=0.2.1"]
-
 tests_requirements = (
-    (Path("test_requirements.txt").read_text().strip().splitlines())
-    + terraform
-    + dvclive
-)
+    Path("test_requirements.txt").read_text().strip().splitlines()
+) + terraform
 
 setup(
     name="dvc",
