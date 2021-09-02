@@ -1254,7 +1254,7 @@ def add_parser(subparsers, parent_parser):
         "-g",
         "--git-remote",
         metavar="<git_remote>",
-        help="Name or URL of the Git remote to remove the experiment " "from",
+        help="Name or URL of the Git remote to remove the experiment from",
     )
     experiments_remove_parser.add_argument(
         "experiment",
