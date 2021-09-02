@@ -415,9 +415,6 @@ def show_experiments(
     metric_headers = _normalize_headers(metric_names, counter)
     param_headers = _normalize_headers(param_names, counter)
 
-    precision = None if show_csv else kwargs.get("precision")
-    fill_value = "" if show_csv else FILL_VALUE
-
     td = experiments_table(
         all_experiments,
         metric_headers,
@@ -426,8 +423,8 @@ def show_experiments(
         param_names,
         kwargs.get("sort_by"),
         kwargs.get("sort_order"),
-        precision,
-        fill_value,
+        None if show_csv else kwargs.get("precision"),
+        "" if show_csv else FILL_VALUE,
         True if show_csv else False,
     )
 
