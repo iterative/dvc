@@ -90,19 +90,19 @@ install_requires = [
     "typing_extensions>=3.7.4; python_version < '3.10'",
     # until https://github.com/python/typing/issues/865 is fixed for python3.10
     "typing_extensions==3.10.0.0; python_version >= '3.10'",
-    "fsspec>=2021.7.0",
+    "fsspec>=2021.8.1",
     "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["gcsfs==2021.7.0"]
-gdrive = ["pydrive2[fsspec]>=1.9.1"]
-s3 = ["s3fs==2021.8.0", "aiobotocore[boto3]>1.0.1"]
-azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
-oss = ["ossfs==2021.7.5"]
-ssh = ["sshfs>=2021.7.1"]
+gs = ["gcsfs==2021.8.1"]
+gdrive = ["pydrive2[fsspec]>=1.9.2"]
+s3 = ["s3fs==2021.8.1", "aiobotocore[boto3]>1.0.1"]
+azure = ["adlfs==2021.8.2", "azure-identity>=1.4.0", "knack"]
+oss = ["ossfs==2021.8.0"]
+ssh = ["sshfs>=2021.8.1"]
 
 hdfs = ["pyarrow>=2.0.0; python_version < '3.10'"]
 webhdfs = ["hdfs==2.5.8"]
@@ -111,7 +111,7 @@ webdav = ["webdav4>=0.9.0"]
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
-ssh_gssapi = ["sshfs[gssapi]>=2021.7.1"]
+ssh_gssapi = ["sshfs[gssapi]>=2021.8.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
 terraform = ssh + ["python-terraform>=0.10.1", "jinja2>=2.0.0"]
