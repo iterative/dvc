@@ -360,9 +360,9 @@ class Experiments:
         """
         from benedict import benedict
 
-        src = benedict(src)
+        b_src = benedict(src)
 
-        return list(set(to_update.keys()) - set(src.keypaths(indexes=True)))
+        return list(set(to_update.keys()) - set(b_src.keypaths(indexes=True)))
 
     def _format_new_params_msg(self, new_params, config_path):
         """Format an error message for when new parameters are identified"""
