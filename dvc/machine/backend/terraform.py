@@ -16,7 +16,7 @@ class TerraformBackend(terraform.TerraformBackend):
         raise NotImplementedError
 
     @contextmanager
-    def get_sshfs(
+    def get_sshfs(  # pylint: disable=unused-argument
         self, name: Optional[str] = None, **config
     ) -> Iterator["SSHFileSystem"]:
         resource = self._default_resource(name)
