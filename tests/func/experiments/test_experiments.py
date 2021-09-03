@@ -119,10 +119,6 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
             ["foo[1]=[baz, goo]"],
             "{foo: [bar: 1, [baz, goo]], goo: {bag: 3}, lorem: false}",
         ],
-        [
-            ["lorem.ipsum=3"],
-            "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: {ipsum: 3}}",
-        ],
     ],
 )
 def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
