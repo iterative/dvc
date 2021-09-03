@@ -418,9 +418,7 @@ def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
 
     # copy.py is untracked
     with caplog.at_level(logging.ERROR):
-        results = dvc.experiments.run(
-            stage.addressing, params=["foo=2"], tmp_dir=True
-        )
+        results = dvc.experiments.run(stage.addressing, tmp_dir=True)
         assert "Failed to reproduce experiment" in caplog.text
         assert not results
 
