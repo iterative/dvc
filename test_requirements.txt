@@ -22,6 +22,7 @@ xmltodict==0.12.0
 google-compute-engine==2.8.13
 google-cloud-storage==1.42.0
 urllib3==1.26.6
+dvclive>=0.2.1
 
 # required by collective.checkdocs
 Pygments==2.10.0
