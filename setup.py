@@ -114,7 +114,7 @@ webdav = ["webdav4>=0.9.0"]
 ssh_gssapi = ["sshfs[gssapi]>=2021.7.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
-terraform = ssh + ["python-terraform>=0.10.1", "jinja2>=2.0.0"]
+terraform = ["tpi[ssh]>=0.0.0"]
 
 tests_requirements = (
     Path("test_requirements.txt").read_text().strip().splitlines()
@@ -127,6 +127,8 @@ setup(
     long_description=open("README.rst", encoding="UTF-8").read(),
     author="Dmitry Petrov",
     author_email="dmitry@dvc.org",
+    maintainer="Iterative",
+    maintainer_email="support@dvc.org",
     download_url="https://github.com/iterative/dvc",
     license="Apache License 2.0",
     install_requires=install_requires,
