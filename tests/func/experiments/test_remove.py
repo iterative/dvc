@@ -90,3 +90,29 @@ def test_remove_all(tmp_dir, scm, dvc, exp_stage):
     assert len(dvc.experiments.stash) == 2
     assert scm.get_ref(str(ref_info2)) is None
     assert scm.get_ref(str(ref_info1)) is None
+
+
+@pytest.mark.parametrize("use_url", [True, False])
+def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
+    remote = git_upstream.url if use_url else git_upstream.remote
+
+    ref_info_list = []
+    exp_list = []
+    for i in range(3):
+        results = dvc.experiments.run(
+            exp_stage.addressing, params=[f"foo={i}"]
+        )
+        exp = first(results)
+        exp_list.append(exp)
+        ref_info = first(exp_refs_by_rev(scm, exp))
+        ref_info_list.append(ref_info)
+        dvc.experiments.push(remote, ref_info.name)
+        assert git_upstream.scm.get_ref(str(ref_info)) == exp
+
+    dvc.experiments.remove(
+        remote=remote, exp_names=[str(ref_info_list[0]), ref_info_list[1].name]
+    )
+
+    assert git_upstream.scm.get_ref(str(ref_info_list[0])) is None
+    assert git_upstream.scm.get_ref(str(ref_info_list[1])) is None
+    assert git_upstream.scm.get_ref(str(ref_info_list[2])) == exp_list[2]
