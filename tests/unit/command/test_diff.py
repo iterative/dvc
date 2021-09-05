@@ -1,6 +1,5 @@
 import collections
 import os
-from unittest import mock
 
 import pytest
 
@@ -191,14 +190,14 @@ def test_show_json_hide_missing(mocker, capsys):
 
 
 @pytest.mark.parametrize("show_hash", [None, True, False])
-@mock.patch("dvc.command.diff._show_md")
-def test_diff_show_md_and_hash(mock_show_md, mocker, show_hash):
+def test_diff_show_md_and_hash(mocker, show_hash):
     options = ["diff", "--show-md"] + (["--show-hash"] if show_hash else [])
     args = parse_args(options)
     cmd = args.func(args)
 
     diff = {}
     show_hash = show_hash if show_hash else False
+    mock_show_md = mocker.patch("dvc.command.diff._show_md")
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()

@@ -115,6 +115,37 @@ class AssertWalkEqualMixin:
         )
 
 
+# TODO: start with "_"?
+def walk_equal(actual, expected):
+    def convert_to_sets(walk_results):
+        return [
+            (root, set(dirs), set(nondirs))
+            for root, dirs, nondirs in walk_results
+        ]
+
+    return convert_to_sets(actual) == convert_to_sets(expected)
+
+
+# def test_walk_in_no_scm(tmpdir):
+#     fs = LocalFileSystem()
+#     assert walk_equal(
+#         fs.walk(tmpdir),
+#         [
+#             (
+#                 tmpdir,
+#                 ["data_dir"],
+#                 ["code.py", "bar", "тест", "foo"],
+#             ),
+#             (join(tmpdir, "data_dir"), ["data_sub_dir"], ["data"]),
+#             (
+#                 join(tmpdir, "data_dir", "data_sub_dir"),
+#                 [],
+#                 ["data_sub"],
+#             ),
+#         ],
+#     )
+
+
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
         fs = LocalFileSystem()

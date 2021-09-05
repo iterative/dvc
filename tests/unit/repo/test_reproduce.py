@@ -1,8 +1,5 @@
-from unittest import mock
-
-
-@mock.patch("dvc.repo.reproduce._reproduce_stage", returns=[])
-def test_number_reproduces(reproduce_stage_mock, tmp_dir, dvc):
+def test_number_reproduces(reproduce_stage_mock, tmp_dir, dvc, mocker):
+    mocker.patch("dvc.repo.reproduce._reproduce_stage", returns=[])
     tmp_dir.dvc_gen({"pre-foo": "pre-foo"})
 
     dvc.run(

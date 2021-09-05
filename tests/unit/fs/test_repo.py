@@ -336,7 +336,7 @@ def make_subrepo(dir_, scm, config=None):
             dir_.add_remote(config=config)
 
 
-def test_subrepos(tmp_dir, scm, dvc):
+def test_subrepos(tmp_dir, scm, dvc, mocker):
     tmp_dir.scm_gen(
         {"dir": {"repo.txt": "file to confuse RepoFileSystem"}},
         commit="dir/repo.txt",

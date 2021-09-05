@@ -10,17 +10,16 @@ from dvc.cli import parse_args
 
 
 @pytest.fixture
-def tmp_global_dir(tmp_path):
+def tmp_global_dir(mocker, tmp_path):
     """
     Fixture to prevent modifying the actual global config
     """
-    with mock.patch("dvc.config.Config.get_dir", return_value=str(tmp_path)):
-        yield
+    mocker.patch("dvc.config.Config.get_dir", return_value=str(tmp_path))
 
 
-@mock.patch("dvc.daemon._spawn")
-@mock.patch("json.dump")
-def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_dir):
+def test_collect_and_send_report(mocker, tmp_global_dir):
+    mock_json = mocker.patch("json.dump")
+    mock_daemon = mocker.patch("dvc.daemon._spawn")
     analytics.collect_and_send_report()
     report = mock_json.call_args[0][0]
 
@@ -67,7 +66,7 @@ def test_send(mock_post, tmp_path):
 
     analytics.send(str(report_file))
     assert mock_post.called
-    assert mock_post.call_args.args[0] == url
+    assert mock_post.call_args[0][0] == url
     assert not report_file.exists()
 
 

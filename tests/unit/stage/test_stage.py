@@ -2,7 +2,6 @@ import os
 import signal
 import subprocess
 import threading
-from unittest import mock
 
 import pytest
 
@@ -18,35 +17,35 @@ TEST_STAGE_DICT = {
 }
 
 
-def test_stage_checksum():
+def test_stage_checksum(mocker):
     stage = Stage(None, "path", cmd="mycmd")
 
-    with mock.patch.object(stage, "dumpd", return_value=TEST_STAGE_DICT):
-        assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
+    mocker.patch.object(stage, "dumpd", return_value=TEST_STAGE_DICT)
+    assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
-def test_wdir_default_ignored():
+def test_wdir_default_ignored(mocker):
     stage = Stage(None, "path", cmd="mycmd")
     d = dict(TEST_STAGE_DICT, wdir=".")
 
-    with mock.patch.object(stage, "dumpd", return_value=d):
-        assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
+    mocker.patch.object(stage, "dumpd", return_value=d)
+    assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
-def test_wdir_non_default_is_not_ignored():
+def test_wdir_non_default_is_not_ignored(mocker):
     stage = Stage(None, "path", cmd="mycmd")
     d = dict(TEST_STAGE_DICT, wdir="..")
 
-    with mock.patch.object(stage, "dumpd", return_value=d):
-        assert stage.compute_md5() == "2ceba15e87f6848aa756502c1e6d24e9"
+    mocker.patch.object(stage, "dumpd", return_value=d)
+    assert stage.compute_md5() == "2ceba15e87f6848aa756502c1e6d24e9"
 
 
-def test_meta_ignored():
+def test_meta_ignored(mocker):
     stage = Stage(None, "path", cmd="mycmd")
     d = dict(TEST_STAGE_DICT, meta={"author": "Suor"})
 
-    with mock.patch.object(stage, "dumpd", return_value=d):
-        assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
+    mocker.patch.object(stage, "dumpd", return_value=d)
+    assert stage.compute_md5() == "e9521a22111493406ea64a88cda63e0b"
 
 
 def test_path_conversion(dvc):
@@ -124,21 +123,21 @@ def test_external_outs(tmp_path_factory, dvc):
     create_stage(Stage, dvc, "path.dvc", outs=[os.fspath(foo)], external=True)
 
 
-def test_env(dvc):
+def test_env(dvc, mocker):
     from dvc.env import DVC_ROOT
     from dvc.exceptions import DvcException
     from dvc.stage import create_stage
 
     stage = create_stage(Stage, dvc, "path.dvc", outs=["foo", "bar"])
 
-    with mock.patch.object(stage, "_read_env", return_value={"foo": "foo"}):
-        env = stage.env()
-        assert env == {DVC_ROOT: dvc.root_dir, "foo": "foo"}
+    mocker.patch.object(stage, "_read_env", return_value={"foo": "foo"})
+    env = stage.env()
+    assert env == {DVC_ROOT: dvc.root_dir, "foo": "foo"}
 
     def mock_read_env(out, **kwargs):
         return {"foo": str(out)}
 
     with pytest.raises(DvcException) as exc:
-        with mock.patch.object(stage, "_read_env", mock_read_env):
-            env = stage.env()
+        mocker.patch.object(stage, "_read_env", mock_read_env)
+        _ = stage.env()
         assert exc.value == "Conflicting values for env variable"

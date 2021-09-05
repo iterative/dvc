@@ -13,7 +13,7 @@ from tests.unit.fs.test_repo import make_subrepo
 from tests.utils import clean_staging
 
 
-def test_external_repo(erepo_dir):
+def test_external_repo(erepo_dir, mocker):
     with erepo_dir.chdir():
         with erepo_dir.branch("branch", new=True):
             erepo_dir.dvc_gen("file", "branch", commit="create file on branch")
@@ -21,16 +21,17 @@ def test_external_repo(erepo_dir):
 
     url = os.fspath(erepo_dir)
 
-    with patch.object(Git, "clone", wraps=Git.clone) as mock:
-        with external_repo(url) as repo:
-            with repo.open_by_relpath("file") as fd:
-                assert fd.read() == "master"
+    mock = mocker.patch.object(Git, "clone", wraps=Git.clone)
 
-        with external_repo(url, rev="branch") as repo:
-            with repo.open_by_relpath("file") as fd:
-                assert fd.read() == "branch"
+    with external_repo(url) as repo:
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "master"
 
-        assert mock.call_count == 1
+    with external_repo(url, rev="branch") as repo:
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "branch"
+
+    assert mock.call_count == 1
 
 
 def test_source_change(erepo_dir):
