@@ -3,6 +3,7 @@ import os
 from collections import OrderedDict
 
 import pytest
+from funcy import first
 
 from dvc.render.utils import find_vega, group_by_filename
 from dvc.render.vega import (
@@ -117,10 +118,12 @@ def test_one_column(tmp_dir, scm, dvc):
         {"val": 2, INDEX_FIELD: 0, REVISION_FIELD: "workspace"},
         {"val": 3, INDEX_FIELD: 1, REVISION_FIELD: "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-    assert plot_content["encoding"]["y"]["field"] == "val"
-    assert plot_content["encoding"]["x"]["title"] == "x_title"
-    assert plot_content["encoding"]["y"]["title"] == "y_title"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
+    )
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "val"
+    assert first(plot_content["layer"])["encoding"]["x"]["title"] == "x_title"
+    assert first(plot_content["layer"])["encoding"]["y"]["title"] == "y_title"
 
 
 def test_multiple_columns(tmp_dir, scm, dvc):
@@ -152,8 +155,10 @@ def test_multiple_columns(tmp_dir, scm, dvc):
             "second_val": 300,
         },
     ]
-    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-    assert plot_content["encoding"]["y"]["field"] == "val"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
+    )
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "val"
 
 
 def test_choose_axes(tmp_dir, scm, dvc):
@@ -184,8 +189,12 @@ def test_choose_axes(tmp_dir, scm, dvc):
             "second_val": 300,
         },
     ]
-    assert plot_content["encoding"]["x"]["field"] == "first_val"
-    assert plot_content["encoding"]["y"]["field"] == "second_val"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == "first_val"
+    )
+    assert (
+        first(plot_content["layer"])["encoding"]["y"]["field"] == "second_val"
+    )
 
 
 def test_confusion(tmp_dir, dvc):
@@ -250,8 +259,10 @@ def test_multiple_revs_default(tmp_dir, scm, dvc):
         {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v1"},
         {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v1"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-    assert plot_content["encoding"]["y"]["field"] == "y"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
+    )
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "y"
 
 
 def test_metric_missing(tmp_dir, scm, dvc, caplog):
@@ -270,8 +281,10 @@ def test_metric_missing(tmp_dir, scm, dvc, caplog):
         {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v2"},
         {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v2"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-    assert plot_content["encoding"]["y"]["field"] == "y"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
+    )
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "y"
 
 
 def test_custom_template(tmp_dir, scm, dvc, custom_template):
@@ -288,8 +301,8 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
         {"a": 1, "b": 2, REVISION_FIELD: "workspace"},
         {"a": 2, "b": 3, REVISION_FIELD: "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == "a"
-    assert plot_content["encoding"]["y"]["field"] == "b"
+    assert first(plot_content["layer"])["encoding"]["x"]["field"] == "a"
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "b"
 
 
 def test_raise_on_no_template(tmp_dir, dvc):
@@ -334,8 +347,8 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
         {"b": 2, "c": 3, REVISION_FIELD: "workspace"},
         {"b": 3, "c": 4, REVISION_FIELD: "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == "b"
-    assert plot_content["encoding"]["y"]["field"] == "c"
+    assert first(plot_content["layer"])["encoding"]["x"]["field"] == "b"
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "c"
 
 
 def test_plot_default_choose_column(tmp_dir, scm, dvc):
@@ -353,8 +366,10 @@ def test_plot_default_choose_column(tmp_dir, scm, dvc):
         {INDEX_FIELD: 0, "b": 2, REVISION_FIELD: "workspace"},
         {INDEX_FIELD: 1, "b": 3, REVISION_FIELD: "workspace"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-    assert plot_content["encoding"]["y"]["field"] == "b"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
+    )
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "b"
 
 
 def test_raise_on_wrong_field(tmp_dir, scm, dvc):
@@ -432,5 +447,7 @@ def test_find_vega(tmp_dir, dvc):
         {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v1"},
         {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v1"},
     ]
-    assert plot_content["encoding"]["x"]["field"] == INDEX_FIELD
-    assert plot_content["encoding"]["y"]["field"] == "y"
+    assert (
+        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
+    )
+    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "y"
