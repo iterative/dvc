@@ -249,7 +249,7 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
         dvclive.log("accuracy", 1/2)
         dvclive.next_step()
         time.sleep({})""".format(
-            str(monitor_await_time * 2)
+            str(monitor_await_time * 10)
         )
     )
     live_stage(summary=True, live="logs", code=script)
