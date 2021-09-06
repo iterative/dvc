@@ -2,6 +2,7 @@
 
 import os
 from contextlib import contextmanager
+from typing import Optional
 
 from funcy import get_in
 
@@ -44,6 +45,12 @@ class MergeConflictError(SCMError):
 class InvalidRemoteSCMRepo(SCMError):
     def __init__(self, url: str):
         msg = f"'{url}' is not a valid Git remote or URL"
+        super().__init__(msg)
+
+
+class GitAuthError(SCMError):
+    def __init__(self, url: str):
+        msg = f"Invalid authentication for '{url}'"
         super().__init__(msg)
 
 

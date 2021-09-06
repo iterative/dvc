@@ -1,3 +1,5 @@
+from dvc.repo.experiments.base import GitRemoteAuthError
+from dvc.scm.base import GitAuthError
 import logging
 
 from dvc.exceptions import DvcException, InvalidArgumentError
@@ -14,7 +16,10 @@ logger = logging.getLogger(__name__)
 def pull(
     repo, git_remote, exp_name, *args, force=False, pull_cache=False, **kwargs
 ):
-    exp_ref = _get_exp_ref(repo, git_remote, exp_name)
+    try:
+        exp_ref = _get_exp_ref(repo, git_remote, exp_name)
+    except GitAuthError as exc:
+        raise GitRemoteAuthError("pull", git_remote) from exc
 
     def on_diverged(refname: str, rev: str) -> bool:
         if repo.scm.get_ref(refname) == rev:
