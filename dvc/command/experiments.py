@@ -279,12 +279,14 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
 def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
     if datetime_obj is None:
         return fill_value
+
+    if iso:
+        return datetime_obj.isoformat()
+
     if datetime_obj.date() == date.today():
         fmt = "%I:%M %p"
     else:
         fmt = "%b %d, %Y"
-    if iso:
-        return datetime_obj.isoformat()
     return datetime_obj.strftime(fmt)
 
 
@@ -423,9 +425,9 @@ def show_experiments(
         param_names,
         kwargs.get("sort_by"),
         kwargs.get("sort_order"),
-        None if show_csv else kwargs.get("precision"),
-        "" if show_csv else FILL_VALUE,
-        True if show_csv else False,
+        kwargs.get("precision"),
+        kwargs.get("fill_value"),
+        kwargs.get("iso"),
     )
 
     if no_timestamp:
@@ -509,6 +511,10 @@ class CmdExperimentsShow(CmdBase):
 
             ui.write(json.dumps(all_experiments, default=_format_json))
         else:
+            precision = None if self.args.show_csv else self.args.precision
+            fill_value = "" if self.args.show_csv else FILL_VALUE
+            iso = True if self.args.show_csv else False
+
             show_experiments(
                 all_experiments,
                 include_metrics=self.args.include_metrics,
@@ -518,7 +524,9 @@ class CmdExperimentsShow(CmdBase):
                 no_timestamp=self.args.no_timestamp,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
-                precision=self.args.precision or DEFAULT_PRECISION,
+                precision=precision,
+                fill_value=fill_value,
+                iso=iso,
                 pager=not self.args.no_pager,
                 show_csv=self.args.show_csv,
             )
@@ -908,6 +916,7 @@ def add_parser(subparsers, parent_parser):
     experiments_show_parser.add_argument(
         "--precision",
         type=int,
+        default=DEFAULT_PRECISION,
         help=(
             "Round metrics/params to `n` digits precision after the decimal "
             f"point. Rounds to {DEFAULT_PRECISION} digits by default."
