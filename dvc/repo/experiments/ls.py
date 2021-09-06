@@ -33,25 +33,22 @@ def ls(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
 
     results = defaultdict(list)
 
-    if rev:
-        if git_remote:
-            try:
+    try:
+        if rev:
+            if git_remote:
                 gen = remote_exp_refs_by_baseline(repo.scm, git_remote, rev)
-            except GitAuthError as exc:
-                raise GitRemoteAuthError("list", git_remote) from exc
-        else:
-            gen = exp_refs_by_baseline(repo.scm, rev)
-        for info in gen:
-            results[rev].append(info.name)
-    elif all_:
-        if git_remote:
-            try:
+            else:
+                gen = exp_refs_by_baseline(repo.scm, rev)
+            for info in gen:
+                results[rev].append(info.name)
+        elif all_:
+            if git_remote:
                 gen = remote_exp_refs(repo.scm, git_remote)
-            except GitAuthError as exc:
-                raise GitRemoteAuthError("list", git_remote) from exc
-        else:
-            gen = exp_refs(repo.scm)
-        for info in gen:
-            results[info.baseline_sha].append(info.name)
+            else:
+                gen = exp_refs(repo.scm)
+            for info in gen:
+                results[info.baseline_sha].append(info.name)
+    except GitAuthError as exc:
+        raise GitRemoteAuthError("list", git_remote) from exc
 
     return results
