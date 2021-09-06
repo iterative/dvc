@@ -2,8 +2,9 @@ import logging
 from collections import defaultdict
 
 from dvc.repo import locked
+from dvc.repo.experiments.base import GitRemoteAuthError
 from dvc.repo.scm_context import scm_context
-from dvc.scm.base import RevError
+from dvc.scm.base import GitAuthError, RevError
 
 from .utils import (
     exp_refs,
@@ -34,14 +35,20 @@ def ls(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
 
     if rev:
         if git_remote:
-            gen = remote_exp_refs_by_baseline(repo.scm, git_remote, rev)
+            try:
+                gen = remote_exp_refs_by_baseline(repo.scm, git_remote, rev)
+            except GitAuthError as exc:
+                raise GitRemoteAuthError("list", git_remote) from exc
         else:
             gen = exp_refs_by_baseline(repo.scm, rev)
         for info in gen:
             results[rev].append(info.name)
     elif all_:
         if git_remote:
-            gen = remote_exp_refs(repo.scm, git_remote)
+            try:
+                gen = remote_exp_refs(repo.scm, git_remote)
+            except GitAuthError as exc:
+                raise GitRemoteAuthError("list", git_remote) from exc
         else:
             gen = exp_refs(repo.scm)
         for info in gen:
