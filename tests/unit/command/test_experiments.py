@@ -253,15 +253,17 @@ def test_experiments_pull(dvc, scm, mocker):
 
 
 @pytest.mark.parametrize(
-    "queue,clear_all",
-    [(True, False), (False, True)],
+    "queue,clear_all,remote",
+    [(True, False, None), (False, True, None), (False, False, True)],
 )
-def test_experiments_remove(dvc, scm, mocker, queue, clear_all):
+def test_experiments_remove(dvc, scm, mocker, queue, clear_all, remote):
     if queue:
-        args = "--queue"
+        args = ["--queue"]
     if clear_all:
-        args = "--all"
-    cli_args = parse_args(["experiments", "remove", args])
+        args = ["--all"]
+    if remote:
+        args = ["--git-remote", "myremote", "exp-123", "exp-234"]
+    cli_args = parse_args(["experiments", "remove"] + args)
     assert cli_args.func == CmdExperimentsRemove
 
     cmd = cli_args.func(cli_args)
@@ -270,7 +272,8 @@ def test_experiments_remove(dvc, scm, mocker, queue, clear_all):
     assert cmd.run() == 0
     m.assert_called_once_with(
         cmd.repo,
-        exp_names=[],
+        exp_names=["exp-123", "exp-234"] if remote else [],
         queue=queue,
         clear_all=clear_all,
+        remote="myremote" if remote else None,
     )

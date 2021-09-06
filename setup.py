@@ -87,20 +87,22 @@ install_requires = [
     "dictdiffer>=0.8.1",
     "python-benedict>=0.21.1",
     "pyparsing==2.4.7",
-    "typing_extensions>=3.7.4",
-    "fsspec>=2021.7.0",
+    "typing_extensions>=3.7.4; python_version < '3.10'",
+    # until https://github.com/python/typing/issues/865 is fixed for python3.10
+    "typing_extensions==3.10.0.0; python_version >= '3.10'",
+    "fsspec>=2021.8.1",
     "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
 
-gs = ["gcsfs==2021.7.0"]
-gdrive = ["pydrive2[fsspec]>=1.9.1"]
-s3 = ["s3fs==2021.8.0", "aiobotocore[boto3]>1.0.1"]
-azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
-oss = ["ossfs==2021.7.5"]
-ssh = ["sshfs>=2021.7.1"]
+gs = ["gcsfs==2021.8.1"]
+gdrive = ["pydrive2[fsspec]>=1.9.2"]
+s3 = ["s3fs==2021.8.1", "aiobotocore[boto3]>1.0.1"]
+azure = ["adlfs==2021.8.2", "azure-identity>=1.4.0", "knack"]
+oss = ["ossfs==2021.8.0"]
+ssh = ["sshfs>=2021.8.1"]
 
 hdfs = ["pyarrow>=2.0.0; python_version < '3.10'"]
 webhdfs = ["hdfs==2.5.8"]
@@ -109,12 +111,14 @@ webdav = ["webdav4>=0.9.0"]
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
-ssh_gssapi = ["sshfs[gssapi]>=2021.7.1"]
+ssh_gssapi = ["sshfs[gssapi]>=2021.8.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
+
+terraform = ["tpi[ssh]>=0.0.0"]
 
 tests_requirements = (
     Path("test_requirements.txt").read_text().strip().splitlines()
-)
+) + terraform
 
 setup(
     name="dvc",
@@ -123,6 +127,8 @@ setup(
     long_description=open("README.rst", encoding="UTF-8").read(),
     author="Dmitry Petrov",
     author_email="dmitry@dvc.org",
+    maintainer="Iterative",
+    maintainer_email="support@dvc.org",
     download_url="https://github.com/iterative/dvc",
     license="Apache License 2.0",
     install_requires=install_requires,
@@ -138,6 +144,7 @@ setup(
         "hdfs": hdfs,
         "webhdfs": webhdfs,
         "webdav": webdav,
+        "terraform": terraform,
         "tests": tests_requirements,
     },
     keywords="data-science data-version-control machine-learning git"

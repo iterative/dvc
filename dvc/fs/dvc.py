@@ -261,3 +261,10 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         fs._download(  # pylint: disable=protected-access
             path, to_file, **kwargs
         )
+
+    def checksum(self, path_info):
+        info = self.info(path_info)
+        md5 = info.get("md5")
+        if md5:
+            return md5
+        raise NotImplementedError

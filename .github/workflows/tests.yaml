@@ -1,12 +1,8 @@
 name: Tests
 
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
+  pull_request: {}
+  push: {}
   schedule:
     - cron: '5 1 * * *'  # every day at 01:05
 
@@ -27,7 +23,7 @@ jobs:
     - name: Install requirements
       run: |
         pip install wheel
-        pip install ".[all,tests]" Pygments collective.checkdocs pre-commit
+        pip install ".[all,tests,terraform]" Pygments collective.checkdocs pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -77,7 +73,7 @@ jobs:
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
         pip install --upgrade pip setuptools wheel
-        pip install -e ".[all,tests]"
+        pip install -e ".[all,tests,terraform]"
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account

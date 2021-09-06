@@ -79,6 +79,16 @@ def test_load_remote_files_from_pipeline(dvc):
     assert not out.hash_info
 
 
+def test_load_remote(dvc):
+    stage = Stage(dvc)
+    (foo, bar) = output.load_from_pipeline(
+        stage,
+        ["foo", {"bar": {"remote": "myremote"}}],
+    )
+    assert foo.remote is None
+    assert bar.remote == "myremote"
+
+
 @pytest.mark.parametrize("typ", [None, "", "illegal"])
 def test_load_from_pipeline_error_on_typ(dvc, typ):
     with pytest.raises(ValueError):

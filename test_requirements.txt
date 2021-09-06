@@ -1,7 +1,7 @@
 wheel==0.37.0
 
 # Test requirements
-pytest==6.2.4
+pytest==6.2.5
 pytest-cov==2.12.1
 pytest-xdist==2.3.0
 pytest-mock==3.6.1
@@ -21,8 +21,8 @@ crc32c==2.2.post0
 xmltodict==0.12.0
 google-compute-engine==2.8.13
 google-cloud-storage==1.42.0
-
 urllib3==1.26.6
+dvclive>=0.2.1
 
 # required by collective.checkdocs
 Pygments==2.10.0
@@ -44,6 +44,3 @@ types-requests
 types-paramiko
 types-tabulate
 types-toml
-
-# pypi doesn't allow for direct dependencies
-# gdrivefs @ git+https://github.com/intake/gdrivefs.git

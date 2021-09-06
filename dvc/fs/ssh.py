@@ -2,7 +2,7 @@ import getpass
 import os.path
 import threading
 
-from funcy import cached_property, first, memoize, silent, wrap_prop, wrap_with
+from funcy import cached_property, memoize, silent, wrap_prop, wrap_with
 
 from dvc import prompt
 from dvc.scheme import Schemes
@@ -68,14 +68,17 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
 
         login_info["password"] = config.get("password")
 
-        if user_ssh_config.get("IdentityFile"):
-            config.setdefault(
-                "keyfile", first(user_ssh_config.get("IdentityFile"))
-            )
+        raw_keys = []
+        if config.get("keyfile"):
+            raw_keys.append(config.get("keyfile"))
+        elif user_ssh_config.get("IdentityFile"):
+            raw_keys.extend(user_ssh_config.get("IdentityFile"))
 
-        keyfile = config.get("keyfile")
-        if keyfile:
-            login_info["client_keys"] = [os.path.expanduser(keyfile)]
+        if raw_keys:
+            login_info["client_keys"] = [
+                os.path.expanduser(key) for key in raw_keys
+            ]
+
         login_info["timeout"] = config.get("timeout", _SSH_TIMEOUT)
 
         # These two settings fine tune the asyncssh to use the

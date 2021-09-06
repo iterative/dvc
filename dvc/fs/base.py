@@ -124,6 +124,9 @@ class BaseFileSystem:
             f"dependencies: {missing}. {hint}"
         )
 
+    def checksum(self, path_info) -> str:
+        raise NotImplementedError
+
     def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
         raise RemoteActionNotImplemented("open", self.scheme)
 

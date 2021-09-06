@@ -68,12 +68,12 @@ class BaseS3FileSystem(ObjectFSWrapper):
         self._transfer_config = None
         config_path = os.environ.get("AWS_CONFIG_FILE", _AWS_CONFIG_PATH)
         if not os.path.exists(config_path):
-            return None
+            return {}
 
         config = load_config(config_path)
         profile_config = config["profiles"].get(profile or "default")
         if not profile_config:
-            return None
+            return {}
 
         s3_config = profile_config.get("s3", {})
         return self._split_s3_config(s3_config)
@@ -122,6 +122,14 @@ class BaseS3FileSystem(ObjectFSWrapper):
         shared_creds = config.get("credentialpath")
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
+
+        if (
+            client["region_name"] is None
+            and session_config["s3"].get("region_name") is None
+            and os.getenv("AWS_REGION") is None
+        ):
+            # Enable bucket region caching
+            login_info["cache_regions"] = config.get("cache_regions", True)
 
         config_path = config.get("configpath")
         if config_path:

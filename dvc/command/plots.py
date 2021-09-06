@@ -4,6 +4,7 @@ import logging
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
+from dvc.render.utils import find_vega, render
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -35,43 +36,50 @@ class CmdPlots(CmdBase):
                 return 1
 
         try:
-            plots = self._func(targets=self.args.targets, props=self._props())
+            plots_data = self._func(
+                targets=self.args.targets, props=self._props()
+            )
+
+            if not plots_data:
+                ui.error_write(
+                    "No plots were loaded, "
+                    "visualization file will not be created."
+                )
 
             if self.args.show_vega:
                 target = self.args.targets[0]
-                ui.write(plots[target])
+                plot_json = find_vega(self.repo, plots_data, target)
+                if plot_json:
+                    ui.write(plot_json)
                 return 0
 
-        except DvcException:
-            logger.exception("")
-            return 1
-
-        if plots:
-            rel: str = self.args.out or "plots.html"
+            rel: str = self.args.out or "dvc_plots"
             path: Path = (Path.cwd() / rel).resolve()
-            self.repo.plots.write_html(
-                path, plots=plots, html_template_path=self.args.html_template
+            index_path = render(
+                self.repo,
+                plots_data,
+                path=path,
+                html_template_path=self.args.html_template,
             )
 
-            assert (
-                path.is_absolute()
-            )  # as_uri throws ValueError if not absolute
-            url = path.as_uri()
+            assert index_path.is_absolute()
+            url = index_path.as_uri()
             ui.write(url)
+
             if self.args.open:
                 import webbrowser
 
-                opened = webbrowser.open(rel)
+                opened = webbrowser.open(index_path)
                 if not opened:
                     ui.error_write(
                         "Failed to open. Please try opening it manually."
                     )
                     return 1
-        else:
-            ui.error_write(
-                "No plots were loaded, visualization file will not be created."
-            )
-        return 0
+            return 0
+
+        except DvcException:
+            logger.exception("")
+            return 1
 
 
 class CmdPlotsShow(CmdPlots):

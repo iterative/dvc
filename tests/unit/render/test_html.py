@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.utils.html import HTML, PAGE_HTML, MissingPlaceholderError
+from dvc.render.html import HTML, PAGE_HTML, MissingPlaceholderError
 
 CUSTOM_PAGE_HTML = """<!DOCTYPE html>
 <html>
@@ -19,7 +19,11 @@ CUSTOM_PAGE_HTML = """<!DOCTYPE html>
 @pytest.mark.parametrize(
     "template,page_elements,expected_page",
     [
-        (None, ["content"], PAGE_HTML.format(plot_divs="content")),
+        (
+            None,
+            ["content"],
+            PAGE_HTML.format(plot_divs="content", refresh_tag=""),
+        ),
         (
             CUSTOM_PAGE_HTML,
             ["content"],

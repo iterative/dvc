@@ -16,7 +16,7 @@ from .gs import (  # noqa: F401; noqa: F401
 )
 from .hdfs import HDFS, hadoop, hdfs, hdfs_server, real_hdfs  # noqa: F401
 from .http import HTTP, http, http_server  # noqa: F401
-from .local import Local, local_cloud, local_remote  # noqa: F401
+from .local import Local, local_cloud, local_remote, make_local  # noqa: F401
 from .oss import (  # noqa: F401
     OSS,
     TEST_OSS_REPO_BUCKET,
@@ -98,6 +98,24 @@ def docker_services(
         executor.execute("up --build -d")
 
     return Services(executor)
+
+
+@pytest.fixture
+def make_cloud(request):
+    def _make_cloud(typ):
+        return request.getfixturevalue(f"make_{typ}")()
+
+    return _make_cloud
+
+
+@pytest.fixture
+def make_remote(tmp_dir, dvc, make_cloud):
+    def _make_remote(name, typ="local", **kwargs):
+        cloud = make_cloud(typ)
+        tmp_dir.add_remote(name=name, config=cloud.config, **kwargs)
+        return cloud
+
+    return _make_remote
 
 
 @pytest.fixture
