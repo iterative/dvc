@@ -85,6 +85,7 @@ class ObjectDB:
     ):
         from dvc import fs
 
+        self.makedirs(to_info.parent)
         return fs.utils.transfer(
             from_fs, from_info, self.fs, to_info, move=move
         )

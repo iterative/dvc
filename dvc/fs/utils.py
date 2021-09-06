@@ -20,8 +20,6 @@ def transfer(
     move: bool = False,
 ) -> None:
     use_move = isinstance(from_fs, type(to_fs)) and move
-    to_fs.makedirs(to_info.parent)
-
     try:
         if use_move:
             return to_fs.move(from_info, to_info)
