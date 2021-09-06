@@ -1,10 +1,10 @@
-from dvc.repo.experiments.base import GitRemoteAuthError
-from dvc.scm.base import GitAuthError
 import logging
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
+from dvc.repo.experiments.base import GitRemoteAuthError
 from dvc.repo.scm_context import scm_context
+from dvc.scm.base import GitAuthError
 
 from .utils import exp_commits, resolve_exp_ref
 

@@ -103,7 +103,7 @@ class GitRemoteAuthError(GitAuthError):
             f"See https://dvc.org/doc/command-reference/exp/{cmd}#description"
             " for more info on authentication requirements."
         )
-    
+
 
 class ExpRefInfo:
 
