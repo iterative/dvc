@@ -1,5 +1,6 @@
 from typing import Generator, Iterable, Optional, Set
 
+from dvc.exceptions import InvalidArgumentError
 from dvc.scm.git import Git
 
 from .base import (
@@ -115,3 +116,44 @@ def fix_exp_head(scm: "Git", ref: Optional[str]) -> Optional[str]:
         if name == "HEAD" and scm.get_ref(EXEC_BASELINE):
             return "".join((EXEC_BASELINE, tail))
     return ref
+
+
+def resolve_exp_ref(
+    scm, exp_name: str, git_remote: Optional[str] = None
+) -> Optional[ExpRefInfo]:
+    if exp_name.startswith("refs/"):
+        return ExpRefInfo.from_ref(exp_name)
+
+    if git_remote:
+        exp_ref_list = list(remote_exp_refs_by_name(scm, git_remote, exp_name))
+    else:
+        exp_ref_list = list(exp_refs_by_name(scm, exp_name))
+
+    if not exp_ref_list:
+        return None
+    if len(exp_ref_list) > 1:
+        cur_rev = scm.get_rev()
+        for info in exp_ref_list:
+            if info.baseline_sha == cur_rev:
+                return info
+        if git_remote:
+            msg = [
+                (
+                    f"Ambiguous name '{exp_name}' refers to multiple "
+                    "experiments. Use full refname to push one of the "
+                    "following:"
+                ),
+                "",
+            ]
+        else:
+            msg = [
+                (
+                    f"Ambiguous name '{exp_name}' refers to multiple "
+                    f"experiments in '{git_remote}'. Use full refname to pull "
+                    "one of the following:"
+                ),
+                "",
+            ]
+        msg.extend([f"\t{info}" for info in exp_ref_list])
+        raise InvalidArgumentError("\n".join(msg))
+    return exp_ref_list[0]

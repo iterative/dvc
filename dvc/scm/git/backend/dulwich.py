@@ -407,9 +407,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             ) from exc
 
         def update_refs(refs):
+            from dulwich.objects import ZERO_SHA
+
             new_refs = {}
             for ref, value in zip(dest_refs, values):
-                if ref in refs:
+                if ref in refs and value != ZERO_SHA:
                     local_sha = self.repo.refs[ref]
                     remote_sha = refs[ref]
                     try:

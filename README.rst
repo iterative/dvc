@@ -8,7 +8,7 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-|Release| |CI| |Maintainability| |Coverage| |Donate| |DOI|
+|CI| |Maintainability| |Coverage| |Donate| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
@@ -66,25 +66,25 @@ Quick start
 
 Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
 
-+-----------------------------------+-------------------------------------------------------------------+
-| Step                              | Command                                                           |
-+===================================+===================================================================+
-| Track data                        | | ``$ git add train.py``                                          |
-|                                   | | ``$ dvc add images.zip``                                        |
-+-----------------------------------+-------------------------------------------------------------------+
-| Connect code and data by commands | | ``$ dvc run -d images.zip -o images/ unzip -q images.zip``      |
-|                                   | | ``$ dvc run -d images/ -d train.py -o model.p python train.py`` |
-+-----------------------------------+-------------------------------------------------------------------+
-| Make changes and reproduce        | | ``$ vi train.py``                                               |
-|                                   | | ``$ dvc repro model.p.dvc``                                     |
-+-----------------------------------+-------------------------------------------------------------------+
-| Share code                        | | ``$ git add .``                                                 |
-|                                   | | ``$ git commit -m 'The baseline model'``                        |
-|                                   | | ``$ git push``                                                  |
-+-----------------------------------+-------------------------------------------------------------------+
-| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``        |
-|                                   | | ``$ dvc push``                                                  |
-+-----------------------------------+-------------------------------------------------------------------+
++-----------------------------------+----------------------------------------------------------------------------+
+| Step                              | Command                                                                    |
++===================================+============================================================================+
+| Track data                        | | ``$ git add train.py``                                                   |
+|                                   | | ``$ dvc add images.zip``                                                 |
++-----------------------------------+----------------------------------------------------------------------------+
+| Connect code and data by commands | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
+|                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
++-----------------------------------+----------------------------------------------------------------------------+
+| Make changes and reproduce        | | ``$ vi train.py``                                                        |
+|                                   | | ``$ dvc repro model.p.dvc``                                              |
++-----------------------------------+----------------------------------------------------------------------------+
+| Share code                        | | ``$ git add .``                                                          |
+|                                   | | ``$ git commit -m 'The baseline model'``                                 |
+|                                   | | ``$ git push``                                                           |
++-----------------------------------+----------------------------------------------------------------------------+
+| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                 |
+|                                   | | ``$ dvc push``                                                           |
++-----------------------------------+----------------------------------------------------------------------------+
 
 Installation
 ============
@@ -251,10 +251,6 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Banner| image:: https://dvc.org/img/logo-github-readme.png
    :target: https://dvc.org
    :alt: DVC logo
-
-.. |Release| image:: https://img.shields.io/badge/release-ok-brightgreen
-   :target: https://travis-ci.com/iterative/dvc/branches
-   :alt: Release
 
 .. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=master
    :target: https://github.com/iterative/dvc/actions
