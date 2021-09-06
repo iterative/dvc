@@ -30,10 +30,11 @@ sudo apt-get update
 sudo apt-get install --yes python3 python3-pip
 python3 -m pip install --upgrade pip
 
-cd /etc/apt/sources.list.d
+pushd /etc/apt/sources.list.d
 sudo wget https://dvc.org/deb/dvc.list
 sudo apt-get update
 sudo apt-get install --yes dvc
+popd
 """
 
 
