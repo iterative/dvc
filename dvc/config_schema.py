@@ -155,6 +155,7 @@ SCHEMA = {
                     "grant_read_acp": str,
                     "grant_write_acp": str,
                     "grant_full_control": str,
+                    "cache_regions": bool,
                     **REMOTE_COMMON,
                 },
                 "gs": {
