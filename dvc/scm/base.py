@@ -2,7 +2,6 @@
 
 import os
 from contextlib import contextmanager
-from typing import Optional
 
 from funcy import get_in
 
