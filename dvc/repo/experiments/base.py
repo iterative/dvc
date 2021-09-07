@@ -1,7 +1,6 @@
 from typing import Optional
 
 from dvc.exceptions import DvcException, InvalidArgumentError
-from dvc.scm.base import GitAuthError
 
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>
