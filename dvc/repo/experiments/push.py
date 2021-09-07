@@ -37,7 +37,6 @@ def push(
 
     refname = str(exp_ref)
     logger.debug("git push experiment '%s' -> '%s'", exp_ref, git_remote)
-
     repo.scm.push_refspec(
         git_remote, refname, refname, force=force, on_diverged=on_diverged
     )
