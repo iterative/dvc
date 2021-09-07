@@ -511,7 +511,11 @@ class CmdExperimentsShow(CmdBase):
 
             ui.write(json.dumps(all_experiments, default=_format_json))
         else:
-            precision = None if self.args.show_csv else self.args.precision
+            precision = (
+                self.args.precision or None
+                if self.args.show_csv
+                else DEFAULT_PRECISION
+            )
             fill_value = "" if self.args.show_csv else FILL_VALUE
             iso = True if self.args.show_csv else False
 
@@ -916,7 +920,6 @@ def add_parser(subparsers, parent_parser):
     experiments_show_parser.add_argument(
         "--precision",
         type=int,
-        default=DEFAULT_PRECISION,
         help=(
             "Round metrics/params to `n` digits precision after the decimal "
             f"point. Rounds to {DEFAULT_PRECISION} digits by default."

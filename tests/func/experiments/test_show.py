@@ -512,7 +512,6 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     capsys.readouterr()
     assert main(["exp", "show", "--show-csv"]) == 0
     cap = capsys.readouterr()
-    print(cap.out)
     assert (
         "Experiment,rev,typ,Created,parent,metrics.yaml:foo,params.yaml:foo"
         in cap.out
