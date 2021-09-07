@@ -374,6 +374,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         raise NotImplementedError
 
@@ -383,6 +384,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         raise NotImplementedError
 
@@ -537,7 +539,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                     index.add(entry.path)
                 index.write()
 
-    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+    def iter_remote_refs(self, url: str, base: Optional[str] = None, **kwargs):
         raise NotImplementedError
 
     def status(
@@ -584,5 +586,5 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                 self.repo.index.write()
         return None
 
-    def validate_git_remote(self, url: str):
+    def validate_git_remote(self, url: str, **kwargs):
         raise NotImplementedError
