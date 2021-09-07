@@ -233,6 +233,27 @@ class ObjectFSWrapper(FSSpecWrapper):
         yield from self._strip_buckets(files, detail=detail)
 
 
+# pylint: disable=arguments-differ
+class NoDirectoriesMixin:
+    def isdir(self, *args, **kwargs):
+        return False
+
+    def isfile(self, *args, **kwargs):
+        return True
+
+    def find(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk_files(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def ls(self, *args, **kwargs):
+        raise NotImplementedError
+
+
 _LOCAL_FS = LocalFileSystem()
 
 
