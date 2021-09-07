@@ -301,8 +301,8 @@ def test_custom_template(tmp_dir, scm, dvc, custom_template):
         {"a": 1, "b": 2, REVISION_FIELD: "workspace"},
         {"a": 2, "b": 3, REVISION_FIELD: "workspace"},
     ]
-    assert first(plot_content["layer"])["encoding"]["x"]["field"] == "a"
-    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "b"
+    assert plot_content["encoding"]["x"]["field"] == "a"
+    assert plot_content["encoding"]["y"]["field"] == "b"
 
 
 def test_raise_on_no_template(tmp_dir, dvc):
@@ -347,8 +347,8 @@ def test_plot_choose_columns(tmp_dir, scm, dvc, custom_template):
         {"b": 2, "c": 3, REVISION_FIELD: "workspace"},
         {"b": 3, "c": 4, REVISION_FIELD: "workspace"},
     ]
-    assert first(plot_content["layer"])["encoding"]["x"]["field"] == "b"
-    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "c"
+    assert plot_content["encoding"]["x"]["field"] == "b"
+    assert plot_content["encoding"]["y"]["field"] == "c"
 
 
 def test_plot_default_choose_column(tmp_dir, scm, dvc):

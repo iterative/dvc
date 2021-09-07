@@ -76,8 +76,6 @@ def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
 
     proj = Repo(root_dir)
 
-    proj.plots.templates.init()
-
     scm.add(
         [config.files["repo"], dvcignore, proj.plots.templates.templates_dir]
     )

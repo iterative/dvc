@@ -545,36 +545,10 @@ class PlotTemplates:
         if os.path.exists(path):
             return path
 
-        if self.dvc_dir and os.path.exists(self.dvc_dir):
-            t_path = os.path.join(self.templates_dir, path)
-            if os.path.exists(t_path):
-                return t_path
-
-            all_templates = [
-                os.path.join(root, file)
-                for root, _, files in os.walk(self.templates_dir)
-                for file in files
-            ]
-            matches = [
-                template
-                for template in all_templates
-                if os.path.splitext(template)[0] == t_path
-            ]
-            if matches:
-                assert len(matches) == 1
-                return matches[0]
-
         raise TemplateNotFoundError(path)
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
-
-    def init(self):
-        from dvc.utils.fs import makedirs
-
-        makedirs(self.templates_dir, exist_ok=True)
-        for t in self.TEMPLATES:
-            self._dump(t())
 
     def _dump(self, template):
         path = os.path.join(self.templates_dir, template.filename)

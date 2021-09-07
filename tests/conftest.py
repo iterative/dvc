@@ -161,10 +161,10 @@ def pytest_configure(config):
 
 @pytest.fixture()
 def custom_template(tmp_dir, dvc):
-    import shutil
+    from dvc.repo.plots.template import SimpleLinearTemplate
 
     template = tmp_dir / "custom_template.json"
-    shutil.copy(tmp_dir / ".dvc" / "plots" / "default.json", template)
+    template.write_text(SimpleLinearTemplate().content)
     return template
 
 
