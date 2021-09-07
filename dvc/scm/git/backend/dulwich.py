@@ -376,7 +376,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 yield from (os.fsdecode(ref) for ref in client.get_refs(path))
         except NotGitRepository as exc:
             raise InvalidRemoteSCMRepo(url) from exc
-        except HTTPUnauthorized as exc:
+        except HTTPUnauthorized:
             raise GitAuthError(url)
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
@@ -449,7 +449,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 )
         except (NotGitRepository, SendPackError) as exc:
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
-        except HTTPUnauthorized as exc:
+        except HTTPUnauthorized:
             raise GitAuthError(url)
 
     def _push_dest_refs(
