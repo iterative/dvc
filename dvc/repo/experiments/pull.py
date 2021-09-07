@@ -2,9 +2,7 @@ import logging
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments.base import GitRemoteAuthError
 from dvc.repo.scm_context import scm_context
-from dvc.scm.base import GitAuthError
 
 from .utils import exp_commits, resolve_exp_ref
 
@@ -16,10 +14,7 @@ logger = logging.getLogger(__name__)
 def pull(
     repo, git_remote, exp_name, *args, force=False, pull_cache=False, **kwargs
 ):
-    try:
-        exp_ref = resolve_exp_ref(repo.scm, exp_name, git_remote)
-    except GitAuthError as exc:
-        raise GitRemoteAuthError("pull", git_remote) from exc
+    exp_ref = resolve_exp_ref(repo.scm, exp_name, git_remote)
     if not exp_ref:
         raise InvalidArgumentError(
             f"Experiment '{exp_name}' does not exist in '{git_remote}'"

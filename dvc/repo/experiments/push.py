@@ -2,9 +2,7 @@ import logging
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments.base import GitRemoteAuthError
 from dvc.repo.scm_context import scm_context
-from dvc.scm.base import GitAuthError
 
 from .utils import exp_commits, resolve_exp_ref
 
@@ -39,12 +37,10 @@ def push(
 
     refname = str(exp_ref)
     logger.debug("git push experiment '%s' -> '%s'", exp_ref, git_remote)
-    try:
-        repo.scm.push_refspec(
-            git_remote, refname, refname, force=force, on_diverged=on_diverged
-        )
-    except GitAuthError as exc:
-        raise GitRemoteAuthError("push", git_remote) from exc
+
+    repo.scm.push_refspec(
+        git_remote, refname, refname, force=force, on_diverged=on_diverged
+    )
 
     if push_cache:
         _push_cache(repo, exp_ref, **kwargs)

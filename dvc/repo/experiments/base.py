@@ -96,15 +96,6 @@ class ApplyConflictError(InvalidArgumentError):
         self.name = name
 
 
-class GitRemoteAuthError(GitAuthError):
-    def __init__(self, cmd, git_remote):
-        super().__init__(
-            f"Invalid authentication for {git_remote}. "
-            f"See https://dvc.org/doc/command-reference/exp/{cmd}#description"
-            " for more info on authentication requirements."
-        )
-
-
 class ExpRefInfo:
 
     namespace = EXPS_NAMESPACE

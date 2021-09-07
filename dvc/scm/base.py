@@ -49,8 +49,10 @@ class InvalidRemoteSCMRepo(SCMError):
 
 class GitAuthError(SCMError):
     def __init__(self, url: str):
-        msg = f"Invalid authentication for '{url}'"
-        super().__init__(msg)
+        super().__init__(
+            f"Invalid authentication for '{url}'"
+            f"See https://dvc.org/doc/troubleshooting#git-auth"
+            " for more info on authentication requirements.")
 
 
 class Base:
