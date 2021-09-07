@@ -52,7 +52,8 @@ class GitAuthError(SCMError):
         super().__init__(
             f"Invalid authentication for '{url}'"
             f"See https://dvc.org/doc/troubleshooting#git-auth"
-            " for more info on authentication requirements.")
+            " for more info on authentication requirements."
+        )
 
 
 class Base:
