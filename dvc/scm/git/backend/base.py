@@ -178,7 +178,7 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
-    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+    def iter_remote_refs(self, url: str, base: Optional[str] = None, **kwargs):
         """Iterate over all refs in the specified remote Git repo.
 
         If base is specified, only refs which begin with base will be yielded.
@@ -197,6 +197,7 @@ class BaseGitBackend(ABC):
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         """Push refspec to a remote Git repo.
 
@@ -222,6 +223,7 @@ class BaseGitBackend(ABC):
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         """Fetch refspecs from a remote Git repo.
 
@@ -349,5 +351,5 @@ class BaseGitBackend(ABC):
         """
 
     @abstractmethod
-    def validate_git_remote(self, url: str):
+    def validate_git_remote(self, url: str, **kwargs):
         """Verify that url is a valid git URL or remote name."""
