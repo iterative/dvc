@@ -14,6 +14,8 @@ datas += copy_metadata("boto3")
 datas += copy_metadata("ossfs")
 datas += copy_metadata("sshfs")
 datas += copy_metadata("webdav4")
+datas += copy_metadata("aiohttp")
+datas += copy_metadata("aiohttp_retry")
 
 # https://github.com/pypa/setuptools/issues/1963
 hiddenimports = ["pkg_resources.py2_warn"]
