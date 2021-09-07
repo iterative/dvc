@@ -51,7 +51,7 @@ class GitAuthError(SCMError):
     def __init__(self, url: str):
         super().__init__(
             f"Invalid authentication for Git Remote: '{url}'"
-            f"\nSee https://dvc.org/doc/troubleshooting#invalid-authentication-for-git-remote"
+            f"\nSee https://dvc.org/doc/troubleshooting#git-auth"
         )
 
 
