@@ -397,6 +397,8 @@ def baseline_styler(typ):
 def show_experiments(
     all_experiments, pager=True, no_timestamp=False, show_csv=False, **kwargs
 ):
+    from funcy.seqs import flatten as flatten_list
+
     include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
     exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
     include_params = _parse_filter_list(kwargs.pop("include_params", []))
@@ -411,9 +413,7 @@ def show_experiments(
     )
 
     names = {**metric_names, **param_names}
-    counter = Counter(
-        name for path in names for name in names[path] for path in names
-    )
+    counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
     metric_headers = _normalize_headers(metric_names, counter)
     param_headers = _normalize_headers(param_names, counter)
 
