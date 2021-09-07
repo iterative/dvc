@@ -326,6 +326,7 @@ def _parse_filter_list(param_list):
 
 def experiments_table(
     all_experiments,
+    headers,
     metric_headers,
     metric_names,
     param_headers,
@@ -340,15 +341,6 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    headers = [
-        "Experiment",
-        "rev",
-        "typ",
-        "Created",
-        "parent",
-        "State",
-        "Executor",
-    ]
     td = TabularData(
         lconcat(headers, metric_headers, param_headers), fill_value=fill_value
     )
@@ -412,13 +404,25 @@ def show_experiments(
         exclude_params=exclude_params,
     )
 
+    headers = [
+        "Experiment",
+        "rev",
+        "typ",
+        "Created",
+        "parent",
+        "State",
+        "Executor",
+    ]
+
     names = {**metric_names, **param_names}
     counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
+    counter.update(headers)
     metric_headers = _normalize_headers(metric_names, counter)
     param_headers = _normalize_headers(param_names, counter)
 
     td = experiments_table(
         all_experiments,
+        headers,
         metric_headers,
         metric_names,
         param_headers,

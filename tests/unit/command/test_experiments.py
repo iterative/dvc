@@ -288,8 +288,8 @@ all_experiments = {
                     "params.yaml": {
                         "data": {
                             "featurize": {"max_features": 3000, "ngrams": 1},
+                            "parent": 20170428,
                             "train": {
-                                "seed": 20170428,
                                 "n_est": 100,
                                 "min_split": 36,
                             },
@@ -314,13 +314,13 @@ all_experiments = {
     "b05eecc666734e899f79af228ff49a7ae5a18cc0": {
         "baseline": {
             "data": {
-                "timestamp": datetime.fromisoformat("2021-08-02T16:48:14"),
+                "timestamp": datetime(2021, 8, 2, 16, 48, 14),
                 "params": {
                     "params.yaml": {
                         "data": {
                             "featurize": {"max_features": 3000, "ngrams": 1},
+                            "parent": 20170428,
                             "train": {
-                                "seed": 20170428,
                                 "n_est": 100,
                                 "min_split": 2,
                             },
@@ -344,13 +344,13 @@ all_experiments = {
         },
         "ae99936461d6c3092934160f8beafe66a294f98d": {
             "data": {
-                "timestamp": datetime.fromisoformat("2021-08-31T14:56:55"),
+                "timestamp": datetime(2021, 8, 31, 14, 56, 55),
                 "params": {
                     "params.yaml": {
                         "data": {
                             "featurize": {"max_features": 3000, "ngrams": 1},
+                            "parent": 20170428,
                             "train": {
-                                "seed": 20170428,
                                 "n_est": 100,
                                 "min_split": 36,
                             },
@@ -385,8 +385,8 @@ def test_show_experiments(capsys):
         "Experiment,rev,typ,Created,parent,State,scores.json:"
         "featurize.max_features,scores.json:featurize.ngrams,"
         "avg_prec,roc_auc,params.yaml:featurize.max_features,"
-        "params.yaml:featurize.ngrams,train.seed,train.n_est,train.min_split"
-        in cap.out
+        "params.yaml:featurize.ngrams,params.yaml:parent,"
+        "train.n_est,train.min_split" in cap.out
     )
     assert (
         ",workspace,baseline,,,,3000,1,0.5843640011189556,0.9544670443829399,"
