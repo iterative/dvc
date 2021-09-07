@@ -25,6 +25,18 @@ logger = logging.getLogger(__name__)
 
 RESERVED_NAMES = {"local", "localhost"}
 
+DEFAULT_STARTUP_SCRIPT = """#!/bin/bash
+sudo apt-get update
+sudo apt-get install --yes python3 python3-pip
+python3 -m pip install --upgrade pip
+
+pushd /etc/apt/sources.list.d
+sudo wget https://dvc.org/deb/dvc.list
+sudo apt-get update
+sudo apt-get install --yes dvc
+popd
+"""
+
 
 def validate_name(name: str):
     from dvc.exceptions import InvalidArgumentError
@@ -168,6 +180,12 @@ class MachineManager:
     def create(self, name: Optional[str]):
         """Create and start the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
+        if "startup_script" in config:
+            with open(config["startup_script"]) as fobj:
+                startup_script = fobj.read()
+        else:
+            startup_script = DEFAULT_STARTUP_SCRIPT
+        config["startup_script"] = startup_script
         return backend.create(**config)
 
     def destroy(self, name: Optional[str]):

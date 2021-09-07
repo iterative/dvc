@@ -263,6 +263,7 @@ class Config(dict):
                     "key_path": func,
                 }
             },
+            "machine": {str: {"startup_script": func}},
         }
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
