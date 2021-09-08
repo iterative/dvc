@@ -34,10 +34,13 @@ def test_get_kwargs_from_urls():
 
 
 def test_init():
-    fs = SSHFileSystem(user="test", host="12.34.56.78", port="1234")
+    fs = SSHFileSystem(
+        user="test", host="12.34.56.78", port="1234", password="xxx"
+    )
     assert fs.fs_args["username"] == "test"
     assert fs.fs_args["host"] == "12.34.56.78"
     assert fs.fs_args["port"] == "1234"
+    assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "xxx"
 
 
 mock_ssh_config = """
