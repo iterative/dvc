@@ -5,11 +5,17 @@ from tpi import TerraformProviderIterative, terraform
 
 from dvc.fs.ssh import SSHFileSystem
 
+from .base import BaseMachineBackend
+
 if TYPE_CHECKING:
     from dvc.repo.experiments.executor.base import BaseExecutor
+    from dvc.types import StrPath
 
 
-class TerraformBackend(terraform.TerraformBackend):
+class TerraformBackend(terraform.TerraformBackend, BaseMachineBackend):
+    def __init__(self, tmp_dir: "StrPath", **kwargs):
+        super().__init__(tmp_dir)
+
     def get_executor(
         self, name: Optional[str] = None, **config
     ) -> "BaseExecutor":
