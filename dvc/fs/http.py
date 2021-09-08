@@ -50,7 +50,7 @@ class HTTPFileSystem(CallbackMixin, NoDirectoriesMixin, FSSpecWrapper):
         from dvc.config import ConfigError
 
         credentials = {}
-        client_args = credentials.setdefault("client_args", {})
+        client_kwargs = credentials.setdefault("client_kwargs", {})
 
         if config.get("auth"):
             user = config.get("user")
@@ -68,7 +68,7 @@ class HTTPFileSystem(CallbackMixin, NoDirectoriesMixin, FSSpecWrapper):
                         "'user' and 'password'"
                     )
 
-                client_args["auth"] = aiohttp.BasicAuth(user, password)
+                client_kwargs["auth"] = aiohttp.BasicAuth(user, password)
             elif auth_method == "custom":
                 if custom_auth_header is None or password is None:
                     raise ConfigError(
@@ -83,7 +83,7 @@ class HTTPFileSystem(CallbackMixin, NoDirectoriesMixin, FSSpecWrapper):
 
         if "ssl_verify" in config:
             with fsspec_loop():
-                client_args["connector"] = aiohttp.TCPConnector(
+                client_kwargs["connector"] = aiohttp.TCPConnector(
                     ssl=make_context(config["ssl_verify"])
                 )
 
@@ -92,12 +92,25 @@ class HTTPFileSystem(CallbackMixin, NoDirectoriesMixin, FSSpecWrapper):
         return credentials
 
     async def get_client(self, **kwargs):
+        import aiohttp
         from aiohttp_retry import ExponentialRetry, RetryClient
 
         kwargs["retry_options"] = ExponentialRetry(
             attempts=self.SESSION_RETRIES,
             factor=self.SESSION_BACKOFF_FACTOR,
             max_timeout=self.REQUEST_TIMEOUT,
+        )
+
+        # The default timeout for the aiohttp is 300 seconds
+        # which is too low for DVC's interactions (especially
+        # on the read) when dealing with large data blobs. We
+        # unlimit the total time to read, and only limit the
+        # time that is spent when connecting to the remote server.
+        kwargs["timeout"] = aiohttp.ClientTimeout(
+            total=None,
+            connect=self.REQUEST_TIMEOUT,
+            sock_connect=self.REQUEST_TIMEOUT,
+            sock_read=None,
         )
 
         return RetryClient(**kwargs)
@@ -108,7 +121,7 @@ class HTTPFileSystem(CallbackMixin, NoDirectoriesMixin, FSSpecWrapper):
             HTTPFileSystem as _HTTPFileSystem,
         )
 
-        return _HTTPFileSystem(timeout=self.REQUEST_TIMEOUT)
+        return _HTTPFileSystem(**self.fs_args)
 
     def _entry_hook(self, entry):
         entry["checksum"] = entry.get("ETag") or entry.get("Content-MD5")
