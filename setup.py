@@ -107,7 +107,7 @@ ssh = ["sshfs>=2021.8.1"]
 
 hdfs = ["pyarrow>=2.0.0; python_version < '3.10'"]
 webhdfs = ["hdfs==2.5.8"]
-webdav = ["webdav4>=0.9.0"]
+webdav = ["webdav4>=0.9.1"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
