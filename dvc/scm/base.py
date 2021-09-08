@@ -50,7 +50,7 @@ class InvalidRemoteSCMRepo(SCMError):
 class GitAuthError(SCMError):
     def __init__(self, url: str):
         super().__init__(
-            f"Invalid authentication for Git Remote: '{url}'"
+            f"HTTP Git authentication is not supported: '{url}'"
             "\nSee https://dvc.org/doc//user-guide/"
             "troubleshooting#git-auth"
         )
