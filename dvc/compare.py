@@ -168,7 +168,10 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
     def render(self, **kwargs: Any):
         from dvc.ui import ui
 
-        ui.table(self, headers=self.keys(), **kwargs)
+        if kwargs.pop("show_csv", False):
+            ui.write(self.to_csv(), end="")
+        else:
+            ui.table(self, headers=self.keys(), **kwargs)
 
     def as_dict(
         self, cols: Iterable[str] = None
