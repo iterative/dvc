@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import TYPE_CHECKING
+from io import BytesIO
+from typing import TYPE_CHECKING, BinaryIO, Union
 
 from .local import LocalFileSystem
 
@@ -18,9 +19,25 @@ def transfer(
     to_fs: "BaseFileSystem",
     to_info: "DvcPath",
     move: bool = False,
+    content: Union[bytes, BinaryIO] = None,
 ) -> None:
     use_move = isinstance(from_fs, type(to_fs)) and move
     try:
+        if content:
+            if isinstance(content, bytes):
+                fobj: BinaryIO = BytesIO(content)
+                size = len(content)
+            else:
+                fobj = content
+                size = from_fs.getsize(from_info)
+
+            desc = (
+                from_info.name
+                if isinstance(from_info, from_fs.PATH_CLS)
+                else from_info
+            )
+            return to_fs.upload_fobj(fobj, to_info, size=size, desc=desc)
+
         if use_move:
             return to_fs.move(from_info, to_info)
 
@@ -33,7 +50,8 @@ def transfer(
             return from_fs.download_file(from_info, to_info)
 
         with from_fs.open(from_info, mode="rb") as fobj:
-            return to_fs.upload_fobj(fobj, to_info)
+            size = from_fs.getsize(from_info)
+            return to_fs.upload_fobj(fobj, to_info, size=size)
     except OSError as exc:
         # If the target file already exists, we are going to simply
         # ignore the exception (#4992).

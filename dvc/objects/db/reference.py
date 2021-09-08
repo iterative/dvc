@@ -1,6 +1,4 @@
-import io
 import logging
-import os
 from typing import TYPE_CHECKING, Dict
 
 from dvc.scheme import Schemes
@@ -60,25 +58,19 @@ class ReferenceObjectDB(ObjectDB):
         hash_info: "HashInfo",
         move: bool = False,
     ):
+        from dvc import fs
+
         self.makedirs(to_info.parent)
         if hash_info.isdir:
             return super()._add_file(
-                from_fs, from_info, to_info, hash_info, move
+                from_fs, from_info, to_info, hash_info, move=move
             )
+
         ref_file = ReferenceHashFile(from_info, from_fs, hash_info)
         self._obj_cache[hash_info] = ref_file
-        ref_fobj = io.BytesIO(ref_file.to_bytes())
-        ref_fobj.seek(0)
-        try:
-            self.fs.upload_fobj(ref_fobj, to_info)
-        except OSError as exc:
-            if isinstance(exc, FileExistsError) or (
-                os.name == "nt"
-                and exc.__context__
-                and isinstance(exc.__context__, FileExistsError)
-            ):
-                logger.debug("'%s' file already exists, skipping", to_info)
-            else:
-                raise
+        content = ref_file.to_bytes()
+        fs.utils.transfer(
+            from_fs, from_info, self.fs, to_info, move=move, content=content
+        )
         if from_fs.scheme != Schemes.LOCAL:
             self._fs_cache[ReferenceHashFile.config_tuple(from_fs)] = from_fs

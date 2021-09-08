@@ -28,18 +28,17 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 
 
 def _upload_file(path_info, fs, odb, upload_odb):
+    from dvc.fs.utils import transfer
     from dvc.utils import tmp_fname
     from dvc.utils.stream import HashedStreamReader
 
     tmp_info = upload_odb.path_info / tmp_fname()
     with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
-        stream = HashedStreamReader(stream)
-        upload_odb.fs.upload_fobj(
-            stream, tmp_info, desc=path_info.name, size=fs.getsize(path_info)
-        )
+        wrapped = HashedStreamReader(stream)
+        transfer(fs, path_info, upload_odb.fs, tmp_info, content=wrapped)
 
-    odb.add(tmp_info, upload_odb.fs, stream.hash_info)
-    return path_info, odb.get(stream.hash_info)
+    odb.add(tmp_info, upload_odb.fs, wrapped.hash_info)
+    return path_info, odb.get(wrapped.hash_info)
 
 
 def _get_file_hash(path_info, fs, name):
