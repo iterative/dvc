@@ -33,7 +33,8 @@ def transfer(
             return from_fs.download_file(from_info, to_info)
 
         with from_fs.open(from_info, mode="rb") as fobj:
-            return to_fs.upload_fobj(fobj, to_info)
+            size = from_fs.getsize(from_info)
+            return to_fs.upload(fobj, to_info, total=size)
     except OSError as exc:
         # If the target file already exists, we are going to simply
         # ignore the exception (#4992).

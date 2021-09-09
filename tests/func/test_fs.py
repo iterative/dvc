@@ -405,7 +405,7 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     fs = cls(**config)
 
     with io.BytesIO(b"foo") as stream:
-        fs.upload_fobj(stream, cloud / "dir" / "foo")
+        fs.upload(stream, cloud / "dir" / "foo")
 
     assert fs.isdir(cloud / "dir")
     assert fs.exists(cloud / "dir" / "foo")

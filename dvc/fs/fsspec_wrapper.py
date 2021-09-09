@@ -130,7 +130,7 @@ class FSSpecWrapper(BaseFileSystem):
             self._with_bucket(path_info), exist_ok=kwargs.pop("exist_ok", True)
         )
 
-    def _upload_fobj(self, fobj, to_info, size=None):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(fobj, fdest, length=fdest.blocksize)
@@ -141,13 +141,15 @@ class FSSpecWrapper(BaseFileSystem):
         self.makedirs(to_info.parent)
         size = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
-            self.upload_fobj(
+            with Tqdm.wrapattr(
                 fobj,
-                to_info,
-                size=size,
+                "read",
+                disable=no_progress_bar,
+                bytes=True,
+                total=size,
                 desc=name,
-                no_progress_bar=no_progress_bar,
-            )
+            ) as wrapped:
+                self.upload_fobj(wrapped, to_info, size=size)
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def _download(
