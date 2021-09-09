@@ -88,3 +88,17 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
     scm.commit("init")
     stage.iterations = DEFAULT_ITERATIONS
     return stage
+
+
+@pytest.fixture
+def http_auth_patch(mocker):
+    from dulwich.client import HTTPUnauthorized
+
+    url = "https://0.0.0.0"
+    client = mocker.MagicMock()
+    client.get_refs.side_effect = HTTPUnauthorized("", url)
+    client.send_pack.side_effect = HTTPUnauthorized("", url)
+
+    patch = mocker.patch("dulwich.client.get_transport_and_path")
+    patch.return_value = (client, url)
+    return url

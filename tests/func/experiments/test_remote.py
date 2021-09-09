@@ -252,3 +252,37 @@ def test_push_pull_cache(
         path = os.path.join(dvc.odb.local.cache_dir, hash_[:2], hash_[2:])
         assert os.path.exists(path)
         assert open(path).read() == str(x)
+
+
+def test_auth_error_list(tmp_dir, scm, dvc, http_auth_patch):
+    from dvc.scm.base import GitAuthError
+
+    with pytest.raises(
+        GitAuthError,
+        match=f"HTTP Git authentication is not supported: '{http_auth_patch}'",
+    ):
+        dvc.experiments.ls(git_remote=http_auth_patch)
+
+
+def test_auth_error_pull(tmp_dir, scm, dvc, http_auth_patch):
+    from dvc.scm.base import GitAuthError
+
+    with pytest.raises(
+        GitAuthError,
+        match=f"HTTP Git authentication is not supported: '{http_auth_patch}'",
+    ):
+        dvc.experiments.pull(http_auth_patch, "foo")
+
+
+def test_auth_error_push(tmp_dir, scm, dvc, exp_stage, http_auth_patch):
+    from dvc.scm.base import GitAuthError
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp = first(results)
+    ref_info = first(exp_refs_by_rev(scm, exp))
+
+    with pytest.raises(
+        GitAuthError,
+        match=f"HTTP Git authentication is not supported: '{http_auth_patch}'",
+    ):
+        dvc.experiments.push(http_auth_patch, ref_info.name)
