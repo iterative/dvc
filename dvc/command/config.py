@@ -67,6 +67,11 @@ class CmdConfig(CmdBaseNoRepo):
             return 1
 
         levels = [self.args.level] if self.args.level else self.config.LEVELS
+        if self.config.dvc_dir is None:
+            levels = [
+                level for level in levels if level not in ("repo", "local")
+            ]
+
         for level in levels:
             conf = self.config.read(level)
             prefix = self._config_file_prefix(
