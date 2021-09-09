@@ -1,0 +1,3 @@
+adlfs==2021.8.2
+azure-identity>=1.4.0
+knack

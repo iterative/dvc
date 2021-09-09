@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from dvc.cli import parse_args
@@ -12,6 +14,7 @@ from dvc.command.experiments import (
     CmdExperimentsRemove,
     CmdExperimentsRun,
     CmdExperimentsShow,
+    show_experiments,
 )
 from dvc.exceptions import InvalidArgumentError
 
@@ -276,4 +279,129 @@ def test_experiments_remove(dvc, scm, mocker, queue, clear_all, remote):
         queue=queue,
         clear_all=clear_all,
         remote="myremote" if remote else None,
+    )
+
+
+all_experiments = {
+    "workspace": {
+        "baseline": {
+            "data": {
+                "timestamp": None,
+                "params": {
+                    "params.yaml": {
+                        "data": {
+                            "featurize": {"max_features": 3000, "ngrams": 1},
+                            "parent": 20170428,
+                            "train": {
+                                "n_est": 100,
+                                "min_split": 36,
+                            },
+                        }
+                    }
+                },
+                "queued": False,
+                "running": False,
+                "executor": None,
+                "metrics": {
+                    "scores.json": {
+                        "data": {
+                            "featurize": {"max_features": 3000, "ngrams": 1},
+                            "avg_prec": 0.5843640011189556,
+                            "roc_auc": 0.9544670443829399,
+                        }
+                    }
+                },
+            }
+        }
+    },
+    "b05eecc666734e899f79af228ff49a7ae5a18cc0": {
+        "baseline": {
+            "data": {
+                "timestamp": datetime(2021, 8, 2, 16, 48, 14),
+                "params": {
+                    "params.yaml": {
+                        "data": {
+                            "featurize": {"max_features": 3000, "ngrams": 1},
+                            "parent": 20170428,
+                            "train": {
+                                "n_est": 100,
+                                "min_split": 2,
+                            },
+                        }
+                    }
+                },
+                "queued": False,
+                "running": False,
+                "executor": None,
+                "metrics": {
+                    "scores.json": {
+                        "data": {
+                            "featurize": {"max_features": 3000, "ngrams": 1},
+                            "avg_prec": 0.5325162867864254,
+                            "roc_auc": 0.9106964878520005,
+                        }
+                    }
+                },
+                "name": "master",
+            }
+        },
+        "ae99936461d6c3092934160f8beafe66a294f98d": {
+            "data": {
+                "timestamp": datetime(2021, 8, 31, 14, 56, 55),
+                "params": {
+                    "params.yaml": {
+                        "data": {
+                            "featurize": {"max_features": 3000, "ngrams": 1},
+                            "parent": 20170428,
+                            "train": {
+                                "n_est": 100,
+                                "min_split": 36,
+                            },
+                        }
+                    }
+                },
+                "queued": True,
+                "running": True,
+                "executor": None,
+                "metrics": {
+                    "scores.json": {
+                        "data": {
+                            "featurize": {"max_features": 3000, "ngrams": 1},
+                            "avg_prec": 0.5843640011189556,
+                            "roc_auc": 0.9544670443829399,
+                        }
+                    }
+                },
+                "name": "exp-44136",
+            }
+        },
+    },
+}
+
+
+def test_show_experiments(capsys):
+    show_experiments(
+        all_experiments, precision=None, fill_value="", iso=True, show_csv=True
+    )
+    cap = capsys.readouterr()
+    assert (
+        "Experiment,rev,typ,Created,parent,State,scores.json:"
+        "featurize.max_features,scores.json:featurize.ngrams,"
+        "avg_prec,roc_auc,params.yaml:featurize.max_features,"
+        "params.yaml:featurize.ngrams,params.yaml:parent,"
+        "train.n_est,train.min_split" in cap.out
+    )
+    assert (
+        ",workspace,baseline,,,,3000,1,0.5843640011189556,0.9544670443829399,"
+        "3000,1,20170428,100,36" in cap.out
+    )
+    assert (
+        "master,b05eecc,baseline,2021-08-02T16:48:14,,,3000,1,"
+        "0.5325162867864254,0.9106964878520005,3000,1,20170428,100,2"
+        in cap.out
+    )
+    assert (
+        "exp-44136,ae99936,branch_base,2021-08-31T14:56:55,,Running,"
+        "3000,1,0.5843640011189556,0.9544670443829399,3000,1,20170428,100,36"
+        in cap.out
     )

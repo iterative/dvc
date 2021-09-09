@@ -229,6 +229,8 @@ SCHEMA = {
     "machine": {
         str: {
             "cloud": All(Lower, Choices("aws", "azure")),
+            "instance_type": Lower,
+            "startup_script": str,
         },
     },
     # section for experimental features

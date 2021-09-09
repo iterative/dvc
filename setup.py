@@ -90,35 +90,29 @@ install_requires = [
     "typing_extensions>=3.7.4; python_version < '3.10'",
     # until https://github.com/python/typing/issues/865 is fixed for python3.10
     "typing_extensions==3.10.0.0; python_version >= '3.10'",
-    "fsspec>=2021.8.1",
+    "fsspec[http]>=2021.8.1",
+    "aiohttp-retry==2.4.5",
     "diskcache>=5.2.1",
 ]
 
 
 # Extra dependencies for remote integrations
+extra_requirements = {
+    path.stem: path.read_text().strip().splitlines()
+    for path in Path("requirements").glob("*.txt")
+}
 
-gs = ["gcsfs==2021.8.1"]
-gdrive = ["pydrive2[fsspec]>=1.9.2"]
-s3 = ["s3fs==2021.8.1", "aiobotocore[boto3]>1.0.1"]
-azure = ["adlfs==2021.8.2", "azure-identity>=1.4.0", "knack"]
-oss = ["ossfs==2021.8.0"]
-ssh = ["sshfs>=2021.8.1"]
-
-hdfs = ["pyarrow>=2.0.0; python_version < '3.10'"]
-webhdfs = ["hdfs==2.5.8"]
-webdav = ["webdav4>=0.9.0"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
-ssh_gssapi = ["sshfs[gssapi]>=2021.8.1"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
-terraform = ["tpi[ssh]>=0.0.0"]
-
-tests_requirements = (
-    Path("test_requirements.txt").read_text().strip().splitlines()
-) + terraform
+extra_requirements["all"] = [
+    requirements
+    for key, requirements in extra_requirements.items()
+    if key not in ("tests", "ssh_gssapi", "terraform")
+]
+extra_requirements["tests"] += extra_requirements["terraform"]
 
 setup(
     name="dvc",
@@ -132,21 +126,7 @@ setup(
     download_url="https://github.com/iterative/dvc",
     license="Apache License 2.0",
     install_requires=install_requires,
-    extras_require={
-        "all": all_remotes,
-        "gs": gs,
-        "gdrive": gdrive,
-        "s3": s3,
-        "azure": azure,
-        "oss": oss,
-        "ssh": ssh,
-        "ssh_gssapi": ssh_gssapi,
-        "hdfs": hdfs,
-        "webhdfs": webhdfs,
-        "webdav": webdav,
-        "terraform": terraform,
-        "tests": tests_requirements,
-    },
+    extras_require=extra_requirements,
     keywords="data-science data-version-control machine-learning git"
     " developer-tools reproducibility collaboration ai",
     python_requires=">=3.6",

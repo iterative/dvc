@@ -67,6 +67,7 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
         )
 
         login_info["password"] = config.get("password")
+        login_info["passphrase"] = config.get("password")
 
         raw_keys = []
         if config.get("keyfile"):
