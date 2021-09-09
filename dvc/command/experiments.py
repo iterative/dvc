@@ -1151,7 +1151,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=None,
         help=(
-            "Optional Git remote name or a authenticated Git URL. "
+            "Optional Git remote name or authenticated Git URL. "
             "If provided, experiments from the specified Git repository "
             " will be listed instead of local ones."
         ),
