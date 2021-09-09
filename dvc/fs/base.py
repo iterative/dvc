@@ -247,6 +247,7 @@ class BaseFileSystem:
             ) as wrapped:
                 # `size` is used to provide hints to the WebdavFileSystem
                 # for legacy servers.
+                # pylint: disable=no-member
                 return self.upload_fobj(wrapped, to_info, size=total)
 
         if from_info.scheme != "local":
