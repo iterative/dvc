@@ -298,7 +298,7 @@ class GDriveFileSystem(
 
         return super()._with_bucket(path)
 
-    def _upload_fobj(self, fobj, to_info, size: int = None):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         rpath = self._with_bucket(to_info)
         self.makedirs(os.path.dirname(rpath))
-        return self.fs.upload_fobj(fobj, rpath, size=size)
+        return self.fs.upload_fobj(fobj, rpath, **kwargs)

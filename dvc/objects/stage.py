@@ -34,9 +34,8 @@ def _upload_file(path_info, fs, odb, upload_odb):
     tmp_info = upload_odb.path_info / tmp_fname()
     with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
         stream = HashedStreamReader(stream)
-        upload_odb.fs.upload_fobj(
-            stream, tmp_info, desc=path_info.name, size=fs.getsize(path_info)
-        )
+        size = fs.getsize(path_info)
+        upload_odb.fs.upload(stream, tmp_info, desc=path_info.name, total=size)
 
     odb.add(tmp_info, upload_odb.fs, stream.hash_info)
     return path_info, odb.get(stream.hash_info)
