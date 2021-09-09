@@ -46,58 +46,8 @@ class build_py(_build_py):
         _build_py.run(self)
 
 
-install_requires = [
-    "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
-    "colorama>=0.3.9",
-    "configobj>=5.0.6",
-    "gitpython>3",
-    "dulwich>=0.20.23",
-    "pygit2>=1.5.0",
-    "setuptools>=34.0.0",
-    "nanotime>=0.5.2",
-    "pyasn1>=0.4.1",
-    "voluptuous>=0.11.7",
-    "requests>=2.22.0",
-    "grandalf==0.6",
-    "distro>=1.3.0",
-    "appdirs>=1.4.3",
-    "ruamel.yaml>=0.17.11",
-    "toml>=0.10.1",
-    "funcy>=1.14",
-    "pathspec>=0.6.0,<0.9.0",
-    "shortuuid>=0.5.0",
-    "tqdm>=4.45.0,<5",
-    "packaging>=19.0",
-    "zc.lockfile>=1.2.1",
-    "flufl.lock>=3.2,<4",
-    "win-unicode-console>=0.5; sys_platform == 'win32'",
-    "pywin32>=225; sys_platform == 'win32' and python_version < '3.10'",
-    "networkx>=2.5",
-    "psutil>=5.8.0",
-    "pydot>=1.2.4",
-    "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
-    "dataclasses==0.7; python_version < '3.7'",
-    "importlib-metadata>=1.4; python_version < '3.8'",
-    "flatten_dict>=0.4.1,<1",
-    "tabulate>=0.8.7",
-    "pygtrie>=2.3.2",
-    "dpath>=2.0.1,<3",
-    "shtab>=1.3.4,<2",
-    "rich>=10.0.0",
-    "dictdiffer>=0.8.1",
-    "python-benedict>=0.21.1",
-    "pyparsing==2.4.7",
-    "typing_extensions>=3.7.4; python_version < '3.10'",
-    # until https://github.com/python/typing/issues/865 is fixed for python3.10
-    "typing_extensions==3.10.0.0; python_version >= '3.10'",
-    "fsspec[http]>=2021.8.1",
-    "aiohttp-retry==2.4.5",
-    "diskcache>=5.2.1",
-]
-
-
 # Extra dependencies for remote integrations
-extra_requirements = {
+requirements = {
     path.stem: path.read_text().strip().splitlines()
     for path in Path("requirements").glob("*.txt")
 }
@@ -107,12 +57,14 @@ extra_requirements = {
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 
-extra_requirements["all"] = [
+install_requires = requirements.pop("default")
+requirements["all"] = [
     requirements
-    for key, requirements in extra_requirements.items()
+    for key, requirements in requirements.items()
     if key not in ("tests", "ssh_gssapi", "terraform")
 ]
-extra_requirements["tests"] += extra_requirements["terraform"]
+requirements["tests"] += requirements["terraform"]
+requirements["dev"] = requirements["all"] + requirements["tests"]
 
 setup(
     name="dvc",
@@ -126,7 +78,7 @@ setup(
     download_url="https://github.com/iterative/dvc",
     license="Apache License 2.0",
     install_requires=install_requires,
-    extras_require=extra_requirements,
+    extras_require=requirements,
     keywords="data-science data-version-control machine-learning git"
     " developer-tools reproducibility collaboration ai",
     python_requires=">=3.6",
