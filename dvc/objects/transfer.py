@@ -1,13 +1,16 @@
 import errno
 import itertools
 import logging
+import queue
+import sys
 from concurrent import futures
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor as _ThreadPoolExecutor
 from functools import partial, wraps
 from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import split
 
+from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
@@ -36,6 +39,38 @@ def _log_exceptions(func):
             return 1
 
     return wrapper
+
+
+class ThreadPoolExecutor(_ThreadPoolExecutor):
+    def shutdown(  # pylint: disable=arguments-differ
+        self, wait: bool = False, cancel_futures: bool = False
+    ) -> None:
+        if sys.version_info >= (3, 9):
+            return super().shutdown(wait=wait, cancel_futures=cancel_futures)
+
+        with self._shutdown_lock:
+            self._shutdown = True
+            if cancel_futures:
+                # Drain all work items from the queue, and then cancel their
+                # associated futures.
+                while True:
+                    try:
+                        work_item = self._work_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    if work_item is not None:
+                        work_item.future.cancel()
+
+            # Send a wake-up to prevent threads calling
+            # _work_queue.get(block=True) from permanently blocking.
+            self._work_queue.put(None)
+            if wait:
+                for t in self._threads:
+                    t.join()
+
+
+class ExitInterrupt(DvcException):
+    pass
 
 
 def _transfer(
@@ -95,13 +130,35 @@ def _create_tasks(executor, jobs, func, src, verify, move, obj_ids):
 
     tasks = create_taskset(jobs * 5)
     while tasks:
-        done, tasks = futures.wait(tasks, return_when=futures.FIRST_COMPLETED)
-        fails += sum(task.result() for task in done)
-        tasks.update(create_taskset(len(done)))
+        try:
+            done, tasks = futures.wait(
+                tasks, return_when=futures.FIRST_COMPLETED
+            )
+        except KeyboardInterrupt as exc:
+            # will this always work?
+            # what if main thread becomes unresponsive?
+            from dvc.ui import ui
+
+            with Tqdm.external_write_mode(file=sys.stderr):
+                pass
+            with ui.progress(
+                desc="Gracefully stopping...", bar_format="{desc}"
+            ):
+                executor.shutdown(cancel_futures=True, wait=True)
+                # TODO: how to exit immediately when user presses Ctrl+C again?
+                done = [task for task in tasks if task if not task.cancelled()]
+                fails += sum(1 for _ in hash_iter) + len(
+                    [task.result() for task in done]
+                )
+                raise ExitInterrupt(fails) from exc
+        else:
+            fails += sum(task.result() for task in done)
+            tasks.update(create_taskset(len(done)))
+
     return fails
 
 
-def _do_transfer(
+def _do_transfer(  # noqa: C901
     src: "ObjectDB",
     dest: "ObjectDB",
     dir_ids: Iterable["HashInfo"],
@@ -119,6 +176,7 @@ def _do_transfer(
     total_fails = 0
     succeeded_dir_objs = []
     all_file_ids = set(file_ids)
+    failed = False
 
     for dir_hash in dir_ids:
         from .tree import Tree
@@ -140,8 +198,13 @@ def _do_transfer(
                 bound_file_ids.add(file_hash)
                 all_file_ids.remove(file_hash)
 
-        dir_fails = processor(bound_file_ids)
-        if dir_fails:
+        try:
+            dir_fails = processor(bound_file_ids)
+        except ExitInterrupt as exc:
+            dir_fails = exc.args[0]
+            failed = True
+
+        if dir_fails or failed:
             logger.debug(
                 "failed to upload full contents of '%s', "
                 "aborting .dir file upload",
@@ -153,6 +216,8 @@ def _do_transfer(
                 dest.get(dir_obj.hash_info).path_info,
             )
             total_fails += dir_fails + 1
+            if failed:
+                raise FileTransferError(total_fails)
         elif entry_ids.intersection(missing_ids):
             # if for some reason a file contained in this dir is
             # missing both locally and in the remote, we want to
@@ -176,7 +241,11 @@ def _do_transfer(
                 succeeded_dir_objs.append(dir_obj)
 
     # insert the rest
-    total_fails += processor(all_file_ids)
+    try:
+        total_fails += processor(all_file_ids)
+    except ExitInterrupt as exc:
+        total_fails += exc.args[0]
+
     if total_fails:
         if src_index:
             src_index.clear()
