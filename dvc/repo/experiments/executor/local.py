@@ -1,9 +1,23 @@
 import logging
 import os
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+from funcy import cached_property
+
+from dvc.repo.experiments.base import (
+    EXEC_BRANCH,
+    EXEC_CHECKPOINT,
+    EXEC_HEAD,
+    EXEC_MERGE,
+    EXEC_NAMESPACE,
+)
+from dvc.scm import SCM
 
 from .base import BaseExecutor
+
+if TYPE_CHECKING:
+    from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +50,15 @@ class BaseLocalExecutor(BaseExecutor):
             root_dir = root_dir.replace(os.sep, "/")
         return f"file://{root_dir}"
 
+    @cached_property
+    def scm(self):
+        return SCM(self.root_dir)
+
+    def cleanup(self):
+        super().cleanup()
+        self.scm.close()
+        del self.scm
+
 
 class TempDirExecutor(BaseLocalExecutor):
     """Temp directory experiment executor."""
@@ -60,6 +83,29 @@ class TempDirExecutor(BaseLocalExecutor):
         if cache_dir:
             self._config(cache_dir)
         logger.debug("Init temp dir executor in dir '%s'", self._tmp_dir)
+
+    def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
+        from dulwich.repo import Repo as DulwichRepo
+
+        DulwichRepo.init(os.fspath(self.root_dir))
+
+        refspec = f"{EXEC_NAMESPACE}/"
+        scm.push_refspec(self.git_url, refspec, refspec, **kwargs)
+        if branch:
+            scm.push_refspec(self.git_url, branch, branch, **kwargs)
+            self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+        elif self.scm.get_ref(EXEC_BRANCH):
+            self.scm.remove_ref(EXEC_BRANCH)
+
+        if self.scm.get_ref(EXEC_CHECKPOINT):
+            self.scm.remove_ref(EXEC_CHECKPOINT)
+
+        # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
+        # committing
+        head = EXEC_BRANCH if branch else EXEC_HEAD
+        self.scm.checkout(head, detach=True)
+        merge_rev = self.scm.get_ref(EXEC_MERGE)
+        self.scm.merge(merge_rev, squash=True, commit=False)
 
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")

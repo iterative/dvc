@@ -14,8 +14,6 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property
-
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
@@ -24,8 +22,6 @@ from dvc.repo.experiments.base import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
-    EXEC_HEAD,
-    EXEC_MERGE,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
@@ -34,7 +30,6 @@ from dvc.repo.experiments.base import (
     ExpRefInfo,
     UnchangedExperimentError,
 )
-from dvc.scm import SCM
 from dvc.stage import PipelineStage
 from dvc.stage.monitor import CheckpointKilledError
 from dvc.stage.serialize import to_lockfile
@@ -117,38 +112,11 @@ class BaseExecutor(ABC):
         self._init_git(src, branch)
         self.name = name
 
-    def _init_git(self, scm: "Git", branch: Optional[str] = None):
-        """Init git repo and collect executor refs from the specified SCM."""
-        from dulwich.repo import Repo as DulwichRepo
-
-        DulwichRepo.init(os.fspath(self.root_dir))
-
-        cwd = os.getcwd()
-        os.chdir(self.root_dir)
-        try:
-            refspec = f"{EXEC_NAMESPACE}/"
-            scm.push_refspec(self.git_url, refspec, refspec)
-            if branch:
-                scm.push_refspec(self.git_url, branch, branch)
-                self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
-            elif self.scm.get_ref(EXEC_BRANCH):
-                self.scm.remove_ref(EXEC_BRANCH)
-
-            if self.scm.get_ref(EXEC_CHECKPOINT):
-                self.scm.remove_ref(EXEC_CHECKPOINT)
-
-            # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
-            # committing
-            head = EXEC_BRANCH if branch else EXEC_HEAD
-            self.scm.checkout(head, detach=True)
-            merge_rev = self.scm.get_ref(EXEC_MERGE)
-            self.scm.merge(merge_rev, squash=True, commit=False)
-        finally:
-            os.chdir(cwd)
-
-    @cached_property
-    def scm(self):
-        return SCM(self.root_dir)
+    @abstractmethod
+    def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
+        """Init git repo and populate it using exp refs from the specified
+        SCM instance.
+        """
 
     @property
     @abstractmethod
@@ -168,8 +136,7 @@ class BaseExecutor(ABC):
         return dict_sha256(exp_data)
 
     def cleanup(self):
-        self.scm.close()
-        del self.scm
+        pass
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
