@@ -1207,7 +1207,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "git_remote",
-        help="Git remote name or Git URL",
+        help="Git remote name or Git URL.",
         metavar="<git_remote>",
     )
     experiments_push_parser.add_argument(
