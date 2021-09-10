@@ -78,6 +78,7 @@ class Config(dict):
 
     # In the order they shadow each other
     LEVELS = ("system", "global", "repo", "local")
+    REPO_ONLY_LEVELS = ("repo", "local")
 
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
@@ -286,7 +287,7 @@ class Config(dict):
     def edit(self, level=None, validate=True):
         # NOTE: we write to repo config by default, same as git config
         level = level or "repo"
-        if level in {"repo", "local"} and self.dvc_dir is None:
+        if level in self.REPO_ONLY_LEVELS and self.dvc_dir is None:
             raise ConfigError("Not inside a DVC repo")
 
         conf = self.load_one(level)

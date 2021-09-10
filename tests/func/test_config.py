@@ -77,6 +77,12 @@ def test_config_set_local(tmp_dir, dvc):
     assert (tmp_dir / ".dvc" / "config.local").read_text() == "\n"
 
 
+def test_config_set_in_non_dvc_repo(tmp_dir, capsys, caplog):
+    assert main(["config", "core.analytics", "true"]) != 0
+    out = caplog.text
+    assert "Not inside a DVC repo" in out
+
+
 @pytest.mark.parametrize(
     "args, ret, msg",
     [
@@ -128,6 +134,10 @@ def test_config_get(tmp_dir, dvc, capsys, caplog, args, ret, msg):
     assert msg in text
 
 
+def test_config_get_in_non_dvc_repo(tmp_dir):
+    assert main(["config", "core.remote"]) == 0
+
+
 def test_config_list(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
         textwrap.dedent(
@@ -169,7 +179,7 @@ def test_config_list(tmp_dir, dvc, capsys):
     assert "core.remote=myremote" in out
 
 
-def test_config_list_in_non_repo_dir(tmp_dir):
+def test_config_list_in_non_dvc_repo(tmp_dir):
     assert main(["config", "--list"]) == 0
 
 

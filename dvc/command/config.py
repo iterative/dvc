@@ -69,7 +69,9 @@ class CmdConfig(CmdBaseNoRepo):
         levels = [self.args.level] if self.args.level else self.config.LEVELS
         if self.config.dvc_dir is None:
             levels = [
-                level for level in levels if level not in ("repo", "local")
+                level
+                for level in levels
+                if level not in self.config.REPO_ONLY_LEVELS
             ]
 
         for level in levels:
@@ -89,6 +91,13 @@ class CmdConfig(CmdBaseNoRepo):
         levels = (
             [self.args.level] if self.args.level else self.config.LEVELS[::-1]
         )
+
+        if self.config.dvc_dir is None:
+            levels = [
+                level
+                for level in levels
+                if level not in self.config.REPO_ONLY_LEVELS
+            ]
 
         for level in levels:
             conf = self.config.read(level)
