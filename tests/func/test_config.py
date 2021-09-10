@@ -169,6 +169,10 @@ def test_config_list(tmp_dir, dvc, capsys):
     assert "core.remote=myremote" in out
 
 
+def test_config_list_in_non_repo_dir(tmp_dir):
+    assert main(["config", "--list"]) == 0
+
+
 @pytest.mark.parametrize(
     "args", [["core.analytics"], ["core.analytics", "false"], ["--unset"]]
 )
