@@ -200,3 +200,7 @@ class MachineManager:
     def run_shell(self, name: Optional[str]):
         config, backend = self.get_config_and_backend(name)
         return backend.run_shell(**config)
+
+    def get_executor_kwargs(self, name: Optional[str]):
+        config, backend = self.get_config_and_backend(name)
+        return backend.get_executor_kwargs(**config)
