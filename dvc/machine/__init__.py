@@ -211,3 +211,7 @@ class MachineManager:
         """move configuration to a new location if the machine is running."""
         config, backend = self.get_config_and_backend(name)
         return backend.rename(new=new, **config)
+
+    def get_executor_kwargs(self, name: Optional[str]):
+        config, backend = self.get_config_and_backend(name)
+        return backend.get_executor_kwargs(**config)
