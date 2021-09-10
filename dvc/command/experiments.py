@@ -1151,7 +1151,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=None,
         help=(
-            "Optional Git remote name or authenticated Git URL. "
+            "Optional Git remote name or Git URL. "
             "If provided, experiments from the specified Git repository "
             " will be listed instead of local ones."
         ),
@@ -1207,7 +1207,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "git_remote",
-        help="Git remote name or authenticated Git URL",
+        help="Git remote name or Git URL",
         metavar="<git_remote>",
     )
     experiments_push_parser.add_argument(
@@ -1263,7 +1263,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_pull_parser.add_argument(
         "git_remote",
-        help="Git remote name or authenticated Git URL.",
+        help="Git remote name or Git URL.",
         metavar="<git_remote>",
     )
     experiments_pull_parser.add_argument(
