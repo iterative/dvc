@@ -382,15 +382,11 @@ class Experiments:
     def _format_new_params_msg(self, new_params, config_path):
         """Format an error message for when new parameters are identified"""
         new_param_count = len(new_params)
-        additional_msg = "is"
-        if new_param_count > 1:
-            pluralise = "s are" if new_param_count > 2 else " is"
-            additional_msg = (
-                f"and {new_param_count-1} other " f"parameter{pluralise}"
-            )
+        pluralise = "s were" if new_param_count > 1 else " was"
+        param_list = ", ".join(new_params)
         return (
-            f"Parameter {new_params[0]} {additional_msg} not "
-            f"defined in the config file {config_path}."
+            f"{new_param_count} parameter{pluralise} not "
+            f"defined in the config file {config_path}: {param_list}"
         )
 
     def _update_params(self, params: dict):
