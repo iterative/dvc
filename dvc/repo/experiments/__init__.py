@@ -15,6 +15,7 @@ from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.stage.monitor import CheckpointKilledError
 from dvc.utils import relpath
+from dvc.utils.keypath import parse_keypath
 
 from .base import (
     EXEC_APPLY,
@@ -358,11 +359,25 @@ class Experiments:
         config file. to_update is a flat dict with keypath keys representing
         param names.
         """
-        from benedict import benedict
+        new_params = []
 
-        b_src = benedict(src)
+        for param in to_update:
+            if self._is_new_param(src, param):
+                new_params.append(param)
+        return new_params
 
-        return list(set(to_update.keys()) - set(b_src.keypaths(indexes=True)))
+    def _is_new_param(self, src_dict: Dict, keypath: str) -> bool:
+        """
+        Test whether the given keypath is in the given dict
+        """
+        subdict = src_dict
+        for key in parse_keypath(keypath, "."):
+            try:
+                subdict = subdict[key]
+            except (KeyError, IndexError, TypeError) as e:
+                logger.debug(e)
+                return True
+        return False
 
     def _format_new_params_msg(self, new_params, config_path):
         """Format an error message for when new parameters are identified"""
