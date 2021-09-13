@@ -1,6 +1,6 @@
 import os
 
-from dvc.render.utils import find_vega, get_files, render
+from dvc.render.utils import find_vega, render
 
 
 def assert_website_has_image(page_path, revision, filename, image_content):
