@@ -69,6 +69,22 @@ class CmdMachineRemove(CmdMachineConfig):
         return 0
 
 
+class CmdMachineList(CmdMachineConfig):
+    def run(self):
+        levels = [self.args.level] if self.args.level else self.config.LEVELS
+        for level in levels:
+            conf = self.config.read(level)["machine"]
+            if self.args.name:
+                conf = conf.get(self.args.name, {})
+            prefix = self._config_file_prefix(
+                self.args.show_origin, self.config, level
+            )
+            configs = list(self._format_config(conf, prefix))
+            if configs:
+                ui.write("\n".join(configs))
+        return 0
+
+
 class CmdMachineModify(CmdMachineConfig):
     def run(self):
         from dvc.config import merge
@@ -219,6 +235,27 @@ def add_parser(subparsers, parent_parser):
     )
     machine_default_parser.set_defaults(func=CmdMachineDefault)
 
+    machine_LIST_HELP = "List the configuration of one/all machines."
+    machine_list_parser = machine_subparsers.add_parser(
+        "list",
+        parents=[parent_config_parser, parent_parser],
+        description=append_doc_link(machine_LIST_HELP, "machine/list"),
+        help=machine_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    machine_list_parser.add_argument(
+        "--show-origin",
+        default=False,
+        action="store_true",
+        help="Show the source file containing each config value.",
+    )
+    machine_list_parser.add_argument(
+        "name",
+        nargs="?",
+        type=str,
+        help="name of machine to specify",
+    )
+    machine_list_parser.set_defaults(func=CmdMachineList)
     machine_MODIFY_HELP = "Modify the configuration of an machine."
     machine_modify_parser = machine_subparsers.add_parser(
         "modify",

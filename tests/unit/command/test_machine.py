@@ -5,9 +5,22 @@ from dvc.command.machine import (
     CmdMachineAdd,
     CmdMachineCreate,
     CmdMachineDestroy,
+    CmdMachineList,
+    CmdMachineModify,
     CmdMachineRemove,
     CmdMachineSsh,
 )
+
+data = {
+    ".dvc": {
+        "config": (
+            "[feature]\n"
+            "  machine = true\n"
+            "['machine \"foo\"']\n"
+            "  cloud = aws"
+        )
+    }
+}
 
 
 def test_add(tmp_dir):
@@ -21,18 +34,7 @@ def test_add(tmp_dir):
 
 
 def test_remove(tmp_dir):
-    tmp_dir.gen(
-        {
-            ".dvc": {
-                "config": (
-                    "[feature]\n"
-                    "  machine = true\n"
-                    "['machine \"foo\"']\n"
-                    "  cloud = aws"
-                )
-            }
-        }
-    )
+    tmp_dir.gen(data)
     cli_args = parse_args(["machine", "remove", "foo"])
     assert cli_args.func == CmdMachineRemove
     cmd = cli_args.func(cli_args)
@@ -78,3 +80,25 @@ def test_ssh(tmp_dir, dvc, mocker):
 
     assert cmd.run() == 0
     m.assert_called_once_with("foo")
+
+
+def test_list(tmp_dir, mocker):
+    from dvc.ui import ui
+
+    tmp_dir.gen(data)
+    cli_args = parse_args(["machine", "list", "foo"])
+    assert cli_args.func == CmdMachineList
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(ui, "write", autospec=True)
+    assert cmd.run() == 0
+    m.assert_called_once_with("cloud=aws")
+
+
+def test_modified(tmp_dir):
+    tmp_dir.gen(data)
+    cli_args = parse_args(["machine", "modify", "foo", "cloud", "azure"])
+    assert cli_args.func == CmdMachineModify
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+    config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
+    assert config['machine "foo"']["cloud"] == "azure"
