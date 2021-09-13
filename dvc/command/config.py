@@ -66,13 +66,7 @@ class CmdConfig(CmdBaseNoRepo):
             )
             return 1
 
-        levels = [self.args.level] if self.args.level else self.config.LEVELS
-        if self.config.dvc_dir is None:
-            levels = [
-                level
-                for level in levels
-                if level not in self.config.REPO_ONLY_LEVELS
-            ]
+        levels = self._get_appropriate_levels(self.args.level)
 
         for level in levels:
             conf = self.config.read(level)
@@ -88,16 +82,7 @@ class CmdConfig(CmdBaseNoRepo):
     def _get(self, remote, section, opt):
         from dvc.config import ConfigError
 
-        levels = (
-            [self.args.level] if self.args.level else self.config.LEVELS[::-1]
-        )
-
-        if self.config.dvc_dir is None:
-            levels = [
-                level
-                for level in levels
-                if level not in self.config.REPO_ONLY_LEVELS
-            ]
+        levels = self._get_appropriate_levels(self.args.level)[::-1]
 
         for level in levels:
             conf = self.config.read(level)
@@ -149,6 +134,27 @@ class CmdConfig(CmdBaseNoRepo):
             raise ConfigError(
                 f"option '{opt}' doesn't exist in {name} '{section}'"
             )
+
+    def _get_appropriate_levels(self, levels):
+        if levels:
+            self._validate_level_for_non_repo_operation(levels)
+            return [self.args.level]
+        if self.config.dvc_dir is None:
+            return [
+                level
+                for level in self.config.LEVELS
+                if level not in self.config.REPO_ONLY_LEVELS
+            ]
+        return self.config.LEVELS
+
+    def _validate_level_for_non_repo_operation(self, level):
+        from dvc.config import ConfigError
+
+        if (
+            self.config.dvc_dir is None
+            and level in self.config.REPO_ONLY_LEVELS
+        ):
+            raise ConfigError("Not inside a DVC repo")
 
     @staticmethod
     def _format_config(config, prefix=""):

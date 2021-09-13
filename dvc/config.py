@@ -287,7 +287,7 @@ class Config(dict):
     def edit(self, level=None, validate=True):
         # NOTE: we write to repo config by default, same as git config
         level = level or "repo"
-        if level in self.REPO_ONLY_LEVELS and self.dvc_dir is None:
+        if self.dvc_dir is None and level in self.REPO_ONLY_LEVELS:
             raise ConfigError("Not inside a DVC repo")
 
         conf = self.load_one(level)
