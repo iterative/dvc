@@ -1,6 +1,7 @@
 import os
+import random
 
-from dvc.render.utils import find_vega, render
+from dvc.render.utils import find_vega, get_files, render
 
 
 def assert_website_has_image(page_path, revision, filename, image_content):
@@ -65,3 +66,18 @@ def test_render(tmp_dir, dvc):
     some_vega = find_vega(dvc, data, "some.csv")
     assert file_vega in index_content.strip()
     assert some_vega in index_content.strip()
+
+
+def test_get_files_order():
+    random.seed(42)
+    data = {
+        "workspace":
+        {
+            "data":
+            {
+                str(random.randint(0, 10)): 1 for x in range(100)
+            }
+        }
+    }
+
+    assert get_files(data) == sorted(get_files(data))

@@ -7,6 +7,7 @@ def get_files(data: Dict) -> Set:
     for rev in data.keys():
         for file in data[rev].get("data", {}).keys():
             files.add(file)
+    files = sorted(files)
     return files
 
 
