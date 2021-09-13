@@ -71,12 +71,8 @@ def test_render(tmp_dir, dvc):
 def test_get_files_order():
     random.seed(42)
     data = {
-        "workspace":
-        {
-            "data":
-            {
-                str(random.randint(0, 10)): 1 for x in range(100)
-            }
+        "workspace": {
+            "data": {str(random.randint(0, 10)): 1 for x in range(100)}
         }
     }
 
