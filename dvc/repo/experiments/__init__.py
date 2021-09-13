@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List, Mapping, Optional
 
 from funcy import cached_property, first
 
+from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
@@ -385,8 +386,8 @@ class Experiments:
         pluralise = "s were" if new_param_count > 1 else " was"
         param_list = ", ".join(new_params)
         return (
-            f"{new_param_count} parameter{pluralise} not "
-            f"defined in the config file {config_path}: {param_list}"
+            f"{new_param_count} parameter{pluralise} missing "
+            f"from {config_path}: {param_list}"
         )
 
     def _update_params(self, params: dict):
@@ -404,7 +405,7 @@ class Experiments:
                 new_params = self._get_new_params(data, params[params_fname])
                 if new_params:
                     error_msg = self._format_new_params_msg(new_params, path)
-                    raise DvcException(error_msg)
+                    raise MissingParamsError(error_msg)
                 merge_params(data, params[params_fname])
 
         # Force params file changes to be staged in git
