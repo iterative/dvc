@@ -851,7 +851,7 @@ class Output:
         except FileNotFoundError:
             if self.remote:
                 kwargs["remote"] = self.remote
-            self.repo.cloud.pull([obj.hash_info], odb=remote, **kwargs)
+            self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
             return self.obj
