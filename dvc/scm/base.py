@@ -47,6 +47,15 @@ class InvalidRemoteSCMRepo(SCMError):
         super().__init__(msg)
 
 
+class GitAuthError(SCMError):
+    def __init__(self, url: str):
+        super().__init__(
+            f"HTTP Git authentication is not supported: '{url}'"
+            "\nSee https://dvc.org/doc//user-guide/"
+            "troubleshooting#git-auth"
+        )
+
+
 class Base:
     """Base class for source control management driver implementations."""
 

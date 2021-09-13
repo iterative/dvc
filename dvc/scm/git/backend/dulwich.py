@@ -20,7 +20,7 @@ from funcy import cached_property
 
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
-from dvc.scm.base import InvalidRemoteSCMRepo, SCMError
+from dvc.scm.base import GitAuthError, InvalidRemoteSCMRepo, SCMError
 from dvc.utils import relpath
 
 from ..objects import GitObject
@@ -355,7 +355,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 yield os.fsdecode(key)
 
     def iter_remote_refs(self, url: str, base: Optional[str] = None):
-        from dulwich.client import get_transport_and_path
+        from dulwich.client import HTTPUnauthorized, get_transport_and_path
         from dulwich.errors import NotGitRepository
         from dulwich.porcelain import get_remote_repo
 
@@ -376,6 +376,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 yield from (os.fsdecode(ref) for ref in client.get_refs(path))
         except NotGitRepository as exc:
             raise InvalidRemoteSCMRepo(url) from exc
+        except HTTPUnauthorized:
+            raise GitAuthError(url)
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
@@ -388,7 +390,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
     ):
-        from dulwich.client import get_transport_and_path
+        from dulwich.client import HTTPUnauthorized, get_transport_and_path
         from dulwich.errors import NotGitRepository, SendPackError
         from dulwich.porcelain import (
             DivergedBranches,
@@ -447,6 +449,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 )
         except (NotGitRepository, SendPackError) as exc:
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
+        except HTTPUnauthorized:
+            raise GitAuthError(url)
 
     def _push_dest_refs(
         self, src: Optional[str], dest: str
