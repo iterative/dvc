@@ -67,6 +67,7 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
         )
 
         login_info["password"] = config.get("password")
+        login_info["passphrase"] = config.get("password")
 
         raw_keys = []
         if config.get("keyfile"):
@@ -119,9 +120,9 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
     # Ensure that if an interrupt happens during the transfer, we don't
     # pollute the cache.
 
-    def _upload_fobj(self, fobj, to_info, *args, **kwargs):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         with as_atomic(self, to_info) as tmp_file:
-            super()._upload_fobj(fobj, tmp_file, *args, **kwargs)
+            super().upload_fobj(fobj, tmp_file, **kwargs)
 
     def _upload(self, from_file, to_info, *args, **kwargs):
         with as_atomic(self, to_info) as tmp_file:

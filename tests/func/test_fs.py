@@ -260,7 +260,6 @@ def test_fs_getsize(dvc, cloud):
         pytest.lazy_fixture("gs"),
         pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("http"),
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("oss"),
         pytest.lazy_fixture("s3"),
@@ -406,7 +405,7 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     fs = cls(**config)
 
     with io.BytesIO(b"foo") as stream:
-        fs.upload_fobj(stream, cloud / "dir" / "foo")
+        fs.upload(stream, cloud / "dir" / "foo")
 
     assert fs.isdir(cloud / "dir")
     assert fs.exists(cloud / "dir" / "foo")

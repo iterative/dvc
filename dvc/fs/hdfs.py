@@ -244,7 +244,7 @@ class HDFSFileSystem(BaseFileSystem):
             size=self.getsize(path_info),
         )
 
-    def _upload_fobj(self, fobj, to_info, **kwargs):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         with self.hdfs(to_info) as hdfs:
             with hdfs.open_output_stream(to_info.path) as fdest:
                 shutil.copyfileobj(fobj, fdest, self.BLOCK_SIZE)

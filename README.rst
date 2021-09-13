@@ -222,7 +222,9 @@ Contributing
 |Maintainability| |Donate|
 
 Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
-details.
+details. Thanks to all our contributors!
+
+|Contribs|
 
 Mailing List
 ============
@@ -299,3 +301,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Flowchart| image:: https://dvc.org/img/flow.gif
    :target: https://dvc.org/img/flow.gif
    :alt: how_dvc_works
+
+.. |Contribs| image:: https://contrib.rocks/image?repo=iterative/dvc
+   :target: https://github.com/iterative/dvc/graphs/contributors
+   :alt: Contributors

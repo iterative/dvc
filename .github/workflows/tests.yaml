@@ -13,6 +13,7 @@ env:
 
 jobs:
   lint:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2.3.4
@@ -32,6 +33,7 @@ jobs:
       run: python setup.py checkdocs
     - uses: pre-commit/action@v2.0.3
   tests:
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -97,6 +99,7 @@ jobs:
       run: |
         echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
+      timeout-minutes: 30
       env:
         GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

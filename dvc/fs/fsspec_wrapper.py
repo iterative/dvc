@@ -130,7 +130,7 @@ class FSSpecWrapper(BaseFileSystem):
             self._with_bucket(path_info), exist_ok=kwargs.pop("exist_ok", True)
         )
 
-    def _upload_fobj(self, fobj, to_info, size=None):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(fobj, fdest, length=fdest.blocksize)
@@ -141,13 +141,15 @@ class FSSpecWrapper(BaseFileSystem):
         self.makedirs(to_info.parent)
         size = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
-            self.upload_fobj(
+            with Tqdm.wrapattr(
                 fobj,
-                to_info,
-                size=size,
+                "read",
+                disable=no_progress_bar,
+                bytes=True,
+                total=size,
                 desc=name,
-                no_progress_bar=no_progress_bar,
-            )
+            ) as wrapped:
+                self.upload_fobj(wrapped, to_info, size=size)
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def _download(
@@ -231,6 +233,27 @@ class ObjectFSWrapper(FSSpecWrapper):
             return None
 
         yield from self._strip_buckets(files, detail=detail)
+
+
+# pylint: disable=arguments-differ
+class NoDirectoriesMixin:
+    def isdir(self, *args, **kwargs):
+        return False
+
+    def isfile(self, *args, **kwargs):
+        return True
+
+    def find(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk_files(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def ls(self, *args, **kwargs):
+        raise NotImplementedError
 
 
 _LOCAL_FS = LocalFileSystem()

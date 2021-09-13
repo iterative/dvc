@@ -13,14 +13,13 @@ flaky==3.7.0
 mock==4.0.3
 rangehttpserver==1.2.0
 mock-ssh-server==0.9.0
-beautifulsoup4==4.9.3
 wget==3.2
 filelock==3.0.12
 wsgidav==3.1.1
 crc32c==2.2.post0
 xmltodict==0.12.0
 google-compute-engine==2.8.13
-google-cloud-storage==1.42.0
+google-cloud-storage==1.42.1
 urllib3==1.26.6
 dvclive>=0.2.1
 

@@ -5,6 +5,7 @@ on:
     - master
   release:
     types: [released, prereleased]
+  workflow_dispatch:
 jobs:
   deb:
     runs-on: ubuntu-18.04

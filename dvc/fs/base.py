@@ -217,44 +217,50 @@ class BaseFileSystem:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
-        if not hasattr(self, "_upload"):
-            raise RemoteActionNotImplemented("upload", self.scheme)
+    def upload(
+        self,
+        from_info,
+        to_info,
+        total=None,
+        desc=None,
+        no_progress_bar=False,
+        **pbar_args,
+    ):
+        is_file_obj = hasattr(from_info, "read")
+        method = "upload_fobj" if is_file_obj else "_upload"
+        if not hasattr(self, method):
+            raise RemoteActionNotImplemented(method, self.scheme)
 
         if to_info.scheme != self.scheme:
             raise NotImplementedError
 
+        logger.debug("Uploading '%s' to '%s'", from_info, to_info)
+        if is_file_obj:
+            with Tqdm.wrapattr(
+                from_info,
+                "read",
+                disable=no_progress_bar,
+                bytes=True,
+                total=total,
+                desc=desc,
+                **pbar_args,
+            ) as wrapped:
+                # `size` is used to provide hints to the WebdavFileSystem
+                # for legacy servers.
+                # pylint: disable=no-member
+                return self.upload_fobj(wrapped, to_info, size=total)
+
         if from_info.scheme != "local":
             raise NotImplementedError
 
-        logger.debug("Uploading '%s' to '%s'", from_info, to_info)
-
-        name = name or from_info.name
-
-        self._upload(  # noqa, pylint: disable=no-member
+        name = desc or from_info.name
+        return self._upload(  # noqa, pylint: disable=no-member
             from_info.fspath,
             to_info,
             name=name,
             no_progress_bar=no_progress_bar,
-        )
-
-    def upload_fobj(
-        self, fobj, to_info, no_progress_bar=False, size=None, **pbar_args
-    ):
-        if not hasattr(self, "_upload_fobj"):
-            raise RemoteActionNotImplemented("upload_fobj", self.scheme)
-
-        with Tqdm.wrapattr(
-            fobj,
-            "read",
-            disable=no_progress_bar,
-            bytes=True,
-            total=size,
             **pbar_args,
-        ) as wrapped:
-            self._upload_fobj(  # pylint: disable=no-member
-                wrapped, to_info, size=size
-            )
+        )
 
     def download(
         self,

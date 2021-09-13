@@ -70,7 +70,7 @@ class ReferenceObjectDB(ObjectDB):
         ref_fobj = io.BytesIO(ref_file.to_bytes())
         ref_fobj.seek(0)
         try:
-            self.fs.upload_fobj(ref_fobj, to_info)
+            self.fs.upload(ref_fobj, to_info)
         except OSError as exc:
             if isinstance(exc, FileExistsError) or (
                 os.name == "nt"
