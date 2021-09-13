@@ -6,7 +6,7 @@ from collections import defaultdict
 from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
-from dvc.progress import Tqdm
+from dvc.progress import DEFAULT_CALLBACK, Tqdm
 from dvc.scheme import Schemes
 
 from .fsspec_wrapper import ObjectFSWrapper
@@ -204,24 +204,17 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
         return bucket.Object(path_info.path)
 
     @_translate_exceptions
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        total = os.path.getsize(from_file)
-        with Tqdm(
-            disable=no_progress_bar,
-            total=total,
-            bytes=True,
-            desc=name,
-            **pbar_args,
-        ) as pbar:
-            obj = self._get_obj(to_info)
-            obj.upload_file(
-                from_file,
-                Callback=pbar.update,
-                ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
-                Config=self._transfer_config,
-            )
+        callback.set_size(os.path.getsize(from_file))
+        obj = self._get_obj(to_info)
+        obj.upload_file(
+            from_file,
+            Callback=callback.relative_update,
+            ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
+            Config=self._transfer_config,
+        )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     @_translate_exceptions

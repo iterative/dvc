@@ -11,7 +11,8 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .fsspec_wrapper import ObjectFSWrapper
+from ..progress import DEFAULT_CALLBACK
+from .fsspec_wrapper import ObjectFSWrapper, CallbackMixin
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -159,3 +160,9 @@ class AzureFileSystem(ObjectFSWrapper):
                 " failed.\nLearn more about configuration settings at"
                 f" {format_link('https://man.dvc.org/remote/modify')}"
             ) from e
+
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
+        # AzureFileSystem.put_file does not support callbacks yet.
+        return CallbackMixin.put_file_compat(self, from_file, to_info, callback=callback, **kwargs)

@@ -1,12 +1,18 @@
+import contextlib
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial, partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
+from funcy import cached_property
+from tqdm.utils import CallbackIOWrapper
+
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
+from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 
@@ -217,50 +223,65 @@ class BaseFileSystem:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
+    @cached_property
+    def _local_fs(self):
+        from dvc.fs import LocalFileSystem
+
+        return LocalFileSystem()
+
     def upload(
         self,
         from_info,
         to_info,
         total=None,
         desc=None,
+        callback=None,
         no_progress_bar=False,
         **pbar_args,
     ):
         is_file_obj = hasattr(from_info, "read")
-        method = "upload_fobj" if is_file_obj else "_upload"
+        method = "upload_fobj" if is_file_obj else "put_file"
         if not hasattr(self, method):
             raise RemoteActionNotImplemented(method, self.scheme)
 
         if to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        logger.debug("Uploading '%s' to '%s'", from_info, to_info)
-        if is_file_obj:
-            with Tqdm.wrapattr(
-                from_info,
-                "read",
+        if not is_file_obj:
+            desc = desc or from_info.name
+
+        stack = contextlib.ExitStack()
+        if not callback:
+            pbar = ui.progress(
+                desc=desc,
                 disable=no_progress_bar,
                 bytes=True,
-                total=total,
-                desc=desc,
+                total=total or -1,
                 **pbar_args,
-            ) as wrapped:
+            )
+            stack.enter_context(pbar)
+            callback = pbar.as_callback(self._local_fs, from_info)
+            if total:
+                callback.set_size(total)
+
+        with stack:
+            if is_file_obj:
+                wrapped = CallbackIOWrapper(
+                    callback.relative_update, from_info
+                )
                 # `size` is used to provide hints to the WebdavFileSystem
                 # for legacy servers.
                 # pylint: disable=no-member
                 return self.upload_fobj(wrapped, to_info, size=total)
 
-        if from_info.scheme != "local":
-            raise NotImplementedError
+            if from_info.scheme != "local":
+                raise NotImplementedError
 
-        name = desc or from_info.name
-        return self._upload(  # noqa, pylint: disable=no-member
-            from_info.fspath,
-            to_info,
-            name=name,
-            no_progress_bar=no_progress_bar,
-            **pbar_args,
-        )
+            logger.debug("Uploading '%s' to '%s'", from_info, to_info)
+            # pylint: disable=no-member
+            return self.put_file(
+                os.fspath(from_info), to_info, callback=callback
+            )
 
     def download(
         self,
