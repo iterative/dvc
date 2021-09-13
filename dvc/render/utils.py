@@ -7,8 +7,8 @@ def get_files(data: Dict) -> List:
     for rev in data.keys():
         for file in data[rev].get("data", {}).keys():
             files.add(file)
-    files = sorted(files)
-    return files
+    sorted_files = sorted(files)
+    return sorted_files
 
 
 def group_by_filename(plots_data: Dict) -> List[Dict]:
