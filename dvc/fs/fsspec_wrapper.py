@@ -5,7 +5,7 @@ from functools import lru_cache
 from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
 
-from dvc.progress import DEFAULT_CALLBACK, Tqdm
+from dvc.progress import DEFAULT_CALLBACK
 
 from .base import BaseFileSystem
 from .local import LocalFileSystem
@@ -139,27 +139,17 @@ class FSSpecWrapper(BaseFileSystem):
         )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
+    def get_file(
+        self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
+        self.fs.get_file(
+            self._with_bucket(from_info), to_info, callback=callback, **kwargs
+        )
+
     def upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(fobj, fdest, length=fdest.blocksize)
-
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
-    ):
-        total = self.getsize(self._with_bucket(from_info))
-        with self.open(from_info, "rb") as fobj:
-            with Tqdm.wrapattr(
-                fobj,
-                "read",
-                desc=name,
-                disable=no_progress_bar,
-                bytes=True,
-                total=total,
-                **pbar_args,
-            ) as wrapped:
-                with open(to_file, "wb") as fdest:
-                    shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)
 
 
 # pylint: disable=abstract-method
@@ -252,35 +242,36 @@ _LOCAL_FS = LocalFileSystem()
 
 
 class CallbackMixin:
-    """Use the native ``get_file()``/``put_file()`` APIs
-    if the target filesystem supports callbacks."""
+    """Provides callback support for the filesystem that don't support yet."""
 
-    @staticmethod
-    def put_file_compat(
-        fs, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    def put_file(
+        self: FSSpecWrapper,
+        from_file,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        **kwargs,
     ):
         """Add compatibility support for Callback."""
-        fs.makedirs(to_info.parent)
+        self.makedirs(to_info.parent)
         size = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
             callback.set_size(size)
             wrapped = CallbackIOWrapper(callback.relative_update, fobj)
-            fs.upload_fobj(wrapped, to_info)
+            self.upload_fobj(wrapped, to_info)
             # pylint: disable=protected-access
-            fs.fs.invalidate_cache(fs._with_bucket(to_info.parent))
+            self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
+    def get_file(
+        self: FSSpecWrapper,
+        from_info,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        **kwargs,
     ):
-        with Tqdm(
-            desc=name,
-            disable=no_progress_bar,
-            bytes=True,
-            total=-1,
-            **pbar_args,
-        ) as pbar:
-            self.fs.get_file(
-                self._with_bucket(from_info),
-                os.fspath(to_file),
-                callback=pbar.as_callback(self, from_info),
-            )
+        total: int = self.getsize(from_info)
+        if total:
+            callback.set_size(total)
+
+        with self.open(from_info, "rb") as fobj, open(to_info, "wb") as fdest:
+            wrapped = CallbackIOWrapper(callback.relative_update, fobj)
+            shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)

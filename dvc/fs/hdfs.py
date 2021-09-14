@@ -8,8 +8,10 @@ import subprocess
 from collections import deque
 from contextlib import closing, contextmanager
 
+from tqdm.utils import CallbackIOWrapper
+
 from dvc.hash_info import HashInfo
-from dvc.progress import DEFAULT_CALLBACK, Tqdm
+from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 from dvc.utils import fix_env, tmp_fname
 
@@ -252,8 +254,6 @@ class HDFSFileSystem(BaseFileSystem):
     def put_file(
         self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        from tqdm.utils import CallbackIOWrapper
-
         with self.hdfs(to_info) as hdfs:
             hdfs.create_dir(to_info.parent.path)
 
@@ -267,19 +267,16 @@ class HDFSFileSystem(BaseFileSystem):
                     shutil.copyfileobj(wrapped, sobj, self.BLOCK_SIZE)
             hdfs.move(tmp_file, to_info.path)
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
         with self.hdfs(from_info) as hdfs:
             file_info = hdfs.get_file_info(from_info.path)
             total = file_info.size
-            with open(to_file, "wb+") as fobj:
-                with Tqdm.wrapattr(
-                    fobj,
-                    "write",
-                    desc=name,
-                    total=total,
-                    disable=no_progress_bar,
-                ) as wrapped:
-                    with hdfs.open_input_stream(from_info.path) as sobj:
-                        shutil.copyfileobj(sobj, wrapped, self.BLOCK_SIZE)
+            if total:
+                callback.set_size(total)
+
+            with hdfs.open_input_stream(from_info.path) as sobj:
+                with open(to_file, "wb+") as fobj:
+                    wrapped = CallbackIOWrapper(callback.relative_update, sobj)
+                    shutil.copyfileobj(wrapped, fobj, self.BLOCK_SIZE)

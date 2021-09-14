@@ -6,7 +6,7 @@ from dvc import prompt
 from dvc.path_info import HTTPURLInfo
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper, NoDirectoriesMixin
+from .fsspec_wrapper import FSSpecWrapper, NoDirectoriesMixin
 
 
 @wrap_with(threading.Lock())
@@ -32,7 +32,7 @@ def make_context(ssl_verify):
 
 
 # pylint: disable=abstract-method
-class HTTPFileSystem(CallbackMixin, NoDirectoriesMixin, FSSpecWrapper):
+class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
     scheme = Schemes.HTTP
     PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "checksum"

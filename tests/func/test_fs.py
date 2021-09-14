@@ -439,5 +439,36 @@ def test_upload_callback(tmp_dir, dvc, cloud):
 
     callback = fsspec.Callback()
     fs.upload(tmp_dir / "foo", cloud / "foo", callback=callback)
+
     assert callback.size == expected_size
     assert callback.value == expected_size
+    assert (cloud / "foo").read_text() == "foo"
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("gdrive"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("oss"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("ssh"),
+        pytest.lazy_fixture("webhdfs"),
+    ],
+)
+def test_download_callback(tmp_dir, dvc, cloud):
+    cloud.gen("foo", "foo")
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
+    expected_size = fs.getsize(cloud / "foo")
+
+    callback = fsspec.Callback()
+    fs.download_file(cloud / "foo", tmp_dir / "foo", callback=callback)
+
+    assert callback.size == expected_size
+    assert callback.value == expected_size
+    assert (tmp_dir / "foo").read_text() == "foo"

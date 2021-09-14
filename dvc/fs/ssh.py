@@ -9,7 +9,7 @@ from dvc.scheme import Schemes
 from dvc.utils.fs import as_atomic
 
 from ..progress import DEFAULT_CALLBACK
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
+from .fsspec_wrapper import FSSpecWrapper
 
 _SSH_TIMEOUT = 60 * 30
 _SSH_CONFIG_FILE = os.path.expanduser(os.path.join("~", ".ssh", "config"))
@@ -27,7 +27,7 @@ def ask_password(host, user, port):
 
 
 # pylint:disable=abstract-method
-class SSHFileSystem(CallbackMixin, FSSpecWrapper):
+class SSHFileSystem(FSSpecWrapper):
     scheme = Schemes.SSH
     REQUIRES = {"sshfs": "sshfs"}
 

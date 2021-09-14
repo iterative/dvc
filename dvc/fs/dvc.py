@@ -6,6 +6,7 @@ from dvc.exceptions import OutputNotFoundError
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
+from ..progress import DEFAULT_CALLBACK
 from ._metadata import Metadata
 from .base import BaseFileSystem
 
@@ -256,10 +257,12 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         return ret
 
-    def _download(self, from_info, to_file, **kwargs):
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         fs, path = self._get_fs_path(from_info)
-        fs._download(  # pylint: disable=protected-access
-            path, to_file, **kwargs
+        fs.get_file(  # pylint: disable=protected-access
+            path, to_file, callback=callback, **kwargs
         )
 
     def checksum(self, path_info):

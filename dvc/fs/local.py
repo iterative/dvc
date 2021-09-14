@@ -167,10 +167,7 @@ class LocalFileSystem(BaseFileSystem):
         copyfile(from_file, tmp_file, callback=callback)
         os.replace(tmp_file, to_info)
 
-    @staticmethod
-    def _download(
-        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
+        copyfile(from_info, to_file, callback=callback)

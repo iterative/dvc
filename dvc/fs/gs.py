@@ -7,11 +7,10 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
 # pylint:disable=abstract-method
-from ..progress import DEFAULT_CALLBACK
 from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
 
 
-class GSFileSystem(ObjectFSWrapper):
+class GSFileSystem(CallbackMixin, ObjectFSWrapper):
     scheme = Schemes.GS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"gcsfs": "gcsfs"}
@@ -36,11 +35,3 @@ class GSFileSystem(ObjectFSWrapper):
         from gcsfs import GCSFileSystem
 
         return GCSFileSystem(**self.fs_args)
-
-    def put_file(
-        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        # GCSFileSystem.put_file does not support callbacks yet.
-        return CallbackMixin.put_file_compat(
-            self, from_file, to_info, callback=callback, **kwargs
-        )

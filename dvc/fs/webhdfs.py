@@ -9,7 +9,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
-from dvc.progress import DEFAULT_CALLBACK, Tqdm
+from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
 from .base import BaseFileSystem
@@ -168,13 +168,13 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             progress=update_callback(callback, total),
         )
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
         total = self.getsize(from_info)
-        with Tqdm(
-            desc=name, total=total, disable=no_progress_bar, bytes=True
-        ) as pbar:
-            self.hdfs_client.download(
-                from_info.path, to_file, progress=update_pbar(pbar, total)
-            )
+        if total:
+            callback.set_size(total)
+
+        self.hdfs_client.download(
+            from_info.path, to_file, progress=update_callback(callback, total)
+        )
