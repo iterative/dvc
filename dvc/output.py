@@ -849,8 +849,9 @@ class Output:
         try:
             objects.check(self.odb, obj)
         except FileNotFoundError:
-            remote = self.repo.cloud.get_remote_odb(self.remote)
-            self.repo.cloud.pull([obj.hash_info], odb=remote, **kwargs)
+            if self.remote:
+                kwargs["remote"] = self.remote
+            self.repo.cloud.pull([obj.hash_info], **kwargs)
 
         if self.obj:
             return self.obj

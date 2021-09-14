@@ -653,3 +653,35 @@ def test_output_remote(tmp_dir, dvc, make_remote):
         "6b18131dc289fd37006705affe961ef8.dir",
         "b8a9f715dbb64fd5c56e7783c6820a61",
     }
+
+
+def test_target_remote(tmp_dir, dvc, make_remote):
+    make_remote("default", default=True)
+    make_remote("myremote", default=False)
+
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.dvc_gen("data", {"one": "one", "two": "two"})
+
+    dvc.push(remote="myremote")
+
+    default = dvc.cloud.get_remote_odb("default")
+    myremote = dvc.cloud.get_remote_odb("myremote")
+
+    assert set(default.all()) == set()
+    assert set(myremote.all()) == {
+        "acbd18db4cc2f85cedef654fccc4a4d8",
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
+
+    clean(["foo", "data"], dvc)
+
+    dvc.pull(remote="myremote")
+
+    assert set(dvc.odb.local.all()) == {
+        "acbd18db4cc2f85cedef654fccc4a4d8",
+        "f97c5d29941bfb1b2fdab0874906ab82",
+        "6b18131dc289fd37006705affe961ef8.dir",
+        "b8a9f715dbb64fd5c56e7783c6820a61",
+    }
