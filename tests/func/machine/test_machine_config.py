@@ -4,7 +4,7 @@ import pytest
 
 from dvc.main import main
 
-config_text = textwrap.dedent(
+CONFIG_TEXT = textwrap.dedent(
     """\
         [feature]
             machine = true
