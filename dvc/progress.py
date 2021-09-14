@@ -191,8 +191,14 @@ class FsspecCallback(fsspec.Callback):
         self.progress_bar.update_to(value)
         super().absolute_update(value)
 
-    def branch(self, path_1, path_2, kwargs):
-        return FsspecCallback(self.fs, path_1, Tqdm(**kwargs))
+    @staticmethod
+    def wrap_fn(cb, fn):
+        def wrapped(*args, **kwargs):
+            res = fn(*args, **kwargs)
+            cb.relative_update()
+            return res
+
+        return wrapped
 
 
 def tdqm_or_callback_wrapped(

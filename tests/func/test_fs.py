@@ -476,3 +476,36 @@ def test_download_callback(tmp_dir, dvc, cloud):
     assert callback.size == expected_size
     assert callback.value == expected_size
     assert (tmp_dir / "foo").read_text() == "foo"
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("s3"),
+        pytest.param(
+            pytest.lazy_fixture("ssh"),
+            marks=pytest.mark.skipif(
+                os.name == "nt", reason="unsupported on Windows."
+            ),
+        ),
+        pytest.param(
+            pytest.lazy_fixture("gdrive"), marks=pytest.mark.xfail(strict=True)
+        ),
+    ],
+)
+def test_download_dir_callback(tmp_dir, dvc, cloud):
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
+    cloud.gen({"dir": {"foo": "foo", "bar": "bar"}})
+
+    callback = fsspec.Callback()
+    fs.download(cloud / "dir", tmp_dir / "dir", callback=callback)
+
+    assert callback.size == 2
+    assert callback.value == 2
+    assert (tmp_dir / "dir").read_text() == {"foo": "foo", "bar": "bar"}
