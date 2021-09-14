@@ -76,7 +76,7 @@ def test_partial_upload(tmp_dir, dvc, index, mocker):
     tmp_dir.dvc_gen({"foo": "foo content"})
     tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})
 
-    original = LocalFileSystem._upload
+    original = LocalFileSystem.upload
 
     def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
         if "baz" in name:

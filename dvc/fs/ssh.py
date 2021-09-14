@@ -8,6 +8,7 @@ from dvc import prompt
 from dvc.scheme import Schemes
 from dvc.utils.fs import as_atomic
 
+from ..progress import DEFAULT_CALLBACK
 from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
 
 _SSH_TIMEOUT = 60 * 30
@@ -124,6 +125,8 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
         with as_atomic(self, to_info) as tmp_file:
             super().upload_fobj(fobj, tmp_file, **kwargs)
 
-    def _upload(self, from_file, to_info, *args, **kwargs):
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         with as_atomic(self, to_info) as tmp_file:
-            super()._upload(from_file, tmp_file, *args, **kwargs)
+            super().put_file(from_file, tmp_file, callback=callback, **kwargs)

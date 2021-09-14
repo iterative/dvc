@@ -3,6 +3,7 @@ import os
 from operator import itemgetter
 from os.path import join
 
+import fsspec
 import pytest
 
 from dvc.fs import get_cloud_fs
@@ -413,3 +414,30 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     fs.copy(cloud / "dir" / "foo", cloud / "dir2" / "foo")
     assert fs.isdir(cloud / "dir2")
     assert fs.exists(cloud / "dir2" / "foo")
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize(
+    "cloud",
+    [
+        pytest.lazy_fixture("azure"),
+        pytest.lazy_fixture("gs"),
+        pytest.lazy_fixture("gdrive"),
+        pytest.lazy_fixture("hdfs"),
+        pytest.lazy_fixture("local_cloud"),
+        pytest.lazy_fixture("oss"),
+        pytest.lazy_fixture("s3"),
+        pytest.lazy_fixture("ssh"),
+        pytest.lazy_fixture("webhdfs"),
+    ],
+)
+def test_upload_callback(tmp_dir, dvc, cloud):
+    tmp_dir.gen("foo", "foo")
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
+    expected_size = os.path.getsize(tmp_dir / "foo")
+
+    callback = fsspec.Callback()
+    fs.upload(tmp_dir / "foo", cloud / "foo", callback=callback)
+    assert callback.size == expected_size
+    assert callback.value == expected_size

@@ -9,7 +9,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
-from dvc.progress import Tqdm
+from dvc.progress import DEFAULT_CALLBACK, Tqdm
 from dvc.scheme import Schemes
 
 from .base import BaseFileSystem
@@ -25,6 +25,15 @@ def update_pbar(pbar, total):
             pbar.update_to(total)
             return
         pbar.update_to(bytes_transfered)
+
+    return update
+
+
+def update_callback(callback, total):
+    def update(_, bytes_transfered):
+        if bytes_transfered == -1:
+            return callback.absolute_update(total)
+        return callback.relative_update(bytes_transfered)
 
     return update
 
@@ -145,19 +154,19 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         with self.hdfs_client.write(to_info.path) as fdest:
             shutil.copyfileobj(fobj, fdest)
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
         total = os.path.getsize(from_file)
-        with Tqdm(
-            desc=name, total=total, disable=no_progress_bar, bytes=True
-        ) as pbar:
-            self.hdfs_client.upload(
-                to_info.path,
-                from_file,
-                overwrite=True,
-                progress=update_pbar(pbar, total),
-            )
+        callback.set_size(total)
+
+        self.hdfs_client.makedirs(to_info.parent.path)
+        return self.hdfs_client.upload(
+            to_info.path,
+            from_file,
+            overwrite=True,
+            progress=update_callback(callback, total),
+        )
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs

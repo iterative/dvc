@@ -7,6 +7,7 @@ from dvc.system import System
 from dvc.utils import is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
+from ..progress import DEFAULT_CALLBACK
 from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
@@ -158,15 +159,12 @@ class LocalFileSystem(BaseFileSystem):
     def info(self, path_info):
         return self.fs.info(path_info)
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
         makedirs(to_info.parent, exist_ok=True)
-
         tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
+        copyfile(from_file, tmp_file, callback=callback)
         os.replace(tmp_file, to_info)
 
     @staticmethod

@@ -91,8 +91,8 @@ def test_walk_files(remote):
 def test_copy_preserve_etag_across_buckets(cloud, dvc):
     cloud.gen(FILE_WITH_CONTENTS)
     rem = _get_odb(dvc, cloud.config)
-    s3 = rem.fs
-    s3.fs.mkdir("another/")
+    s3 = rem.fs.s3
+    s3.create_bucket(Bucket="another")
 
     config = cloud.config.copy()
     config["url"] = "s3://another"
