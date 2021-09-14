@@ -191,6 +191,9 @@ class FsspecCallback(fsspec.Callback):
         self.progress_bar.update_to(value)
         super().absolute_update(value)
 
+    def branch(self, path_1, path_2, kwargs):
+        return FsspecCallback(self.fs, path_1, Tqdm(**kwargs))
+
 
 def tdqm_or_callback_wrapped(
     fobj, method, total, callback=None, **pbar_kwargs
@@ -206,4 +209,4 @@ def tdqm_or_callback_wrapped(
     return Tqdm.wrapattr(fobj, method, total=total, bytes=True, **pbar_kwargs)
 
 
-DEFAULT_CALLBACK = fsspec.callbacks.NoOpCallback
+DEFAULT_CALLBACK = fsspec.callbacks.NoOpCallback()

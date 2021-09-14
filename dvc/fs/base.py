@@ -11,7 +11,6 @@ from tqdm.utils import CallbackIOWrapper
 
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
-from dvc.progress import Tqdm
 from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
@@ -288,13 +287,14 @@ class BaseFileSystem:
         from_info,
         to_info,
         name=None,
+        callback=None,
         no_progress_bar=False,
         jobs=None,
         _only_file=False,
         **kwargs,
     ):
-        if not hasattr(self, "_download"):
-            raise RemoteActionNotImplemented("download", self.scheme)
+        if not hasattr(self, "get_file"):
+            raise RemoteActionNotImplemented("get_file", self.scheme)
 
         if from_info.scheme != self.scheme:
             raise NotImplementedError
@@ -308,14 +308,31 @@ class BaseFileSystem:
 
         if not _only_file and self.isdir(from_info):
             return self._download_dir(
-                from_info, to_info, name, no_progress_bar, jobs, **kwargs
+                from_info,
+                to_info,
+                desc=name,
+                no_progress_bar=no_progress_bar,
+                jobs=jobs,
+                **kwargs,
             )
-        return self._download_file(from_info, to_info, name, no_progress_bar)
+        return self._download_file(
+            from_info,
+            to_info,
+            callback=callback,
+            desc=name,
+            no_progress_bar=no_progress_bar,
+        )
 
     download_file = partialmethod(download, _only_file=True)
 
     def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs
+        self,
+        from_info,
+        to_info,
+        desc=None,
+        no_progress_bar=False,
+        jobs=None,
+        **kwargs,
     ):
         from_infos = list(self.walk_files(from_info, **kwargs))
         if not from_infos:
@@ -325,14 +342,14 @@ class BaseFileSystem:
             to_info / info.relative_to(from_info) for info in from_infos
         )
 
-        with Tqdm(
+        with ui.progress(
             total=len(from_infos),
             desc="Downloading directory",
             unit="Files",
             disable=no_progress_bar,
         ) as pbar:
             download_files = pbar.wrap_fn(
-                partial(self._download_file, name=name, no_progress_bar=True)
+                partial(self._download_file, desc=desc, no_progress_bar=True)
             )
             max_workers = jobs or self.jobs
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -356,16 +373,37 @@ class BaseFileSystem:
                             entry.cancel()
                         raise exc
 
-    def _download_file(self, from_info, to_info, name, no_progress_bar):
+    def _download_file(
+        self,
+        from_info,
+        to_info,
+        desc=None,
+        no_progress_bar=False,
+        callback=None,
+    ):
         makedirs(to_info.parent, exist_ok=True)
-
-        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
-        name = name or to_info.name
-
         tmp_file = tmp_fname(to_info)
 
-        self._download(  # noqa, pylint: disable=no-member
-            from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
+        stack = contextlib.ExitStack()
+        if not callback:
+            pbar = ui.progress(
+                desc=desc or to_info.name,
+                disable=no_progress_bar,
+                bytes=True,
+                total=-1,
+            )
+            stack.enter_context(pbar)
+            callback = pbar.as_callback(self, from_info)
+
+        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
+        try:
+            with stack:
+                # noqa, pylint: disable=no-member
+                self.get_file(from_info, tmp_file, callback=callback)
+        except Exception:  # pylint: disable=broad-except
+            # do we need to rollback makedirs for previously not-existing
+            # directories?
+            os.unlink(tmp_file)
+            raise
 
         move(tmp_file, to_info)
