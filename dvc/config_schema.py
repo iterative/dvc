@@ -252,7 +252,7 @@ SCHEMA = {
             "image": str,
             "name": str,
             "spot": Bool,
-            "spot_price": Number(precision=5),
+            "spot_price": Coerce(float),
             "instance_hdd_size": Coerce(int),
             "instance_type": Lower,
             "instance_gpu": Lower,
