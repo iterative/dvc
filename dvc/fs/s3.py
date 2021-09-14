@@ -219,8 +219,8 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
 
     @_translate_exceptions
     def get_file(
-        self, from_info, to_file, callback=DEFAULT_CALLBACK, **pbar_args
+        self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
         obj = self._get_obj(from_info)
         callback.set_size(obj.content_length)
-        obj.download_file(to_file, Callback=callback.relative_update)
+        obj.download_file(to_info, Callback=callback.relative_update)
