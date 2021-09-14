@@ -99,7 +99,7 @@ jobs:
       run: |
         echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
-      timeout-minutes: 30
+      timeout-minutes: 35
       env:
         GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
