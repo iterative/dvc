@@ -8,7 +8,6 @@ from tqdm.utils import CallbackIOWrapper
 from dvc.progress import DEFAULT_CALLBACK
 
 from .base import BaseFileSystem
-from .local import LocalFileSystem
 
 
 # pylint: disable=no-member
@@ -236,9 +235,6 @@ class NoDirectoriesMixin:
 
     def ls(self, *args, **kwargs):
         raise NotImplementedError
-
-
-_LOCAL_FS = LocalFileSystem()
 
 
 class CallbackMixin:

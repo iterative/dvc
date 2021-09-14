@@ -6,7 +6,6 @@ from functools import partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
-from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
 
 from dvc.exceptions import DvcException
@@ -223,12 +222,6 @@ class BaseFileSystem:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    @cached_property
-    def _local_fs(self):
-        from dvc.fs import LocalFileSystem
-
-        return LocalFileSystem()
-
     def upload(
         self,
         from_info,
@@ -260,7 +253,7 @@ class BaseFileSystem:
                 **pbar_args,
             )
             stack.enter_context(pbar)
-            callback = pbar.as_callback(self._local_fs, from_info)
+            callback = pbar.as_callback()
             if total:
                 callback.set_size(total)
 
@@ -321,7 +314,7 @@ class BaseFileSystem:
                 **pbar_kwargs,
             )
             stack.enter_context(pbar)
-            callback = pbar.as_callback(self, from_info)
+            callback = pbar.as_callback()
 
         with stack:
             if download_dir:
