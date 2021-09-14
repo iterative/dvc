@@ -654,6 +654,7 @@ def test_output_remote(tmp_dir, dvc, make_remote):
         "b8a9f715dbb64fd5c56e7783c6820a61",
     }
 
+
 def test_target_remote(tmp_dir, dvc, make_remote):
     make_remote("default", default=True)
     make_remote("myremote", default=False)
