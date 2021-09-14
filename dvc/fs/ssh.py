@@ -67,6 +67,11 @@ class SSHFileSystem(FSSpecWrapper):
             or self.DEFAULT_PORT
         )
 
+        if config.get("ask_password") and config.get("password") is None:
+            config["password"] = ask_password(
+                login_info["host"], login_info["username"], login_info["port"]
+            )
+
         login_info["password"] = config.get("password")
         login_info["passphrase"] = config.get("password")
 
@@ -100,11 +105,6 @@ class SSHFileSystem(FSSpecWrapper):
         login_info["gss_auth"] = config.get("gss_auth", False)
         login_info["agent_forwarding"] = config.get("agent_forwarding", True)
         login_info["proxy_command"] = user_ssh_config.get("ProxyCommand")
-
-        if config.get("ask_password") and login_info["password"] is None:
-            login_info["password"] = ask_password(
-                login_info["host"], login_info["username"], login_info["port"]
-            )
 
         # We are going to automatically add stuff to known_hosts
         # something like paramiko's AutoAddPolicy()
