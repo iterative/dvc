@@ -2,9 +2,16 @@ import os
 from urllib.parse import urlparse
 
 from funcy import walk_values
-from voluptuous import All, Any, Coerce, Invalid, Lower
-from voluptuous import Number as Number_
-from voluptuous import Optional, Range, Schema
+from voluptuous import (
+    All,
+    Any,
+    Coerce,
+    Invalid,
+    Lower,
+    Optional,
+    Range,
+    Schema,
+)
 
 Bool = All(
     Lower,
@@ -32,30 +39,6 @@ def supported_cache_type(types):
         )
 
     return types
-
-
-class Number(Number_):
-    """`<=` version of the official Number class"""
-
-    def __call__(self, v):
-        precision, scale, decimal_num = self._get_precision_scale(v)
-
-        error_msg = ""
-        if self.precision is not None and precision > self.precision:
-            error_msg += (
-                "Precision must be not bigger than %s" % self.precision
-            )
-        if self.scale is not None and self.scale != scale:
-            if error_msg:
-                error_msg += ", and "
-            error_msg += "Scale must be equal to %s" % self.scale
-
-        if error_msg:
-            raise Invalid(self.msg or error_msg)
-
-        if self.yield_decimal:
-            return decimal_num
-        return v
 
 
 def Choices(*choices):

@@ -1,3 +1,4 @@
+import os
 import textwrap
 
 import pytest
@@ -22,7 +23,7 @@ CONFIG_TEXT = textwrap.dedent(
         ("name", "iterative_test"),
         ("spot", "True"),
         ("spot_price", "1.2345"),
-        ("spot_price", "123"),
+        ("spot_price", "12345"),
         ("instance_hdd_size", "10"),
         ("instance_type", "l"),
         ("instance_gpu", "tesla"),
@@ -30,24 +31,24 @@ CONFIG_TEXT = textwrap.dedent(
     ],
 )
 def test_machine_modify_susccess(tmp_dir, dvc, slot, value):
-    (tmp_dir / ".dvc" / "config").write_text(config_text)
+    (tmp_dir / ".dvc" / "config").write_text(CONFIG_TEXT)
     assert main(["machine", "modify", "foo", slot, value]) == 0
     assert (
         tmp_dir / ".dvc" / "config"
-    ).read_text() == config_text + f"    {slot} = {value}\n"
+    ).read_text() == CONFIG_TEXT + f"    {slot} = {value}\n"
     assert main(["machine", "modify", "--unset", "foo", slot]) == 0
-    assert (tmp_dir / ".dvc" / "config").read_text() == config_text
+    assert (tmp_dir / ".dvc" / "config").read_text() == CONFIG_TEXT
 
 
 def test_machine_modify_startup_script(tmp_dir, dvc):
     slot, value = "startup_script", "start.sh"
-    (tmp_dir / ".dvc" / "config").write_text(config_text)
+    (tmp_dir / ".dvc" / "config").write_text(CONFIG_TEXT)
     assert main(["machine", "modify", "foo", slot, value]) == 0
     assert (
         tmp_dir / ".dvc" / "config"
-    ).read_text() == config_text + f"    {slot} = ../{value}\n"
+    ).read_text() == CONFIG_TEXT + f"    {slot} = ../{value}\n"
     assert main(["machine", "modify", "--unset", "foo", slot]) == 0
-    assert (tmp_dir / ".dvc" / "config").read_text() == config_text
+    assert (tmp_dir / ".dvc" / "config").read_text() == CONFIG_TEXT
 
 
 @pytest.mark.parametrize(
@@ -58,19 +59,19 @@ def test_machine_modify_startup_script(tmp_dir, dvc):
             "other-west",
             "expected one of us-west, us-east, eu-west, eu-north",
         ),
-        ("spot_price", "123.4567", "Precision must be not bigger than 5"),
+        ("spot_price", "NUM", "expected float"),
         ("instance_hdd_size", "BIG", "expected int"),
     ],
 )
 def test_machine_modify_fail(tmp_dir, dvc, caplog, slot, value, msg):
-    (tmp_dir / ".dvc" / "config").write_text(config_text)
+    (tmp_dir / ".dvc" / "config").write_text(CONFIG_TEXT)
 
     assert main(["machine", "modify", "foo", slot, value]) == 251
-    assert (tmp_dir / ".dvc" / "config").read_text() == config_text
+    assert (tmp_dir / ".dvc" / "config").read_text() == CONFIG_TEXT
     assert msg in caplog.text
 
 
-full_config_text = textwrap.dedent(
+FULL_CONFIG_TEXT = textwrap.dedent(
     """\
         [feature]
             machine = true
@@ -87,13 +88,15 @@ full_config_text = textwrap.dedent(
             instance_type = l
             instance_gpu = tesla
             ssh_private = secret
-            startup_script = ../start.sh
-    """
+            startup_script = {}
+    """.format(
+        os.path.join("..", "start.sh")
+    )
 )
 
 
 def test_machine_list(tmp_dir, dvc, capsys):
-    (tmp_dir / ".dvc" / "config").write_text(full_config_text)
+    (tmp_dir / ".dvc" / "config").write_text(FULL_CONFIG_TEXT)
 
     assert main(["machine", "list"]) == 0
     cap = capsys.readouterr()
@@ -112,4 +115,9 @@ def test_machine_list(tmp_dir, dvc, capsys):
     assert "instance_type=l" in cap.out
     assert "instance_gpu=tesla" in cap.out
     assert "ssh_private=secret" in cap.out
-    assert f"startup_script={tmp_dir}/.dvc/../start.sh" in cap.out
+    assert (
+        "startup_script={}".format(
+            os.path.join(tmp_dir, ".dvc", "..", "start.sh")
+        )
+        in cap.out
+    )

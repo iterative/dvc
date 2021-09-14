@@ -11,7 +11,7 @@ from dvc.command.machine import (
     CmdMachineSsh,
 )
 
-data = {
+DATA = {
     ".dvc": {
         "config": (
             "[feature]\n"
@@ -34,7 +34,7 @@ def test_add(tmp_dir):
 
 
 def test_remove(tmp_dir):
-    tmp_dir.gen(data)
+    tmp_dir.gen(DATA)
     cli_args = parse_args(["machine", "remove", "foo"])
     assert cli_args.func == CmdMachineRemove
     cmd = cli_args.func(cli_args)
@@ -85,7 +85,7 @@ def test_ssh(tmp_dir, dvc, mocker):
 def test_list(tmp_dir, mocker):
     from dvc.ui import ui
 
-    tmp_dir.gen(data)
+    tmp_dir.gen(DATA)
     cli_args = parse_args(["machine", "list", "foo"])
     assert cli_args.func == CmdMachineList
     cmd = cli_args.func(cli_args)
@@ -95,7 +95,7 @@ def test_list(tmp_dir, mocker):
 
 
 def test_modified(tmp_dir):
-    tmp_dir.gen(data)
+    tmp_dir.gen(DATA)
     cli_args = parse_args(["machine", "modify", "foo", "cloud", "azure"])
     assert cli_args.func == CmdMachineModify
     cmd = cli_args.func(cli_args)
