@@ -138,22 +138,15 @@ class CmdConfig(CmdBaseNoRepo):
     def _get_appropriate_levels(self, levels):
         if levels:
             self._validate_level_for_non_repo_operation(levels)
-            return [self.args.level]
+            return [levels]
         if self.config.dvc_dir is None:
-            return [
-                level
-                for level in self.config.LEVELS
-                if level not in self.config.REPO_ONLY_LEVELS
-            ]
+            return self.config.SYSTEM_LEVELS
         return self.config.LEVELS
 
     def _validate_level_for_non_repo_operation(self, level):
         from dvc.config import ConfigError
 
-        if (
-            self.config.dvc_dir is None
-            and level in self.config.REPO_ONLY_LEVELS
-        ):
+        if self.config.dvc_dir is None and level in self.config.REPO_LEVELS:
             raise ConfigError("Not inside a DVC repo")
 
     @staticmethod
