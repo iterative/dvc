@@ -245,29 +245,30 @@ class CallbackMixin:
     """Provides callback support for the filesystem that don't support yet."""
 
     def put_file(
-        self: FSSpecWrapper,
+        self,
         from_file,
         to_info,
         callback=DEFAULT_CALLBACK,
         **kwargs,
     ):
         """Add compatibility support for Callback."""
+        # pylint: disable=protected-access
         self.makedirs(to_info.parent)
         size = os.path.getsize(from_file)
         with open(from_file, "rb") as fobj:
             callback.set_size(size)
             wrapped = CallbackIOWrapper(callback.relative_update, fobj)
             self.upload_fobj(wrapped, to_info)
-            # pylint: disable=protected-access
             self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     def get_file(
-        self: FSSpecWrapper,
+        self,
         from_info,
         to_info,
         callback=DEFAULT_CALLBACK,
         **kwargs,
     ):
+        # pylint: disable=protected-access
         total: int = self.getsize(from_info)
         if total:
             callback.set_size(total)
