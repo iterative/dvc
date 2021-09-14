@@ -495,6 +495,8 @@ def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
+    import time
+
     baseline_rev = scm.get_rev()
 
     def _get_rev_isotimestamp(rev):
@@ -505,6 +507,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     result1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     rev1 = first(result1)
     ref_info1 = first(exp_refs_by_rev(scm, rev1))
+    time.sleep(1)
     result2 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
     rev2 = first(result2)
     ref_info2 = first(exp_refs_by_rev(scm, rev2))
