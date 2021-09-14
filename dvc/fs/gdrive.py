@@ -12,8 +12,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 
-from ..progress import DEFAULT_CALLBACK
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
+from .fsspec_wrapper import FSSpecWrapper
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -301,11 +300,3 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         rpath = self._with_bucket(to_info)
         self.makedirs(os.path.dirname(rpath))
         return self.fs.upload_fobj(fobj, rpath, **kwargs)
-
-    def get_file(
-        self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        # see: https://github.com/iterative/PyDrive2/issues/136
-        return CallbackMixin.get_file(
-            self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
-        )

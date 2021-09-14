@@ -450,6 +450,12 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     [
         pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("gs"),
+        pytest.param(
+            pytest.lazy_fixture("gdrive"),
+            marks=pytest.mark.xfail(
+                reason="https://github.com/iterative/PyDrive2/issues/136"
+            ),
+        ),
         pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("local_cloud"),
