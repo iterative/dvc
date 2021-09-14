@@ -6,10 +6,9 @@ from funcy import cached_property, wrap_prop
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import ObjectFSWrapper, CallbackMixin
-
 # pylint:disable=abstract-method
 from ..progress import DEFAULT_CALLBACK
+from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
 
 
 class GSFileSystem(ObjectFSWrapper):
@@ -38,6 +37,10 @@ class GSFileSystem(ObjectFSWrapper):
 
         return GCSFileSystem(**self.fs_args)
 
-    def put_file(self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs):
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         # GCSFileSystem.put_file does not support callbacks yet.
-        return CallbackMixin.put_file_compat(self, from_file, to_info, callback=callback, **kwargs)
+        return CallbackMixin.put_file_compat(
+            self, from_file, to_info, callback=callback, **kwargs
+        )

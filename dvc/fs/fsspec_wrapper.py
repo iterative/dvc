@@ -256,7 +256,9 @@ class CallbackMixin:
     if the target filesystem supports callbacks."""
 
     @staticmethod
-    def put_file_compat(fs, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs):
+    def put_file_compat(
+        fs, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         """Add compatibility support for Callback."""
         fs.makedirs(to_info.parent)
         size = os.path.getsize(from_file)

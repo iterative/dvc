@@ -12,7 +12,7 @@ from dvc.scheme import Schemes
 from dvc.utils import format_link
 
 from ..progress import DEFAULT_CALLBACK
-from .fsspec_wrapper import ObjectFSWrapper, CallbackMixin
+from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -165,4 +165,6 @@ class AzureFileSystem(ObjectFSWrapper):
         self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
         # AzureFileSystem.put_file does not support callbacks yet.
-        return CallbackMixin.put_file_compat(self, from_file, to_info, callback=callback, **kwargs)
+        return CallbackMixin.put_file_compat(
+            self, from_file, to_info, callback=callback, **kwargs
+        )
