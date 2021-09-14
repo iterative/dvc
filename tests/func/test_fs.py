@@ -442,7 +442,6 @@ def test_upload_callback(tmp_dir, dvc, cloud):
 
     assert callback.size == expected_size
     assert callback.value == expected_size
-    assert (cloud / "foo").read_text() == "foo"
 
 
 @pytest.mark.needs_internet
@@ -461,9 +460,9 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     ],
 )
 def test_download_callback(tmp_dir, dvc, cloud):
-    cloud.gen("foo", "foo")
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
+    fs.upload(io.BytesIO(b"foo"), cloud / "foo")
     expected_size = fs.getsize(cloud / "foo")
 
     callback = fsspec.Callback()
