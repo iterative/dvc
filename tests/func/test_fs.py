@@ -493,9 +493,7 @@ def test_download_callback(tmp_dir, dvc, cloud):
                 os.name == "nt", reason="unsupported on Windows."
             ),
         ),
-        pytest.param(
-            pytest.lazy_fixture("gdrive"), marks=pytest.mark.xfail(strict=True)
-        ),
+        pytest.lazy_fixture("gdrive"),
     ],
 )
 def test_download_dir_callback(tmp_dir, dvc, cloud):
