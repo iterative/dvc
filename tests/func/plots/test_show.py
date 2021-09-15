@@ -6,23 +6,16 @@ from funcy import get_in
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.main import main
-from dvc.path_info import PathInfo
 from dvc.render.vega import PlotMetricTypeError
 from dvc.repo import Repo
 from dvc.utils import onerror_collect
 from dvc.utils.fs import remove
-from dvc.utils.serialize import (
-    EncodingError,
-    YAMLFileCorruptedError,
-    dump_yaml,
-    modify_yaml,
-)
-from tests.func.plots.utils import _write_json
+from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError
 
 
 def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
     metric1 = [{"y": 2}, {"y": 3}]
-    _write_json(tmp_dir, metric1, "metric_t.json")
+    (tmp_dir / "metric_t.json").dump_json(metric1, sort_keys=True)
     run_copy_metrics(
         "metric_t.json",
         "metric.json",
@@ -33,7 +26,7 @@ def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
 
     # Make a different plot and then remove its datafile
     metric2 = [{"y": 3}, {"y": 4}]
-    _write_json(tmp_dir, metric2, "metric_t.json")
+    (tmp_dir / "metric_t.json").dump_json(metric2, sort_keys=True)
     stage = run_copy_metrics(
         "metric_t.json",
         "metric.json",
@@ -71,7 +64,7 @@ def test_plot_wrong_metric_type(tmp_dir, scm, dvc, run_copy_metrics):
 @pytest.mark.parametrize("use_dvc", [True, False])
 def test_show_non_plot(tmp_dir, scm, use_dvc):
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-    _write_json(tmp_dir, metric, "metric.json")
+    (tmp_dir / "metric.json").dump_json(metric, sort_keys=True)
 
     if use_dvc:
         dvc = Repo.init()
@@ -87,7 +80,7 @@ def test_show_non_plot_and_plot_with_params(
     tmp_dir, scm, dvc, run_copy_metrics
 ):
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-    _write_json(tmp_dir, metric, "metric.json")
+    (tmp_dir / "metric.json").dump_json(metric, sort_keys=True)
     run_copy_metrics(
         "metric.json", "metric2.json", plots_no_cache=["metric2.json"]
     )
@@ -105,7 +98,7 @@ def test_show_from_subdir(tmp_dir, dvc, capsys):
 
     subdir.mkdir()
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
-    _write_json(subdir, metric, "metric.json")
+    (subdir / "metric.json").dump_json(metric, sort_keys=True)
 
     with subdir.chdir():
         assert main(["plots", "show", "metric.json"]) == 0
@@ -127,10 +120,10 @@ def test_plots_show_non_existing(tmp_dir, dvc, caplog):
 
 @pytest.mark.parametrize("clear_before_run", [True, False])
 def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
-    data_dir = PathInfo("data")
-    (tmp_dir / data_dir).mkdir()
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
 
-    dump_yaml(data_dir / "m1_temp.yaml", {"a": {"b": {"c": 2, "d": 1}}})
+    (data_dir / "m1_temp.yaml").dump({"a": {"b": {"c": 2, "d": 1}}})
     run_copy_metrics(
         str(data_dir / "m1_temp.yaml"),
         str(data_dir / "m1.yaml"),
@@ -139,7 +132,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
         name="cp-m1",
         plots=[str(data_dir / "m1.yaml")],
     )
-    with modify_yaml("dvc.yaml") as d:
+    with (tmp_dir / "dvc.yaml").modify() as d:
         # trying to make an output overlaps error
         d["stages"]["corrupted-stage"] = {
             "cmd": "mkdir data",
@@ -167,7 +160,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
 
     fname = "file.json"
-    _write_json(tmp_dir, metric, fname)
+    (tmp_dir / fname).dump_json(metric, sort_keys=True)
 
     p1 = os.path.join("subdir", "p1.json")
     p2 = os.path.join("subdir", "p2.json")
@@ -213,7 +206,7 @@ def test_log_errors(
     tmp_dir, scm, dvc, run_copy_metrics, file, error_path, capsys
 ):
     metric = [{"val": 2}, {"val": 3}]
-    dump_yaml("metric_t.yaml", metric)
+    (tmp_dir / "metric_t.yaml").dump(metric)
     run_copy_metrics(
         "metric_t.yaml",
         "plot.yaml",

@@ -5,7 +5,6 @@ import pytest
 
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver, ForeachDefinition
 from dvc.parsing.context import Context
-from dvc.utils.serialize import dump_yaml
 
 
 def test_with_simple_list_data(tmp_dir, dvc):
@@ -111,7 +110,7 @@ def test_foreach_interpolate_with_composite_data(
 def test_params_file_with_dict_tracked(tmp_dir, dvc):
     foreach_data = {"model1": {"thresh": "foo"}, "model2": {"thresh": "bar"}}
     params = {"models": foreach_data}
-    dump_yaml("params.yaml", params)
+    (tmp_dir / "params.yaml").dump(params)
 
     resolver = DataResolver(dvc, tmp_dir, {})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item.thresh}"}}
@@ -132,7 +131,7 @@ def test_params_file_with_dict_tracked(tmp_dir, dvc):
 def test_params_file_tracked_for_composite_list(tmp_dir, dvc):
     foreach_data = [{"thresh": "foo"}, {"thresh": "bar"}]
     params = {"models": foreach_data}
-    dump_yaml("params.yaml", params)
+    (tmp_dir / "params.yaml").dump(params)
 
     resolver = DataResolver(dvc, tmp_dir, {})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item.thresh}"}}
@@ -178,8 +177,8 @@ def test_foreach_partial_interpolations(tmp_dir, dvc):
 
 
 def test_mixed_vars_for_foreach_data(tmp_dir, dvc):
-    dump_yaml("params.yaml", {"models": {"model1": "foo"}})
-    dump_yaml("test_params.yaml", {"models": {"model2": "bar"}})
+    (tmp_dir / "params.yaml").dump({"models": {"model1": "foo"}})
+    (tmp_dir / "test_params.yaml").dump({"models": {"model2": "bar"}})
 
     resolver = DataResolver(dvc, tmp_dir, {"vars": ["test_params.yaml"]})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item}"}}
@@ -197,12 +196,10 @@ def test_mixed_vars_for_foreach_data(tmp_dir, dvc):
 
 
 def test_mixed_vars_for_foreach_data_2(tmp_dir, dvc):
-    dump_yaml(
-        "params.yaml",
+    (tmp_dir / "params.yaml").dump(
         {"models": {"model1": {"thresh": 10}, "model2": {"thresh": 15}}},
     )
-    dump_yaml(
-        "test_params.yaml",
+    (tmp_dir / "test_params.yaml").dump(
         {"models": {"model1": {"epochs": 5}, "model2": {"epochs": 10}}},
     )
 
@@ -288,9 +285,9 @@ def test_foreach_with_local_vars(tmp_dir, dvc):
     ],
 )
 def test_foreach_with_imported_vars(tmp_dir, dvc, local_import):
-    dump_yaml("params.yaml", {"models": {"model1": {"thresh": "foo"}}})
-    dump_yaml(
-        "test_params.yaml", {"train": {"epochs": 10}, "prepare": {"nums": 25}}
+    (tmp_dir / "params.yaml").dump({"models": {"model1": {"thresh": "foo"}}})
+    (tmp_dir / "test_params.yaml").dump(
+        {"train": {"epochs": 10}, "prepare": {"nums": 25}}
     )
     resolver = DataResolver(dvc, tmp_dir, {})
     foreach_data = ["foo", "bar"]
@@ -321,13 +318,12 @@ def test_foreach_with_imported_vars(tmp_dir, dvc, local_import):
 def test_foreach_with_interpolated_wdir_and_local_vars(
     tmp_dir, dvc, local_import
 ):
-    dump_yaml("params.yaml", {"models": {"model1": {"thresh": "foo"}}})
+    (tmp_dir / "params.yaml").dump({"models": {"model1": {"thresh": "foo"}}})
 
     for i in range(5):
         build_dir = tmp_dir / ("model-" + str(i))
         build_dir.mkdir()
-        dump_yaml(
-            build_dir / "params.yaml",
+        (build_dir / "params.yaml").dump(
             {"train": {"epochs": 1 + i}, "prepare": {"nums": 10 * i}},
         )
 

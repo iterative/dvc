@@ -55,7 +55,7 @@ def test_add(tmp_dir, dvc):
     assert stage.outs[0].hash_info == HashInfo("md5", md5)
     assert stage.md5 is None
 
-    assert load_yaml("foo.dvc") == {
+    assert (tmp_dir / "foo.dvc").parse() == {
         "outs": [
             {
                 "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
@@ -73,7 +73,7 @@ def test_add_executable(tmp_dir, dvc):
     os.chmod("foo", st.st_mode | stat.S_IEXEC)
     dvc.add("foo")
 
-    assert load_yaml("foo.dvc") == {
+    assert (tmp_dir / "foo.dvc").parse() == {
         "outs": [
             {
                 "md5": "acbd18db4cc2f85cedef654fccc4a4d8",

@@ -1,5 +1,4 @@
 from dvc.utils import relpath
-from dvc.utils.serialize import dump_yaml
 
 
 def test_diff_no_params(tmp_dir, scm, dvc):
@@ -140,7 +139,7 @@ def test_no_commits(tmp_dir):
 def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
     params_file = tmp_dir / "test_params.yaml"
     param_data = {"vars": {"model1": {"epoch": 15}, "model2": {"epoch": 35}}}
-    dump_yaml(params_file, param_data)
+    (tmp_dir / params_file).dump(param_data)
     d = {
         "vars": ["test_params.yaml"],
         "stages": {
@@ -150,7 +149,7 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
             }
         },
     }
-    dump_yaml("dvc.yaml", d)
+    (tmp_dir / "dvc.yaml").dump(d)
     assert dvc.params.diff() == {
         "test_params.yaml": {
             "vars.model1.epoch": {"new": 15, "old": None},
@@ -161,7 +160,7 @@ def test_vars_shows_on_params_diff(tmp_dir, scm, dvc):
     scm.commit("added stages")
 
     param_data["vars"]["model1"]["epoch"] = 20
-    dump_yaml(params_file, param_data)
+    (tmp_dir / params_file).dump(param_data)
     assert dvc.params.diff() == {
         "test_params.yaml": {
             "vars.model1.epoch": {"new": 20, "old": 15, "diff": 5}

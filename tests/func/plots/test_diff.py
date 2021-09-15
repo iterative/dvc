@@ -1,8 +1,5 @@
-from tests.func.plots.utils import _write_json
-
-
 def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
-    _write_json(tmp_dir, [{"y": 2}, {"y": 3}], "metric_t.json")
+    (tmp_dir / "metric_t.json").dump([{"y": 2}, {"y": 3}], sort_keys=True)
     run_copy_metrics(
         "metric_t.json",
         "metric.json",
@@ -11,7 +8,7 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     )
 
     metric_head = [{"y": 3}, {"y": 5}]
-    _write_json(tmp_dir, metric_head, "metric_t.json")
+    (tmp_dir / "metric_t.json").dump_json(metric_head, sort_keys=True)
     run_copy_metrics(
         "metric_t.json",
         "metric.json",
@@ -20,7 +17,7 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     )
 
     metric_1 = [{"y": 5}, {"y": 6}]
-    _write_json(tmp_dir, metric_1, "metric_t.json")
+    (tmp_dir / "metric_t.json").dump_json(metric_1, sort_keys=True)
     run_copy_metrics(
         "metric_t.json", "metric.json", plots_no_cache=["metric.json"]
     )
@@ -35,7 +32,7 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
         },
     }
     metric_2 = [{"y": 7}, {"y": 8}]
-    _write_json(tmp_dir, metric_2, "metric.json")
+    (tmp_dir / "metric.json").dump_json(metric_2, sort_keys=True)
 
     diff_result = dvc.plots.diff(props=props)
     assert diff_result == {

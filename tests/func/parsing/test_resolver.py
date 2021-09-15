@@ -5,7 +5,7 @@ import pytest
 
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver, ResolveError
 from dvc.parsing.context import Context
-from dvc.utils.serialize import dump_json, dump_yaml, dumps_yaml
+from dvc.utils.serialize import dumps_yaml
 
 from . import CONTEXT_DATA, RESOLVED_DVC_YAML_DATA, TEMPLATED_DVC_YAML_DATA
 
@@ -50,16 +50,16 @@ def test_vars_interpolation_errors(tmp_dir, dvc, vars_):
     "vars_", [{}, {"vars": []}, {"vars": [DEFAULT_PARAMS_FILE]}]
 )
 def test_default_params_file(tmp_dir, dvc, vars_):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
     resolver = DataResolver(dvc, tmp_dir, vars_)
     assert resolver.context == DATA
 
 
 def test_load_vars_from_file(tmp_dir, dvc):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
 
     datasets = {"datasets": ["foo", "bar"]}
-    dump_json("params.json", datasets)
+    (tmp_dir / "params.json").dump(datasets)
     d = {"vars": [DEFAULT_PARAMS_FILE, "params.json"]}
     resolver = DataResolver(dvc, tmp_dir, d)
 
@@ -82,7 +82,7 @@ def test_load_vars_with_relpath(tmp_dir, scm, dvc):
 
 
 def test_partial_vars_doesnot_exist(tmp_dir, dvc):
-    dump_yaml("test_params.yaml", {"sub1": "sub1"})
+    (tmp_dir / "test_params.yaml").dump({"sub1": "sub1"})
 
     with pytest.raises(ResolveError) as exc_info:
         DataResolver(dvc, tmp_dir, {"vars": ["test_params.yaml:sub2"]})
@@ -94,8 +94,8 @@ def test_partial_vars_doesnot_exist(tmp_dir, dvc):
 
 
 def test_global_overwrite_error_on_imports(tmp_dir, dvc):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
-    dump_json("params.json", DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
+    (tmp_dir / "params.json").dump(DATA)
 
     d = {"vars": [DEFAULT_PARAMS_FILE, "params.json"]}
     with pytest.raises(ResolveError) as exc_info:
@@ -109,7 +109,7 @@ def test_global_overwrite_error_on_imports(tmp_dir, dvc):
 
 
 def test_global_overwrite_vars(tmp_dir, dvc):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
     d = {"vars": [DATA]}
 
     with pytest.raises(ResolveError) as exc_info:
@@ -123,7 +123,7 @@ def test_global_overwrite_vars(tmp_dir, dvc):
 
 
 def test_local_declared_vars_overwrite(tmp_dir, dvc):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
 
     d = {"vars": [DATA["models"], DATA["models"]]}
     with pytest.raises(ResolveError) as exc_info:
@@ -158,7 +158,7 @@ def test_specified_params_file_not_exist(tmp_dir, dvc):
 )
 def test_vars_already_loaded_message(tmp_dir, dvc, local, vars_):
     d = {"stages": {"build": {"cmd": "echo ${sub1} ${sub2}"}}}
-    dump_yaml("test_params.yaml", {"sub1": "sub1", "sub2": "sub2"})
+    (tmp_dir / "test_params.yaml").dump({"sub1": "sub1", "sub2": "sub2"})
     if not local:
         d["vars"] = vars_
     else:
@@ -175,8 +175,8 @@ def test_vars_already_loaded_message(tmp_dir, dvc, local, vars_):
     "vars_, loc", [(DATA, "build.vars[0]"), ("params.json", "params.json")]
 )
 def test_local_overwrite_error(tmp_dir, dvc, vars_, loc):
-    dump_yaml(DEFAULT_PARAMS_FILE, DATA)
-    dump_json("params.json", DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
+    (tmp_dir / "params.json").dump(DATA)
 
     d = {"stages": {"build": {"cmd": "echo ${models.foo}", "vars": [vars_]}}}
 

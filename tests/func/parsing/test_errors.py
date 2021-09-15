@@ -10,7 +10,6 @@ from dvc.parsing import ResolveError
 from dvc.parsing.context import Context
 from dvc.parsing.interpolate import embrace
 from dvc.utils.humanize import join
-from dvc.utils.serialize import dump_yaml
 
 from . import make_entry_definition, make_foreach_def
 
@@ -133,7 +132,7 @@ def test_interpolate_non_string(tmp_dir, dvc):
 
 
 def test_partial_vars_doesnot_exist(tmp_dir, dvc):
-    dump_yaml("test_params.yaml", {"sub1": "sub1", "sub2": "sub2"})
+    (tmp_dir / "test_params.yaml").dump({"sub1": "sub1", "sub2": "sub2"})
 
     definition = make_entry_definition(
         tmp_dir,
@@ -281,7 +280,7 @@ def test_item_key_in_generated_stage_vars(tmp_dir, dvc, redefine, from_file):
     context = Context(foo="bar")
     vars_ = [redefine]
     if from_file:
-        dump_yaml("test_params.yaml", redefine)
+        (tmp_dir / "test_params.yaml").dump(redefine)
         vars_ = ["test_params.yaml"]
 
     definition = make_foreach_def(

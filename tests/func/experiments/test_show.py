@@ -11,7 +11,7 @@ from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
-from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml
+from dvc.utils.serialize import YAMLFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -286,7 +286,7 @@ def test_show_filter(
         "train/bar": 1,
         "nested": {"foo": 1, "bar": 1},
     }
-    dump_yaml(params_file, params_data)
+    (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -386,7 +386,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     makedirs(pid_dir, True)
     info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
     pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
-    dump_yaml(pidfile, info.to_dict())
+    (tmp_dir / pidfile).dump(info.to_dict())
 
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
@@ -417,7 +417,7 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     makedirs(pid_dir, True)
     info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
     pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
-    dump_yaml(pidfile, info.to_dict())
+    (tmp_dir / pidfile).dump(info.to_dict())
 
     results = dvc.experiments.show()
     exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
@@ -455,7 +455,7 @@ def test_show_running_checkpoint(
     info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
     rev = "workspace" if workspace else stash_rev
     pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
-    dump_yaml(pidfile, info.to_dict())
+    (tmp_dir / pidfile).dump(info.to_dict())
 
     mocker.patch.object(
         BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]

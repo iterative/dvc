@@ -6,7 +6,6 @@ from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.output import OutputDoesNotExistError
 from dvc.stage.exceptions import StageCommitError
-from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.utils import clean_staging
 
 
@@ -65,9 +64,9 @@ def test_commit_changed_md5(tmp_dir, dvc):
     tmp_dir.gen({"file": "file content"})
     (stage,) = dvc.add("file", no_commit=True)
 
-    stage_file_content = load_yaml(stage.path)
+    stage_file_content = (tmp_dir / stage.path).parse()
     stage_file_content["md5"] = "1111111111"
-    dump_yaml(stage.path, stage_file_content)
+    (tmp_dir / stage.path).dump(stage_file_content)
 
     clean_staging()
 
@@ -75,7 +74,7 @@ def test_commit_changed_md5(tmp_dir, dvc):
         dvc.commit(stage.path)
 
     dvc.commit(stage.path, force=True)
-    assert "md5" not in load_yaml(stage.path)
+    assert "md5" not in (tmp_dir / stage.path).parse()
 
 
 def test_commit_no_exec(tmp_dir, dvc):

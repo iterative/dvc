@@ -63,10 +63,16 @@ def _load_data(path: "AnyPath", parser: ParserFn, fs: "BaseFileSystem" = None):
             return parser(fd.read(), path)
 
 
-def _dump_data(path, data: Any, dumper: DumperFn, fs: "BaseFileSystem" = None):
+def _dump_data(
+    path,
+    data: Any,
+    dumper: DumperFn,
+    fs: "BaseFileSystem" = None,
+    **dumper_args,
+):
     open_fn = fs.open if fs else open
     with open_fn(path, "w+", encoding="utf-8") as fd:  # type: ignore
-        dumper(data, fd)
+        dumper(data, fd, **dumper_args)
 
 
 @contextmanager

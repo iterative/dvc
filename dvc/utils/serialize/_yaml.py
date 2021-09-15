@@ -58,8 +58,8 @@ def _dump(data, stream):
     return yaml.dump(data, stream)
 
 
-def dump_yaml(path, data, fs=None):
-    return _dump_data(path, data, dumper=_dump, fs=fs)
+def dump_yaml(path, data, fs=None, **kwargs):
+    return _dump_data(path, data, dumper=_dump, fs=fs, **kwargs)
 
 
 def loads_yaml(s, typ="safe"):

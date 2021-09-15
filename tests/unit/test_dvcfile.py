@@ -15,7 +15,6 @@ from dvc.stage.exceptions import (
     StageFileIsNotDvcFileError,
 )
 from dvc.utils.fs import remove
-from dvc.utils.serialize import dump_yaml
 
 
 @pytest.mark.parametrize(
@@ -66,7 +65,7 @@ def test_stage_load_on_non_file(tmp_dir, dvc, file):
 @pytest.mark.parametrize("file", ["stage.dvc", "dvc.yaml"])
 def test_stage_load_on_invalid_data(tmp_dir, dvc, file):
     data = {"is_this_a_valid_dvcfile": False}
-    dump_yaml(file, data)
+    (tmp_dir / file).dump(data)
     dvcfile = Dvcfile(dvc, file)
     with pytest.raises(StageFileFormatError):
         assert dvcfile.stages

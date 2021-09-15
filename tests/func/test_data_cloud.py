@@ -10,7 +10,6 @@ from dvc.external_repo import clean_repos
 from dvc.main import main
 from dvc.stage.exceptions import StageNotFound
 from dvc.utils.fs import move, remove
-from dvc.utils.serialize import dump_yaml, load_yaml
 
 all_clouds = [
     pytest.lazy_fixture(cloud)
@@ -204,9 +203,9 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
     assert main(["push"]) == 0
 
     stage_file_path = stage.relpath
-    content = load_yaml(stage_file_path)
+    content = (tmp_dir / stage_file_path).parse()
     del content["outs"][0]["md5"]
-    dump_yaml(stage_file_path, content)
+    (tmp_dir / stage_file_path).dump(content)
 
     with caplog.at_level(logging.WARNING, logger="dvc"):
         caplog.clear()
@@ -612,8 +611,6 @@ def test_pull_no_00_prefix(tmp_dir, dvc, remote, monkeypatch):
 
 
 def test_output_remote(tmp_dir, dvc, make_remote):
-    from dvc.utils.serialize import modify_yaml
-
     make_remote("default", default=True)
     make_remote("for_foo", default=False)
     make_remote("for_data", default=False)
@@ -622,10 +619,10 @@ def test_output_remote(tmp_dir, dvc, make_remote):
     tmp_dir.dvc_gen("bar", "bar")
     tmp_dir.dvc_gen("data", {"one": "one", "two": "two"})
 
-    with modify_yaml("foo.dvc") as d:
+    with (tmp_dir / "foo.dvc").modify() as d:
         d["outs"][0]["remote"] = "for_foo"
 
-    with modify_yaml("data.dvc") as d:
+    with (tmp_dir / "data.dvc").modify() as d:
         d["outs"][0]["remote"] = "for_data"
 
     dvc.push()

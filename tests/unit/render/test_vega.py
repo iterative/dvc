@@ -305,7 +305,7 @@ def test_raise_on_no_template(tmp_dir, dvc):
 
 def test_bad_template(tmp_dir, dvc):
     metric = [{"val": 2}, {"val": 3}]
-    tmp_dir.gen("template.json", json.dumps({"a": "b", "c": "d"}))
+    (tmp_dir / "template.json").dump({"a": "b", "c": "d"})
     props = {"template": "template.json"}
     data = {
         "workspace": {"data": {"file.json": {"data": metric, "props": props}}}

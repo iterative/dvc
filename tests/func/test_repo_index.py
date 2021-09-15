@@ -7,7 +7,6 @@ from pygtrie import Trie
 from dvc.repo.index import Index
 from dvc.stage import PipelineStage, Stage
 from dvc.utils import relpath
-from tests.func.plots.utils import _write_json
 
 
 def test_index(tmp_dir, scm, dvc, run_copy):
@@ -103,7 +102,9 @@ def test_deps_outs_getters(tmp_dir, dvc, run_copy_metrics):
         params=["param"],
         name="copy-metrics",
     )
-    _write_json(tmp_dir, [{"a": 1, "b": 2}, {"a": 2, "b": 3}], "metric_t.json")
+    (tmp_dir / "metric_t.json").dump_json(
+        [{"a": 1, "b": 2}, {"a": 2, "b": 3}], sort_keys=True
+    )
     run_stage2 = run_copy_metrics(
         "metric_t.json",
         "metric.json",

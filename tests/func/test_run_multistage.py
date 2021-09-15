@@ -5,7 +5,6 @@ import pytest
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage.exceptions import DuplicateStageName, InvalidStageName
-from dvc.utils.serialize import dump_yaml, parse_yaml_for_update
 
 
 def test_run_with_name(tmp_dir, dvc, run_copy):
@@ -232,7 +231,7 @@ supported_params = {
 def test_run_params_default(tmp_dir, dvc):
     from dvc.dependency import ParamsDependency
 
-    dump_yaml(tmp_dir / "params.yaml", supported_params)
+    (tmp_dir / "params.yaml").dump(supported_params)
     stage = dvc.run(
         name="read_params",
         params=["nested.nested1.nested2"],
@@ -255,7 +254,7 @@ def test_run_params_default(tmp_dir, dvc):
 def test_run_params_custom_file(tmp_dir, dvc):
     from dvc.dependency import ParamsDependency
 
-    dump_yaml(tmp_dir / "params2.yaml", supported_params)
+    (tmp_dir / "params2.yaml").dump(supported_params)
     stage = dvc.run(
         name="read_params",
         params=["params2.yaml:lists"],
@@ -278,7 +277,7 @@ def test_run_params_custom_file(tmp_dir, dvc):
 def test_run_params_no_exec(tmp_dir, dvc):
     from dvc.dependency import ParamsDependency
 
-    dump_yaml(tmp_dir / "params2.yaml", supported_params)
+    (tmp_dir / "params2.yaml").dump(supported_params)
     stage = dvc.run(
         name="read_params",
         params=["params2.yaml:lists"],
@@ -318,9 +317,7 @@ def test_run_overwrite_order(tmp_dir, dvc, run_copy):
 
     run_copy("foo1", "bar1", name="copy-foo-bar", force=True)
 
-    data = parse_yaml_for_update(
-        (tmp_dir / PIPELINE_FILE).read_text(), PIPELINE_FILE
-    )
+    data = (tmp_dir / PIPELINE_FILE).parse()
     assert list(data["stages"].keys()) == ["copy-foo-bar", "copy-bar-foobar"]
 
 
