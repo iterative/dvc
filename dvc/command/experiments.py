@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
@@ -789,6 +790,62 @@ class CmdExperimentsRemove(CmdBase):
         return 0
 
 
+class CmdExperimentsInit(CmdBase):
+    CODE = "src"
+    DATA = "data"
+    MODELS = "models"
+    DEFAULT_METRICS = "metrics.json"
+    DEFAULT_PARAMS = "params.yaml"
+    PLOTS = "plots"
+    DVCLIVE = "dvclive"
+    DEFAULT_NAME = "default"
+
+    def run(self):
+        from dvc.command.stage import parse_cmd
+
+        cmd = parse_cmd(self.args.cmd)
+        if not cmd:
+            raise InvalidArgumentError("command is not specified")
+        if self.args.interactive:
+            raise NotImplementedError(
+                "'-i/--interactive' is not implemented yet."
+            )
+        if self.args.explicit:
+            raise NotImplementedError("'--explicit' is not implemented yet.")
+        if self.args.template:
+            raise NotImplementedError("template is not supported yet.")
+
+        from dvc.utils.serialize import LOADERS
+
+        code = self.args.code or self.CODE
+        data = self.args.data or self.DATA
+        models = self.args.models or self.MODELS
+        metrics = self.args.metrics or self.DEFAULT_METRICS
+        params_path = self.args.params or self.DEFAULT_PARAMS
+        plots = self.args.plots or self.PLOTS
+        dvclive = self.args.live or self.DVCLIVE
+
+        _, ext = os.path.splitext(params_path)
+        params = list(LOADERS[ext](params_path))
+
+        name = self.args.name or self.DEFAULT_NAME
+        stage = self.repo.stage.add(
+            name=name,
+            cmd=cmd,
+            deps=[code, data],
+            outs=[models],
+            params=[{params_path: params}],
+            metrics_no_cache=[metrics],
+            plots_no_cache=[plots],
+            live=dvclive,
+            force=True,
+        )
+
+        if self.args.run:
+            return self.repo.experiments.run(targets=[stage.addressing])
+        return 0
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to run and compare experiments."
 
@@ -1302,6 +1359,68 @@ def add_parser(subparsers, parent_parser):
         metavar="<experiment>",
     )
     experiments_remove_parser.set_defaults(func=CmdExperimentsRemove)
+
+    EXPERIMENTS_INIT_HELP = "Create experiments."
+    experiments_init_parser = experiments_subparsers.add_parser(
+        "init",
+        parents=[parent_parser],
+        description=append_doc_link(EXPERIMENTS_INIT_HELP, "exp/init"),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    experiments_init_parser.add_argument(
+        "cmd",
+        nargs=argparse.REMAINDER,
+        help="Command to execute.",
+        metavar="command",
+    )
+    experiments_init_parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Run the experiment after initializing it",
+    )
+    experiments_init_parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Prompt for values that are not provided",
+    )
+    experiments_init_parser.add_argument(
+        "--template", help="Stage template to use to fill with provided values"
+    )
+    experiments_init_parser.add_argument(
+        "--explicit", help="Only use the path values explicitly provided"
+    )
+    experiments_init_parser.add_argument(
+        "--name", "-n", help="Name of the stage to create"
+    )
+    experiments_init_parser.add_argument(
+        "--code",
+        help="Path to the source file or directory "
+        "which your experiment depends",
+    )
+    experiments_init_parser.add_argument(
+        "--data",
+        help="Path to the data file or directory "
+        "which your experiment depends",
+    )
+    experiments_init_parser.add_argument(
+        "--models",
+        help="Path to the model file or directory for your experiments",
+    )
+    experiments_init_parser.add_argument(
+        "--params", help="Path to the parameters file for your experiments"
+    )
+    experiments_init_parser.add_argument(
+        "--metrics", help="Path to the metrics file for your experiments"
+    )
+    experiments_init_parser.add_argument(
+        "--plots",
+        help="Path to the plots file or directory for your experiments",
+    )
+    experiments_init_parser.add_argument(
+        "--live", help="Path to log dvclive outputs for your experiments"
+    )
+    experiments_init_parser.set_defaults(func=CmdExperimentsInit)
 
 
 def _add_run_common(parser):
