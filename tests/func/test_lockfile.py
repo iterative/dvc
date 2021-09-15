@@ -9,12 +9,7 @@ from dvc.dvcfile import PIPELINE_LOCK, Lockfile, LockfileCorruptedError
 from dvc.hash_info import HashInfo
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
-from dvc.utils.serialize import (
-    dump_yaml,
-    dumps_yaml,
-    load_yaml,
-    parse_yaml_for_update,
-)
+from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {
@@ -183,7 +178,7 @@ def v1_repo_lock(tmp_dir, dvc):
     }
     dvc.run(cmd="echo foo", name="foo", no_exec=True)
     dvc.run(cmd="echo bar>bar.txt", outs=["bar.txt"], name="bar", no_exec=True)
-    dump_yaml(tmp_dir / "dvc.lock", v1_lockdata)
+    (tmp_dir / "dvc.lock").dump(v1_lockdata)
     yield v1_lockdata
 
 
@@ -202,7 +197,7 @@ def test_migrates_v1_lockfile_to_v2_during_dump(
         assert dvc.reproduce()
 
     assert "Migrating lock file 'dvc.lock' from v1 to v2" in caplog.messages
-    d = load_yaml(tmp_dir / "dvc.lock")
+    d = (tmp_dir / "dvc.lock").parse()
     assert d == {"stages": v1_repo_lock, "schema": "2.0"}
 
 
@@ -211,7 +206,7 @@ def test_migrates_v1_lockfile_to_v2_during_dump(
 )
 def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
     lockdata = {**version_info, "stages": {"foo": {"cmd": "echo foo"}}}
-    dump_yaml("dvc.lock", lockdata)
+    (tmp_dir / "dvc.lock").dump(lockdata)
     with pytest.raises(LockfileCorruptedError) as exc_info:
         Lockfile(dvc, tmp_dir / "dvc.lock").load()
 

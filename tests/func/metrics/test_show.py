@@ -6,10 +6,9 @@ from funcy import get_in
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
-from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.utils.fs import remove
-from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml, modify_yaml
+from dvc.utils.serialize import YAMLFileCorruptedError
 
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
@@ -227,10 +226,10 @@ def test_show_no_metrics_files(tmp_dir, dvc, caplog):
 def test_metrics_show_overlap(
     tmp_dir, dvc, run_copy_metrics, clear_before_run
 ):
-    data_dir = PathInfo("data")
-    (tmp_dir / data_dir).mkdir()
+    data_dir = tmp_dir / "data"
+    data_dir.mkdir()
 
-    dump_yaml(data_dir / "m1_temp.yaml", {"a": {"b": {"c": 2, "d": 1}}})
+    (data_dir / "m1_temp.yaml").dump({"a": {"b": {"c": 2, "d": 1}}})
     run_copy_metrics(
         str(data_dir / "m1_temp.yaml"),
         str(data_dir / "m1.yaml"),
@@ -239,7 +238,7 @@ def test_metrics_show_overlap(
         name="cp-m1",
         metrics=[str(data_dir / "m1.yaml")],
     )
-    with modify_yaml("dvc.yaml") as d:
+    with (tmp_dir / "dvc.yaml").modify() as d:
         # trying to make an output overlaps error
         d["stages"]["corrupted-stage"] = {
             "cmd": "mkdir data",

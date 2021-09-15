@@ -16,7 +16,6 @@ from dvc.stage.exceptions import (
 )
 from dvc.utils import relpath
 from dvc.utils.fs import remove
-from dvc.utils.serialize import dump_yaml
 
 
 def test_collect(tmp_dir, scm, dvc, run_copy):
@@ -149,7 +148,7 @@ def test_collect_generated(tmp_dir, dvc):
             "build": {"foreach": "${vars}", "do": {"cmd": "echo ${item}"}}
         },
     }
-    dump_yaml("dvc.yaml", d)
+    (tmp_dir / "dvc.yaml").dump(d)
 
     all_stages = set(dvc.index.stages)
     assert len(all_stages) == 5
@@ -443,7 +442,7 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
     dvc.stage_collection_error_handler = mock
 
     (stage,) = tmp_dir.dvc_gen("foo", "foo")
-    dump_yaml(tmp_dir / PIPELINE_FILE, {"stages": {"cmd": "echo hello world"}})
+    (tmp_dir / PIPELINE_FILE).dump({"stages": {"cmd": "echo hello world"}})
 
     dvc._reset()
     assert dvc.index.stages == [stage]

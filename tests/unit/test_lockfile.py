@@ -2,7 +2,6 @@ import pytest
 
 from dvc.dvcfile import FileIsGitIgnored, Lockfile, LockfileCorruptedError
 from dvc.stage import PipelineStage
-from dvc.utils.serialize import dump_yaml
 
 
 def test_stage_dump_no_outs_deps(tmp_dir, dvc):
@@ -17,7 +16,7 @@ def test_stage_dump_no_outs_deps(tmp_dir, dvc):
 
 def test_stage_dump_when_already_exists(tmp_dir, dvc):
     data = {"s1": {"cmd": "command", "deps": [], "outs": []}}
-    dump_yaml("path.lock", data)
+    (tmp_dir / "path.lock").dump(data)
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile = Lockfile(dvc, "path.lock")
     lockfile.dump(stage)
@@ -35,7 +34,7 @@ def test_stage_dump_with_deps_and_outs(tmp_dir, dvc):
             "outs": [{"md5": "2.txt", "path": "checksum"}],
         }
     }
-    dump_yaml("path.lock", data)
+    (tmp_dir / "path.lock").dump(data)
     lockfile = Lockfile(dvc, "path.lock")
     stage = PipelineStage(name="s2", repo=dvc, path="path", cmd="command2")
     lockfile.dump(stage)
@@ -78,7 +77,7 @@ def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
     ],
 )
 def test_load_when_lockfile_is_corrupted(tmp_dir, dvc, corrupt_data):
-    dump_yaml("Dvcfile.lock", corrupt_data)
+    (tmp_dir / "Dvcfile.lock").dump(corrupt_data)
     lockfile = Lockfile(dvc, "Dvcfile.lock")
     with pytest.raises(LockfileCorruptedError) as exc_info:
         lockfile.load()

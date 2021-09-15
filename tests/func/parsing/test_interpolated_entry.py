@@ -6,7 +6,6 @@ from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
 from dvc.parsing.context import recurse_not_a_node
 from dvc.path_info import PathInfo
-from dvc.utils.serialize import dump_json, dump_yaml
 
 from . import (
     CONTEXT_DATA,
@@ -30,7 +29,7 @@ def assert_stage_equal(d1, d2):
 
 
 def test_simple(tmp_dir, dvc):
-    dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, CONTEXT_DATA)
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(CONTEXT_DATA)
     resolver = DataResolver(
         dvc, PathInfo(str(tmp_dir)), deepcopy(TEMPLATED_DVC_YAML_DATA)
     )
@@ -46,7 +45,7 @@ def test_vars_import(tmp_dir, dvc):
     Test that different file can be loaded using `vars`
     instead of default params.yaml.
     """
-    dump_yaml(tmp_dir / "params2.yaml", CONTEXT_DATA)
+    (tmp_dir / "params2.yaml").dump(CONTEXT_DATA)
     d = deepcopy(TEMPLATED_DVC_YAML_DATA)
     d["vars"] = ["params2.yaml"]
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
@@ -68,7 +67,7 @@ def test_vars_and_params_import(tmp_dir, dvc):
         "vars": [DEFAULT_PARAMS_FILE, {"dict": {"foo": "foobar"}}],
         "stages": {"stage1": {"cmd": "echo ${dict.foo} ${dict.bar}"}},
     }
-    dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, {"dict": {"bar": "bar"}})
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar"}})
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
 
     assert_stage_equal(
@@ -96,8 +95,8 @@ def test_stage_with_wdir(tmp_dir, dvc):
 
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
-    dump_yaml(tmp_dir / DEFAULT_PARAMS_FILE, {"dict": {"bar": "bar"}})
-    dump_json(data_dir / DEFAULT_PARAMS_FILE, {"dict": {"foo": "foo"}})
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar"}})
+    (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
 
     assert_stage_equal(
@@ -135,12 +134,12 @@ def test_with_templated_wdir(tmp_dir, dvc):
             }
         }
     }
-    dump_yaml(
-        tmp_dir / DEFAULT_PARAMS_FILE, {"dict": {"bar": "bar", "ws": "data"}}
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(
+        {"dict": {"bar": "bar", "ws": "data"}}
     )
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
-    dump_json(data_dir / DEFAULT_PARAMS_FILE, {"dict": {"foo": "foo"}})
+    (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
     resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
 
     assert_stage_equal(
@@ -167,7 +166,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
 
 def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
     iterable = {"bar": "bar", "foo": "foo"}
-    dump_json(tmp_dir / "params.json", iterable)
+    (tmp_dir / "params.json").dump(iterable)
 
     d = {
         "vars": ["params.json"],
@@ -196,7 +195,7 @@ def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
 
 def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
     iterable = {"bar": "bar", "foo": "foo"}
-    dump_yaml(tmp_dir / "params.yaml", iterable)
+    (tmp_dir / "params.yaml").dump(iterable)
 
     d = {
         "stages": {
@@ -224,7 +223,7 @@ def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
 
 def test_vars_relpath_overwrite(tmp_dir, dvc):
     iterable = {"bar": "bar", "foo": "foo"}
-    dump_yaml(tmp_dir / "params.yaml", iterable)
+    (tmp_dir / "params.yaml").dump(iterable)
     d = {
         "vars": ["params.yaml"],
         "stages": {
@@ -252,7 +251,7 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
 )
 def test_vars_load_partial(tmp_dir, dvc, local, vars_):
     iterable = {"bar": "bar", "foo": "foo"}
-    dump_yaml(tmp_dir / "test_params.yaml", iterable)
+    (tmp_dir / "test_params.yaml").dump(iterable)
     d = {"stages": {"build": {"cmd": "echo ${bar}"}}}
     if local:
         d["stages"]["build"]["vars"] = vars_

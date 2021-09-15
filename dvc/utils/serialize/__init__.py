@@ -14,6 +14,13 @@ LOADERS.update(
     {".toml": load_toml, ".json": load_json, ".py": load_py}  # noqa: F405
 )
 
+DUMPERS: DefaultDict[str, DumperFn] = defaultdict(  # noqa: F405
+    lambda: dump_yaml  # noqa: F405
+)
+DUMPERS.update(
+    {".toml": dump_toml, ".json": dump_json, ".py": dump_py}  # noqa: F405
+)
+
 MODIFIERS: DefaultDict[str, ModifierFn] = defaultdict(  # noqa: F405
     lambda: modify_yaml  # noqa: F405
 )

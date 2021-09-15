@@ -49,12 +49,14 @@ import os
 import pathlib
 import sys
 from contextlib import contextmanager
+from functools import partialmethod
 from textwrap import dedent
 
 import pytest
 from funcy import lmap, retry
 
 from dvc.logger import disable_other_loggers
+from dvc.utils import serialize
 from dvc.utils.fs import makedirs
 
 __all__ = [
@@ -249,6 +251,22 @@ class TmpDir(pathlib.Path):
 
     def hash_to_path_info(self, hash_):
         return self / hash_[0:2] / hash_[2:]
+
+    def dump(self, *args, **kwargs):
+        return serialize.DUMPERS[self.suffix](self, *args, **kwargs)
+
+    def parse(self, *args, **kwargs):
+        return serialize.LOADERS[self.suffix](self, *args, **kwargs)
+
+    def modify(self, *args, **kwargs):
+        return serialize.MODIFIERS[self.suffix](self, *args, **kwargs)
+
+    load_yaml = partialmethod(serialize.load_yaml)
+    dump_yaml = partialmethod(serialize.dump_yaml)
+    load_json = partialmethod(serialize.load_json)
+    dump_json = partialmethod(serialize.dump_json)
+    load_toml = partialmethod(serialize.load_toml)
+    dump_toml = partialmethod(serialize.dump_toml)
 
 
 def _coerce_filenames(filenames):

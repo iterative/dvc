@@ -1244,7 +1244,7 @@ def test_repro_when_cmd_changes(tmp_dir, dvc, run_copy, mocker):
 
     data = SingleStageFile(dvc, stage.path)._load()[0]
     data["cmd"] = "  ".join(stage.cmd.split())  # change cmd spacing by two
-    dump_yaml(stage.path, data)
+    (tmp_dir / stage.path).dump(data)
 
     assert dvc.status([stage.addressing]) == {
         stage.addressing: ["changed checksum"]

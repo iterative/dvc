@@ -40,8 +40,8 @@ def _dump(data, stream):
     return toml.dump(data, stream, encoder=toml.TomlPreserveCommentEncoder())
 
 
-def dump_toml(path, data, fs=None):
-    return _dump_data(path, data, dumper=_dump, fs=fs)
+def dump_toml(path, data, fs=None, **kwargs):
+    return _dump_data(path, data, dumper=_dump, fs=fs, **kwargs)
 
 
 @contextmanager
