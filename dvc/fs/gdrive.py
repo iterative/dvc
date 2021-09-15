@@ -296,6 +296,15 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
         return super()._with_bucket(path)
 
+    def _strip_bucket(self, entry):
+        try:
+            bucket, path = entry.split("/", 1)
+        except ValueError:
+            # If there is no path attached, only returns
+            # the bucket (top-level).
+            bucket, path = entry, None
+        return path or bucket
+
     def upload_fobj(self, fobj, to_info, **kwargs):
         rpath = self._with_bucket(to_info)
         self.makedirs(os.path.dirname(rpath))
