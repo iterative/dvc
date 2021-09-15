@@ -66,7 +66,8 @@ class CmdConfig(CmdBaseNoRepo):
             )
             return 1
 
-        levels = [self.args.level] if self.args.level else self.config.LEVELS
+        levels = self._get_appropriate_levels(self.args.level)
+
         for level in levels:
             conf = self.config.read(level)
             prefix = self._config_file_prefix(
@@ -81,9 +82,7 @@ class CmdConfig(CmdBaseNoRepo):
     def _get(self, remote, section, opt):
         from dvc.config import ConfigError
 
-        levels = (
-            [self.args.level] if self.args.level else self.config.LEVELS[::-1]
-        )
+        levels = self._get_appropriate_levels(self.args.level)[::-1]
 
         for level in levels:
             conf = self.config.read(level)
@@ -135,6 +134,20 @@ class CmdConfig(CmdBaseNoRepo):
             raise ConfigError(
                 f"option '{opt}' doesn't exist in {name} '{section}'"
             )
+
+    def _get_appropriate_levels(self, levels):
+        if levels:
+            self._validate_level_for_non_repo_operation(levels)
+            return [levels]
+        if self.config.dvc_dir is None:
+            return self.config.SYSTEM_LEVELS
+        return self.config.LEVELS
+
+    def _validate_level_for_non_repo_operation(self, level):
+        from dvc.config import ConfigError
+
+        if self.config.dvc_dir is None and level in self.config.REPO_LEVELS:
+            raise ConfigError("Not inside a DVC repo")
 
     @staticmethod
     def _format_config(config, prefix=""):
