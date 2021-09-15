@@ -10,15 +10,16 @@ from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.main import main
 from dvc.stage import PipelineStage
 from tests.func import test_repro
+from tests.utils.scriptify import scriptify
 
-COPY_SCRIPT_FORMAT = dedent(
-    """\
-    import sys
+
+def copy_script(src, dest):
     import shutil
-    shutil.copyfile({}, {})
-"""
-)
-COPY_SCRIPT = COPY_SCRIPT_FORMAT.format("sys.argv[1]", "sys.argv[2]")
+
+    shutil.copyfile(src, dest)
+
+
+COPY_SCRIPT, _ = scriptify(copy_script)
 
 
 class MultiStageRun:
@@ -357,7 +358,10 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
     target = ":copy-file"
     assert not dvc.reproduce(target)
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT_FORMAT.format("'bar'", "'foobar'"))
+    # hardcode values in source code, ignore sys.argv
+    tmp_dir.gen(
+        "copy.py", COPY_SCRIPT.replace("func(*argv)", 'func("bar", "foobar")')
+    )
     from shutil import move
 
     move("foo", "bar")

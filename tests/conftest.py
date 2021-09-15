@@ -5,6 +5,7 @@ import pytest
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
 from .remotes import *  # noqa, pylint: disable=wildcard-import
+from .utils.scriptify import scriptify
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -164,3 +165,6 @@ def custom_template(tmp_dir, dvc):
     template = tmp_dir / "custom_template.json"
     shutil.copy(tmp_dir / ".dvc" / "plots" / "default.json", template)
     return template
+
+
+scriptify_fixture = pytest.fixture(lambda: scriptify, name="scriptify")
