@@ -300,10 +300,6 @@ class BaseFileSystem:
         if from_info.scheme != self.scheme:
             raise NotImplementedError
 
-        if to_info.scheme == self.scheme != "local":
-            self.copy(from_info, to_info)
-            return 0
-
         if to_info.scheme != "local":
             raise NotImplementedError
 
