@@ -43,6 +43,12 @@ def test_init():
     assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "xxx"
 
 
+def test_ssh_ask_password(mocker):
+    mocker.patch("dvc.fs.ssh.ask_password", return_value="fish")
+    fs = SSHFileSystem(user="test", host="2.2.2.2", ask_password=True)
+    assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "fish"
+
+
 mock_ssh_config = """
 Host example.com
    User ubuntu
