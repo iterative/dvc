@@ -2,7 +2,7 @@ import contextlib
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial, partialmethod
+from functools import partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
@@ -11,6 +11,7 @@ from tqdm.utils import CallbackIOWrapper
 
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
+from dvc.progress import DEFAULT_CALLBACK, FsspecCallback
 from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
@@ -306,22 +307,28 @@ class BaseFileSystem:
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        if not _only_file and self.isdir(from_info):
-            return self._download_dir(
-                from_info,
-                to_info,
-                desc=name,
-                no_progress_bar=no_progress_bar,
-                jobs=jobs,
-                **kwargs,
+        download_dir = not _only_file and self.isdir(from_info)
+
+        desc = name or to_info.name
+        stack = contextlib.ExitStack()
+        if not callback:
+            pbar_kwargs = {"unit": "Files"} if download_dir else {}
+            pbar = ui.progress(
+                total=-1,
+                desc="Downloading directory" if download_dir else desc,
+                bytes=not download_dir,
+                disable=no_progress_bar,
+                **pbar_kwargs,
             )
-        return self._download_file(
-            from_info,
-            to_info,
-            callback=callback,
-            desc=name,
-            no_progress_bar=no_progress_bar,
-        )
+            stack.enter_context(pbar)
+            callback = pbar.as_callback(self, from_info)
+
+        with stack:
+            if download_dir:
+                return self._download_dir(
+                    from_info, to_info, callback=callback, jobs=jobs, **kwargs
+                )
+            return self._download_file(from_info, to_info, callback=callback)
 
     download_file = partialmethod(download, _only_file=True)
 
@@ -329,8 +336,7 @@ class BaseFileSystem:
         self,
         from_info,
         to_info,
-        desc=None,
-        no_progress_bar=False,
+        callback=DEFAULT_CALLBACK,
         jobs=None,
         **kwargs,
     ):
@@ -338,72 +344,53 @@ class BaseFileSystem:
         if not from_infos:
             makedirs(to_info, exist_ok=True)
             return None
+
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )
+        callback.set_size(len(from_infos))
 
-        with ui.progress(
-            total=len(from_infos),
-            desc="Downloading directory",
-            unit="Files",
-            disable=no_progress_bar,
-        ) as pbar:
-            download_files = pbar.wrap_fn(
-                partial(self._download_file, desc=desc, no_progress_bar=True)
-            )
-            max_workers = jobs or self.jobs
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [
-                    executor.submit(download_files, from_info, to_info)
-                    for from_info, to_info in zip(from_infos, to_infos)
-                ]
+        download_files = FsspecCallback.wrap_fn(callback, self._download_file)
+        max_workers = jobs or self.jobs
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(download_files, from_info, to_info)
+                for from_info, to_info in zip(from_infos, to_infos)
+            ]
 
-                # NOTE: unlike pulling/fetching cache, where we need to
-                # download everything we can, not raising an error here might
-                # turn very ugly, as the user might think that he has
-                # downloaded a complete directory, while having a partial one,
-                # which might cause unexpected results in his pipeline.
-                for future in as_completed(futures):
-                    # NOTE: executor won't let us raise until all futures that
-                    # it has are finished, so we need to cancel them ourselves
-                    # before re-raising.
-                    exc = future.exception()
-                    if exc:
-                        for entry in futures:
-                            entry.cancel()
-                        raise exc
+            # NOTE: unlike pulling/fetching cache, where we need to
+            # download everything we can, not raising an error here might
+            # turn very ugly, as the user might think that he has
+            # downloaded a complete directory, while having a partial one,
+            # which might cause unexpected results in his pipeline.
+            for future in as_completed(futures):
+                # NOTE: executor won't let us raise until all futures that
+                # it has are finished, so we need to cancel them ourselves
+                # before re-raising.
+                exc = future.exception()
+                if exc:
+                    for entry in futures:
+                        entry.cancel()
+                    raise exc
 
     def _download_file(
         self,
         from_info,
         to_info,
-        desc=None,
-        no_progress_bar=False,
-        callback=None,
+        callback=DEFAULT_CALLBACK,
     ):
         makedirs(to_info.parent, exist_ok=True)
         tmp_file = tmp_fname(to_info)
 
-        stack = contextlib.ExitStack()
-        if not callback:
-            pbar = ui.progress(
-                desc=desc or to_info.name,
-                disable=no_progress_bar,
-                bytes=True,
-                total=-1,
-            )
-            stack.enter_context(pbar)
-            callback = pbar.as_callback(self, from_info)
-
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)
         try:
-            with stack:
-                # noqa, pylint: disable=no-member
-                self.get_file(from_info, tmp_file, callback=callback)
+            # noqa, pylint: disable=no-member
+            self.get_file(from_info, tmp_file, callback=callback)
         except Exception:  # pylint: disable=broad-except
             # do we need to rollback makedirs for previously not-existing
             # directories?
-            os.unlink(tmp_file)
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(tmp_file)
             raise
 
         move(tmp_file, to_info)
