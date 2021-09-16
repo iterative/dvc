@@ -1,0 +1,17 @@
+cmd: {{ cmd }}
+deps:
+- {{ code }}
+- {{ data }}
+params:
+- {{ params }}:
+  {% for p in param_names %}
+  - {{ p }}
+  {% endfor %}
+outs:
+- {{ models }}
+metrics:
+- {{ metrics }}:
+    cache: false
+plots:
+- {{ plots }}:
+    cache: false

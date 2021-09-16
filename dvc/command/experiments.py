@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
@@ -791,58 +790,36 @@ class CmdExperimentsRemove(CmdBase):
 
 
 class CmdExperimentsInit(CmdBase):
-    CODE = "src"
-    DATA = "data"
-    MODELS = "models"
-    DEFAULT_METRICS = "metrics.json"
-    DEFAULT_PARAMS = "params.yaml"
-    PLOTS = "plots"
-    DVCLIVE = "dvclive"
-    DEFAULT_NAME = "default"
-
     def run(self):
         from dvc.command.stage import parse_cmd
+        from dvc.repo.experiments.init import init
 
         cmd = parse_cmd(self.args.cmd)
         if not cmd:
             raise InvalidArgumentError("command is not specified")
-        if self.args.interactive:
-            raise NotImplementedError(
-                "'-i/--interactive' is not implemented yet."
-            )
-        if self.args.explicit:
-            raise NotImplementedError("'--explicit' is not implemented yet.")
-        if self.args.template:
-            raise NotImplementedError("template is not supported yet.")
 
-        from dvc.utils.serialize import LOADERS
+        data = {
+            "cmd": cmd,
+            "code": self.args.code,
+            "data": self.args.data,
+            "models": self.args.models,
+            "metrics": self.args.metrics,
+            "params": self.args.params,
+            "plots": self.args.plots,
+            "live": self.args.live,
+        }
 
-        code = self.args.code or self.CODE
-        data = self.args.data or self.DATA
-        models = self.args.models or self.MODELS
-        metrics = self.args.metrics or self.DEFAULT_METRICS
-        params_path = self.args.params or self.DEFAULT_PARAMS
-        plots = self.args.plots or self.PLOTS
-        dvclive = self.args.live or self.DVCLIVE
-
-        _, ext = os.path.splitext(params_path)
-        params = list(LOADERS[ext](params_path))
-
-        name = self.args.name or self.DEFAULT_NAME
-        stage = self.repo.stage.add(
-            name=name,
-            cmd=cmd,
-            deps=[code, data],
-            outs=[models],
-            params=[{params_path: params}],
-            metrics_no_cache=[metrics],
-            plots_no_cache=[plots],
-            live=dvclive,
-            force=True,
+        initialized_stage = init(
+            self.repo,
+            data,
+            template_name=self.args.template_name,
+            interactive=self.args.interactive,
+            explicit=self.args.explicit,
         )
-
         if self.args.run:
-            return self.repo.experiments.run(targets=[stage.addressing])
+            return self.repo.experiments.run(
+                targets=[initialized_stage.addressing]
+            )
         return 0
 
 
@@ -1385,10 +1362,14 @@ def add_parser(subparsers, parent_parser):
         help="Prompt for values that are not provided",
     )
     experiments_init_parser.add_argument(
-        "--template", help="Stage template to use to fill with provided values"
+        "--template",
+        dest="template_name",
+        help="Stage template to use to fill with provided values",
     )
     experiments_init_parser.add_argument(
-        "--explicit", help="Only use the path values explicitly provided"
+        "--explicit",
+        action="store_true",
+        help="Only use the path values explicitly provided",
     )
     experiments_init_parser.add_argument(
         "--name", "-n", help="Name of the stage to create"

@@ -1,34 +1,58 @@
 import os
 
-from dvc.command.experiments import CmdExperimentsInit
 from dvc.main import main
-from dvc.utils.serialize import load_yaml
 
 
 def test_init(tmp_dir, dvc):
     tmp_dir.gen(
         {
-            CmdExperimentsInit.CODE: {"copy.py": ""},
+            "src": {"copy.py": ""},
             "data": "data",
             "params.yaml": '{"foo": 1}',
             "dvclive": {},
             "plots": {},
         }
     )
-    code_path = os.path.join(CmdExperimentsInit.CODE, "copy.py")
+    code_path = os.path.join("src", "copy.py")
     script = f"python {code_path}"
 
     assert main(["exp", "init", script]) == 0
-    assert load_yaml(tmp_dir / "dvc.yaml") == {
+    assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
             "default": {
                 "cmd": script,
                 "deps": ["data", "src"],
-                "live": {"dvclive": {"html": True, "summary": True}},
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
                 "params": ["foo"],
                 "plots": [{"plots": {"cache": False}}],
+            }
+        }
+    }
+
+
+def test_init_live(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "src": {"copy.py": ""},
+            "data": "data",
+            "params.yaml": '{"foo": 1}',
+            "dvclive": {},
+            "plots": {},
+        }
+    )
+    code_path = os.path.join("src", "copy.py")
+    script = f"python {code_path}"
+
+    assert main(["exp", "init", "--template", "live", script]) == 0
+    assert (tmp_dir / "dvc.yaml").parse() == {
+        "stages": {
+            "live": {
+                "cmd": script,
+                "deps": ["data", "src"],
+                "outs": ["models"],
+                "params": ["foo"],
+                "live": {"dvclive": {"html": True, "summary": True}},
             }
         }
     }
