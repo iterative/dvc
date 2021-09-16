@@ -59,7 +59,7 @@ def init(
 ):
     from jinja2 import Environment
 
-    from dvc.dvcfile import make_dvcfile
+    from dvc.utils import relpath
     from dvc.stage import check_circular_dependency, check_duplicated_arguments
     from dvc.stage.loader import StageLoader
     from dvc.utils.serialize import LOADERS, parse_yaml_for_update
@@ -94,7 +94,7 @@ def init(
 
     # render, parse yaml and then validate schema
     rendered = template.render(**context, param_names=param_names)
-    template_path = os.path.relpath(template.filename)
+    template_path = relpath(template.filename)
     data = parse_yaml_for_update(rendered, template_path)
     try:
         validated = STAGE_SCHEMA(data)
