@@ -156,6 +156,8 @@ SCHEMA = {
                     "grant_write_acp": str,
                     "grant_full_control": str,
                     "cache_regions": bool,
+                    "read_timeout": Coerce(int),
+                    "connect_timeout": Coerce(int),
                     **REMOTE_COMMON,
                 },
                 "gs": {

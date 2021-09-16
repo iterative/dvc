@@ -99,6 +99,11 @@ class BaseS3FileSystem(ObjectFSWrapper):
         client["endpoint_url"] = config.get("endpointurl")
         client["verify"] = config.get("ssl_verify")
 
+        # timeout configuration
+        config_kwargs = login_info["config_kwargs"]
+        config_kwargs["read_timeout"] = config.get("read_timeout")
+        config_kwargs["connect_timeout"] = config.get("connect_timeout")
+
         # encryptions
         additional = login_info["s3_additional_kwargs"]
         additional["ServerSideEncryption"] = config.get("sse")
