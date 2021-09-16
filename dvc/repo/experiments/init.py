@@ -59,6 +59,7 @@ def init(
 ):
     from jinja2 import Environment
 
+    from dvc.dvcfile import make_dvcfile
     from dvc.stage import check_circular_dependency, check_duplicated_arguments
     from dvc.stage.loader import StageLoader
     from dvc.utils import relpath
