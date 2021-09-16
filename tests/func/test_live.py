@@ -7,7 +7,7 @@ from funcy import first
 
 from dvc import stage as stage_module
 from dvc.render.utils import get_files
-from dvc.repo.live import LIVE_HTML_PATH, LIVE_PLOTS_PATH, LIVE_SUMMARY_PATH
+from dvc.repo.live import LIVE_HTML_PATH, LIVE_LINEAR_PATH, LIVE_SUMMARY_PATH
 
 LIVE_SCRIPT = dedent(
     """
@@ -127,8 +127,8 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
     plots_data = dvc.plots.show()
     files = get_files(plots_data)
-    assert os.path.join("logs", LIVE_PLOTS_PATH, "accuracy.tsv") in files
-    assert os.path.join("logs", LIVE_PLOTS_PATH, "loss.tsv") in files
+    assert os.path.join("logs", LIVE_LINEAR_PATH, "accuracy.tsv") in files
+    assert os.path.join("logs", LIVE_LINEAR_PATH, "loss.tsv") in files
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
@@ -141,8 +141,8 @@ def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
 
     plots_data = dvc.plots.show()
     files = get_files(plots_data)
-    assert os.path.join("logs", LIVE_PLOTS_PATH, "accuracy.tsv") in files
-    assert os.path.join("logs", LIVE_PLOTS_PATH, "loss.tsv") in files
+    assert os.path.join("logs", LIVE_LINEAR_PATH, "accuracy.tsv") in files
+    assert os.path.join("logs", LIVE_LINEAR_PATH, "loss.tsv") in files
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))

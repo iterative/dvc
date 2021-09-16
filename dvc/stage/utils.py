@@ -84,18 +84,21 @@ def _load_live_output(
     **kwargs,
 ):
     from dvc.output import Output, loads_from
-    from dvc.repo.live import LIVE_PLOTS_PATH
+    from dvc.repo.live import LIVE_IMAGES_PATH, LIVE_LINEAR_PATH
 
     outs = []
     if live or live_no_cache:
         assert bool(live) != bool(live_no_cache)
 
         path = live or live_no_cache
-        path = os.path.join(path, LIVE_PLOTS_PATH)
+        subdirs = [
+            os.path.join(path, subdir) 
+            for subdir in [LIVE_IMAGES_PATH, LIVE_LINEAR_PATH]
+        ]
 
         outs += loads_from(
             stage,
-            [path],
+            subdirs,
             use_cache=not bool(live_no_cache),
             live={
                 Output.PARAM_LIVE_SUMMARY: live_summary,
