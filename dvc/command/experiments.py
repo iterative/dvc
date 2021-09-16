@@ -1360,7 +1360,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_remove_parser.set_defaults(func=CmdExperimentsRemove)
 
-    EXPERIMENTS_INIT_HELP = "Create experiments."
+    EXPERIMENTS_INIT_HELP = "Initialize experiments."
     experiments_init_parser = experiments_subparsers.add_parser(
         "init",
         parents=[parent_parser],
@@ -1396,12 +1396,12 @@ def add_parser(subparsers, parent_parser):
     experiments_init_parser.add_argument(
         "--code",
         help="Path to the source file or directory "
-        "which your experiment depends",
+        "which your experiments depend",
     )
     experiments_init_parser.add_argument(
         "--data",
         help="Path to the data file or directory "
-        "which your experiment depends",
+        "which your experiments depend",
     )
     experiments_init_parser.add_argument(
         "--models",
