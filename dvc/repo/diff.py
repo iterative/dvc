@@ -150,8 +150,10 @@ def _output_paths(repo, targets):
                 hash_info = output.hash_info
                 obj = output.get_obj()
 
+            path = _to_path(output)
+
             if yield_output:
-                yield _to_path(output), hash_info.value
+                yield path, hash_info.value
 
             if not obj:
                 continue
@@ -160,17 +162,17 @@ def _output_paths(repo, targets):
                 yield_output
                 or any(target.isin(output.path_info) for target in targets)
             ):
-                yield from _dir_output_paths(output.path_info, obj, targets)
+                yield from _dir_output_paths(path, obj, targets)
 
 
-def _dir_output_paths(path_info, obj, targets=None):
+def _dir_output_paths(path, obj, targets=None):
     for key, entry_obj in obj:
-        fname = path_info.joinpath(*key)
+        fname = os.path.join(path, *key)
         if targets is None or any(
             fname.isin_or_eq(target) for target in targets
         ):
             # pylint: disable=no-member
-            yield str(fname), entry_obj.hash_info.value
+            yield fname, entry_obj.hash_info.value
 
 
 def _filter_missing(repo_fs, paths):
