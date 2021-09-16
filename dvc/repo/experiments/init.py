@@ -59,9 +59,9 @@ def init(
 ):
     from jinja2 import Environment
 
-    from dvc.utils import relpath
     from dvc.stage import check_circular_dependency, check_duplicated_arguments
     from dvc.stage.loader import StageLoader
+    from dvc.utils import relpath
     from dvc.utils.serialize import LOADERS, parse_yaml_for_update
 
     data = compact(data)  # remove None values
