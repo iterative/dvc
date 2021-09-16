@@ -1,4 +1,6 @@
 import logging
+import os
+import posixpath
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Optional
 
@@ -82,14 +84,22 @@ class SSHExecutor(BaseExecutor):
         user = f"{self.username}@" if self.username else ""
         port = f":{self.port}" if self.port is not None else ""
         path = f"{self.root_dir}" if self.root_dir else ""
-        return f"{user}{self.host}{port}:{path}"
+        if path and not posixpath.isabs(path):
+            path = f"/~/{path}"
+        return f"ssh://{user}{self.host}{port}{path}"
 
     @staticmethod
     def _git_client_args(fs):
-        return {
+        kwargs = {
             "password": fs.fs_args.get("password"),
             "key_filename": first(fs.fs_args.get("client_keys", [])),
         }
+        if os.name != "win32":
+            kwargs["ssh_command"] = (
+                "ssh -o UserKnownHostsFile=/dev/null "
+                "-o StrictHostKeyChecking=no"
+            )
+        return kwargs
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
         with self.sshfs() as fs:
