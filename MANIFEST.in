@@ -1,2 +1,4 @@
 include fastentrypoints.py
 include LICENSE
+recursive-include requirements *.txt
+recursive-include dvc/repo/plots/templates *.json
