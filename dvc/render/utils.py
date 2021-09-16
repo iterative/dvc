@@ -1,13 +1,14 @@
 import os.path
-from typing import Dict, List, Set
+from typing import Dict, List
 
 
-def get_files(data: Dict) -> Set:
+def get_files(data: Dict) -> List:
     files = set()
     for rev in data.keys():
         for file in data[rev].get("data", {}).keys():
             files.add(file)
-    return files
+    sorted_files = sorted(files)
+    return sorted_files
 
 
 def group_by_filename(plots_data: Dict) -> List[Dict]:
