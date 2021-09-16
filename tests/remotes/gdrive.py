@@ -7,8 +7,7 @@ from functools import partialmethod
 import pytest
 from funcy import cached_property, retry
 
-from dvc.fs.gdrive import GDriveFileSystem
-from dvc.path_info import CloudURLInfo
+from dvc.fs.gdrive import GDriveFileSystem, GDriveURLInfo
 from dvc.utils import tmp_fname
 
 from .base import Base
@@ -44,7 +43,7 @@ def _gdrive_retry(func):
     )(func)
 
 
-class GDrive(Base, CloudURLInfo):
+class GDrive(Base, GDriveURLInfo):
     @staticmethod
     def should_test():
         return bool(os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA))

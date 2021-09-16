@@ -34,10 +34,19 @@ def test_get_kwargs_from_urls():
 
 
 def test_init():
-    fs = SSHFileSystem(user="test", host="12.34.56.78", port="1234")
+    fs = SSHFileSystem(
+        user="test", host="12.34.56.78", port="1234", password="xxx"
+    )
     assert fs.fs_args["username"] == "test"
     assert fs.fs_args["host"] == "12.34.56.78"
     assert fs.fs_args["port"] == "1234"
+    assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "xxx"
+
+
+def test_ssh_ask_password(mocker):
+    mocker.patch("dvc.fs.ssh.ask_password", return_value="fish")
+    fs = SSHFileSystem(user="test", host="2.2.2.2", ask_password=True)
+    assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "fish"
 
 
 mock_ssh_config = """

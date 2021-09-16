@@ -141,6 +141,8 @@ def _collect_rows(
     precision=DEFAULT_PRECISION,
     sort_by=None,
     sort_order=None,
+    fill_value=FILL_VALUE,
+    iso=False,
 ):
     from dvc.scm.git import Git
 
@@ -161,8 +163,8 @@ def _collect_rows(
         elif exp.get("queued"):
             state = "Queued"
         else:
-            state = FILL_VALUE
-        executor = exp.get("executor", FILL_VALUE)
+            state = fill_value
+        executor = exp.get("executor", fill_value)
         is_baseline = rev == "baseline"
 
         if is_baseline:
@@ -202,12 +204,12 @@ def _collect_rows(
             exp_name,
             name_rev,
             typ,
-            _format_time(exp.get("timestamp")),
+            _format_time(exp.get("timestamp"), fill_value, iso),
             parent,
             state,
             executor,
         ]
-        fill_value = FILL_VALUE_ERRORED if results.get("error") else FILL_VALUE
+        fill_value = FILL_VALUE_ERRORED if results.get("error") else fill_value
         _extend_row(
             row,
             metric_names,
@@ -274,14 +276,18 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     return ret
 
 
-def _format_time(timestamp):
-    if timestamp is None:
-        return FILL_VALUE
-    if timestamp.date() == date.today():
+def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
+    if datetime_obj is None:
+        return fill_value
+
+    if iso:
+        return datetime_obj.isoformat()
+
+    if datetime_obj.date() == date.today():
         fmt = "%I:%M %p"
     else:
         fmt = "%b %d, %Y"
-    return timestamp.strftime(fmt)
+    return datetime_obj.strftime(fmt)
 
 
 def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
@@ -320,6 +326,7 @@ def _parse_filter_list(param_list):
 
 def experiments_table(
     all_experiments,
+    headers,
     metric_headers,
     metric_names,
     param_headers,
@@ -327,22 +334,15 @@ def experiments_table(
     sort_by=None,
     sort_order=None,
     precision=DEFAULT_PRECISION,
+    fill_value=FILL_VALUE,
+    iso=False,
 ) -> "TabularData":
     from funcy import lconcat
 
     from dvc.compare import TabularData
 
-    headers = [
-        "Experiment",
-        "rev",
-        "typ",
-        "Created",
-        "parent",
-        "State",
-        "Executor",
-    ]
     td = TabularData(
-        lconcat(headers, metric_headers, param_headers), fill_value=FILL_VALUE
+        lconcat(headers, metric_headers, param_headers), fill_value=fill_value
     )
     for base_rev, experiments in all_experiments.items():
         rows = _collect_rows(
@@ -353,6 +353,8 @@ def experiments_table(
             sort_by=sort_by,
             sort_order=sort_order,
             precision=precision,
+            fill_value=fill_value,
+            iso=iso,
         )
         td.extend(rows)
 
@@ -385,8 +387,10 @@ def baseline_styler(typ):
 
 
 def show_experiments(
-    all_experiments, pager=True, no_timestamp=False, **kwargs
+    all_experiments, pager=True, no_timestamp=False, show_csv=False, **kwargs
 ):
+    from funcy.seqs import flatten as flatten_list
+
     include_metrics = _parse_filter_list(kwargs.pop("include_metrics", []))
     exclude_metrics = _parse_filter_list(kwargs.pop("exclude_metrics", []))
     include_params = _parse_filter_list(kwargs.pop("include_params", []))
@@ -399,11 +403,26 @@ def show_experiments(
         include_params=include_params,
         exclude_params=exclude_params,
     )
-    metric_headers = _normalize_headers(metric_names)
-    param_headers = _normalize_headers(param_names)
+
+    headers = [
+        "Experiment",
+        "rev",
+        "typ",
+        "Created",
+        "parent",
+        "State",
+        "Executor",
+    ]
+
+    names = {**metric_names, **param_names}
+    counter = Counter(flatten_list([list(a.keys()) for a in names.values()]))
+    counter.update(headers)
+    metric_headers = _normalize_headers(metric_names, counter)
+    param_headers = _normalize_headers(param_names, counter)
 
     td = experiments_table(
         all_experiments,
+        headers,
         metric_headers,
         metric_names,
         param_headers,
@@ -411,6 +430,8 @@ def show_experiments(
         kwargs.get("sort_by"),
         kwargs.get("sort_order"),
         kwargs.get("precision"),
+        kwargs.get("fill_value"),
+        kwargs.get("iso"),
     )
 
     if no_timestamp:
@@ -422,9 +443,12 @@ def show_experiments(
 
     row_styles = lmap(baseline_styler, td.column("typ"))
 
-    merge_headers = ["Experiment", "rev", "typ", "parent"]
-    td.column("Experiment")[:] = map(prepare_exp_id, td.as_dict(merge_headers))
-    td.drop(*merge_headers[1:])
+    if not show_csv:
+        merge_headers = ["Experiment", "rev", "typ", "parent"]
+        td.column("Experiment")[:] = map(
+            prepare_exp_id, td.as_dict(merge_headers)
+        )
+        td.drop(*merge_headers[1:])
 
     headers = {"metrics": metric_headers, "params": param_headers}
     styles = {
@@ -453,13 +477,11 @@ def show_experiments(
         rich_table=True,
         header_styles=styles,
         row_styles=row_styles,
+        show_csv=show_csv,
     )
 
 
-def _normalize_headers(names):
-    count = Counter(
-        name for path in names for name in names[path] for path in names
-    )
+def _normalize_headers(names, count):
     return [
         name if count[name] == 1 else f"{path}:{name}"
         for path in names
@@ -493,6 +515,14 @@ class CmdExperimentsShow(CmdBase):
 
             ui.write(json.dumps(all_experiments, default=_format_json))
         else:
+            precision = (
+                self.args.precision or None
+                if self.args.show_csv
+                else DEFAULT_PRECISION
+            )
+            fill_value = "" if self.args.show_csv else FILL_VALUE
+            iso = True if self.args.show_csv else False
+
             show_experiments(
                 all_experiments,
                 include_metrics=self.args.include_metrics,
@@ -502,8 +532,11 @@ class CmdExperimentsShow(CmdBase):
                 no_timestamp=self.args.no_timestamp,
                 sort_by=self.args.sort_by,
                 sort_order=self.args.sort_order,
-                precision=self.args.precision or DEFAULT_PRECISION,
+                precision=precision,
+                fill_value=fill_value,
+                iso=iso,
                 pager=not self.args.no_pager,
+                show_csv=self.args.show_csv,
             )
         return 0
 
@@ -750,6 +783,7 @@ class CmdExperimentsRemove(CmdBase):
             exp_names=self.args.experiment,
             queue=self.args.queue,
             clear_all=self.args.all,
+            remote=self.args.git_remote,
         )
 
         return 0
@@ -881,6 +915,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
+    )
+    experiments_show_parser.add_argument(
+        "--show-csv",
+        action="store_true",
+        default=False,
+        help="Print output in csv format instead of a human-readable table.",
     )
     experiments_show_parser.add_argument(
         "--precision",
@@ -1111,9 +1151,9 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=None,
         help=(
-            "Optional Git remote name or Git URL. If provided, experiments "
-            "from the specified Git repository will be listed instead of "
-            "local experiments."
+            "Optional Git remote name or Git URL. "
+            "If provided, experiments from the specified Git repository "
+            " will be listed instead of local ones."
         ),
         metavar="[<git_remote>]",
     )
@@ -1231,7 +1271,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
 
-    EXPERIMENTS_REMOVE_HELP = "Remove local experiments."
+    EXPERIMENTS_REMOVE_HELP = "Remove experiments."
     experiments_remove_parser = experiments_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
@@ -1248,6 +1288,12 @@ def add_parser(subparsers, parent_parser):
         "--all",
         action="store_true",
         help="Remove all committed experiments.",
+    )
+    remove_group.add_argument(
+        "-g",
+        "--git-remote",
+        metavar="<git_remote>",
+        help="Name or URL of the Git remote to remove the experiment from",
     )
     experiments_remove_parser.add_argument(
         "experiment",

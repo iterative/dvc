@@ -9,6 +9,7 @@ from funcy import lfilter, wrap_with
 
 from dvc.path_info import PathInfo
 
+from ..progress import DEFAULT_CALLBACK
 from .base import BaseFileSystem
 from .dvc import DvcFileSystem
 
@@ -448,19 +449,21 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             for fname in files:
                 yield PathInfo(root) / fname
 
-    def _download(self, from_info, to_file, **kwargs):
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         fs, dvc_fs = self._get_fs_pair(from_info)
         try:
-            fs._download(  # pylint: disable=protected-access
-                from_info, to_file, **kwargs
+            fs.get_file(  # pylint: disable=protected-access
+                from_info, to_file, callback=callback, **kwargs
             )
             return
         except FileNotFoundError:
             if not dvc_fs:
                 raise
 
-        dvc_fs._download(  # pylint: disable=protected-access
-            from_info, to_file, **kwargs
+        dvc_fs.get_file(  # pylint: disable=protected-access
+            from_info, to_file, callback=callback, **kwargs
         )
 
     def metadata(self, path):

@@ -7,13 +7,13 @@ from funcy import cached_property, wrap_prop
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 logger = logging.getLogger(__name__)
 
 
 # pylint:disable=abstract-method
-class OSSFileSystem(CallbackMixin, ObjectFSWrapper):
+class OSSFileSystem(ObjectFSWrapper):
     scheme = Schemes.OSS
     PATH_CLS = CloudURLInfo
     REQUIRES = {"ossfs": "ossfs"}

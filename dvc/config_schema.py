@@ -155,6 +155,7 @@ SCHEMA = {
                     "grant_read_acp": str,
                     "grant_write_acp": str,
                     "grant_full_control": str,
+                    "cache_regions": bool,
                     **REMOTE_COMMON,
                 },
                 "gs": {
@@ -228,6 +229,18 @@ SCHEMA = {
     "machine": {
         str: {
             "cloud": All(Lower, Choices("aws", "azure")),
+            "region": All(
+                Lower, Choices("us-west", "us-east", "eu-west", "eu-north")
+            ),
+            "image": str,
+            "name": str,
+            "spot": Bool,
+            "spot_price": Coerce(float),
+            "instance_hdd_size": Coerce(int),
+            "instance_type": Lower,
+            "instance_gpu": Lower,
+            "ssh_private": str,
+            "startup_script": str,
         },
     },
     # section for experimental features

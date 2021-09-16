@@ -9,8 +9,9 @@ from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo
+from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
-from dvc.utils.serialize import YAMLFileCorruptedError, dump_yaml
+from dvc.utils.serialize import YAMLFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
@@ -269,6 +270,10 @@ def test_show_filter(
     included,
     excluded,
 ):
+    from contextlib import contextmanager
+
+    from dvc.ui import ui
+
     capsys.readouterr()
     div = "│" if os.name == "nt" else "┃"
 
@@ -281,7 +286,7 @@ def test_show_filter(
         "train/bar": 1,
         "nested": {"foo": 1, "bar": 1},
     }
-    dump_yaml(params_file, params_data)
+    (tmp_dir / params_file).dump(params_data)
 
     dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -312,13 +317,30 @@ def test_show_filter(
     if e_params is not None:
         command.append(f"--exclude-params={e_params}")
 
-    assert main(command) == 0
+    @contextmanager
+    def console_with(console, width):
+        console_options = console.options
+        original = console_options.max_width
+        con_width = console._width
+
+        try:
+            console_options.max_width = width
+            console._width = width
+            yield
+        finally:
+            console_options.max_width = original
+            console._width = con_width
+
+    with console_with(ui.rich_console, 255):
+        assert main(command) == 0
     cap = capsys.readouterr()
 
     for i in included:
-        assert f"{div} {i} {div}" in cap.out
+        assert f"{div} params.yaml:{i} {div}" in cap.out
+        assert f"{div} metrics.yaml:{i} {div}" in cap.out
     for e in excluded:
-        assert f"{div} {e} {div}" not in cap.out
+        assert f"{div} params.yaml:{e} {div}" not in cap.out
+        assert f"{div} metrics.yaml:{e} {div}" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
@@ -364,7 +386,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     makedirs(pid_dir, True)
     info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
     pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
-    dump_yaml(pidfile, info.to_dict())
+    (tmp_dir / pidfile).dump(info.to_dict())
 
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
@@ -395,7 +417,7 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     makedirs(pid_dir, True)
     info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
     pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
-    dump_yaml(pidfile, info.to_dict())
+    (tmp_dir / pidfile).dump(info.to_dict())
 
     results = dvc.experiments.show()
     exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
@@ -412,7 +434,6 @@ def test_show_running_checkpoint(
 ):
     from dvc.repo.experiments.base import EXEC_BRANCH
     from dvc.repo.experiments.executor.local import TempDirExecutor
-    from dvc.repo.experiments.utils import exp_refs_by_rev
 
     baseline_rev = scm.get_rev()
     dvc.experiments.run(
@@ -434,7 +455,7 @@ def test_show_running_checkpoint(
     info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
     rev = "workspace" if workspace else stash_rev
     pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
-    dump_yaml(pidfile, info.to_dict())
+    (tmp_dir / pidfile).dump(info.to_dict())
 
     mocker.patch.object(
         BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]
@@ -471,3 +492,49 @@ def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
 
     paths = ["workspace", "baseline", "error"]
     assert isinstance(get_in(result, paths), YAMLFileCorruptedError)
+
+
+def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
+    import time
+
+    baseline_rev = scm.get_rev()
+
+    def _get_rev_isotimestamp(rev):
+        return datetime.fromtimestamp(
+            scm.gitpython.repo.rev_parse(rev).committed_date
+        ).isoformat()
+
+    result1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    rev1 = first(result1)
+    ref_info1 = first(exp_refs_by_rev(scm, rev1))
+    time.sleep(1)
+    result2 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    rev2 = first(result2)
+    ref_info2 = first(exp_refs_by_rev(scm, rev2))
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--show-csv"]) == 0
+    cap = capsys.readouterr()
+    assert (
+        "Experiment,rev,typ,Created,parent,metrics.yaml:foo,params.yaml:foo"
+        in cap.out
+    )
+    assert ",workspace,baseline,,,3,3" in cap.out
+    assert (
+        "master,{},baseline,{},,1,1".format(
+            baseline_rev[:7], _get_rev_isotimestamp(baseline_rev)
+        )
+        in cap.out
+    )
+    assert (
+        "{},{},branch_base,{},,2,2".format(
+            ref_info1.name, rev1[:7], _get_rev_isotimestamp(rev1)
+        )
+        in cap.out
+    )
+    assert (
+        "{},{},branch_commit,{},,3,3".format(
+            ref_info2.name, rev2[:7], _get_rev_isotimestamp(rev2)
+        )
+        in cap.out
+    )

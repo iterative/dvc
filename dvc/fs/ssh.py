@@ -8,7 +8,8 @@ from dvc import prompt
 from dvc.scheme import Schemes
 from dvc.utils.fs import as_atomic
 
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
+from ..progress import DEFAULT_CALLBACK
+from .fsspec_wrapper import FSSpecWrapper
 
 _SSH_TIMEOUT = 60 * 30
 _SSH_CONFIG_FILE = os.path.expanduser(os.path.join("~", ".ssh", "config"))
@@ -26,7 +27,7 @@ def ask_password(host, user, port):
 
 
 # pylint:disable=abstract-method
-class SSHFileSystem(CallbackMixin, FSSpecWrapper):
+class SSHFileSystem(FSSpecWrapper):
     scheme = Schemes.SSH
     REQUIRES = {"sshfs": "sshfs"}
 
@@ -66,7 +67,13 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
             or self.DEFAULT_PORT
         )
 
+        if config.get("ask_password") and config.get("password") is None:
+            config["password"] = ask_password(
+                login_info["host"], login_info["username"], login_info["port"]
+            )
+
         login_info["password"] = config.get("password")
+        login_info["passphrase"] = config.get("password")
 
         raw_keys = []
         if config.get("keyfile"):
@@ -99,11 +106,6 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
         login_info["agent_forwarding"] = config.get("agent_forwarding", True)
         login_info["proxy_command"] = user_ssh_config.get("ProxyCommand")
 
-        if config.get("ask_password") and login_info["password"] is None:
-            login_info["password"] = ask_password(
-                login_info["host"], login_info["username"], login_info["port"]
-            )
-
         # We are going to automatically add stuff to known_hosts
         # something like paramiko's AutoAddPolicy()
         login_info["known_hosts"] = None
@@ -119,10 +121,12 @@ class SSHFileSystem(CallbackMixin, FSSpecWrapper):
     # Ensure that if an interrupt happens during the transfer, we don't
     # pollute the cache.
 
-    def _upload_fobj(self, fobj, to_info, *args, **kwargs):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         with as_atomic(self, to_info) as tmp_file:
-            super()._upload_fobj(fobj, tmp_file, *args, **kwargs)
+            super().upload_fobj(fobj, tmp_file, **kwargs)
 
-    def _upload(self, from_file, to_info, *args, **kwargs):
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         with as_atomic(self, to_info) as tmp_file:
-            super()._upload(from_file, tmp_file, *args, **kwargs)
+            super().put_file(from_file, tmp_file, callback=callback, **kwargs)

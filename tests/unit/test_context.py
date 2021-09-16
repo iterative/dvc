@@ -17,7 +17,7 @@ from dvc.parsing.context import (
     recurse_not_a_node,
 )
 from dvc.utils import relpath
-from dvc.utils.serialize import dump_yaml, dumps_yaml
+from dvc.utils.serialize import dumps_yaml
 
 
 def test_context():
@@ -290,7 +290,7 @@ def test_track(tmp_dir):
     }
     fs = LocalFileSystem()
     path = tmp_dir / "params.yaml"
-    dump_yaml(path, d, fs)
+    path.dump(d, fs=fs)
 
     context = Context.load_from(fs, path)
 
@@ -326,8 +326,8 @@ def test_track_from_multiple_files(tmp_dir):
     fs = LocalFileSystem()
     path1 = tmp_dir / "params.yaml"
     path2 = tmp_dir / "params2.yaml"
-    dump_yaml(path1, d1, fs)
-    dump_yaml(path2, d2, fs)
+    path1.dump(d1, fs=fs)
+    path2.dump(d2, fs=fs)
 
     context = Context.load_from(fs, path1)
     c = Context.load_from(fs, path2)

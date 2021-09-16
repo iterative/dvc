@@ -3,8 +3,9 @@ import shutil
 from functools import lru_cache
 
 from funcy import cached_property
+from tqdm.utils import CallbackIOWrapper
 
-from dvc.progress import Tqdm
+from dvc.progress import DEFAULT_CALLBACK
 
 from .base import BaseFileSystem
 from .local import LocalFileSystem
@@ -130,42 +131,25 @@ class FSSpecWrapper(BaseFileSystem):
             self._with_bucket(path_info), exist_ok=kwargs.pop("exist_ok", True)
         )
 
-    def _upload_fobj(self, fobj, to_info, size=None):
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
+        self.fs.put_file(
+            from_file, self._with_bucket(to_info), callback=callback, **kwargs
+        )
+        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
+
+    def get_file(
+        self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
+    ):
+        self.fs.get_file(
+            self._with_bucket(from_info), to_info, callback=callback, **kwargs
+        )
+
+    def upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(fobj, fdest, length=fdest.blocksize)
-
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **kwargs
-    ):
-        self.makedirs(to_info.parent)
-        size = os.path.getsize(from_file)
-        with open(from_file, "rb") as fobj:
-            self.upload_fobj(
-                fobj,
-                to_info,
-                size=size,
-                desc=name,
-                no_progress_bar=no_progress_bar,
-            )
-        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
-
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
-    ):
-        total = self.getsize(self._with_bucket(from_info))
-        with self.open(from_info, "rb") as fobj:
-            with Tqdm.wrapattr(
-                fobj,
-                "read",
-                desc=name,
-                disable=no_progress_bar,
-                bytes=True,
-                total=total,
-                **pbar_args,
-            ) as wrapped:
-                with open(to_file, "wb") as fdest:
-                    shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)
 
 
 # pylint: disable=abstract-method
@@ -233,42 +217,62 @@ class ObjectFSWrapper(FSSpecWrapper):
         yield from self._strip_buckets(files, detail=detail)
 
 
+# pylint: disable=arguments-differ
+class NoDirectoriesMixin:
+    def isdir(self, *args, **kwargs):
+        return False
+
+    def isfile(self, *args, **kwargs):
+        return True
+
+    def find(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk_files(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def ls(self, *args, **kwargs):
+        raise NotImplementedError
+
+
 _LOCAL_FS = LocalFileSystem()
 
 
 class CallbackMixin:
-    """Use the native ``get_file()``/``put_file()`` APIs
-    if the target filesystem supports callbacks."""
+    """Provides callback support for the filesystem that don't support yet."""
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
+    def put_file(
+        self,
+        from_file,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        **kwargs,
     ):
-        with Tqdm(
-            desc=name,
-            disable=no_progress_bar,
-            bytes=True,
-            total=-1,
-            **pbar_args,
-        ) as pbar:
-            self.fs.put_file(
-                os.fspath(from_file),
-                self._with_bucket(to_info),
-                callback=pbar.as_callback(_LOCAL_FS, from_file),
-            )
-        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
+        """Add compatibility support for Callback."""
+        # pylint: disable=protected-access
+        self.makedirs(to_info.parent)
+        size = os.path.getsize(from_file)
+        with open(from_file, "rb") as fobj:
+            callback.set_size(size)
+            wrapped = CallbackIOWrapper(callback.relative_update, fobj)
+            self.upload_fobj(wrapped, to_info)
+            self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
+    def get_file(
+        self,
+        from_info,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        **kwargs,
     ):
-        with Tqdm(
-            desc=name,
-            disable=no_progress_bar,
-            bytes=True,
-            total=-1,
-            **pbar_args,
-        ) as pbar:
-            self.fs.get_file(
-                self._with_bucket(from_info),
-                os.fspath(to_file),
-                callback=pbar.as_callback(self, from_info),
-            )
+        # pylint: disable=protected-access
+        total: int = self.getsize(from_info)
+        if total:
+            callback.set_size(total)
+
+        with self.open(from_info, "rb") as fobj, open(to_info, "wb") as fdest:
+            wrapped = CallbackIOWrapper(callback.relative_update, fobj)
+            shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)

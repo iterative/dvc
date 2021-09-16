@@ -9,17 +9,17 @@ from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError, ReproductionError
 from dvc.main import main
 from dvc.stage import PipelineStage
-from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.func import test_repro
+from tests.utils.scriptify import scriptify
 
-COPY_SCRIPT_FORMAT = dedent(
-    """\
-    import sys
+
+def copy_script(src, dest):
     import shutil
-    shutil.copyfile({}, {})
-"""
-)
-COPY_SCRIPT = COPY_SCRIPT_FORMAT.format("sys.argv[1]", "sys.argv[2]")
+
+    shutil.copyfile(src, dest)
+
+
+COPY_SCRIPT, _ = scriptify(copy_script)
 
 
 class MultiStageRun:
@@ -317,7 +317,7 @@ def test_repro_when_new_deps_is_added_in_dvcfile(tmp_dir, dvc, run_copy):
     dvcfile = Dvcfile(dvc, stage.path)
     data, _ = dvcfile._load()
     data["stages"]["copy-file"]["deps"] += ["copy.py"]
-    dump_yaml(stage.path, data)
+    (tmp_dir / stage.path).dump(data)
 
     assert dvc.reproduce(target)[0] == stage
 
@@ -339,7 +339,7 @@ def test_repro_when_new_outs_is_added_in_dvcfile(tmp_dir, dvc):
     dvcfile = Dvcfile(dvc, stage.path)
     data, _ = dvcfile._load()
     data["stages"]["copy-file"]["outs"] = ["foobar"]
-    dump_yaml(stage.path, data)
+    (tmp_dir / stage.path).dump(data)
 
     assert dvc.reproduce(target)[0] == stage
 
@@ -358,7 +358,10 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
     target = ":copy-file"
     assert not dvc.reproduce(target)
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT_FORMAT.format("'bar'", "'foobar'"))
+    # hardcode values in source code, ignore sys.argv
+    tmp_dir.gen(
+        "copy.py", COPY_SCRIPT.replace("func(*argv)", 'func("bar", "foobar")')
+    )
     from shutil import move
 
     move("foo", "bar")
@@ -366,7 +369,7 @@ def test_repro_when_new_deps_is_moved(tmp_dir, dvc):
     dvcfile = Dvcfile(dvc, stage.path)
     data, _ = dvcfile._load()
     data["stages"]["copy-file"]["deps"] = ["bar"]
-    dump_yaml(stage.path, data)
+    (tmp_dir / stage.path).dump(data)
 
     assert dvc.reproduce(target)[0] == stage
 
@@ -376,8 +379,7 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
 
     tmp_dir.gen({"dir": {"file1": "file1"}, "foo": "foo"})
     dvc.add("dir")
-    dump_yaml(
-        PIPELINE_FILE,
+    (tmp_dir / PIPELINE_FILE).dump(
         {
             "stages": {
                 "run-copy": {
@@ -395,8 +397,7 @@ def test_repro_when_new_out_overlaps_others_stage_outs(tmp_dir, dvc):
 def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
-    dump_yaml(
-        PIPELINE_FILE,
+    (tmp_dir / PIPELINE_FILE).dump(
         {
             "stages": {
                 "run-copy": {
@@ -414,8 +415,7 @@ def test_repro_when_new_deps_added_does_not_exist(tmp_dir, dvc):
 def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
-    dump_yaml(
-        PIPELINE_FILE,
+    (tmp_dir / PIPELINE_FILE).dump(
         {
             "stages": {
                 "run-copy": {
@@ -433,8 +433,7 @@ def test_repro_when_new_outs_added_does_not_exist(tmp_dir, dvc):
 def test_repro_when_lockfile_gets_deleted(tmp_dir, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("foo", "foo")
-    dump_yaml(
-        PIPELINE_FILE,
+    (tmp_dir / PIPELINE_FILE).dump(
         {
             "stages": {
                 "run-copy": {
@@ -464,13 +463,13 @@ def test_cyclic_graph_error(tmp_dir, dvc, run_copy):
     run_copy("bar", "baz", name="copy-bar-baz")
     run_copy("baz", "foobar", name="copy-baz-foobar")
 
-    data = load_yaml(PIPELINE_FILE)
+    data = (tmp_dir / PIPELINE_FILE).parse()
     data["stages"]["copy-baz-foo"] = {
         "cmd": "echo baz > foo",
         "deps": ["baz"],
         "outs": ["foo"],
     }
-    dump_yaml(PIPELINE_FILE, data)
+    (tmp_dir / PIPELINE_FILE).dump(data)
     with pytest.raises(CyclicGraphError):
         dvc.reproduce(":copy-baz-foo")
 
@@ -479,8 +478,8 @@ def test_repro_multiple_params(tmp_dir, dvc):
     from dvc.stage.utils import split_params_deps
     from tests.func.test_run_multistage import supported_params
 
-    dump_yaml(tmp_dir / "params2.yaml", supported_params)
-    dump_yaml(tmp_dir / "params.yaml", supported_params)
+    (tmp_dir / "params2.yaml").dump(supported_params)
+    (tmp_dir / "params.yaml").dump(supported_params)
 
     (tmp_dir / "foo").write_text("foo")
     stage = dvc.run(
@@ -522,7 +521,7 @@ def test_repro_multiple_params(tmp_dir, dvc):
     assert not dvc.reproduce(stage.addressing)
     params = deepcopy(supported_params)
     params["answer"] = 43
-    dump_yaml(tmp_dir / "params.yaml", params)
+    (tmp_dir / "params.yaml").dump(params)
 
     assert dvc.reproduce(stage.addressing) == [stage]
 
@@ -533,7 +532,7 @@ def test_repro_list_of_commands_in_order(tmp_dir, dvc, multiline):
     if multiline:
         cmd = "\n".join(cmd)
 
-    dump_yaml("dvc.yaml", {"stages": {"multi": {"cmd": cmd}}})
+    (tmp_dir / "dvc.yaml").dump({"stages": {"multi": {"cmd": cmd}}})
 
     (tmp_dir / "dvc.yaml").write_text(
         dedent(
@@ -559,7 +558,7 @@ def test_repro_list_of_commands_raise_and_stops_after_failure(
     if multiline:
         cmd = "\n".join(cmd)
 
-    dump_yaml("dvc.yaml", {"stages": {"multi": {"cmd": cmd}}})
+    (tmp_dir / "dvc.yaml").dump({"stages": {"multi": {"cmd": cmd}}})
 
     with pytest.raises(ReproductionError):
         dvc.reproduce(targets=["multi"])

@@ -867,9 +867,9 @@ def test_checkout_external_modified_file(tmp_dir, dvc, scm, mocker, workspace):
 def test_checkout_executable(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
 
-    contents = load_yaml("foo.dvc")
+    contents = (tmp_dir / "foo.dvc").parse()
     contents["outs"][0]["isexec"] = True
-    dump_yaml("foo.dvc", contents)
+    (tmp_dir / "foo.dvc").dump(contents)
 
     dvc.checkout("foo")
 

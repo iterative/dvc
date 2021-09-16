@@ -46,79 +46,25 @@ class build_py(_build_py):
         _build_py.run(self)
 
 
-install_requires = [
-    "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
-    "colorama>=0.3.9",
-    "configobj>=5.0.6",
-    "gitpython>3",
-    "dulwich>=0.20.23",
-    "pygit2>=1.5.0",
-    "setuptools>=34.0.0",
-    "nanotime>=0.5.2",
-    "pyasn1>=0.4.1",
-    "voluptuous>=0.11.7",
-    "requests>=2.22.0",
-    "grandalf==0.6",
-    "distro>=1.3.0",
-    "appdirs>=1.4.3",
-    "ruamel.yaml>=0.17.11",
-    "toml>=0.10.1",
-    "funcy>=1.14",
-    "pathspec>=0.6.0,<0.9.0",
-    "shortuuid>=0.5.0",
-    "tqdm>=4.45.0,<5",
-    "packaging>=19.0",
-    "zc.lockfile>=1.2.1",
-    "flufl.lock>=3.2,<4",
-    "win-unicode-console>=0.5; sys_platform == 'win32'",
-    "pywin32>=225; sys_platform == 'win32' and python_version < '3.10'",
-    "networkx>=2.5",
-    "psutil>=5.8.0",
-    "pydot>=1.2.4",
-    "speedcopy>=2.0.1; python_version < '3.8' and sys_platform == 'win32'",
-    "dataclasses==0.7; python_version < '3.7'",
-    "importlib-metadata>=1.4; python_version < '3.8'",
-    "flatten_dict>=0.4.1,<1",
-    "tabulate>=0.8.7",
-    "pygtrie>=2.3.2",
-    "dpath>=2.0.1,<3",
-    "shtab>=1.3.4,<2",
-    "rich>=10.0.0",
-    "dictdiffer>=0.8.1",
-    "python-benedict>=0.21.1",
-    "pyparsing==2.4.7",
-    "typing_extensions>=3.7.4; python_version < '3.10'",
-    # until https://github.com/python/typing/issues/865 is fixed for python3.10
-    "typing_extensions==3.10.0.0; python_version >= '3.10'",
-    "fsspec>=2021.7.0",
-    "diskcache>=5.2.1",
-]
-
-
 # Extra dependencies for remote integrations
+requirements = {
+    path.stem: path.read_text().strip().splitlines()
+    for path in Path("requirements").glob("*.txt")
+}
 
-gs = ["gcsfs==2021.7.0"]
-gdrive = ["pydrive2[fsspec]>=1.9.1"]
-s3 = ["s3fs==2021.8.0", "aiobotocore[boto3]>1.0.1"]
-azure = ["adlfs==2021.7.1", "azure-identity>=1.4.0", "knack"]
-oss = ["ossfs==2021.7.5"]
-ssh = ["sshfs>=2021.7.1"]
-
-hdfs = ["pyarrow>=2.0.0; python_version < '3.10'"]
-webhdfs = ["hdfs==2.5.8"]
-webdav = ["webdav4>=0.9.0"]
 # gssapi should not be included in all_remotes, because it doesn't have wheels
 # for linux and mac, so it will fail to compile if user doesn't have all the
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
-ssh_gssapi = ["sshfs[gssapi]>=2021.7.1"]
-all_remotes = gs + s3 + azure + ssh + oss + gdrive + hdfs + webhdfs + webdav
 
-terraform = ssh + ["python-terraform>=0.10.1", "jinja2>=2.0.0"]
-
-tests_requirements = (
-    Path("test_requirements.txt").read_text().strip().splitlines()
-) + terraform
+install_requires = requirements.pop("default")
+requirements["all"] = [
+    requirements
+    for key, requirements in requirements.items()
+    if key not in ("tests", "ssh_gssapi", "terraform")
+]
+requirements["tests"] += requirements["terraform"]
+requirements["dev"] = requirements["all"] + requirements["tests"]
 
 setup(
     name="dvc",
@@ -127,24 +73,12 @@ setup(
     long_description=open("README.rst", encoding="UTF-8").read(),
     author="Dmitry Petrov",
     author_email="dmitry@dvc.org",
+    maintainer="Iterative",
+    maintainer_email="support@dvc.org",
     download_url="https://github.com/iterative/dvc",
     license="Apache License 2.0",
     install_requires=install_requires,
-    extras_require={
-        "all": all_remotes,
-        "gs": gs,
-        "gdrive": gdrive,
-        "s3": s3,
-        "azure": azure,
-        "oss": oss,
-        "ssh": ssh,
-        "ssh_gssapi": ssh_gssapi,
-        "hdfs": hdfs,
-        "webhdfs": webhdfs,
-        "webdav": webdav,
-        "terraform": terraform,
-        "tests": tests_requirements,
-    },
+    extras_require=requirements,
     keywords="data-science data-version-control machine-learning git"
     " developer-tools reproducibility collaboration ai",
     python_requires=">=3.6",

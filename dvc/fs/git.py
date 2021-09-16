@@ -1,8 +1,11 @@
 import errno
 import os
 
+from tqdm.utils import CallbackIOWrapper
+
 from dvc.utils import is_exec, relpath
 
+from ..progress import DEFAULT_CALLBACK
 from .base import BaseFileSystem
 
 
@@ -116,16 +119,18 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **kwargs
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
         import shutil
 
-        from dvc.progress import Tqdm
+        total = self.getsize(from_info)
+        if total:
+            callback.set_size(total)
 
-        with open(to_file, "wb+") as to_fobj:
-            with Tqdm.wrapattr(
-                to_fobj, "write", desc=name, disable=no_progress_bar
-            ) as wrapped:
-                with self.open(from_info, "rb", **kwargs) as from_fobj:
-                    shutil.copyfileobj(from_fobj, wrapped)
+        with self.open(from_info, "rb", **kwargs) as from_fobj:
+            with open(to_file, "wb+") as to_fobj:
+                wrapped = CallbackIOWrapper(
+                    callback.relative_update, from_fobj
+                )
+                shutil.copyfileobj(wrapped, to_fobj)

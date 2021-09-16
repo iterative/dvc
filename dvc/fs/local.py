@@ -7,6 +7,7 @@ from dvc.system import System
 from dvc.utils import is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
+from ..progress import DEFAULT_CALLBACK
 from .base import BaseFileSystem
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,9 @@ class LocalFileSystem(BaseFileSystem):
 
     def exists(self, path_info) -> bool:
         assert isinstance(path_info, str) or path_info.scheme == "local"
-        return self.fs.exists(path_info)
+        # TODO: replace this with os.path.exists once the problem is fixed on
+        # the fsspec https://github.com/intake/filesystem_spec/issues/742
+        return os.path.lexists(path_info)
 
     def checksum(self, path_info) -> str:
         return self.fs.checksum(path_info)
@@ -106,7 +109,7 @@ class LocalFileSystem(BaseFileSystem):
             self.remove(tmp_info)
             raise
 
-    def _upload_fobj(self, fobj, to_info, **kwargs):
+    def upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(to_info.parent)
         tmp_info = to_info.parent / tmp_fname("")
         try:
@@ -156,21 +159,15 @@ class LocalFileSystem(BaseFileSystem):
     def info(self, path_info):
         return self.fs.info(path_info)
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
         makedirs(to_info.parent, exist_ok=True)
-
         tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
+        copyfile(from_file, tmp_file, callback=callback)
         os.replace(tmp_file, to_info)
 
-    @staticmethod
-    def _download(
-        from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    def get_file(
+        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
+        copyfile(from_info, to_file, callback=callback)

@@ -49,12 +49,14 @@ import os
 import pathlib
 import sys
 from contextlib import contextmanager
+from functools import partialmethod
 from textwrap import dedent
 
 import pytest
 from funcy import lmap, retry
 
 from dvc.logger import disable_other_loggers
+from dvc.utils import serialize
 from dvc.utils.fs import makedirs
 
 __all__ = [
@@ -67,6 +69,8 @@ __all__ = [
     "erepo_dir",
     "git_dir",
     "git_init",
+    "git_upstream",
+    "git_downstream",
 ]
 
 
@@ -248,6 +252,22 @@ class TmpDir(pathlib.Path):
     def hash_to_path_info(self, hash_):
         return self / hash_[0:2] / hash_[2:]
 
+    def dump(self, *args, **kwargs):
+        return serialize.DUMPERS[self.suffix](self, *args, **kwargs)
+
+    def parse(self, *args, **kwargs):
+        return serialize.LOADERS[self.suffix](self, *args, **kwargs)
+
+    def modify(self, *args, **kwargs):
+        return serialize.MODIFIERS[self.suffix](self, *args, **kwargs)
+
+    load_yaml = partialmethod(serialize.load_yaml)
+    dump_yaml = partialmethod(serialize.dump_yaml)
+    load_json = partialmethod(serialize.load_json)
+    dump_json = partialmethod(serialize.dump_json)
+    load_toml = partialmethod(serialize.load_toml)
+    dump_toml = partialmethod(serialize.dump_toml)
+
 
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
@@ -407,3 +427,23 @@ def git_dir(make_tmp_dir):
     path = make_tmp_dir("git-erepo", scm=True)
     path.scm.commit("init repo")
     return path
+
+
+@pytest.fixture
+def git_upstream(tmp_dir, erepo_dir, git_dir, request):
+    remote = erepo_dir if "dvc" in request.fixturenames else git_dir
+    url = "file://{}".format(remote.resolve().as_posix())
+    tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
+    remote.remote = "upstream"
+    remote.url = url
+    return remote
+
+
+@pytest.fixture
+def git_downstream(tmp_dir, erepo_dir, git_dir, request):
+    remote = erepo_dir if "dvc" in request.fixturenames else git_dir
+    url = "file://{}".format(tmp_dir.resolve().as_posix())
+    remote.scm.gitpython.repo.create_remote("upstream", url)
+    remote.remote = "upstream"
+    remote.url = url
+    return remote

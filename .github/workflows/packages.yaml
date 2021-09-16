@@ -5,6 +5,7 @@ on:
     - master
   release:
     types: [released, prereleased]
+  workflow_dispatch:
 jobs:
   deb:
     runs-on: ubuntu-18.04
@@ -20,7 +21,7 @@ jobs:
         ruby-version: 2.4
     - name: Install deps
       run: |
-        pip install .[all,terraform]
+        pip install .[all]
         pip install -r scripts/build-requirements.txt
         gem install --no-document fpm
     - name: Build deb
@@ -49,7 +50,7 @@ jobs:
         ruby-version: 2.4
     - name: Install deps
       run: |
-        pip install .[all,terraform]
+        pip install .[all]
         pip install -r scripts/build-requirements.txt
         gem install --no-document fpm
     - name: Build rpm
@@ -81,7 +82,7 @@ jobs:
         # available lxml (webdav dependency) wheels are built with an old
         # SDK, which breaks osxpkg notarization. Building from scratch
         # instead.
-        pip install .[all,terraform] --no-binary lxml
+        pip install .[all] --no-binary lxml
         pip install -r scripts/build-requirements.txt
         gem install --no-document fpm
     - name: Build
@@ -106,7 +107,7 @@ jobs:
         python-version: 3.8
     - name: Install deps
       run: |
-        pip install .[all,terraform]
+        pip install .[all]
         pip install -r scripts/build-requirements.txt
     - name: Pull images
       run: |
@@ -133,7 +134,7 @@ jobs:
       with:
         python-version: 3.7
     - name: Install
-      run: pip install ".[all,terraform,tests]"
+      run: pip install ".[all,tests]"
     - name: Build packages
       run: ./scripts/build_package.sh
     - name: Publish packages to PyPI

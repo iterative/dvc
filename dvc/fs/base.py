@@ -1,12 +1,18 @@
+import contextlib
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial, partialmethod
+from functools import partialmethod
 from multiprocessing import cpu_count
 from typing import Any, ClassVar, Dict, FrozenSet, Optional
 
+from funcy import cached_property
+from tqdm.utils import CallbackIOWrapper
+
 from dvc.exceptions import DvcException
 from dvc.path_info import URLInfo
-from dvc.progress import Tqdm
+from dvc.progress import DEFAULT_CALLBACK, FsspecCallback
+from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
 
@@ -217,43 +223,64 @@ class BaseFileSystem:
             return False
         return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
-        if not hasattr(self, "_upload"):
-            raise RemoteActionNotImplemented("upload", self.scheme)
+    @cached_property
+    def _local_fs(self):
+        from dvc.fs import LocalFileSystem
+
+        return LocalFileSystem()
+
+    def upload(
+        self,
+        from_info,
+        to_info,
+        total=None,
+        desc=None,
+        callback=None,
+        no_progress_bar=False,
+        **pbar_args,
+    ):
+        is_file_obj = hasattr(from_info, "read")
+        method = "upload_fobj" if is_file_obj else "put_file"
+        if not hasattr(self, method):
+            raise RemoteActionNotImplemented(method, self.scheme)
 
         if to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        if from_info.scheme != "local":
-            raise NotImplementedError
+        if not is_file_obj:
+            desc = desc or from_info.name
 
-        logger.debug("Uploading '%s' to '%s'", from_info, to_info)
+        stack = contextlib.ExitStack()
+        if not callback:
+            pbar = ui.progress(
+                desc=desc,
+                disable=no_progress_bar,
+                bytes=True,
+                total=total or -1,
+                **pbar_args,
+            )
+            stack.enter_context(pbar)
+            callback = pbar.as_callback(self._local_fs, from_info)
+            if total:
+                callback.set_size(total)
 
-        name = name or from_info.name
+        with stack:
+            if is_file_obj:
+                wrapped = CallbackIOWrapper(
+                    callback.relative_update, from_info
+                )
+                # `size` is used to provide hints to the WebdavFileSystem
+                # for legacy servers.
+                # pylint: disable=no-member
+                return self.upload_fobj(wrapped, to_info, size=total)
 
-        self._upload(  # noqa, pylint: disable=no-member
-            from_info.fspath,
-            to_info,
-            name=name,
-            no_progress_bar=no_progress_bar,
-        )
+            if from_info.scheme != "local":
+                raise NotImplementedError
 
-    def upload_fobj(
-        self, fobj, to_info, no_progress_bar=False, size=None, **pbar_args
-    ):
-        if not hasattr(self, "_upload_fobj"):
-            raise RemoteActionNotImplemented("upload_fobj", self.scheme)
-
-        with Tqdm.wrapattr(
-            fobj,
-            "read",
-            disable=no_progress_bar,
-            bytes=True,
-            total=size,
-            **pbar_args,
-        ) as wrapped:
-            self._upload_fobj(  # pylint: disable=no-member
-                wrapped, to_info, size=size
+            logger.debug("Uploading '%s' to '%s'", from_info, to_info)
+            # pylint: disable=no-member
+            return self.put_file(
+                os.fspath(from_info), to_info, callback=callback
             )
 
     def download(
@@ -261,84 +288,105 @@ class BaseFileSystem:
         from_info,
         to_info,
         name=None,
+        callback=None,
         no_progress_bar=False,
         jobs=None,
         _only_file=False,
         **kwargs,
     ):
-        if not hasattr(self, "_download"):
-            raise RemoteActionNotImplemented("download", self.scheme)
+        if not hasattr(self, "get_file"):
+            raise RemoteActionNotImplemented("get_file", self.scheme)
 
         if from_info.scheme != self.scheme:
             raise NotImplementedError
 
-        if to_info.scheme == self.scheme != "local":
-            self.copy(from_info, to_info)
-            return 0
-
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        if not _only_file and self.isdir(from_info):
-            return self._download_dir(
-                from_info, to_info, name, no_progress_bar, jobs, **kwargs
+        download_dir = not _only_file and self.isdir(from_info)
+
+        desc = name or to_info.name
+        stack = contextlib.ExitStack()
+        if not callback:
+            pbar_kwargs = {"unit": "Files"} if download_dir else {}
+            pbar = ui.progress(
+                total=-1,
+                desc="Downloading directory" if download_dir else desc,
+                bytes=not download_dir,
+                disable=no_progress_bar,
+                **pbar_kwargs,
             )
-        return self._download_file(from_info, to_info, name, no_progress_bar)
+            stack.enter_context(pbar)
+            callback = pbar.as_callback(self, from_info)
+
+        with stack:
+            if download_dir:
+                return self._download_dir(
+                    from_info, to_info, callback=callback, jobs=jobs, **kwargs
+                )
+            return self._download_file(from_info, to_info, callback=callback)
 
     download_file = partialmethod(download, _only_file=True)
 
     def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, jobs, **kwargs
+        self,
+        from_info,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        jobs=None,
+        **kwargs,
     ):
         from_infos = list(self.walk_files(from_info, **kwargs))
         if not from_infos:
             makedirs(to_info, exist_ok=True)
             return None
+
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
         )
+        callback.set_size(len(from_infos))
 
-        with Tqdm(
-            total=len(from_infos),
-            desc="Downloading directory",
-            unit="Files",
-            disable=no_progress_bar,
-        ) as pbar:
-            download_files = pbar.wrap_fn(
-                partial(self._download_file, name=name, no_progress_bar=True)
-            )
-            max_workers = jobs or self.jobs
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [
-                    executor.submit(download_files, from_info, to_info)
-                    for from_info, to_info in zip(from_infos, to_infos)
-                ]
+        download_files = FsspecCallback.wrap_fn(callback, self._download_file)
+        max_workers = jobs or self.jobs
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(download_files, from_info, to_info)
+                for from_info, to_info in zip(from_infos, to_infos)
+            ]
 
-                # NOTE: unlike pulling/fetching cache, where we need to
-                # download everything we can, not raising an error here might
-                # turn very ugly, as the user might think that he has
-                # downloaded a complete directory, while having a partial one,
-                # which might cause unexpected results in his pipeline.
-                for future in as_completed(futures):
-                    # NOTE: executor won't let us raise until all futures that
-                    # it has are finished, so we need to cancel them ourselves
-                    # before re-raising.
-                    exc = future.exception()
-                    if exc:
-                        for entry in futures:
-                            entry.cancel()
-                        raise exc
+            # NOTE: unlike pulling/fetching cache, where we need to
+            # download everything we can, not raising an error here might
+            # turn very ugly, as the user might think that he has
+            # downloaded a complete directory, while having a partial one,
+            # which might cause unexpected results in his pipeline.
+            for future in as_completed(futures):
+                # NOTE: executor won't let us raise until all futures that
+                # it has are finished, so we need to cancel them ourselves
+                # before re-raising.
+                exc = future.exception()
+                if exc:
+                    for entry in futures:
+                        entry.cancel()
+                    raise exc
 
-    def _download_file(self, from_info, to_info, name, no_progress_bar):
+    def _download_file(
+        self,
+        from_info,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+    ):
         makedirs(to_info.parent, exist_ok=True)
-
-        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
-        name = name or to_info.name
-
         tmp_file = tmp_fname(to_info)
 
-        self._download(  # noqa, pylint: disable=no-member
-            from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
+        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
+        try:
+            # noqa, pylint: disable=no-member
+            self.get_file(from_info, tmp_file, callback=callback)
+        except Exception:  # pylint: disable=broad-except
+            # do we need to rollback makedirs for previously not-existing
+            # directories?
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(tmp_file)
+            raise
 
         move(tmp_file, to_info)

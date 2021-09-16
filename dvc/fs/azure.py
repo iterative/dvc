@@ -11,7 +11,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .fsspec_wrapper import ObjectFSWrapper
+from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -39,7 +39,7 @@ def _az_config():
 
 
 # pylint:disable=abstract-method
-class AzureFileSystem(ObjectFSWrapper):
+class AzureFileSystem(CallbackMixin, ObjectFSWrapper):
     scheme = Schemes.AZURE
     PATH_CLS = CloudURLInfo
     PARAM_CHECKSUM = "etag"

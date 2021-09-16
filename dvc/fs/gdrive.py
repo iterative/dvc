@@ -12,7 +12,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
+from .fsspec_wrapper import FSSpecWrapper
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -79,9 +79,7 @@ class GDriveURLInfo(CloudURLInfo):
         self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
-class GDriveFileSystem(
-    CallbackMixin, FSSpecWrapper
-):  # pylint:disable=abstract-method
+class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.GDRIVE
     PATH_CLS = GDriveURLInfo
     PARAM_CHECKSUM = "checksum"
@@ -298,7 +296,16 @@ class GDriveFileSystem(
 
         return super()._with_bucket(path)
 
-    def _upload_fobj(self, fobj, to_info, size: int = None):
+    def _strip_bucket(self, entry):
+        try:
+            bucket, path = entry.split("/", 1)
+        except ValueError:
+            # If there is no path attached, only returns
+            # the bucket (top-level).
+            bucket, path = entry, None
+        return path or bucket
+
+    def upload_fobj(self, fobj, to_info, **kwargs):
         rpath = self._with_bucket(to_info)
         self.makedirs(os.path.dirname(rpath))
-        return self.fs.upload_fobj(fobj, rpath, size=size)
+        return self.fs.upload_fobj(fobj, rpath, **kwargs)

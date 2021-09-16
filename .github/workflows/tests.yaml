@@ -1,12 +1,8 @@
 name: Tests
 
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
+  pull_request: {}
+  push: {}
   schedule:
     - cron: '5 1 * * *'  # every day at 01:05
 
@@ -17,6 +13,7 @@ env:
 
 jobs:
   lint:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2.3.4
@@ -36,6 +33,7 @@ jobs:
       run: python setup.py checkdocs
     - uses: pre-commit/action@v2.0.3
   tests:
+    timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -101,6 +99,7 @@ jobs:
       run: |
         echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
+      timeout-minutes: 30
       env:
         GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -113,7 +112,7 @@ jobs:
         --cov-report=xml --cov-report=term
         --all ${{ env.extra_test_args }}
     - name: upload coverage report
-      uses: codecov/codecov-action@v2.0.3
+      uses: codecov/codecov-action@v2.1.0
       with:
         file: ./coverage.xml
         fail_ci_if_error: false

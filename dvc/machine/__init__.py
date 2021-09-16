@@ -10,20 +10,32 @@ from typing import (
     Type,
 )
 
+from dvc.exceptions import DvcException
 from dvc.types import StrPath
-
-from .backend.base import BaseMachineBackend
-from .backend.terraform import TerraformBackend
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
 
-logger = logging.getLogger(__name__)
+    from .backend.base import BaseMachineBackend
 
-BackendCls = Type[BaseMachineBackend]
+    BackendCls = Type[BaseMachineBackend]
+
+logger = logging.getLogger(__name__)
 
 
 RESERVED_NAMES = {"local", "localhost"}
+
+DEFAULT_STARTUP_SCRIPT = """#!/bin/bash
+sudo apt-get update
+sudo apt-get install --yes python3 python3-pip
+python3 -m pip install --upgrade pip
+
+pushd /etc/apt/sources.list.d
+sudo wget https://dvc.org/deb/dvc.list
+sudo apt-get update
+sudo apt-get install --yes dvc
+popd
+"""
 
 
 def validate_name(name: str):
@@ -37,11 +49,16 @@ def validate_name(name: str):
 
 
 class MachineBackends(Mapping):
-    DEFAULT: Dict[str, BackendCls] = {
+    try:
+        from .backend.terraform import TerraformBackend
+    except ImportError:
+        TerraformBackend = None  # type: ignore[assignment, misc]
+
+    DEFAULT: Dict[str, Optional["BackendCls"]] = {
         "terraform": TerraformBackend,
     }
 
-    def __getitem__(self, key: str) -> BaseMachineBackend:
+    def __getitem__(self, key: str) -> "BaseMachineBackend":
         """Lazily initialize backends and cache it afterwards"""
         initialized = self.initialized.get(key)
         if not initialized:
@@ -59,9 +76,18 @@ class MachineBackends(Mapping):
         **kwargs,
     ) -> None:
         selected = selected or list(self.DEFAULT)
-        self.backends = {key: self.DEFAULT[key] for key in selected}
+        self.backends: Dict[str, "BackendCls"] = {}
+        for key in selected:
+            cls = self.DEFAULT.get(key)
+            if cls is None:
+                raise DvcException(
+                    f"'dvc machine' backend '{key}' is missing required "
+                    "dependencies. Install them with:\n"
+                    f"\tpip install dvc[{key}]"
+                )
+            self.backends[key] = cls
 
-        self.initialized: Dict[str, BaseMachineBackend] = {}
+        self.initialized: Dict[str, "BaseMachineBackend"] = {}
 
         self.tmp_dir = tmp_dir
         self.kwargs = kwargs
@@ -142,7 +168,7 @@ class MachineManager:
             conf = kwargs
         return conf
 
-    def _get_backend(self, cloud: str) -> BaseMachineBackend:
+    def _get_backend(self, cloud: str) -> "BaseMachineBackend":
         from dvc.config import NoMachineError
 
         try:
@@ -154,6 +180,12 @@ class MachineManager:
     def create(self, name: Optional[str]):
         """Create and start the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
+        if "startup_script" in config:
+            with open(config["startup_script"]) as fobj:
+                startup_script = fobj.read()
+        else:
+            startup_script = DEFAULT_STARTUP_SCRIPT
+        config["startup_script"] = startup_script
         return backend.create(**config)
 
     def destroy(self, name: Optional[str]):

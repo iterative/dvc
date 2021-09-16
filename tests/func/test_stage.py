@@ -168,34 +168,34 @@ def test_meta_is_preserved(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
     # Add meta to DVC-file
-    data = load_yaml(stage.path)
+    data = (tmp_dir / stage.path).parse()
     data["meta"] = {"custom_key": 42}
-    dump_yaml(stage.path, data)
+    (tmp_dir / stage.path).dump(data)
 
     # Loading and dumping to test that it works and meta is retained
     dvcfile = SingleStageFile(dvc, stage.path)
     new_stage = dvcfile.stage
     dvcfile.dump(new_stage)
 
-    new_data = load_yaml(stage.path)
+    new_data = (tmp_dir / stage.path).parse()
     assert new_data["meta"] == data["meta"]
 
 
 def test_desc_is_preserved(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
-    data = load_yaml(stage.path)
+    data = (tmp_dir / stage.path).parse()
     stage_desc = "test stage description"
     out_desc = "test out description"
     data["desc"] = stage_desc
     data["outs"][0]["desc"] = out_desc
-    dump_yaml(stage.path, data)
+    (tmp_dir / stage.path).dump(data)
 
     dvcfile = SingleStageFile(dvc, stage.path)
     new_stage = dvcfile.stage
     dvcfile.dump(new_stage)
 
-    new_data = load_yaml(stage.path)
+    new_data = (tmp_dir / stage.path).parse()
     assert new_data["desc"] == stage_desc
     assert new_data["outs"][0]["desc"] == out_desc
 

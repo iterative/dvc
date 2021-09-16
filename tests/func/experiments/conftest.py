@@ -91,18 +91,14 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.fixture
-def git_upstream(tmp_dir, erepo_dir):
-    url = "file://{}".format(erepo_dir.resolve().as_posix())
-    tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
-    erepo_dir.url = url
-    return erepo_dir
+def http_auth_patch(mocker):
+    from dulwich.client import HTTPUnauthorized
 
+    url = "https://0.0.0.0"
+    client = mocker.MagicMock()
+    client.get_refs.side_effect = HTTPUnauthorized("", url)
+    client.send_pack.side_effect = HTTPUnauthorized("", url)
 
-@pytest.fixture
-def git_downstream(tmp_dir, erepo_dir):
-    url = "file://{}".format(tmp_dir.resolve().as_posix())
-    erepo_dir.scm.gitpython.repo.create_remote("upstream", url)
-    erepo_dir.remote = "upstream"
-    erepo_dir.url = url
-    return erepo_dir
+    patch = mocker.patch("dulwich.client.get_transport_and_path")
+    patch.return_value = (client, url)
+    return url

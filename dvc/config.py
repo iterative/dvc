@@ -76,8 +76,10 @@ class Config(dict):
     APPNAME = "dvc"
     APPAUTHOR = "iterative"
 
+    SYSTEM_LEVELS = ("system", "global")
+    REPO_LEVELS = ("repo", "local")
     # In the order they shadow each other
-    LEVELS = ("system", "global", "repo", "local")
+    LEVELS = SYSTEM_LEVELS + REPO_LEVELS
 
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
@@ -263,6 +265,7 @@ class Config(dict):
                     "key_path": func,
                 }
             },
+            "machine": {str: {"startup_script": func}},
         }
         return Schema(dirs_schema, extra=ALLOW_EXTRA)(conf)
 
@@ -285,7 +288,7 @@ class Config(dict):
     def edit(self, level=None, validate=True):
         # NOTE: we write to repo config by default, same as git config
         level = level or "repo"
-        if level in {"repo", "local"} and self.dvc_dir is None:
+        if self.dvc_dir is None and level in self.REPO_LEVELS:
             raise ConfigError("Not inside a DVC repo")
 
         conf = self.load_one(level)

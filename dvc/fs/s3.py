@@ -6,7 +6,7 @@ from collections import defaultdict
 from funcy import cached_property, wrap_prop
 
 from dvc.path_info import CloudURLInfo
-from dvc.progress import Tqdm
+from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
 from .fsspec_wrapper import ObjectFSWrapper
@@ -68,12 +68,12 @@ class BaseS3FileSystem(ObjectFSWrapper):
         self._transfer_config = None
         config_path = os.environ.get("AWS_CONFIG_FILE", _AWS_CONFIG_PATH)
         if not os.path.exists(config_path):
-            return None
+            return {}
 
         config = load_config(config_path)
         profile_config = config["profiles"].get(profile or "default")
         if not profile_config:
-            return None
+            return {}
 
         s3_config = profile_config.get("s3", {})
         return self._split_s3_config(s3_config)
@@ -122,6 +122,14 @@ class BaseS3FileSystem(ObjectFSWrapper):
         shared_creds = config.get("credentialpath")
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
+
+        if (
+            client["region_name"] is None
+            and session_config["s3"].get("region_name") is None
+            and os.getenv("AWS_REGION") is None
+        ):
+            # Enable bucket region caching
+            login_info["cache_regions"] = config.get("cache_regions", True)
 
         config_path = config.get("configpath")
         if config_path:
@@ -196,36 +204,23 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
         return bucket.Object(path_info.path)
 
     @_translate_exceptions
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **pbar_args
+    def put_file(
+        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        total = os.path.getsize(from_file)
-        with Tqdm(
-            disable=no_progress_bar,
-            total=total,
-            bytes=True,
-            desc=name,
-            **pbar_args,
-        ) as pbar:
-            obj = self._get_obj(to_info)
-            obj.upload_file(
-                from_file,
-                Callback=pbar.update,
-                ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
-                Config=self._transfer_config,
-            )
+        callback.set_size(os.path.getsize(from_file))
+        obj = self._get_obj(to_info)
+        obj.upload_file(
+            from_file,
+            Callback=callback.relative_update,
+            ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
+            Config=self._transfer_config,
+        )
         self.fs.invalidate_cache(self._with_bucket(to_info.parent))
 
     @_translate_exceptions
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **pbar_args
+    def get_file(
+        self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
         obj = self._get_obj(from_info)
-        with Tqdm(
-            disable=no_progress_bar,
-            total=obj.content_length,
-            bytes=True,
-            desc=name,
-            **pbar_args,
-        ) as pbar:
-            obj.download_file(to_file, Callback=pbar.update)
+        callback.set_size(obj.content_length)
+        obj.download_file(to_info, Callback=callback.relative_update)
