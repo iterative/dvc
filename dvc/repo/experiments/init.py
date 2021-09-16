@@ -100,7 +100,7 @@ def init(
         validated = STAGE_SCHEMA(data)
     except MultipleInvalid as exc:
         raise DvcException(
-            f"template '{template_path}'"
+            f"template '{template_path}' "
             "failed schema validation while rendering"
         ) from exc
 
