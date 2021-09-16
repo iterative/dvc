@@ -42,5 +42,5 @@ python-benedict>=0.21.1
 pyparsing==2.4.7
 typing_extensions>=3.10.0.2
 fsspec[http]>=2021.8.1
-aiohttp-retry==2.4.5
+aiohttp-retry==2.4.6
 diskcache>=5.2.1
