@@ -92,7 +92,7 @@ def _load_live_output(
 
         path = live or live_no_cache
         subdirs = [
-            os.path.join(path, subdir) 
+            os.path.join(path, subdir)
             for subdir in [LIVE_IMAGES_PATH, LIVE_LINEAR_PATH]
         ]
 
