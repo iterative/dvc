@@ -8,6 +8,7 @@ from dvc.command.machine import (
     CmdMachineList,
     CmdMachineModify,
     CmdMachineRemove,
+    CmdMachineRename,
     CmdMachineSsh,
     CmdMachineStatus,
 )
@@ -116,3 +117,13 @@ def test_modified(tmp_dir):
     assert cmd.run() == 0
     config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
     assert config['machine "foo"']["cloud"] == "azure"
+
+
+def test_rename(tmp_dir, scm, dvc):
+    tmp_dir.gen(DATA)
+    cli_args = parse_args(["machine", "rename", "foo", "bar"])
+    assert cli_args.func == CmdMachineRename
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+    config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
+    assert config['machine "bar"']["cloud"] == "aws"

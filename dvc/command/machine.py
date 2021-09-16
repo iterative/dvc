@@ -2,7 +2,7 @@ import argparse
 
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-from dvc.config import ConfigError
+from dvc.config import ConfigError, MachineExistError
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -101,6 +101,53 @@ class CmdMachineModify(CmdMachineConfig):
                 section.pop(self.args.option, None)
             else:
                 section[self.args.option] = self.args.value
+        return 0
+
+
+class CmdMachineRename(CmdBase):
+    def _check_exists(self, conf):
+        if self.args.name not in conf["machine"]:
+            raise ConfigError(f"machine '{self.args.name}' doesn't exist.")
+
+    def _rename_default(self, conf):
+        if conf["core"].get("machine") == self.args.name:
+            conf["core"]["machine"] = self.args.new
+
+    def _check_before_rename(self):
+        from dvc.machine import validate_name
+
+        validate_name(self.args.new)
+
+        all_config = self.config.load_config_to_level(None)
+        if self.args.new in all_config.get("machine", {}):
+            raise ConfigError(
+                "Rename failed. Machine '{}' already exists.".format(
+                    self.args.new
+                )
+            )
+        ui.write(f"Rename machine '{self.args.name}' to '{self.args.new}'.")
+
+    def run(self):
+        self._check_before_rename()
+
+        with self.config.edit(self.args.level) as conf:
+            self._check_exists(conf)
+            conf["machine"][self.args.new] = conf["machine"][self.args.name]
+            try:
+                self.repo.machine.rename(self.args.name, self.args.new)
+            except MachineExistError as error:
+                del conf["machine"][self.args.new]
+                raise error
+            del conf["machine"][self.args.name]
+            self._rename_default(conf)
+
+        up_to_level = self.args.level or "repo"
+        for level in reversed(self.config.LEVELS):
+            if level == up_to_level:
+                break
+            with self.config.edit(level) as level_conf:
+                self._rename_default(level_conf)
+
         return 0
 
 
@@ -295,6 +342,18 @@ def add_parser(subparsers, parent_parser):
         help="Unset option.",
     )
     machine_modify_parser.set_defaults(func=CmdMachineModify)
+
+    machine_RENAME_HELP = "Rename a machine "
+    machine_rename_parser = machine_subparsers.add_parser(
+        "rename",
+        parents=[parent_config_parser, parent_parser],
+        description=append_doc_link(machine_RENAME_HELP, "remote/rename"),
+        help=machine_RENAME_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    machine_rename_parser.add_argument("name", help="Machine to be renamed")
+    machine_rename_parser.add_argument("new", help="New name of the machine")
+    machine_rename_parser.set_defaults(func=CmdMachineRename)
 
     machine_REMOVE_HELP = "Remove an machine."
     machine_remove_parser = machine_subparsers.add_parser(
