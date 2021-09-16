@@ -62,6 +62,12 @@ class SSHExecutor(BaseExecutor):
         logger.debug("Init SSH executor for host '%s'", self.host)
 
     @classmethod
+    def gen_dirname(cls, name: Optional[str] = None):
+        from shortuuid import uuid
+
+        return "-".join([name or "dvc-exp", "executor", uuid()])
+
+    @classmethod
     def from_machine(
         cls,
         manager: "MachineManager",
@@ -69,10 +75,7 @@ class SSHExecutor(BaseExecutor):
         *args,
         **kwargs,
     ):
-        from shortuuid import uuid
-
-        name = kwargs.get("name") or "dvc-exp"
-        kwargs["root_dir"] = f"{name}-executor-{uuid()}"
+        kwargs["root_dir"] = cls.gen_dirname(kwargs.get("name"))
         kwargs.update(manager.get_executor_kwargs(machine_name))
         return cls(*args, **kwargs)
 
