@@ -97,7 +97,6 @@ class ObjectDB:
         hash_info: "HashInfo",
         move: bool = True,
         verify: Optional[bool] = None,
-        **kwargs,
     ):
         if self.read_only:
             raise ObjectDBPermissionError("Cannot add to read-only ODB")
@@ -120,10 +119,6 @@ class ObjectDB:
             self.state.save(cache_info, self.fs, hash_info)
         except (ObjectFormatError, FileNotFoundError):
             pass
-
-        callback = kwargs.get("download_callback")
-        if callback:
-            callback(1)
 
     def hash_to_path_info(self, hash_) -> "DvcPath":
         return self.path_info / hash_[0:2] / hash_[2:]
