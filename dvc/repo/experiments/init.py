@@ -166,6 +166,7 @@ def init(
     from jinja2.sandbox import ImmutableSandboxedEnvironment
 
     from dvc.dvcfile import make_dvcfile
+    from dvc.utils import relpath
     from dvc.utils.serialize import LOADERS, parse_yaml_for_update
 
     data = compact(data)  # remove None values
@@ -217,7 +218,7 @@ def init(
 
     # render, parse yaml and build stage out of it
     rendered = template.render(**context)
-    template_path = os.path.relpath(template.filename)
+    template_path = relpath(template.filename)
     data = parse_yaml_for_update(rendered, template_path)
     try:
         return repo.stage.add_from_dict(name, data, force=force)
