@@ -429,6 +429,8 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("ssh"),
         pytest.lazy_fixture("webhdfs"),
+        pytest.lazy_fixture("webdav"),
+        pytest.lazy_fixture("http"),
     ],
 )
 def test_upload_callback(tmp_dir, dvc, cloud):
@@ -450,24 +452,23 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     [
         pytest.lazy_fixture("azure"),
         pytest.lazy_fixture("gs"),
-        pytest.param(
-            pytest.lazy_fixture("gdrive"),
-            marks=pytest.mark.xfail(
-                reason="https://github.com/iterative/PyDrive2/issues/136"
-            ),
-        ),
+        pytest.lazy_fixture("gdrive"),
         pytest.lazy_fixture("hdfs"),
         pytest.lazy_fixture("local_cloud"),
         pytest.lazy_fixture("oss"),
         pytest.lazy_fixture("s3"),
         pytest.lazy_fixture("ssh"),
         pytest.lazy_fixture("webhdfs"),
+        pytest.lazy_fixture("webdav"),
+        pytest.lazy_fixture("http"),
     ],
 )
-def test_download_callback(tmp_dir, dvc, cloud):
+def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
-    fs.upload(io.BytesIO(b"foo"), cloud / "foo")
+
+    (tmp_dir / "to_upload").write_text("foo")
+    fs.upload(tmp_dir / "to_upload", cloud / "foo")
     expected_size = fs.getsize(cloud / "foo")
 
     callback = fsspec.Callback()
@@ -494,6 +495,7 @@ def test_download_callback(tmp_dir, dvc, cloud):
             ),
         ),
         pytest.lazy_fixture("gdrive"),
+        pytest.lazy_fixture("webdav"),
     ],
 )
 def test_download_dir_callback(tmp_dir, dvc, cloud):
@@ -507,3 +509,59 @@ def test_download_dir_callback(tmp_dir, dvc, cloud):
     assert callback.size == 2
     assert callback.value == 2
     assert (tmp_dir / "dir").read_text() == {"foo": "foo", "bar": "bar"}
+
+
+@pytest.mark.parametrize("fs_type", ["git", "dvc"])
+def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
+    gen = tmp_dir.scm_gen if fs_type == "git" else tmp_dir.dvc_gen
+    gen({"dir": {"foo": "foo", "bar": "bar"}, "file": "file"}, commit="gen")
+
+    fs = dvc.dvcfs if fs_type == "dvc" else scm.get_fs("HEAD")
+
+    callback = fsspec.Callback()
+    fs.download(tmp_dir / "file", tmp_dir / "file2", callback=callback)
+
+    size = os.path.getsize(tmp_dir / "file")
+    assert (tmp_dir / "file2").read_text() == "file"
+    assert callback.size == size
+    assert callback.value == size
+
+    if fs_type == "git":
+        pytest.skip("gitfs does not support download_dir")
+
+    callback = fsspec.Callback()
+    fs.download(tmp_dir / "dir", tmp_dir / "dir2", callback=callback)
+
+    assert (tmp_dir / "dir2").read_text() == {"foo": "foo", "bar": "bar"}
+    assert callback.size == 2
+    assert callback.value == 2
+
+
+def test_callback_on_repo_fs(tmp_dir, dvc, scm):
+    tmp_dir.dvc_gen({"dir": {"bar": "bar"}}, commit="dvc")
+    tmp_dir.scm_gen({"dir": {"foo": "foo"}}, commit="git")
+
+    fs = dvc.repo_fs
+
+    callback = fsspec.Callback()
+    fs.download(tmp_dir / "dir", tmp_dir / "dir2", callback=callback)
+
+    assert (tmp_dir / "dir2").read_text() == {"foo": "foo", "bar": "bar"}
+    assert callback.size == 2
+    assert callback.value == 2
+
+    callback = fsspec.Callback()
+    fs.download(tmp_dir / "dir" / "foo", tmp_dir / "foo", callback=callback)
+
+    size = os.path.getsize(tmp_dir / "dir" / "foo")
+    assert (tmp_dir / "foo").read_text() == "foo"
+    assert callback.size == size
+    assert callback.value == size
+
+    callback = fsspec.Callback()
+    fs.download(tmp_dir / "dir" / "bar", tmp_dir / "bar", callback=callback)
+
+    size = os.path.getsize(tmp_dir / "dir" / "bar")
+    assert (tmp_dir / "bar").read_text() == "bar"
+    assert callback.size == size
+    assert callback.value == size
