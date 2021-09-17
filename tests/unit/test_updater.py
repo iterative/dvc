@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import time
-from unittest import mock
 
 import pytest
 
@@ -12,12 +11,11 @@ from tests.func.parsing.test_errors import escape_ansi
 
 
 @pytest.fixture
-def tmp_global_dir(tmp_path):
+def tmp_global_dir(mocker, tmp_path):
     """
     Fixture to prevent modifying the actual global config
     """
-    with mock.patch("dvc.config.Config.get_dir", return_value=str(tmp_path)):
-        yield
+    mocker.patch("dvc.config.Config.get_dir", return_value=str(tmp_path))
 
 
 @pytest.fixture(autouse=True)
@@ -36,8 +34,8 @@ def mock_tty(mocker):
     return mocker.patch("sys.stdout.isatty", return_value=True)
 
 
-@mock.patch("requests.get")
-def test_fetch(mock_get, updater):
+def test_fetch(mocker, updater):
+    mock_get = mocker.patch("requests.get")
     mock_get.return_value.status_code = 200
     mock_get.return_value.json.return_value = {"version": __version__}
 
@@ -70,8 +68,8 @@ def test_is_enabled(dvc, updater, config, result):
 
 
 @pytest.mark.parametrize("result", [True, False])
-@mock.patch("dvc.updater.Updater._check")
-def test_check_update_respect_config(mock_check, result, updater, mocker):
+def test_check_update_respect_config(result, updater, mocker):
+    mock_check = mocker.patch("dvc.updater.Updater._check")
     mocker.patch.object(updater, "is_enabled", return_value=result)
     updater.check()
     assert result == mock_check.called
@@ -139,8 +137,8 @@ def test_check_fetches_on_invalid_data_format(
     fetch.assert_called_once()
 
 
-@mock.patch("dvc.updater.Updater._check")
-def test_check(mock_check, updater):
+def test_check(mocker, updater):
+    mock_check = mocker.patch("dvc.updater.Updater._check")
     updater.check()
     updater.check()
     updater.check()

@@ -1,5 +1,3 @@
-from unittest import mock
-
 import pytest
 
 import dvc.objects.db.slow_link_detection
@@ -14,9 +12,9 @@ def timeout_immediately(monkeypatch):
 
 
 @pytest.fixture
-def make_remote():
+def make_remote(mocker):
     def _make_remote(cache_type=None, should_warn=True):
-        remote = mock.Mock()
+        remote = mocker.Mock()
         remote.cache_types = cache_type
         remote.slow_link_warning = should_warn
         return remote
