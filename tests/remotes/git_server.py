@@ -1,5 +1,6 @@
 import logging
 import os
+import shlex
 import subprocess
 
 import pytest
@@ -59,17 +60,19 @@ class GitSSHHandler(SSHMockHandler):
 
     # Git server only allows a limited subset of commands to be run over SSH
     GIT_SHELL_COMMANDS = {
-        b"git-receive-pack",
-        b"git-upload-pack",
-        b"git-upload-archive",
-        b"receive-pack",
-        b"upload-pack",
-        b"upload-archive",
+        "git-receive-pack",
+        "git-upload-pack",
+        "git-upload-archive",
+        "receive-pack",
+        "upload-pack",
+        "upload-archive",
     }
 
     def handle_client(self, channel):
         command = self.command_queues[channel.chanid].get(block=True)
         self.log.debug("Executing %s", command)
+        if isinstance(command, bytes):
+            command = command.decode()
         try:
             self._check_command(command)
             transfer_cls = GitPackTransfer
@@ -101,9 +104,9 @@ class GitSSHHandler(SSHMockHandler):
 
     @classmethod
     def _check_command(cls, command):
-        args = command.split()
+        args = shlex.split(command)
         cmd = os.path.basename(args[0])
-        if cmd in (b"git", b"git.exe"):
+        if cmd.lower() in ("git", "git.exe"):
             cmd = os.path.basename(args[1])
         if cmd not in cls.GIT_SHELL_COMMANDS:
             raise InvalidGitCommandError
