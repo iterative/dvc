@@ -1,6 +1,8 @@
 import os.path
 from typing import Dict, List
 
+import dpath
+
 
 def get_files(data: Dict) -> List:
     files = set()
@@ -12,38 +14,15 @@ def get_files(data: Dict) -> List:
 
 
 def group_by_filename(plots_data: Dict) -> List[Dict]:
-    # TODO use dpath.util.search once
-    #  https://github.com/dpath-maintainers/dpath-python/issues/147 is released
-    #  now cannot search when errors are present in data
     files = get_files(plots_data)
     grouped = []
-
     for file in files:
-        tmp: Dict = {}
-        for revision, revision_data in plots_data.items():
-            if file in revision_data.get("data", {}):
-                if "data" not in tmp:
-                    tmp[revision] = {"data": {}}
-                tmp[revision]["data"].update(
-                    {file: revision_data["data"][file]}
-                )
-        grouped.append(tmp)
-
+        grouped.append(dpath.util.search(plots_data, ["*", "*", file]))
     return grouped
 
 
 def find_vega(repo, plots_data, target):
-    # TODO same as group_by_filename
-    grouped = group_by_filename(plots_data)
-    found = None
-    for plot_group in grouped:
-        files = get_files(plot_group)
-        assert len(files) == 1
-        file = files.pop()
-        if file == target:
-            found = plot_group
-            break
-
+    found = dpath.util.search(plots_data, ["*", "*", target])
     from dvc.render.vega import VegaRenderer
 
     if found and VegaRenderer.matches(found):
