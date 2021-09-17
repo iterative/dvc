@@ -1,1 +1,1 @@
-pydrive2[fsspec]>=1.9.2
+pydrive2[fsspec]>=1.9.4
