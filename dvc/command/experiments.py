@@ -794,8 +794,8 @@ class CmdExperimentsInit(CmdBase):
         from dvc.command.stage import parse_cmd
         from dvc.repo.experiments.init import init
 
-        cmd = parse_cmd(self.args.cmd)
-        if not cmd:
+        cmd = parse_cmd(self.args.cmd) or None
+        if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
 
         data = {

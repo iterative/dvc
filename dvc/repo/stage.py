@@ -1,11 +1,12 @@
 import fnmatch
 import logging
 import os
-import typing
 from contextlib import suppress
 from functools import partial, wraps
 from typing import (
+    TYPE_CHECKING,
     Callable,
+    Dict,
     Iterable,
     List,
     NamedTuple,
@@ -26,13 +27,14 @@ from dvc.utils import parse_target, relpath
 
 logger = logging.getLogger(__name__)
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from networkx import DiGraph
 
     from dvc.repo import Repo
     from dvc.stage import PipelineStage, Stage
     from dvc.stage.loader import StageLoader
     from dvc.types import OptStr
+
 
 PIPELINE_FILE = "dvc.yaml"
 
@@ -131,12 +133,7 @@ class StageLoad:
             force=force,
             **stage_data,
         )
-        scm = self.repo.scm
-        with scm.track_file_changes(config=self.repo.config):
-            stage.dump(update_lock=update_lock)
-            stage.ignore_outs()
-
-        return stage
+        return self._dump_stage(stage, update_lock=update_lock)
 
     def create(
         self,
@@ -193,6 +190,66 @@ class StageLoad:
             new_index.check_graph()
 
         restore_meta(stage)
+        return stage
+
+    def _dump_stage(
+        self, stage: "Stage", update_lock: bool = False
+    ) -> "Stage":
+        scm = self.repo.scm
+        with scm.track_file_changes(config=self.repo.config):
+            stage.dump(update_lock=update_lock)
+            stage.ignore_outs()
+        return stage
+
+    @locked
+    def add_from_dict(
+        self,
+        name: str,
+        data: Dict,
+        path: str = "dvc.yaml",
+        validate: bool = True,
+        update_lock: bool = False,
+        force: bool = False,
+    ) -> "Stage":
+        stage = self.create_from_dict(
+            name, data, path=path, validate=validate, force=force
+        )
+        return self._dump_stage(stage, update_lock=update_lock)
+
+    def create_from_dict(
+        self,
+        name: str,
+        data: Dict,
+        path: str = "dvc.yaml",
+        validate: bool = True,
+        force: bool = False,
+    ) -> "Stage":
+        from voluptuous import Schema
+
+        from dvc.dvcfile import make_dvcfile
+        from dvc.schema import STAGE_DEFINITION
+        from dvc.stage import (
+            check_circular_dependency,
+            check_duplicated_arguments,
+        )
+        from dvc.stage.loader import StageLoader
+
+        dvcfile = make_dvcfile(self.repo, path)
+        validated = Schema(STAGE_DEFINITION)(data)
+        stage = StageLoader.load_stage(dvcfile, name, validated)
+        check_circular_dependency(stage)
+        check_duplicated_arguments(stage)
+
+        repo = dvcfile.repo
+        if validate:
+            if not force:
+                from dvc.stage.utils import check_stage_exists
+
+                check_stage_exists(self.repo, stage, stage.path)
+
+            new_index = repo.index.add(stage)
+            new_index.check_graph()
+
         return stage
 
     def from_target(
