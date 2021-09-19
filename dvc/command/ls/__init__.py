@@ -35,9 +35,7 @@ class CmdList(CmdBaseNoRepo):
                 dvc_only=self.args.dvc_only,
             )
             if self.args.show_json:
-                import json
-
-                ui.write(json.dumps(entries))
+                ui.write_json(entries)
             elif entries:
                 entries = _prettify(entries, with_color=True)
                 ui.write("\n".join(entries))

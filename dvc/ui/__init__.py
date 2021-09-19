@@ -74,6 +74,20 @@ class Console:
             styled=styled,
         )
 
+    def write_json(
+        self,
+        data: Any,
+        indent: int = 2,
+    ) -> None:
+        if sys.stdout.isatty():
+            from rich.json import JSON
+
+            j = JSON.from_data(data, indent=indent)
+            return self.write(j, styled=True)
+        import json
+
+        return self.write(json.dumps(data))
+
     def write(
         self,
         *objects: Any,
