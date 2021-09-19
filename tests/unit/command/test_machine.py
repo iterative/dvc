@@ -9,6 +9,7 @@ from dvc.command.machine import (
     CmdMachineModify,
     CmdMachineRemove,
     CmdMachineSsh,
+    CmdMachineStatus,
 )
 
 DATA = {
@@ -50,6 +51,19 @@ def test_create(tmp_dir, dvc, mocker):
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(
         cmd.repo.machine, "create", autospec=True, return_value=0
+    )
+
+    assert cmd.run() == 0
+    m.assert_called_once_with("foo")
+
+
+def test_status(tmp_dir, dvc, mocker):
+    cli_args = parse_args(["machine", "status", "foo"])
+    assert cli_args.func == CmdMachineStatus
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(
+        cmd.repo.machine, "status", autospec=True, return_value=[]
     )
 
     assert cmd.run() == 0

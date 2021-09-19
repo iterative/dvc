@@ -5,14 +5,7 @@ import pytest
 
 from dvc.main import main
 
-CONFIG_TEXT = textwrap.dedent(
-    """\
-        [feature]
-            machine = true
-        ['machine \"foo\"']
-            cloud = aws
-    """
-)
+from . import CONFIG_TEXT
 
 
 @pytest.mark.parametrize(
