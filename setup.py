@@ -59,9 +59,10 @@ requirements = {
 
 install_requires = requirements.pop("default")
 requirements["all"] = [
-    requirements
+    req
     for key, requirements in requirements.items()
     if key not in ("tests", "ssh_gssapi", "terraform")
+    for req in requirements
 ]
 requirements["tests"] += requirements["terraform"]
 requirements["dev"] = requirements["all"] + requirements["tests"]
