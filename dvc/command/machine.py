@@ -151,10 +151,8 @@ class CmdMachineStatus(CmdBase):
         all_status = self.repo.machine.status(self.args.name)
         for i, status in enumerate(all_status):
             ui.write(f"instance_num_{i+1}:")
-            keys = list(status.keys())
-            keys.sort()
-            for key in keys:
-                ui.write(f"\t{key:20}: {status[key]}")
+            for key, value in sorted(status.items()):
+                ui.write(f"\t{key:20}: {value}")
         return 0
 
 
