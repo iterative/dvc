@@ -86,7 +86,7 @@ class CmdRemoteDefault(CmdRemote):
         if self.args.name is None and not self.args.unset:
             conf = self.config.read(self.args.level)
             try:
-                print(conf["core"]["remote"])
+                ui.write(conf["core"]["remote"])
             except KeyError:
                 ui.write("No default remote set")
                 return 1
