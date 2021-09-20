@@ -1,7 +1,8 @@
 import json
 import os
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 
+import pkg_resources  # type: ignore
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
@@ -127,20 +128,23 @@ class PlotTemplates:
         return None
 
     @staticmethod
-    def _load_from_pkg(name):
-        import pkg_resources  # type: ignore
-
+    def _get_templates() -> Iterable[str]:
         if pkg_resources.resource_exists(
             __name__, PlotTemplates.PKG_TEMPLATES_DIR
         ):
-            templates = pkg_resources.resource_listdir(
+            return pkg_resources.resource_listdir(
                 __name__, PlotTemplates.PKG_TEMPLATES_DIR
             )
-            found = PlotTemplates._find(templates, name)
-            if found:
-                return pkg_resources.resource_string(
-                    __name__, f"{PlotTemplates.PKG_TEMPLATES_DIR}/{found}"
-                ).decode("utf-8")
+        return []
+
+    @staticmethod
+    def _load_from_pkg(name):
+        templates = PlotTemplates._get_templates()
+        found = PlotTemplates._find(templates, name)
+        if found:
+            return pkg_resources.resource_string(
+                __name__, f"{PlotTemplates.PKG_TEMPLATES_DIR}/{found}"
+            ).decode("utf-8")
         return None
 
     def load(self, name: str = None) -> Template:
@@ -168,7 +172,10 @@ class PlotTemplates:
 
         makedirs(self.templates_dir, exist_ok=True)
 
-    def _dump(self, template):
-        path = os.path.join(self.templates_dir, template.filename)
-        with open(path, "w") as fd:
-            fd.write(template.content)
+        templates = self._get_templates()
+        for template in templates:
+            content = pkg_resources.resource_string(
+                __name__, f"{PlotTemplates.PKG_TEMPLATES_DIR}/{template}"
+            )
+            with open(os.path.join(self.templates_dir, template), "wb") as fd:
+                fd.write(content)
