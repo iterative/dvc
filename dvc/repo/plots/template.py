@@ -1,6 +1,6 @@
 import json
 import os
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property
 
@@ -31,8 +31,6 @@ class Template:
     SEPARATORS = (",", ": ")
     EXTENSION = ".json"
     ANCHOR = "<DVC_METRIC_{}>"
-
-    DEFAULT_CONTENT: Optional[Dict[str, Any]] = None
 
     def __init__(self, content, name):
         self.content = content
@@ -93,9 +91,6 @@ class Template:
     def _check_field_exists(data, field):
         if not any(field in row for row in data):
             raise NoFieldInDataError(field)
-
-
-# TODO upgrade templates schema
 
 
 class PlotTemplates:
@@ -172,9 +167,6 @@ class PlotTemplates:
         from dvc.utils.fs import makedirs
 
         makedirs(self.templates_dir, exist_ok=True)
-        # TODO copy to `.dvc/plots`
-        # for t in self.TEMPLATES:
-        #     self._dump(t())
 
     def _dump(self, template):
         path = os.path.join(self.templates_dir, template.filename)
