@@ -364,3 +364,8 @@ class CircularImportError(DvcException):
             f"'{dep}' contains invalid circular import. "
             f"DVC repo '{a}' already imports from '{b}'."
         )
+
+
+class PrettyDvcException(DvcException):
+    def __pretty_exc__(self, **kwargs):
+        """Print prettier exception message."""

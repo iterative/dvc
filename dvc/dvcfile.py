@@ -2,11 +2,11 @@ import collections
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, List, Union
 
 from voluptuous import MultipleInvalid
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, PrettyDvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
@@ -26,6 +26,8 @@ from dvc.utils.serialize import (
 )
 
 if TYPE_CHECKING:
+    from ruamel.yaml import StreamMark
+
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
@@ -95,6 +97,80 @@ def check_dvcfile_path(repo, path):
         raise FileIsGitIgnored(relpath(path), True)
 
 
+class YAMLSyntaxError(PrettyDvcException):
+    def __init__(self, path, yaml_text, exc):
+        self.path = path
+        self.yaml_text = yaml_text
+        self.exc = exc
+        super().__init__(str(self.exc))
+
+    def __pretty_exc__(self, **kwargs: Any):
+        from rich.syntax import Syntax
+        from rich.text import Text
+        from ruamel.yaml.error import MarkedYAMLError
+
+        from dvc.ui import ui
+
+        exc = self.exc.__cause__
+
+        if not isinstance(exc, MarkedYAMLError):
+            raise ValueError("nothing to pretty-print here. :)")
+
+        source = self.yaml_text.splitlines()
+
+        def prepare_linecol(mark: "StreamMark") -> str:
+            return f"in line {mark.line + 1}, column {mark.column + 1}"
+
+        def prepare_message(message: str, mark: "StreamMark" = None) -> "Text":
+            return Text.assemble(
+                message.capitalize(),
+                f", {prepare_linecol(mark)}" if mark else "",
+                style="bold",
+            )
+
+        def prepare_code(mark: "StreamMark") -> "Syntax":
+            line = mark.line + 1
+            code = "" if line > len(source) else source[line - 1]
+            return Syntax(
+                code,
+                "yaml",
+                start_line=line,
+                theme="ansi_dark",
+                word_wrap=True,
+                line_numbers=True,
+                indent_guides=True,
+            )
+
+        lines: List[object] = []
+        if hasattr(exc, "context"):
+            if exc.context_mark is not None:
+                lines.append(
+                    prepare_message(str(exc.context), exc.context_mark)
+                )
+            if exc.context_mark is not None and (
+                exc.problem is None
+                or exc.problem_mark is None
+                or exc.context_mark.name != exc.problem_mark.name
+                or exc.context_mark.line != exc.problem_mark.line
+                or exc.context_mark.column != exc.problem_mark.column
+            ):
+                lines.extend([prepare_code(exc.context_mark), ""])
+            if exc.problem is not None:
+                lines.append(
+                    prepare_message(str(exc.problem), exc.problem_mark)
+                )
+            if exc.problem_mark is not None:
+                lines.append(prepare_code(exc.problem_mark))
+
+        if lines:
+            lines.insert(0, "")
+        lines.insert(
+            0, f"[red]ERROR: '{relpath(self.path)}' structure is corrupted."
+        )
+        for message in lines:
+            ui.error_write(message, styled=True)
+
+
 class FileMixin:
     SCHEMA = None
 
@@ -144,6 +220,8 @@ class FileMixin:
         # 2. filename is not a DVC file
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
+        from dvc.utils.serialize import ParseError
+
         if not self.exists():
             dvc_ignored = self.repo.dvcignore.is_ignored_file(self.path)
             raise StageFileDoesNotExistError(
@@ -157,7 +235,13 @@ class FileMixin:
         self._check_gitignored()
         with self.repo.fs.open(self.path, encoding="utf-8") as fd:
             stage_text = fd.read()
-        d = parse_yaml(stage_text, self.path)
+
+        try:
+            d = parse_yaml(stage_text, self.path)
+        except ParseError as exc:
+            cause = exc.__cause__
+            raise YAMLSyntaxError(self.path, stage_text, exc) from cause
+
         return self.validate(d, self.relpath), stage_text
 
     @classmethod
