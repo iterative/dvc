@@ -48,3 +48,7 @@ class BaseMachineBackend(ABC):
     ) -> Iterator["SSHFileSystem"]:
         """Return an sshfs instance for the default directory on the
         specified machine."""
+
+    @abstractmethod
+    def rename(self, name: str, new: str, **config):
+        """Rename a machine instance."""

@@ -14,7 +14,6 @@ from typing import (
 
 from dvc.exceptions import DvcException
 from dvc.types import StrPath
-from dvc.utils.fs import move
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -126,10 +125,8 @@ class MachineManager:
         self, repo: "Repo", backends: Optional[Iterable[str]] = None, **kwargs
     ):
         self.repo = repo
-        self.machine_space = os.path.join(self.repo.tmp_dir, "machine")
-        self.backends = MachineBackends(
-            backends, tmp_dir=self.machine_space, **kwargs
-        )
+        tmp_dir = os.path.join(self.repo.tmp_dir, "machine")
+        self.backends = MachineBackends(backends, tmp_dir=tmp_dir, **kwargs)
 
     def get_config_and_backend(
         self,
@@ -210,16 +207,7 @@ class MachineManager:
         config, backend = self.get_config_and_backend(name)
         return backend.instances(**config)
 
-    def rename(self, old_name: str, new_name: str):
+    def rename(self, name: str, new: str):
         """move configuration to a new location if the machine is running."""
-        from dvc.config import MachineExistError
-
-        cloud_type = self._get_config(name=old_name)["cloud"]
-        backend = self.CLOUD_BACKENDS[cloud_type]
-        old_path = os.path.join(self.machine_space, backend, old_name)
-        new_path = os.path.join(self.machine_space, backend, new_name)
-        if os.path.exists(new_path):
-            raise MachineExistError(new_name, new_path)
-        if not os.path.exists(old_path):
-            return
-        move(old_path, new_path)
+        config, backend = self.get_config_and_backend(name)
+        return backend.rename(new=new, **config)

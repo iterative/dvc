@@ -44,14 +44,6 @@ class MachineNotFoundError(MachineConfigError):
     pass
 
 
-class MachineExistError(MachineConfigError):
-    def __init__(self, name, path):
-        super().__init__(
-            f"You config had corrupted, an untracked machine '{name}'"
-            f" in the path '{path}', please check it manually"
-        )
-
-
 @memoize
 def get_compiled_schema():
     from voluptuous import Schema

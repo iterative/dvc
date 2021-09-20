@@ -2,6 +2,7 @@ import os
 import textwrap
 
 import pytest
+import tpi
 
 from dvc.main import main
 
@@ -116,20 +117,19 @@ def test_machine_list(tmp_dir, dvc, capsys):
     )
 
 
-def test_machine_rename_success(tmp_dir, scm, dvc, capsys):
-    config = "some config"
+def test_machine_rename_success(tmp_dir, scm, dvc, capsys, mocker):
     config_file = tmp_dir / ".dvc" / "config"
     config_file.write_text(CONFIG_TEXT)
-    terraform_space = tmp_dir / ".dvc" / "tmp" / "machine" / "terraform"
-    os.makedirs(terraform_space)
-    (terraform_space / "foo").mkdir()
-    (terraform_space / "foo" / "main.tf.json").write_text(config)
+    mocker.patch.object(
+        tpi.terraform.TerraformBackend,
+        "rename",
+        autospec=True,
+        return_value=True,
+    )
     assert main(["machine", "rename", "foo", "bar"]) == 0
     cap = capsys.readouterr()
     assert "Rename machine 'foo' to 'bar'." in cap.out
     assert config_file.read_text() == CONFIG_TEXT.replace("foo", "bar")
-    assert (terraform_space / "bar" / "main.tf.json").read_text() == config
-    assert not (terraform_space / "foo").exists()
 
 
 def test_machine_rename_none_exist(tmp_dir, scm, dvc, caplog):
@@ -150,16 +150,15 @@ def test_machine_rename_exist(tmp_dir, scm, dvc, caplog):
     assert "Machine 'bar' already exists." in caplog.text
 
 
-def test_machine_rename_running_exist(tmp_dir, scm, dvc, caplog):
-    config = "some config"
+def test_machine_rename_error(tmp_dir, scm, dvc, caplog, mocker):
     config_file = tmp_dir / ".dvc" / "config"
     config_file.write_text(CONFIG_TEXT)
-    terraform_space = tmp_dir / ".dvc" / "tmp" / "machine" / "terraform"
-    os.makedirs(terraform_space)
-    (terraform_space / "bar").mkdir()
-    (terraform_space / "bar" / "main.tf.json").write_text(config)
+
+    def cmd_error(self, name, new, **config):
+        raise tpi.TPIError("test")
+
+    mocker.patch.object(tpi.terraform.TerraformBackend, "rename", cmd_error)
+
     assert main(["machine", "rename", "foo", "bar"]) == 251
     assert config_file.read_text() == CONFIG_TEXT
-    assert (terraform_space / "bar" / "main.tf.json").read_text() == config
-    assert not (terraform_space / "foo").exists()
-    assert "You config had corrupted" in caplog.text
+    assert "terraform rename failed" in caplog.text
