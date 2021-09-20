@@ -149,7 +149,7 @@ class CmdMachineStatus(CmdBase):
             raise MachineDisabledError
 
         all_status = self.repo.machine.status(self.args.name)
-        for i, status in enumerate(all_status):
+        for i, status in enumerate(all_status, start=1):
             ui.write(f"instance_num_{i+1}:")
             for key, value in sorted(status.items()):
                 ui.write(f"\t{key:20}: {value}")
