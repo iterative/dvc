@@ -15,6 +15,7 @@ from dvc.stage.exceptions import (
     StageFileIsNotDvcFileError,
 )
 from dvc.utils.fs import remove
+from dvc.utils.serialize import EncodingError
 
 
 @pytest.mark.parametrize(
@@ -123,3 +124,11 @@ def test_try_loading_dvcfile_that_is_gitignored(tmp_dir, dvc, scm, file):
         dvcfile._load()
 
     assert str(exc_info.value) == f"bad DVC file name '{file}' is git-ignored."
+
+
+def test_dvcfile_encoding_error(tmp_dir, dvc):
+    tmp_dir.gen(PIPELINE_FILE, b"\x80some: stuff")
+
+    dvcfile = Dvcfile(dvc, PIPELINE_FILE)
+    with pytest.raises(EncodingError):
+        dvcfile._load()

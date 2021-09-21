@@ -7,6 +7,7 @@ from dvc.dvcfile import (
     PIPELINE_FILE,
     PIPELINE_LOCK,
     Dvcfile,
+    LockfileCorruptedError,
     ParametrizedDumpError,
     SingleStageFile,
 )
@@ -245,7 +246,7 @@ def test_remove_stage_on_lockfile_format_error(tmp_dir, dvc, run_copy):
     lock_data["gibberish"] = True
     data["gibberish"] = True
     (tmp_dir / lock_file.relpath).dump(lock_data)
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(LockfileCorruptedError):
         dvc_file.remove_stage(stage)
 
     lock_file.remove()

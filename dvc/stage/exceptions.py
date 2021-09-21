@@ -10,7 +10,8 @@ class StageCmdFailedError(DvcException):
 
 
 class StageFileFormatError(DvcException):
-    pass
+    def __init__(self, path):
+        super().__init__(f"'{path}' format error")
 
 
 class StageFileDoesNotExistError(DvcException):
