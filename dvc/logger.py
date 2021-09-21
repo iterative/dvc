@@ -155,7 +155,7 @@ class LoggerHandler(logging.StreamHandler):
                         self.emit_pretty_exception(exc, verbose=_is_verbose())
                         if not _is_verbose():
                             return
-                    except Exception:  # fallback to usual method
+                    except Exception:  # noqa, pylint: disable=broad-except
                         pass
 
             msg = self.format(record)
