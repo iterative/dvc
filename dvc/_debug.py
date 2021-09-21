@@ -1,8 +1,37 @@
 from contextlib import ExitStack, contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Union
 
 if TYPE_CHECKING:
     from argparse import Namespace
+
+
+@contextmanager
+def yappi_profile(
+    path: Union[Callable[[], str], str] = None, wall_clock: bool = True
+):
+    try:
+        import yappi  # pylint: disable=import-error
+    except ImportError:
+        print("Failed to run profiler, yappi is not installed")
+        yield
+        return
+
+    yappi.set_clock_type("wall" if wall_clock else "cpu")
+
+    yappi.start()
+    yield
+    yappi.stop()
+
+    # pylint:disable=no-member
+    if path:
+        stats = yappi.get_func_stats()
+        fpath = path() if callable(path) else path
+        stats.save(fpath, "callgrind")
+    else:
+        yappi.get_func_stats().print_all()
+        yappi.get_thread_stats().print_all()
+
+    yappi.clear_stats()
 
 
 @contextmanager
@@ -70,6 +99,13 @@ def debugtools(args: "Namespace" = None, **kwargs):
             stack.enter_context(profile(kw.get("cprofile_dump")))
         if kw.get("instrument") or kw.get("instrument_open"):
             stack.enter_context(instrument(kw.get("instrument_open", False)))
+        if kw.get("yappi"):
+            from datetime import datetime
+
+            output = "callgrind.dvc-{0:%Y%m%d}_{0:%H%M%S}.out"
+            stack.enter_context(
+                yappi_profile(path=lambda: output.format(datetime.now()))
+            )
         yield
 
 
@@ -78,6 +114,9 @@ def add_debugging_flags(parser):
 
     parser.add_argument(
         "--cprofile", action="store_true", default=False, help=SUPPRESS
+    )
+    parser.add_argument(
+        "--yappi", action="store_true", default=False, help=SUPPRESS
     )
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
