@@ -136,8 +136,8 @@ class Tqdm(tqdm):
 
         return wrapped
 
-    def as_callback(self, fs, path_info):
-        return FsspecCallback(fs, path_info, self)
+    def as_callback(self):
+        return FsspecCallback(self)
 
     def close(self):
         self.postfix["info"] = ""
@@ -167,21 +167,15 @@ class Tqdm(tqdm):
 
 
 class FsspecCallback(fsspec.Callback):
-    def __init__(self, fs, path_info, progress_bar):
-        self.fs = fs
-        self.path_info = path_info
+    def __init__(self, progress_bar):
         self.progress_bar = progress_bar
         super().__init__()
 
     def set_size(self, size):
-        """``set_size()`` is an API that might be called with ``None`` if the
-        information is not already present on the caller. In that case, we'll
-        retrieve the size from an ``info()`` call."""
-        if size is None:
-            size = self.fs.info(self.path_info)["size"]
-        self.progress_bar.total = size
-        self.progress_bar.refresh()
-        super().set_size(size)
+        if size is not None:
+            self.progress_bar.total = size
+            self.progress_bar.refresh()
+            super().set_size(size)
 
     def relative_update(self, inc=1):
         self.progress_bar.update(inc)
