@@ -21,9 +21,9 @@ LIVE_SUMMARY_PATH = "summary.json"
 def create_live_html(out):
     assert out.live and out.live["html"]
 
-    metrics, plots = out.repo.live.show(str(out.path_info))
+    metrics, plots = out.repo.live.show(out.path_info)
 
-    html_path = os.path.join(out.path_info, LIVE_HTML_PATH)
+    html_path = out.path_info / LIVE_HTML_PATH
 
     index_path = render(
         out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5
@@ -52,9 +52,10 @@ class Live:
             revs = ["workspace", *revs]
 
         metrics_path = os.path.join(target, LIVE_SUMMARY_PATH)
+        images_path = os.path.join(target, LIVE_IMAGES_PATH)
         plots_path = os.path.join(target, LIVE_SCALARS_PATH)
 
         metrics = self.repo.metrics.show(targets=[metrics_path])
-        plots = self.repo.plots.show(plots_path, recursive=True, revs=revs)
+        plots = self.repo.plots.show(targets=[images_path, plots_path], recursive=True, revs=revs)
 
         return metrics, plots
