@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 LIVE_IMAGES_PATH = "images"
 LIVE_HTML_PATH = "html"
-LIVE_LINEAR_PATH = "linear"
+LIVE_SCALARS_PATH = "scalars"
 LIVE_SUMMARY_PATH = "summary.json"
 
 
@@ -52,7 +52,7 @@ class Live:
             revs = ["workspace", *revs]
 
         metrics_path = os.path.join(target, LIVE_SUMMARY_PATH)
-        plots_path = os.path.join(target, LIVE_LINEAR_PATH)
+        plots_path = os.path.join(target, LIVE_SCALARS_PATH)
 
         metrics = self.repo.metrics.show(targets=[metrics_path])
         plots = self.repo.plots.show(plots_path, recursive=True, revs=revs)

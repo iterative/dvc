@@ -84,7 +84,7 @@ def _load_live_output(
     **kwargs,
 ):
     from dvc.output import Output, loads_from
-    from dvc.repo.live import LIVE_IMAGES_PATH, LIVE_LINEAR_PATH
+    from dvc.repo.live import LIVE_IMAGES_PATH, LIVE_SCALARS_PATH
 
     outs = []
     if live or live_no_cache:
@@ -93,7 +93,7 @@ def _load_live_output(
         path = live or live_no_cache
         subdirs = [
             os.path.join(path, subdir)
-            for subdir in [LIVE_IMAGES_PATH, LIVE_LINEAR_PATH]
+            for subdir in [LIVE_IMAGES_PATH, LIVE_SCALARS_PATH]
         ]
 
         outs += loads_from(
