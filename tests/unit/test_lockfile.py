@@ -1,7 +1,8 @@
 import pytest
 
-from dvc.dvcfile import FileIsGitIgnored, Lockfile, LockfileCorruptedError
+from dvc.dvcfile import FileIsGitIgnored, Lockfile
 from dvc.stage import PipelineStage
+from dvc.utils.strictyaml import YAMLValidationError
 
 
 def test_stage_dump_no_outs_deps(tmp_dir, dvc):
@@ -79,7 +80,7 @@ def test_load_when_lockfile_does_not_exist(tmp_dir, dvc):
 def test_load_when_lockfile_is_corrupted(tmp_dir, dvc, corrupt_data):
     (tmp_dir / "Dvcfile.lock").dump(corrupt_data)
     lockfile = Lockfile(dvc, "Dvcfile.lock")
-    with pytest.raises(LockfileCorruptedError) as exc_info:
+    with pytest.raises(YAMLValidationError) as exc_info:
         lockfile.load()
     assert "Dvcfile.lock" in str(exc_info.value)
 

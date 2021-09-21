@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Tuple, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
 
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
@@ -9,14 +9,12 @@ from dvc.stage import serialize
 from dvc.stage.exceptions import (
     StageFileBadNameError,
     StageFileDoesNotExistError,
-    StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
 from dvc.types import AnyPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import dump_yaml, modify_yaml
-from dvc.utils.strictyaml import YAMLValidationError
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -37,11 +35,6 @@ class FileIsGitIgnored(DvcException):
                 "bad DVC file name " if pipeline_file else "", path
             )
         )
-
-
-class LockfileCorruptedError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"Lockfile '{path}' is corrupted.")
 
 
 class ParametrizedDumpError(DvcException):
@@ -92,7 +85,6 @@ def check_dvcfile_path(repo, path):
 
 class FileMixin:
     SCHEMA: Callable[[_T], _T]
-    ValidationError: Type[DvcException] = StageFileFormatError
 
     def __init__(self, repo, path, verify=True, **kwargs):
         self.repo = repo
@@ -134,7 +126,11 @@ class FileMixin:
         if self._is_git_ignored():
             raise FileIsGitIgnored(self.path)
 
-    def _load(self) -> Tuple[Any, str]:
+    def load(self, **kwargs: Any) -> Any:
+        d, _ = self._load(**kwargs)
+        return d
+
+    def _load(self, **kwargs: Any) -> Tuple[Any, str]:
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC file
@@ -151,29 +147,23 @@ class FileMixin:
             raise StageFileIsNotDvcFileError(self.path)
 
         self._check_gitignored()
-        return self._load_yaml()
+        return self._load_yaml(**kwargs)
 
     @classmethod
     def validate(cls, d: _T, fname: str = None) -> _T:
         from dvc.utils.strictyaml import validate
 
-        try:
-            return validate(d, cls.SCHEMA)  # type: ignore[arg-type]
-        except YAMLValidationError as exc:
-            raise cls.ValidationError(fname) from exc
+        return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]
 
     def _load_yaml(self, **kwargs: Any) -> Tuple[Any, str]:
         from dvc.utils import strictyaml
 
-        try:
-            return strictyaml.load(
-                self.path,
-                self.SCHEMA,  # type: ignore[arg-type]
-                self.repo.fs,
-                **kwargs,
-            )
-        except YAMLValidationError as exc:
-            raise self.ValidationError(self.relpath) from exc
+        return strictyaml.load(
+            self.path,
+            self.SCHEMA,  # type: ignore[arg-type]
+            self.repo.fs,
+            **kwargs,
+        )
 
     def remove(self, force=False):  # pylint: disable=unused-argument
         with contextlib.suppress(FileNotFoundError):
@@ -354,23 +344,18 @@ def lockfile_schema(data: _T) -> _T:
 
 class Lockfile(FileMixin):
     SCHEMA = staticmethod(lockfile_schema)  # type: ignore[assignment]
-    ValidationError = LockfileCorruptedError
 
     def _verify_filename(self):
         pass  # lockfile path is hardcoded, so no need to verify here
 
-    def _load(self):
+    def _load(self, **kwargs: Any):
         try:
-            return super()._load()
+            return super()._load(**kwargs)
         except StageFileDoesNotExistError:
             # we still need to account for git-ignored dvc.lock file
             # even though it may not exist or have been .dvcignored
             self._check_gitignored()
             return {}, ""
-
-    def load(self):
-        d, _ = self._load()
-        return d
 
     @property
     def latest_version_info(self):
