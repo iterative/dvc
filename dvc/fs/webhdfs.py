@@ -1,61 +1,25 @@
-import errno
-import logging
-import os
-import posixpath
-import shutil
 import threading
-from contextlib import contextmanager
 
 from funcy import cached_property, wrap_prop
 
 from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
-from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
-from .base import BaseFileSystem
-
-logger = logging.getLogger(__name__)
-
-
-def update_pbar(pbar, total):
-    """Update pbar to accept the two arguments passed by hdfs"""
-
-    def update(_, bytes_transfered):
-        if bytes_transfered == -1:
-            pbar.update_to(total)
-            return
-        pbar.update_to(bytes_transfered)
-
-    return update
+# pylint:disable=abstract-method
+from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
 
 
-def update_callback(callback, total):
-    def update(_, bytes_transfered):
-        if bytes_transfered == -1:
-            return callback.absolute_update(total)
-        return callback.relative_update(bytes_transfered)
-
-    return update
-
-
-class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
+class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
     scheme = Schemes.WEBHDFS
     PATH_CLS = CloudURLInfo
-    REQUIRES = {"hdfs": "hdfs"}
+    REQUIRES = {"fsspec": "fsspec"}
     PARAM_CHECKSUM = "checksum"
-    TRAVERSE_PREFIX_LEN = 2
 
-    def __init__(self, **config):
-        super().__init__(**config)
-
-        self.host = config["host"]
-        self.user = config.get("user")
-        self.port = config.get("port")
-
-        self.hdfscli_config = config.get("hdfscli_config")
-        self.token = config.get("webhdfs_token")
-        self.alias = config.get("webhdfs_alias")
+    def _with_bucket(self, path):
+        if isinstance(path, self.PATH_CLS):
+            return f"/{path.path.rstrip('/')}"
+        return path
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):
@@ -67,120 +31,43 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             )
         )
 
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def hdfs_client(self):
-        import hdfs
+    def _parse_config(self, path=None, alias=None):
+        import configparser
 
-        logger.debug("HDFSConfig: %s", self.hdfscli_config)
+        from hdfs.config import Config
+        from hdfs.util import HdfsError
 
         try:
-            return hdfs.config.Config(self.hdfscli_config).get_client(
-                self.alias
-            )
-        except hdfs.util.HdfsError as exc:
-            exc_msg = str(exc)
-            errors = (
-                "No alias specified",
-                "Invalid configuration file",
-                f"Alias {self.alias} not found",
-            )
-            if not any(err in exc_msg for err in errors):
-                raise
+            config = Config(path)
+        except HdfsError:
+            return None
 
-            http_url = f"http://{self.host}:{self.port}"
-            logger.debug("URL: %s", http_url)
+        if alias is None:
+            try:
+                alias = config.get(config.global_section, "default.alias")
+            except configparser.Error:
+                return None
 
-            if self.token is not None:
-                client = hdfs.TokenClient(http_url, token=self.token, root="/")
-            else:
-                client = hdfs.InsecureClient(
-                    http_url, user=self.user, root="/"
-                )
+        if config.has_section(alias):
+            return dict(config.items(alias))
 
-        return client
+    def _prepare_credentials(self, **config):
+        if "webhdfs_token" in config:
+            config["token"] = config.pop("webhdfs_token")
 
-    @contextmanager
-    def open(self, path_info, mode="r", encoding=None, **kwargs):
-        assert mode in {"r", "rt", "rb"}
+        return config
 
-        with self.hdfs_client.read(
-            path_info.path, encoding=encoding
-        ) as reader:
-            yield reader
+    @wrap_prop(threading.Lock())
+    @cached_property
+    def fs(self):
+        from fsspec.implementations.webhdfs import WebHDFS
 
-    def walk_files(self, path_info, **kwargs):
-        if not self.exists(path_info):
-            return
-
-        root = path_info.path
-        for path, _, fnames in self.hdfs_client.walk(root):
-            for fname in fnames:
-                yield path_info.replace(path=posixpath.join(path, fname))
-
-    def remove(self, path_info):
-        if path_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        self.hdfs_client.delete(path_info.path)
-
-    def exists(self, path_info) -> bool:
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == "webhdfs"
-
-        status = self.hdfs_client.status(path_info.path, strict=False)
-        return status is not None
-
-    def info(self, path_info):
-        st = self.hdfs_client.status(path_info.path, strict=False)
-        if not st:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), path_info.path
-            )
-        return {"size": st["length"], "type": "file"}
+        return WebHDFS(**self.fs_args)
 
     def checksum(self, path_info):
-        size = self.info(path_info)["size"]
+        path = self._with_bucket(path_info)
+        ukey = self.fs.ukey(path)
+
         return HashInfo(
-            "checksum",
-            self.hdfs_client.checksum(path_info.path)["bytes"],
-            size=size,
-        )
-
-    def copy(self, from_info, to_info, **_kwargs):
-        with self.hdfs_client.read(from_info.path) as reader:
-            with self.hdfs_client.write(to_info.path) as writer:
-                shutil.copyfileobj(reader, writer)
-
-    def move(self, from_info, to_info):
-        self.hdfs_client.makedirs(to_info.parent.path)
-        self.hdfs_client.rename(from_info.path, to_info.path)
-
-    def upload_fobj(self, fobj, to_info, **kwargs):
-        with self.hdfs_client.write(to_info.path) as fdest:
-            shutil.copyfileobj(fobj, fdest)
-
-    def put_file(
-        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        total = os.path.getsize(from_file)
-        callback.set_size(total)
-
-        self.hdfs_client.makedirs(to_info.parent.path)
-        return self.hdfs_client.upload(
-            to_info.path,
-            from_file,
-            overwrite=True,
-            progress=update_callback(callback, total),
-        )
-
-    def get_file(
-        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        total = self.getsize(from_info)
-        if total:
-            callback.set_size(total)
-
-        self.hdfs_client.download(
-            from_info.path, to_file, progress=update_callback(callback, total)
+            "checksum", ukey["bytes"], size=self.getsize(path_info)
         )

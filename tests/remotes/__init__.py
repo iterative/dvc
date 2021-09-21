@@ -34,7 +34,7 @@ from .s3 import (  # noqa: F401
 )
 from .ssh import SSH, ssh, ssh_connection, ssh_server  # noqa: F401; noqa: F401
 from .webdav import Webdav, webdav, webdav_server  # noqa: F401
-from .webhdfs import WebHDFS, real_webhdfs, webhdfs  # noqa: F401
+from .webhdfs import WebHDFS, webhdfs  # noqa: F401
 
 TEST_REMOTE = "upstream"
 TEST_CONFIG = {
