@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 import posixpath
@@ -131,14 +132,19 @@ class WebHDFSFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return status is not None
 
     def info(self, path_info):
-        st = self.hdfs_client.status(path_info.path)
+        st = self.hdfs_client.status(path_info.path, strict=False)
+        if not st:
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path_info.path
+            )
         return {"size": st["length"], "type": "file"}
 
     def checksum(self, path_info):
+        size = self.info(path_info)["size"]
         return HashInfo(
             "checksum",
             self.hdfs_client.checksum(path_info.path)["bytes"],
-            size=self.hdfs_client.status(path_info.path)["length"],
+            size=size,
         )
 
     def copy(self, from_info, to_info, **_kwargs):

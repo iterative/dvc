@@ -496,27 +496,27 @@ def test_should_update_state_entry_for_directory_after_add(
 
     ret = main(["add", "data"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 3
+    assert file_md5_counter.mock.call_count == 4
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 3
+    assert file_md5_counter.mock.call_count == 4
 
     ls = "dir" if os.name == "nt" else "ls"
     ret = main(
         ["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")]
     )
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 3
+    assert file_md5_counter.mock.call_count == 4
 
     os.rename("data", "data" + ".back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 3
+    assert file_md5_counter.mock.call_count == 4
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 3
+    assert file_md5_counter.mock.call_count == 4
 
 
 class TestAddCommit(TestDvc):
@@ -537,13 +537,15 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     counter = mocker.spy(dvc_module.objects.stage, "_get_tree_obj")
     ret = main(["add", "data"])
     assert ret == 0
+    assert counter.mock.call_count == 2
 
     ret = main(["status"])
     assert ret == 0
+    assert counter.mock.call_count == 2
 
     ret = main(["status"])
     assert ret == 0
-    assert counter.mock.call_count == 1
+    assert counter.mock.call_count == 2
 
 
 class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
