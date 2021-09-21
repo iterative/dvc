@@ -142,9 +142,22 @@ class LoggerHandler(logging.StreamHandler):
         super().handleError(record)
         raise LoggingException(record)
 
+    def emit_pretty_exception(self, exc, verbose: bool = False):
+        return exc.__pretty_exc__(verbose=verbose)
+
     def emit(self, record):
         """Write to Tqdm's stream so as to not break progress-bars"""
         try:
+            if record.exc_info:
+                _, exc, *_ = record.exc_info
+                if hasattr(exc, "__pretty_exc__"):
+                    try:
+                        self.emit_pretty_exception(exc, verbose=_is_verbose())
+                        if not _is_verbose():
+                            return
+                    except Exception:  # noqa, pylint: disable=broad-except
+                        pass
+
             msg = self.format(record)
             Tqdm.write(
                 msg, file=self.stream, end=getattr(self, "terminator", "\n")
