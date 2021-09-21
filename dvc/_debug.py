@@ -6,6 +6,34 @@ if TYPE_CHECKING:
 
 
 @contextmanager
+def yappi_profile(save_output: bool = False, wall_clock: bool = True):
+    try:
+        import yappi  # pylint: disable=import-error
+    except ImportError:
+        print("Failed to run profiler, yappi is not installed")
+        yield
+        return
+
+    import time
+
+    yappi.set_clock_type("wall" if wall_clock else "cpu")
+
+    yappi.start()
+    yield
+    yappi.stop()
+
+    if save_output:
+        stats = yappi.get_func_stats()
+        uid = time.strftime("%Y%m%d_%H%M%S")
+        stats.save(f"callgrind.dvc-{uid}.out", "callgrind")
+    else:
+        yappi.get_func_stats().print_all()
+        yappi.get_thread_stats().print_all()
+
+    yappi.clear_stats()
+
+
+@contextmanager
 def instrument(html_output=False):
     """Run a statistical profiler"""
     try:
@@ -70,6 +98,8 @@ def debugtools(args: "Namespace" = None, **kwargs):
             stack.enter_context(profile(kw.get("cprofile_dump")))
         if kw.get("instrument") or kw.get("instrument_open"):
             stack.enter_context(instrument(kw.get("instrument_open", False)))
+        if kw.get("yappi"):
+            stack.enter_context(yappi_profile(save_output=True))
         yield
 
 
@@ -78,6 +108,9 @@ def add_debugging_flags(parser):
 
     parser.add_argument(
         "--cprofile", action="store_true", default=False, help=SUPPRESS
+    )
+    parser.add_argument(
+        "--yappi", action="store_true", default=False, help=SUPPRESS
     )
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
