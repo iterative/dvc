@@ -19,6 +19,7 @@ from dvc.types import AnyPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import (
+    YAMLFileCorruptedError,
     dump_yaml,
     modify_yaml,
     parse_yaml,
@@ -97,12 +98,12 @@ def check_dvcfile_path(repo, path):
         raise FileIsGitIgnored(relpath(path), True)
 
 
-class YAMLSyntaxError(PrettyDvcException):
+class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
     def __init__(self, path, yaml_text, exc):
         self.path = path
         self.yaml_text = yaml_text
         self.exc = exc
-        super().__init__(str(self.exc))
+        super().__init__(self.path)
 
     def __pretty_exc__(self, **kwargs: Any):
         from rich.syntax import Syntax
@@ -164,9 +165,7 @@ class YAMLSyntaxError(PrettyDvcException):
 
         if lines:
             lines.insert(0, "")
-        lines.insert(
-            0, f"[red]ERROR: '{relpath(self.path)}' structure is corrupted."
-        )
+        lines.insert(0, f"[red]'{relpath(self.path)}' structure is corrupted.")
         for message in lines:
             ui.error_write(message, styled=True)
 
