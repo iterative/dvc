@@ -93,7 +93,7 @@ def _load_live_output(
 
         outs += loads_from(
             stage,
-            path,
+            [path],
             use_cache=not bool(live_no_cache),
             live={
                 Output.PARAM_LIVE_SUMMARY: live_summary,

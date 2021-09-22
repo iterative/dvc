@@ -114,11 +114,12 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
     assert (tmp_dir / "logs").is_dir()
 
-    assert (tmp_dir / "logs" / LIVE_SUMMARY_PATH).is_file()
+    summary_path = os.path.join("logs", LIVE_SUMMARY_PATH)
+    assert (tmp_dir / summary_path).is_file()
     assert dvc.metrics.show() == {
         "": {
             "data": {
-                "logs.json": {
+                f"{summary_path}": {
                     "data": {"accuracy": 0.5, "loss": 0.5, "step": 1}
                 }
             }
@@ -165,10 +166,13 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
 def test_live_html(tmp_dir, dvc, live_stage, html):
     live_stage(html=html, live="logs")
 
-    assert (tmp_dir / "logs" / LIVE_HTML_PATH).is_file() == html
+    print((tmp_dir / "logs" / LIVE_HTML_PATH))
+    assert (tmp_dir / "logs" / LIVE_HTML_PATH / "index.html").is_file() == html
     if html:
-        html_text = (tmp_dir / "logs" / LIVE_HTML_PATH).read_text()
+        html_text = (tmp_dir / "logs" / LIVE_HTML_PATH / "index.html").read_text()
         assert 'http-equiv="refresh"' in html_text
+        assert LIVE_SUMMARY_PATH in html_text
+        assert f"plot_logs_{LIVE_SCALARS_PATH}" in html_text
 
 
 @pytest.fixture
