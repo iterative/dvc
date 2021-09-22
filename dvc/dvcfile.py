@@ -1,12 +1,9 @@
-import collections
 import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any, List, Union
+from typing import TYPE_CHECKING, Any, Callable, Tuple, Type, TypeVar, Union
 
-from voluptuous import MultipleInvalid
-
-from dvc.exceptions import DvcException, PrettyDvcException
+from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
 from dvc.stage import serialize
 from dvc.stage.exceptions import (
@@ -18,20 +15,14 @@ from dvc.stage.exceptions import (
 from dvc.types import AnyPath
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.serialize import (
-    YAMLFileCorruptedError,
-    dump_yaml,
-    modify_yaml,
-    parse_yaml,
-    parse_yaml_for_update,
-)
+from dvc.utils.serialize import dump_yaml, modify_yaml
+from dvc.utils.strictyaml import YAMLValidationError
 
 if TYPE_CHECKING:
-    from ruamel.yaml import StreamMark
-
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
+_T = TypeVar("_T")
 
 DVC_FILE = "Dvcfile"
 DVC_FILE_SUFFIX = ".dvc"
@@ -49,7 +40,8 @@ class FileIsGitIgnored(DvcException):
 
 
 class LockfileCorruptedError(DvcException):
-    pass
+    def __init__(self, path):
+        super().__init__(f"Lockfile '{path}' is corrupted.")
 
 
 class ParametrizedDumpError(DvcException):
@@ -98,80 +90,9 @@ def check_dvcfile_path(repo, path):
         raise FileIsGitIgnored(relpath(path), True)
 
 
-class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
-    def __init__(self, path, yaml_text, exc):
-        self.path = path
-        self.yaml_text = yaml_text
-        self.exc = exc
-        super().__init__(self.path)
-
-    def __pretty_exc__(self, **kwargs: Any):
-        from rich.syntax import Syntax
-        from rich.text import Text
-        from ruamel.yaml.error import MarkedYAMLError
-
-        from dvc.ui import ui
-
-        exc = self.exc.__cause__
-
-        if not isinstance(exc, MarkedYAMLError):
-            raise ValueError("nothing to pretty-print here. :)")
-
-        source = self.yaml_text.splitlines()
-
-        def prepare_linecol(mark: "StreamMark") -> str:
-            return f"in line {mark.line + 1}, column {mark.column + 1}"
-
-        def prepare_message(message: str, mark: "StreamMark" = None) -> "Text":
-            return Text.assemble(
-                message.capitalize(),
-                f", {prepare_linecol(mark)}" if mark else "",
-                style="bold",
-            )
-
-        def prepare_code(mark: "StreamMark") -> "Syntax":
-            line = mark.line + 1
-            code = "" if line > len(source) else source[line - 1]
-            return Syntax(
-                code,
-                "yaml",
-                start_line=line,
-                theme="ansi_dark",
-                word_wrap=True,
-                line_numbers=True,
-                indent_guides=True,
-            )
-
-        lines: List[object] = []
-        if hasattr(exc, "context"):
-            if exc.context_mark is not None:
-                lines.append(
-                    prepare_message(str(exc.context), exc.context_mark)
-                )
-            if exc.context_mark is not None and (
-                exc.problem is None
-                or exc.problem_mark is None
-                or exc.context_mark.name != exc.problem_mark.name
-                or exc.context_mark.line != exc.problem_mark.line
-                or exc.context_mark.column != exc.problem_mark.column
-            ):
-                lines.extend([prepare_code(exc.context_mark), ""])
-            if exc.problem is not None:
-                lines.append(
-                    prepare_message(str(exc.problem), exc.problem_mark)
-                )
-            if exc.problem_mark is not None:
-                lines.append(prepare_code(exc.problem_mark))
-
-        if lines:
-            lines.insert(0, "")
-        lines.insert(0, f"[red]'{relpath(self.path)}' structure is corrupted.")
-        for message in lines:
-            ui.error_write(message, styled=True)
-
-
 class FileMixin:
-    SCHEMA = None
+    SCHEMA: Callable[[_T], _T]
+    ValidationError: Type[DvcException] = StageFileFormatError
 
     def __init__(self, repo, path, verify=True, **kwargs):
         self.repo = repo
@@ -213,14 +134,12 @@ class FileMixin:
         if self._is_git_ignored():
             raise FileIsGitIgnored(self.path)
 
-    def _load(self):
+    def _load(self) -> Tuple[Any, str]:
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
         # 2. filename is not a DVC file
         # 3. path doesn't represent a regular file
         # 4. when the file is git ignored
-        from dvc.utils.serialize import ParseError
-
         if not self.exists():
             dvc_ignored = self.repo.dvcignore.is_ignored_file(self.path)
             raise StageFileDoesNotExistError(
@@ -232,24 +151,29 @@ class FileMixin:
             raise StageFileIsNotDvcFileError(self.path)
 
         self._check_gitignored()
-        with self.repo.fs.open(self.path, encoding="utf-8") as fd:
-            stage_text = fd.read()
-
-        try:
-            d = parse_yaml(stage_text, self.path)
-        except ParseError as exc:
-            cause = exc.__cause__
-            raise YAMLSyntaxError(self.path, stage_text, exc) from cause
-
-        return self.validate(d, self.relpath), stage_text
+        return self._load_yaml()
 
     @classmethod
-    def validate(cls, d, fname=None):
-        assert isinstance(cls.SCHEMA, collections.abc.Callable)
+    def validate(cls, d: _T, fname: str = None) -> _T:
+        from dvc.utils.strictyaml import validate
+
         try:
-            return cls.SCHEMA(d)  # pylint: disable=not-callable
-        except MultipleInvalid as exc:
-            raise StageFileFormatError(f"'{fname}' format error: {exc}")
+            return validate(d, cls.SCHEMA)  # type: ignore[arg-type]
+        except YAMLValidationError as exc:
+            raise cls.ValidationError(fname) from exc
+
+    def _load_yaml(self, **kwargs: Any) -> Tuple[Any, str]:
+        from dvc.utils import strictyaml
+
+        try:
+            return strictyaml.load(
+                self.path,
+                self.SCHEMA,  # type: ignore[arg-type]
+                self.repo.fs,
+                **kwargs,
+            )
+        except YAMLValidationError as exc:
+            raise self.ValidationError(self.relpath) from exc
 
     def remove(self, force=False):  # pylint: disable=unused-argument
         with contextlib.suppress(FileNotFoundError):
@@ -381,10 +305,7 @@ class PipelineFile(FileMixin):
         if not self.exists():
             return
 
-        with open(self.path, encoding="utf-8") as f:
-            d = parse_yaml_for_update(f.read(), self.path)
-
-        self.validate(d, self.path)
+        d, _ = self._load_yaml(round_trip=True)
         if stage.name not in d.get("stages", {}):
             return
 
@@ -426,14 +347,14 @@ def migrate_lock_v1_to_v2(d, version_info):
     d["stages"] = stages
 
 
+def lockfile_schema(data: _T) -> _T:
+    schema = get_lockfile_schema(data)
+    return schema(data)
+
+
 class Lockfile(FileMixin):
-    @classmethod
-    def validate(cls, d, fname=None):
-        schema = get_lockfile_schema(d)
-        try:
-            return schema(d)
-        except MultipleInvalid as exc:
-            raise StageFileFormatError(f"'{fname}' format error: {exc}")
+    SCHEMA = staticmethod(lockfile_schema)  # type: ignore[assignment]
+    ValidationError = LockfileCorruptedError
 
     def _verify_filename(self):
         pass  # lockfile path is hardcoded, so no need to verify here
@@ -446,10 +367,6 @@ class Lockfile(FileMixin):
             # even though it may not exist or have been .dvcignored
             self._check_gitignored()
             return {}, ""
-        except StageFileFormatError as exc:
-            raise LockfileCorruptedError(
-                f"Lockfile '{self.relpath}' is corrupted."
-            ) from exc
 
     def load(self):
         d, _ = self._load()
@@ -492,10 +409,7 @@ class Lockfile(FileMixin):
         if not self.exists():
             return
 
-        with open(self.path, encoding="utf-8") as f:
-            d = parse_yaml_for_update(f.read(), self.path)
-        self.validate(d, self.path)
-
+        d, _ = self._load_yaml(round_trip=True)
         version = LOCKFILE_VERSION.from_dict(d)
         data = d if version == LOCKFILE_VERSION.V1 else d.get("stages", {})
         if stage.name not in data:

@@ -212,8 +212,8 @@ def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
 
     assert str(exc_info.value) == "Lockfile 'dvc.lock' is corrupted."
     assert (
-        str(exc_info.value.__cause__) == "'dvc.lock' format error: "
-        f"invalid schema version {version_info['schema']}, "
+        str(exc_info.value.__cause__)
+        == f"invalid schema version {version_info['schema']}, "
         "expected one of ['2.0'] for dictionary value @ "
         "data['schema']"
     )
