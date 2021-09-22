@@ -54,11 +54,13 @@ class Live:
         metrics_path = os.path.join(target, LIVE_SUMMARY_PATH)
         images_path = os.path.join(target, LIVE_IMAGES_PATH)
         scalars_path = os.path.join(target, LIVE_SCALARS_PATH)
-        
+
         metrics = self.repo.metrics.show(targets=[metrics_path])
 
         plots = self.repo.plots.show(
-            targets=[str(scalars_path), str(images_path)], 
-            recursive=True, revs=revs)
+            targets=[str(scalars_path), str(images_path)],
+            recursive=True,
+            revs=revs,
+        )
 
         return metrics, plots

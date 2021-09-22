@@ -169,7 +169,9 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
     print((tmp_dir / "logs" / LIVE_HTML_PATH))
     assert (tmp_dir / "logs" / LIVE_HTML_PATH / "index.html").is_file() == html
     if html:
-        html_text = (tmp_dir / "logs" / LIVE_HTML_PATH / "index.html").read_text()
+        html_text = (
+            tmp_dir / "logs" / LIVE_HTML_PATH / "index.html"
+        ).read_text()
         assert 'http-equiv="refresh"' in html_text
         assert LIVE_SUMMARY_PATH in html_text
         assert f"plot_logs_{LIVE_SCALARS_PATH}" in html_text
