@@ -155,10 +155,7 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
     ((exp_rev, _),) = experiments.items()
 
     res = dvc.experiments.show()
-    assert (
-        "logs.json"
-        in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
-    )
+    assert "logs.json" in res[baseline_rev][exp_rev]["data"]["metrics"].keys()
 
 
 @pytest.mark.parametrize("html", [True, False])
@@ -239,15 +236,9 @@ def test_live_checkpoints_resume(
     )
 
     results = dvc.experiments.show()
-    assert checkpoints_metric(
-        results, "logs.json", "step"
-    ) == [3, 2, 1, 0]
-    assert checkpoints_metric(
-        results, "logs.json", "metric1"
-    ) == [4, 3, 2, 1]
-    assert checkpoints_metric(
-        results, "logs.json", "metric2"
-    ) == [8, 6, 4, 2]
+    assert checkpoints_metric(results, "logs.json", "step") == [3, 2, 1, 0]
+    assert checkpoints_metric(results, "logs.json", "metric1") == [4, 3, 2, 1]
+    assert checkpoints_metric(results, "logs.json", "metric2") == [8, 6, 4, 2]
 
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
