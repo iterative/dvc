@@ -15,13 +15,12 @@ if TYPE_CHECKING:
 LIVE_IMAGES_PATH = "images"
 LIVE_HTML_PATH = "html"
 LIVE_SCALARS_PATH = "scalars"
-LIVE_SUMMARY_PATH = "summary.json"
 
 
 def create_live_html(out):
     assert out.live and out.live["html"]
 
-    metrics, plots = out.repo.live.show(out.path_info)
+    metrics, plots = out.repo.live.show(str(out.path_info))
 
     html_path = out.path_info / LIVE_HTML_PATH
 
@@ -39,7 +38,7 @@ def summary_path_info(out: "Output") -> Optional["PathInfo"]:
     if isinstance(out.live, dict):
         has_summary = out.live.get(Output.PARAM_LIVE_SUMMARY, True)
     if has_summary:
-        return out.path_info / LIVE_SUMMARY_PATH
+        return out.path_info.with_suffix(".json")
     return None
 
 
@@ -51,7 +50,7 @@ class Live:
         if revs:
             revs = ["workspace", *revs]
 
-        metrics_path = os.path.join(target, LIVE_SUMMARY_PATH)
+        metrics_path = target + ".json"
         images_path = os.path.join(target, LIVE_IMAGES_PATH)
         scalars_path = os.path.join(target, LIVE_SCALARS_PATH)
 
