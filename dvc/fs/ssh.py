@@ -39,7 +39,7 @@ class SSHFileSystem(FSSpecWrapper):
             path_str = path.path
         else:
             path_str = super()._with_bucket(path)
-        return os.path.normpath(path_str)
+        return path_str
 
     def _prepare_credentials(self, **config):
         self.CAN_TRAVERSE = True
