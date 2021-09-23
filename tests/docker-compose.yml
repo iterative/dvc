@@ -6,10 +6,12 @@ services:
     command: azurite -L -l /data --blobHost 0.0.0.0 --queueHost 0.0.0.0
     ports:
       - "10000"
+
   motoserver:
     image: motoserver/moto
     ports:
       - "5000"
+
   oss:
     image: rkuprieiev/oss-emulator
     ports:
@@ -25,3 +27,13 @@ services:
       - "50010:50010"
       - "50075:50075"
       - "50070"
+
+  openssh-server:
+    image: ghcr.io/linuxserver/openssh-server
+    environment:
+      - USER_NAME=user
+      - PUBLIC_KEY_FILE=/tmp/key
+    ports:
+      - 2222
+    volumes:
+      - ./remotes/user.key.pub:/tmp/key

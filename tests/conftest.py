@@ -23,7 +23,7 @@ REMOTES = {
     "http": True,
     "oss": False,
     "s3": False,
-    "ssh": True,
+    "ssh": False,
     "webdav": True,
 }
 
