@@ -1,1 +1,1 @@
-sshfs>=2021.8.1
+sshfs[bcrypt]>=2021.8.1
