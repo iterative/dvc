@@ -23,10 +23,6 @@ if (
 
 class System:
     @staticmethod
-    def is_unix():
-        return os.name != "nt"
-
-    @staticmethod
     def hardlink(source, link_name):
         try:
             os.link(source, link_name)
@@ -118,98 +114,13 @@ class System:
         os.chmod(link_name, 0o666 & ~umask)
 
     @staticmethod
-    def _getdirinfo(path):
-        from collections import namedtuple
-
-        from win32file import (  # pylint: disable=import-error
-            FILE_FLAG_BACKUP_SEMANTICS,
-            FILE_FLAG_OPEN_REPARSE_POINT,
-            FILE_SHARE_READ,
-            OPEN_EXISTING,
-            CreateFileW,
-            GetFileInformationByHandle,
-        )
-
-        # NOTE: use FILE_FLAG_OPEN_REPARSE_POINT to open symlink itself and not
-        # the target See https://docs.microsoft.com/en-us/windows/desktop/api/
-        # fileapi/nf-fileapi-createfilew#symbolic-link-behavior
-        flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT
-
-        hfile = CreateFileW(
-            path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None
-        )
-
-        # See BY_HANDLE_FILE_INFORMATION structure from fileapi.h
-        Info = namedtuple(
-            "BY_HANDLE_FILE_INFORMATION",
-            [
-                "dwFileAttributes",
-                "ftCreationTime",
-                "ftLastAccessTime",
-                "ftLastWriteTime",
-                "dwVolumeSerialNumber",
-                "nFileSizeHigh",
-                "nFileSizeLow",
-                "nNumberOfLinks",
-                "nFileIndexHigh",
-                "nFileIndexLow",
-            ],
-        )
-
-        return Info(*GetFileInformationByHandle(hfile))
-
-    @staticmethod
     def inode(path):
-        path = os.fspath(path)
-
-        if System.is_unix():
-            import ctypes
-
-            inode = os.lstat(path).st_ino
-            # NOTE: See https://bugs.python.org/issue29619 and
-            # https://stackoverflow.com/questions/34643289/
-            # pythons-os-stat-is-returning-wrong-inode-value
-            inode = ctypes.c_ulong(inode).value
-        else:
-            # getdirinfo from ntfsutils works on both files and dirs
-            info = System._getdirinfo(path)
-            inode = abs(
-                hash(
-                    (
-                        info.dwVolumeSerialNumber,
-                        info.nFileIndexHigh,
-                        info.nFileIndexLow,
-                    )
-                )
-            )
-        assert inode >= 0
-        assert inode < 2 ** 64
-        return inode
+        return os.lstat(path).st_ino
 
     @staticmethod
     def is_symlink(path):
-        path = os.fspath(path)
-
-        if System.is_unix():
-            return os.path.islink(path)
-
-        # https://docs.microsoft.com/en-us/windows/desktop/fileio/
-        # file-attribute-constants
-        from winnt import (  # pylint: disable=import-error
-            FILE_ATTRIBUTE_REPARSE_POINT,
-        )
-
-        if os.path.lexists(path):
-            info = System._getdirinfo(path)
-            return info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
-        return False
+        return os.path.islink(path)
 
     @staticmethod
     def is_hardlink(path):
-        path = os.fspath(path)
-
-        if System.is_unix():
-            return os.stat(path).st_nlink > 1
-
-        info = System._getdirinfo(path)
-        return info.nNumberOfLinks > 1
+        return os.stat(path).st_nlink > 1
