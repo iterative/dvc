@@ -79,11 +79,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return
 
-        assert isinstance(path_info, str) or path_info.scheme == "local"
-        assert hash_info
-        assert isinstance(hash_info, HashInfo)
-        assert os.path.exists(path_info)
-
         mtime, size = get_mtime_and_size(path_info, fs, self.dvcignore)
         inode = get_inode(path_info)
 
@@ -111,17 +106,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return None
 
-        assert isinstance(path_info, str) or path_info.scheme == "local"
-        path = os.fspath(path_info)
-
-        # NOTE: use os.path.exists instead of LocalFileSystem.exists
-        # because it uses lexists() and will return True for broken
-        # symlinks that we cannot stat() in get_mtime_and_size
-        if not os.path.exists(path):
+        try:
+            mtime, size = get_mtime_and_size(path_info, fs, self.dvcignore)
+        except FileNotFoundError:
             return None
 
-        mtime, size = get_mtime_and_size(path, fs, self.dvcignore)
-        inode = get_inode(path)
+        inode = get_inode(path_info)
 
         value = self.md5s.get(inode)
 
@@ -140,12 +130,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return
 
-        assert isinstance(path_info, str) or path_info.scheme == "local"
-
-        if not fs.exists(path_info):
+        try:
+            mtime, _ = get_mtime_and_size(path_info, fs, self.dvcignore)
+        except FileNotFoundError:
             return
 
-        mtime, _ = get_mtime_and_size(path_info, fs, self.dvcignore)
         inode = get_inode(path_info)
         relative_path = relpath(path_info, self.root_dir)
 
