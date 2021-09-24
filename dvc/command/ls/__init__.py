@@ -54,6 +54,7 @@ def add_parser(subparsers, parent_parser):
     )
     list_parser = subparsers.add_parser(
         "list",
+        aliases=["ls"],
         parents=[parent_parser],
         description=append_doc_link(LIST_HELP, "list"),
         help=LIST_HELP,

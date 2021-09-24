@@ -109,3 +109,8 @@ def test_show_colors(mocker, capsys, monkeypatch):
         "\x1b[01;34msrc\x1b[0m",
         "\x1b[01;32mrun.sh\x1b[0m",
     ]
+
+
+def test_list_alias():
+    cli_args = parse_args(["ls", "local_dir"])
+    assert cli_args.func == CmdList
