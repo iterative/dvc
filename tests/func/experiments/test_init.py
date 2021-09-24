@@ -24,7 +24,6 @@ def test_init(tmp_dir, dvc):
             "default": {
                 "cmd": script,
                 "deps": ["data", "src"],
-                "live": {"dvclive": {"html": True, "summary": True}},
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
                 "params": ["foo"],
