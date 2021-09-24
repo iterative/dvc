@@ -1,4 +1,4 @@
-import os
+import posixpath
 from contextlib import contextmanager
 from functools import partial
 
@@ -32,7 +32,7 @@ def test_init_git(tmp_dir, scm, cloud):
     rev = scm.resolve_rev("stash@{0}")
     scm.set_ref(EXEC_MERGE, rev)
 
-    root_url = URLInfo(str(cloud)) / "exec-root"
+    root_url = URLInfo(str(cloud)) / SSHExecutor.gen_dirname()
 
     executor = SSHExecutor(
         scm,
@@ -43,7 +43,9 @@ def test_init_git(tmp_dir, scm, cloud):
         username=TEST_SSH_USER,
         fs_factory=partial(_ssh_factory, cloud),
     )
+    assert root_url.path == executor._repo_abspath
 
-    assert os.path.exists(os.path.join(executor._repo_abspath, "foo"))
-    assert os.path.exists(os.path.join(executor._repo_abspath, "dir"))
-    assert os.path.exists(os.path.join(executor._repo_abspath, "dir", "bar"))
+    fs = cloud._ssh
+    assert fs.exists(posixpath.join(executor._repo_abspath, "foo"))
+    assert fs.exists(posixpath.join(executor._repo_abspath, "dir"))
+    assert fs.exists(posixpath.join(executor._repo_abspath, "dir", "bar"))
