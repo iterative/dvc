@@ -46,12 +46,6 @@ TEST_CONFIG = {
 
 @pytest.fixture(scope="session")
 def docker():
-    import os
-
-    # See https://travis-ci.community/t/docker-linux-containers-on-windows/301
-    if os.environ.get("CI") and os.name == "nt":
-        pytest.skip("disabled for Windows on Github Actions")
-
     try:
         subprocess.check_output("docker ps", shell=True)
     except (subprocess.CalledProcessError, OSError):
