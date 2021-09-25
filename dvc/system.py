@@ -2,23 +2,10 @@ import errno
 import logging
 import os
 import platform
-import sys
 
 from dvc.exceptions import DvcException
 
 logger = logging.getLogger(__name__)
-
-if (
-    sys.platform == "win32"
-    and sys.version_info < (3, 8)
-    and sys.getwindowsversion() >= (6, 2)
-):
-    try:
-        import speedcopy
-
-        speedcopy.patch_copyfile()
-    except ImportError:
-        pass
 
 
 class System:
