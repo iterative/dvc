@@ -87,6 +87,9 @@ class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
                     ssl=make_context(config["ssl_verify"])
                 )
 
+        # Allow reading proxy configurations from the environment.
+        client_kwargs["trust_env"] = True
+
         credentials["get_client"] = self.get_client
         self.upload_method = config.get("method", "POST")
         return credentials
