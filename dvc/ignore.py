@@ -11,7 +11,6 @@ from dvc.fs.base import BaseFileSystem
 from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.scheme import Schemes
-from dvc.system import System
 from dvc.types import AnyPath, List, Optional
 from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
@@ -84,7 +83,7 @@ class DvcIgnorePatterns(DvcIgnore):
         else:
             return False
 
-        if not System.is_unix():
+        if os.name == "nt":
             path = normalize_file(path)
         return path
 
