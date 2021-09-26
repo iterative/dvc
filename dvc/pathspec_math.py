@@ -51,7 +51,11 @@ def change_rule(rule, rel):
         rule = f"!/{rel}{rule}"
     else:
         rule = f"/{rel}{rule}"
-    rule = normalize_file(rule)
+    norm_rule = normalize_file(rule)
+    if rule.startswith("/") and (not norm_rule.startswith("/")):
+        rule = f"/{norm_rule}"
+    else:
+        rule = norm_rule        
     return rule
 
 
