@@ -55,7 +55,7 @@ def change_rule(rule, rel):
     if rule.startswith("/") and (not norm_rule.startswith("/")):
         rule = f"/{norm_rule}"
     else:
-        rule = norm_rule        
+        rule = norm_rule
     return rule
 
 
