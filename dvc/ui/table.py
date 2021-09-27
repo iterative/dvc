@@ -1,5 +1,5 @@
 from collections import abc
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from itertools import zip_longest
 from typing import TYPE_CHECKING, Dict, Iterator, Sequence, Union
 
@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from rich.table import Table
 
     from dvc.ui import Console, RichText
-
 
 SHOW_MAX_WIDTH = 1024
 
@@ -30,6 +29,7 @@ def plain_table(
     pager: bool = False,
     force: bool = True,
 ) -> None:
+    from funcy import nullcontext
     from tabulate import tabulate
 
     text: str = tabulate(
@@ -44,11 +44,8 @@ def plain_table(
         # NOTE: md table is incomplete without the trailing newline
         text += "\n"
 
-    if pager:
-        from dvc.utils.pager import pager as _pager
-
-        _pager(text)
-    else:
+    cm = ui.pager() if pager else nullcontext()
+    with cm:
         ui.write(text, force=force)
 
 
@@ -110,14 +107,13 @@ def rich_table(
     for row, style in zip_longest(data, rs):
         table.add_row(*row, **(style or {}))
 
-    console = ui.rich_console
+    stack = ExitStack()
+    if pager:
+        stack.enter_context(
+            console_width(table, ui.rich_console, SHOW_MAX_WIDTH)
+        )
+        stack.enter_context(ui.pager())
 
-    if not pager:
-        console.print(table)
+    with stack:
+        ui.write(table, styled=True)
         return
-
-    from dvc.utils.pager import DvcPager
-
-    with console_width(table, console, SHOW_MAX_WIDTH):
-        with console.pager(pager=DvcPager(), styles=True):
-            console.print(table)

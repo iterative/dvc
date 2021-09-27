@@ -43,7 +43,7 @@ def test_plain_md(capsys: CaptureFixture[str]):
 
 
 def test_plain_pager(mocker: MockerFixture):
-    pager_mock = mocker.patch("dvc.utils.pager.pager")
+    pager_mock = mocker.patch("dvc.ui.pager.pager")
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
         headers=["first", "second"],
@@ -56,7 +56,8 @@ def test_plain_pager(mocker: MockerFixture):
             first    second
             foo      bar
             foo1     bar1
-            foo2     bar2"""
+            foo2     bar2
+            """
         )
     )
 
@@ -138,7 +139,7 @@ def test_rich_styles(capsys: CaptureFixture[str], extra_opts):
 
 
 def test_rich_pager(mocker: MockerFixture):
-    pager_mock = mocker.patch("dvc.utils.pager.pager")
+    pager_mock = mocker.patch("dvc.ui.pager.pager")
 
     ui.table(
         [("foo", "bar"), ("foo1", "bar1"), ("foo2", "bar2")],
