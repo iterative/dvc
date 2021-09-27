@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.env import DVC_PAGER
-from dvc.utils.pager import (
+from dvc.ui.pager import (
     DEFAULT_PAGER,
     LESS,
     PAGER_ENV,
@@ -91,7 +91,7 @@ def test_pager(mocker, monkeypatch):
     monkeypatch.setenv(DVC_PAGER, "my-pager")
     mocker.patch("sys.stdout.isatty", return_value=True)
 
-    m_make_pager = mocker.patch("dvc.utils.pager.make_pager")
+    m_make_pager = mocker.patch("dvc.ui.pager.make_pager")
     _pager = m_make_pager.return_value = mocker.MagicMock()
 
     pager("hello world")
