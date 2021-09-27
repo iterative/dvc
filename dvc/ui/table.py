@@ -8,15 +8,14 @@ from dvc.types import DictStrAny
 if TYPE_CHECKING:
     from rich.console import Console as RichConsole
     from rich.table import Table
-    from rich.text import Text
 
-    from dvc.ui import Console
+    from dvc.ui import Console, RichText
 
 
 SHOW_MAX_WIDTH = 1024
 
 
-CellT = Union[str, "Text"]  # Text is mostly compatible with str
+CellT = Union[str, "RichText"]  # RichText is mostly compatible with str
 Row = Sequence[CellT]
 TableData = Sequence[Row]
 Headers = Sequence[str]

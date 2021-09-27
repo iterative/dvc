@@ -9,6 +9,7 @@ Not to be confused with strictyaml, a python library with similar motivations.
 from typing import TYPE_CHECKING, Any, Callable, List, TypeVar
 
 from dvc.exceptions import DvcException, PrettyDvcException
+from dvc.ui import ui
 from dvc.utils.serialize import (
     EncodingError,
     YAMLFileCorruptedError,
@@ -17,19 +18,17 @@ from dvc.utils.serialize import (
 
 if TYPE_CHECKING:
     from rich.syntax import Syntax
-    from rich.text import Text
     from ruamel.yaml import StreamMark
 
     from dvc.fs.base import BaseFileSystem
+    from dvc.ui import RichText
 
 
 _T = TypeVar("_T")
 
 
-def _prepare_cause(cause: str) -> "Text":
-    from rich.text import Text
-
-    return Text(cause, style="bold")
+def _prepare_cause(cause: str) -> "RichText":
+    return ui.rich_text(cause, style="bold")
 
 
 def _prepare_code_snippets(code: str, start_line: int = 1) -> "Syntax":
@@ -56,7 +55,6 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
     def __pretty_exc__(self, **kwargs: Any) -> None:
         from ruamel.yaml.error import MarkedYAMLError
 
-        from dvc.ui import ui
         from dvc.utils import relpath
 
         exc = self.exc.__cause__
@@ -69,7 +67,9 @@ class YAMLSyntaxError(PrettyDvcException, YAMLFileCorruptedError):
         def prepare_linecol(mark: "StreamMark") -> str:
             return f"in line {mark.line + 1}, column {mark.column + 1}"
 
-        def prepare_message(message: str, mark: "StreamMark" = None) -> "Text":
+        def prepare_message(
+            message: str, mark: "StreamMark" = None
+        ) -> "RichText":
             cause = ", ".join(
                 [message.capitalize(), prepare_linecol(mark) if mark else ""]
             )
