@@ -7,6 +7,7 @@ from typing import (
     Optional,
     Sequence,
     TextIO,
+    Type,
     Union,
 )
 
@@ -14,6 +15,7 @@ from funcy import cached_property
 
 if TYPE_CHECKING:
     from rich.status import Status
+    from rich.text import Text as RichText
 
     from dvc.progress import Tqdm
     from dvc.ui.table import Headers, Styles, TableData
@@ -102,6 +104,12 @@ class Console:
                 self.formatter.format(obj, style=style) for obj in objects
             )
             return print(*values, sep=sep, end=end, file=file)
+
+    @property
+    def rich_text(self) -> "Type[RichText]":
+        from rich.text import Text
+
+        return Text
 
     @staticmethod
     def progress(*args, **kwargs) -> "Tqdm":

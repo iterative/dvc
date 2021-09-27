@@ -20,9 +20,8 @@ from dvc.utils.flatten import flatten
 from dvc.utils.serialize import encode_exception
 
 if TYPE_CHECKING:
-    from rich.text import Text
-
     from dvc.compare import TabularData
+    from dvc.ui import RichText
 
 
 logger = logging.getLogger(__name__)
@@ -292,8 +291,6 @@ def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
 
 
 def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
-    from rich.text import Text
-
     from dvc.compare import _format_field, with_value
 
     if not items:
@@ -308,10 +305,10 @@ def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
                 item.get(name),
                 FILL_VALUE_ERRORED if data.get("error", None) else fill_value,
             )
-            # wrap field data in rich.Text, otherwise rich may
+            # wrap field data in ui.rich_text, otherwise rich may
             # interpret unescaped braces from list/dict types as rich
             # markup tags
-            row.append(Text(str(_format_field(value, precision))))
+            row.append(ui.rich_text(str(_format_field(value, precision))))
 
 
 def _parse_filter_list(param_list):
@@ -362,17 +359,15 @@ def experiments_table(
     return td
 
 
-def prepare_exp_id(kwargs) -> "Text":
-    from rich.text import Text
-
+def prepare_exp_id(kwargs) -> "RichText":
     exp_name = kwargs["Experiment"]
     rev = kwargs["rev"]
     typ = kwargs.get("typ", "baseline")
 
     if typ == "baseline" or not exp_name:
-        text = Text(exp_name or rev)
+        text = ui.rich_text(exp_name or rev)
     else:
-        text = Text.assemble(rev, " [", (exp_name, "bold"), "]")
+        text = ui.rich_text.assemble(rev, " [", (exp_name, "bold"), "]")
 
     parent = kwargs.get("parent")
     suff = f" ({parent})" if parent else ""
@@ -380,7 +375,7 @@ def prepare_exp_id(kwargs) -> "Text":
 
     tree = experiment_types[typ]
     pref = f"{tree} " if tree else ""
-    return Text(pref) + text
+    return ui.rich_text(pref) + text
 
 
 def baseline_styler(typ):
