@@ -144,6 +144,8 @@ class CmdMachineCreate(CmdBase):
 
 
 class CmdMachineStatus(CmdBase):
+    SENSITIVE_FIELDS = {"ssh_private", "startup_script"}
+
     def run(self):
         if self.repo.machine is None:
             raise MachineDisabledError
@@ -152,7 +154,10 @@ class CmdMachineStatus(CmdBase):
         for i, status in enumerate(all_status, start=1):
             ui.write(f"instance_num_{i}:")
             for key, value in sorted(status.items()):
-                ui.write(f"\t{key:20}: {value}")
+                if key in self.SENSITIVE_FIELDS:
+                    ui.write(f"\t{key:20}: (sensitive value)")
+                else:
+                    ui.write(f"\t{key:20}: {value}")
         return 0
 
 
