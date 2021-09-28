@@ -49,6 +49,7 @@ class SSHExecutor(BaseExecutor):
         port: Optional[int] = None,
         username: Optional[str] = None,
         fs_factory: Optional[Callable] = None,
+        check_host: bool = True,
         **kwargs,
     ):
         assert host
@@ -57,6 +58,7 @@ class SSHExecutor(BaseExecutor):
         self.port = port
         self.username = username
         self._fs_factory = fs_factory
+        self._check_host = check_host
 
         super().__init__(*args, **kwargs)
         logger.debug("Init SSH executor for host '%s'", self.host)
@@ -76,6 +78,7 @@ class SSHExecutor(BaseExecutor):
         **kwargs,
     ):
         kwargs["root_dir"] = cls.gen_dirname(kwargs.get("name"))
+        kwargs["check_host"] = False
         kwargs.update(manager.get_executor_kwargs(machine_name))
         return cls(*args, **kwargs)
 
@@ -91,17 +94,23 @@ class SSHExecutor(BaseExecutor):
             path = f"/~/{path}"
         return f"ssh://{user}{self.host}{port}{path}"
 
-    @staticmethod
-    def _git_client_args(fs):
+    def _git_client_args(self, fs):
         kwargs = {
             "password": fs.fs_args.get("password"),
             "key_filename": first(fs.fs_args.get("client_keys", [])),
         }
-        if os.name != "win32":
-            kwargs["ssh_command"] = (
-                "ssh -o UserKnownHostsFile=/dev/null "
-                "-o StrictHostKeyChecking=no"
-            )
+        if not self._check_host:
+            if os.name == "win32":
+                cmd = (
+                    "ssh.exe -o UserKnownHostsFile=\\\\.\\NUL "
+                    "-o StrictHostKeyChecking=no"
+                )
+            else:
+                cmd = (
+                    "ssh -o UserKnownHostsFile=/dev/null "
+                    "-o StrictHostKeyChecking=no"
+                )
+            kwargs["ssh_command"] = cmd
         return kwargs
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
