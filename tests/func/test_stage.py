@@ -9,14 +9,14 @@ from dvc.main import main
 from dvc.output import Output
 from dvc.repo import Repo, lock_repo
 from dvc.stage import PipelineStage, Stage
-from dvc.stage.exceptions import StageFileFormatError
 from dvc.stage.run import run_stage
 from dvc.utils.serialize import dump_yaml, load_yaml
+from dvc.utils.strictyaml import YAMLValidationError
 from tests.basic_env import TestDvc
 
 
 def test_cmd_obj():
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(YAMLValidationError):
         SingleStageFile.validate({Stage.PARAM_CMD: {}})
 
 
@@ -33,10 +33,10 @@ def test_cmd_str():
 
 
 def test_object():
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(YAMLValidationError):
         SingleStageFile.validate({Stage.PARAM_DEPS: {}})
 
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(YAMLValidationError):
         SingleStageFile.validate({Stage.PARAM_OUTS: {}})
 
 

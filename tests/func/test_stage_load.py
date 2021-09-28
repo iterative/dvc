@@ -10,12 +10,12 @@ from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
-    StageFileFormatError,
     StageNameUnspecified,
     StageNotFound,
 )
 from dvc.utils import relpath
 from dvc.utils.fs import remove
+from dvc.utils.strictyaml import YAMLValidationError
 
 
 def test_collect(tmp_dir, scm, dvc, run_copy):
@@ -450,7 +450,7 @@ def test_collect_repo_callback(tmp_dir, dvc, mocker):
 
     file_path, exc = mock.call_args[0]
     assert file_path == PIPELINE_FILE
-    assert isinstance(exc, StageFileFormatError)
+    assert isinstance(exc, YAMLValidationError)
 
 
 def test_gitignored_collect_repo(tmp_dir, dvc, scm):

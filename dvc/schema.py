@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
@@ -94,11 +96,27 @@ STAGE_DEFINITION = {
     Optional(StageParams.PARAM_LIVE): Any(str, LIVE_PSTAGE_SCHEMA),
 }
 
+
+def either_or(primary, fallback, fallback_includes=None):
+    def validator(data):
+        schema = primary
+        if (
+            isinstance(data, Mapping)
+            and set(fallback_includes or []) & data.keys()
+        ):
+            schema = fallback
+        return Schema(schema)(data)
+
+    return validator
+
+
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
 }
-SINGLE_PIPELINE_STAGE_SCHEMA = {str: Any(FOREACH_IN, STAGE_DEFINITION)}
+SINGLE_PIPELINE_STAGE_SCHEMA = {
+    str: either_or(STAGE_DEFINITION, FOREACH_IN, [FOREACH_KWD, DO_KWD])
+}
 MULTI_STAGE_SCHEMA = {
     STAGES: SINGLE_PIPELINE_STAGE_SCHEMA,
     VARS_KWD: VARS_SCHEMA,
