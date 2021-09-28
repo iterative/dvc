@@ -840,7 +840,7 @@ class CmdExperimentsInit(CmdBase):
     DEFAULT_NAME = "default"
 
     @post_processing(dict)
-    def init_interactive(self, defaults=None):
+    def init_interactive(self, defaults=None, show_heading: bool = False):
         defaults = defaults or {}
         prompts = {
             "cmd": "[b]Command[/b] to execute",
@@ -856,10 +856,14 @@ class CmdExperimentsInit(CmdBase):
             "This command will guide you to set up your first stage in "
             "[green]dvc.yaml[/green].\n"
         )
-        ui.error_write(message, styled=True)
+        if show_heading:
+            ui.error_write(message, styled=True)
 
         for key, prompt in prompts.items():
-            prompt_cls = RequiredPrompt if key == "cmd" else SkippablePrompt
+            if key == "cmd":
+                prompt_cls = RequiredPrompt
+            else:
+                prompt_cls = SkippablePrompt
             kwargs = {"default": defaults[key]} if key in defaults else {}
             value = prompt_cls.ask(prompt, console=ui.error_console, **kwargs)
             yield key, value
@@ -873,6 +877,8 @@ class CmdExperimentsInit(CmdBase):
         if self.args.template:
             raise NotImplementedError("template is not supported yet.")
 
+        from dvc.dvcfile import make_dvcfile
+
         global_defaults = {
             "code": self.CODE,
             "data": self.DATA,
@@ -882,6 +888,18 @@ class CmdExperimentsInit(CmdBase):
             "plots": self.PLOTS,
         }
 
+        dvcfile = make_dvcfile(self.repo, "dvc.yaml")
+        name = self.args.name or self.DEFAULT_NAME
+
+        dvcfile_exists = dvcfile.exists()
+        if not self.args.force and dvcfile_exists and name in dvcfile.stages:
+            from dvc.stage.exceptions import DuplicateStageName
+
+            hint = "Use '--force' to overwrite."
+            raise DuplicateStageName(
+                f"Stage '{name}' already exists in 'dvc.yaml'. {hint}"
+            )
+
         context = ChainMap()
         if not self.args.explicit:
             config = {}  # TODO
@@ -889,7 +907,13 @@ class CmdExperimentsInit(CmdBase):
 
         if self.args.interactive:
             defaults = context.new_child({"live": self.DVCLIVE})
-            context = self.init_interactive(defaults=defaults)
+            try:
+                context = self.init_interactive(
+                    defaults=defaults, show_heading=not dvcfile_exists
+                )
+            except (KeyboardInterrupt, EOFError):
+                ui.error_write()
+                raise
         else:
             d = compact(
                 {
@@ -922,7 +946,6 @@ class CmdExperimentsInit(CmdBase):
             _, ext = os.path.splitext(path)
             params_kv = [{path: list(LOADERS[ext](path))}]
 
-        name = self.args.name or self.DEFAULT_NAME
         stage = self.repo.stage.add(
             name=name,
             cmd=command,
