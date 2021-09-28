@@ -1,2 +1,2 @@
-s3fs==2021.8.1
+s3fs==2021.9.0
 aiobotocore[boto3]>1.0.1
