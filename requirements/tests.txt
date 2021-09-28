@@ -13,13 +13,12 @@ mock==4.0.3
 rangehttpserver==1.2.0
 mock-ssh-server==0.9.1
 wget==3.2
-filelock==3.0.12
+filelock==3.1.0
 wsgidav==3.1.1
 crc32c==2.2.post0
 xmltodict==0.12.0
 google-compute-engine==2.8.13
 google-cloud-storage==1.42.2
-urllib3==1.26.6
 dvclive>=0.2.1
 pywin32>=225; sys_platform == 'win32' and python_version < '3.10'
 
