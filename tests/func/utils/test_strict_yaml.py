@@ -128,6 +128,25 @@ expected str, in stages -> stage1 -> deps -> 0, line 5, column 9
   5 │     - src:
 """
 
+OUTS_AS_STR = """\
+stages:
+  train:
+    cmd:
+      - python train.py
+    deps:
+      - config.cfg
+    outs:
+      models/"""
+
+OUTS_AS_STR_OUTPUT = """\
+'./dvc.yaml' validation failed.
+
+expected a list, in stages -> train -> outs, line 3, column 5
+  2   train:
+  3 │   cmd:
+  4 │     - python train.py"""
+
+
 NULL_VALUE_ON_OUTS = """\
 stages:
   stage1:
@@ -285,6 +304,7 @@ examples = {
     "empty_stage": (EMPTY_STAGE, EMPTY_STAGE_OUTPUT),
     "missing_cmd": (MISSING_CMD, MISSING_CMD_OUTPUT),
     "deps_as_dict": (DEPS_AS_DICT, DEPS_AS_DICT_OUTPUT),
+    "outs_as_str": (OUTS_AS_STR, OUTS_AS_STR_OUTPUT),
     "null_value_on_outs": (NULL_VALUE_ON_OUTS, NULL_VALUE_ON_OUTS_OUTPUT),
     "additional_key_on_outs": (
         ADDITIONAL_KEY_ON_OUTS,
