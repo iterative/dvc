@@ -203,6 +203,8 @@ class MachineManager:
         config, backend = self.get_config_and_backend(name)
         return backend.run_shell(**config)
 
-    def status(self, name: str, hide_sensitive: bool=True) -> Iterator[Dict[Any, Any]]:
+    def status(
+        self, name: str, hide_sensitive: bool = True
+    ) -> Iterator[Dict[Any, Any]]:
         config, backend = self.get_config_and_backend(name)
         return backend.instances(**config)
