@@ -4,7 +4,7 @@ CONFIG_TEXT = textwrap.dedent(
     """\
         [feature]
             machine = true
-        ['machine \"foo\"']
+        ['machine "foo"']
             cloud = aws
     """
 )
