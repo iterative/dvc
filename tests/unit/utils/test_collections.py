@@ -1,4 +1,7 @@
 # pylint: disable=unidiomatic-typecheck
+import json
+from json import encoder
+
 import pytest
 from mock import create_autospec
 
@@ -8,6 +11,7 @@ from dvc.utils.collections import (
     merge_params,
     validate,
 )
+from dvc.utils.serialize import dumps_yaml
 
 
 class MyDict(dict):
@@ -143,6 +147,12 @@ def test_post_validate_decorator(mocker):
     assert result == [1, 2]
 
 
+def is_serializable(d):
+    json.dumps(d)
+    dumps_yaml(d)
+    return True
+
+
 @pytest.mark.parametrize(
     "changes, expected",
     [
@@ -195,6 +205,8 @@ def test_merge_params(changes, expected):
     merged = merge_params(params, changes)
     assert merged == expected == params
     assert params is merged  # references should be preserved
+    assert encoder.c_make_encoder
+    assert is_serializable(params)
 
 
 @pytest.mark.parametrize(
@@ -203,6 +215,7 @@ def test_merge_params(changes, expected):
         [{"foo": "baz"}, {"foo": "baz"}],
         [{"foo": "baz", "goo": "bar"}, {"foo": "baz", "goo": "bar"}],
         [{"foo[1]": ["baz", "goo"]}, {"foo": [None, ["baz", "goo"]]}],
+        [{"foo.bar": "baz"}, {"foo": {"bar": "baz"}}],
     ],
 )
 def test_merge_params_on_empty_src(changes, expected):
@@ -210,3 +223,12 @@ def test_merge_params_on_empty_src(changes, expected):
     merged = merge_params(params, changes)
     assert merged == expected == params
     assert params is merged  # references should be preserved
+    assert encoder.c_make_encoder
+    assert is_serializable(params)
+
+
+def test_benedict_rollback_its_monkeypatch():
+    from dvc.utils._benedict import benedict
+
+    assert benedict({"foo": "foo"}) == {"foo": "foo"}
+    assert encoder.c_make_encoder
