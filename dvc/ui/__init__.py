@@ -87,7 +87,7 @@ class Console:
         data: Any,
         indent: int = 2,
     ) -> None:
-        if sys.stdout.isatty():
+        if self.isatty():
             from rich.json import JSON
 
             j = JSON.from_data(data, indent=indent)
@@ -236,6 +236,11 @@ class Console:
 
     def status(self, status: str, **kwargs: Any) -> "Status":
         return self.error_console.status(status, **kwargs)
+
+    def isatty(self) -> bool:
+        import sys
+
+        return sys.stdout.isatty()
 
 
 ui = Console()
