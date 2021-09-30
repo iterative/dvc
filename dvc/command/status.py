@@ -69,7 +69,7 @@ class CmdDataStatus(CmdDataBase):
             if self.args.quiet:
                 return bool(st)
 
-            if self.args.show_json:
+            if self.args.json:
                 import json
 
                 ui.write(json.dumps(st))

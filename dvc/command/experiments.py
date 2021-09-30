@@ -383,7 +383,7 @@ def baseline_styler(typ):
 
 
 def show_experiments(
-    all_experiments, pager=True, no_timestamp=False, show_csv=False, **kwargs
+    all_experiments, pager=True, no_timestamp=False, csv=False, **kwargs
 ):
     from funcy.seqs import flatten as flatten_list
 
@@ -439,7 +439,7 @@ def show_experiments(
 
     row_styles = lmap(baseline_styler, td.column("typ"))
 
-    if not show_csv:
+    if not csv:
         merge_headers = ["Experiment", "rev", "typ", "parent"]
         td.column("Experiment")[:] = map(
             prepare_exp_id, td.as_dict(merge_headers)
@@ -473,7 +473,7 @@ def show_experiments(
         rich_table=True,
         header_styles=styles,
         row_styles=row_styles,
-        show_csv=show_csv,
+        csv=csv,
     )
 
 
@@ -506,18 +506,18 @@ class CmdExperimentsShow(CmdBase):
             logger.exception("failed to show experiments")
             return 1
 
-        if self.args.show_json:
+        if self.args.json:
             import json
 
             ui.write(json.dumps(all_experiments, default=_format_json))
         else:
             precision = (
                 self.args.precision or None
-                if self.args.show_csv
+                if self.args.csv
                 else DEFAULT_PRECISION
             )
-            fill_value = "" if self.args.show_csv else FILL_VALUE
-            iso = True if self.args.show_csv else False
+            fill_value = "" if self.args.csv else FILL_VALUE
+            iso = True if self.args.csv else False
 
             show_experiments(
                 all_experiments,
@@ -532,7 +532,7 @@ class CmdExperimentsShow(CmdBase):
                 fill_value=fill_value,
                 iso=iso,
                 pager=not self.args.no_pager,
-                show_csv=self.args.show_csv,
+                csv=self.args.csv,
             )
         return 0
 
@@ -561,7 +561,7 @@ class CmdExperimentsDiff(CmdBase):
             logger.exception("failed to show experiments diff")
             return 1
 
-        if self.args.show_json:
+        if self.args.json:
             import json
 
             ui.write(json.dumps(diff))
@@ -579,7 +579,7 @@ class CmdExperimentsDiff(CmdBase):
                 show_diff(
                     diff[key],
                     title=title,
-                    markdown=self.args.show_md,
+                    markdown=self.args.markdown,
                     no_path=self.args.no_path,
                     old=self.args.old,
                     on_empty_diff="diff not supported",
@@ -1085,12 +1085,14 @@ def add_parser(subparsers, parent_parser):
         help="Always show git commit SHAs instead of branch/tag names.",
     )
     experiments_show_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
     )
     experiments_show_parser.add_argument(
+        "--csv",
         "--show-csv",
         action="store_true",
         default=False,
@@ -1159,15 +1161,18 @@ def add_parser(subparsers, parent_parser):
         help="Show only params that are stage dependencies.",
     )
     experiments_diff_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     experiments_diff_parser.add_argument(
+        "--md",
         "--show-md",
         action="store_true",
         default=False,
+        dest="markdown",
         help="Show tabulated output in the Markdown format (GFM).",
     )
     experiments_diff_parser.add_argument(

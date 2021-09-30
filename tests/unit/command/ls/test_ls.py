@@ -57,7 +57,7 @@ def test_list_outputs_only(mocker):
 
 
 def test_show_json(mocker, capsys):
-    cli_args = parse_args(["list", "local_dir", "--show-json"])
+    cli_args = parse_args(["list", "local_dir", "--json"])
     assert cli_args.func == CmdList
 
     cmd = cli_args.func(cli_args)

@@ -46,7 +46,7 @@ def test_cloud_status(tmp_dir, dvc, mocker):
 
 @pytest.mark.parametrize("status", [{}, {"a": "b", "c": [1, 2, 3]}, [1, 2, 3]])
 def test_status_show_json(dvc, mocker, capsys, status):
-    cli_args = parse_args(["status", "--show-json"])
+    cli_args = parse_args(["status", "--json"])
     assert cli_args.func == CmdDataStatus
 
     cmd = cli_args.func(cli_args)

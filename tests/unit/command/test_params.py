@@ -12,8 +12,8 @@ def test_params_diff(dvc, mocker):
             "--targets",
             "target",
             "--all",
-            "--show-json",
-            "--show-md",
+            "--json",
+            "--md",
             "--no-path",
             "--deps",
         ]
@@ -61,9 +61,7 @@ def test_params_diff_from_cli(dvc, mocker):
 
 
 def test_params_diff_show_json(dvc, mocker, capsys):
-    cli_args = parse_args(
-        ["params", "diff", "HEAD~10", "HEAD~1", "--show-json"]
-    )
+    cli_args = parse_args(["params", "diff", "HEAD~10", "HEAD~1", "--json"])
     cmd = cli_args.func(cli_args)
     mocker.patch(
         "dvc.repo.params.diff.diff", return_value={"params.yaml": {"a": "b"}}

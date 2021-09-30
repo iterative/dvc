@@ -16,7 +16,7 @@ def _digest(checksum):
     return "{}..{}".format(checksum["old"][0:8], checksum["new"][0:8])
 
 
-def _show_md(diff, show_hash=False, hide_missing=False):
+def _show_markdown(diff, show_hash=False, hide_missing=False):
     headers = ["Status", "Hash", "Path"] if show_hash else ["Status", "Path"]
     rows = []
     statuses = ["added", "deleted", "renamed", "modified"]
@@ -142,10 +142,10 @@ class CmdDiff(CmdBase):
                         del entry["hash"]
                 diff[key] = entries
 
-            if self.args.show_json:
+            if self.args.json:
                 ui.write(json.dumps(diff))
-            elif self.args.show_md:
-                _show_md(diff, show_hash, hide_missing)
+            elif self.args.markdown:
+                _show_markdown(diff, show_hash, hide_missing)
             elif diff:
                 self._show_diff(diff, hide_missing)
 
@@ -188,6 +188,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
     )
     diff_parser.add_argument(
+        "--json",
         "--show-json",
         help="Format the output into a JSON",
         action="store_true",
@@ -200,9 +201,11 @@ def add_parser(subparsers, parent_parser):
         default=False,
     )
     diff_parser.add_argument(
+        "--md",
         "--show-md",
         help="Show tabulated output in the Markdown format (GFM).",
         action="store_true",
+        dest="markdown",
         default=False,
     )
     diff_parser.add_argument(
