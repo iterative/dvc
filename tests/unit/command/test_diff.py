@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.diff import _digest, _show_md
+from dvc.command.diff import _digest, _show_markdown
 
 
 @pytest.mark.parametrize(
@@ -102,7 +102,7 @@ def test_show_hash(mocker, capsys):
 
 
 def test_show_json(mocker, capsys):
-    args = parse_args(["diff", "--show-json"])
+    args = parse_args(["diff", "--json"])
     cmd = args.func(args)
     diff = {
         "added": [
@@ -124,7 +124,7 @@ def test_show_json(mocker, capsys):
 
 
 def test_show_json_and_hash(mocker, capsys):
-    args = parse_args(["diff", "--show-json", "--show-hash"])
+    args = parse_args(["diff", "--json", "--show-hash"])
     cmd = args.func(args)
 
     diff = {
@@ -161,7 +161,7 @@ def test_show_json_and_hash(mocker, capsys):
 
 
 def test_show_json_hide_missing(mocker, capsys):
-    args = parse_args(["diff", "--show-json", "--hide-missing"])
+    args = parse_args(["diff", "--json", "--hide-missing"])
     cmd = args.func(args)
     diff = {
         "added": [
@@ -190,22 +190,22 @@ def test_show_json_hide_missing(mocker, capsys):
 
 
 @pytest.mark.parametrize("show_hash", [None, True, False])
-def test_diff_show_md_and_hash(mocker, show_hash):
-    options = ["diff", "--show-md"] + (["--show-hash"] if show_hash else [])
+def test_diff_show_markdown_and_hash(mocker, show_hash):
+    options = ["diff", "--md"] + (["--show-hash"] if show_hash else [])
     args = parse_args(options)
     cmd = args.func(args)
 
     diff = {}
     show_hash = show_hash if show_hash else False
-    mock_show_md = mocker.patch("dvc.command.diff._show_md")
+    mock_show_markdown = mocker.patch("dvc.command.diff._show_markdown")
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()
-    mock_show_md.assert_called_once_with(diff, show_hash, False)
+    mock_show_markdown.assert_called_once_with(diff, show_hash, False)
 
 
 def test_no_changes(mocker, capsys):
-    args = parse_args(["diff", "--show-json"])
+    args = parse_args(["diff", "--json"])
     cmd = args.func(args)
     mocker.patch("dvc.repo.Repo.diff", return_value={})
 
@@ -220,7 +220,7 @@ def test_no_changes(mocker, capsys):
     assert not out
 
 
-def test_show_md(capsys):
+def test_show_markdown(capsys):
     diff = {
         "deleted": [
             {"path": "zoo"},
@@ -234,7 +234,7 @@ def test_show_md(capsys):
         "not in cache": [{"path": "file2"}],
     }
 
-    _show_md(diff)
+    _show_markdown(diff)
     out, _ = capsys.readouterr()
     assert out == (
         "| Status       | Path                 |\n"
@@ -251,7 +251,7 @@ def test_show_md(capsys):
     ).format(sep=os.path.sep)
 
 
-def test_show_md_with_hash(capsys):
+def test_show_markdown_with_hash(capsys):
     diff = {
         "deleted": [
             {"path": "zoo", "hash": "22222"},
@@ -272,7 +272,7 @@ def test_show_md_with_hash(capsys):
         "not in cache": [{"path": "file2", "hash": "12345678"}],
     }
 
-    _show_md(diff, show_hash=True)
+    _show_markdown(diff, show_hash=True)
 
     out, _ = capsys.readouterr()
     assert out == (
@@ -290,7 +290,7 @@ def test_show_md_with_hash(capsys):
     ).format(sep=os.path.sep)
 
 
-def test_show_md_hide_missing(capsys):
+def test_show_markdown_hide_missing(capsys):
     diff = {
         "deleted": [
             {"path": "zoo"},
@@ -304,7 +304,7 @@ def test_show_md_hide_missing(capsys):
         "not in cache": [{"path": "file2"}],
     }
 
-    _show_md(diff, hide_missing=True)
+    _show_markdown(diff, hide_missing=True)
 
     out, _ = capsys.readouterr()
     assert out == (

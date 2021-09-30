@@ -25,7 +25,7 @@ class CmdParamsDiff(CmdBase):
             logger.exception("failed to show params diff")
             return 1
 
-        if self.args.show_json:
+        if self.args.json:
             import json
 
             ui.write(json.dumps(diff))
@@ -35,7 +35,7 @@ class CmdParamsDiff(CmdBase):
             show_diff(
                 diff,
                 title="Param",
-                markdown=self.args.show_md,
+                markdown=self.args.markdown,
                 no_path=self.args.no_path,
                 show_changes=False,
             )
@@ -103,15 +103,18 @@ def add_parser(subparsers, parent_parser):
         help="Show only params that are stage dependencies.",
     )
     params_diff_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     params_diff_parser.add_argument(
+        "--md",
         "--show-md",
         action="store_true",
         default=False,
+        dest="markdown",
         help="Show tabulated output in the Markdown format (GFM).",
     )
     params_diff_parser.add_argument(

@@ -42,8 +42,8 @@ def test_experiments_diff(dvc, scm, mocker):
             "HEAD~1",
             "--all",
             "--param-deps",
-            "--show-json",
-            "--show-md",
+            "--json",
+            "--md",
             "--old",
             "--precision",
             "10",
@@ -381,7 +381,7 @@ all_experiments = {
 
 def test_show_experiments(capsys):
     show_experiments(
-        all_experiments, precision=None, fill_value="", iso=True, show_csv=True
+        all_experiments, precision=None, fill_value="", iso=True, csv=True
     )
     cap = capsys.readouterr()
     assert (

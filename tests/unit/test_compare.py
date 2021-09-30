@@ -516,7 +516,7 @@ def test_metrics_show_default(capsys):
     )
 
 
-def test_metrics_show_md(capsys):
+def test_metrics_show_markdown(capsys):
     show_metrics(
         metrics={
             "branch_1": {
