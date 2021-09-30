@@ -39,8 +39,5 @@ def test_status(tmp_dir, scm, dvc, mocker, capsys):
     assert main(["machine", "status", "foo"]) == 0
     cap = capsys.readouterr()
     assert "instance_num_1:" in cap.out
-    for key, value in CmdMachineStatus.SENSITIVE_FIELDS:
-        if key in {"ssh_private", "startup_script"}:
-            assert f"\t{key:20}: (sensitive value)" in cap.out
-        else:
-            assert f"\t{key:20}: {value}" in cap.out
+    for key in CmdMachineStatus.SHOWN_FIELD:
+        assert f"\t{key:20}: {status[key]}" in cap.out

@@ -144,7 +144,7 @@ class CmdMachineCreate(CmdBase):
 
 
 class CmdMachineStatus(CmdBase):
-    SENSITIVE_FIELDS = {"ssh_private", "startup_script"}
+    SHOWN_FIELD = ["name", "cloud", "instance_hdd_size", "instance_ip"]
 
     def run(self):
         if self.repo.machine is None:
@@ -153,11 +153,9 @@ class CmdMachineStatus(CmdBase):
         all_status = self.repo.machine.status(self.args.name)
         for i, status in enumerate(all_status, start=1):
             ui.write(f"instance_num_{i}:")
-            for key, value in sorted(status.items()):
-                if key in self.SENSITIVE_FIELDS:
-                    ui.write(f"\t{key:20}: (sensitive value)")
-                else:
-                    ui.write(f"\t{key:20}: {value}")
+            for field in self.SHOWN_FIELD:
+                value = status.get(field, None)
+                ui.write(f"\t{field:20}: {value}")
         return 0
 
 
