@@ -63,7 +63,7 @@ class RepoDependency(Dependency):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to, jobs=None):
-        from dvc.checkout import checkout
+        from dvc.objects.checkout import checkout
 
         for odb, objs in self.get_used_objs().items():
             self.repo.cloud.pull(objs, jobs=jobs, odb=odb)

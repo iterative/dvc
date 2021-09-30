@@ -9,7 +9,6 @@ from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import objects, prompt
-from dvc.checkout import checkout
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -17,6 +16,7 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
+from dvc.objects.checkout import checkout
 
 from .fs import get_cloud_fs
 from .fs.hdfs import HDFSFileSystem
