@@ -7,7 +7,7 @@ from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import compact, lmap, post_processing
-from rich.prompt import Prompt
+from rich.prompt import Confirm, Prompt
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -837,28 +837,9 @@ class CmdExperimentsInit(CmdBase):
     DEFAULT_PARAMS = "params.yaml"
     PLOTS = "plots"
     DVCLIVE = "dvclive"
-    DEFAULT_NAME = "default"
 
-    @post_processing(dict)
-    def init_interactive(self, defaults=None, show_heading: bool = False):
+    def _prompt(self, prompts, defaults=None):
         defaults = defaults or {}
-        prompts = {
-            "cmd": "[b]Command[/b] to execute",
-            "code": "Path to a [b]code[/b] file/directory",
-            "data": "Path to a [b]data[/b] file/directory",
-            "models": "Path to a [b]model[/b] file/directory",
-            "metrics": "Path to a [b]metrics[/b] file",
-            "params": "Path to a [b]parameters[/b] file",
-            "plots": "Path to a [b]plots[/b] file/directory",
-            "live": "Path to log [b]dvclive[/b] outputs",
-        }
-        message = (
-            "This command will guide you to set up your first stage in "
-            "[green]dvc.yaml[/green].\n"
-        )
-        if show_heading:
-            ui.error_write(message, styled=True)
-
         for key, prompt in prompts.items():
             if key == "cmd":
                 prompt_cls = RequiredPrompt
@@ -867,6 +848,57 @@ class CmdExperimentsInit(CmdBase):
             kwargs = {"default": defaults[key]} if key in defaults else {}
             value = prompt_cls.ask(prompt, console=ui.error_console, **kwargs)
             yield key, value
+
+    @post_processing(dict)
+    def init_interactive(
+        self, defaults=None, show_heading: bool = False, live: bool = False
+    ):
+        message = (
+            "This command will guide you to set up your first stage in "
+            "[green]dvc.yaml[/green].\n"
+        )
+        if show_heading:
+            ui.error_write(message, styled=True)
+
+        yield from self._prompt(
+            {
+                "cmd": "[b]Command[/b] to execute",
+                "code": "Path to a [b]code[/b] file/directory",
+                "data": "Path to a [b]data[/b] file/directory",
+                "models": "Path to a [b]model[/b] file/directory",
+            },
+            defaults=defaults,
+        )
+
+        if not live:
+            ui.error_write()
+            live = Confirm.ask(
+                "Do you want to log training steps iteratively with "
+                "[b]dvclive[/b]?",
+                console=ui.error_console,
+                choices=["yes", "no"],
+                default=True,
+            )
+            ui.error_write()
+
+        if not live:
+            yield from self._prompt(
+                {
+                    "metrics": "Path to a [b]metrics[/b] file",
+                    "params": "Path to a [b]parameters[/b] file",
+                    "plots": "Path to a [b]plots[/b] file/directory",
+                },
+                defaults=defaults,
+            )
+            return
+
+        yield from self._prompt(
+            {
+                "live": "Path to log [b]dvclive[/b] outputs",
+                "params": "Path to a [b]parameters[/b] file",
+            },
+            defaults=defaults,
+        )
 
     def run(self):
         from dvc.command.stage import parse_cmd
@@ -886,10 +918,11 @@ class CmdExperimentsInit(CmdBase):
             "metrics": self.DEFAULT_METRICS,
             "params": self.DEFAULT_PARAMS,
             "plots": self.PLOTS,
+            "live": self.DVCLIVE,
         }
 
         dvcfile = make_dvcfile(self.repo, "dvc.yaml")
-        name = self.args.name or self.DEFAULT_NAME
+        name = self.args.name or self.args.with_
 
         dvcfile_exists = dvcfile.exists()
         if not self.args.force and dvcfile_exists and name in dvcfile.stages:
@@ -905,16 +938,26 @@ class CmdExperimentsInit(CmdBase):
             config = {}  # TODO
             context.maps.extend([config, global_defaults])
 
+        with_live = self.args.with_ == "live"
         if self.args.interactive:
-            defaults = context.new_child({"live": self.DVCLIVE})
             try:
                 context = self.init_interactive(
-                    defaults=defaults, show_heading=not dvcfile_exists
+                    defaults=context,
+                    show_heading=not dvcfile_exists,
+                    live=with_live,
                 )
             except (KeyboardInterrupt, EOFError):
                 ui.error_write()
                 raise
+        elif with_live:
+            # suppress `metrics`/`params` if live is selected, unless
+            # also provided via cli, also make output to be a checkpoint.
+            context = context.new_child({"metrics": None, "params": None})
         else:
+            # suppress live otherwise
+            context = context.new_child({"live": None})
+
+        if not self.args.interactive:
             d = compact(
                 {
                     "cmd": cmd,
@@ -939,23 +982,24 @@ class CmdExperimentsInit(CmdBase):
         live = context.get("live")
 
         params_kv = []
-        if "params" in context:
+        if context.get("params"):
             from dvc.utils.serialize import LOADERS
 
             path = context["params"]
             _, ext = os.path.splitext(path)
             params_kv = [{path: list(LOADERS[ext](path))}]
 
+        checkpoint_out = bool(context.get("live"))
         stage = self.repo.stage.add(
             name=name,
             cmd=command,
             deps=compact([code, data]),
-            outs=compact([models]),
             params=params_kv,
             metrics_no_cache=compact([metrics]),
             plots_no_cache=compact([plots]),
             live=live,
             force=self.args.force,
+            **{"checkpoints" if checkpoint_out else "outs": compact([models])},
         )
 
         if self.args.run:
@@ -1547,6 +1591,13 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--live", help="Path to log dvclive outputs for your experiments"
+    )
+    experiments_init_parser.add_argument(
+        "--with",
+        dest="with_",
+        choices=["default", "live"],
+        default="default",
+        help="Select type of stage to create",
     )
     experiments_init_parser.set_defaults(func=CmdExperimentsInit)
 
