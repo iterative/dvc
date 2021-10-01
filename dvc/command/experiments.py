@@ -7,7 +7,7 @@ from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import compact, lmap, post_processing
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Prompt
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -851,7 +851,10 @@ class CmdExperimentsInit(CmdBase):
 
     @post_processing(dict)
     def init_interactive(
-        self, defaults=None, show_heading: bool = False, live: bool = False
+        self,
+        defaults=None,
+        show_heading: bool = False,
+        live: bool = False,
     ):
         message = (
             "This command will guide you to set up your first stage in "
@@ -866,26 +869,15 @@ class CmdExperimentsInit(CmdBase):
                 "code": "Path to a [b]code[/b] file/directory",
                 "data": "Path to a [b]data[/b] file/directory",
                 "models": "Path to a [b]model[/b] file/directory",
+                "params": "Path to a [b]parameters[/b] file",
             },
             defaults=defaults,
         )
 
         if not live:
-            ui.error_write()
-            live = Confirm.ask(
-                "Do you want to log training steps iteratively with "
-                "[b]dvclive[/b]?",
-                console=ui.error_console,
-                choices=["yes", "no"],
-                default=True,
-            )
-            ui.error_write()
-
-        if not live:
             yield from self._prompt(
                 {
                     "metrics": "Path to a [b]metrics[/b] file",
-                    "params": "Path to a [b]parameters[/b] file",
                     "plots": "Path to a [b]plots[/b] file/directory",
                 },
                 defaults=defaults,
@@ -893,10 +885,7 @@ class CmdExperimentsInit(CmdBase):
             return
 
         yield from self._prompt(
-            {
-                "live": "Path to log [b]dvclive[/b] outputs",
-                "params": "Path to a [b]parameters[/b] file",
-            },
+            {"live": "Path to log [b]dvclive[/b] outputs"},
             defaults=defaults,
         )
 
@@ -906,8 +895,6 @@ class CmdExperimentsInit(CmdBase):
         cmd = parse_cmd(self.args.cmd)
         if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
-        if self.args.template:
-            raise NotImplementedError("template is not supported yet.")
 
         from dvc.dvcfile import make_dvcfile
 
@@ -922,7 +909,7 @@ class CmdExperimentsInit(CmdBase):
         }
 
         dvcfile = make_dvcfile(self.repo, "dvc.yaml")
-        name = self.args.name or self.args.with_
+        name = self.args.name or self.args.type
 
         dvcfile_exists = dvcfile.exists()
         if not self.args.force and dvcfile_exists and name in dvcfile.stages:
@@ -938,7 +925,7 @@ class CmdExperimentsInit(CmdBase):
             config = {}  # TODO
             context.maps.extend([config, global_defaults])
 
-        with_live = self.args.with_ == "live"
+        with_live = self.args.type == "live"
         if self.args.interactive:
             try:
                 context = self.init_interactive(
@@ -1546,9 +1533,6 @@ def add_parser(subparsers, parent_parser):
         help="Prompt for values that are not provided",
     )
     experiments_init_parser.add_argument(
-        "--template", help="Stage template to use to fill with provided values"
-    )
-    experiments_init_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
@@ -1593,8 +1577,7 @@ def add_parser(subparsers, parent_parser):
         "--live", help="Path to log dvclive outputs for your experiments"
     )
     experiments_init_parser.add_argument(
-        "--with",
-        dest="with_",
+        "--type",
         choices=["default", "live"],
         default="default",
         help="Select type of stage to create",
