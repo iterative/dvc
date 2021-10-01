@@ -3,6 +3,7 @@ import argparse
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.config import ConfigError
+from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -128,7 +129,6 @@ class CmdMachineRename(CmdBase):
         ui.write(f"Rename machine '{self.args.name}' to '{self.args.new}'.")
 
     def run(self):
-        from tpi import TPIError
 
         self._check_before_rename()
 
@@ -137,7 +137,7 @@ class CmdMachineRename(CmdBase):
             conf["machine"][self.args.new] = conf["machine"][self.args.name]
             try:
                 self.repo.machine.rename(self.args.name, self.args.new)
-            except TPIError as error:
+            except DvcException as error:
                 del conf["machine"][self.args.new]
                 raise ConfigError("terraform rename failed") from error
             del conf["machine"][self.args.name]
