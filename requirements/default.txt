@@ -27,7 +27,7 @@ win-unicode-console>=0.5; sys_platform == 'win32'
 networkx>=2.5
 psutil>=5.8.0
 pydot>=1.2.4
-dataclasses==0.7; python_version < '3.7'
+dataclasses>=0.7; python_version < '3.7'
 contextvars>=2.1; python_version < '3.7'
 importlib-metadata>=1.4; python_version < '3.8'
 flatten_dict>=0.4.1,<1
@@ -41,5 +41,5 @@ python-benedict>=0.24.2
 pyparsing==2.4.7
 typing_extensions>=3.10.0.2
 fsspec[http]>=2021.8.1
-aiohttp-retry==2.4.5
+aiohttp-retry>=2.4.5
 diskcache>=5.2.1
