@@ -67,10 +67,11 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: install libgit2 on Python3.10 in macOS
+    - name: install pygit2 on Python3.10 in macOS
       if: matrix.pyv == '3.10.0-rc.1' && matrix.os == 'macos-10.15'
       run: |
-        brew install libgit2
+        brew update && brew install libgit2
+        pip install git+https://github.com/libgit2/pygit2
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
