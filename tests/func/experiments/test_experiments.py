@@ -150,7 +150,6 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
     [["lorem.ipsum=3"], ["foo[0].bazar=3"]],
 )
 def test_add_params(tmp_dir, scm, dvc, changes):
-    """Adding params through exp run should always result in an error"""
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen(
         "params.yaml", "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: false}"
