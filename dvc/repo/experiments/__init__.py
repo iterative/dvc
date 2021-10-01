@@ -359,7 +359,7 @@ class Experiments:
         config file. to_update is a flat dict with keypath keys representing
         param names.
         """
-        from benedict import benedict
+        from dvc.utils._benedict import benedict
 
         b_src = benedict(src)
 
