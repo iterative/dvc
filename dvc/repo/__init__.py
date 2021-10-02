@@ -184,9 +184,6 @@ class Repo:
                 friendly=True,
             )
 
-            # NOTE: storing state and link_state in the repository itself to
-            # avoid any possible state corruption in 'shared cache dir'
-            # scenario.
             self.state = State(self.root_dir, self.tmp_dir, self.dvcignore)
             self.odb = ODBManager(self)
 
