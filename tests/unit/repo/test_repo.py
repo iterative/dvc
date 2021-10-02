@@ -137,3 +137,12 @@ def test_dynamic_cache_initalization(tmp_dir, scm):
     dvc.close()
 
     Repo(str(tmp_dir)).close()
+
+
+def test_config_tmp_dir(tmp_dir, dvc, tmp_path_factory):
+    tmp = os.fspath(tmp_path_factory.mktemp("tmp_dir"))
+
+    with dvc.config.edit() as conf:
+        conf["core"]["tmp_dir"] = tmp
+
+    assert Repo().tmp_dir == tmp
