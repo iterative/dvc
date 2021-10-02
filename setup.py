@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from textwrap import dedent
 
-from setuptools import find_packages, setup
+from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
 
 # Prevents pkg_resources import in entry point script,
@@ -74,33 +74,8 @@ requirements["tests"] += requirements["terraform"]
 requirements["dev"] = requirements["all"] + requirements["tests"]
 
 setup(
-    name="dvc",
     version=version,
-    description="Git for data scientists - manage your code and data together",
-    long_description=open("README.rst", encoding="UTF-8").read(),
-    author="Dmitry Petrov",
-    author_email="dmitry@dvc.org",
-    maintainer="Iterative",
-    maintainer_email="support@dvc.org",
-    download_url="https://github.com/iterative/dvc",
-    license="Apache License 2.0",
     install_requires=install_requires,
     extras_require=requirements,
-    keywords="data-science data-version-control machine-learning git"
-    " developer-tools reproducibility collaboration ai",
-    python_requires=">=3.6",
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-    ],
-    packages=find_packages(exclude=["tests"]),
-    include_package_data=True,
-    url="http://dvc.org",
-    entry_points={"console_scripts": ["dvc = dvc.main:main"]},
     cmdclass={"build_py": build_py},
-    zip_safe=False,
 )
