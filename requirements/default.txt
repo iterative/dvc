@@ -40,6 +40,6 @@ dictdiffer>=0.8.1
 python-benedict>=0.24.2
 pyparsing==2.4.7
 typing_extensions>=3.10.0.2
-fsspec[http]>=2021.8.1
+fsspec[http]>=2021.10.0
 aiohttp-retry>=2.4.5
 diskcache>=5.2.1
