@@ -225,12 +225,8 @@ SCHEMA = {
         )
     },
     "state": {
-        "dir": str,
         "row_limit": All(Coerce(int), Range(1)),  # obsoleted
         "row_cleanup_quota": All(Coerce(int), Range(0, 100)),  # obsoleted
-    },
-    "index": {
-        "dir": str,
     },
     "machine": {
         str: {
