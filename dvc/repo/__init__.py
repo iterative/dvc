@@ -152,7 +152,7 @@ class Repo:
         if rev and not scm:
             scm = SCM(root_dir or os.curdir)
 
-        self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
+        self.root_dir, self.dvc_dir, tmp_dir = self._get_repo_dirs(
             root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
         )
 
@@ -162,6 +162,7 @@ class Repo:
             self._fs = LocalFileSystem(url=self.root_dir)
 
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
+        self.tmp_dir = self.config["core"].get("tmp_dir") or tmp_dir
         self._uninitialized = uninitialized
         self._scm = scm
 

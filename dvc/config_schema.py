@@ -114,6 +114,7 @@ SCHEMA = {
         Optional("interactive", default=False): Bool,
         Optional("analytics", default=True): Bool,
         Optional("hardlink_lock", default=False): Bool,
+        "tmp_dir": str,
         Optional("no_scm", default=False): Bool,
         Optional("autostage", default=False): Bool,
         Optional("experiments"): Bool,  # obsoleted
