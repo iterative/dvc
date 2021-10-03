@@ -1,0 +1,19 @@
+name: benchmarks
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  bench:
+    name: run benchmarks
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04]
+    steps:
+      - uses: actions/setup-python@v2
+        with:
+            python-version: 3.7
+      - uses: iterative/dvc-bench@master
+        with:
+            pytest_options: "${{ github.event_name == 'workflow_dispatch' && '' || '-k test_init -k test_help' }}"
+
