@@ -7,7 +7,6 @@ from funcy import first
 
 from dvc import stage as stage_module
 from dvc.render.utils import get_files
-from tests.utils import cd
 
 LIVE_SCRIPT = dedent(
     """
@@ -262,20 +261,17 @@ def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):
 
     (tmp_dir / "subdir").gen("train.py", LIVE_SCRIPT)
     (tmp_dir / "subdir" / "params.yaml").dump({"foo": 1})
-    with cd("subdir"):
-        dvc.stage.add(
-            cmd="python train.py",
-            params=["foo"],
-            deps=["train.py"],
-            name="live_stage",
-            live="dvclive",
-            live_no_html=True,
-        )
+    dvc.stage.add(
+        cmd="python train.py",
+        params=["foo"],
+        deps=["train.py"],
+        name="live_stage",
+        live="dvclive",
+        live_no_html=True,
+        wdir="subdir",
+    )
 
-    scm.add(["subdir/dvc.yaml", "subdir/train.py", "subdir/params.yaml"])
-    scm.commit("initial: live_stage")
-
-    dvc.reproduce("subdir", recursive=True)
+    dvc.reproduce()
 
     assert (tmp_dir / "subdir" / "dvclive").is_dir()
     assert (tmp_dir / "subdir" / "dvclive.json").is_file()
