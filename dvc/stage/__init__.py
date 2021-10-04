@@ -273,7 +273,7 @@ class Stage(params.StageParams):
             from dvc.output import Output
             from dvc.schema import LIVE_PROPS
 
-            env[DVCLIVE_PATH] = str(os.path.relpath(out.path_info, self.wdir))
+            env[DVCLIVE_PATH] = relpath(out.path_info, self.wdir)
             if isinstance(out.live, dict):
                 config = project(out.live, LIVE_PROPS)
 

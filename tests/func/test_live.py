@@ -258,10 +258,10 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     assert show_spy.call_count == 2
 
 
-def test_dvclive_running_subir(tmp_dir, scm, dvc):
+def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):
 
-    tmp_dir.gen("subdir/train.py", LIVE_SCRIPT)
-    tmp_dir.gen("subdir/params.yaml", "foo: 1")
+    (tmp_dir / "subdir").gen("train.py", LIVE_SCRIPT)
+    (tmp_dir / "subdir" / "params.yaml").dump({"foo": 1})
     with cd("subdir"):
         dvc.stage.add(
             cmd="python train.py",
