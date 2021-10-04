@@ -26,7 +26,7 @@ pywin32>=225; sys_platform == 'win32' and python_version < '3.10'
 Pygments==2.10.0
 collective.checkdocs==0.2
 pydocstyle==6.1.1
-jaraco.windows==5.6.0
+jaraco.windows==5.7.0
 
 # pylint requirements
 pylint==2.9.6
