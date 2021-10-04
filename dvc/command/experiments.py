@@ -1,13 +1,11 @@
 import argparse
 import logging
-import os
-from collections import ChainMap, Counter, OrderedDict, defaultdict
+from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
-from funcy import compact, lmap, post_processing
-from rich.prompt import Prompt
+from funcy import compact, lmap
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
@@ -785,50 +783,6 @@ class CmdExperimentsRemove(CmdBase):
         return 0
 
 
-class RequiredPrompt(Prompt):
-    def process_response(self, value: str):
-        from rich.prompt import InvalidResponse
-
-        ret = super().process_response(value)
-        if not ret:
-            raise InvalidResponse(
-                "[prompt.invalid]Response required. Please try again."
-            )
-        return ret
-
-    def render_default(self, default):
-        from rich.text import Text
-
-        return Text(f"{default!s}", "green")
-
-
-class SkippablePrompt(RequiredPrompt):
-    skip_value: str = "n"
-
-    def process_response(self, value: str):
-        ret = super().process_response(value)
-        return None if ret == self.skip_value else ret
-
-    def make_prompt(self, default):
-        prompt = self.prompt.copy()
-        prompt.end = ""
-
-        prompt.append(" [")
-        if (
-            default is not ...
-            and self.show_default
-            and isinstance(default, (str, self.response_type))
-        ):
-            _default = self.render_default(default)
-            prompt.append(_default)
-            prompt.append(", ")
-
-        prompt.append(f"{self.skip_value} to skip", style="italic")
-        prompt.append("]")
-        prompt.append(self.prompt_suffix)
-        return prompt
-
-
 class CmdExperimentsInit(CmdBase):
     CODE = "src"
     DATA = "data"
@@ -838,57 +792,6 @@ class CmdExperimentsInit(CmdBase):
     PLOTS = "plots"
     DVCLIVE = "dvclive"
 
-    def _prompt(self, prompts, defaults=None):
-        defaults = defaults or {}
-        for key, prompt in prompts.items():
-            if key == "cmd":
-                prompt_cls = RequiredPrompt
-            else:
-                prompt_cls = SkippablePrompt
-            kwargs = {"default": defaults[key]} if key in defaults else {}
-            value = prompt_cls.ask(prompt, console=ui.error_console, **kwargs)
-            yield key, value
-
-    @post_processing(dict)
-    def init_interactive(
-        self,
-        defaults=None,
-        show_heading: bool = False,
-        live: bool = False,
-    ):
-        message = (
-            "This command will guide you to set up your first stage in "
-            "[green]dvc.yaml[/green].\n"
-        )
-        if show_heading:
-            ui.error_write(message, styled=True)
-
-        yield from self._prompt(
-            {
-                "cmd": "[b]Command[/b] to execute",
-                "code": "Path to a [b]code[/b] file/directory",
-                "data": "Path to a [b]data[/b] file/directory",
-                "models": "Path to a [b]model[/b] file/directory",
-                "params": "Path to a [b]parameters[/b] file",
-            },
-            defaults=defaults,
-        )
-
-        if not live:
-            yield from self._prompt(
-                {
-                    "metrics": "Path to a [b]metrics[/b] file",
-                    "plots": "Path to a [b]plots[/b] file/directory",
-                },
-                defaults=defaults,
-            )
-            return
-
-        yield from self._prompt(
-            {"live": "Path to log [b]dvclive[/b] outputs"},
-            defaults=defaults,
-        )
-
     def run(self):
         from dvc.command.stage import parse_cmd
 
@@ -896,7 +799,7 @@ class CmdExperimentsInit(CmdBase):
         if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
 
-        from dvc.dvcfile import make_dvcfile
+        from dvc.repo.experiments.init import init
 
         global_defaults = {
             "code": self.CODE,
@@ -907,90 +810,37 @@ class CmdExperimentsInit(CmdBase):
             "plots": self.PLOTS,
             "live": self.DVCLIVE,
         }
-
-        dvcfile = make_dvcfile(self.repo, "dvc.yaml")
-        name = self.args.name or self.args.type
-
-        dvcfile_exists = dvcfile.exists()
-        if not self.args.force and dvcfile_exists and name in dvcfile.stages:
-            from dvc.stage.exceptions import DuplicateStageName
-
-            hint = "Use '--force' to overwrite."
-            raise DuplicateStageName(
-                f"Stage '{name}' already exists in 'dvc.yaml'. {hint}"
-            )
-
-        context = ChainMap()
+        defaults = {}
         if not self.args.explicit:
             config = {}  # TODO
-            context.maps.extend([config, global_defaults])
+            defaults.update({**global_defaults, **config})
 
-        with_live = self.args.type == "live"
-        if self.args.interactive:
-            try:
-                context = self.init_interactive(
-                    defaults=context,
-                    show_heading=not dvcfile_exists,
-                    live=with_live,
-                )
-            except (KeyboardInterrupt, EOFError):
-                ui.error_write()
-                raise
-        elif with_live:
-            # suppress `metrics`/`params` if live is selected, unless
-            # also provided via cli, also make output to be a checkpoint.
-            context = context.new_child({"metrics": None, "params": None})
-        else:
-            # suppress live otherwise
-            context = context.new_child({"live": None})
-
-        if not self.args.interactive:
-            d = compact(
-                {
-                    "cmd": cmd,
-                    "code": self.args.code,
-                    "data": self.args.data,
-                    "models": self.args.models,
-                    "metrics": self.args.metrics,
-                    "params": self.args.params,
-                    "plots": self.args.plots,
-                    "live": self.args.live,
-                }
-            )
-            context = context.new_child(d)
-
-        assert "cmd" in context
-        command = context["cmd"]
-        code = context.get("code")
-        data = context.get("data")
-        models = context.get("models")
-        metrics = context.get("metrics")
-        plots = context.get("plots")
-        live = context.get("live")
-
-        params_kv = []
-        if context.get("params"):
-            from dvc.utils.serialize import LOADERS
-
-            path = context["params"]
-            _, ext = os.path.splitext(path)
-            params_kv = [{path: list(LOADERS[ext](path))}]
-
-        checkpoint_out = bool(context.get("live"))
-        stage = self.repo.stage.add(
-            name=name,
-            cmd=command,
-            deps=compact([code, data]),
-            params=params_kv,
-            metrics_no_cache=compact([metrics]),
-            plots_no_cache=compact([plots]),
-            live=live,
-            force=self.args.force,
-            **{"checkpoints" if checkpoint_out else "outs": compact([models])},
+        cli_args = compact(
+            {
+                "cmd": cmd,
+                "code": self.args.code,
+                "data": self.args.data,
+                "models": self.args.models,
+                "metrics": self.args.metrics,
+                "params": self.args.params,
+                "plots": self.args.plots,
+                "live": self.args.live,
+            }
         )
 
+        initialized_stage = init(
+            self.repo,
+            name=self.args.name,
+            type=self.args.type,
+            defaults=defaults,
+            overrides=cli_args,
+            interactive=self.args.interactive,
+            force=self.args.force,
+        )
         if self.args.run:
-            return self.repo.experiments.run(targets=[stage.addressing])
+            return self.repo.experiments.run(
+                targets=[initialized_stage.addressing]
+            )
         return 0
 
 
