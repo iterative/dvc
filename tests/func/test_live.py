@@ -7,6 +7,7 @@ from funcy import first
 
 from dvc import stage as stage_module
 from dvc.render.utils import get_files
+from tests.utils import cd
 
 LIVE_SCRIPT = dedent(
     """
@@ -255,3 +256,26 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     live_stage(summary=True, live="logs", code=script)
 
     assert show_spy.call_count == 2
+
+
+def test_dvclive_running_subir(tmp_dir, scm, dvc):
+
+    tmp_dir.gen("subdir/train.py", LIVE_SCRIPT)
+    tmp_dir.gen("subdir/params.yaml", "foo: 1")
+    with cd("subdir"):
+        dvc.stage.add(
+            cmd="python train.py",
+            params=["foo"],
+            deps=["train.py"],
+            name="live_stage",
+            live="dvclive",
+            live_no_html=True,
+        )
+
+    scm.add(["subdir/dvc.yaml", "subdir/train.py", "subdir/params.yaml"])
+    scm.commit("initial: live_stage")
+
+    dvc.reproduce("subdir", recursive=True)
+
+    assert (tmp_dir / "subdir" / "dvclive").is_dir()
+    assert (tmp_dir / "subdir" / "dvclive.json").is_file()
