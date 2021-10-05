@@ -255,3 +255,22 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     live_stage(summary=True, live="logs", code=script)
 
     assert show_spy.call_count == 2
+
+
+def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):
+    (tmp_dir / "subdir").gen("train.py", LIVE_SCRIPT)
+    (tmp_dir / "subdir" / "params.yaml").dump({"foo": 1})
+    dvc.stage.add(
+        cmd="python train.py",
+        params=["foo"],
+        deps=["train.py"],
+        name="live_stage",
+        live="dvclive",
+        live_no_html=True,
+        wdir="subdir",
+    )
+
+    dvc.reproduce()
+
+    assert (tmp_dir / "subdir" / "dvclive").is_dir()
+    assert (tmp_dir / "subdir" / "dvclive.json").is_file()
