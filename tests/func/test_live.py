@@ -258,7 +258,6 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
 
 
 def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):
-
     (tmp_dir / "subdir").gen("train.py", LIVE_SCRIPT)
     (tmp_dir / "subdir" / "params.yaml").dump({"foo": 1})
     dvc.stage.add(
