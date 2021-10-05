@@ -32,9 +32,7 @@ class CmdMetricsShow(CmdMetricsBase):
             return 1
 
         if self.args.json:
-            import json
-
-            ui.write(json.dumps(metrics, default=encode_exception))
+            ui.write_json(metrics, default=encode_exception)
         else:
             from dvc.compare import show_metrics
 
@@ -66,9 +64,7 @@ class CmdMetricsDiff(CmdMetricsBase):
             return 1
 
         if self.args.json:
-            import json
-
-            ui.write(json.dumps(diff))
+            ui.write_json(diff)
         else:
             from dvc.compare import show_diff
 

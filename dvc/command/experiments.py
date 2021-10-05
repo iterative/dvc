@@ -505,9 +505,7 @@ class CmdExperimentsShow(CmdBase):
             return 1
 
         if self.args.json:
-            import json
-
-            ui.write(json.dumps(all_experiments, default=_format_json))
+            ui.write_json(all_experiments, default=_format_json)
         else:
             precision = (
                 self.args.precision or None
@@ -560,9 +558,7 @@ class CmdExperimentsDiff(CmdBase):
             return 1
 
         if self.args.json:
-            import json
-
-            ui.write(json.dumps(diff))
+            ui.write_json(diff)
         else:
             from dvc.compare import show_diff
 
