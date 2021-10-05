@@ -42,7 +42,7 @@ jobs:
         pyv: ["3.6", "3.7", "3.8", "3.9"]
         include:
           - os: "macos-10.15"
-            pyv: "3.10.0-rc.1"
+            pyv: "3.10"
         exclude:
           - os: macos-10.15
             pyv: "3.9"
@@ -68,7 +68,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
     - name: install pygit2 on Python3.10 in macOS
-      if: matrix.pyv == '3.10.0-rc.1' && matrix.os == 'macos-10.15'
+      if: matrix.pyv == '3.10' && matrix.os == 'macos-10.15'
       run: |
         brew update && brew install libgit2
         pip install git+https://github.com/libgit2/pygit2
