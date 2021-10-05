@@ -26,9 +26,7 @@ class CmdParamsDiff(CmdBase):
             return 1
 
         if self.args.json:
-            import json
-
-            ui.write(json.dumps(diff))
+            ui.write_json(diff)
         else:
             from dvc.compare import show_diff
 

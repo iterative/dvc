@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     Iterable,
     Iterator,
@@ -83,16 +84,19 @@ class Console:
         )
 
     def write_json(
-        self,
-        data: Any,
-        indent: int = 2,
+        self, data: Any, indent: int = 2, default: Callable = None
     ) -> None:
-        if self.isatty():
-            from rich.json import JSON
-
-            j = JSON.from_data(data, indent=indent)
-            return self.write(j, styled=True)
         import json
+
+        if self.isatty():
+            from rich.highlighter import JSONHighlighter
+
+            j = json.dumps(data, indent=indent, default=default)
+            highlighter = JSONHighlighter()
+            text = highlighter(j)
+            text.no_wrap = True
+            text.overflow = None
+            return self.write(text, styled=True)
 
         return self.write(json.dumps(data))
 

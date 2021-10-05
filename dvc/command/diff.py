@@ -1,5 +1,4 @@
 import argparse
-import json
 import logging
 import os
 
@@ -143,7 +142,7 @@ class CmdDiff(CmdBase):
                 diff[key] = entries
 
             if self.args.json:
-                ui.write(json.dumps(diff))
+                ui.write_json(diff)
             elif self.args.markdown:
                 _show_markdown(diff, show_hash, hide_missing)
             elif diff:
