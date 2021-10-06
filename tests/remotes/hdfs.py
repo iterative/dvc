@@ -195,8 +195,7 @@ def md5md5crc32c(path):
     return "000002000000000000000000" + md5md5.hexdigest()
 
 
-def hadoop_fs_checksum(path_info):
-
+def hadoop_fs_checksum(_, path_info):
     return md5md5crc32c(Path(_hdfs_root.name) / path_info.path.lstrip("/"))
 
 
@@ -216,25 +215,48 @@ class FakeHadoopFileSystem:
                 path.allow_not_found,
                 path.recursive,
             )
+        if isinstance(path, list):
+            return [self._path(sub_path) for sub_path in path]
 
         return os.fspath(self._root / path.lstrip("/"))
 
-    def create_dir(self, path):
-        return self._fs.create_dir(self._path(path))
+    def create_dir(self, path, **kwargs):
+        return self._fs.create_dir(self._path(path), **kwargs)
 
-    def open_input_stream(self, path):
-        return self._fs.open_input_stream(self._path(path))
+    def open_input_stream(self, path, **kwargs):
+        return self._fs.open_input_stream(self._path(path), **kwargs)
 
-    def open_output_stream(self, path):
+    def open_output_stream(self, path, **kwargs):
         import posixpath
 
         # NOTE: HadoopFileSystem.open_output_stream creates directories
         # automatically.
         self.create_dir(posixpath.dirname(path))
-        return self._fs.open_output_stream(self._path(path))
+        return self._fs.open_output_stream(self._path(path), **kwargs)
 
-    def get_file_info(self, path):
-        return self._fs.get_file_info(self._path(path))
+    def get_file_info(self, path, **kwargs):
+        from pyarrow.fs import FileInfo
+
+        entries = self._fs.get_file_info(self._path(path), **kwargs)
+        if isinstance(entries, FileInfo):
+            return self._adjust_entry(entries)
+
+        assert isinstance(entries, list)
+        return list(map(self._adjust_entry, entries))
+
+    def _adjust_entry(self, entry):
+        import posixpath
+
+        from pyarrow.fs import FileInfo
+
+        mocked_path = os.path.relpath(entry.path, self._root)
+        mocked_parts = mocked_path.split(os.path.sep)
+        return FileInfo(
+            path=posixpath.join(*mocked_parts),
+            type=entry.type,
+            mtime=entry.mtime,
+            size=entry.size,
+        )
 
     def move(self, from_path, to_path):
         self._fs.move(self._path(from_path), self._path(to_path))
@@ -259,7 +281,7 @@ def hdfs(test_config, mocker):
         "pyarrow.fs.HadoopFileSystem", FakeHadoopFileSystem, create=True
     )
 
-    mocker.patch("dvc.fs.hdfs._hadoop_fs_checksum", hadoop_fs_checksum)
+    mocker.patch("dvc.fs.hdfs.HDFSFileSystem._checksum", hadoop_fs_checksum)
 
     url = f"hdfs://example.com:12345/{uuid.uuid4()}"
     yield HDFS(url)
