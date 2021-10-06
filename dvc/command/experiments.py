@@ -847,6 +847,12 @@ class CmdExperimentsInit(CmdBase):
             return self.repo.experiments.run(
                 targets=[initialized_stage.addressing]
             )
+
+        name = self.args.name or self.args.type
+        ui.write(
+            f"To run [bright_blue]{name}[/] stage, " 'use "dvc exp run".',
+            styled=True,
+        )
         return 0
 
 

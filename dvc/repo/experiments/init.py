@@ -1,10 +1,18 @@
+import logging
 import os
-from typing import TYPE_CHECKING, Dict, Iterable
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Dict, Iterable, cast
 
 from funcy import compact, lremove, post_processing
 from rich.prompt import Prompt
+from rich.rule import Rule
+from rich.syntax import Syntax
 
+from dvc.exceptions import DvcException
+from dvc.stage import PipelineStage
+from dvc.stage.serialize import to_pipeline_file
 from dvc.types import OptStr
+from dvc.utils.serialize import dumps_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -92,14 +100,31 @@ def _prompts(keys: Iterable[str], defaults: Dict[str, OptStr]):
         yield key, value
 
 
+@contextmanager
+def _disable_logging(highest_level=logging.CRITICAL):
+    previous_level = logging.root.manager.disable
+
+    logging.disable(highest_level)
+
+    try:
+        yield
+    finally:
+        logging.disable(previous_level)
+
+
 def init_interactive(
     defaults: Dict[str, str],
-    provided: Iterable[str],
+    provided: Dict[str, str],
     show_heading: bool = False,
+    show_tree: bool = False,
     live: bool = False,
 ) -> Dict[str, str]:
-    primary = lremove(provided, ["cmd", "code", "data", "models", "params"])
-    secondary = lremove(provided, ["live"] if live else ["metrics", "plots"])
+    primary = lremove(
+        provided.keys(), ["cmd", "code", "data", "models", "params"]
+    )
+    secondary = lremove(
+        provided.keys(), ["live"] if live else ["metrics", "plots"]
+    )
 
     if not (primary or secondary):
         return {}
@@ -110,6 +135,19 @@ def init_interactive(
     )
     if show_heading:
         ui.error_write(message, styled=True)
+
+    if show_tree:
+        from rich.tree import Tree
+
+        tree = Tree(
+            "By default, DVC assumes following workspace structure:",
+            highlight=True,
+        )
+        for key, value in {**defaults, **provided}.items():
+            if key != "cmd":
+                tree.add(f"[green]{value}[/green]")
+        ui.error_write(tree, styled=True)
+        ui.error_write()
 
     return compact(
         {
@@ -153,10 +191,11 @@ def init(
     with_live = type == "live"
     if interactive:
         defaults = init_interactive(
-            defaults=defaults or {},
-            show_heading=not dvcfile.exists(),
+            defaults=defaults,
             live=with_live,
-            provided=overrides.keys(),
+            provided=overrides,
+            show_heading=not dvcfile.exists(),
+            show_tree=True,
         )
     else:
         if with_live:
@@ -182,7 +221,7 @@ def init(
 
     checkpoint_out = bool(context.get("live"))
     models = context.get("models")
-    return repo.stage.add(
+    stage = repo.stage.create(
         name=name,
         cmd=context["cmd"],
         deps=compact([context.get("code"), context.get("data")]),
@@ -193,3 +232,25 @@ def init(
         force=force,
         **{"checkpoints" if checkpoint_out else "outs": compact([models])},
     )
+
+    if interactive:
+        ui.write(Rule(style="green"), styled=True)
+        _yaml = dumps_yaml(to_pipeline_file(cast(PipelineStage, stage)))
+        syn = Syntax(_yaml, "yaml", theme="ansi_dark")
+        ui.error_write(syn, styled=True)
+
+    if not interactive or ui.confirm(
+        "Do you want to add above contents to dvc.yaml?"
+    ):
+        with _disable_logging():
+            stage.dump(update_lock=False)
+        stage.ignore_outs()
+    else:
+        raise DvcException("Aborting ...")
+
+    ui.write(
+        f"Created [bright_blue]{name}[/bright_blue] stage in "
+        "[green]dvc.yaml[/green].\n",
+        styled=True,
+    )
+    return stage
