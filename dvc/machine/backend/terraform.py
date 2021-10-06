@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 class TerraformBackend(BaseMachineBackend):
     def __init__(self, tmp_dir: "StrPath", **kwargs):
         super().__init__(tmp_dir, **kwargs)
-        self.tmp_dir = tmp_dir
         makedirs(tmp_dir, exist_ok=True)
 
     @contextmanager
