@@ -15,5 +15,5 @@ jobs:
             python-version: 3.7
       - uses: iterative/dvc-bench@master
         with:
-            pytest_options: "${{ github.event_name == 'workflow_dispatch' && '' || '-k test_init -k test_help' }}"
+            pytest_options: "-k 'test_init or test_help'"
 
