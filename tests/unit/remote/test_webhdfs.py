@@ -17,7 +17,5 @@ def test_init(dvc):
     }
 
     fs = WebHDFSFileSystem(**config)
-    assert fs.token == webhdfs_token
-    assert fs.alias == webhdfs_alias
-    assert fs.user == user
-    assert fs.hdfscli_config == hdfscli_config
+    assert fs.fs_args["token"] == webhdfs_token
+    assert fs.fs_args["user"] == user

@@ -143,9 +143,17 @@ def hdfs_server(hadoop, docker_compose, docker_services):
                 fobj.write(b"test")
             return True
         except (pyarrow.ArrowException, OSError):
+            import traceback
+
+            traceback.print_exc()
             return False
 
-    docker_services.wait_until_responsive(timeout=30.0, pause=5, check=_check)
+    try:
+        docker_services.wait_until_responsive(
+            timeout=30.0, pause=5, check=_check
+        )
+    except Exception:  # pylint: disable=broad-except
+        pytest.skip("couldn't start hdfs server")
 
     return {"hdfs": port, "webhdfs": web_port}
 
