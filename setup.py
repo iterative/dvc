@@ -52,30 +52,4 @@ class build_py(_build_py):
         _build_py.run(self)
 
 
-# Extra dependencies for remote integrations
-requirements = {
-    path.stem: path.read_text().strip().splitlines()
-    for path in Path("requirements").glob("*.txt")
-}
-
-# gssapi should not be included in all_remotes, because it doesn't have wheels
-# for linux and mac, so it will fail to compile if user doesn't have all the
-# requirements, including kerberos itself. Once all the wheels are available,
-# we can start shipping it by default.
-
-install_requires = requirements.pop("default")
-requirements["all"] = [
-    req
-    for key, requirements in requirements.items()
-    if key not in ("tests", "ssh_gssapi", "terraform")
-    for req in requirements
-]
-requirements["tests"] += requirements["terraform"]
-requirements["dev"] = requirements["all"] + requirements["tests"]
-
-setup(
-    version=version,
-    install_requires=install_requires,
-    extras_require=requirements,
-    cmdclass={"build_py": build_py},
-)
+setup(version=version, cmdclass={"build_py": build_py})
