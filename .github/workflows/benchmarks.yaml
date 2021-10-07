@@ -2,6 +2,13 @@ name: benchmarks
 on: [pull_request, workflow_dispatch]
 
 jobs:
+  cancel_previous:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
   bench:
     name: run benchmarks
     runs-on: ${{ matrix.os }}
