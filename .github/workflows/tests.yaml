@@ -64,7 +64,7 @@ jobs:
       uses: actions/cache@v2.1.6
       with:
         path: ${{ steps.pip-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
         restore-keys: |
           ${{ runner.os }}-pip-
     - name: install pygit2 on Python3.10 in macOS
