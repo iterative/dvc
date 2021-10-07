@@ -31,26 +31,6 @@ class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
             )
         )
 
-    def _parse_config(self, path=None, alias=None):
-        import configparser
-
-        from hdfs.config import Config
-        from hdfs.util import HdfsError
-
-        try:
-            config = Config(path)
-        except HdfsError:
-            return None
-
-        if alias is None:
-            try:
-                alias = config.get(config.global_section, "default.alias")
-            except configparser.Error:
-                return None
-
-        if config.has_section(alias):
-            return dict(config.items(alias))
-
     def _prepare_credentials(self, **config):
         if "webhdfs_token" in config:
             config["token"] = config.pop("webhdfs_token")
