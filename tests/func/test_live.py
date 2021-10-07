@@ -10,19 +10,20 @@ from dvc.render.utils import get_files
 
 LIVE_SCRIPT = dedent(
     """
-        import dvclive
+        from dvclive import Live
         import sys
         r = 2
+        metrics_logger = Live()
         for i in range(r):
-           dvclive.log("loss", 1-i/r)
-           dvclive.log("accuracy", i/r)
-           dvclive.next_step()"""
+           metrics_logger.log("loss", 1-i/r)
+           metrics_logger.log("accuracy", i/r)
+           metrics_logger.next_step()"""
 )
 
 LIVE_CHECKPOINT_SCRIPT = dedent(
     """
             import os
-            import dvclive
+            from dvclive import Live
 
             def read(path):
                 value=0
@@ -40,15 +41,16 @@ LIVE_CHECKPOINT_SCRIPT = dedent(
 
             r = 3
             checkpoint_file = "checkpoint"
+            metrics_logger = Live()
 
             value = read(checkpoint_file)
             for i in range(1,r):
                 m = i + value
                 dump(m, checkpoint_file)
 
-                dvclive.log("metric1", m)
-                dvclive.log("metric2", m * 2)
-                dvclive.next_step()"""
+                metrics_logger.log("metric1", m)
+                metrics_logger.log("metric2", m * 2)
+                metrics_logger.next_step()"""
 )
 
 
@@ -242,12 +244,13 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
 
     script = dedent(
         """
-        import dvclive
+        from dvclive import Live
         import sys
         import time
-        dvclive.log("loss", 1/2)
-        dvclive.log("accuracy", 1/2)
-        dvclive.next_step()
+        metrics_logger = Live()
+        metrics_logger.log("loss", 1/2)
+        metrics_logger.log("accuracy", 1/2)
+        metrics_logger.next_step()
         time.sleep({})""".format(
             str(monitor_await_time * 10)
         )
