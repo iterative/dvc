@@ -146,7 +146,9 @@ jobs:
     - name: Install
       run: pip install ".[all,tests]"
     - name: Build packages
-      run: ./scripts/build_package.sh
+      run: |
+        pip install -U pip
+        ./scripts/build_package.sh
     - name: Publish packages to PyPI
       if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@master
