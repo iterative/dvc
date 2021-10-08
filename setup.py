@@ -17,12 +17,23 @@ except ImportError:
 
 # Read package meta-data from version.py
 # see https://packaging.python.org/guides/single-sourcing-package-version/
-pkg_dir = os.path.dirname(os.path.abspath(__file__))
-version_path = os.path.join(pkg_dir, "dvc", "version.py")
-spec = importlib.util.spec_from_file_location("dvc.version", version_path)
-dvc_version = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(dvc_version)
-version = dvc_version.__version__  # noqa: F821
+try:
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    version_path = os.path.join(pkg_dir, "dvc", "version.py")
+    spec = importlib.util.spec_from_file_location("dvc.version", version_path)
+    dvc_version = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dvc_version)
+    version = dvc_version.__version__  # noqa: F821
+except Exception as exc:  # pylint: disable=broad-except
+    # Dependabot seem to stop working when we don't handle this except block.
+    # Most likely, it's because of the restrictions in execution of the module.
+    # We workaround it, and print the error message if it also happens on other
+    # installations (though this message may likely be suppressed by build
+    # tools, eg: pip only shows this message on `--verbose` mode).
+    import sys
+
+    print("Could not load version info: ", exc, file=sys.stderr)
+    version = "UNKNOWN"
 
 
 # To achieve consistency between the build version and the one provided
