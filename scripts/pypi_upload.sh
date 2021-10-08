@@ -9,6 +9,6 @@ fi
 
 rm -rf dist/
 pip install twine
-python -m pip install --user build
+python -m pip install -U build pip setuptools>=58.2
 python -m build --sdist --wheel --outdir dist/
 twine upload dist/*
