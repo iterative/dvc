@@ -2,7 +2,7 @@ import json
 import os
 from typing import TYPE_CHECKING, Iterable, Optional
 
-import pkg_resources  # type: ignore
+import importlib_resources
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
@@ -129,12 +129,17 @@ class PlotTemplates:
 
     @staticmethod
     def _get_templates() -> Iterable[str]:
-        if pkg_resources.resource_exists(
-            __name__, PlotTemplates.PKG_TEMPLATES_DIR
+        if (
+            importlib_resources.files(__package__)
+            .joinpath(PlotTemplates.PKG_TEMPLATES_DIR)
+            .is_dir()
         ):
-            return pkg_resources.resource_listdir(
-                __name__, PlotTemplates.PKG_TEMPLATES_DIR
+            entries = (
+                importlib_resources.files(__package__)
+                .joinpath(PlotTemplates.PKG_TEMPLATES_DIR)
+                .iterdir()
             )
+            return [entry.name for entry in entries]
         return []
 
     @staticmethod
@@ -142,9 +147,15 @@ class PlotTemplates:
         templates = PlotTemplates._get_templates()
         found = PlotTemplates._find(templates, name)
         if found:
-            return pkg_resources.resource_string(
-                __name__, f"{PlotTemplates.PKG_TEMPLATES_DIR}/{found}"
-            ).decode("utf-8")
+            return (
+                (
+                    importlib_resources.files(__package__)
+                    / PlotTemplates.PKG_TEMPLATES_DIR
+                    / found
+                )
+                .read_bytes()
+                .decode("utf-8")
+            )
         return None
 
     def load(self, name: str = None) -> Template:
@@ -174,8 +185,11 @@ class PlotTemplates:
 
         templates = self._get_templates()
         for template in templates:
-            content = pkg_resources.resource_string(
-                __name__, f"{PlotTemplates.PKG_TEMPLATES_DIR}/{template}"
+            content = (
+                importlib_resources.files(__package__)
+                .joinpath(PlotTemplates.PKG_TEMPLATES_DIR)
+                .joinpath(template)
+                .read_text()
             )
-            with open(os.path.join(self.templates_dir, template), "wb") as fd:
+            with open(os.path.join(self.templates_dir, template), "w") as fd:
                 fd.write(content)

@@ -161,11 +161,13 @@ def pytest_configure(config):
 
 @pytest.fixture()
 def custom_template(tmp_dir, dvc):
-    import pkg_resources
+    import importlib_resources
 
-    content = pkg_resources.resource_string(
-        "dvc.repo.plots", "templates/simple.json"
-    ).decode("utf-8")
+    content = (
+        importlib_resources.files("dvc.repo.plots")
+        / "templates"
+        / "simple.json"
+    ).read_text()
 
     template = tmp_dir / "custom_template.json"
     template.write_text(content)
