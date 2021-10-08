@@ -2,7 +2,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.hash_info import HashInfo
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
@@ -47,7 +46,4 @@ class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
     def checksum(self, path_info):
         path = self._with_bucket(path_info)
         ukey = self.fs.ukey(path)
-
-        return HashInfo(
-            "checksum", ukey["bytes"], size=self.getsize(path_info)
-        )
+        return ukey["bytes"]

@@ -45,18 +45,16 @@ def _get_file_hash(path_info, fs, name):
     info = fs.info(path_info)
     if name in info:
         assert not info[name].endswith(".dir")
-        return HashInfo(name, info[name], size=info["size"])
+        hash_value = info[name]
+    elif hasattr(fs, name):
+        func = getattr(fs, name)
+        hash_value = func(path_info)
+    elif name == "md5":
+        hash_value = file_md5(path_info, fs)
+    else:
+        raise NotImplementedError
 
-    func = getattr(fs, name, None)
-    if func:
-        return func(path_info)
-
-    if name == "md5":
-        return HashInfo(
-            name, file_md5(path_info, fs), size=fs.getsize(path_info)
-        )
-
-    raise NotImplementedError
+    return HashInfo(name, hash_value, size=info["size"])
 
 
 def get_file_hash(path_info, fs, name, state=None):
