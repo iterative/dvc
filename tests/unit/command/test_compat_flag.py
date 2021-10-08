@@ -1,0 +1,38 @@
+from itertools import takewhile
+
+import pytest
+
+from dvc.cli import parse_args
+
+
+def _id_gen(val) -> str:
+    if isinstance(val, list):
+        return "-".join(takewhile(lambda v: not v.startswith("-"), val))
+    return str(val)
+
+
+@pytest.mark.parametrize(
+    "args, key",
+    [
+        (["diff", "--show-json"], "json"),
+        (["diff", "--show-md"], "markdown"),
+        (["experiments", "diff", "--show-json"], "json"),
+        (["experiments", "diff", "--show-md"], "markdown"),
+        (["experiments", "show", "--show-json"], "json"),
+        (["experiments", "show", "--show-csv"], "csv"),
+        (["ls", "--show-json", "."], "json"),
+        (["metrics", "diff", "--show-json"], "json"),
+        (["metrics", "diff", "--show-md"], "markdown"),
+        (["metrics", "show", "--show-json"], "json"),
+        (["metrics", "show", "--show-md"], "markdown"),
+        (["params", "diff", "--show-json"], "json"),
+        (["params", "diff", "--show-md"], "markdown"),
+        (["status", "--show-json"], "json"),
+    ],
+    ids=_id_gen,
+)
+def test_backward_compat_flags(args, key):
+    """Test support for --show-csv/--show-json/--show-md flags."""
+    cli_args = parse_args(args)
+    d = vars(cli_args)
+    assert d[key] is True

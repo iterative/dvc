@@ -11,11 +11,11 @@ from dvc.dvcfile import (
 from dvc.stage import PipelineStage
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
-    StageFileFormatError,
     StageFileIsNotDvcFileError,
 )
 from dvc.utils.fs import remove
 from dvc.utils.serialize import EncodingError
+from dvc.utils.strictyaml import YAMLValidationError
 
 
 @pytest.mark.parametrize(
@@ -68,9 +68,9 @@ def test_stage_load_on_invalid_data(tmp_dir, dvc, file):
     data = {"is_this_a_valid_dvcfile": False}
     (tmp_dir / file).dump(data)
     dvcfile = Dvcfile(dvc, file)
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(YAMLValidationError):
         assert dvcfile.stages
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(YAMLValidationError):
         assert dvcfile.validate(data, file)
 
 

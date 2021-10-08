@@ -1,12 +1,15 @@
-import sys
+from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     Iterable,
+    Iterator,
     Optional,
     Sequence,
     TextIO,
+    Type,
     Union,
 )
 
@@ -14,6 +17,7 @@ from funcy import cached_property
 
 if TYPE_CHECKING:
     from rich.status import Status
+    from rich.text import Text as RichText
 
     from dvc.progress import Tqdm
     from dvc.ui.table import Headers, Styles, TableData
@@ -40,8 +44,13 @@ class Console:
     def __init__(
         self, formatter: Formatter = None, enable: bool = False
     ) -> None:
+        from contextvars import ContextVar
+
         self.formatter: Formatter = formatter or Formatter()
         self._enabled: bool = enable
+        self._paginate: ContextVar[bool] = ContextVar(
+            "_paginate", default=False
+        )
 
     def enable(self) -> None:
         self._enabled = True
@@ -74,6 +83,23 @@ class Console:
             styled=styled,
         )
 
+    def write_json(
+        self, data: Any, indent: int = 2, default: Callable = None
+    ) -> None:
+        import json
+
+        if self.isatty():
+            from rich.highlighter import JSONHighlighter
+
+            j = json.dumps(data, indent=indent, default=default)
+            highlighter = JSONHighlighter()
+            text = highlighter(j)
+            text.no_wrap = True
+            text.overflow = None
+            return self.write(text, styled=True)
+
+        return self.write(json.dumps(data))
+
     def write(
         self,
         *objects: Any,
@@ -85,6 +111,8 @@ class Console:
         styled: bool = False,
         file: TextIO = None,
     ) -> None:
+        import sys
+
         from dvc.progress import Tqdm
 
         sep = " " if sep is None else sep
@@ -94,20 +122,38 @@ class Console:
 
         file = file or (sys.stderr if stderr else sys.stdout)
         with Tqdm.external_write_mode(file=file):
-            if styled:
+            # if we are inside pager context, send the output to rich's buffer
+            if styled or self._paginate.get():
                 console = self.error_console if stderr else self.rich_console
-                return console.print(*objects, sep=sep, end=end)
+                if styled:
+                    return console.print(*objects, sep=sep, end=end)
+                return console.out(*objects, sep=sep, end=end, highlight=False)
 
-            values = (
-                self.formatter.format(obj, style=style) for obj in objects
-            )
+            values = (self.formatter.format(obj, style) for obj in objects)
             return print(*values, sep=sep, end=end, file=file)
+
+    @property
+    def rich_text(self) -> "Type[RichText]":
+        from rich.text import Text
+
+        return Text
 
     @staticmethod
     def progress(*args, **kwargs) -> "Tqdm":
         from dvc.progress import Tqdm
 
         return Tqdm(*args, **kwargs)
+
+    @contextmanager
+    def pager(self, styles: bool = True) -> Iterator[None]:
+        from .pager import DvcPager
+
+        tok = self._paginate.set(True)
+        try:
+            with self.rich_console.pager(pager=DvcPager(), styles=styles):
+                yield
+        finally:
+            self._paginate.reset(tok)
 
     def prompt(
         self, text: str, choices: Iterable[str] = None, password: bool = False
@@ -194,6 +240,11 @@ class Console:
 
     def status(self, status: str, **kwargs: Any) -> "Status":
         return self.error_console.status(status, **kwargs)
+
+    def isatty(self) -> bool:
+        import sys
+
+        return sys.stdout.isatty()
 
 
 ui = Console()

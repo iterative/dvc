@@ -1,3 +1,2 @@
 include fastentrypoints.py
 include LICENSE
-recursive-include requirements *.txt

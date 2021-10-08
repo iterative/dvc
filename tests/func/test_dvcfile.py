@@ -7,15 +7,12 @@ from dvc.dvcfile import (
     PIPELINE_FILE,
     PIPELINE_LOCK,
     Dvcfile,
-    LockfileCorruptedError,
     ParametrizedDumpError,
     SingleStageFile,
 )
-from dvc.stage.exceptions import (
-    StageFileDoesNotExistError,
-    StageFileFormatError,
-)
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.stage.loader import StageNotFound
+from dvc.utils.strictyaml import YAMLValidationError
 
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):
@@ -246,14 +243,14 @@ def test_remove_stage_on_lockfile_format_error(tmp_dir, dvc, run_copy):
     lock_data["gibberish"] = True
     data["gibberish"] = True
     (tmp_dir / lock_file.relpath).dump(lock_data)
-    with pytest.raises(LockfileCorruptedError):
+    with pytest.raises(YAMLValidationError):
         dvc_file.remove_stage(stage)
 
     lock_file.remove()
     dvc_file.dump(stage, update_pipeline=False)
 
     (tmp_dir / dvc_file.relpath).dump(data)
-    with pytest.raises(StageFileFormatError):
+    with pytest.raises(YAMLValidationError):
         dvc_file.remove_stage(stage)
 
 

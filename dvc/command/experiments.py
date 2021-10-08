@@ -1,14 +1,12 @@
 import argparse
 import logging
-import os
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
-from funcy import lmap
+from funcy import compact, lmap
 
-from dvc import prompt
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.command.metrics import DEFAULT_PRECISION
@@ -20,9 +18,8 @@ from dvc.utils.flatten import flatten
 from dvc.utils.serialize import encode_exception
 
 if TYPE_CHECKING:
-    from rich.text import Text
-
     from dvc.compare import TabularData
+    from dvc.ui import RichText
 
 
 logger = logging.getLogger(__name__)
@@ -292,8 +289,6 @@ def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
 
 
 def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
-    from rich.text import Text
-
     from dvc.compare import _format_field, with_value
 
     if not items:
@@ -308,10 +303,10 @@ def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
                 item.get(name),
                 FILL_VALUE_ERRORED if data.get("error", None) else fill_value,
             )
-            # wrap field data in rich.Text, otherwise rich may
+            # wrap field data in ui.rich_text, otherwise rich may
             # interpret unescaped braces from list/dict types as rich
             # markup tags
-            row.append(Text(str(_format_field(value, precision))))
+            row.append(ui.rich_text(str(_format_field(value, precision))))
 
 
 def _parse_filter_list(param_list):
@@ -362,17 +357,15 @@ def experiments_table(
     return td
 
 
-def prepare_exp_id(kwargs) -> "Text":
-    from rich.text import Text
-
+def prepare_exp_id(kwargs) -> "RichText":
     exp_name = kwargs["Experiment"]
     rev = kwargs["rev"]
     typ = kwargs.get("typ", "baseline")
 
     if typ == "baseline" or not exp_name:
-        text = Text(exp_name or rev)
+        text = ui.rich_text(exp_name or rev)
     else:
-        text = Text.assemble(rev, " [", (exp_name, "bold"), "]")
+        text = ui.rich_text.assemble(rev, " [", (exp_name, "bold"), "]")
 
     parent = kwargs.get("parent")
     suff = f" ({parent})" if parent else ""
@@ -380,7 +373,7 @@ def prepare_exp_id(kwargs) -> "Text":
 
     tree = experiment_types[typ]
     pref = f"{tree} " if tree else ""
-    return Text(pref) + text
+    return ui.rich_text(pref) + text
 
 
 def baseline_styler(typ):
@@ -388,7 +381,7 @@ def baseline_styler(typ):
 
 
 def show_experiments(
-    all_experiments, pager=True, no_timestamp=False, show_csv=False, **kwargs
+    all_experiments, pager=True, no_timestamp=False, csv=False, **kwargs
 ):
     from funcy.seqs import flatten as flatten_list
 
@@ -444,7 +437,7 @@ def show_experiments(
 
     row_styles = lmap(baseline_styler, td.column("typ"))
 
-    if not show_csv:
+    if not csv:
         merge_headers = ["Experiment", "rev", "typ", "parent"]
         td.column("Experiment")[:] = map(
             prepare_exp_id, td.as_dict(merge_headers)
@@ -478,7 +471,7 @@ def show_experiments(
         rich_table=True,
         header_styles=styles,
         row_styles=row_styles,
-        show_csv=show_csv,
+        csv=csv,
     )
 
 
@@ -511,18 +504,16 @@ class CmdExperimentsShow(CmdBase):
             logger.exception("failed to show experiments")
             return 1
 
-        if self.args.show_json:
-            import json
-
-            ui.write(json.dumps(all_experiments, default=_format_json))
+        if self.args.json:
+            ui.write_json(all_experiments, default=_format_json)
         else:
             precision = (
                 self.args.precision or None
-                if self.args.show_csv
+                if self.args.csv
                 else DEFAULT_PRECISION
             )
-            fill_value = "" if self.args.show_csv else FILL_VALUE
-            iso = True if self.args.show_csv else False
+            fill_value = "" if self.args.csv else FILL_VALUE
+            iso = True if self.args.csv else False
 
             show_experiments(
                 all_experiments,
@@ -537,7 +528,7 @@ class CmdExperimentsShow(CmdBase):
                 fill_value=fill_value,
                 iso=iso,
                 pager=not self.args.no_pager,
-                show_csv=self.args.show_csv,
+                csv=self.args.csv,
             )
         return 0
 
@@ -566,10 +557,8 @@ class CmdExperimentsDiff(CmdBase):
             logger.exception("failed to show experiments diff")
             return 1
 
-        if self.args.show_json:
-            import json
-
-            ui.write(json.dumps(diff))
+        if self.args.json:
+            ui.write_json(diff)
         else:
             from dvc.compare import show_diff
 
@@ -584,7 +573,7 @@ class CmdExperimentsDiff(CmdBase):
                 show_diff(
                     diff[key],
                     title=title,
-                    markdown=self.args.show_md,
+                    markdown=self.args.markdown,
                     no_path=self.args.no_path,
                     old=self.args.old,
                     on_empty_diff="diff not supported",
@@ -669,7 +658,7 @@ class CmdExperimentsGC(CmdRepro):
         logger.warning(msg)
 
         msg = "Are you sure you want to proceed?"
-        if not self.args.force and not prompt.confirm(msg):
+        if not self.args.force and not ui.confirm(msg):
             return 1
 
         removed = self.repo.experiments.gc(
@@ -798,51 +787,56 @@ class CmdExperimentsInit(CmdBase):
     DEFAULT_PARAMS = "params.yaml"
     PLOTS = "plots"
     DVCLIVE = "dvclive"
-    DEFAULT_NAME = "default"
+    DEFAULTS = {
+        "code": CODE,
+        "data": DATA,
+        "models": MODELS,
+        "metrics": DEFAULT_METRICS,
+        "params": DEFAULT_PARAMS,
+        "plots": PLOTS,
+        "live": DVCLIVE,
+    }
 
     def run(self):
         from dvc.command.stage import parse_cmd
 
         cmd = parse_cmd(self.args.cmd)
-        if not cmd:
+        if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
-        if self.args.interactive:
-            raise NotImplementedError(
-                "'-i/--interactive' is not implemented yet."
-            )
-        if self.args.explicit:
-            raise NotImplementedError("'--explicit' is not implemented yet.")
-        if self.args.template:
-            raise NotImplementedError("template is not supported yet.")
 
-        from dvc.utils.serialize import LOADERS
+        from dvc.repo.experiments.init import init
 
-        code = self.args.code or self.CODE
-        data = self.args.data or self.DATA
-        models = self.args.models or self.MODELS
-        metrics = self.args.metrics or self.DEFAULT_METRICS
-        params_path = self.args.params or self.DEFAULT_PARAMS
-        plots = self.args.plots or self.PLOTS
-        dvclive = self.args.live or self.DVCLIVE
+        defaults = {}
+        if not self.args.explicit:
+            config = {}  # TODO
+            defaults.update({**self.DEFAULTS, **config})
 
-        _, ext = os.path.splitext(params_path)
-        params = list(LOADERS[ext](params_path))
-
-        name = self.args.name or self.DEFAULT_NAME
-        stage = self.repo.stage.add(
-            name=name,
-            cmd=cmd,
-            deps=[code, data],
-            outs=[models],
-            params=[{params_path: params}],
-            metrics_no_cache=[metrics],
-            plots_no_cache=[plots],
-            live=dvclive,
-            force=True,
+        cli_args = compact(
+            {
+                "cmd": cmd,
+                "code": self.args.code,
+                "data": self.args.data,
+                "models": self.args.models,
+                "metrics": self.args.metrics,
+                "params": self.args.params,
+                "plots": self.args.plots,
+                "live": self.args.live,
+            }
         )
 
+        initialized_stage = init(
+            self.repo,
+            name=self.args.name,
+            type=self.args.type,
+            defaults=defaults,
+            overrides=cli_args,
+            interactive=self.args.interactive,
+            force=self.args.force,
+        )
         if self.args.run:
-            return self.repo.experiments.run(targets=[stage.addressing])
+            return self.repo.experiments.run(
+                targets=[initialized_stage.addressing]
+            )
         return 0
 
 
@@ -968,12 +962,14 @@ def add_parser(subparsers, parent_parser):
         help="Always show git commit SHAs instead of branch/tag names.",
     )
     experiments_show_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Print output in JSON format instead of a human-readable table.",
     )
     experiments_show_parser.add_argument(
+        "--csv",
         "--show-csv",
         action="store_true",
         default=False,
@@ -1042,15 +1038,18 @@ def add_parser(subparsers, parent_parser):
         help="Show only params that are stage dependencies.",
     )
     experiments_diff_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     experiments_diff_parser.add_argument(
+        "--md",
         "--show-md",
         action="store_true",
         default=False,
+        dest="markdown",
         help="Show tabulated output in the Markdown format (GFM).",
     )
     experiments_diff_parser.add_argument(
@@ -1385,10 +1384,18 @@ def add_parser(subparsers, parent_parser):
         help="Prompt for values that are not provided",
     )
     experiments_init_parser.add_argument(
-        "--template", help="Stage template to use to fill with provided values"
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Overwrite existing stage",
     )
+
     experiments_init_parser.add_argument(
-        "--explicit", help="Only use the path values explicitly provided"
+        "--explicit",
+        action="store_true",
+        default=False,
+        help="Only use the path values explicitly provided",
     )
     experiments_init_parser.add_argument(
         "--name", "-n", help="Name of the stage to create"
@@ -1419,6 +1426,12 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--live", help="Path to log dvclive outputs for your experiments"
+    )
+    experiments_init_parser.add_argument(
+        "--type",
+        choices=["default", "live"],
+        default="default",
+        help="Select type of stage to create",
     )
     experiments_init_parser.set_defaults(func=CmdExperimentsInit)
 

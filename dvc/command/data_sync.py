@@ -393,6 +393,7 @@ def add_parser(subparsers, _parent_parser):
         help="Show status of all stages in the specified directory.",
     )
     status_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,

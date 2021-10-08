@@ -1,1 +1,0 @@
-pydrive2[fsspec]>=1.9.4

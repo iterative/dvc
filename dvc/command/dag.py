@@ -103,9 +103,8 @@ class CmdDAG(CmdBase):
         if self.args.dot:
             ui.write(_show_dot(G))
         else:
-            from dvc.utils.pager import pager
-
-            pager(_show_ascii(G))
+            with ui.pager():
+                ui.write(_show_ascii(G))
 
         return 0
 

@@ -10,7 +10,7 @@ from dvc import __version__
 from dvc.utils.pkg import PKG
 
 if TYPE_CHECKING:
-    from rich.text import Text
+    from dvc.ui import RichText
 
 logger = logging.getLogger(__name__)
 
@@ -123,20 +123,23 @@ class Updater:
         current: str = None,
         color: str = "yellow",
         pkg: Optional[str] = None,
-    ) -> "Text":
-        from rich.text import Text
+    ) -> "RichText":
+        from dvc.ui import ui
 
         current = current or self.current
-        update_message = Text.from_markup(
+        update_message = ui.rich_text.from_markup(
             f"You are using dvc version [bold]{current}[/]; "
             f"however, version [bold]{latest}[/] is available."
         )
-        instruction = Text.from_markup(self._get_update_instructions(pkg=pkg))
-        return Text.assemble(
+        instruction = ui.rich_text.from_markup(
+            self._get_update_instructions(pkg=pkg)
+        )
+        return ui.rich_text.assemble(
             "\n", update_message, "\n", instruction, style=color
         )
 
-    def _get_update_instructions(self, pkg: Optional[str] = None) -> str:
+    @staticmethod
+    def _get_update_instructions(pkg: Optional[str] = None) -> str:
         if pkg in ("osxpkg", "exe", "binary"):
             return (
                 "To upgrade, uninstall dvc and reinstall from "

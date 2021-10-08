@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from textwrap import dedent
 
-from setuptools import find_packages, setup
+from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
 
 # Prevents pkg_resources import in entry point script,
@@ -17,12 +17,23 @@ except ImportError:
 
 # Read package meta-data from version.py
 # see https://packaging.python.org/guides/single-sourcing-package-version/
-pkg_dir = os.path.dirname(os.path.abspath(__file__))
-version_path = os.path.join(pkg_dir, "dvc", "version.py")
-spec = importlib.util.spec_from_file_location("dvc.version", version_path)
-dvc_version = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(dvc_version)
-version = dvc_version.__version__  # noqa: F821
+try:
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    version_path = os.path.join(pkg_dir, "dvc", "version.py")
+    spec = importlib.util.spec_from_file_location("dvc.version", version_path)
+    dvc_version = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dvc_version)
+    version = dvc_version.__version__  # noqa: F821
+except Exception as exc:  # pylint: disable=broad-except
+    # Dependabot seem to stop working when we don't handle this except block.
+    # Most likely, it's because of the restrictions in execution of the module.
+    # We workaround it, and print the error message if it also happens on other
+    # installations (though this message may likely be suppressed by build
+    # tools, eg: pip only shows this message on `--verbose` mode).
+    import sys
+
+    print("Could not load version info: ", exc, file=sys.stderr)
+    version = "UNKNOWN"
 
 
 # To achieve consistency between the build version and the one provided
@@ -52,55 +63,4 @@ class build_py(_build_py):
         _build_py.run(self)
 
 
-# Extra dependencies for remote integrations
-requirements = {
-    path.stem: path.read_text().strip().splitlines()
-    for path in Path("requirements").glob("*.txt")
-}
-
-# gssapi should not be included in all_remotes, because it doesn't have wheels
-# for linux and mac, so it will fail to compile if user doesn't have all the
-# requirements, including kerberos itself. Once all the wheels are available,
-# we can start shipping it by default.
-
-install_requires = requirements.pop("default")
-requirements["all"] = [
-    req
-    for key, requirements in requirements.items()
-    if key not in ("tests", "ssh_gssapi", "terraform")
-    for req in requirements
-]
-requirements["tests"] += requirements["terraform"]
-requirements["dev"] = requirements["all"] + requirements["tests"]
-
-setup(
-    name="dvc",
-    version=version,
-    description="Git for data scientists - manage your code and data together",
-    long_description=open("README.rst", encoding="UTF-8").read(),
-    author="Dmitry Petrov",
-    author_email="dmitry@dvc.org",
-    maintainer="Iterative",
-    maintainer_email="support@dvc.org",
-    download_url="https://github.com/iterative/dvc",
-    license="Apache License 2.0",
-    install_requires=install_requires,
-    extras_require=requirements,
-    keywords="data-science data-version-control machine-learning git"
-    " developer-tools reproducibility collaboration ai",
-    python_requires=">=3.6",
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-    ],
-    packages=find_packages(exclude=["tests"]),
-    include_package_data=True,
-    url="http://dvc.org",
-    entry_points={"console_scripts": ["dvc = dvc.main:main"]},
-    cmdclass={"build_py": build_py},
-    zip_safe=False,
-)
+setup(version=version, cmdclass={"build_py": build_py})

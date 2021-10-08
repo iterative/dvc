@@ -31,16 +31,14 @@ class CmdMetricsShow(CmdMetricsBase):
             logger.exception("")
             return 1
 
-        if self.args.show_json:
-            import json
-
-            ui.write(json.dumps(metrics, default=encode_exception))
+        if self.args.json:
+            ui.write_json(metrics, default=encode_exception)
         else:
             from dvc.compare import show_metrics
 
             show_metrics(
                 metrics,
-                markdown=self.args.show_md,
+                markdown=self.args.markdown,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
@@ -65,17 +63,15 @@ class CmdMetricsDiff(CmdMetricsBase):
             logger.exception("failed to show metrics diff")
             return 1
 
-        if self.args.show_json:
-            import json
-
-            ui.write(json.dumps(diff))
+        if self.args.json:
+            ui.write_json(diff)
         else:
             from dvc.compare import show_diff
 
             show_diff(
                 diff,
                 title="Metric",
-                markdown=self.args.show_md,
+                markdown=self.args.markdown,
                 no_path=self.args.no_path,
                 precision=self.args.precision or DEFAULT_PRECISION,
                 round_digits=True,
@@ -140,15 +136,18 @@ def add_parser(subparsers, parent_parser):
         help="Show metrics for all commits.",
     )
     metrics_show_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     metrics_show_parser.add_argument(
+        "--md",
         "--show-md",
         action="store_true",
         default=False,
+        dest="markdown",
         help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_show_parser.add_argument(
@@ -220,15 +219,18 @@ def add_parser(subparsers, parent_parser):
         help="Show unchanged metrics as well.",
     )
     metrics_diff_parser.add_argument(
+        "--json",
         "--show-json",
         action="store_true",
         default=False,
         help="Show output in JSON format.",
     )
     metrics_diff_parser.add_argument(
+        "--md",
         "--show-md",
         action="store_true",
         default=False,
+        dest="markdown",
         help="Show tabulated output in the Markdown format (GFM).",
     )
     metrics_diff_parser.add_argument(

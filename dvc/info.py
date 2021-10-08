@@ -136,11 +136,14 @@ def _get_supported_remotes():
 
 
 def get_fs_type(path):
-
-    partition = {
-        pathlib.Path(part.mountpoint): (part.fstype + " on " + part.device)
-        for part in psutil.disk_partitions(all=True)
-    }
+    partition = {}
+    for part in psutil.disk_partitions(all=True):
+        if part.fstype != "":
+            try:
+                mountpoint = pathlib.Path(part.mountpoint).resolve()
+                partition[mountpoint] = part.fstype + " on " + part.device
+            except PermissionError:
+                pass
 
     # need to follow the symlink: https://github.com/iterative/dvc/issues/5065
     path = pathlib.Path(path).resolve()

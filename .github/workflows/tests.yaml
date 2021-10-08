@@ -12,6 +12,13 @@ env:
   SHELL: /bin/bash
 
 jobs:
+  cancel_previous:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
   lint:
     timeout-minutes: 10
     runs-on: ubuntu-latest
@@ -42,7 +49,7 @@ jobs:
         pyv: ["3.6", "3.7", "3.8", "3.9"]
         include:
           - os: "macos-10.15"
-            pyv: "3.10.0-rc.1"
+            pyv: "3.10"
         exclude:
           - os: macos-10.15
             pyv: "3.9"
@@ -64,13 +71,14 @@ jobs:
       uses: actions/cache@v2.1.6
       with:
         path: ${{ steps.pip-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: install libgit2 on Python3.10 in macOS
-      if: matrix.pyv == '3.10.0-rc.1' && matrix.os == 'macos-10.15'
+    - name: install pygit2 on Python3.10 in macOS
+      if: matrix.pyv == '3.10' && matrix.os == 'macos-10.15'
       run: |
-        brew install libgit2
+        brew update && brew install libgit2
+        pip install git+https://github.com/libgit2/pygit2
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |

@@ -9,11 +9,6 @@ class StageCmdFailedError(DvcException):
         super().__init__(msg)
 
 
-class StageFileFormatError(DvcException):
-    def __init__(self, path):
-        super().__init__(f"'{path}' format error")
-
-
 class StageFileDoesNotExistError(DvcException):
     DVC_IGNORED = "is dvc-ignored"
     DOES_NOT_EXIST = "does not exist"
