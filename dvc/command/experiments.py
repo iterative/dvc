@@ -787,6 +787,15 @@ class CmdExperimentsInit(CmdBase):
     DEFAULT_PARAMS = "params.yaml"
     PLOTS = "plots"
     DVCLIVE = "dvclive"
+    DEFAULTS = {
+        "code": CODE,
+        "data": DATA,
+        "models": MODELS,
+        "metrics": DEFAULT_METRICS,
+        "params": DEFAULT_PARAMS,
+        "plots": PLOTS,
+        "live": DVCLIVE,
+    }
 
     def run(self):
         from dvc.command.stage import parse_cmd
@@ -797,19 +806,10 @@ class CmdExperimentsInit(CmdBase):
 
         from dvc.repo.experiments.init import init
 
-        global_defaults = {
-            "code": self.CODE,
-            "data": self.DATA,
-            "models": self.MODELS,
-            "metrics": self.DEFAULT_METRICS,
-            "params": self.DEFAULT_PARAMS,
-            "plots": self.PLOTS,
-            "live": self.DVCLIVE,
-        }
         defaults = {}
         if not self.args.explicit:
             config = {}  # TODO
-            defaults.update({**global_defaults, **config})
+            defaults.update({**self.DEFAULTS, **config})
 
         cli_args = compact(
             {
