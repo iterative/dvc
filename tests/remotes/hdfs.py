@@ -73,7 +73,7 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 
 @pytest.fixture(scope="session")
 def hadoop(test_config):
-    test_config.requires("hdfs")
+    test_config.requires("real_hdfs")
 
     if sys.version_info >= (3, 10):
         pytest.skip("pyarrow is not available for 3.10 yet.")
