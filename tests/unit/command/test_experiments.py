@@ -405,3 +405,23 @@ def test_show_experiments(capsys):
         "3000,1,0.5843640011189556,0.9544670443829399,3000,1,20170428,100,36"
         in cap.out
     )
+
+
+def test_experiments_init_config(dvc, mocker):
+    with dvc.config.edit() as conf:
+        conf["exp"] = {"code": "new_src", "models": "new_models"}
+
+    m = mocker.patch("dvc.repo.experiments.init.init")
+    cli_args = parse_args(["exp", "init", "cmd"])
+    cmd = cli_args.func(cli_args)
+
+    assert cmd.run() == 0
+    assert m.call_args[1]["defaults"] == {
+        "code": "new_src",
+        "models": "new_models",
+        "data": "data",
+        "metrics": "metrics.json",
+        "params": "params.yaml",
+        "plots": "plots",
+        "live": "dvclive",
+    }

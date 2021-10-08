@@ -808,7 +808,7 @@ class CmdExperimentsInit(CmdBase):
 
         defaults = {}
         if not self.args.explicit:
-            config = {}  # TODO
+            config = self.repo.config["exp"]
             defaults.update({**self.DEFAULTS, **config})
 
         cli_args = compact(

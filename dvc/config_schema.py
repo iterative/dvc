@@ -256,4 +256,13 @@ SCHEMA = {
         Optional("parametrization", default=True): Bool,
     },
     "plots": {"html_template": str},
+    "exp": {
+        "code": str,
+        "data": str,
+        "models": str,
+        "metrics": str,
+        "params": str,
+        "plots": str,
+        "live": str,
+    },
 }
