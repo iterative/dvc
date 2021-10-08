@@ -258,11 +258,12 @@ def _sort_column(sort_by, metric_names, param_names):
 def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     def _sort(item):
         rev, exp = item
-        tip = exp.get("checkpoint_tip")
+        exp_data = exp.get("data", {})
+        tip = exp_data.get("checkpoint_tip")
         if tip and tip != rev:
             # Sort checkpoint experiments by tip commit
             return _sort((tip, experiments[tip]))
-        data = exp.get(typ, {}).get(sort_path, {})
+        data = exp_data.get(typ, {}).get(sort_path, {}).get("data", {})
         val = flatten(data).get(sort_name)
         return val is None, val
 
