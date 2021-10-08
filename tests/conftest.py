@@ -161,7 +161,10 @@ def pytest_configure(config):
 
 @pytest.fixture()
 def custom_template(tmp_dir, dvc):
-    import importlib_resources
+    try:
+        import importlib_resources
+    except ImportError:
+        import importlib.resources as importlib_resources
 
     content = (
         importlib_resources.files("dvc.repo.plots")

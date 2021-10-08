@@ -2,7 +2,11 @@ import json
 import os
 from typing import TYPE_CHECKING, Iterable, Optional
 
-import importlib_resources
+try:
+    import importlib_resources
+except ImportError:
+    import importlib.resources as importlib_resources  # type: ignore[no-redef]
+
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
