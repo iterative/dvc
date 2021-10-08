@@ -840,6 +840,16 @@ class CmdExperimentsInit(CmdBase):
         return 0
 
 
+class RawDefaultsHelpFormatter(
+    argparse.RawDescriptionHelpFormatter,
+    argparse.ArgumentDefaultsHelpFormatter,
+):
+    def _get_help_string(self, action: argparse.Action) -> Optional[str]:
+        if action.default:
+            return super()._get_help_string(action)
+        return action.help
+
+
 def add_parser(subparsers, parent_parser):
     EXPERIMENTS_HELP = "Commands to run and compare experiments."
 
@@ -1364,7 +1374,7 @@ def add_parser(subparsers, parent_parser):
         "init",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_INIT_HELP, "exp/init"),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=RawDefaultsHelpFormatter,
     )
     experiments_init_parser.add_argument(
         "cmd",
@@ -1402,30 +1412,40 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--code",
+        default=CmdExperimentsInit.CODE,
         help="Path to the source file or directory "
         "which your experiments depend",
     )
     experiments_init_parser.add_argument(
         "--data",
+        default=CmdExperimentsInit.DATA,
         help="Path to the data file or directory "
         "which your experiments depend",
     )
     experiments_init_parser.add_argument(
         "--models",
+        default=CmdExperimentsInit.MODELS,
         help="Path to the model file or directory for your experiments",
     )
     experiments_init_parser.add_argument(
-        "--params", help="Path to the parameters file for your experiments"
+        "--params",
+        default=CmdExperimentsInit.DEFAULT_PARAMS,
+        help="Path to the parameters file for your experiments",
     )
     experiments_init_parser.add_argument(
-        "--metrics", help="Path to the metrics file for your experiments"
+        "--metrics",
+        default=CmdExperimentsInit.DEFAULT_METRICS,
+        help="Path to the metrics file for your experiments",
     )
     experiments_init_parser.add_argument(
         "--plots",
+        default=CmdExperimentsInit.PLOTS,
         help="Path to the plots file or directory for your experiments",
     )
     experiments_init_parser.add_argument(
-        "--live", help="Path to log dvclive outputs for your experiments"
+        "--live",
+        help="Path to log dvclive outputs for your experiments "
+        f"(default: {CmdExperimentsInit.DVCLIVE})",
     )
     experiments_init_parser.add_argument(
         "--type",
