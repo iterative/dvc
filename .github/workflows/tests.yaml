@@ -45,17 +45,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, windows-2019, macos-10.15]
-        pyv: ["3.6", "3.7", "3.8", "3.9"]
-        include:
-          - os: "macos-10.15"
-            pyv: "3.10"
+        os: [ubuntu-20.04, windows-latest, macos-latest]
+        pyv: ["3.6", "3.7", "3.8", "3.9", "3.10"]
         exclude:
-          - os: macos-10.15
-            pyv: "3.9"
-          - os: macos-10.15
-            pyv: "3.7"
-
+          # no wheels for pygit2 yet
+          - os: windows-latest
+            pyv: "3.10"
     steps:
     - uses: actions/checkout@v2.3.4
     - name: Set up Python
@@ -74,11 +69,6 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: install pygit2 on Python3.10 in macOS
-      if: matrix.pyv == '3.10' && matrix.os == 'macos-10.15'
-      run: |
-        brew update && brew install libgit2
-        pip install git+https://github.com/libgit2/pygit2
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
