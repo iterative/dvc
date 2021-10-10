@@ -132,7 +132,7 @@ class RepoDependency(Dependency):
                     pass
 
             try:
-                staging, staged_obj = stage(
+                staging, _, staged_obj = stage(
                     local_odb,
                     path_info,
                     repo.repo_fs,

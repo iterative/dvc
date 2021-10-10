@@ -243,14 +243,14 @@ def test_get_hash_granular(tmp_dir, dvc):
     fs = DvcFileSystem(repo=dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert fs.info(subdir).get("md5") is None
-    _, obj = stage(dvc.odb.local, subdir, fs, "md5", dry_run=True)
+    _, _, obj = stage(dvc.odb.local, subdir, fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
     assert (
         fs.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
     )
-    _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5", dry_run=True)
+    _, _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
 
 
@@ -261,7 +261,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     fs = DvcFileSystem(repo=dvc)
     expected = "8c7dd922ad47494fc02c388e12c00eac"
     assert fs.info(PathInfo(tmp_dir) / "file").get("md5") == expected
-    _, obj = stage(
+    _, _, obj = stage(
         dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5", dry_run=True
     )
     assert obj.hash_info == HashInfo("md5", expected)
@@ -274,7 +274,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     fs = DvcFileSystem(repo=dvc)
     expected = "5ea40360f5b4ec688df672a4db9c17d1.dir"
     assert fs.info(PathInfo(tmp_dir) / "dir").get("md5") == expected
-    _, obj = stage(
+    _, _, obj = stage(
         dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5", dry_run=True
     )
     assert obj.hash_info == HashInfo("md5", expected)

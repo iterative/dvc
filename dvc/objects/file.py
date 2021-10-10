@@ -74,7 +74,7 @@ class HashFile:
     def _check_hash(self, odb):
         from .stage import get_file_hash
 
-        actual = get_file_hash(
+        _, actual = get_file_hash(
             self.path_info, self.fs, self.hash_info.name, odb.state
         )
 

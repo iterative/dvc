@@ -415,7 +415,7 @@ class Output:
         else:
             odb = self.repo.odb.local
             name = self.fs.PARAM_CHECKSUM
-        _, obj = ostage(
+        _, _, obj = ostage(
             odb,
             self.path_info,
             self.fs,
@@ -550,7 +550,7 @@ class Output:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        _, self.obj = ostage(
+        _, _, self.obj = ostage(
             self.odb,
             self.path_info,
             self.fs,
@@ -579,7 +579,7 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info)
             else:
-                staging, obj = ostage(
+                staging, _, obj = ostage(
                     self.odb,
                     filter_info or self.path_info,
                     self.fs,
@@ -606,7 +606,7 @@ class Output:
 
     def _commit_granular_dir(self, filter_info):
         prefix = filter_info.relative_to(self.path_info).parts
-        staging, save_obj = ostage(
+        staging, _, save_obj = ostage(
             self.odb,
             self.path_info,
             self.fs,
@@ -803,7 +803,7 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        staging, obj = ostage(
+        staging, _, obj = ostage(
             odb,
             from_info,
             from_fs,

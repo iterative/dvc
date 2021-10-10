@@ -28,7 +28,7 @@ class Tree(HashFile):
 
         return Trie(self._dict)
 
-    def add(self, key, obj):
+    def add(self, key, _meta, obj):
         self.__dict__.pop("trie", None)
         self._dict[key] = obj
 
@@ -46,7 +46,7 @@ class Tree(HashFile):
         if hash_info:
             self.hash_info = hash_info
         else:
-            self.hash_info = get_file_hash(path_info, memfs, "md5")
+            _, self.hash_info = get_file_hash(path_info, memfs, "md5")
             assert self.hash_info.value
             self.hash_info.value += ".dir"
         try:
@@ -95,7 +95,7 @@ class Tree(HashFile):
             parts = tuple(relpath.split(posixpath.sep))
             hash_info = HashInfo.from_dict(entry)
             obj = HashFile(None, None, hash_info)
-            tree.add(parts, obj)
+            tree.add(parts, None, obj)
         return tree
 
     @classmethod
@@ -136,7 +136,7 @@ class Tree(HashFile):
         tree = Tree(self.path_info, self.fs, self.hash_info)
         try:
             for key, obj in self.trie.items(prefix):
-                tree.add(key, obj)
+                tree.add(key, None, obj)
         except KeyError:
             pass
         return tree
@@ -154,7 +154,7 @@ class Tree(HashFile):
         depth = len(prefix)
         try:
             for key, obj in self.trie.items(prefix):
-                tree.add(key[depth:], obj)
+                tree.add(key[depth:], None, obj)
         except KeyError:
             return None
         tree.digest()
@@ -227,7 +227,7 @@ def merge(odb, ancestor_info, our_info, their_info):
 
     merged = Tree(None, None, None)
     for key, hi in merged_dict.items():
-        merged.add(key, hi)
+        merged.add(key, None, hi)
     merged.digest()
 
     odb.add(merged.path_info, merged.fs, merged.hash_info)

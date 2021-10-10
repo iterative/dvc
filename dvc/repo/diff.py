@@ -137,7 +137,7 @@ def _output_paths(repo, targets):
             )
 
             if on_working_fs:
-                _, obj = ostage(
+                _, _, obj = ostage(
                     repo.odb.local,
                     output.path_info,
                     repo.odb.local.fs,

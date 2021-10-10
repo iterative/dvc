@@ -513,7 +513,7 @@ def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     expected = "acbd18db4cc2f85cedef654fccc4a4d8"
     assert fs.info(PathInfo(tmp_dir) / "foo").get("md5") is None
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "foo", fs, "md5")
     assert obj.hash_info == HashInfo("md5", expected)
     (tmp_dir / "foo").unlink()
     assert fs.info(PathInfo(tmp_dir) / "foo")["md5"] == expected
@@ -526,14 +526,14 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     expected = "8761c4e9acad696bee718615e23e22db.dir"
     assert fs.info(PathInfo(tmp_dir) / "dir").get("md5") is None
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "8761c4e9acad696bee718615e23e22db.dir"
     )
 
     shutil.rmtree(tmp_dir / "dir")
     assert fs.info(PathInfo(tmp_dir) / "dir")["md5"] == expected
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "8761c4e9acad696bee718615e23e22db.dir"
     )
@@ -546,12 +546,12 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     fs = RepoFileSystem(repo=dvc)
     subdir = PathInfo(tmp_dir) / "dir" / "subdir"
     assert fs.info(subdir).get("md5") is None
-    _, obj = stage(dvc.odb.local, subdir, fs, "md5")
+    _, _, obj = stage(dvc.odb.local, subdir, fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
     assert fs.info(subdir / "data").get("md5") is None
-    _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5")
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
     (tmp_dir / "dir" / "subdir" / "data").unlink()
     assert (
@@ -573,7 +573,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
     clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir"
     )
@@ -596,7 +596,9 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     # get_file_hash(file) should return workspace hash, not DVC cached hash
     fs = RepoFileSystem(repo=dvc)
     assert fs.info(PathInfo(tmp_dir) / "file").get("md5") is None
-    staging, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    staging, _, obj = stage(
+        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5"
+    )
     assert obj.hash_info == something_hash_info
     check(staging, obj)
 
@@ -608,14 +610,14 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 
     # get_file_hash(file) should return DVC cached hash
     assert fs.info(PathInfo(tmp_dir) / "file")["md5"] == file_hash_info.value
-    hash_info = get_file_hash(
+    _, hash_info = get_file_hash(
         PathInfo(tmp_dir) / "file", fs, "md5", state=dvc.state
     )
     assert hash_info == file_hash_info
 
     # tmp_dir/file can be staged even though it is missing in workspace since
     # repofs will use the DVC cached hash (and refer to the local cache object)
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5")
     assert obj.hash_info == file_hash_info
 
 
@@ -625,7 +627,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "ba75a2162ca9c29acecb7957105a0bc2.dir"
     )
