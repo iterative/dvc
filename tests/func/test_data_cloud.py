@@ -58,7 +58,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     cache_dir = out_dir.cache_path
     dir_hash = out_dir.hash_info
     dir_hashes = {dir_hash} | {
-        entry_obj.hash_info for _, entry_obj in out_dir.obj
+        entry_obj.hash_info for _, _, entry_obj in out_dir.obj
     }
 
     def _check_status(status, **kwargs):

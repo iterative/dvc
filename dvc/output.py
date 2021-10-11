@@ -618,7 +618,8 @@ class Output:
         otransfer(
             staging,
             self.odb,
-            {save_obj.hash_info} | {entry.hash_info for _, entry in save_obj},
+            {save_obj.hash_info}
+            | {entry.hash_info for _, _, entry in save_obj},
             shallow=True,
             move=True,
         )
@@ -946,7 +947,7 @@ class Output:
         obj.hash_info.obj_name = name
         oids = {obj.hash_info}
         if isinstance(obj, Tree):
-            for key, entry_obj in obj:
+            for key, _, entry_obj in obj:
                 entry_obj.hash_info.obj_name = self.fs.sep.join([name, *key])
                 oids.add(entry_obj.hash_info)
         return oids

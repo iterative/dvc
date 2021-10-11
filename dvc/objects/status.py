@@ -56,7 +56,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb):
                 tree = Tree.load(cache_odb, HashInfo(name, dir_hash))
             except FileNotFoundError:
                 continue
-        file_hashes = [entry.hash_info.value for _, entry in tree]
+        file_hashes = [entry.hash_info.value for _, _, entry in tree]
         if dir_hash not in index:
             logger.debug(
                 "Indexing new .dir '%s' with '%s' nested files",
@@ -102,7 +102,7 @@ def status(
                 tree = None
             else:
                 tree = Tree.load(cache_odb, hash_info)
-                for _, entry in tree:
+                for _, _, entry in tree:
                     assert entry.hash_info and entry.hash_info.value
                     hash_infos[entry.hash_info.value] = entry.hash_info
             if index:

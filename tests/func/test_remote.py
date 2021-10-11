@@ -274,7 +274,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     # foo .dir file should be uploaded after bar
     odb = dvc.cloud.get_remote_odb("upstream")
     foo_path = odb.hash_to_path_info(foo.hash_info.value)
-    bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)].hash_info.value)
+    bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)][1].hash_info.value)
     paths = [args[1] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 
@@ -424,7 +424,7 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
 
     odb = dvc.odb.local
     out = stage.outs[0]
-    file_objs = [entry_obj for _, entry_obj in out.obj]
+    file_objs = [entry_obj for _, _, entry_obj in out.obj]
 
     # remove one of the cache files for directory
     remove(odb.hash_to_path_info(file_objs[0].hash_info.value))

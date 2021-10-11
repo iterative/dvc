@@ -161,7 +161,7 @@ def _stage_tree(path_info, fs, fs_info, name, odb=None, **kwargs):
             # NOTE: loaded entries are naive objects with hash_infos but no
             # path_info. For staging trees, obj.path_info should be relative
             # to the staging src `path_info` and src fs
-            for key, entry in tree:
+            for key, _, entry in tree:
                 entry.fs = fs
                 entry.path_info = path_info.joinpath(*key)
             return tree
@@ -235,7 +235,7 @@ def _load_from_state(odb, staging, path_info, fs, name):
                     check(odb_, obj, check_hash=False)
                     if isinstance(obj, Tree):
                         obj.hash_info.nfiles = len(obj)
-                        for key, entry in obj:
+                        for key, _, entry in obj:
                             entry.fs = fs
                             entry.path_info = path_info.joinpath(*key)
                     else:

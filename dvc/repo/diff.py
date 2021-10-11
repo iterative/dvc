@@ -164,7 +164,7 @@ def _output_paths(repo, targets):
 
 
 def _dir_output_paths(path_info, obj, targets=None):
-    for key, entry_obj in obj:
+    for key, _, entry_obj in obj:
         fname = path_info.joinpath(*key)
         if targets is None or any(
             fname.isin_or_eq(target) for target in targets

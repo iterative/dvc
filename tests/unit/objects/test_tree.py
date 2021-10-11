@@ -19,10 +19,10 @@ from dvc.objects.tree import Tree, _merge
                 {"md5": "456", "relpath": "bar"},
             ],
             {
-                ("zzz",): HashFile(None, None, HashInfo("md5", "def")),
-                ("foo",): HashFile(None, None, HashInfo("md5", "123")),
-                ("bar",): HashFile(None, None, HashInfo("md5", "456")),
-                ("aaa",): HashFile(None, None, HashInfo("md5", "abc")),
+                ("zzz",): (None, HashFile(None, None, HashInfo("md5", "def"))),
+                ("foo",): (None, HashFile(None, None, HashInfo("md5", "123"))),
+                ("bar",): (None, HashFile(None, None, HashInfo("md5", "456"))),
+                ("aaa",): (None, HashFile(None, None, HashInfo("md5", "abc"))),
             },
         ),
         (
@@ -38,20 +38,32 @@ from dvc.objects.tree import Tree, _merge
                 {"md5": "pqr", "relpath": "dir/subdir/a"},
             ],
             {
-                ("dir", "b"): HashFile(None, None, HashInfo("md5", "123")),
-                ("dir", "z"): HashFile(None, None, HashInfo("md5", "456")),
-                ("dir", "a"): HashFile(None, None, HashInfo("md5", "789")),
-                ("b",): HashFile(None, None, HashInfo("md5", "abc")),
-                ("a",): HashFile(None, None, HashInfo("md5", "def")),
-                ("z",): HashFile(None, None, HashInfo("md5", "ghi")),
-                ("dir", "subdir", "b"): HashFile(
-                    None, None, HashInfo("md5", "jkl")
+                ("dir", "b"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "123")),
                 ),
-                ("dir", "subdir", "z"): HashFile(
-                    None, None, HashInfo("md5", "mno")
+                ("dir", "z"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "456")),
                 ),
-                ("dir", "subdir", "a"): HashFile(
-                    None, None, HashInfo("md5", "pqr")
+                ("dir", "a"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "789")),
+                ),
+                ("b",): (None, HashFile(None, None, HashInfo("md5", "abc"))),
+                ("a",): (None, HashFile(None, None, HashInfo("md5", "def"))),
+                ("z",): (None, HashFile(None, None, HashInfo("md5", "ghi"))),
+                ("dir", "subdir", "b"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "jkl")),
+                ),
+                ("dir", "subdir", "z"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "mno")),
+                ),
+                ("dir", "subdir", "a"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "pqr")),
                 ),
             },
         ),
@@ -69,26 +81,42 @@ def test_list(lst, trie_dict):
         ({}, 0),
         (
             {
-                ("a",): HashFile(None, None, HashInfo("md5", "abc", size=1)),
-                ("b",): HashFile(None, None, HashInfo("md5", "def", size=2)),
-                ("c",): HashFile(None, None, HashInfo("md5", "ghi", size=3)),
-                ("dir", "foo"): HashFile(
-                    None, None, HashInfo("md5", "jkl", size=4)
+                ("a",): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "abc", size=1)),
                 ),
-                ("dir", "bar"): HashFile(
-                    None, None, HashInfo("md5", "mno", size=5)
+                ("b",): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "def", size=2)),
                 ),
-                ("dir", "baz"): HashFile(
-                    None, None, HashInfo("md5", "pqr", size=6)
+                ("c",): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "ghi", size=3)),
+                ),
+                ("dir", "foo"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "jkl", size=4)),
+                ),
+                ("dir", "bar"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "mno", size=5)),
+                ),
+                ("dir", "baz"): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "pqr", size=6)),
                 ),
             },
             21,
         ),
         (
             {
-                ("a",): HashFile(None, None, HashInfo("md5", "abc", size=1)),
-                ("b",): HashFile(
-                    None, None, HashInfo("md5", "def", size=None)
+                ("a",): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "abc", size=1)),
+                ),
+                ("b",): (
+                    None,
+                    HashFile(None, None, HashInfo("md5", "def", size=None)),
                 ),
             },
             None,
@@ -137,22 +165,24 @@ def test_nfiles(trie_dict, nfiles):
     [
         {},
         {
-            ("a",): HashInfo("md5", "abc"),
-            ("b",): HashInfo("md5", "def"),
-            ("c",): HashInfo("md5", "ghi"),
-            ("dir", "foo"): HashInfo("md5", "jkl"),
-            ("dir", "bar"): HashInfo("md5", "mno"),
-            ("dir", "baz"): HashInfo("md5", "pqr"),
-            ("dir", "subdir", "1"): HashInfo("md5", "stu"),
-            ("dir", "subdir", "2"): HashInfo("md5", "vwx"),
-            ("dir", "subdir", "3"): HashInfo("md5", "yz"),
+            ("a",): (None, HashInfo("md5", "abc")),
+            ("b",): (None, HashInfo("md5", "def")),
+            ("c",): (None, HashInfo("md5", "ghi")),
+            ("dir", "foo"): (None, HashInfo("md5", "jkl")),
+            ("dir", "bar"): (None, HashInfo("md5", "mno")),
+            ("dir", "baz"): (None, HashInfo("md5", "pqr")),
+            ("dir", "subdir", "1"): (None, HashInfo("md5", "stu")),
+            ("dir", "subdir", "2"): (None, HashInfo("md5", "vwx")),
+            ("dir", "subdir", "3"): (None, HashInfo("md5", "yz")),
         },
     ],
 )
 def test_items(trie_dict):
     tree = Tree(None, None, None)
     tree._dict = trie_dict
-    assert list(tree) == list(trie_dict.items())
+    assert list(tree) == [
+        (key, value[0], value[1]) for key, value in trie_dict.items()
+    ]
 
 
 @pytest.mark.parametrize(

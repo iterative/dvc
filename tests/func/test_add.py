@@ -112,7 +112,7 @@ def test_add_directory(tmp_dir, dvc):
     hash_info = stage.outs[0].hash_info
 
     obj = load(dvc.odb.local, hash_info)
-    for key, _ in obj:
+    for key, _, _ in obj:
         for part in key:
             assert "\\" not in part
 
