@@ -591,13 +591,10 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
             GIT_MERGE_ANALYSIS_NONE,
             GIT_MERGE_ANALYSIS_UNBORN,
             GIT_MERGE_ANALYSIS_UP_TO_DATE,
+            GIT_MERGE_PREFERENCE_FASTFORWARD_ONLY,
+            GIT_MERGE_PREFERENCE_NO_FASTFORWARD,
             GitError,
         )
-
-        # TODO: these enum fields are not currently importable in pygit
-        # see https://github.com/libgit2/pygit2/pull/1071
-        GIT_MERGE_PREFERENCE_NO_FASTFORWARD = 1 << 0
-        GIT_MERGE_PREFERENCE_FASTFORWARD_ONLY = 2 << 1
 
         if commit and squash:
             raise SCMError("Cannot merge with 'squash' and 'commit'")
