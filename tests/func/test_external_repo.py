@@ -1,5 +1,5 @@
 import os
-from unittest.mock import ANY, patch
+from unittest.mock import ANY
 
 from dvc.external_repo import CLONES, external_repo
 from dvc.fs.local import LocalFileSystem
