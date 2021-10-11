@@ -16,7 +16,6 @@ class GSFileSystem(CallbackMixin, ObjectFSWrapper):
     REQUIRES = {"gcsfs": "gcsfs"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
-    TRAVERSE_PREFIX_LEN = 2
 
     def _prepare_credentials(self, **config):
         login_info = {"consistency": None}
