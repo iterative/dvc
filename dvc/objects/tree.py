@@ -51,11 +51,6 @@ class Tree(HashFile):
             _, self.hash_info = get_file_hash(path_info, memfs, "md5")
             assert self.hash_info.value
             self.hash_info.value += ".dir"
-        try:
-            self.hash_info.size = sum(obj.size for _, _, obj in self)
-        except TypeError:
-            self.hash_info.size = None
-        self.hash_info.nfiles = len(self)
 
     def __len__(self):
         return len(self._dict)
@@ -165,7 +160,7 @@ class Tree(HashFile):
         return tree
 
 
-def _get_dir_size(odb, tree):
+def du(odb, tree):
     try:
         return sum(
             odb.fs.getsize(odb.hash_to_path_info(obj.hash_info.value))
@@ -234,7 +229,4 @@ def merge(odb, ancestor_info, our_info, their_info):
         merged.add(key, meta, obj)
     merged.digest()
 
-    odb.add(merged.path_info, merged.fs, merged.hash_info)
-    hash_info = merged.hash_info
-    hash_info.size = _get_dir_size(odb, merged)
-    return hash_info
+    return merged

@@ -627,11 +627,11 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     clean_staging()
 
     fs = RepoFileSystem(repo=dvc)
-    _, _, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
+    _, meta, obj = stage(dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "ba75a2162ca9c29acecb7957105a0bc2.dir"
     )
-    assert obj.hash_info.nfiles == 3
+    assert meta.nfiles == 3
 
 
 @pytest.mark.parametrize("traverse_subrepos", [True, False])

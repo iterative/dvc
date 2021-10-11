@@ -28,10 +28,6 @@ class HashFile:
         self.hash_info = hash_info
         self.name = name
 
-    @property
-    def size(self):
-        return self.hash_info.size
-
     def __len__(self):
         return 1
 

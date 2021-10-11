@@ -4,6 +4,7 @@ import pytest
 
 from dvc.hash_info import HashInfo
 from dvc.objects.file import HashFile
+from dvc.objects.meta import Meta
 from dvc.objects.tree import Tree, _merge
 
 
@@ -76,79 +77,24 @@ def test_list(lst, trie_dict):
 
 
 @pytest.mark.parametrize(
-    "trie_dict, size",
-    [
-        ({}, 0),
-        (
-            {
-                ("a",): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "abc", size=1)),
-                ),
-                ("b",): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "def", size=2)),
-                ),
-                ("c",): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "ghi", size=3)),
-                ),
-                ("dir", "foo"): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "jkl", size=4)),
-                ),
-                ("dir", "bar"): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "mno", size=5)),
-                ),
-                ("dir", "baz"): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "pqr", size=6)),
-                ),
-            },
-            21,
-        ),
-        (
-            {
-                ("a",): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "abc", size=1)),
-                ),
-                ("b",): (
-                    None,
-                    HashFile(None, None, HashInfo("md5", "def", size=None)),
-                ),
-            },
-            None,
-        ),
-    ],
-)
-def test_size(trie_dict, size):
-    tree = Tree(None, None, None)
-    tree._dict = trie_dict
-    tree.digest()
-    assert tree.size == size
-
-
-@pytest.mark.parametrize(
     "trie_dict, nfiles",
     [
         ({}, 0),
         (
             {
-                ("a",): HashInfo("md5", "abc", size=1),
-                ("b",): HashInfo("md5", "def", size=2),
-                ("c",): HashInfo("md5", "ghi", size=3),
-                ("dir", "foo"): HashInfo("md5", "jkl", size=4),
-                ("dir", "bar"): HashInfo("md5", "mno", size=5),
-                ("dir", "baz"): HashInfo("md5", "pqr", size=6),
+                ("a",): (Meta(size=1), HashInfo("md5", "abc")),
+                ("b",): (Meta(size=2), HashInfo("md5", "def")),
+                ("c",): (Meta(size=3), HashInfo("md5", "ghi")),
+                ("dir", "foo"): (Meta(size=4), HashInfo("md5", "jkl")),
+                ("dir", "bar"): (Meta(size=5), HashInfo("md5", "mno")),
+                ("dir", "baz"): (Meta(size=6), HashInfo("md5", "pqr")),
             },
             6,
         ),
         (
             {
-                ("a",): HashInfo("md5", "abc", size=1),
-                ("b",): HashInfo("md5", "def", size=None),
+                ("a",): (Meta(size=1), HashInfo("md5", "abc")),
+                ("b",): (Meta(), HashInfo("md5", "def")),
             },
             2,
         ),
