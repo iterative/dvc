@@ -317,10 +317,11 @@ def test_add_filtered_files_in_dir(
             "checksum",
             "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
         ),
-        (
+        pytest.param(
             pytest.lazy_fixture("webhdfs"),
             "checksum",
             "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e00000000",
+            marks=pytest.mark.xfail(reason="#6765"),
         ),
     ],
     indirect=["workspace"],
