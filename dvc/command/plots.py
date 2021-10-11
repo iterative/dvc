@@ -184,8 +184,8 @@ def add_parser(subparsers, parent_parser):
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
     PLOTS_MODIFY_HELP = (
-        "Modify display properties of plot metrics files. "
-        "Does not affect image type plots."
+        "Modify display properties of data-series plots "
+        "(has no effect on image-type plots)."
     )
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
