@@ -655,7 +655,6 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
                         tree,
                         [self.repo.head.target, obj.id],
                     )
-                    self.repo.state_cleanup()
                     return str(merge_commit)
 
                 # --squash merge:
