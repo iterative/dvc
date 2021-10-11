@@ -30,7 +30,6 @@ class ImageRenderer(Renderer):
         img_path = os.path.join(
             static, f"{revision}_{filename.replace(os.sep, '_')}"
         )
-        rel_img_path = relpath(img_path, page_dir_path)
         with open(img_path, "wb") as fd:
             fd.write(image_data)
         return """
@@ -38,7 +37,7 @@ class ImageRenderer(Renderer):
             <p>{title}</p>
             <img src="{src}">
         </div>""".format(
-            title=revision, src=rel_img_path
+            title=revision, src=(relpath(img_path, page_dir_path))
         )
 
     def _convert(self, path: "StrPath"):

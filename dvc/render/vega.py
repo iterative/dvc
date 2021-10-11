@@ -28,7 +28,7 @@ class PlotDataStructureError(DvcException):
     def __init__(self):
         super().__init__(
             "Plot data extraction failed. Please see "
-            "https://man.dvc.org/plot for supported data formats."
+            "https://man.dvc.org/plots for supported data formats."
         )
 
 
