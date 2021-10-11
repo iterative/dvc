@@ -36,10 +36,8 @@ class SSHFileSystem(FSSpecWrapper):
 
     def _with_bucket(self, path):
         if isinstance(path, self.PATH_CLS):
-            path_str = path.path
-        else:
-            path_str = super()._with_bucket(path)
-        return path_str
+            return path.path
+        return super()._with_bucket(path)
 
     def _prepare_credentials(self, **config):
         self.CAN_TRAVERSE = True
