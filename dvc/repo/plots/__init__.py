@@ -3,7 +3,7 @@ import io
 import logging
 import os
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Generator, List, Optional
 
 from funcy import cached_property, first, project
 
@@ -47,10 +47,10 @@ class Plots:
         recursive: bool = False,
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
-    ) -> Dict[str, Dict]:
+    ) -> Generator[Dict, None, None]:
         """Collects all props and data for plots.
 
-        Returns a structure like:
+        Generator yielding a structure like:
             {rev: {plots.csv: {
                 props: {x: ..., "header": ..., ...},
                 data: "unstructured data (as stored for given extension)",
@@ -59,30 +59,20 @@ class Plots:
         from dvc.utils.collections import ensure_list
 
         targets = ensure_list(targets)
-        data: Dict[str, Dict] = {}
         for rev in self.repo.brancher(revs=revs):
             # .brancher() adds unwanted workspace
             if revs is not None and rev not in revs:
                 continue
             rev = rev or "workspace"
-            data[rev] = self._collect_from_revision(
-                revision=rev,
-                targets=targets,
-                recursive=recursive,
-                onerror=onerror,
-                props=props,
-            )
-
-        errored = errored_revisions(data)
-        if errored:
-            from dvc.ui import ui
-
-            ui.error_write(
-                "DVC failed to load some plots for following revisions: "
-                f"'{', '.join(errored)}'."
-            )
-
-        return data
+            yield {
+                rev: self._collect_from_revision(
+                    revision=rev,
+                    targets=targets,
+                    recursive=recursive,
+                    onerror=onerror,
+                    props=props,
+                )
+            }
 
     @error_handler
     def _collect_from_revision(
@@ -135,9 +125,22 @@ class Plots:
         if onerror is None:
             onerror = onerror_collect
 
-        return self.collect(
+        data: Dict[str, Dict] = {}
+        for rev_data in self.collect(
             targets, revs, recursive, onerror=onerror, props=props
-        )
+        ):
+            data.update(rev_data)
+
+        errored = errored_revisions(data)
+        if errored:
+            from dvc.ui import ui
+
+            ui.error_write(
+                "DVC failed to load some plots for following revisions: "
+                f"'{', '.join(errored)}'."
+            )
+
+        return data
 
     def diff(self, *args, **kwargs):
         from .diff import diff
