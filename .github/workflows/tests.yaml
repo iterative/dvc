@@ -21,6 +21,8 @@ jobs:
       with:
         access_token: ${{ github.token }}
     - uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.2.2
       with:
@@ -50,6 +52,8 @@ jobs:
             pyv: "3.10"
     steps:
     - uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Set up Python
       uses: actions/setup-python@v2.2.2
       with:

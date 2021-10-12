@@ -1,3 +1,17 @@
+[build-system]
+requires = [
+    "setuptools>=58.2",
+    "wheel",
+    "setuptools_scm[toml]>=6.3.1",
+    # Prevents pkg_resources import in entry point script,
+    # see https://github.com/ninjaaron/fast-entry_points.
+    # This saves about 200 ms on startup time for non-wheel installs.
+    "fastentrypoints>=0.12"
+]
+
+[tool.setuptools_scm]
+write_to = "dvc/_version.py"
+
 [tool.black]
 line-length = 79
 include = '\.pyi?$'

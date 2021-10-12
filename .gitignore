@@ -38,3 +38,4 @@ scripts/ci/gcp-creds.json
 .gcp-creds.json
 
 *~
+/dvc/_version.py

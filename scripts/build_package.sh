@@ -10,5 +10,5 @@ fi
 
 echo 'PKG = "pip"' >dvc/utils/build.py
 
-python setup.py sdist
-python setup.py bdist_wheel
+python -m pip install -U build setuptools>=58.2
+python -m build --sdist --wheel --outdir dist/
