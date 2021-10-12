@@ -12,8 +12,6 @@ from dvc.utils import fix_env, is_binary
 
 logger = logging.getLogger(__name__)
 
-CREATE_NO_WINDOW = 0x08000000  # only available since Python 3.7 in subprocess.
-
 
 def _popen(cmd, **kwargs):
     prefix = [sys.executable]
@@ -28,6 +26,7 @@ def _popen(cmd, **kwargs):
 def _spawn_windows(cmd, env):
     from subprocess import (
         CREATE_NEW_PROCESS_GROUP,
+        CREATE_NO_WINDOW,
         STARTF_USESHOWWINDOW,
         STARTUPINFO,
     )
