@@ -105,7 +105,7 @@ jobs:
       run: >-
         python -m tests -n=4
         --cov-report=xml --cov-report=term
-        --all ${{ env.extra_test_args }}
+        ${{ env.extra_test_args }}
     - name: upload coverage report
       uses: codecov/codecov-action@v2.1.0
       with:
