@@ -16,7 +16,7 @@ def index(dvc, local_remote, mocker):
 def test_indexed_on_status(tmp_dir, dvc, index):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz_hash = bar.obj.trie.get(("baz",))[1].hash_info
+    baz_hash = bar.obj.trie.get(("baz",))[1]
     clean_staging()
     dvc.push()
     index.clear()
@@ -30,7 +30,7 @@ def test_indexed_on_status(tmp_dir, dvc, index):
 def test_indexed_on_push(tmp_dir, dvc, index):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz_hash = bar.obj.trie.get(("baz",))[1].hash_info
+    baz_hash = bar.obj.trie.get(("baz",))[1]
     clean_staging()
 
     dvc.push()
@@ -60,8 +60,8 @@ def test_clear_on_download_err(tmp_dir, dvc, index, mocker):
     out = tmp_dir.dvc_gen({"dir": {"foo": "foo content"}})[0].outs[0]
     dvc.push()
 
-    for _, _, entry in out.obj:
-        remove(dvc.odb.local.get(entry.hash_info).path_info)
+    for _, _, oid in out.obj:
+        remove(dvc.odb.local.get(oid).path_info)
     remove(out.path_info)
 
     assert list(index.hashes())

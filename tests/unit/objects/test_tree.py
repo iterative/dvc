@@ -3,7 +3,6 @@ from operator import itemgetter
 import pytest
 
 from dvc.hash_info import HashInfo
-from dvc.objects.file import HashFile
 from dvc.objects.meta import Meta
 from dvc.objects.tree import Tree, _merge
 
@@ -20,10 +19,10 @@ from dvc.objects.tree import Tree, _merge
                 {"md5": "456", "relpath": "bar"},
             ],
             {
-                ("zzz",): (None, HashFile(None, None, HashInfo("md5", "def"))),
-                ("foo",): (None, HashFile(None, None, HashInfo("md5", "123"))),
-                ("bar",): (None, HashFile(None, None, HashInfo("md5", "456"))),
-                ("aaa",): (None, HashFile(None, None, HashInfo("md5", "abc"))),
+                ("zzz",): (None, HashInfo("md5", "def")),
+                ("foo",): (None, HashInfo("md5", "123")),
+                ("bar",): (None, HashInfo("md5", "456")),
+                ("aaa",): (None, HashInfo("md5", "abc")),
             },
         ),
         (
@@ -41,30 +40,30 @@ from dvc.objects.tree import Tree, _merge
             {
                 ("dir", "b"): (
                     None,
-                    HashFile(None, None, HashInfo("md5", "123")),
+                    HashInfo("md5", "123"),
                 ),
                 ("dir", "z"): (
                     None,
-                    HashFile(None, None, HashInfo("md5", "456")),
+                    HashInfo("md5", "456"),
                 ),
                 ("dir", "a"): (
                     None,
-                    HashFile(None, None, HashInfo("md5", "789")),
+                    HashInfo("md5", "789"),
                 ),
-                ("b",): (None, HashFile(None, None, HashInfo("md5", "abc"))),
-                ("a",): (None, HashFile(None, None, HashInfo("md5", "def"))),
-                ("z",): (None, HashFile(None, None, HashInfo("md5", "ghi"))),
+                ("b",): (None, HashInfo("md5", "abc")),
+                ("a",): (None, HashInfo("md5", "def")),
+                ("z",): (None, HashInfo("md5", "ghi")),
                 ("dir", "subdir", "b"): (
                     None,
-                    HashFile(None, None, HashInfo("md5", "jkl")),
+                    HashInfo("md5", "jkl"),
                 ),
                 ("dir", "subdir", "z"): (
                     None,
-                    HashFile(None, None, HashInfo("md5", "mno")),
+                    HashInfo("md5", "mno"),
                 ),
                 ("dir", "subdir", "a"): (
                     None,
-                    HashFile(None, None, HashInfo("md5", "pqr")),
+                    HashInfo("md5", "pqr"),
                 ),
             },
         ),

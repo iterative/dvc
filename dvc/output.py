@@ -623,12 +623,11 @@ class Output:
             dvcignore=self.dvcignore,
         )
         save_obj = save_obj.filter(prefix)
-        checkout_obj = save_obj.get(prefix)
+        checkout_obj = save_obj.get(self.odb, prefix)
         otransfer(
             staging,
             self.odb,
-            {save_obj.hash_info}
-            | {entry.hash_info for _, _, entry in save_obj},
+            {save_obj.hash_info} | {oid for _, _, oid in save_obj},
             shallow=True,
             move=True,
         )
@@ -719,7 +718,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.get(prefix)
+            obj = obj.get(self.odb, prefix)
 
         return obj
 
@@ -956,9 +955,9 @@ class Output:
         obj.hash_info.obj_name = name
         oids = {obj.hash_info}
         if isinstance(obj, Tree):
-            for key, _, entry_obj in obj:
-                entry_obj.hash_info.obj_name = self.fs.sep.join([name, *key])
-                oids.add(entry_obj.hash_info)
+            for key, _, oid in obj:
+                oid.obj_name = self.fs.sep.join([name, *key])
+                oids.add(oid)
         return oids
 
     def get_used_external(

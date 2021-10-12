@@ -90,6 +90,7 @@ def _stage_file(path_info, fs, name, odb=None, upload_odb=None, dry_run=False):
     else:
         odb.add(path_info, fs, hash_info, move=False)
         obj = odb.get(hash_info)
+
     return path_info, meta, obj
 
 
@@ -146,7 +147,7 @@ def _build_tree(path_info, fs, name, **kwargs):
         #
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
-        tree.add(file_info.relative_to(path_info).parts, meta, obj)
+        tree.add(file_info.relative_to(path_info).parts, meta, obj.hash_info)
 
         tree_meta.size += meta.size
         tree_meta.nfiles += 1
@@ -162,12 +163,6 @@ def _stage_tree(path_info, fs, fs_info, name, odb=None, **kwargs):
         hash_info = HashInfo(name, value)
         try:
             tree = Tree.load(odb, hash_info)
-            # NOTE: loaded entries are naive objects with hash_infos but no
-            # path_info. For staging trees, obj.path_info should be relative
-            # to the staging src `path_info` and src fs
-            for key, _, entry in tree:
-                entry.fs = fs
-                entry.path_info = path_info.joinpath(*key)
             return Meta(nfiles=len(tree)), tree
         except FileNotFoundError:
             pass
@@ -239,12 +234,6 @@ def _load_from_state(odb, staging, path_info, fs, name):
                     check(odb_, obj, check_hash=False)
                     if isinstance(obj, Tree):
                         meta.nfiles = len(obj)
-                        for key, _, entry in obj:
-                            entry.fs = fs
-                            entry.path_info = path_info.joinpath(*key)
-                    else:
-                        obj.fs = fs
-                        obj.path_info = path_info
                     assert obj.hash_info.name == name
                     return odb_, meta, obj
                 except (ObjectFormatError, FileNotFoundError):
