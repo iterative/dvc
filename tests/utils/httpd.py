@@ -1,6 +1,5 @@
 import hashlib
 import os
-import sys
 import threading
 from contextlib import contextmanager
 from http import HTTPStatus
@@ -11,39 +10,7 @@ from RangeHTTPServer import RangeRequestHandler
 
 class TestRequestHandler(RangeRequestHandler):
     def __init__(self, *args, **kwargs):
-        # NOTE: `directory` was introduced in 3.7
-        if sys.version_info < (3, 7):
-            self.directory = kwargs.pop("directory", None) or os.getcwd()
         super().__init__(*args, **kwargs)
-
-    def translate_path(self, path):
-        import posixpath
-        import urllib
-
-        # NOTE: `directory` was introduced in 3.7
-        if sys.version_info >= (3, 7):
-            return super().translate_path(path)
-
-        path = path.split("?", 1)[0]
-        path = path.split("#", 1)[0]
-        # Don't forget explicit trailing slash when normalizing. Issue17324
-        trailing_slash = path.rstrip().endswith("/")
-        try:
-            path = urllib.parse.unquote(path, errors="surrogatepass")
-        except UnicodeDecodeError:
-            path = urllib.parse.unquote(path)
-        path = posixpath.normpath(path)
-        words = path.split("/")
-        words = filter(None, words)
-        path = self.directory
-        for word in words:
-            if os.path.dirname(word) or word in (os.curdir, os.pardir):
-                # Ignore components that are not a simple file/directory name
-                continue
-            path = os.path.join(path, word)
-        if trailing_slash:
-            path += "/"
-        return path
 
     def end_headers(self):
         # RangeRequestHandler only sends Accept-Ranges header if Range header
