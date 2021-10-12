@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
+    from dvc.hash_info import HashInfo
+
     from .file import HashFile
 
 ADD = "add"
@@ -14,22 +16,19 @@ UNCHANGED = "unchanged"
 class TreeEntry:
     in_cache: bool
     key: Tuple[str]
-    obj: Optional["HashFile"] = field(default=None)
+    oid: Optional["HashInfo"] = field(default=None)
 
     def __bool__(self):
-        return bool(self.obj)
+        return bool(self.oid)
 
     def __eq__(self, other):
         if not isinstance(other, TreeEntry):
             return False
 
-        if self.key != other.key or bool(self.obj) != bool(other.obj):
+        if self.key != other.key:
             return False
 
-        if not self.obj:
-            return False
-
-        return self.obj.hash_info == other.obj.hash_info
+        return self.oid == other.oid
 
 
 @dataclass
@@ -83,39 +82,39 @@ def diff(
         if not obj:
             return []
         return [ROOT] + (
-            [key for key, _ in obj] if isinstance(obj, Tree) else []
+            [key for key, _, _ in obj] if isinstance(obj, Tree) else []
         )
 
     old_keys = set(_get_keys(old))
     new_keys = set(_get_keys(new))
 
-    def _get_obj(obj, key):
+    def _get_oid(obj, key):
         if not obj or key == ROOT:
-            return obj
+            return obj.hash_info if obj else None
 
-        return obj.get(key)
+        entry_obj = obj.get(cache, key)
+        return entry_obj.hash_info if entry_obj else None
 
-    def _in_cache(obj, cache):
-        from . import check
+    def _in_cache(oid, cache):
         from .errors import ObjectFormatError
 
-        if not obj:
+        if not oid:
             return False
 
         try:
-            check(cache, obj)
+            cache.check(oid)
             return True
         except (FileNotFoundError, ObjectFormatError):
             return False
 
     ret = DiffResult()
     for key in old_keys | new_keys:
-        old_obj = _get_obj(old, key)
-        new_obj = _get_obj(new, key)
+        old_oid = _get_oid(old, key)
+        new_oid = _get_oid(new, key)
 
         change = Change(
-            old=TreeEntry(_in_cache(old_obj, cache), key, old_obj),
-            new=TreeEntry(_in_cache(new_obj, cache), key, new_obj),
+            old=TreeEntry(_in_cache(old_oid, cache), key, old_oid),
+            new=TreeEntry(_in_cache(new_oid, cache), key, new_oid),
         )
 
         if change.typ == ADD:
@@ -126,8 +125,8 @@ def diff(
             ret.deleted.append(change)
         else:
             assert change.typ == UNCHANGED
-            if not change.new.in_cache and not isinstance(
-                change.new.obj, Tree
+            if not change.new.in_cache and not (
+                change.new.oid and change.new.oid.isdir
             ):
                 ret.modified.append(change)
             else:

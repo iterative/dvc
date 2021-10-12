@@ -164,6 +164,7 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
         ret = [
             (item.PARAM_PATH, item.def_path),
             *item.hash_info.to_dict().items(),
+            *item.meta.to_dict().items(),
         ]
 
         if item.isexec:

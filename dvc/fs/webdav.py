@@ -84,7 +84,7 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
             return path.path[len(self.prefix) :].lstrip("/")
         return path
 
-    _with_bucket = translate_path_info
+    _with_bucket = translate_path_info  # type: ignore
 
 
 class WebDAVSFileSystem(WebDAVFileSystem):  # pylint:disable=abstract-method

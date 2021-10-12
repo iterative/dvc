@@ -28,10 +28,6 @@ class HashFile:
         self.hash_info = hash_info
         self.name = name
 
-    @property
-    def size(self):
-        return self.hash_info.size
-
     def __len__(self):
         return 1
 
@@ -74,7 +70,7 @@ class HashFile:
     def _check_hash(self, odb):
         from .stage import get_file_hash
 
-        actual = get_file_hash(
+        _, actual = get_file_hash(
             self.path_info, self.fs, self.hash_info.name, odb.state
         )
 

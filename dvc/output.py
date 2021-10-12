@@ -1,7 +1,6 @@
 import logging
 import os
 from collections import defaultdict
-from copy import copy
 from typing import TYPE_CHECKING, Dict, Optional, Set, Type
 from urllib.parse import urlparse
 
@@ -26,6 +25,7 @@ from .hash_info import HashInfo
 from .istextfile import istextfile
 from .objects import Tree
 from .objects.errors import ObjectFormatError
+from .objects.meta import Meta
 from .objects.stage import stage as ostage
 from .objects.transfer import transfer as otransfer
 from .scheme import Schemes
@@ -316,6 +316,7 @@ class Output:
         # By resolved path, which contains actual location,
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
+        self.meta = Meta.from_dict(info)
         self.hash_info = HashInfo.from_dict(info)
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
@@ -415,7 +416,7 @@ class Output:
         else:
             odb = self.repo.odb.local
             name = self.fs.PARAM_CHECKSUM
-        _, obj = ostage(
+        _, _, obj = ostage(
             odb,
             self.path_info,
             self.fs,
@@ -537,7 +538,15 @@ class Output:
             self.verify_metric()
 
         if not self.use_cache:
-            self.hash_info = self.get_hash()
+            _, self.meta, obj = ostage(
+                self.repo.odb.local,
+                self.path_info,
+                self.fs,
+                self.fs.PARAM_CHECKSUM,
+                dvcignore=self.dvcignore,
+                dry_run=True,
+            )
+            self.hash_info = obj.hash_info
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
@@ -550,7 +559,7 @@ class Output:
             logger.debug("Output '%s' didn't change. Skipping saving.", self)
             return
 
-        _, self.obj = ostage(
+        _, self.meta, self.obj = ostage(
             self.odb,
             self.path_info,
             self.fs,
@@ -579,7 +588,7 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info)
             else:
-                staging, obj = ostage(
+                staging, _, obj = ostage(
                     self.odb,
                     filter_info or self.path_info,
                     self.fs,
@@ -606,7 +615,7 @@ class Output:
 
     def _commit_granular_dir(self, filter_info):
         prefix = filter_info.relative_to(self.path_info).parts
-        staging, save_obj = ostage(
+        staging, _, save_obj = ostage(
             self.odb,
             self.path_info,
             self.fs,
@@ -614,18 +623,18 @@ class Output:
             dvcignore=self.dvcignore,
         )
         save_obj = save_obj.filter(prefix)
-        checkout_obj = save_obj.get(prefix)
+        checkout_obj = save_obj.get(self.odb, prefix)
         otransfer(
             staging,
             self.odb,
-            {save_obj.hash_info} | {entry.hash_info for _, entry in save_obj},
+            {save_obj.hash_info} | {oid for _, _, oid in save_obj},
             shallow=True,
             move=True,
         )
         return checkout_obj
 
     def dumpd(self):
-        ret = copy(self.hash_info.to_dict())
+        ret = {**self.hash_info.to_dict(), **self.meta.to_dict()}
 
         if self.is_in_repo:
             path = self.path_info.relpath(self.stage.wdir).as_posix()
@@ -709,7 +718,7 @@ class Output:
 
         if filter_info and filter_info != self.path_info:
             prefix = filter_info.relative_to(self.path_info).parts
-            obj = obj.get(prefix)
+            obj = obj.get(self.odb, prefix)
 
         return obj
 
@@ -803,7 +812,7 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        staging, obj = ostage(
+        staging, self.meta, obj = ostage(
             odb,
             from_info,
             from_fs,
@@ -832,7 +841,7 @@ class Output:
             return 1
 
         if not filter_info or filter_info == self.path_info:
-            return self.hash_info.nfiles or 0
+            return self.meta.nfiles or 0
 
         obj = self.get_obj(filter_info=filter_info)
         return len(obj) if obj else 0
@@ -946,9 +955,9 @@ class Output:
         obj.hash_info.obj_name = name
         oids = {obj.hash_info}
         if isinstance(obj, Tree):
-            for key, entry_obj in obj:
-                entry_obj.hash_info.obj_name = self.fs.sep.join([name, *key])
-                oids.add(entry_obj.hash_info)
+            for key, _, oid in obj:
+                oid.obj_name = self.fs.sep.join([name, *key])
+                oids.add(oid)
         return oids
 
     def get_used_external(
@@ -981,8 +990,8 @@ class Output:
 
         ignored = [
             self.fs.PARAM_CHECKSUM,
-            HashInfo.PARAM_SIZE,
-            HashInfo.PARAM_NFILES,
+            Meta.PARAM_SIZE,
+            Meta.PARAM_NFILES,
         ]
 
         for opt in ignored:
@@ -1000,7 +1009,7 @@ class Output:
             )
 
     def merge(self, ancestor, other):
-        from dvc.objects.tree import merge
+        from dvc.objects.tree import du, merge
 
         assert other
 
@@ -1013,8 +1022,15 @@ class Output:
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        self.hash_info = merge(
+        merged = merge(
             self.odb, ancestor_info, self.hash_info, other.hash_info
+        )
+        self.odb.add(merged.path_info, merged.fs, merged.hash_info)
+
+        self.hash_info = merged.hash_info
+        self.meta = Meta(
+            size=du(self.odb, merged),
+            nfiles=len(merged),
         )
 
     @property
@@ -1040,8 +1056,8 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CHECKPOINT: bool,
-    HashInfo.PARAM_SIZE: int,
-    HashInfo.PARAM_NFILES: int,
+    Meta.PARAM_SIZE: int,
+    Meta.PARAM_NFILES: int,
     Output.PARAM_ISEXEC: bool,
 }
 

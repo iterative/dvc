@@ -7,13 +7,8 @@ HASH_DIR_SUFFIX = ".dir"
 
 @dataclass
 class HashInfo:
-    PARAM_SIZE = "size"
-    PARAM_NFILES = "nfiles"
-
     name: Optional[str]
     value: Optional[str]
-    size: Optional[int] = field(default=None, compare=False)
-    nfiles: Optional[int] = field(default=None, compare=False)
     obj_name: Optional[str] = field(default=None, compare=False)
 
     def __bool__(self):
@@ -27,15 +22,11 @@ class HashInfo:
 
     @classmethod
     def from_dict(cls, d):
-        _d = d.copy() if d else {}
-        size = _d.pop(cls.PARAM_SIZE, None)
-        nfiles = _d.pop(cls.PARAM_NFILES, None)
-
-        if not _d:
+        if not d:
             return cls(None, None)
 
-        ((name, value),) = _d.items()
-        return cls(name, value, size=size, nfiles=nfiles)
+        ((name, value),) = d.items()
+        return cls(name, value)
 
     def to_dict(self):
         ret = OrderedDict()
@@ -43,10 +34,6 @@ class HashInfo:
             return ret
 
         ret[self.name] = self.value
-        if self.size is not None:
-            ret[self.PARAM_SIZE] = self.size
-        if self.nfiles is not None:
-            ret[self.PARAM_NFILES] = self.nfiles
         return ret
 
     @property

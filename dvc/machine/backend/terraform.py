@@ -25,7 +25,7 @@ class TerraformBackend(terraform.TerraformBackend, BaseMachineBackend):
     def get_sshfs(  # pylint: disable=unused-argument
         self, name: Optional[str] = None, **config
     ) -> Iterator["SSHFileSystem"]:
-        resource = self._default_resource(name)
+        resource = self.default_resource(name)
         with TerraformProviderIterative.pemfile(resource) as pem:
             fs = SSHFileSystem(
                 host=resource["instance_ip"],

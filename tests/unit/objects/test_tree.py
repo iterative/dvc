@@ -3,7 +3,7 @@ from operator import itemgetter
 import pytest
 
 from dvc.hash_info import HashInfo
-from dvc.objects.file import HashFile
+from dvc.objects.meta import Meta
 from dvc.objects.tree import Tree, _merge
 
 
@@ -19,10 +19,10 @@ from dvc.objects.tree import Tree, _merge
                 {"md5": "456", "relpath": "bar"},
             ],
             {
-                ("zzz",): HashFile(None, None, HashInfo("md5", "def")),
-                ("foo",): HashFile(None, None, HashInfo("md5", "123")),
-                ("bar",): HashFile(None, None, HashInfo("md5", "456")),
-                ("aaa",): HashFile(None, None, HashInfo("md5", "abc")),
+                ("zzz",): (None, HashInfo("md5", "def")),
+                ("foo",): (None, HashInfo("md5", "123")),
+                ("bar",): (None, HashInfo("md5", "456")),
+                ("aaa",): (None, HashInfo("md5", "abc")),
             },
         ),
         (
@@ -38,20 +38,32 @@ from dvc.objects.tree import Tree, _merge
                 {"md5": "pqr", "relpath": "dir/subdir/a"},
             ],
             {
-                ("dir", "b"): HashFile(None, None, HashInfo("md5", "123")),
-                ("dir", "z"): HashFile(None, None, HashInfo("md5", "456")),
-                ("dir", "a"): HashFile(None, None, HashInfo("md5", "789")),
-                ("b",): HashFile(None, None, HashInfo("md5", "abc")),
-                ("a",): HashFile(None, None, HashInfo("md5", "def")),
-                ("z",): HashFile(None, None, HashInfo("md5", "ghi")),
-                ("dir", "subdir", "b"): HashFile(
-                    None, None, HashInfo("md5", "jkl")
+                ("dir", "b"): (
+                    None,
+                    HashInfo("md5", "123"),
                 ),
-                ("dir", "subdir", "z"): HashFile(
-                    None, None, HashInfo("md5", "mno")
+                ("dir", "z"): (
+                    None,
+                    HashInfo("md5", "456"),
                 ),
-                ("dir", "subdir", "a"): HashFile(
-                    None, None, HashInfo("md5", "pqr")
+                ("dir", "a"): (
+                    None,
+                    HashInfo("md5", "789"),
+                ),
+                ("b",): (None, HashInfo("md5", "abc")),
+                ("a",): (None, HashInfo("md5", "def")),
+                ("z",): (None, HashInfo("md5", "ghi")),
+                ("dir", "subdir", "b"): (
+                    None,
+                    HashInfo("md5", "jkl"),
+                ),
+                ("dir", "subdir", "z"): (
+                    None,
+                    HashInfo("md5", "mno"),
+                ),
+                ("dir", "subdir", "a"): (
+                    None,
+                    HashInfo("md5", "pqr"),
                 ),
             },
         ),
@@ -64,63 +76,24 @@ def test_list(lst, trie_dict):
 
 
 @pytest.mark.parametrize(
-    "trie_dict, size",
-    [
-        ({}, 0),
-        (
-            {
-                ("a",): HashFile(None, None, HashInfo("md5", "abc", size=1)),
-                ("b",): HashFile(None, None, HashInfo("md5", "def", size=2)),
-                ("c",): HashFile(None, None, HashInfo("md5", "ghi", size=3)),
-                ("dir", "foo"): HashFile(
-                    None, None, HashInfo("md5", "jkl", size=4)
-                ),
-                ("dir", "bar"): HashFile(
-                    None, None, HashInfo("md5", "mno", size=5)
-                ),
-                ("dir", "baz"): HashFile(
-                    None, None, HashInfo("md5", "pqr", size=6)
-                ),
-            },
-            21,
-        ),
-        (
-            {
-                ("a",): HashFile(None, None, HashInfo("md5", "abc", size=1)),
-                ("b",): HashFile(
-                    None, None, HashInfo("md5", "def", size=None)
-                ),
-            },
-            None,
-        ),
-    ],
-)
-def test_size(trie_dict, size):
-    tree = Tree(None, None, None)
-    tree._dict = trie_dict
-    tree.digest()
-    assert tree.size == size
-
-
-@pytest.mark.parametrize(
     "trie_dict, nfiles",
     [
         ({}, 0),
         (
             {
-                ("a",): HashInfo("md5", "abc", size=1),
-                ("b",): HashInfo("md5", "def", size=2),
-                ("c",): HashInfo("md5", "ghi", size=3),
-                ("dir", "foo"): HashInfo("md5", "jkl", size=4),
-                ("dir", "bar"): HashInfo("md5", "mno", size=5),
-                ("dir", "baz"): HashInfo("md5", "pqr", size=6),
+                ("a",): (Meta(size=1), HashInfo("md5", "abc")),
+                ("b",): (Meta(size=2), HashInfo("md5", "def")),
+                ("c",): (Meta(size=3), HashInfo("md5", "ghi")),
+                ("dir", "foo"): (Meta(size=4), HashInfo("md5", "jkl")),
+                ("dir", "bar"): (Meta(size=5), HashInfo("md5", "mno")),
+                ("dir", "baz"): (Meta(size=6), HashInfo("md5", "pqr")),
             },
             6,
         ),
         (
             {
-                ("a",): HashInfo("md5", "abc", size=1),
-                ("b",): HashInfo("md5", "def", size=None),
+                ("a",): (Meta(size=1), HashInfo("md5", "abc")),
+                ("b",): (Meta(), HashInfo("md5", "def")),
             },
             2,
         ),
@@ -137,22 +110,24 @@ def test_nfiles(trie_dict, nfiles):
     [
         {},
         {
-            ("a",): HashInfo("md5", "abc"),
-            ("b",): HashInfo("md5", "def"),
-            ("c",): HashInfo("md5", "ghi"),
-            ("dir", "foo"): HashInfo("md5", "jkl"),
-            ("dir", "bar"): HashInfo("md5", "mno"),
-            ("dir", "baz"): HashInfo("md5", "pqr"),
-            ("dir", "subdir", "1"): HashInfo("md5", "stu"),
-            ("dir", "subdir", "2"): HashInfo("md5", "vwx"),
-            ("dir", "subdir", "3"): HashInfo("md5", "yz"),
+            ("a",): (None, HashInfo("md5", "abc")),
+            ("b",): (None, HashInfo("md5", "def")),
+            ("c",): (None, HashInfo("md5", "ghi")),
+            ("dir", "foo"): (None, HashInfo("md5", "jkl")),
+            ("dir", "bar"): (None, HashInfo("md5", "mno")),
+            ("dir", "baz"): (None, HashInfo("md5", "pqr")),
+            ("dir", "subdir", "1"): (None, HashInfo("md5", "stu")),
+            ("dir", "subdir", "2"): (None, HashInfo("md5", "vwx")),
+            ("dir", "subdir", "3"): (None, HashInfo("md5", "yz")),
         },
     ],
 )
 def test_items(trie_dict):
     tree = Tree(None, None, None)
     tree._dict = trie_dict
-    assert list(tree) == list(trie_dict.items())
+    assert list(tree) == [
+        (key, value[0], value[1]) for key, value in trie_dict.items()
+    ]
 
 
 @pytest.mark.parametrize(

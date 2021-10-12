@@ -203,7 +203,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         clean_staging()
         makedirs(cache_dir)
 
-        staging, obj = stage(
+        staging, _, obj = stage(
             repo.odb.local,
             PathInfo(repo.root_dir) / "dir",
             repo.repo_fs,

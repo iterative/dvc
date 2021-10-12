@@ -258,11 +258,12 @@ def _sort_column(sort_by, metric_names, param_names):
 def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     def _sort(item):
         rev, exp = item
-        tip = exp.get("checkpoint_tip")
+        exp_data = exp.get("data", {})
+        tip = exp_data.get("checkpoint_tip")
         if tip and tip != rev:
             # Sort checkpoint experiments by tip commit
             return _sort((tip, experiments[tip]))
-        data = exp.get(typ, {}).get(sort_path, {})
+        data = exp_data.get(typ, {}).get(sort_path, {}).get("data", {})
         val = flatten(data).get(sort_name)
         return val is None, val
 
@@ -808,7 +809,7 @@ class CmdExperimentsInit(CmdBase):
 
         defaults = {}
         if not self.args.explicit:
-            config = {}  # TODO
+            config = self.repo.config["exp"]
             defaults.update({**self.DEFAULTS, **config})
 
         cli_args = compact(
@@ -838,6 +839,16 @@ class CmdExperimentsInit(CmdBase):
                 targets=[initialized_stage.addressing]
             )
         return 0
+
+
+class RawDefaultsHelpFormatter(
+    argparse.RawDescriptionHelpFormatter,
+    argparse.ArgumentDefaultsHelpFormatter,
+):
+    def _get_help_string(self, action: argparse.Action) -> Optional[str]:
+        if action.default:
+            return super()._get_help_string(action)
+        return action.help
 
 
 def add_parser(subparsers, parent_parser):
@@ -1364,7 +1375,7 @@ def add_parser(subparsers, parent_parser):
         "init",
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_INIT_HELP, "exp/init"),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=RawDefaultsHelpFormatter,
     )
     experiments_init_parser.add_argument(
         "cmd",
@@ -1402,30 +1413,40 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--code",
+        default=CmdExperimentsInit.CODE,
         help="Path to the source file or directory "
         "which your experiments depend",
     )
     experiments_init_parser.add_argument(
         "--data",
+        default=CmdExperimentsInit.DATA,
         help="Path to the data file or directory "
         "which your experiments depend",
     )
     experiments_init_parser.add_argument(
         "--models",
+        default=CmdExperimentsInit.MODELS,
         help="Path to the model file or directory for your experiments",
     )
     experiments_init_parser.add_argument(
-        "--params", help="Path to the parameters file for your experiments"
+        "--params",
+        default=CmdExperimentsInit.DEFAULT_PARAMS,
+        help="Path to the parameters file for your experiments",
     )
     experiments_init_parser.add_argument(
-        "--metrics", help="Path to the metrics file for your experiments"
+        "--metrics",
+        default=CmdExperimentsInit.DEFAULT_METRICS,
+        help="Path to the metrics file for your experiments",
     )
     experiments_init_parser.add_argument(
         "--plots",
+        default=CmdExperimentsInit.PLOTS,
         help="Path to the plots file or directory for your experiments",
     )
     experiments_init_parser.add_argument(
-        "--live", help="Path to log dvclive outputs for your experiments"
+        "--live",
+        help="Path to log dvclive outputs for your experiments "
+        f"(default: {CmdExperimentsInit.DVCLIVE})",
     )
     experiments_init_parser.add_argument(
         "--type",

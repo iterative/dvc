@@ -147,15 +147,15 @@ def s3_server(test_config, docker_compose, docker_services):
 
 
 @pytest.fixture
-def s3(s3_server, s3_fake_creds_file):
+def s3(test_config, s3_server, s3_fake_creds_file):
+    test_config.requires("s3")
     workspace = S3(S3.get_url())
     workspace._s3.create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
     yield workspace
 
 
 @pytest.fixture
-def real_s3(test_config):
-    test_config.requires("s3")
+def real_s3():
     if not S3.should_test():
         pytest.skip("no real s3")
     yield S3(S3.get_url())

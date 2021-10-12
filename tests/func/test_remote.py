@@ -156,16 +156,16 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
     tree.digest()
-    with patch("dvc.objects.stage._get_tree_obj", return_value=tree):
-        _, obj = stage(dvc.odb.local, path_info, dvc.odb.local.fs, "md5")
+    with patch("dvc.objects.stage._stage_tree", return_value=(None, tree)):
+        _, _, obj = stage(dvc.odb.local, path_info, dvc.odb.local.fs, "md5")
         hash1 = obj.hash_info
 
     tree = Tree.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
     tree.digest()
-    with patch("dvc.objects.stage._get_tree_obj", return_value=tree):
-        _, obj = stage(dvc.odb.local, path_info, dvc.odb.local.fs, "md5")
+    with patch("dvc.objects.stage._stage_tree", return_value=(None, tree)):
+        _, _, obj = stage(dvc.odb.local, path_info, dvc.odb.local.fs, "md5")
         hash2 = obj.hash_info
 
     assert hash1 == hash2
@@ -274,7 +274,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     # foo .dir file should be uploaded after bar
     odb = dvc.cloud.get_remote_odb("upstream")
     foo_path = odb.hash_to_path_info(foo.hash_info.value)
-    bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)].hash_info.value)
+    bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)][1].value)
     paths = [args[1] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 
@@ -424,15 +424,15 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
 
     odb = dvc.odb.local
     out = stage.outs[0]
-    file_objs = [entry_obj for _, entry_obj in out.obj]
+    file_objs = [entry_obj for _, _, entry_obj in out.obj]
 
     # remove one of the cache files for directory
-    remove(odb.hash_to_path_info(file_objs[0].hash_info.value))
+    remove(odb.hash_to_path_info(file_objs[0].value))
 
     dvc.push()
     assert not remote_odb.exists(out.hash_info)
-    assert not remote_odb.exists(file_objs[0].hash_info)
-    assert remote_odb.exists(file_objs[1].hash_info)
+    assert not remote_odb.exists(file_objs[0])
+    assert remote_odb.exists(file_objs[1])
 
 
 def test_upload_exists(tmp_dir, dvc, local_remote):
