@@ -83,7 +83,7 @@ def diff(
         if not obj:
             return []
         return [ROOT] + (
-            [key for key, _ in obj] if isinstance(obj, Tree) else []
+            [key for key, _, _ in obj] if isinstance(obj, Tree) else []
         )
 
     old_keys = set(_get_keys(old))

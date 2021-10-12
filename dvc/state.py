@@ -38,7 +38,7 @@ class StateNoop(StateBase):
         pass
 
     def get(self, path_info, fs):  # pylint: disable=unused-argument
-        return None
+        return None, None
 
     def save_link(self, path_info, fs):
         pass
@@ -103,22 +103,24 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             HashInfo or None: hash for the specified path info or None if it
             doesn't exist in the state database.
         """
+        from .objects.meta import Meta
+
         if not isinstance(fs, LocalFileSystem):
-            return None
+            return None, None
 
         try:
             mtime, size = get_mtime_and_size(path_info, fs, self.dvcignore)
         except FileNotFoundError:
-            return None
+            return None, None
 
         inode = get_inode(path_info)
 
         value = self.md5s.get(inode)
 
         if not value or value[0] != mtime or value[1] != str(size):
-            return None
+            return None, None
 
-        return HashInfo("md5", value[2], size=size)
+        return Meta(size=size), HashInfo("md5", value[2])
 
     def save_link(self, path_info, fs):
         """Adds the specified path to the list of links created by dvc. This

@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
-from dvc.hash_info import HashInfo
+from dvc.objects.meta import Meta
 from dvc.output import CHECKSUMS_SCHEMA, Output
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
@@ -26,8 +26,8 @@ SINGLE_STAGE_SCHEMA = {
 DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
     Required("path"): str,
-    HashInfo.PARAM_SIZE: int,
-    HashInfo.PARAM_NFILES: int,
+    Meta.PARAM_SIZE: int,
+    Meta.PARAM_NFILES: int,
     Output.PARAM_ISEXEC: bool,
 }
 LOCK_FILE_STAGE_SCHEMA = {

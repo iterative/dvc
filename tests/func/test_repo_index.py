@@ -272,7 +272,6 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
         HashInfo(
             name="md5",
             value="acbd18db4cc2f85cedef654fccc4a4d8",
-            size=3,
             obj_name="bar",
         ),
         HashInfo(
@@ -283,8 +282,6 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
         HashInfo(
             name="md5",
             value="d28c9e28591aeb7e303dc6772ffa6f6b.dir",
-            size=4,
-            nfiles=1,
             obj_name="dir",
         ),
     ]

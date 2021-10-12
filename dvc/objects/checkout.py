@@ -166,7 +166,7 @@ def _diff(
 ):
     old = None
     try:
-        _, old = stage(
+        _, _, old = stage(
             cache,
             path_info,
             fs,

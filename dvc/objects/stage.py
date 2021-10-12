@@ -14,6 +14,7 @@ from dvc.utils import file_md5
 
 from .db.reference import ReferenceObjectDB
 from .file import HashFile
+from .meta import Meta
 
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
@@ -38,7 +39,8 @@ def _upload_file(path_info, fs, odb, upload_odb):
         upload_odb.fs.upload(stream, tmp_info, desc=path_info.name, total=size)
 
     odb.add(tmp_info, upload_odb.fs, stream.hash_info)
-    return path_info, odb.get(stream.hash_info)
+    meta = Meta(size=size)
+    return path_info, meta, odb.get(stream.hash_info)
 
 
 def _get_file_hash(path_info, fs, name):
@@ -54,31 +56,31 @@ def _get_file_hash(path_info, fs, name):
     else:
         raise NotImplementedError
 
-    return HashInfo(name, hash_value, size=info["size"])
+    meta = Meta(size=info["size"])
+    hash_info = HashInfo(name, hash_value)
+    return meta, hash_info
 
 
 def get_file_hash(path_info, fs, name, state=None):
     if state:
-        hash_info = state.get(  # pylint: disable=assignment-from-none
+        meta, hash_info = state.get(  # pylint: disable=assignment-from-none
             path_info, fs
         )
         if hash_info:
-            return hash_info
+            return meta, hash_info
 
-    hash_info = _get_file_hash(path_info, fs, name)
+    meta, hash_info = _get_file_hash(path_info, fs, name)
 
     if state:
         assert ".dir" not in hash_info.value
         state.save(path_info, fs, hash_info)
 
-    return hash_info
+    return meta, hash_info
 
 
-def _get_file_obj(
-    path_info, fs, name, odb=None, upload_odb=None, dry_run=False
-):
+def _stage_file(path_info, fs, name, odb=None, upload_odb=None, dry_run=False):
     state = odb.state if odb else None
-    hash_info = get_file_hash(path_info, fs, name, state=state)
+    meta, hash_info = get_file_hash(path_info, fs, name, state=state)
     if upload_odb and not dry_run:
         assert odb and name == "md5"
         return _upload_file(path_info, fs, odb, upload_odb)
@@ -88,7 +90,7 @@ def _get_file_obj(
     else:
         odb.add(path_info, fs, hash_info, move=False)
         obj = odb.get(hash_info)
-    return path_info, obj
+    return path_info, meta, obj
 
 
 def _build_objects(
@@ -111,7 +113,7 @@ def _build_objects(
     ) as pbar:
         worker = pbar.wrap_fn(
             partial(
-                _get_file_obj,
+                _stage_file,
                 fs=fs,
                 name=name,
                 **kwargs,
@@ -130,8 +132,9 @@ def _iter_objects(path_info, fs, name, **kwargs):
 def _build_tree(path_info, fs, name, **kwargs):
     from .tree import Tree
 
+    tree_meta = Meta(size=0, nfiles=0)
     tree = Tree(None, None, None)
-    for file_info, obj in _iter_objects(path_info, fs, name, **kwargs):
+    for file_info, meta, obj in _iter_objects(path_info, fs, name, **kwargs):
         if DvcIgnore.DVCIGNORE_FILE == file_info.name:
             raise DvcIgnoreInCollectedDirError(file_info.parent)
 
@@ -143,11 +146,15 @@ def _build_tree(path_info, fs, name, **kwargs):
         #
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
-        tree.add(file_info.relative_to(path_info).parts, obj)
-    return tree
+        tree.add(file_info.relative_to(path_info).parts, meta, obj)
+
+        tree_meta.size += meta.size
+        tree_meta.nfiles += 1
+
+    return tree_meta, tree
 
 
-def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
+def _stage_tree(path_info, fs, fs_info, name, odb=None, **kwargs):
     from .tree import Tree
 
     value = fs_info.get(name)
@@ -158,18 +165,18 @@ def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
             # NOTE: loaded entries are naive objects with hash_infos but no
             # path_info. For staging trees, obj.path_info should be relative
             # to the staging src `path_info` and src fs
-            for key, entry in tree:
+            for key, _, entry in tree:
                 entry.fs = fs
                 entry.path_info = path_info.joinpath(*key)
-            return tree
+            return Meta(nfiles=len(tree)), tree
         except FileNotFoundError:
             pass
 
-    tree = _build_tree(path_info, fs, name, odb=odb, **kwargs)
+    meta, tree = _build_tree(path_info, fs, name, odb=odb, **kwargs)
     state = odb.state if odb and odb.state else None
     hash_info = None
     if state:
-        hash_info = state.get(  # pylint: disable=assignment-from-none
+        _, hash_info = state.get(  # pylint: disable=assignment-from-none
             path_info, fs
         )
     tree.digest(hash_info=hash_info)
@@ -181,7 +188,7 @@ def _get_tree_obj(path_info, fs, fs_info, name, odb=None, **kwargs):
         tree.fs.remove(tree.path_info)
     tree.fs = raw.fs
     tree.path_info = raw.path_info
-    return tree
+    return meta, tree
 
 
 _url_cache: Dict[str, str] = {}
@@ -223,7 +230,7 @@ def _load_from_state(odb, staging, path_info, fs, name):
     from .tree import Tree
 
     state = odb.state
-    hash_info = state.get(path_info, fs)
+    meta, hash_info = state.get(path_info, fs)
     if hash_info:
         for odb_ in (odb, staging):
             if odb_.exists(hash_info):
@@ -231,16 +238,15 @@ def _load_from_state(odb, staging, path_info, fs, name):
                     obj = load(odb_, hash_info)
                     check(odb_, obj, check_hash=False)
                     if isinstance(obj, Tree):
-                        obj.hash_info.nfiles = len(obj)
-                        for key, entry in obj:
+                        meta.nfiles = len(obj)
+                        for key, _, entry in obj:
                             entry.fs = fs
                             entry.path_info = path_info.joinpath(*key)
                     else:
                         obj.fs = fs
                         obj.path_info = path_info
                     assert obj.hash_info.name == name
-                    obj.hash_info.size = hash_info.size
-                    return odb_, obj
+                    return odb_, meta, obj
                 except (ObjectFormatError, FileNotFoundError):
                     pass
     raise FileNotFoundError
@@ -255,7 +261,7 @@ def _stage_external_tree_info(odb, tree, name):
 
     odb.add(tree.path_info, tree.fs, tree.hash_info)
     raw = odb.get(tree.hash_info)
-    hash_info = get_file_hash(raw.path_info, raw.fs, name, state=odb.state)
+    _, hash_info = get_file_hash(raw.path_info, raw.fs, name, state=odb.state)
     tree.path_info = raw.path_info
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name
@@ -273,7 +279,7 @@ def stage(
     upload: bool = False,
     dry_run: bool = False,
     **kwargs,
-) -> Tuple["ObjectDB", "HashFile"]:
+) -> Tuple["ObjectDB", "Meta", "HashFile"]:
     """Stage (prepare) objects from the given path for addition to an ODB.
 
     Returns at tuple of (staging_odb, object) where addition to the ODB can
@@ -298,7 +304,7 @@ def stage(
             pass
 
     if details["type"] == "directory":
-        obj = _get_tree_obj(
+        meta, obj = _stage_tree(
             path_info,
             fs,
             details,
@@ -312,7 +318,7 @@ def stage(
         if name != "md5":
             obj = _stage_external_tree_info(odb, obj, name)
     else:
-        _, obj = _get_file_obj(
+        _, meta, obj = _stage_file(
             path_info,
             fs,
             name,
@@ -324,4 +330,4 @@ def stage(
     if odb and odb.state and obj.hash_info:
         odb.state.save(path_info, fs, obj.hash_info)
 
-    return staging, obj
+    return staging, meta, obj

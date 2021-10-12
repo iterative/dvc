@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 from dvc.hash_info import HashInfo
+from dvc.objects.meta import Meta
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.utils import relpath
@@ -63,7 +64,8 @@ class TestGetFilesNumber(TestDvc):
 
     def test_return_multiple_for_dir(self):
         o = self._get_output()
-        o.hash_info = HashInfo("md5", "12345678.dir", nfiles=2)
+        o.hash_info = HashInfo("md5", "12345678.dir")
+        o.meta = Meta(nfiles=2)
         self.assertEqual(2, o.get_files_number())
 
     @patch.object(Output, "is_dir_checksum", False)

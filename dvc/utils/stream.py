@@ -47,6 +47,4 @@ class HashedStreamReader(io.IOBase):
 
     @property
     def hash_info(self):
-        return HashInfo(
-            self.PARAM_CHECKSUM, self.md5.hexdigest(), size=self.total_read
-        )
+        return HashInfo(self.PARAM_CHECKSUM, self.md5.hexdigest())

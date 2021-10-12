@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def check(odb: "ObjectDB", obj: "HashFile", **kwargs):
     if isinstance(obj, Tree):
-        for _, entry in obj:
+        for _, _, entry in obj:
             odb.check(entry.hash_info, **kwargs)
 
     odb.check(obj.hash_info, **kwargs)

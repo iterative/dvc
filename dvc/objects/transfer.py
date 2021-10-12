@@ -74,7 +74,7 @@ def _do_transfer(
         dir_obj = find_tree_by_obj_id([cache_odb, src], dir_hash)
         assert dir_obj
 
-        entry_ids = {entry.hash_info for _, entry in dir_obj}
+        entry_ids = {entry.hash_info for _, _, entry in dir_obj}
         bound_file_ids = all_file_ids & entry_ids
         all_file_ids -= entry_ids
 
@@ -117,7 +117,7 @@ def _do_transfer(
     # index successfully pushed dirs
     if dest_index:
         for dir_obj in succeeded_dir_objs:
-            file_hashes = {entry.hash_info.value for _, entry in dir_obj}
+            file_hashes = {entry.hash_info.value for _, _, entry in dir_obj}
             logger.debug(
                 "Indexing pushed dir '%s' with '%s' nested files",
                 dir_obj.hash_info,

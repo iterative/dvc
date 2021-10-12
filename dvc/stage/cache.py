@@ -19,13 +19,11 @@ class RunCacheNotFoundError(DvcException):
 
 
 def _get_cache_hash(cache, key=False):
-    from dvc.hash_info import HashInfo
+    from dvc.objects.meta import Meta
 
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]
-    return dict_sha256(
-        cache, exclude=[HashInfo.PARAM_SIZE, HashInfo.PARAM_NFILES]
-    )
+    return dict_sha256(cache, exclude=[Meta.PARAM_SIZE, Meta.PARAM_NFILES])
 
 
 def _can_hash(stage):

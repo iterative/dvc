@@ -7,6 +7,7 @@ from funcy import cached_property, get_in, lcat, once, project
 
 from dvc import dependency, output
 from dvc.hash_info import HashInfo
+from dvc.objects.meta import Meta
 from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
 from dvc.path_info import PathInfo
@@ -69,6 +70,7 @@ class StageLoader(Mapping):
             info = info.copy()
             info.pop("path", None)
             item.isexec = info.pop("isexec", None)
+            item.meta = Meta.from_dict(info)
             item.hash_info = HashInfo.from_dict(info)
 
     @classmethod

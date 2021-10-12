@@ -167,14 +167,12 @@ def test_params_dump(tmp_dir, dvc, run_head):
 def v1_repo_lock(tmp_dir, dvc):
     """Generates a repo having v1 format lockfile"""
     size = 5 if os.name == "nt" else 4
-    hi = HashInfo(
-        name="md5", size=size, value="c157a79031e1c40f85931829bc5fc552"
-    )
+    hi = HashInfo(name="md5", value="c157a79031e1c40f85931829bc5fc552")
     v1_lockdata = {
         "foo": {"cmd": "echo foo"},
         "bar": {
             "cmd": "echo bar>bar.txt",
-            "outs": [{"path": "bar.txt", **hi.to_dict()}],
+            "outs": [{"path": "bar.txt", **hi.to_dict(), "size": size}],
         },
     }
     dvc.run(cmd="echo foo", name="foo", no_exec=True)
