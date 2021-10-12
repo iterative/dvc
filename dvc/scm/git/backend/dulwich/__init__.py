@@ -80,6 +80,13 @@ class DulwichObject(GitObject):
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
 
+    from dulwich import client
+
+    from .asyncssh_vendor import AsyncSSHVendor
+
+    # monkeypatch dulwich client's default SSH vendor to use asyncssh
+    client.get_ssh_vendor = AsyncSSHVendor
+
     # Dulwich progress will return messages equivalent to git CLI,
     # our pbars should just display the messages as formatted by dulwich
     BAR_FMT_NOTOTAL = "{desc}{bar:b}|{postfix[info]} [{elapsed}]"
