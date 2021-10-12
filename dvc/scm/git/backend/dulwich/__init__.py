@@ -23,13 +23,13 @@ from dvc.progress import Tqdm
 from dvc.scm.base import GitAuthError, InvalidRemoteSCMRepo, SCMError
 from dvc.utils import relpath
 
-from ..objects import GitObject
-from .base import BaseGitBackend
+from ...objects import GitObject
+from ..base import BaseGitBackend
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
 
-    from ..objects import GitCommit
+    from ...objects import GitCommit
 
 logger = logging.getLogger(__name__)
 
