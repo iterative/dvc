@@ -17,7 +17,6 @@ from dvc.objects.db.slow_link_detection import (  # type: ignore[attr-defined]
 from dvc.objects.diff import ROOT
 from dvc.objects.diff import diff as odiff
 from dvc.objects.stage import stage
-from dvc.objects.tree import Tree
 from dvc.types import Optional
 
 logger = logging.getLogger(__name__)
@@ -131,8 +130,8 @@ def _checkout_file(
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
-    cache_info = cache.hash_to_path_info(change.new.obj.hash_info.value)
-    if change.old.obj:
+    cache_info = cache.hash_to_path_info(change.new.oid.value)
+    if change.old.oid:
         if relink:
             if fs.iscopy(path_info) and _cache_is_copy(cache, path_info):
                 cache.unprotect(path_info)
@@ -148,7 +147,7 @@ def _checkout_file(
         modified = True
 
     if state:
-        state.save(path_info, fs, change.new.obj.hash_info)
+        state.save(path_info, fs, change.new.oid)
 
     if progress_callback:
         progress_callback(str(path_info))
@@ -213,7 +212,7 @@ def _checkout(
             if change.new.key != ROOT
             else path_info
         )
-        if isinstance(change.new.obj, Tree):
+        if change.new.oid.isdir:
             fs.makedirs(entry_path)
             continue
 

@@ -148,9 +148,7 @@ class RepoDependency(Dependency):
             self._staged_objs[rev] = staged_obj
             used_obj_ids[staging].add(staged_obj.hash_info)
             if isinstance(staged_obj, Tree):
-                used_obj_ids[staging].update(
-                    entry.hash_info for _, _, entry in staged_obj
-                )
+                used_obj_ids[staging].update(oid for _, _, oid in staged_obj)
             return used_obj_ids, staged_obj
 
     def _check_circular_import(self, odb, obj_ids):
@@ -166,9 +164,7 @@ class RepoDependency(Dependency):
             for hash_info in obj_ids:
                 if hash_info.isdir:
                     tree = Tree.load(odb, hash_info)
-                    yield from (
-                        odb.get(entry.hash_info) for _, _, entry in tree
-                    )
+                    yield from (odb.get(oid) for _, _, oid in tree)
                 else:
                     yield odb.get(hash_info)
 

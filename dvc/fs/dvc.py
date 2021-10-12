@@ -58,9 +58,9 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         out.get_dir_cache(remote=remote)
         if out.obj is None:
             raise FileNotFoundError
-        (_, obj) = out.obj.trie.get(key) or (None, None)
-        if obj:
-            return obj.hash_info
+        (_, oid) = out.obj.trie.get(key) or (None, None)
+        if oid:
+            return oid
         raise FileNotFoundError
 
     def _get_fs_path(self, path: PathInfo, remote=None):
@@ -250,10 +250,10 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         elif meta.part_of_output:
             (out,) = meta.outs
             key = path_info.relative_to(out.path_info).parts
-            (obj_meta, obj) = out.obj.trie.get(key) or (None, None)
-            if obj:
+            (obj_meta, oid) = out.obj.trie.get(key) or (None, None)
+            if oid:
                 ret["size"] = obj_meta.size if obj_meta else 0
-                ret[obj.hash_info.name] = obj.hash_info.value
+                ret[oid.name] = oid.value
 
         return ret
 
