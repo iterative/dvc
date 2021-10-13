@@ -30,6 +30,12 @@ class TestInstall:
             assert hook_path.is_file()
             assert command in hook_path.read_text()
 
+    def test_install_pre_commit_tool(self, scm):
+        scm.install(use_pre_commit_tool=True)
+
+        precommit_path = pathlib.Path(".") / ".pre-commit-config.yaml"
+        assert precommit_path.is_file()
+
     def test_fail_if_hook_exists(self, scm):
         self._hook("post-checkout").write_text("hook content")
 
