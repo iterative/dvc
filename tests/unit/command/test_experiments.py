@@ -379,7 +379,7 @@ all_experiments = {
 }
 
 
-def test_show_experiments(capsys):
+def test_show_experiments_csv(capsys):
     show_experiments(
         all_experiments, precision=None, fill_value="", iso=True, csv=True
     )
@@ -404,6 +404,39 @@ def test_show_experiments(capsys):
         "exp-44136,ae99936,branch_base,2021-08-31T14:56:55,,Running,"
         "3000,1,0.5843640011189556,0.9544670443829399,3000,1,20170428,100,36"
         in cap.out
+    )
+
+
+def test_show_experiments_md(capsys):
+    all_experiments = {
+        "workspace": {
+            "baseline": {
+                "data": {
+                    "timestamp": None,
+                    "params": {"params.yaml": {"data": {"foo": 1}}},
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {
+                        "scores.json": {"data": {"bar": 0.9544670443829399}}
+                    },
+                }
+            }
+        },
+    }
+    show_experiments(
+        all_experiments, precision=None, fill_value="", iso=True, markdown=True
+    )
+    cap = capsys.readouterr()
+
+    assert (
+        "| Experiment   | Created   | bar                | foo   |" in cap.out
+    )
+    assert (
+        "|--------------|-----------|--------------------|-------|" in cap.out
+    )
+    assert (
+        "| workspace    |           | 0.9544670443829399 | 1     |" in cap.out
     )
 
 
