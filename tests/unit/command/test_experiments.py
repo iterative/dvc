@@ -407,7 +407,7 @@ def test_show_experiments_csv(capsys):
 
 
 def test_show_experiments_md(capsys):
-    md_experiments = {
+    all_experiments = {
         "workspace": {
             "baseline": {
                 "data": {
@@ -424,7 +424,7 @@ def test_show_experiments_md(capsys):
         },
     }
     show_experiments(
-        md_experiments, precision=None, fill_value="", iso=True, markdown=True
+        all_experiments, precision=None, fill_value="", iso=True, markdown=True
     )
     cap = capsys.readouterr()
 
