@@ -331,3 +331,32 @@ def test_git_stash_clear(tmp_dir, scm, ref):
         not os.path.exists(log_path)
         or not open(log_path, encoding="utf-8").read()
     )
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize("server", [pytest.lazy_fixture("git_ssh")])
+def test_git_ssh(tmp_dir, scm, server):
+    from dvc.fs.ssh import SSHFileSystem
+    from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
+
+    fs = SSHFileSystem(
+        host=server.host,
+        port=server.port,
+        user=TEST_SSH_USER,
+        keyfile=TEST_SSH_KEY_PATH,
+    )
+    server._ssh.execute("git init --bare test-repo.git")
+    url = f"ssh://{TEST_SSH_USER}@{server.host}:{server.port}/~/test-repo.git"
+
+    tmp_dir.scm_gen("foo", "foo", commit="init")
+    rev = scm.get_rev()
+
+    scm.push_refspec(
+        url,
+        "refs/heads/master",
+        "refs/heads/master",
+        force=True,
+        key_filename=TEST_SSH_KEY_PATH,
+    )
+
+    assert rev == fs.open("test-repo.git/refs/heads/master").read().strip()
