@@ -265,6 +265,9 @@ class Git(Base):
                 ],
             }
 
+            if "repos" not in config:
+                config["repos"] = []
+
             if entry not in config["repos"]:
                 config["repos"].append(entry)
 
