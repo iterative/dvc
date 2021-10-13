@@ -291,7 +291,10 @@ def test_show_experiments_csv(capsys):
                     "params": {
                         "params.yaml": {
                             "data": {
-                                "featurize": {"max_features": 3000, "ngrams": 1},
+                                "featurize": {
+                                    "max_features": 3000,
+                                    "ngrams": 1,
+                                },
                                 "parent": 20170428,
                                 "train": {
                                     "n_est": 100,
@@ -306,7 +309,10 @@ def test_show_experiments_csv(capsys):
                     "metrics": {
                         "scores.json": {
                             "data": {
-                                "featurize": {"max_features": 3000, "ngrams": 1},
+                                "featurize": {
+                                    "max_features": 3000,
+                                    "ngrams": 1,
+                                },
                                 "avg_prec": 0.5843640011189556,
                                 "roc_auc": 0.9544670443829399,
                             }
@@ -322,7 +328,10 @@ def test_show_experiments_csv(capsys):
                     "params": {
                         "params.yaml": {
                             "data": {
-                                "featurize": {"max_features": 3000, "ngrams": 1},
+                                "featurize": {
+                                    "max_features": 3000,
+                                    "ngrams": 1,
+                                },
                                 "parent": 20170428,
                                 "train": {
                                     "n_est": 100,
@@ -337,7 +346,10 @@ def test_show_experiments_csv(capsys):
                     "metrics": {
                         "scores.json": {
                             "data": {
-                                "featurize": {"max_features": 3000, "ngrams": 1},
+                                "featurize": {
+                                    "max_features": 3000,
+                                    "ngrams": 1,
+                                },
                                 "avg_prec": 0.5325162867864254,
                                 "roc_auc": 0.9106964878520005,
                             }
@@ -352,7 +364,10 @@ def test_show_experiments_csv(capsys):
                     "params": {
                         "params.yaml": {
                             "data": {
-                                "featurize": {"max_features": 3000, "ngrams": 1},
+                                "featurize": {
+                                    "max_features": 3000,
+                                    "ngrams": 1,
+                                },
                                 "parent": 20170428,
                                 "train": {
                                     "n_est": 100,
@@ -367,7 +382,10 @@ def test_show_experiments_csv(capsys):
                     "metrics": {
                         "scores.json": {
                             "data": {
-                                "featurize": {"max_features": 3000, "ngrams": 1},
+                                "featurize": {
+                                    "max_features": 3000,
+                                    "ngrams": 1,
+                                },
                                 "avg_prec": 0.5843640011189556,
                                 "roc_auc": 0.9544670443829399,
                             }
