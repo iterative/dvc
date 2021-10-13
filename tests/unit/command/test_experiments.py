@@ -1,3 +1,4 @@
+import csv
 from datetime import datetime
 
 import pytest
@@ -405,6 +406,116 @@ def test_show_experiments(capsys):
         "3000,1,0.5843640011189556,0.9544670443829399,3000,1,20170428,100,36"
         in cap.out
     )
+
+
+@pytest.mark.parametrize("sort_order", ["asc", "desc"])
+def test_show_experiments_sort_by(capsys, sort_order):
+    sort_experiments = {
+        "workspace": {
+            "baseline": {
+                "data": {
+                    "timestamp": None,
+                    "params": {
+                        "params.yaml": {
+                            "data": {
+                                "foo": 1,
+                            }
+                        }
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {},
+                }
+            }
+        },
+        "233b132676792d89e848e5c9c12e408d7efde78a": {
+            "baseline": {
+                "data": {
+                    "timestamp": datetime(2021, 8, 2, 16, 48, 14),
+                    "params": {
+                        "params.yaml": {
+                            "data": {
+                                "foo": 0,
+                            }
+                        }
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {},
+                    "name": "master",
+                }
+            },
+            "fad0a94": {
+                "data": {
+                    "timestamp": datetime(2021, 8, 31, 14, 56, 55),
+                    "params": {
+                        "params.yaml": {
+                            "data": {
+                                "foo": 1,
+                            }
+                        }
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {},
+                    "name": "exp-89140",
+                }
+            },
+            "60fcda8": {
+                "data": {
+                    "timestamp": datetime(2021, 8, 31, 14, 56, 55),
+                    "params": {
+                        "params.yaml": {
+                            "data": {
+                                "foo": 2,
+                            }
+                        }
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {},
+                    "name": "exp-43537",
+                }
+            },
+            "a7e9aaf": {
+                "data": {
+                    "timestamp": datetime(2021, 8, 31, 14, 56, 55),
+                    "params": {
+                        "params.yaml": {
+                            "data": {
+                                "foo": 0,
+                            }
+                        }
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {},
+                    "name": "exp-4f89e",
+                }
+            },
+        },
+    }
+    show_experiments(
+        sort_experiments,
+        precision=None,
+        fill_value="",
+        iso=True,
+        csv=True,
+        sort_by="foo",
+        sort_order=sort_order,
+    )
+    cap = capsys.readouterr()
+    rows = list(csv.reader(cap.out.strip().split("\n")))
+    params = tuple([int(row[-1]) for row in rows[3:]])
+    if sort_order == "asc":
+        assert params == (0, 1, 2)
+    else:
+        assert params == (2, 1, 0)
 
 
 def test_experiments_init_config(dvc, mocker):
