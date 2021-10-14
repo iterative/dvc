@@ -176,24 +176,13 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)
 
-    def _set_claimfile(self, pid=None):
-        super()._set_claimfile(pid)
+    def _set_claimfile(self):
+        super()._set_claimfile()
 
         if self._tmp_dir is not None:
             # Under Windows file path length is limited so we hash it
             filename = hashlib.md5(self._claimfile.encode()).hexdigest()
             self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
-
-    # Fix for __del__ bug in flufl.lock [1] which is causing errors on
-    # Python shutdown [2].
-    # [1] https://gitlab.com/warsaw/flufl.lock/issues/7
-    # [2] https://github.com/iterative/dvc/issues/2573
-    def __del__(self):
-        try:
-            if self._owned:
-                self.finalize()
-        except ImportError:
-            pass
 
 
 def make_lock(lockfile, tmp_dir=None, friendly=False, hardlink_lock=False):
