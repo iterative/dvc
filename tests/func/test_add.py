@@ -152,7 +152,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
     def test(self):
-        dname = "directory/"
+        dname = "directory" + os.sep
         os.mkdir(dname)
         self.create(os.path.join(dname, "file"), "file")
         stages = self.dvc.add(dname)
