@@ -1,7 +1,7 @@
 import os.path
 from typing import Dict, List
 
-import dpath
+import dpath.util
 
 
 def get_files(data: Dict) -> List:

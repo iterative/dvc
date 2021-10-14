@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 class BaseMachineBackend(ABC):
     def __init__(self, tmp_dir: "StrPath", **kwargs):
-        raise NotImplementedError
+        self.tmp_dir = tmp_dir
 
     @abstractmethod
     def create(self, name: Optional[str] = None, **config):
