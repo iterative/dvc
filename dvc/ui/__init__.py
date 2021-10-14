@@ -98,7 +98,7 @@ class Console:
             text.overflow = None
             return self.write(text, styled=True)
 
-        return self.write(json.dumps(data))
+        return self.write(json.dumps(data, default=default))
 
     def write(
         self,
