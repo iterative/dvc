@@ -2,6 +2,7 @@ import csv
 from datetime import datetime
 
 import pytest
+import textwrap
 
 from dvc.cli import parse_args
 from dvc.command.experiments import (
@@ -447,14 +448,12 @@ def test_show_experiments_md(capsys):
     )
     cap = capsys.readouterr()
 
-    assert (
-        "| Experiment   | Created   | bar                | foo   |" in cap.out
-    )
-    assert (
-        "|--------------|-----------|--------------------|-------|" in cap.out
-    )
-    assert (
-        "| workspace    |           | 0.9544670443829399 | 1     |" in cap.out
+    assert cap.out == textwrap.dedent(
+        """\
+        | Experiment   | Created   | bar                | foo   |
+        |--------------|-----------|--------------------|-------|
+        | workspace    |           | 0.9544670443829399 | 1     |\n
+    """
     )
 
 
