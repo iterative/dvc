@@ -536,7 +536,7 @@ class CmdExperimentsShow(CmdBase):
                 iso=iso,
                 pager=not self.args.no_pager,
                 csv=self.args.csv,
-                markdown=self.args.md,
+                markdown=self.args.markdown,
             )
         return 0
 
@@ -1001,6 +1001,7 @@ def add_parser(subparsers, parent_parser):
         "--show-md",
         action="store_true",
         default=False,
+        dest="markdown",
         help="Print output in Markdown format.",
     )
     experiments_show_parser.add_argument(
