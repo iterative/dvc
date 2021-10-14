@@ -3,7 +3,16 @@ import io
 import logging
 import os
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Callable, Dict, Generator, List, Optional
+from functools import partial
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+)
 
 from funcy import cached_property, first, project
 
@@ -94,9 +103,8 @@ class Plots:
 
         fs = RepoFileSystem(self.repo)
         plots = _collect_plots(self.repo, targets, revision, recursive)
-        res = {}
+        res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
-
             if fs.isdir(fs_path):
                 plot_files = []
                 for pi in fs.find(fs_path):
@@ -110,12 +118,15 @@ class Plots:
                 joined_props = {**rev_props, **props}
                 res[repo_path] = {"props": joined_props}
                 res[repo_path].update(
-                    parse(
-                        fs,
-                        path,
-                        props=joined_props,
-                        onerror=onerror,
-                    )
+                    {
+                        "data_source": partial(
+                            parse,
+                            fs,
+                            path,
+                            props=joined_props,
+                            onerror=onerror,
+                        )
+                    }
                 )
         return res
 
@@ -130,13 +141,20 @@ class Plots:
         if onerror is None:
             onerror = onerror_collect
 
-        data: Dict[str, Dict] = {}
-        for rev_data in self.collect(
+        result: Dict[str, Dict] = {}
+        for data in self.collect(
             targets, revs, recursive, onerror=onerror, props=props
         ):
-            data.update(rev_data)
+            assert len(data) == 1
+            revision_data = first(data.values())
+            if "data" in revision_data:
+                for path_data in revision_data["data"].values():
+                    result_source = path_data.pop("data_source", None)
+                    if result_source:
+                        path_data.update(result_source())
+            result.update(data)
 
-        errored = errored_revisions(data)
+        errored = errored_revisions(result)
         if errored:
             from dvc.ui import ui
 
@@ -145,7 +163,7 @@ class Plots:
                 f"'{', '.join(errored)}'."
             )
 
-        return data
+        return result
 
     def diff(self, *args, **kwargs):
         from .diff import diff
