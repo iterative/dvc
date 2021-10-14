@@ -75,12 +75,9 @@ class TerraformBackend(BaseMachineBackend):
 
     def rename(self, name: str, new: str, **config):
         """rename a dvc machine instance to a new name"""
-        import os
         import shutil
 
         from tpi import TPIError
-
-        from dvc.exceptions import DvcException
 
         mtype = "iterative_machine"
 
@@ -95,7 +92,8 @@ class TerraformBackend(BaseMachineBackend):
             return
 
         try:
-            self.state_mv(f"{mtype}.{name}", f"{mtype}.{new}", **config)
+            with self.make_tpi(name) as tpi:
+                tpi.state_mv(f"{mtype}.{name}", f"{mtype}.{new}", **config)
         except TPIError as exc:
             raise DvcException(f"rename failed: {exc}") from exc
 
