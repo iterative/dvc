@@ -1,3 +1,4 @@
+import datetime
 import textwrap
 
 import pytest
@@ -27,7 +28,8 @@ def test_write(capsys: CaptureFixture[str]):
             textwrap.dedent(
                 """\
         {
-          "hello": "world"
+          "hello": "world",
+          "date": "1970-01-01 00:00:00"
         }
     """
             ),
@@ -36,7 +38,7 @@ def test_write(capsys: CaptureFixture[str]):
             False,
             textwrap.dedent(
                 """\
-        {"hello": "world"}
+        {"hello": "world", "date": "1970-01-01 00:00:00"}
         """
             ),
         ),
@@ -49,8 +51,8 @@ def test_write_json(
 
     console = Console(enable=True)
     mocker.patch.object(console, "isatty", return_value=isatty)
-    message = {"hello": "world"}
-    console.write_json(message)
+    message = {"hello": "world", "date": datetime.datetime(1970, 1, 1)}
+    console.write_json(message, default=str)
     captured = capsys.readouterr()
     assert captured.out == expected_output
 
