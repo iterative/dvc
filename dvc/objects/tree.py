@@ -12,6 +12,8 @@ from .stage import get_file_hash
 if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
 
+    from .meta import Meta
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +22,7 @@ class Tree(HashFile):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._dict: Dict[Tuple[str], "HashFile"] = {}
+        self._dict: Dict[Tuple[str], Tuple["Meta", "HashInfo"]] = {}
 
     @cached_property
     def trie(self):
@@ -28,9 +30,9 @@ class Tree(HashFile):
 
         return Trie(self._dict)
 
-    def add(self, key, obj):
+    def add(self, key: Tuple[str], meta: "Meta", oid: "HashInfo"):
         self.__dict__.pop("trie", None)
-        self._dict[key] = obj
+        self._dict[key] = (meta, oid)
 
     def digest(self, hash_info: Optional["HashInfo"] = None):
         from dvc.fs.memory import MemoryFileSystem
@@ -46,20 +48,17 @@ class Tree(HashFile):
         if hash_info:
             self.hash_info = hash_info
         else:
-            self.hash_info = get_file_hash(path_info, memfs, "md5")
+            _, self.hash_info = get_file_hash(path_info, memfs, "md5")
             assert self.hash_info.value
             self.hash_info.value += ".dir"
-        try:
-            self.hash_info.size = sum(obj.size for _, obj in self)
-        except TypeError:
-            self.hash_info.size = None
-        self.hash_info.nfiles = len(self)
 
     def __len__(self):
         return len(self._dict)
 
     def __iter__(self):
-        yield from self._dict.items()
+        yield from (
+            (key, value[0], value[1]) for key, value in self._dict.items()
+        )
 
     def as_dict(self):
         return self._dict.copy()
@@ -73,10 +72,10 @@ class Tree(HashFile):
                 {
                     # NOTE: not using hash_info.to_dict() because we don't want
                     # size/nfiles fields at this point.
-                    obj.hash_info.name: obj.hash_info.value,
+                    oid.name: oid.value,
                     self.PARAM_RELPATH: posixpath.sep.join(parts),
                 }
-                for parts, obj in self._dict.items()  # noqa: B301
+                for parts, _, oid in self  # noqa: B301
             ),
             key=itemgetter(self.PARAM_RELPATH),
         )
@@ -94,8 +93,7 @@ class Tree(HashFile):
             relpath = entry.pop(cls.PARAM_RELPATH)
             parts = tuple(relpath.split(posixpath.sep))
             hash_info = HashInfo.from_dict(entry)
-            obj = HashFile(None, None, hash_info)
-            tree.add(parts, obj)
+            tree.add(parts, None, hash_info)
         return tree
 
     @classmethod
@@ -118,8 +116,6 @@ class Tree(HashFile):
         tree = cls.from_list(raw)
         tree.path_info = obj.path_info
         tree.fs = obj.fs
-        for _, entry_obj in tree:
-            entry_obj.fs = obj.fs
         tree.hash_info = hash_info
 
         return tree
@@ -135,37 +131,37 @@ class Tree(HashFile):
         """
         tree = Tree(self.path_info, self.fs, self.hash_info)
         try:
-            for key, obj in self.trie.items(prefix):
-                tree.add(key, obj)
+            for key, (meta, oid) in self.trie.items(prefix):
+                tree.add(key, meta, oid)
         except KeyError:
             pass
         return tree
 
-    def get(self, prefix: Tuple[str]) -> Optional[HashFile]:
+    def get(self, odb, prefix: Tuple[str]) -> Optional[HashFile]:
         """Return object at the specified prefix in this tree.
 
         Returns None if no object exists at the specified prefix.
         """
-        obj = self._dict.get(prefix)
-        if obj:
-            return obj
+        _, oid = self._dict.get(prefix) or (None, None)
+        if oid:
+            return odb.get(oid)
 
         tree = Tree(None, None, None)
         depth = len(prefix)
         try:
-            for key, obj in self.trie.items(prefix):
-                tree.add(key[depth:], obj)
+            for key, (meta, entry_oid) in self.trie.items(prefix):
+                tree.add(key[depth:], meta, entry_oid)
         except KeyError:
             return None
         tree.digest()
         return tree
 
 
-def _get_dir_size(odb, tree):
+def du(odb, tree):
     try:
         return sum(
-            odb.fs.getsize(odb.hash_to_path_info(obj.hash_info.value))
-            for _, obj in tree
+            odb.fs.getsize(odb.hash_to_path_info(oid.value))
+            for _, _, oid in tree
         )
     except FileNotFoundError:
         return None
@@ -226,11 +222,8 @@ def merge(odb, ancestor_info, our_info, their_info):
     merged_dict = _merge(ancestor.as_dict(), our.as_dict(), their.as_dict())
 
     merged = Tree(None, None, None)
-    for key, hi in merged_dict.items():
-        merged.add(key, hi)
+    for key, (meta, oid) in merged_dict.items():
+        merged.add(key, meta, oid)
     merged.digest()
 
-    odb.add(merged.path_info, merged.fs, merged.hash_info)
-    hash_info = merged.hash_info
-    hash_info.size = _get_dir_size(odb, merged)
-    return hash_info
+    return merged

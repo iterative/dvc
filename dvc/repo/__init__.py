@@ -163,7 +163,6 @@ class Repo:
         from dvc.data_cloud import DataCloud
         from dvc.fs.local import LocalFileSystem
         from dvc.lock import LockNoop, make_lock
-        from dvc.machine import MachineManager
         from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
@@ -223,14 +222,6 @@ class Repo:
         self.plots = Plots(self)
         self.params = Params(self)
         self.live = Live(self)
-
-        if self.tmp_dir and (
-            self.config["feature"].get("machine", False)
-            or env2bool("DVC_TEST")
-        ):
-            self.machine = MachineManager(self)
-        else:
-            self.machine = None
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]
@@ -297,6 +288,17 @@ class Repo:
         from dvc.repo.experiments import Experiments
 
         return Experiments(self)
+
+    @cached_property
+    def machine(self):
+        from dvc.machine import MachineManager
+
+        if self.tmp_dir and (
+            self.config["feature"].get("machine", False)
+            or env2bool("DVC_TEST")
+        ):
+            return MachineManager(self)
+        return None
 
     @property
     def fs(self) -> "BaseFileSystem":

@@ -291,7 +291,7 @@ def test_import_url_to_remote_single_file(
 
     hash_info = stage.outs[0].hash_info
     assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
-    assert hash_info.size == len("foo")
+    assert stage.outs[0].meta.size == len("foo")
 
 
 @pytest.mark.parametrize(

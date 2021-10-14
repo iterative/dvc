@@ -5,7 +5,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.hash_info import HashInfo
 from dvc.scheme import Schemes
 from dvc.utils import fix_env
 
@@ -43,11 +42,7 @@ class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
         return HadoopFileSystem(**self.fs_args)
 
     def checksum(self, path_info):
-        return HashInfo(
-            "checksum",
-            self._checksum(path_info),
-            size=self.getsize(path_info),
-        )
+        return self._checksum(path_info)
 
     def _checksum(self, path_info, **kwargs):
         # PyArrow doesn't natively support retrieving the

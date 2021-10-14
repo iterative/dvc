@@ -12,18 +12,17 @@ env:
   SHELL: /bin/bash
 
 jobs:
-  cancel_previous:
+  lint:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
     - name: Cancel Previous Runs
       uses: styfle/cancel-workflow-action@0.9.1
       with:
         access_token: ${{ github.token }}
-  lint:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
     - uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Set up Python 3.8
       uses: actions/setup-python@v2.2.2
       with:
@@ -45,19 +44,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, windows-2019, macos-10.15]
-        pyv: ["3.6", "3.7", "3.8", "3.9"]
-        include:
-          - os: "macos-10.15"
-            pyv: "3.10"
+        os: [ubuntu-20.04, windows-latest, macos-latest]
+        pyv: ["3.7", "3.8", "3.9", "3.10"]
         exclude:
-          - os: macos-10.15
-            pyv: "3.9"
-          - os: macos-10.15
-            pyv: "3.7"
-
+          # no wheels for pygit2 yet
+          - os: windows-latest
+            pyv: "3.10"
     steps:
     - uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
     - name: Set up Python
       uses: actions/setup-python@v2.2.2
       with:
@@ -74,11 +70,6 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: install pygit2 on Python3.10 in macOS
-      if: matrix.pyv == '3.10' && matrix.os == 'macos-10.15'
-      run: |
-        brew update && brew install libgit2
-        pip install git+https://github.com/libgit2/pygit2
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
@@ -118,7 +109,7 @@ jobs:
       run: >-
         python -m tests -n=4
         --cov-report=xml --cov-report=term
-        --all ${{ env.extra_test_args }}
+        ${{ env.extra_test_args }}
     - name: upload coverage report
       uses: codecov/codecov-action@v2.1.0
       with:

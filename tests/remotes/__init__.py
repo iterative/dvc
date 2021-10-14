@@ -89,7 +89,7 @@ def docker_services(
     # as it might result in network conflicts. Inspired by:
     # https://github.com/pytest-dev/pytest-xdist#making-session-scoped-fixtures-execute-only-once
     lockfile = tmp_path_factory.getbasetemp().parent / "docker-compose.lock"
-    with FileLock(str(lockfile)):
+    with FileLock(str(lockfile)):  # pylint:disable=abstract-class-instantiated
         executor.execute("up --build -d")
 
     return Services(executor)

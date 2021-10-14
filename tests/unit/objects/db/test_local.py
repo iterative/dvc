@@ -94,7 +94,7 @@ def test_staging_file(tmp_dir, dvc):
     fs = LocalFileSystem()
 
     local_odb = dvc.odb.local
-    staging_odb, obj = stage(local_odb, tmp_dir / "foo", fs, "md5")
+    staging_odb, _, obj = stage(local_odb, tmp_dir / "foo", fs, "md5")
 
     assert not local_odb.exists(obj.hash_info)
     assert staging_odb.exists(obj.hash_info)
@@ -121,7 +121,7 @@ def test_staging_dir(tmp_dir, dvc):
     fs = LocalFileSystem()
     local_odb = dvc.odb.local
 
-    staging_odb, obj = stage(local_odb, tmp_dir / "dir", fs, "md5")
+    staging_odb, _, obj = stage(local_odb, tmp_dir / "dir", fs, "md5")
 
     assert not local_odb.exists(obj.hash_info)
     assert staging_odb.exists(obj.hash_info)

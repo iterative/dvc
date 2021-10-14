@@ -175,12 +175,6 @@ class BaseFileSystem:
         """
         raise NotImplementedError
 
-    def ls(self, path_info, detail=False):
-        raise RemoteActionNotImplemented("ls", self.scheme)
-
-    def find(self, path_info, detail=False, prefix=None):
-        raise RemoteActionNotImplemented("find", self.scheme)
-
     def is_empty(self, path_info):
         return False
 

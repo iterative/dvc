@@ -28,7 +28,7 @@ class PlotDataStructureError(DvcException):
     def __init__(self):
         super().__init__(
             "Plot data extraction failed. Please see "
-            "https://man.dvc.org/plot for supported data formats."
+            "https://man.dvc.org/plots for supported data formats."
         )
 
 
@@ -147,7 +147,7 @@ class VegaRenderer(Renderer):
     def get_vega(self) -> Optional[str]:
         props = self._squash_props()
 
-        template = self.templates.load(props.get("template") or "default")
+        template = self.templates.load(props.get("template", None))
 
         if not props.get("x") and template.has_anchor("x"):
             props["append_index"] = True
