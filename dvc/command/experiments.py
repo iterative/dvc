@@ -956,7 +956,10 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_show_parser.add_argument(
         "--sort-order",
-        help="Sort order to use with --sort-by.",
+        help=(
+            "Sort order to use with --sort-by."
+            " Defaults to ascending ('asc')."
+        ),
         choices=("asc", "desc"),
         default="asc",
     )
