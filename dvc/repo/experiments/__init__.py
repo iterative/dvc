@@ -6,7 +6,7 @@ from collections import defaultdict, namedtuple
 from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
 from functools import wraps
 from multiprocessing import Manager
-from typing import Dict, Iterable, List, Mapping, Optional
+from typing import Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
@@ -351,20 +351,6 @@ class Experiments:
         )
         self.scm.add(self.args_file)
 
-    def _get_new_params(self, src: Dict, to_update: Dict) -> List:
-        """
-        Return a list of param names that are in to_update but not in src
-
-        src is a traditionally nested dict structure representing a parameter
-        config file. to_update is a flat dict with keypath keys representing
-        param names.
-        """
-        from dvc.utils._benedict import benedict
-
-        b_src = benedict(src)
-
-        return list(set(to_update.keys()) - set(b_src.keypaths(indexes=True)))
-
     def _format_new_params_msg(self, new_params, config_path):
         """Format an error message for when new parameters are identified"""
         new_param_count = len(new_params)
@@ -377,7 +363,7 @@ class Experiments:
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
-        from dvc.utils.collections import merge_params
+        from dvc.utils.collections import NewParamsFound, merge_params
         from dvc.utils.serialize import MODIFIERS
 
         logger.debug("Using experiment params '%s'", params)
@@ -387,11 +373,11 @@ class Experiments:
             suffix = path.suffix.lower()
             modify_data = MODIFIERS[suffix]
             with modify_data(path, fs=self.repo.fs) as data:
-                new_params = self._get_new_params(data, params[params_fname])
-                if new_params:
-                    error_msg = self._format_new_params_msg(new_params, path)
-                    raise MissingParamsError(error_msg)
-                merge_params(data, params[params_fname])
+                try:
+                    merge_params(data, params[params_fname], allow_new=False)
+                except NewParamsFound as e:
+                    msg = self._format_new_params_msg(e.new_params, path)
+                    raise MissingParamsError(msg)
 
         # Force params file changes to be staged in git
         # Otherwise in certain situations the changes to params file may be

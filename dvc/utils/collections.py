@@ -6,6 +6,16 @@ from typing import Callable, Dict, Iterable, List, TypeVar, Union
 
 from pygtrie import StringTrie as _StringTrie
 
+from dvc.exceptions import DvcException
+
+
+class NewParamsFound(DvcException):
+    """Thrown if new params were found during merge_params"""
+
+    def __init__(self, new_params: List, *args):
+        self.new_params = new_params
+        super().__init__("New params found during merge", *args)
+
 
 class PathStringTrie(_StringTrie):
     """Trie based on platform-dependent separator for pathname components."""
@@ -80,11 +90,27 @@ def chunk_dict(d: Dict[_KT, _VT], size: int = 1) -> List[Dict[_KT, _VT]]:
     return [{key: d[key] for key in chunk} for chunk in chunks(size, d)]
 
 
-def merge_params(src: Dict, to_update: Dict) -> Dict:
-    """Recursively merges params with benedict's syntax support in-place."""
+def merge_params(src: Dict, to_update: Dict, allow_new: bool = True) -> Dict:
+    """
+    Recursively merges params with benedict's syntax support in-place.
+
+    Args:
+        src (dict): source dictionary of parameters
+        to_update (dict): dictionary of parameters to merge into src
+        allow_new (bool): if False, raises an error if new keys would be
+            added to src
+    """
     from ._benedict import benedict
 
     data = benedict(src)
+
+    if not allow_new:
+        new_params = list(
+            set(to_update.keys()) - set(data.keypaths(indexes=True))
+        )
+        if new_params:
+            raise NewParamsFound(new_params)
+
     data.merge(to_update, overwrite=True)
     return src
 
