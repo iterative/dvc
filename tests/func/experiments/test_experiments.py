@@ -406,7 +406,7 @@ def test_no_scm(tmp_dir):
 @pytest.mark.parametrize("workspace", [True, False])
 def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen("params.yaml", "foo: 1")
+    tmp_dir.scm_gen("params.yaml", "foo: 1", commit="track params")
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
         metrics_no_cache=["metrics.yaml"],
