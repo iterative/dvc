@@ -211,8 +211,12 @@ def diff_table(
     precision: int = None,
     round_digits: bool = False,
     on_empty_diff: str = None,
+    a_rev: str = None,
+    b_rev: str = None,
 ) -> TabularData:
-    headers: List[str] = ["Path", title, "Old", "New", "Change"]
+    a_rev = a_rev or "HEAD"
+    b_rev = b_rev or "workspace"
+    headers: List[str] = ["Path", title, a_rev, b_rev, "Change"]
     fill_value = "-"
     td = TabularData(headers, fill_value=fill_value)
 
@@ -240,8 +244,8 @@ def diff_table(
         td.drop("Change")
 
     if not old:
-        td.drop("Old")
-        td.rename("New", "Value")
+        td.drop(a_rev)
+        td.rename(b_rev, "Value")
 
     return td
 
@@ -256,6 +260,8 @@ def show_diff(
     round_digits: bool = False,
     on_empty_diff: str = None,
     markdown: bool = False,
+    a_rev: str = None,
+    b_rev: str = None,
 ) -> None:
     td = diff_table(
         diff,
@@ -266,6 +272,8 @@ def show_diff(
         precision=precision,
         round_digits=round_digits,
         on_empty_diff=on_empty_diff,
+        a_rev=a_rev,
+        b_rev=b_rev,
     )
     td.render(markdown=markdown)
 
