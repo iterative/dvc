@@ -12,6 +12,7 @@ from typing import (
     Mapping,
     MutableSequence,
     Sequence,
+    Set,
     Tuple,
     Union,
     overload,
@@ -180,6 +181,35 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return [
             {k: self._columns[k][i] for k in keys} for i in range(len(self))
         ]
+
+    def dropna(self, axis: str = "rows"):
+        if axis not in ["rows", "cols"]:
+            raise ValueError(
+                f"Invalid 'axis' value {axis}."
+                "Choose one of ['rows', 'cols']"
+            )
+
+        to_drop: Set = set()
+        for n_row, row in enumerate(self):
+            for n_col, col in enumerate(row):
+                if col == self._fill_value:
+                    if axis == "rows":
+                        to_drop.add(n_row)
+                        break
+                    else:
+                        to_drop.add(self.keys()[n_col])
+
+        if axis == "rows":
+            for name in self.keys():
+                self._columns[name] = Column(
+                    [
+                        x
+                        for n, x in enumerate(self._columns[name])
+                        if n not in to_drop
+                    ]
+                )
+        else:
+            self.drop(*to_drop)
 
 
 def _normalize_float(val: float, precision: int):
