@@ -177,3 +177,36 @@ def test_row_from_dict():
         ["", "", "value3", "value4", "", ""],
         ["", "", "value3", "", "value5", "value6"],
     ]
+
+
+@pytest.mark.parametrize(
+    "axis,expected",
+    [
+        (
+            "rows",
+            [
+                ["foo", "bar", "foobar"],
+            ],
+        ),
+        ("cols", [["foo"], ["foo"], ["foo"]]),
+    ],
+)
+def test_dropna(axis, expected):
+    td = TabularData(["col-1", "col-2", "col-3"])
+    td.extend([["foo"], ["foo", "bar"], ["foo", "bar", "foobar"]])
+    assert list(td) == [
+        ["foo", "", ""],
+        ["foo", "bar", ""],
+        ["foo", "bar", "foobar"],
+    ]
+
+    td.dropna(axis)
+
+    assert list(td) == expected
+
+
+def test_dropna_invalid_axis():
+    td = TabularData(["col-1", "col-2", "col-3"])
+
+    with pytest.raises(ValueError, match="Invalid 'axis' value foo."):
+        td.dropna("foo")
