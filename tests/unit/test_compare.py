@@ -219,6 +219,8 @@ def test_diff_mocked(mocker, markdown):
         on_empty_diff=None,
         show_changes=True,
         round_digits=False,
+        a_rev=None,
+        b_rev=None,
     )
     ret.render.assert_called_once_with(markdown=markdown)
 
@@ -235,12 +237,13 @@ def test_diff_default(capsys):
         "Metric",
     )
     out, _ = capsys.readouterr()
+
     assert out == textwrap.dedent(
         """\
-        Path          Metric    Old    New    Change
-        metrics.yaml  a.b.c     1      2      1
-        metrics.yaml  a.d.e     3      4      1
-        metrics.yaml  x.b       5      6      -
+        Path          Metric    HEAD    workspace    Change
+        metrics.yaml  a.b.c     1       2            1
+        metrics.yaml  a.d.e     3       4            1
+        metrics.yaml  x.b       5       6            -
         """
     )
 
@@ -258,13 +261,14 @@ def test_metrics_diff_md(capsys):
         markdown=True,
     )
     out, _ = capsys.readouterr()
+
     assert out == textwrap.dedent(
         """\
-        | Path         | Metric   | Old   | New   | Change   |
-        |--------------|----------|-------|-------|----------|
-        | metrics.yaml | a.b.c    | 1     | 2     | 1        |
-        | metrics.yaml | a.d.e    | 3     | 4     | 1        |
-        | metrics.yaml | x.b      | 5     | 6     | -        |
+        | Path         | Metric   | HEAD   | workspace   | Change   |
+        |--------------|----------|--------|-------------|----------|
+        | metrics.yaml | a.b.c    | 1      | 2           | 1        |
+        | metrics.yaml | a.d.e    | 3      | 4           | 1        |
+        | metrics.yaml | x.b      | 5      | 6           | -        |
 
         """
     )
