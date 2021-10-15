@@ -336,7 +336,10 @@ def test_git_stash_clear(tmp_dir, scm, ref):
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("server", [pytest.lazy_fixture("git_ssh")])
 def test_git_ssh(tmp_dir, scm, server):
+    from dulwich.repo import Repo as DulwichRepo
+
     from dvc.fs.ssh import SSHFileSystem
+    from dvc.utils.fs import remove
     from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
     fs = SSHFileSystem(
@@ -360,3 +363,17 @@ def test_git_ssh(tmp_dir, scm, server):
     )
 
     assert rev == fs.open("test-repo.git/refs/heads/master").read().strip()
+
+    remove(tmp_dir / ".git")
+    remove(tmp_dir / "foo")
+    DulwichRepo.init(str(tmp_dir))
+
+    scm.fetch_refspecs(
+        url,
+        ["refs/heads/master"],
+        force=True,
+        key_filename=TEST_SSH_KEY_PATH,
+    )
+    assert rev == scm.get_ref("refs/heads/master")
+    scm.checkout("master")
+    assert "foo" == (tmp_dir / "foo").read_text()
