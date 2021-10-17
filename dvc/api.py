@@ -1,10 +1,22 @@
 import os
 from contextlib import _GeneratorContextManager as GCM
+from contextlib import contextmanager
+from typing import ContextManager, Iterator
 
-from funcy import reraise
-
-from dvc.exceptions import OutputNotFoundError, PathMissingError
+from dvc.exceptions import NoOutputInExternalRepoError, OutputNotFoundError
 from dvc.repo import Repo
+from dvc.repo_path import RepoPath
+
+
+def files(path=os.curdir, repo=None, rev=None) -> ContextManager[RepoPath]:
+    @contextmanager
+    def inner() -> Iterator["RepoPath"]:
+        with Repo.open(
+            repo, rev=rev, subrepos=True, uninitialized=True
+        ) as root_repo:
+            yield RepoPath(path, fs=root_repo.repo_fs)
+
+    return inner()
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -18,17 +30,11 @@ def get_url(path, repo=None, rev=None, remote=None):
     NOTE: This function does not check for the actual existence of the file or
     directory in the remote storage.
     """
-    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        fs_path = _repo.fs.path.join(_repo.root_dir, path)
-        with reraise(FileNotFoundError, PathMissingError(path, repo)):
-            metadata = _repo.repo_fs.metadata(fs_path)
-
-        if not metadata.is_dvc:
-            raise OutputNotFoundError(path, repo)
-
-        cloud = metadata.repo.cloud
-        md5 = metadata.repo.dvcfs.info(fs_path)["md5"]
-        return cloud.get_url_for(remote, checksum=md5)
+    try:
+        with files(path, repo=repo, rev=rev) as path_obj:
+            return path_obj.url(remote=remote)
+    except NoOutputInExternalRepoError as exc:
+        raise OutputNotFoundError(exc.path, repo=repo)
 
 
 def open(  # noqa, pylint: disable=redefined-builtin
@@ -46,15 +52,15 @@ def open(  # noqa, pylint: disable=redefined-builtin
                 ) as fd:
             # ... Handle file object fd
     """
-    args = (path,)
-    kwargs = {
-        "repo": repo,
-        "remote": remote,
-        "rev": rev,
-        "mode": mode,
-        "encoding": encoding,
-    }
-    return _OpenContextManager(_open, args, kwargs)
+
+    def _open():
+        with files(path, repo=repo, rev=rev) as path_obj:
+            with path_obj.open(  # pylint: disable=not-context-manager
+                remote=remote, mode=mode, encoding=encoding
+            ) as fd:
+                yield fd
+
+    return _OpenContextManager(_open, (), {})
 
 
 class _OpenContextManager(GCM):
@@ -70,24 +76,14 @@ class _OpenContextManager(GCM):
         )
 
 
-def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
-    with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        with _repo.open_by_relpath(
-            path, remote=remote, mode=mode, encoding=encoding
-        ) as fd:
-            yield fd
-
-
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """
     Returns the contents of a tracked file (by DVC or Git). For Git repos, HEAD
     is used unless a rev argument is supplied. The default remote is tried
     unless a remote argument is supplied.
     """
-    with open(
-        path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
-    ) as fd:
-        return fd.read()
+    with files(path, repo=repo, rev=rev) as path_obj:
+        return path_obj.read(remote=remote, mode=mode, encoding=encoding)
 
 
 def make_checkpoint():

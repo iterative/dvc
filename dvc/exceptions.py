@@ -264,6 +264,7 @@ class NoOutputInExternalRepoError(DvcException):
     def __init__(self, path, external_repo_path, external_repo_url):
         from dvc.utils import relpath
 
+        self.path = path
         super().__init__(
             "Output '{}' not found in target repository '{}'".format(
                 relpath(path, external_repo_path), external_repo_url
