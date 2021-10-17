@@ -30,7 +30,7 @@ jobs:
     - name: Install requirements
       run: |
         pip install wheel
-        pip install ".[all,tests,terraform]" Pygments collective.checkdocs pre-commit
+        pip install ".[all,tests,terraform]" pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
