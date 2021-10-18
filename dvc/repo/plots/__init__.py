@@ -20,6 +20,7 @@ from dvc.utils.serialize import LOADERS
 if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.types import DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +205,7 @@ def _collect_plots(
     targets: List[str] = None,
     rev: str = None,
     recursive: bool = False,
-) -> Dict[str, Dict]:
+) -> Dict["DvcPath", Dict]:
     from dvc.repo.collect import collect
 
     plots, path_infos = collect(
