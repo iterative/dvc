@@ -5,7 +5,7 @@ import re
 import threading
 from urllib.parse import urlparse
 
-from funcy import cached_property, retry, wrap_prop
+from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
@@ -32,36 +32,6 @@ class GDriveAuthError(DvcException):
             message = "Failed to authenticate GDrive remote"
 
         super().__init__(message)
-
-
-def _gdrive_retry(func):
-    def should_retry(exc):
-        from pydrive2.files import ApiRequestError
-
-        if not isinstance(exc, ApiRequestError):
-            return False
-
-        error_code = exc.error.get("code", 0)
-        result = False
-        if 500 <= error_code < 600:
-            result = True
-
-        if error_code == 403:
-            result = exc.GetField("reason") in [
-                "userRateLimitExceeded",
-                "rateLimitExceeded",
-            ]
-        if result:
-            logger.debug(f"Retrying GDrive API call, error: {exc}.")
-
-        return result
-
-    # 16 tries, start at 0.5s, multiply by golden ratio, cap at 20s
-    return retry(
-        16,
-        timeout=lambda a: min(0.5 * 1.618 ** a, 20),
-        filter_errors=should_retry,
-    )(func)
 
 
 class GDriveURLInfo(CloudURLInfo):
