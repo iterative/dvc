@@ -579,6 +579,8 @@ class CmdExperimentsDiff(CmdBase):
                     old=self.args.old,
                     on_empty_diff="diff not supported",
                     precision=precision if key == "metrics" else None,
+                    a_rev=self.args.a_rev,
+                    b_rev=self.args.b_rev,
                 )
 
         return 0
@@ -1070,7 +1072,7 @@ def add_parser(subparsers, parent_parser):
         "--old",
         action="store_true",
         default=False,
-        help="Show old metric/param value.",
+        help="Show old ('a_rev') metric/param value.",
     )
     experiments_diff_parser.add_argument(
         "--no-path",

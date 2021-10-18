@@ -75,6 +75,8 @@ class CmdMetricsDiff(CmdMetricsBase):
                 no_path=self.args.no_path,
                 precision=self.args.precision or DEFAULT_PRECISION,
                 round_digits=True,
+                a_rev=self.args.a_rev,
+                b_rev=self.args.b_rev,
             )
 
         return 0

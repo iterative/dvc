@@ -36,6 +36,8 @@ class CmdParamsDiff(CmdBase):
                 markdown=self.args.markdown,
                 no_path=self.args.no_path,
                 show_changes=False,
+                a_rev=self.args.a_rev,
+                b_rev=self.args.b_rev,
             )
 
         return 0

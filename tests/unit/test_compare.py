@@ -16,8 +16,8 @@ def test_diff_table(title):
         {
             "Path": "metrics.json",
             title: "a.b.c",
-            "Old": "1",
-            "New": "2",
+            "HEAD": "1",
+            "workspace": "2",
             "Change": "3",
         }
     ]
@@ -46,7 +46,7 @@ def test_no_path():
         no_path=True,
     )
     assert td.as_dict() == [
-        {"Metric": "a.b.c", "Old": "1", "New": "2", "Change": "3"}
+        {"Metric": "a.b.c", "HEAD": "1", "workspace": "2", "Change": "3"}
     ]
 
 
@@ -57,7 +57,12 @@ def test_do_not_show_changes():
         show_changes=False,
     )
     assert td.as_dict() == [
-        {"Path": "metrics.json", "Metric": "a.b.c", "Old": "1", "New": "2"}
+        {
+            "Path": "metrics.json",
+            "Metric": "a.b.c",
+            "HEAD": "1",
+            "workspace": "2",
+        }
     ]
 
 
@@ -72,8 +77,8 @@ def test_diff_table_precision():
         {
             "Path": "metrics.json",
             "Metric": "a.b.c",
-            "Old": "1.12",
-            "New": "2.23",
+            "HEAD": "1.12",
+            "workspace": "2.23",
             "Change": "3.35",
         }
     ]
@@ -90,8 +95,8 @@ def test_diff_table_rounding():
         {
             "Path": "metrics.json",
             "Metric": "a.b.c",
-            "Old": "1.123",
-            "New": "2.235",
+            "HEAD": "1.123",
+            "workspace": "2.235",
             "Change": "3.346",
         }
     ]
@@ -110,8 +115,8 @@ def test_diff_unsupported_diff_message(extra, expected):
         {
             "Path": "metrics.json",
             "Metric": "",
-            "Old": "1",
-            "New": "2",
+            "HEAD": "1",
+            "workspace": "2",
             "Change": expected,
         }
     ]
@@ -125,8 +130,8 @@ def test_diff_new():
         {
             "Path": "param.json",
             "Param": "a.b.d",
-            "Old": "-",
-            "New": "new",
+            "HEAD": "-",
+            "workspace": "new",
             "Change": "-",
         }
     ]
@@ -140,8 +145,8 @@ def test_diff_old_deleted():
         {
             "Path": "metric.json",
             "Metric": "a.b.d",
-            "Old": "old",
-            "New": "-",
+            "HEAD": "old",
+            "workspace": "-",
             "Change": "-",
         }
     ]
@@ -172,8 +177,8 @@ def test_diff_falsey_values():
         {
             "Path": "metrics.yaml",
             "Metric": "x.b",
-            "Old": "0",
-            "New": "0.0",
+            "HEAD": "0",
+            "workspace": "0.0",
             "Change": "0.0",
         }
     ]
@@ -191,8 +196,8 @@ def test_diff_list(composite, expected):
         {
             "Path": "params.yaml",
             "Param": "a.b.c",
-            "Old": "1",
-            "New": expected,
+            "HEAD": "1",
+            "workspace": expected,
             "Change": "-",
         }
     ]
@@ -214,6 +219,8 @@ def test_diff_mocked(mocker, markdown):
         on_empty_diff=None,
         show_changes=True,
         round_digits=False,
+        a_rev=None,
+        b_rev=None,
     )
     ret.render.assert_called_once_with(markdown=markdown)
 
@@ -230,12 +237,13 @@ def test_diff_default(capsys):
         "Metric",
     )
     out, _ = capsys.readouterr()
+
     assert out == textwrap.dedent(
         """\
-        Path          Metric    Old    New    Change
-        metrics.yaml  a.b.c     1      2      1
-        metrics.yaml  a.d.e     3      4      1
-        metrics.yaml  x.b       5      6      -
+        Path          Metric    HEAD    workspace    Change
+        metrics.yaml  a.b.c     1       2            1
+        metrics.yaml  a.d.e     3       4            1
+        metrics.yaml  x.b       5       6            -
         """
     )
 
@@ -253,13 +261,14 @@ def test_metrics_diff_md(capsys):
         markdown=True,
     )
     out, _ = capsys.readouterr()
+
     assert out == textwrap.dedent(
         """\
-        | Path         | Metric   | Old   | New   | Change   |
-        |--------------|----------|-------|-------|----------|
-        | metrics.yaml | a.b.c    | 1     | 2     | 1        |
-        | metrics.yaml | a.d.e    | 3     | 4     | 1        |
-        | metrics.yaml | x.b      | 5     | 6     | -        |
+        | Path         | Metric   | HEAD   | workspace   | Change   |
+        |--------------|----------|--------|-------------|----------|
+        | metrics.yaml | a.b.c    | 1      | 2           | 1        |
+        | metrics.yaml | a.d.e    | 3      | 4           | 1        |
+        | metrics.yaml | x.b      | 5      | 6           | -        |
 
         """
     )
