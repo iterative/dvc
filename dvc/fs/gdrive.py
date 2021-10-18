@@ -5,7 +5,7 @@ import re
 import threading
 from urllib.parse import urlparse
 
-from funcy import cached_property, retry, wrap_prop
+from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
