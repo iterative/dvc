@@ -109,7 +109,7 @@ jobs:
       run: >-
         python -m tests -n=4
         --cov-report=xml --cov-report=term
-        ${{ env.extra_test_args }}
+        --enable-ssh ${{ env.extra_test_args }}
     - name: upload coverage report
       uses: codecov/codecov-action@v2.1.0
       with:
