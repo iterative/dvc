@@ -166,16 +166,19 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             self._add_dir(trie, out, **kwargs)
 
         root_len = len(root.parts)
-        for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
-            if key == root.parts:
-                continue
+        try:
+            for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
+                if key == root.parts:
+                    continue
 
-            name = key[root_len]
-            if len(key) > root_len + 1 or (out and out.is_dir_checksum):
-                dirs.add(name)
-                continue
+                name = key[root_len]
+                if len(key) > root_len + 1 or (out and out.is_dir_checksum):
+                    dirs.add(name)
+                    continue
 
-            files.append(name)
+                files.append(name)
+        except KeyError:
+            pass
 
         assert topdown
         dirs = list(dirs)

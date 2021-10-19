@@ -117,6 +117,18 @@ def test_ls_repo_dvc_only_recursive(tmp_dir, dvc, scm):
     )
 
 
+def test_ls_repo_with_new_path_dir(tmp_dir, dvc, scm):
+    tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
+    tmp_dir.dvc_gen({"mysub": {}}, commit="dvc")
+    tmp_dir.gen({"mysub/sub": {"foo": "content"}})
+
+    files = Repo.ls(os.fspath(tmp_dir), path="mysub/sub")
+    match_files(
+        files,
+        ((("foo",), False),),
+    )
+
+
 def test_ls_repo_with_path_dir(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(FS_STRUCTURE, commit="init")
     tmp_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
