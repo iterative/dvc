@@ -10,6 +10,7 @@ from typing import Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
+from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
@@ -350,9 +351,19 @@ class Experiments:
         )
         self.scm.add(self.args_file)
 
+    def _format_new_params_msg(self, new_params, config_path):
+        """Format an error message for when new parameters are identified"""
+        new_param_count = len(new_params)
+        pluralise = "s are" if new_param_count > 1 else " is"
+        param_list = ", ".join(new_params)
+        return (
+            f"{new_param_count} parameter{pluralise} missing "
+            f"from '{config_path}': {param_list}"
+        )
+
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
-        from dvc.utils.collections import merge_params
+        from dvc.utils.collections import NewParamsFound, merge_params
         from dvc.utils.serialize import MODIFIERS
 
         logger.debug("Using experiment params '%s'", params)
@@ -362,7 +373,11 @@ class Experiments:
             suffix = path.suffix.lower()
             modify_data = MODIFIERS[suffix]
             with modify_data(path, fs=self.repo.fs) as data:
-                merge_params(data, params[params_fname])
+                try:
+                    merge_params(data, params[params_fname], allow_new=False)
+                except NewParamsFound as e:
+                    msg = self._format_new_params_msg(e.new_params, path)
+                    raise MissingParamsError(msg)
 
         # Force params file changes to be staged in git
         # Otherwise in certain situations the changes to params file may be
