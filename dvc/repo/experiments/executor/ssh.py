@@ -1,5 +1,4 @@
 import logging
-import os
 import posixpath
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Optional
@@ -97,11 +96,6 @@ class SSHExecutor(BaseExecutor):
             "password": fs.fs_args.get("password"),
             "key_filename": first(fs.fs_args.get("client_keys", [])),
         }
-        if os.name != "win32":
-            kwargs["ssh_command"] = (
-                "ssh -o UserKnownHostsFile=/dev/null "
-                "-o StrictHostKeyChecking=no"
-            )
         return kwargs
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
