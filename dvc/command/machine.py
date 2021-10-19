@@ -143,6 +143,22 @@ class CmdMachineCreate(CmdBase):
         return 0
 
 
+class CmdMachineStatus(CmdBase):
+    SHOWN_FIELD = ["name", "cloud", "instance_hdd_size", "instance_ip"]
+
+    def run(self):
+        if self.repo.machine is None:
+            raise MachineDisabledError
+
+        all_status = self.repo.machine.status(self.args.name)
+        for i, status in enumerate(all_status, start=1):
+            ui.write(f"instance_num_{i}:")
+            for field in self.SHOWN_FIELD:
+                value = status.get(field, None)
+                ui.write(f"\t{field:20}: {value}")
+        return 0
+
+
 class CmdMachineDestroy(CmdBase):
     def run(self):
         if self.repo.machine is None:
@@ -305,6 +321,19 @@ def add_parser(subparsers, parent_parser):
         "name", help="Name of the machine to create."
     )
     machine_create_parser.set_defaults(func=CmdMachineCreate)
+
+    machine_STATUS_HELP = "List the status of a running machine."
+    machine_status_parser = machine_subparsers.add_parser(
+        "status",
+        parents=[parent_config_parser, parent_parser],
+        description=append_doc_link(machine_STATUS_HELP, "machine/status"),
+        help=machine_STATUS_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    machine_status_parser.add_argument(
+        "name", help="Name of the running machine."
+    )
+    machine_status_parser.set_defaults(func=CmdMachineStatus)
 
     machine_DESTROY_HELP = "Destroy an machine instance."
     machine_destroy_parser = machine_subparsers.add_parser(

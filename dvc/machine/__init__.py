@@ -2,8 +2,10 @@ import logging
 import os
 from typing import (
     TYPE_CHECKING,
+    Any,
     Dict,
     Iterable,
+    Iterator,
     Mapping,
     Optional,
     Tuple,
@@ -200,3 +202,7 @@ class MachineManager:
     def run_shell(self, name: Optional[str]):
         config, backend = self.get_config_and_backend(name)
         return backend.run_shell(**config)
+
+    def status(self, name: str) -> Iterator[Dict[Any, Any]]:
+        config, backend = self.get_config_and_backend(name)
+        return backend.instances(**config)
