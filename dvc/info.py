@@ -6,6 +6,7 @@ import uuid
 
 import psutil
 
+from dvc import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
 from dvc.repo import Repo
@@ -13,7 +14,6 @@ from dvc.scm.base import SCMError
 from dvc.system import System
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
-from dvc.version import __version__
 
 try:
     import importlib.metadata as importlib_metadata
