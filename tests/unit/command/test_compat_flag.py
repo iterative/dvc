@@ -21,7 +21,7 @@ def _id_gen(val) -> str:
         (["experiments", "show", "--show-json"], "json"),
         (["experiments", "show", "--show-csv"], "csv"),
         (["experiments", "show", "--show-md"], "markdown"),
-        (["experiments", "show", "--md"], "markdown"),
+        (["experiments", "show", "--show-md"], "markdown"),
         (["ls", "--show-json", "."], "json"),
         (["metrics", "diff", "--show-json"], "json"),
         (["metrics", "diff", "--show-md"], "markdown"),
@@ -37,5 +37,4 @@ def test_backward_compat_flags(args, key):
     """Test support for --show-csv/--show-json/--show-md flags."""
     cli_args = parse_args(args)
     d = vars(cli_args)
-    print(d)
     assert d[key] is True

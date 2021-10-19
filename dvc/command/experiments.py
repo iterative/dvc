@@ -1002,7 +1002,7 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         dest="markdown",
-        help="Print output in Markdown table format.",
+        help="Show tabulated output in the Markdown format (GFM).",
     )
     experiments_show_parser.add_argument(
         "--precision",
