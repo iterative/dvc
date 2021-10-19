@@ -15,15 +15,13 @@ from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 from dvc.version import __version__
 
-if PKG is None:
-    package = ""
-else:
-    package = f"({PKG})"
-
 try:
     import importlib.metadata as importlib_metadata
 except ImportError:  # < 3.8
     import importlib_metadata  # type: ignore[no-redef]
+
+
+package = "" if PKG is None else f"({PKG})"
 
 
 def get_dvc_info():

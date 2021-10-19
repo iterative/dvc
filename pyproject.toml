@@ -1,13 +1,6 @@
 [build-system]
-requires = [
-    "setuptools>=58.2",
-    "wheel",
-    "setuptools_scm[toml]>=6.3.1",
-    # Prevents pkg_resources import in entry point script,
-    # see https://github.com/ninjaaron/fast-entry_points.
-    # This saves about 200 ms on startup time for non-wheel installs.
-    "fastentrypoints>=0.12"
-]
+requires = ["setuptools>=48", "wheel", "setuptools_scm[toml]>=6.3.1"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 write_to = "dvc/_version.py"
@@ -29,3 +22,58 @@ exclude = '''
   | dist
 )/
 '''
+
+[tool.isort]
+profile = "black"
+known_first_party = ["dvc", "tests"]
+line_length = 79
+
+[tool.pytest.ini_options]
+log_level = "debug"
+addopts = "-ra"
+markers = [
+    "needs_internet: Might need network access for the tests",
+]
+
+[tool.mypy]
+# Error output
+show_column_numbers = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+pretty = true
+# See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports.
+ignore_missing_imports = true
+check_untyped_defs = false
+# Warnings
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+files = ["dvc"]
+
+[tool.pylint.master]
+extension-pkg-whitelist = ["pygit2"]
+init-hook = "import sys; sys.path.append(str('tests'))"
+load-plugins = ["pylint_pytest", "pylint_plugin_disable"]
+
+[tool.pylint.message_control]
+disable = [
+    "format", "refactoring", "spelling", "design", "no-self-use",
+    "invalid-name", "misplaced-comparison-constant", "duplicate-code", "fixme",
+    "unused-wildcard-import", "cyclic-import", "wrong-import-order",
+    "wrong-import-position", "ungrouped-imports", "multiple-imports",
+    "logging-format-interpolation", "logging-fstring-interpolation",
+    "missing-function-docstring", "missing-module-docstring",
+    "missing-class-docstring", "raise-missing-from", "import-outside-toplevel",
+]
+enable = ["c-extension-no-member", "no-else-return"]
+
+[tool.pylint.typecheck]
+generated-members = ["pytest.lazy_fixture", "logging.TRACE", "logger.trace", "sys.getwindowsversion"]
+ignored-classes = ["Dvcfile"]
+ignored-modules = ["azure"]
+signature-mutators = ["funcy.decorators.decorator"]
+
+[tool.pylint.variables]
+dummy-variables-rgx = "_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_"
+ignored-argument-names = "_.*|^ignored_|^unused_|args|kwargs"

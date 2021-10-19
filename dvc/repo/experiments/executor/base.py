@@ -490,7 +490,7 @@ class BaseExecutor(ABC):
                 push_cache=push_cache,
                 run_cache=run_cache,
             )
-        except BaseException as exc:
+        except BaseException as exc:  # pylint: disable=broad-except
             logger.warning(
                 "Something went wrong while auto pushing experiment "
                 f"to the remote '{git_remote}': {exc}"
