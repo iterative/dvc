@@ -3,7 +3,7 @@ requires = ["setuptools>=48", "wheel", "setuptools_scm[toml]>=6.3.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = "dvc/_version.py"
+write_to = "dvc/_dvc_version.py"
 
 [tool.black]
 line-length = 79
