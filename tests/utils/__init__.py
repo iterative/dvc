@@ -13,7 +13,7 @@ pytest.register_assert_rewrite("tests.utils.asserts")
 
 
 def get_gitignore_content():
-    with open(Git.GITIGNORE) as gitignore:
+    with open(Git.GITIGNORE, encoding="utf-8") as gitignore:
         return gitignore.read().splitlines()
 
 

@@ -66,7 +66,9 @@ class System:
 
         try:
             ret = 255
-            with open(src) as s, open(dst, "w+") as d:
+            with open(src, encoding="utf-8") as s, open(
+                dst, "w+", encoding="utf-8"
+            ) as d:
                 ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
         finally:
             if ret != 0:

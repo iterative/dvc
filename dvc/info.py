@@ -93,7 +93,7 @@ def _get_linktype_support_info(repo):
 
     fname = "." + str(uuid.uuid4())
     src = os.path.join(repo.odb.local.cache_dir, fname)
-    open(src, "w").close()
+    open(src, "w", encoding="utf-8").close()
     dst = os.path.join(repo.root_dir, fname)
 
     cache = []

@@ -34,13 +34,13 @@ class TestDefaultOutput(TestDvc):
         filename = str(uuid4())
         tmpfile = os.path.join(tmpdir, filename)
 
-        with open(tmpfile, "w") as fd:
+        with open(tmpfile, "w", encoding="utf-8") as fd:
             fd.write("content")
 
         ret = main(["import-url", tmpfile])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(filename))
-        with open(filename) as fd:
+        with open(filename, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "content")
 
 
@@ -59,7 +59,7 @@ class TestImportFilename(TestDvc):
         super().setUp()
         tmp_dir = self.mkdtemp()
         self.external_source = os.path.join(tmp_dir, "file")
-        with open(self.external_source, "w") as fobj:
+        with open(self.external_source, "w", encoding="utf-8") as fobj:
             fobj.write("content")
 
     def test(self):
@@ -334,7 +334,9 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
-    with open(local_remote.hash_to_path_info(hash_info.value)) as stream:
+    with open(
+        local_remote.hash_to_path_info(hash_info.value), encoding="utf-8"
+    ) as stream:
         file_parts = json.load(stream)
 
     assert len(file_parts) == 3

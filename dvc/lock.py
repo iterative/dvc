@@ -176,8 +176,8 @@ class HardlinkLock(flufl.lock.Lock, LockBase):
         except flufl.lock.TimeOutError:
             raise LockError(FAILED_TO_LOCK_MESSAGE)
 
-    def _set_claimfile(self):
-        super()._set_claimfile()
+    def _set_claimfile(self, pid=None):
+        super()._set_claimfile(pid)
 
         if self._tmp_dir is not None:
             # Under Windows file path length is limited so we hash it

@@ -87,7 +87,7 @@ def test_add_executable(tmp_dir, dvc):
 
 
 def test_add_unicode(tmp_dir, dvc):
-    with open("\xe1", "wb") as fd:
+    with open("\xe1", "wb", encoding=None) as fd:
         fd.write(b"something")
 
     (stage,) = dvc.add("\xe1")
@@ -143,7 +143,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
         # Create a lot of files
         for iteration in range(LARGE_DIR_SIZE + 1):
             path = os.path.join("large-dir", str(iteration))
-            with open(path, "w") as fobj:
+            with open(path, "w", encoding="utf-8") as fobj:
                 fobj.write(path)
 
         assert main(["add", "--recursive", "large-dir"]) == 0
@@ -581,7 +581,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         foo_stage = relpath(self.FOO + DVC_FILE_SUFFIX)
 
         # corrupt stage file
-        with open(foo_stage, "a+") as file:
+        with open(foo_stage, "a+", encoding="utf-8") as file:
             file.write("this will break yaml file structure")
 
         self._caplog.clear()

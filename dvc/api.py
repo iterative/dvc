@@ -113,7 +113,7 @@ def make_checkpoint():
         root_dir, Repo.DVC_DIR, "tmp", CheckpointTask.SIGNAL_FILE
     )
 
-    with builtins.open(signal_file, "w") as fobj:
+    with builtins.open(signal_file, "w", encoding="utf-8") as fobj:
         # NOTE: force flushing/writing empty file to disk, otherwise when
         # run in certain contexts (pytest) file may not actually be written
         fobj.write("")

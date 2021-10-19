@@ -22,7 +22,7 @@ class TestRequestHandler(RangeRequestHandler):
         file = self.translate_path(self.path)
 
         if not os.path.isdir(file) and os.path.exists(file):
-            with open(file) as fd:
+            with open(file, encoding="utf-8") as fd:
                 encoded_text = fd.read().encode("utf8")
                 checksum = hashlib.md5(encoded_text).hexdigest()
                 self.send_header("Content-MD5", checksum)

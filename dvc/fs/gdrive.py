@@ -189,7 +189,7 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
             temporary_save_path = self._gdrive_service_credentials_path
 
         if is_credentials_temp:
-            with open(temporary_save_path, "w") as cred_file:
+            with open(temporary_save_path, "w", encoding="utf-8") as cred_file:
                 cred_file.write(
                     os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA)
                 )
