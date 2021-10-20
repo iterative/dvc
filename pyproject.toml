@@ -69,7 +69,7 @@ disable = [
 enable = ["c-extension-no-member", "no-else-return"]
 
 [tool.pylint.typecheck]
-generated-members = ["pytest.lazy_fixture", "logging.TRACE", "logger.trace", "sys.getwindowsversion"]
+generated-members = ["pytest.lazy_fixture", "logging.TRACE", "logger.trace", "sys.getwindowsversion", "argparse.Namespace"]
 ignored-classes = ["Dvcfile"]
 ignored-modules = ["azure"]
 signature-mutators = ["funcy.decorators.decorator"]

@@ -677,8 +677,12 @@ def temporary_windows_drive(tmp_path_factory):
     import string
     from ctypes import windll
 
-    import win32api  # pylint: disable=import-error
-    from win32con import DDD_REMOVE_DEFINITION  # pylint: disable=import-error
+    try:
+        # pylint: disable=import-error
+        import win32api
+        from win32con import DDD_REMOVE_DEFINITION
+    except ImportError:
+        pytest.skip("pywin32 not installed")
 
     drives = [
         s[0].upper()
@@ -999,7 +1003,7 @@ def test_add_preserve_meta(tmp_dir, dvc):
 # are the same 260 chars, which makes the test unnecessarily complex
 @pytest.mark.skipif(os.name == "nt", reason="unsupported on Windows")
 def test_add_long_fname(tmp_dir, dvc):
-    name_max = os.pathconf(tmp_dir, "PC_NAME_MAX")
+    name_max = os.pathconf(tmp_dir, "PC_NAME_MAX")  # pylint: disable=no-member
     name = "a" * name_max
     tmp_dir.gen({"data": {name: "foo"}})
 

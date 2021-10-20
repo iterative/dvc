@@ -60,7 +60,7 @@ class System:
 
     @staticmethod
     def _reflink_linux(src, dst):
-        import fcntl
+        import fcntl  # pylint: disable=import-error
 
         FICLONE = 0x40049409
 
