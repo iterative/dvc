@@ -37,7 +37,7 @@ class AsyncSSHWrapper(BaseAsyncObject):
         if self.proc.stdout.at_eof():
             return b""
 
-        return await self.proc.stdout.read(n=n or -1)
+        return await self.proc.stdout.read(n=n if n is not None else -1)
 
     read = sync_wrapper(_read)
 
