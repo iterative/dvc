@@ -5,9 +5,12 @@ import sys
 if os.name == "nt":
     import subprocess
 
-    import win32file  # pylint: disable=import-error
-
-    win32file._setmaxstdio(4096)
+    try:
+        import win32file  # pylint: disable=import-error
+    except ImportError:
+        pass
+    else:
+        win32file._setmaxstdio(4096)
 
     # Workaround for two bugs:
     #
@@ -34,7 +37,7 @@ if os.name == "nt":
         subprocess._cleanup = noop
         subprocess._active = None
 else:
-    import resource
+    import resource  # pylint: disable=import-error
 
     resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
 
