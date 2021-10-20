@@ -247,7 +247,7 @@ class TmpDir(pathlib.Path):
                 path.name: path.read_text(*args, **kwargs)
                 for path in self.iterdir()
             }
-        return super().read_text(*args, encoding="utf-8", **kwargs)
+        return super().read_text(*args, **kwargs)
 
     def hash_to_path_info(self, hash_):
         return self / hash_[0:2] / hash_[2:]

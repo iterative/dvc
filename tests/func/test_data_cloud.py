@@ -112,7 +112,7 @@ def test_cloud(tmp_dir, dvc, remote):  # pylint:disable=unused-argument
     dvc.cloud.pull(foo_hashes)
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
-    with open(cache, encoding="utf-8") as fd:
+    with open(cache) as fd:
         assert fd.read() == "foo"
 
     dvc.cloud.pull(dir_hashes)
@@ -166,7 +166,7 @@ def test_cloud_cli(tmp_dir, dvc, remote):
     assert os.path.isfile("foo")
     assert os.path.isdir("data_dir")
 
-    with open(cache, encoding="utf-8") as fd:
+    with open(cache) as fd:
         assert fd.read() == "foo"
     assert os.path.isfile(cache_dir)
 

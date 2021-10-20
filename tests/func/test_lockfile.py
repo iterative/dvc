@@ -23,7 +23,7 @@ FS_STRUCTURE = {
 
 
 def read_lock_file(file=PIPELINE_LOCK):
-    with open(file, encoding="utf-8") as f:
+    with open(file) as f:
         data = parse_yaml_for_update(f.read(), file)
     assert isinstance(data, OrderedDict)
     return data

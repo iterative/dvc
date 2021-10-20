@@ -184,7 +184,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
 
 
 def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
-    with open("file", "wb", encoding=None) as fobj:
+    with open("file", "wb") as fobj:
         fobj.write(b"\xc1")
 
     run_copy_metrics("file", "plot_file.json", plots=["plot_file.json"])
@@ -216,7 +216,7 @@ def test_log_errors(
     )
     scm.tag("v1")
 
-    with open(file, "a", encoding="utf-8") as fd:
+    with open(file, "a") as fd:
         fd.write("\nMALFORMED!")
 
     result = dvc.plots.show(onerror=onerror_collect)
