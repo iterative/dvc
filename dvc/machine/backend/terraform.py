@@ -77,11 +77,7 @@ class TerraformBackend(BaseMachineBackend):
         """rename a dvc machine instance to a new name"""
         import shutil
 
-        from tpi import TPIError
-
         mtype = "iterative_machine"
-
-        assert name and new
 
         new_dir = os.path.join(self.tmp_dir, new)
         old_dir = os.path.join(self.tmp_dir, name)
@@ -91,10 +87,7 @@ class TerraformBackend(BaseMachineBackend):
         if not os.path.exists(old_dir):
             return
 
-        try:
-            with self.make_tpi(name) as tpi:
-                tpi.state_mv(f"{mtype}.{name}", f"{mtype}.{new}", **config)
-        except TPIError as exc:
-            raise DvcException(f"rename failed: {exc}") from exc
+        with self.make_tpi(name) as tpi:
+            tpi.state_mv(f"{mtype}.{name}", f"{mtype}.{new}", **config)
 
         shutil.move(old_dir, new_dir)
