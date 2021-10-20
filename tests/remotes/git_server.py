@@ -49,17 +49,12 @@ def git_ssh_connection(git_server):
         host=git_server["host"],
         port=git_server["port"],
         username=TEST_SSH_USER,
-        client_files=[TEST_SSH_KEY_PATH],
+        client_keys=[TEST_SSH_KEY_PATH],
     )
 
 
 @pytest.fixture
 def git_ssh(git_server, monkeypatch):
-    from dvc.fs.ssh import SSHFileSystem
-
-    # NOTE: see http://github.com/iterative/dvc/pull/3501
-    monkeypatch.setattr(SSHFileSystem, "CAN_TRAVERSE", False)
-
     url = GitSSH(GitSSH.get_url(**git_server))
     url.mkdir(exist_ok=True, parents=True)
     return url
