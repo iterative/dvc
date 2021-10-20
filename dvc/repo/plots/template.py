@@ -167,7 +167,7 @@ class PlotTemplates:
         if name is not None:
             template_path = self._find_in_project(name)
             if template_path:
-                with open(template_path, "r") as fd:
+                with open(template_path, "r", encoding="utf-8") as fd:
                     content = fd.read()
                 return Template(content, name)
         else:
@@ -195,5 +195,9 @@ class PlotTemplates:
                 .joinpath(template)
                 .read_text()
             )
-            with open(os.path.join(self.templates_dir, template), "w") as fd:
+            with open(
+                os.path.join(self.templates_dir, template),
+                "w",
+                encoding="utf-8",
+            ) as fd:
                 fd.write(content)

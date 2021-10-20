@@ -195,7 +195,7 @@ class Git(Base):
         if not os.path.exists(gitignore):
             return
 
-        with open(gitignore) as fobj:
+        with open(gitignore, encoding="utf-8") as fobj:
             lines = fobj.readlines()
 
         filtered = list(filter(lambda x: x.strip() != entry.strip(), lines))
@@ -204,14 +204,14 @@ class Git(Base):
             os.unlink(gitignore)
             return
 
-        with open(gitignore, "w") as fobj:
+        with open(gitignore, "w", encoding="utf-8") as fobj:
             fobj.writelines(filtered)
 
         self.track_file(relpath(gitignore))
 
     def _install_hook(self, name):
         hook = self._hook_path(name)
-        with open(hook, "w+") as fobj:
+        with open(hook, "w+", encoding="utf-8") as fobj:
             fobj.write(f"#!/bin/sh\nexec dvc git-hook {name} $@\n")
 
         os.chmod(hook, 0o777)

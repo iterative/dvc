@@ -68,7 +68,7 @@ class Updater:
             self.fetch()
             return
 
-        with open(self.updater_file) as fobj:
+        with open(self.updater_file, encoding="utf-8") as fobj:
             import json
 
             try:
@@ -105,7 +105,7 @@ class Updater:
             logger.debug(msg.format(exc))
             return
 
-        with open(self.updater_file, "w+") as fobj:
+        with open(self.updater_file, "w+", encoding="utf-8") as fobj:
             json.dump(info, fobj)
 
     def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:

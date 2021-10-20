@@ -46,7 +46,7 @@ def test_fetch(mocker, updater):
     mock_get.assert_called_once_with(Updater.URL, timeout=Updater.TIMEOUT_GET)
     assert os.path.isfile(updater.updater_file)
 
-    with open(updater.updater_file) as fobj:
+    with open(updater.updater_file, encoding="utf-8") as fobj:
         info = json.load(fobj)
 
     assert info["version"] == __version__
@@ -88,7 +88,7 @@ def test_check_updates(mocker, capsys, updater, current, latest, notify):
     mocker.patch("sys.stdout.isatty", return_value=True)
 
     updater.current = current
-    with open(updater.updater_file, "w+") as f:
+    with open(updater.updater_file, "w+", encoding="utf-8") as f:
         json.dump({"version": latest}, f)
 
     updater.check()
@@ -108,7 +108,7 @@ def test_check_updates(mocker, capsys, updater, current, latest, notify):
 
 def test_check_refetches_each_day(mock_tty, updater, caplog, mocker):
     updater.current = "0.0.8"
-    with open(updater.updater_file, "w+") as f:
+    with open(updater.updater_file, "w+", encoding="utf-8") as f:
         json.dump({"version": "0.0.9"}, f)
     fetch = mocker.patch.object(updater, "fetch")
 
@@ -127,7 +127,7 @@ def test_check_fetches_on_invalid_data_format(
     mock_tty, updater, caplog, mocker
 ):
     updater.current = "0.0.5"
-    with open(updater.updater_file, "w+") as f:
+    with open(updater.updater_file, "w+", encoding="utf-8") as f:
         f.write('"{"version: "0.0.6"')
     fetch = mocker.patch.object(updater, "fetch")
     caplog.clear()

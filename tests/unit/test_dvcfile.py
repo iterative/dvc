@@ -112,7 +112,7 @@ def test_stage_load_file_exists_but_dvcignored(tmp_dir, dvc, scm, file):
 
 @pytest.mark.parametrize("file", ["foo.dvc", "dvc.yaml"])
 def test_try_loading_dvcfile_that_is_gitignored(tmp_dir, dvc, scm, file):
-    with open(tmp_dir / ".gitignore", "a+") as fd:
+    with open(tmp_dir / ".gitignore", "a+", encoding="utf-8") as fd:
         fd.write(file)
 
     # create a file just to avoid other checks

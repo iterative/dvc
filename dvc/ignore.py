@@ -393,7 +393,7 @@ def init(path):
     if os.path.exists(dvcignore):
         return dvcignore
 
-    with open(dvcignore, "w") as fobj:
+    with open(dvcignore, "w", encoding="utf-8") as fobj:
         fobj.write(
             "# Add patterns of files dvc should ignore, which could improve\n"
             "# the performance. Learn more at\n"

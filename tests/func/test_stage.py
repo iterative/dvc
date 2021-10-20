@@ -144,7 +144,7 @@ class TestExternalRemoteResolution(TestDvc):
 
         os.makedirs(storage)
 
-        with open(file_path, "w") as fobj:
+        with open(file_path, "w", encoding="utf-8") as fobj:
             fobj.write("Isle of Dogs")
 
         assert main(["remote", "add", "tmp", tmp_path]) == 0
@@ -157,7 +157,7 @@ class TestExternalRemoteResolution(TestDvc):
 def test_md5_ignores_comments(tmp_dir, dvc):
     (stage,) = tmp_dir.dvc_gen("foo", "foo content")
 
-    with open(stage.path, "a") as f:
+    with open(stage.path, "a", encoding="utf-8") as f:
         f.write("# End comment\n")
 
     new_stage = SingleStageFile(dvc, stage.path).stage

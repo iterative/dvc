@@ -51,7 +51,7 @@ class GDrive(Base, GDriveURLInfo):
     @cached_property
     def config(self):
         tmp_path = tmp_fname()
-        with open(tmp_path, "w") as stream:
+        with open(tmp_path, "w", encoding="utf-8") as stream:
             raw_credentials = os.getenv(
                 GDriveFileSystem.GDRIVE_CREDENTIALS_DATA
             )

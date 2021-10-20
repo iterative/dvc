@@ -112,7 +112,7 @@ class TestRunNoExec(TestDvcGit):
             single_stage=True,
         )
         self.assertFalse(os.path.exists("out"))
-        with open(".gitignore") as fobj:
+        with open(".gitignore", encoding="utf-8") as fobj:
             self.assertEqual(fobj.read(), "/out\n")
 
 
@@ -269,7 +269,7 @@ class TestRunBadWdir(TestDvc):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
             os.mkdir(path)
             path = os.path.join(path, str(uuid.uuid4()))
-            open(path, "a").close()
+            open(path, "a", encoding="utf-8").close()
             self.dvc.run(cmd="command", wdir=path, single_stage=True)
 
 
@@ -304,7 +304,7 @@ class TestRunBadName(TestDvc):
 
 class TestRunRemoveOuts(TestDvc):
     def test(self):
-        with open(self.CODE, "w+") as fobj:
+        with open(self.CODE, "w+", encoding="utf-8") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
             fobj.write("if os.path.exists(sys.argv[1]):\n")
@@ -321,7 +321,7 @@ class TestRunRemoveOuts(TestDvc):
 
 class TestRunUnprotectOutsCopy(TestDvc):
     def test(self):
-        with open(self.CODE, "w+") as fobj:
+        with open(self.CODE, "w+", encoding="utf-8") as fobj:
             fobj.write("import sys\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
@@ -344,7 +344,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.access(self.FOO, os.W_OK))
-        with open(self.FOO) as fd:
+        with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
         ret = main(
@@ -364,13 +364,13 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.access(self.FOO, os.W_OK))
-        with open(self.FOO) as fd:
+        with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
 
 class TestRunUnprotectOutsSymlink(TestDvc):
     def test(self):
-        with open(self.CODE, "w+") as fobj:
+        with open(self.CODE, "w+", encoding="utf-8") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
@@ -402,7 +402,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
         self.assertTrue(System.is_symlink(self.FOO))
-        with open(self.FOO) as fd:
+        with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
         ret = main(
@@ -429,13 +429,13 @@ class TestRunUnprotectOutsSymlink(TestDvc):
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
         self.assertTrue(System.is_symlink(self.FOO))
-        with open(self.FOO) as fd:
+        with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
 
 class TestRunUnprotectOutsHardlink(TestDvc):
     def test(self):
-        with open(self.CODE, "w+") as fobj:
+        with open(self.CODE, "w+", encoding="utf-8") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
@@ -461,7 +461,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        with open(self.FOO) as fd:
+        with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
         ret = main(
@@ -482,7 +482,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        with open(self.FOO) as fd:
+        with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
 
@@ -577,7 +577,7 @@ class TestCmdRunCliMetrics(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        with open("metrics.txt") as fd:
+        with open("metrics.txt", encoding="utf-8") as fd:
             self.assertEqual(fd.read().rstrip(), "test")
 
     def test_not_cached(self):
@@ -591,7 +591,7 @@ class TestCmdRunCliMetrics(TestDvc):
             ]
         )
         self.assertEqual(ret, 0)
-        with open("metrics.txt") as fd:
+        with open("metrics.txt", encoding="utf-8") as fd:
             self.assertEqual(fd.read().rstrip(), "test")
 
 
@@ -698,7 +698,7 @@ def test_rerun_changed_out(tmp_dir, run_copy):
     tmp_dir.gen("foo", "foo content")
     assert run_copy("foo", "out", single_stage=True) is not None
 
-    Path("out").write_text("modification")
+    Path("out").write_text("modification", encoding="utf-8")
     with pytest.raises(StageFileAlreadyExistsError):
         run_copy("foo", "out", force=False, single_stage=True)
 
@@ -769,7 +769,7 @@ class TestRunPersist(TestDvc):
         ret = main(["repro", stage_file])
         self.assertEqual(0, ret)
 
-        with open(file) as fobj:
+        with open(file, encoding="utf-8") as fobj:
             lines = fobj.readlines()
         self.assertEqual(2, len(lines))
 
@@ -829,7 +829,7 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
 
 class TestRerunWithSameOutputs(TestDvc):
     def _read_content_only(self, path):
-        with open(path) as fobj:
+        with open(path, encoding="utf-8") as fobj:
             return [line.rstrip() for line in fobj]
 
     @property
@@ -909,7 +909,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         clean_staging()
 
         os.chmod(self.BAR, 0o644)
-        with open(self.BAR, "w") as fd:
+        with open(self.BAR, "w", encoding="utf-8") as fd:
             fd.write("corrupting the output cache")
 
         patch_checkout = mock.patch.object(
