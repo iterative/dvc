@@ -64,7 +64,7 @@ class TempDirExecutor(BaseLocalExecutor):
     def _config(self, cache_dir):
         local_config = os.path.join(self.dvc_dir, "config.local")
         logger.debug("Writing experiments local config '%s'", local_config)
-        with open(local_config, "w") as fobj:
+        with open(local_config, "w", encoding="utf-8") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
 
     def cleanup(self):

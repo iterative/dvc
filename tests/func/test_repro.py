@@ -343,7 +343,7 @@ class TestReproDryNoExec(TestDvc):
             os.mkdir(idir)
 
             f = os.path.join(idir, "file")
-            with open(f, "w+") as fobj:
+            with open(f, "w+", encoding="utf-8") as fobj:
                 fobj.write(str(d))
 
             ret = main(
@@ -443,7 +443,7 @@ class TestReproForceDownstream(TestDvc):
         )
         self.assertTrue(file3_stage is not None)
 
-        with open(code2, "a") as fobj:
+        with open(code2, "a", encoding="utf-8") as fobj:
             fobj.write("\n\n")
 
         stages = self.dvc.reproduce(file3_stage.path, force_downstream=True)
@@ -670,7 +670,7 @@ class TestReproChangedDir(SingleStageRun, TestDvc):
             'shutil.copyfile("{}", os.path.join("{}", "{}"))'
         )
 
-        with open(dir_code, "w+") as fd:
+        with open(dir_code, "w+", encoding="utf-8") as fd:
             fd.write(code.format(dir_name, file_name, dir_name, file_name))
 
         stage = self._run(
@@ -696,7 +696,7 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
         dir_name = "dir"
         dir_code = "dir_code.py"
 
-        with open(dir_code, "w+") as fd:
+        with open(dir_code, "w+", encoding="utf-8") as fd:
             fd.write(
                 "import os; import sys; import shutil; "
                 "shutil.copytree(sys.argv[1], sys.argv[2])"
@@ -715,7 +715,7 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
         stages = self.dvc.reproduce(target)
         self.assertEqual(len(stages), 0)
 
-        with open(self.DATA_SUB, "a") as fd:
+        with open(self.DATA_SUB, "a", encoding="utf-8") as fd:
             fd.write("add")
 
         stages = self.dvc.reproduce(target)
@@ -775,14 +775,14 @@ class TestReproShell(TestDvc):
             single_stage=True,
         )
 
-        with open(fname) as fd:
+        with open(fname, encoding="utf-8") as fd:
             self.assertEqual(os.getenv("SHELL"), fd.read().strip())
 
         os.unlink(fname)
 
         self.dvc.reproduce(stage)
 
-        with open(fname) as fd:
+        with open(fname, encoding="utf-8") as fd:
             self.assertEqual(os.getenv("SHELL"), fd.read().strip())
 
 
@@ -1013,11 +1013,11 @@ def _rewrite_file(path_elements, new_content):
         path_elements = [path_elements]
     file = Path(os.sep.join(path_elements))
     file.unlink()
-    file.write_text(new_content)
+    file.write_text(new_content, encoding="utf-8")
 
 
 def _read_out(stage):
-    return Path(stage.outs[0].fspath).read_text()
+    return Path(stage.outs[0].fspath).read_text(encoding="utf-8")
 
 
 def test_recursive_repro_default(dvc, repro_dir):

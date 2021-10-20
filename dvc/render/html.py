@@ -89,7 +89,7 @@ def write(
 
     page_html = None
     if template_path:
-        with open(template_path) as fobj:
+        with open(template_path, encoding="utf-8") as fobj:
             page_html = fobj.read()
 
     document = HTML(page_html, refresh_seconds=refresh_seconds)
@@ -102,6 +102,6 @@ def write(
 
     index = Path(os.path.join(path, "index.html"))
 
-    with open(index, "w") as fd:
+    with open(index, "w", encoding="utf-8") as fd:
         fd.write(document.embed())
     return index

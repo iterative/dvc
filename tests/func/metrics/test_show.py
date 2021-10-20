@@ -277,7 +277,7 @@ def test_log_errors(
     )
     scm.tag("v1")
 
-    with open(file, "a") as fd:
+    with open(file, "a", encoding="utf-8") as fd:
         fd.write("\nMALFORMED!")
 
     result = dvc.metrics.show(revs=["v1"])

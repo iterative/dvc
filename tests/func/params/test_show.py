@@ -158,7 +158,7 @@ def test_log_errors(tmp_dir, scm, dvc, capsys, file, error_path):
     )
 
     rename = (tmp_dir / file).read_text()
-    with open(tmp_dir / file, "a") as fd:
+    with open(tmp_dir / file, "a", encoding="utf-8") as fd:
         fd.write("\nmalformed!")
 
     scm.add([PIPELINE_FILE, "params_other.yaml"])

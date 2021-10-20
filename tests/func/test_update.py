@@ -216,7 +216,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev": "branch1",
         "rev_lock": branch1_head,
     }
-    with open(tmp_dir / "foo") as f:
+    with open(tmp_dir / "foo", encoding="utf-8") as f:
         assert "foobar" == f.read()
 
     stage = dvc.update(["foo.dvc"], rev="branch2")[0]
@@ -225,7 +225,7 @@ def test_update_rev(tmp_dir, dvc, scm, git_dir):
         "rev": "branch2",
         "rev_lock": branch2_head,
     }
-    with open(tmp_dir / "foo") as f:
+    with open(tmp_dir / "foo", encoding="utf-8") as f:
         assert "foobar foo" == f.read()
 
 
