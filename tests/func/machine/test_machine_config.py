@@ -2,6 +2,7 @@ import os
 import textwrap
 
 import pytest
+import tpi
 
 from dvc.main import main
 
@@ -114,3 +115,62 @@ def test_machine_list(tmp_dir, dvc, capsys):
         )
         in cap.out
     )
+
+
+def test_machine_rename_success(tmp_dir, scm, dvc, capsys, mocker):
+    config_file = tmp_dir / ".dvc" / "config"
+    config_file.write_text(CONFIG_TEXT)
+
+    mocker.patch.object(
+        tpi.terraform.TerraformBackend,
+        "state_mv",
+        autospec=True,
+        return_value=True,
+    )
+
+    os.makedirs((tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo"))
+
+    assert main(["machine", "rename", "foo", "bar"]) == 0
+    cap = capsys.readouterr()
+    assert "Rename machine 'foo' to 'bar'." in cap.out
+    assert config_file.read_text() == CONFIG_TEXT.replace("foo", "bar")
+    assert not (
+        tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo"
+    ).exists()
+    assert (
+        tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "bar"
+    ).exists()
+
+
+def test_machine_rename_none_exist(tmp_dir, scm, dvc, caplog):
+    config_alice = CONFIG_TEXT.replace("foo", "alice")
+    config_file = tmp_dir / ".dvc" / "config"
+    config_file.write_text(config_alice)
+    assert main(["machine", "rename", "foo", "bar"]) == 251
+    assert config_file.read_text() == config_alice
+    assert "machine 'foo' doesn't exist." in caplog.text
+
+
+def test_machine_rename_exist(tmp_dir, scm, dvc, caplog):
+    config_bar = CONFIG_TEXT + "['machine \"bar\"']\n    cloud = aws"
+    config_file = tmp_dir / ".dvc" / "config"
+    config_file.write_text(config_bar)
+    assert main(["machine", "rename", "foo", "bar"]) == 251
+    assert config_file.read_text() == config_bar
+    assert "Machine 'bar' already exists." in caplog.text
+
+
+def test_machine_rename_error(tmp_dir, scm, dvc, caplog, mocker):
+    config_file = tmp_dir / ".dvc" / "config"
+    config_file.write_text(CONFIG_TEXT)
+
+    os.makedirs((tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo"))
+
+    def cmd_error(self, source, destination, **kwargs):
+        raise tpi.TPIError("test error")
+
+    mocker.patch.object(tpi.terraform.TerraformBackend, "state_mv", cmd_error)
+
+    assert main(["machine", "rename", "foo", "bar"]) == 251
+    assert config_file.read_text() == CONFIG_TEXT
+    assert "rename failed" in caplog.text

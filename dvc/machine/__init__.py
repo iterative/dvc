@@ -206,3 +206,8 @@ class MachineManager:
     def status(self, name: str) -> Iterator[Dict[Any, Any]]:
         config, backend = self.get_config_and_backend(name)
         return backend.instances(**config)
+
+    def rename(self, name: str, new: str):
+        """move configuration to a new location if the machine is running."""
+        config, backend = self.get_config_and_backend(name)
+        return backend.rename(new=new, **config)

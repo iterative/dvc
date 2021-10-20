@@ -72,3 +72,22 @@ class TerraformBackend(BaseMachineBackend):
                 keyfile=pem,
             )
             yield fs
+
+    def rename(self, name: str, new: str, **config):
+        """rename a dvc machine instance to a new name"""
+        import shutil
+
+        mtype = "iterative_machine"
+
+        new_dir = os.path.join(self.tmp_dir, new)
+        old_dir = os.path.join(self.tmp_dir, name)
+        if os.path.exists(new_dir):
+            raise DvcException(f"rename failed: path {new_dir} already exists")
+
+        if not os.path.exists(old_dir):
+            return
+
+        with self.make_tpi(name) as tpi:
+            tpi.state_mv(f"{mtype}.{name}", f"{mtype}.{new}", **config)
+
+        shutil.move(old_dir, new_dir)
