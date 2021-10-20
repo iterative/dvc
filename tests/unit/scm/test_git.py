@@ -308,7 +308,7 @@ def test_ignore_remove_empty(tmp_dir, scm, git):
 
     path_to_gitignore = tmp_dir / ".gitignore"
 
-    with open(path_to_gitignore, "a", encoding="utf-8") as f:
+    with open(path_to_gitignore, "a") as f:
         for entry in test_entries:
             f.write(entry["entry"] + "\n")
 

@@ -327,7 +327,4 @@ def test_git_stash_clear(tmp_dir, scm, ref):
     # NOTE: some backends will completely remove reflog file on clear, some
     # will only truncate it, either case means an empty stash
     log_path = os.path.join(os.fspath(tmp_dir), ".git", "logs", *parts)
-    assert (
-        not os.path.exists(log_path)
-        or not open(log_path, encoding="utf-8").read()
-    )
+    assert not os.path.exists(log_path) or not open(log_path).read()

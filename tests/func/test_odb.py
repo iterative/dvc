@@ -106,10 +106,10 @@ class TestSharedCacheDir(TestDir):
 
             self.assertFalse(os.path.exists(os.path.join(".dvc", "cache")))
 
-            with open("common", "w+", encoding="utf-8") as fd:
+            with open("common", "w+") as fd:
                 fd.write("common")
 
-            with open("unique", "w+", encoding="utf-8") as fd:
+            with open("unique", "w+") as fd:
                 fd.write(d)
 
             ret = main(["add", "common", "unique"])

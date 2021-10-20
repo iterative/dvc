@@ -183,7 +183,7 @@ class MachineManager:
         """Create and start the specified machine instance."""
         config, backend = self.get_config_and_backend(name)
         if "startup_script" in config:
-            with open(config["startup_script"], encoding="utf-8") as fobj:
+            with open(config["startup_script"]) as fobj:
                 startup_script = fobj.read()
         else:
             startup_script = DEFAULT_STARTUP_SCRIPT

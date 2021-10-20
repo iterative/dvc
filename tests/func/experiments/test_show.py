@@ -477,7 +477,7 @@ def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):
     exp1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp2 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
 
-    with open("dvc.yaml", "a", encoding="utf-8") as fd:
+    with open("dvc.yaml", "a") as fd:
         fd.write("breaking the yaml!")
 
     result = dvc.experiments.show()

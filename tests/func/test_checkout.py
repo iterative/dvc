@@ -73,7 +73,7 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
         cache = self.foo_stage.outs[0].cache_path
 
         os.chmod(cache, 0o644)
-        with open(cache, "a", encoding="utf-8") as fd:
+        with open(cache, "a") as fd:
             fd.write("1")
 
         with pytest.raises(CheckoutError):
@@ -107,7 +107,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         )
 
         os.chmod(cache, 0o644)
-        with open(cache, "w+", encoding="utf-8") as fobj:
+        with open(cache, "w+") as fobj:
             fobj.write("1")
 
         with pytest.raises(CheckoutError):
@@ -127,7 +127,7 @@ class CheckoutBase(TestDvcGit):
     GIT_IGNORE = ".gitignore"
 
     def commit_data_file(self, fname, content="random text"):
-        with open(fname, "w", encoding="utf-8") as fd:
+        with open(fname, "w") as fd:
             fd.write(content)
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
@@ -136,7 +136,7 @@ class CheckoutBase(TestDvcGit):
         self.dvc.scm.commit("adding " + fname)
 
     def read_ignored(self):
-        with open(self.GIT_IGNORE, encoding="utf-8") as f:
+        with open(self.GIT_IGNORE) as f:
             return [s.strip("\n") for s in f.readlines()]
 
     def outs_info(self, stage):
@@ -188,7 +188,7 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
         stage = stages[0]
 
         working_dir_change = os.path.join(self.DATA_DIR, "not_cached.txt")
-        with open(working_dir_change, "w", encoding="utf-8") as f:
+        with open(working_dir_change, "w") as f:
             f.write("not_cached")
 
         ret = main(["checkout", stage.relpath])
@@ -204,7 +204,7 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
         stage = stages[0]
 
         working_dir_change = os.path.join(self.DATA_DIR, "not_cached.txt")
-        with open(working_dir_change, "w", encoding="utf-8") as f:
+        with open(working_dir_change, "w") as f:
             f.write("not_cached")
 
         ret = main(["checkout", stage.relpath])
@@ -610,7 +610,7 @@ def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
     # corrupt cache
     cache = stage.outs[0].cache_path
     os.chmod(cache, 0o644)
-    with open(cache, "a", encoding="utf-8") as fd:
+    with open(cache, "a") as fd:
         fd.write("destroy cache")
 
     scm.checkout("HEAD~")
