@@ -382,7 +382,12 @@ def baseline_styler(typ):
 
 
 def show_experiments(
-    all_experiments, pager=True, no_timestamp=False, csv=False, **kwargs
+    all_experiments,
+    pager=True,
+    no_timestamp=False,
+    csv=False,
+    markdown=False,
+    **kwargs,
 ):
     from funcy.seqs import flatten as flatten_list
 
@@ -473,6 +478,7 @@ def show_experiments(
         header_styles=styles,
         row_styles=row_styles,
         csv=csv,
+        markdown=markdown,
     )
 
 
@@ -530,6 +536,7 @@ class CmdExperimentsShow(CmdBase):
                 iso=iso,
                 pager=not self.args.no_pager,
                 csv=self.args.csv,
+                markdown=self.args.markdown,
             )
         return 0
 
@@ -990,6 +997,14 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print output in csv format instead of a human-readable table.",
+    )
+    experiments_show_parser.add_argument(
+        "--md",
+        "--show-md",
+        action="store_true",
+        default=False,
+        dest="markdown",
+        help="Show tabulated output in the Markdown format (GFM).",
     )
     experiments_show_parser.add_argument(
         "--precision",
