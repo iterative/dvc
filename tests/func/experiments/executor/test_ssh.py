@@ -49,3 +49,32 @@ def test_init_git(tmp_dir, scm, cloud):
     assert fs.exists(posixpath.join(executor._repo_abspath, "foo"))
     assert fs.exists(posixpath.join(executor._repo_abspath, "dir"))
     assert fs.exists(posixpath.join(executor._repo_abspath, "dir", "bar"))
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize("cloud", [pytest.lazy_fixture("git_ssh")])
+def test_init_cache(tmp_dir, dvc, scm, cloud):
+    foo = tmp_dir.dvc_gen("foo", "foo", commit="init")[0].outs[0]
+    rev = scm.get_rev()
+    scm.set_ref(EXEC_HEAD, rev)
+    scm.set_ref(EXEC_MERGE, rev)
+    root_url = URLInfo(str(cloud)) / SSHExecutor.gen_dirname()
+
+    executor = SSHExecutor(
+        scm,
+        ".",
+        root_dir=root_url.path,
+        host=root_url.host,
+        port=root_url.port,
+        username=TEST_SSH_USER,
+        fs_factory=partial(_ssh_factory, cloud),
+    )
+    executor.init_cache(dvc, rev)
+
+    fs = cloud._ssh
+    foo_hash = foo.hash_info.value
+    assert fs.exists(
+        posixpath.join(
+            executor._repo_abspath, ".dvc", "cache", foo_hash[:2], foo_hash[2:]
+        )
+    )
