@@ -438,7 +438,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         for ref in Reference.iter_items(self.repo, common_path=base):
             yield ref.path
 
-    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+    def iter_remote_refs(self, url: str, base: Optional[str] = None, **kwargs):
         raise NotImplementedError
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
@@ -465,6 +465,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         raise NotImplementedError
 
@@ -474,6 +475,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         raise NotImplementedError
 
@@ -627,5 +629,5 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
             raise SCMError("Merge failed") from exc
         return None
 
-    def validate_git_remote(self, url: str):
+    def validate_git_remote(self, url: str, **kwargs):
         raise NotImplementedError

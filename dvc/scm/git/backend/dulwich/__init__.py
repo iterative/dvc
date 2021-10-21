@@ -23,13 +23,13 @@ from dvc.progress import Tqdm
 from dvc.scm.base import GitAuthError, InvalidRemoteSCMRepo, SCMError
 from dvc.utils import relpath
 
-from ..objects import GitObject
-from .base import BaseGitBackend
+from ...objects import GitObject
+from ..base import BaseGitBackend
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
 
-    from ..objects import GitCommit
+    from ...objects import GitCommit
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,13 @@ class DulwichObject(GitObject):
 
 class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     """Dulwich Git backend."""
+
+    from dulwich import client
+
+    from .asyncssh_vendor import AsyncSSHVendor
+
+    # monkeypatch dulwich client's default SSH vendor to use asyncssh
+    client.get_ssh_vendor = AsyncSSHVendor
 
     # Dulwich progress will return messages equivalent to git CLI,
     # our pbars should just display the messages as formatted by dulwich
@@ -354,14 +361,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 yield os.fsdecode(key)
 
-    def iter_remote_refs(self, url: str, base: Optional[str] = None):
+    def iter_remote_refs(self, url: str, base: Optional[str] = None, **kwargs):
         from dulwich.client import HTTPUnauthorized, get_transport_and_path
         from dulwich.errors import NotGitRepository
         from dulwich.porcelain import get_remote_repo
 
         try:
             _remote, location = get_remote_repo(self.repo, url)
-            client, path = get_transport_and_path(location)
+            client, path = get_transport_and_path(location, **kwargs)
         except Exception as exc:
             raise InvalidRemoteSCMRepo(url) from exc
 
@@ -389,6 +396,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         from dulwich.client import HTTPUnauthorized, get_transport_and_path
         from dulwich.errors import NotGitRepository, SendPackError
@@ -402,7 +410,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         try:
             _remote, location = get_remote_repo(self.repo, url)
-            client, path = get_transport_and_path(location)
+            client, path = get_transport_and_path(location, **kwargs)
         except Exception as exc:
             raise SCMError(
                 f"'{url}' is not a valid Git remote or URL"
@@ -476,6 +484,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        **kwargs,
     ):
         from dulwich.client import get_transport_and_path
         from dulwich.objectspec import parse_reftuples
@@ -504,7 +513,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         try:
             _remote, location = get_remote_repo(self.repo, url)
-            client, path = get_transport_and_path(location)
+            client, path = get_transport_and_path(location, **kwargs)
         except Exception as exc:
             raise SCMError(
                 f"'{url}' is not a valid Git remote or URL"
@@ -659,13 +668,13 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     ) -> Optional[str]:
         raise NotImplementedError
 
-    def validate_git_remote(self, url: str):
+    def validate_git_remote(self, url: str, **kwargs):
         from dulwich.client import LocalGitClient, get_transport_and_path
         from dulwich.porcelain import get_remote_repo
 
         try:
             _, location = get_remote_repo(self.repo, url)
-            client, path = get_transport_and_path(location)
+            client, path = get_transport_and_path(location, **kwargs)
         except Exception as exc:
             raise InvalidRemoteSCMRepo(url) from exc
         if isinstance(client, LocalGitClient) and not os.path.exists(

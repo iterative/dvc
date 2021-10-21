@@ -37,3 +37,14 @@ services:
       - 2222
     volumes:
       - ./remotes/user.key.pub:/tmp/key
+
+  git-server:
+    image: ghcr.io/linuxserver/openssh-server
+    environment:
+      - USER_NAME=user
+      - PUBLIC_KEY_FILE=/tmp/key
+    ports:
+      - 2222
+    volumes:
+      - ./remotes/user.key.pub:/tmp/key
+      - ./remotes/git-init:/config/custom-cont-init.d
