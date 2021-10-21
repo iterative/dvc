@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     # from multiprocessing import Queue
 
     from dvc.machine import MachineManager
+    from dvc.repo import Repo
     from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,13 @@ class SSHExecutor(BaseExecutor):
             path = f"/~/{path}"
         return f"ssh://{user}{self.host}{port}{path}"
 
+    @property
+    def abs_url(self) -> str:
+        assert self._repo_abspath
+        user = f"{self.username}@" if self.username else ""
+        port = f":{self.port}" if self.port is not None else ""
+        return f"ssh://{user}{self.host}{port}{self._repo_abspath}"
+
     @staticmethod
     def _git_client_args(fs):
         kwargs = {
@@ -137,3 +145,18 @@ class SSHExecutor(BaseExecutor):
     def _ssh_cmd(self, sshfs, cmd, chdir=None, **kwargs):
         working_dir = chdir or self.root_dir
         return sshfs.fs.execute(f"cd {working_dir};{cmd}", **kwargs)
+
+    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
+        from dvc.objects.db import ODBManager, get_odb
+        from dvc.repo import Repo
+        from dvc.repo.push import push
+
+        cache_url = posixpath.join(
+            self.abs_url,
+            self._dvc_dir,
+            Repo.DVC_DIR,
+            ODBManager.CACHE_DIR,
+        )
+        with self.sshfs() as fs:
+            odb = get_odb(fs, fs.PATH_CLS(cache_url), **fs.config)
+            push(dvc, revs=[rev], run_cache=run_cache, odb=odb)

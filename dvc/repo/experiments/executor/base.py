@@ -123,6 +123,10 @@ class BaseExecutor(ABC):
     def git_url(self) -> str:
         pass
 
+    @abstractmethod
+    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
+        """Initialize DVC (cache)."""
+
     @property
     def dvc_dir(self) -> str:
         return os.path.join(self.root_dir, self._dvc_dir)

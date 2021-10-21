@@ -17,6 +17,7 @@ from dvc.scm import SCM
 from .base import BaseExecutor
 
 if TYPE_CHECKING:
+    from dvc.repo import Repo
     from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
@@ -74,14 +75,11 @@ class TempDirExecutor(BaseLocalExecutor):
         self,
         *args,
         tmp_dir: Optional[str] = None,
-        cache_dir: Optional[str] = None,
         **kwargs,
     ):
         self._tmp_dir = ExpTemporaryDirectory(dir=tmp_dir)
         kwargs["root_dir"] = self._tmp_dir.name
         super().__init__(*args, **kwargs)
-        if cache_dir:
-            self._config(cache_dir)
         logger.debug("Init temp dir executor in dir '%s'", self._tmp_dir)
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
@@ -112,6 +110,10 @@ class TempDirExecutor(BaseLocalExecutor):
         logger.debug("Writing experiments local config '%s'", local_config)
         with open(local_config, "w", encoding="utf-8") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
+
+    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
+        """Initialize DVC (cache)."""
+        self._config(dvc.odb.local.cache_dir)
 
     def cleanup(self):
         super().cleanup()
