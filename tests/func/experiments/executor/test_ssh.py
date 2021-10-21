@@ -8,6 +8,7 @@ from dvc.fs.ssh import SSHFileSystem
 from dvc.path_info import URLInfo
 from dvc.repo.experiments.base import EXEC_HEAD, EXEC_MERGE
 from dvc.repo.experiments.executor.ssh import SSHExecutor
+from tests.func.machine.conftest import *  # noqa, pylint: disable=wildcard-import
 from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 
@@ -19,6 +20,12 @@ def _ssh_factory(cloud):
         user=TEST_SSH_USER,
         keyfile=TEST_SSH_KEY_PATH,
     )
+
+
+def test_from_machine(tmp_dir, scm, dvc, machine_instance, mocker):
+    mocker.patch.object(SSHExecutor, "_init_git")
+    executor = SSHExecutor.from_machine(dvc.machine, "foo", scm, "")
+    assert executor.host == machine_instance["instance_ip"]
 
 
 @pytest.mark.needs_internet
