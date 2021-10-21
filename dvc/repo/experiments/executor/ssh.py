@@ -3,7 +3,6 @@ import posixpath
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Optional
 
-# from funcy import cached_property, first
 from funcy import first
 
 from dvc.fs.ssh import SSHFileSystem
@@ -18,8 +17,6 @@ from dvc.repo.experiments.base import (
 from .base import BaseExecutor
 
 if TYPE_CHECKING:
-    # from multiprocessing import Queue
-
     from dvc.machine import MachineManager
     from dvc.repo import Repo
     from dvc.scm.git import Git
