@@ -68,6 +68,7 @@ class TerraformBackend(BaseMachineBackend):
             resource = tpi.default_resource(name)
         return {
             "host": resource["instance_ip"],
+            "port": SSHFileSystem.DEFAULT_PORT,
             "username": "ubuntu",
             "fs_factory": partial(_sshfs, dict(resource)),
         }
