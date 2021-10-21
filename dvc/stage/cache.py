@@ -2,13 +2,16 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property, first
 
 from dvc.exceptions import DvcException
 from dvc.path_info import PathInfo
 from dvc.utils import dict_sha256, relpath
+
+if TYPE_CHECKING:
+    from dvc.objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -229,10 +232,11 @@ class StageCache:
 
         return ret
 
-    def push(self, remote: Optional[str]):
+    def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
         from dvc.objects.transfer import _log_exceptions
 
-        odb = self.repo.cloud.get_remote_odb(remote)
+        if odb is None:
+            odb = self.repo.cloud.get_remote_odb(remote)
         return self._transfer(
             _log_exceptions(odb.fs.upload),
             self.repo.odb.local,

@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING, Optional
+
 from dvc.exceptions import FileTransferError, UploadError
 
 from ..utils import glob_targets
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc.objects.db.base import ObjectDB
 
 
 @locked
@@ -18,8 +23,11 @@ def push(
     run_cache=False,
     revs=None,
     glob=False,
+    odb: Optional["ObjectDB"] = None,
 ):
-    used_run_cache = self.stage_cache.push(remote) if run_cache else []
+    used_run_cache = (
+        self.stage_cache.push(remote, odb=odb) if run_cache else []
+    )
 
     if isinstance(targets, str):
         targets = [targets]
@@ -41,11 +49,13 @@ def push(
     )
 
     pushed = len(used_run_cache)
-    for odb, obj_ids in used.items():
-        if odb and odb.read_only:
+    for dest_odb, obj_ids in used.items():
+        if dest_odb and dest_odb.read_only:
             continue
         try:
-            pushed += self.cloud.push(obj_ids, jobs, remote=remote, odb=odb)
+            pushed += self.cloud.push(
+                obj_ids, jobs, remote=remote, odb=odb or dest_odb
+            )
         except FileTransferError as exc:
             raise UploadError(exc.amount)
     return pushed
