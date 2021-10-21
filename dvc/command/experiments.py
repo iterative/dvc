@@ -602,6 +602,7 @@ class CmdExperimentsRun(CmdRepro):
             return
 
         invalid_ref_re = (
+            r".*\/.*|"
             r".*(\/\.|\.lock\/|\.\.|[\00-\040\177]"
             r"|\^|~|:|\?|\*|\[|\]|\/{2,}|@\{}|\\).*"
             r"|^(\.|\/).*|.*(\.lock|\.|\/)$|^@$"

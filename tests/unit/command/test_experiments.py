@@ -595,6 +595,10 @@ def test_experiments_init_config(dvc, mocker):
 def test_run_check_ref_format():
     fun = CmdExperimentsRun._check_ref_format
 
+    # Forbid slash / here because we didn't support it for now.
+    with pytest.raises(InvalidArgumentError):
+        fun("group/name")
+
     # They can include slash / for hierarchical (directory) grouping,
     # but no slash-separated component can begin with a dot . or end
     # with the sequence .lock.
