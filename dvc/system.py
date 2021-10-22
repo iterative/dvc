@@ -37,8 +37,9 @@ class System:
             clib = _cdll(LIBC_FALLBACK)
 
         if not hasattr(clib, "clonefile"):
-            raise NotImplementedError(
-                "'clonefile' not supported by the standard library"
+            raise OSError(
+                errno.ENOTSUP,
+                "'clonefile' not supported by the standard library",
             )
 
         clonefile = clib.clonefile
@@ -83,8 +84,9 @@ class System:
         elif system == "Linux":
             System._reflink_linux(source, link_name)
         else:
-            raise NotImplementedError(
-                f"reflink is not supported on '{system}'"
+            raise OSError(
+                errno.ENOTSUP,
+                f"reflink is not supported on '{system}'",
             )
 
         # NOTE: reflink has a new inode, but has the same mode as the src,

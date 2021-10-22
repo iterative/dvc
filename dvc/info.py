@@ -104,11 +104,8 @@ def _get_linktype_support_info(repo):
             if is_link and not is_link(dst):
                 status = "broken"
             os.unlink(dst)
-        except (NotImplementedError, OSError) as exc:
-            if (
-                isinstance(exc, OSError)
-                and exc.errno != errno.ENOTSUP  # pylint: disable=no-member
-            ):
+        except OSError as exc:
+            if exc.errno != errno.ENOTSUP:
                 raise
             status = "not supported"
 
