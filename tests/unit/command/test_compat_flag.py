@@ -29,6 +29,8 @@ def _id_gen(val) -> str:
         (["params", "diff", "--show-json"], "json"),
         (["params", "diff", "--show-md"], "markdown"),
         (["status", "--show-json"], "json"),
+        (["plots", "show", "--show-json"], "json"),
+        (["plots", "diff", "--show-json"], "json"),
     ],
     ids=_id_gen,
 )

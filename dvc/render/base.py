@@ -16,6 +16,9 @@ class BadTemplateError(DvcException):
 
 
 class Renderer(abc.ABC):
+    REVISIONS_KEY = "revisions"
+    TYPE_KEY = "type"
+
     def __init__(self, data: Dict, templates=None):
         self.data = data
         self.templates = templates
@@ -28,7 +31,17 @@ class Renderer(abc.ABC):
         assert len(files) == 1
         self.filename = files.pop()
 
-    def _convert(self, path: "StrPath"):
+    def partial_html(self, **kwargs):
+        """
+        Us this method to generate partial HTML content,
+        that will fill self.DIV
+        """
+
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def TYPE(self):
         raise NotImplementedError
 
     @property
@@ -42,7 +55,7 @@ class Renderer(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def as_json(self):
+    def as_json(self, **kwargs):
         raise NotImplementedError
 
     @staticmethod
@@ -51,9 +64,13 @@ class Renderer(abc.ABC):
             {ord(c): "_" for c in r"!@#$%^&*()[]{};,<>?\/:.|`~=_+"}
         )
 
+    @property
+    def needs_output_path(self):
+        return False
+
     def generate_html(self, path: "StrPath"):
         """this method might edit content of path"""
-        partial = self._convert(path)
+        partial = self.partial_html(path=path)
 
         div_id = self._remove_special_chars(self.filename)
         div_id = f"plot_{div_id}"

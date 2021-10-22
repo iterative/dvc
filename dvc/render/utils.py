@@ -21,15 +21,6 @@ def group_by_filename(plots_data: Dict) -> List[Dict]:
     return grouped
 
 
-def find_vega(repo, plots_data, target):
-    found = dpath.util.search(plots_data, ["*", "*", target])
-    from dvc.render.vega import VegaRenderer
-
-    if found and VegaRenderer.matches(found):
-        return VegaRenderer(found, repo.plots.templates).as_json()
-    return ""
-
-
 def match_renderers(plots_data, templates):
     from dvc.render import RENDERERS
 
@@ -43,14 +34,12 @@ def match_renderers(plots_data, templates):
 
 def render(
     repo,
-    plots_data,
+    renderers,
     metrics=None,
     path=None,
     html_template_path=None,
     refresh_seconds=None,
 ):
-    # TODO we could probably remove repo usages (here and in VegaRenderer)
-    renderers = match_renderers(plots_data, repo.plots.templates)
     if not html_template_path:
         html_template_path = repo.config.get("plots", {}).get(
             "html_template", None
