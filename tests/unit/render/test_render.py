@@ -1,6 +1,9 @@
 import os
 
-from dvc.render.utils import find_vega, render
+import dpath
+
+from dvc.render.utils import match_renderers, render
+from dvc.render.vega import VegaRenderer
 
 
 def assert_website_has_image(page_path, revision, filename, image_content):
@@ -48,8 +51,9 @@ def test_render(tmp_dir, dvc):
             }
         },
     }
+    renderers = match_renderers(data, dvc.plots.templates)
 
-    render(dvc, data, path=os.path.join("results", "dir"))
+    render(dvc, renderers, path=os.path.join("results", "dir"))
     page_path = tmp_dir / "results" / "dir"
     index_path = page_path / "index.html"
 
@@ -60,12 +64,13 @@ def test_render(tmp_dir, dvc):
     assert_website_has_image(page_path, "v2", "other_file.jpg", b"content2")
     assert_website_has_image(page_path, "v1", "another.gif", b"content3")
 
-    index_content = index_path.read_text()
-    file_vega = find_vega(dvc, data, "file.json")
-    some_vega = find_vega(dvc, data, "some.csv")
-
     def clean(txt: str) -> str:
         return txt.replace("\n", "").replace("\r", "").replace(" ", "")
 
-    assert clean(file_vega) in clean(index_content)
-    assert clean(some_vega) in clean(index_content)
+    def get_vega_string(data, filename):
+        file_data = dpath.util.search(data, ["*", "*", filename])
+        return VegaRenderer(file_data, dvc.plots.templates).partial_html()
+
+    index_content = index_path.read_text()
+    assert clean(get_vega_string(data, "file.json")) in clean(index_content)
+    assert clean(get_vega_string(data, "some.csv")) in clean(index_content)

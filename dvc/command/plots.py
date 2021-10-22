@@ -1,14 +1,30 @@
 import argparse
+import json
 import logging
+
+from funcy import first
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.render.utils import find_vega, render
+from dvc.render.utils import match_renderers, render
+from dvc.render.vega import VegaRenderer
 from dvc.ui import ui
 from dvc.utils import format_link
 
 logger = logging.getLogger(__name__)
+
+
+def _show_json(renderers, path: None):
+    if any(lambda r: r.needs_output_path for r in renderers) and not path:
+        raise DvcException("Output path ('-o') is required!")
+
+    result = {
+        renderer.filename: json.loads(renderer.as_json(path=path))
+        for renderer in renderers
+    }
+    if result:
+        ui.write_json(result)
 
 
 class CmdPlots(CmdBase):
@@ -34,8 +50,15 @@ class CmdPlots(CmdBase):
                     "you can only specify one target for `--show-vega`"
                 )
                 return 1
+            if self.args.json:
+                logger.error(
+                    "'--show-vega' and '--json' are mutually exclusive "
+                    "options."
+                )
+                return 1
 
         try:
+
             plots_data = self._func(
                 targets=self.args.targets, props=self._props()
             )
@@ -46,18 +69,26 @@ class CmdPlots(CmdBase):
                     "visualization file will not be created."
                 )
 
+            renderers = match_renderers(
+                plots_data=plots_data, templates=self.repo.plots.templates
+            )
+
             if self.args.show_vega:
-                target = self.args.targets[0]
-                plot_json = find_vega(self.repo, plots_data, target)
-                if plot_json:
-                    ui.write(plot_json)
+                renderer = first(
+                    filter(lambda r: isinstance(r, VegaRenderer), renderers)
+                )
+                if renderer:
+                    ui.write_json(renderer.asdict())
+                return 0
+            if self.args.json:
+                _show_json(renderers, self.args.out)
                 return 0
 
             rel: str = self.args.out or "dvc_plots"
             path: Path = (Path.cwd() / rel).resolve()
             index_path = render(
                 self.repo,
-                plots_data,
+                renderers,
                 path=path,
                 html_template_path=self.args.html_template,
             )
@@ -250,6 +281,13 @@ def _add_output_arguments(parser):
         action="store_true",
         default=False,
         help="Show output in Vega format.",
+    )
+    parser.add_argument(
+        "--json",
+        "--show-json",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--open",

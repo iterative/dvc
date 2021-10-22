@@ -1,6 +1,7 @@
+import json
 import os
 from copy import copy, deepcopy
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from funcy import first
 
@@ -12,9 +13,6 @@ from dvc.render.base import (
     Renderer,
 )
 from dvc.render.utils import get_files
-
-if TYPE_CHECKING:
-    from dvc.types import StrPath
 
 
 class PlotDataStructureError(DvcException):
@@ -92,6 +90,8 @@ def _append_revision(datapoints: List[Dict], revision) -> List[Dict]:
 
 
 class VegaRenderer(Renderer):
+    TYPE = "vega"
+
     DIV = """
     <div id = "{id}">
         <script type = "text/javascript">
@@ -114,6 +114,9 @@ class VegaRenderer(Renderer):
                 props = file_data.get("props", {})
                 resolved = {**resolved, **props}
         return resolved
+
+    def _revisions(self):
+        return list(self.data.keys())
 
     def _datapoints(self, props: Dict):
         fields = props.get("fields", set())
@@ -139,7 +142,7 @@ class VegaRenderer(Renderer):
                     datapoints.extend(tmp)
         return datapoints
 
-    def fill_template(self, template, datapoints, props=None):
+    def _fill_template(self, template, datapoints, props=None):
         props = props or {}
 
         content = deepcopy(template.content)
@@ -168,7 +171,7 @@ class VegaRenderer(Renderer):
 
         return content
 
-    def as_json(self) -> Optional[str]:
+    def get_filled_template(self):
         props = self._squash_props()
 
         template = self.templates.load(props.get("template", None))
@@ -186,14 +189,33 @@ class VegaRenderer(Renderer):
                 props["y"] = first(
                     f for f in reversed(fields) if f not in skip
                 )
-            filled_template = self.fill_template(template, datapoints, props)
+            filled_template = self._fill_template(template, datapoints, props)
 
             return filled_template
-
         return None
 
-    def _convert(self, path: "StrPath"):
-        return self.as_json()
+    def asdict(self):
+        filled_template = self.get_filled_template()
+        if filled_template:
+            return json.loads(filled_template)
+        return {}
+
+    def as_json(self, **kwargs) -> Optional[str]:
+
+        content = self.asdict()
+
+        return json.dumps(
+            [
+                {
+                    self.TYPE_KEY: self.TYPE,
+                    self.REVISIONS_KEY: self._revisions(),
+                    "content": content,
+                }
+            ],
+        )
+
+    def partial_html(self, **kwargs):
+        return self.get_filled_template() or ""
 
     @staticmethod
     def matches(data):
