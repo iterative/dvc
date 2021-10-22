@@ -149,14 +149,6 @@ class Base:
         """Returns a list of commits in the repo."""
         return []
 
-    def install(self, use_pre_commit_tool=False):
-        """
-        Adds dvc commands to SCM hooks for the repo.
-
-        If use_pre_commit_tool is set and pre-commit is
-        installed it will be used to install the hooks.
-        """
-
     def cleanup_ignores(self):
         """
         This method should clean up ignores (eg. entries in .gitignore),

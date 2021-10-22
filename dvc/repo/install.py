@@ -1,2 +1,69 @@
-def install(self, use_pre_commit_tool):
-    self.scm.install(use_pre_commit_tool)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+    from dvc.scm.git import Git
+
+
+def pre_commit_install(scm: "Git") -> None:
+    import os
+
+    from dvc.utils.serialize import modify_yaml
+
+    config_path = os.path.join(scm.root_dir, ".pre-commit-config.yaml")
+    with modify_yaml(config_path) as config:
+        entry = {
+            "repo": "https://github.com/iterative/dvc",
+            "rev": "master",
+            "hooks": [
+                {
+                    "id": "dvc-pre-commit",
+                    "language_version": "python3",
+                    "stages": ["commit"],
+                },
+                {
+                    "id": "dvc-pre-push",
+                    "language_version": "python3",
+                    "stages": ["push"],
+                },
+                {
+                    "id": "dvc-post-checkout",
+                    "language_version": "python3",
+                    "stages": ["post-checkout"],
+                    "always_run": True,
+                },
+            ],
+        }
+
+        config["repos"] = config.get("repos", [])
+        if entry not in config["repos"]:
+            config["repos"].append(entry)
+
+
+def install_hooks(scm: "Git") -> None:
+    hooks = ["post-checkout", "pre-commit", "pre-push"]
+    for hook in hooks:
+        scm.verify_hook(hook)
+    for hook in hooks:
+        scm.install_hook(hook, f"exec dvc git-hook {hook} $@")
+
+
+def install(self: "Repo", use_pre_commit_tool: bool = False) -> None:
+    """Adds dvc commands to SCM hooks for the repo.
+
+    If use_pre_commit_tool is set and pre-commit is installed it will be used
+    to install the hooks.
+    """
+    from dvc.scm.git import Git
+
+    scm = self.scm
+    if not isinstance(scm, Git):
+        return
+
+    driver = "dvc git-hook merge-driver --ancestor %O --our %A --their %B "
+    scm.install_merge_driver("dvc", "DVC merge driver", driver)
+
+    if use_pre_commit_tool:
+        return pre_commit_install(scm)
+
+    return install_hooks(scm)
