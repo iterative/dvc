@@ -107,7 +107,7 @@ jobs:
         OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET}}
         OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT}}
       run: >-
-        python -m tests -n=4
+        python -m tests -n=auto
         --cov-report=xml --cov-report=term
         --enable-ssh ${{ env.extra_test_args }}
     - name: upload coverage report
