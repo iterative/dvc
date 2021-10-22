@@ -3,34 +3,29 @@ import logging
 import os
 import platform
 
-from dvc.exceptions import DvcException
-
 logger = logging.getLogger(__name__)
 
 
 class System:
     @staticmethod
     def hardlink(source, link_name):
-        try:
-            os.link(source, link_name)
-        except OSError as exc:
-            raise DvcException("failed to link") from exc
+        os.link(source, link_name)
 
     @staticmethod
     def symlink(source, link_name):
-        try:
-            os.symlink(source, link_name)
-        except OSError as exc:
-            raise DvcException("failed to symlink") from exc
+        os.symlink(source, link_name)
 
     @staticmethod
     def _reflink_darwin(src, dst):
         import ctypes
 
+        def _cdll(name):
+            return ctypes.CDLL(name, use_errno=True)
+
         LIBC = "libc.dylib"
         LIBC_FALLBACK = "/usr/lib/libSystem.dylib"
         try:
-            clib = ctypes.CDLL(LIBC)
+            clib = _cdll(LIBC)
         except OSError as exc:
             logger.debug(
                 "unable to access '{}' (errno '{}'). "
@@ -39,40 +34,43 @@ class System:
             if exc.errno != errno.ENOENT:
                 raise
             # NOTE: trying to bypass System Integrity Protection (SIP)
-            clib = ctypes.CDLL(LIBC_FALLBACK)
+            clib = _cdll(LIBC_FALLBACK)
 
         if not hasattr(clib, "clonefile"):
-            return -1
+            raise OSError(
+                errno.ENOTSUP,
+                "'clonefile' not supported by the standard library",
+            )
 
         clonefile = clib.clonefile
         clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
         clonefile.restype = ctypes.c_int
 
-        return clonefile(
+        ret = clonefile(
             ctypes.c_char_p(os.fsencode(src)),
             ctypes.c_char_p(os.fsencode(dst)),
             ctypes.c_int(0),
         )
-
-    @staticmethod
-    def _reflink_windows(_src, _dst):
-        return -1
+        if ret:
+            err = ctypes.get_errno()
+            msg = os.strerror(err)
+            raise OSError(err, msg)
 
     @staticmethod
     def _reflink_linux(src, dst):
         import fcntl  # pylint: disable=import-error
 
+        from funcy import suppress
+
         FICLONE = 0x40049409
 
         try:
-            ret = 255
             with open(src, "rb") as s, open(dst, "wb+") as d:
-                ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
-        finally:
-            if ret != 0:
+                fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
+        except OSError:
+            with suppress(OSError):
                 os.unlink(dst)
-
-        return ret
+            raise
 
     @staticmethod
     def reflink(source, link_name):
@@ -81,20 +79,15 @@ class System:
         source, link_name = os.fspath(source), os.fspath(link_name)
 
         system = platform.system()
-        try:
-            if system == "Windows":
-                ret = System._reflink_windows(source, link_name)
-            elif system == "Darwin":
-                ret = System._reflink_darwin(source, link_name)
-            elif system == "Linux":
-                ret = System._reflink_linux(source, link_name)
-            else:
-                ret = -1
-        except OSError:
-            ret = -1
-
-        if ret != 0:
-            raise DvcException("reflink is not supported")
+        if system == "Darwin":
+            System._reflink_darwin(source, link_name)
+        elif system == "Linux":
+            System._reflink_linux(source, link_name)
+        else:
+            raise OSError(
+                errno.ENOTSUP,
+                f"reflink is not supported on '{system}'",
+            )
 
         # NOTE: reflink has a new inode, but has the same mode as the src,
         # so we need to chmod it to look like a normal copy.
