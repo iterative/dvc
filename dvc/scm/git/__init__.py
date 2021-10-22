@@ -94,6 +94,12 @@ class Git(Base):
     def dir(self):
         return first(self.backends.values()).dir
 
+    @cached_property
+    def hooks_dir(self):
+        from pathlib import Path
+
+        return Path(self.root_dir) / self.GIT_DIR / "hooks"
+
     @property
     def gitpython(self):
         return self.backends["gitpython"]
@@ -209,67 +215,27 @@ class Git(Base):
 
         self.track_file(relpath(gitignore))
 
-    def _install_hook(self, name):
-        hook = self._hook_path(name)
-        with open(hook, "w+", encoding="utf-8") as fobj:
-            fobj.write(f"#!/bin/sh\nexec dvc git-hook {name} $@\n")
+    def verify_hook(self, name):
+        if (self.hooks_dir / name).exists():
+            raise GitHookAlreadyExistsError(name)
 
-        os.chmod(hook, 0o777)
+    def install_hook(
+        self, name: str, script: str, interpreter: str = "sh"
+    ) -> None:
+        import shutil
 
-    def _install_merge_driver(self):
-        self.gitpython.repo.git.config("merge.dvc.name", "DVC merge driver")
-        self.gitpython.repo.git.config(
-            "merge.dvc.driver",
-            (
-                "dvc git-hook merge-driver "
-                "--ancestor %O "
-                "--our %A "
-                "--their %B "
-            ),
-        )
+        self.hooks_dir.mkdir(exist_ok=True)
+        hook = self.hooks_dir / name
 
-    def install(self, use_pre_commit_tool=False):
-        self._install_merge_driver()
+        directive = f"#!{shutil.which(interpreter)}"
+        hook.write_text(f"{directive}\n{script}\n", encoding="utf-8")
+        hook.chmod(0o777)
 
-        if not use_pre_commit_tool:
-            self._verify_dvc_hooks()
-            self._install_hook("post-checkout")
-            self._install_hook("pre-commit")
-            self._install_hook("pre-push")
-            return
-
-        from dvc.utils.serialize import modify_yaml
-
-        config_path = os.path.join(self.root_dir, ".pre-commit-config.yaml")
-        with modify_yaml(config_path) as config:
-            entry = {
-                "repo": "https://github.com/iterative/dvc",
-                "rev": "master",
-                "hooks": [
-                    {
-                        "id": "dvc-pre-commit",
-                        "language_version": "python3",
-                        "stages": ["commit"],
-                    },
-                    {
-                        "id": "dvc-pre-push",
-                        "language_version": "python3",
-                        "stages": ["push"],
-                    },
-                    {
-                        "id": "dvc-post-checkout",
-                        "language_version": "python3",
-                        "stages": ["post-checkout"],
-                        "always_run": True,
-                    },
-                ],
-            }
-
-            if "repos" not in config:
-                config["repos"] = []
-
-            if entry not in config["repos"]:
-                config["repos"].append(entry)
+    def install_merge_driver(
+        self, name: str, description: str, driver: str
+    ) -> None:
+        self.gitpython.repo.git.config(f"merge.{name}.name", description)
+        self.gitpython.repo.git.config(f"merge.{name}.driver", driver)
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:
@@ -318,22 +284,6 @@ class Git(Base):
 
     def close(self):
         self.backends.close_initialized()
-
-    @cached_property
-    def _hooks_home(self):
-        return os.path.join(self.root_dir, self.GIT_DIR, "hooks")
-
-    def _hook_path(self, name):
-        return os.path.join(self._hooks_home, name)
-
-    def _verify_hook(self, name):
-        if os.path.exists(self._hook_path(name)):
-            raise GitHookAlreadyExistsError(name)
-
-    def _verify_dvc_hooks(self):
-        self._verify_hook("post-checkout")
-        self._verify_hook("pre-commit")
-        self._verify_hook("pre-push")
 
     @property
     def no_commits(self):
