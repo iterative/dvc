@@ -5,7 +5,7 @@ from collections import OrderedDict
 import pytest
 from funcy import first
 
-from dvc.render.utils import find_vega, group_by_filename
+from dvc.render.utils import group_by_filename
 from dvc.render.vega import (
     INDEX_FIELD,
     REVISION_FIELD,
@@ -401,53 +401,6 @@ def test_matches(extension, matches):
         "v1": {"data": {filename: {}}},
     }
     assert VegaRenderer.matches(data) == matches
-
-
-def test_find_vega(tmp_dir, dvc):
-    data = {
-        "HEAD": {
-            "data": {
-                "file.json": {
-                    "data": [{"y": 5}, {"y": 6}],
-                    "props": {"fields": {"y"}},
-                },
-                "other_file.jpg": {"data": b"content"},
-            }
-        },
-        "v2": {
-            "data": {
-                "file.json": {
-                    "data": [{"y": 3}, {"y": 5}],
-                    "props": {"fields": {"y"}},
-                },
-                "other_file.jpg": {"data": b"content2"},
-            }
-        },
-        "v1": {
-            "data": {
-                "file.json": {
-                    "data": [{"y": 2}, {"y": 3}],
-                    "props": {"fields": {"y"}},
-                },
-                "another.gif": {"data": b"content2"},
-            }
-        },
-    }
-
-    plot_content = json.loads(find_vega(dvc, data, "file.json"))
-
-    assert plot_content["data"]["values"] == [
-        {"y": 5, INDEX_FIELD: 0, REVISION_FIELD: "HEAD"},
-        {"y": 6, INDEX_FIELD: 1, REVISION_FIELD: "HEAD"},
-        {"y": 3, INDEX_FIELD: 0, REVISION_FIELD: "v2"},
-        {"y": 5, INDEX_FIELD: 1, REVISION_FIELD: "v2"},
-        {"y": 2, INDEX_FIELD: 0, REVISION_FIELD: "v1"},
-        {"y": 3, INDEX_FIELD: 1, REVISION_FIELD: "v1"},
-    ]
-    assert (
-        first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
-    )
-    assert first(plot_content["layer"])["encoding"]["y"]["field"] == "y"
 
 
 @pytest.mark.parametrize(

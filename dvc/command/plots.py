@@ -1,10 +1,12 @@
 import argparse
+import json
 import logging
 
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.render.utils import find_vega, render
+from dvc.render.utils import match_renderers, render
+from dvc.render.vega import VegaRenderer
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -25,16 +27,6 @@ class CmdPlots(CmdBase):
     def run(self):
         from pathlib import Path
 
-        if self.args.show_vega:
-            if not self.args.targets:
-                logger.error("please specify a target for `--show-vega`")
-                return 1
-            if len(self.args.targets) > 1:
-                logger.error(
-                    "you can only specify one target for `--show-vega`"
-                )
-                return 1
-
         try:
             plots_data = self._func(
                 targets=self.args.targets, props=self._props()
@@ -46,9 +38,21 @@ class CmdPlots(CmdBase):
                     "visualization file will not be created."
                 )
 
+            renderers = match_renderers(
+                plots_data=plots_data, templates=self.repo.plots.templates
+            )
+
             if self.args.show_vega:
-                target = self.args.targets[0]
-                plot_json = find_vega(self.repo, plots_data, target)
+                vega_only = filter(
+                    lambda r: isinstance(r, VegaRenderer), renderers
+                )
+                plot_json = json.dumps(
+                    {
+                        renderer.filename: json.loads(renderer.as_json())
+                        for renderer in vega_only
+                    },
+                    indent=4,
+                )
                 if plot_json:
                     ui.write(plot_json)
                 return 0
@@ -57,7 +61,7 @@ class CmdPlots(CmdBase):
             path: Path = (Path.cwd() / rel).resolve()
             index_path = render(
                 self.repo,
-                plots_data,
+                renderers,
                 path=path,
                 html_template_path=self.args.html_template,
             )

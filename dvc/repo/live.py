@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from funcy import once_per_args
 
-from dvc.render.utils import render
+from dvc.render.utils import match_renderers, render
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,9 @@ def create_summary(out):
 
     html_path = out.fs_path + "_dvc_plots"
 
+    renderers = match_renderers(plots, out.repo.plots.templates)
     index_path = render(
-        out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5
+        out.repo, renderers, metrics=metrics, path=html_path, refresh_seconds=5
     )
 
     url = index_path.as_uri()
