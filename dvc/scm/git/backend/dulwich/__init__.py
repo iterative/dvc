@@ -85,7 +85,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
     from .asyncssh_vendor import AsyncSSHVendor
 
     # monkeypatch dulwich client's default SSH vendor to use asyncssh
-    client.get_ssh_vendor = AsyncSSHVendor
+    client.get_ssh_vendor = AsyncSSHVendor  # type: ignore[assignment]
 
     # Dulwich progress will return messages equivalent to git CLI,
     # our pbars should just display the messages as formatted by dulwich
