@@ -148,7 +148,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         rev: Optional[str] = None,
         shallow_branch: Optional[str] = None,
     ):
-        import git
+        from git import Repo
+        from git.exc import GitCommandError
 
         ld_key = "LD_LIBRARY_PATH"
 
@@ -170,7 +171,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 url = f"file://{url}"
             with TqdmGit(desc="Cloning", unit="obj") as pbar:
                 clone_from = partial(
-                    git.Repo.clone_from,
+                    Repo.clone_from,
                     url,
                     to_path,
                     env=env,  # needed before we can fix it in __init__
@@ -182,7 +183,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 else:
                     tmp_repo = clone_from(branch=shallow_branch, depth=1)
             tmp_repo.close()
-        except git.exc.GitCommandError as exc:  # pylint: disable=no-member
+        except GitCommandError as exc:  # pylint: disable=no-member
             raise CloneError(url, to_path) from exc
 
         # NOTE: using our wrapper to make sure that env is fixed in __init__
@@ -191,7 +192,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         if rev:
             try:
                 repo.checkout(rev)
-            except git.exc.GitCommandError as exc:  # pylint: disable=no-member
+            except GitCommandError as exc:  # pylint: disable=no-member
                 raise RevError(
                     "failed to access revision '{}' for repo '{}'".format(
                         rev, url

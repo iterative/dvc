@@ -85,8 +85,10 @@ def _prompts(keys: Iterable[str], defaults: Dict[str, OptStr]):
         else:
             prompt_cls = SkippablePrompt
         kwargs = {"default": defaults[key]} if key in defaults else {}
-        prompt = PROMPTS.get(key)
-        value = prompt_cls.ask(prompt, console=ui.error_console, **kwargs)
+        prompt = PROMPTS[key]
+        value = prompt_cls.ask(  # type: ignore[call-overload]
+            prompt, console=ui.error_console, **kwargs
+        )
         yield key, value
 
 
