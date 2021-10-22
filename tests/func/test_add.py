@@ -958,7 +958,7 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
 
     mocker.patch(
         "dvc.objects.checkout._do_link",
-        side_effect=DvcException("link failed"),
+        side_effect=OSError(errno.ENOTSUP, "link failed"),
     )
     dvc.add("foo")
     err = capsys.readouterr()[1]

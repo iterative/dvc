@@ -1,3 +1,4 @@
+import errno
 import itertools
 import os
 import pathlib
@@ -7,7 +8,7 @@ import uuid
 import psutil
 
 from dvc import __version__
-from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.exceptions import NotDvcRepoError
 from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
@@ -103,7 +104,12 @@ def _get_linktype_support_info(repo):
             if is_link and not is_link(dst):
                 status = "broken"
             os.unlink(dst)
-        except DvcException:
+        except (NotImplementedError, OSError) as exc:
+            if (
+                isinstance(exc, OSError)
+                and exc.errno != errno.ENOTSUP  # pylint: disable=no-member
+            ):
+                raise
             status = "not supported"
 
         if status == "supported":

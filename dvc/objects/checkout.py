@@ -1,3 +1,4 @@
+import errno
 import logging
 from itertools import chain
 
@@ -77,7 +78,14 @@ def _try_links(cache, from_info, to_info, link_types):
             _verify_link(cache, to_info, link_types[0])
             return
 
-        except DvcException as exc:
+        except (NotImplementedError, OSError) as exc:
+            if isinstance(
+                exc, OSError
+            ) and exc.errno not in [  # pylint: disable=no-member
+                errno.EXDEV,
+                errno.ENOTSUP,
+            ]:
+                raise
             logger.debug(
                 "Cache type '%s' is not supported: %s", link_types[0], exc
             )
