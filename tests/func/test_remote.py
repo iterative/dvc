@@ -8,7 +8,6 @@ import pytest
 
 from dvc.config import Config
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
-from dvc.fs.local import LocalFileSystem
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.utils.fs import remove
@@ -172,22 +171,24 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
 
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
+    import dvc.fs.utils as fs_utils
+
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
     baz = tmp_dir.dvc_gen({"baz": {"foo": "foo content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = LocalFileSystem.upload
+    original = fs_utils.transfer
     odb = dvc.cloud.get_remote_odb("upstream")
 
-    def unreliable_upload(self, fobj, to_info, **kwargs):
+    def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
         if os.path.abspath(to_info) == os.path.abspath(
             odb.get(foo.hash_info).path_info
         ):
             raise Exception("stop foo")
-        return original(self, fobj, to_info, **kwargs)
+        return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
-    with patch.object(LocalFileSystem, "upload", unreliable_upload):
+    with patch.object(fs_utils, "transfer", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 2
@@ -201,7 +202,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     remove(dvc.odb.local.cache_dir)
 
     baz._collect_used_dir_cache()
-    with patch.object(LocalFileSystem, "upload", side_effect=Exception):
+    with patch.object(fs_utils, "transfer", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -214,9 +215,8 @@ def test_raise_on_too_many_open_files(
 ):
     tmp_dir.dvc_gen({"file": "file content"})
 
-    mocker.patch.object(
-        LocalFileSystem,
-        "upload",
+    mocker.patch(
+        "dvc.fs.utils.transfer",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
@@ -263,19 +263,19 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
 
 
 def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
+    import dvc.fs.utils as fs_utils
+
     foo = tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})[0].outs[0]
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.patch.object(
-        LocalFileSystem, "upload", return_value=0
-    )
+    mocked_upload = mocker.spy(fs_utils, "transfer")
     dvc.push()
 
     # foo .dir file should be uploaded after bar
     odb = dvc.cloud.get_remote_odb("upstream")
     foo_path = odb.hash_to_path_info(foo.hash_info.value)
     bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)][1].value)
-    paths = [args[1] for args, _ in mocked_upload.call_args_list]
+    paths = [args[3] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 
 

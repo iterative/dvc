@@ -2,7 +2,6 @@ import os
 from unittest.mock import ANY, patch
 
 from dvc.external_repo import CLONES, external_repo
-from dvc.fs.local import LocalFileSystem
 from dvc.objects.stage import stage
 from dvc.objects.transfer import transfer
 from dvc.path_info import PathInfo
@@ -48,12 +47,14 @@ def test_source_change(erepo_dir):
 
 
 def test_cache_reused(erepo_dir, mocker, local_cloud):
+    import dvc.fs.utils
+
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(LocalFileSystem, "upload")
+    download_spy = mocker.spy(dvc.fs.utils, "transfer")
 
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"
