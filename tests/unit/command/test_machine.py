@@ -1,4 +1,5 @@
 import configobj
+from mock import call
 
 from dvc.cli import parse_args
 from dvc.command.machine import (
@@ -19,6 +20,8 @@ DATA = {
             "[feature]\n"
             "  machine = true\n"
             "['machine \"foo\"']\n"
+            "  cloud = aws\n"
+            "['machine \"myaws\"']\n"
             "  cloud = aws"
         )
     }
@@ -42,7 +45,7 @@ def test_remove(tmp_dir):
     cmd = cli_args.func(cli_args)
     assert cmd.run() == 0
     config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
-    assert list(config.keys()) == ["feature"]
+    assert list(config.keys()) == ["feature", 'machine "myaws"']
 
 
 def test_create(tmp_dir, dvc, mocker):
@@ -58,7 +61,8 @@ def test_create(tmp_dir, dvc, mocker):
     m.assert_called_once_with("foo")
 
 
-def test_status(tmp_dir, dvc, mocker):
+def test_status(tmp_dir, scm, dvc, mocker):
+    tmp_dir.gen(DATA)
     cli_args = parse_args(["machine", "status", "foo"])
     assert cli_args.func == CmdMachineStatus
 
@@ -66,9 +70,17 @@ def test_status(tmp_dir, dvc, mocker):
     m = mocker.patch.object(
         cmd.repo.machine, "status", autospec=True, return_value=[]
     )
-
     assert cmd.run() == 0
     m.assert_called_once_with("foo")
+
+    cli_args = parse_args(["machine", "status"])
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(
+        cmd.repo.machine, "status", autospec=True, return_value=[]
+    )
+    assert cmd.run() == 0
+    assert m.call_count == 2
+    m.assert_has_calls([call("foo"), call("myaws")])
 
 
 def test_destroy(tmp_dir, dvc, mocker):

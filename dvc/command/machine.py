@@ -202,16 +202,32 @@ class CmdMachineStatus(CmdBase):
         "instance_gpu",
     ]
 
+    def _show_machine_status(self, name: str):
+        ui.write(f"machine '{name}':")
+        all_status = list(self.repo.machine.status(name))
+        if not all_status:
+            ui.write("\toffline")
+        for i, status in enumerate(all_status, start=1):
+            ui.write(f"\tinstance_num_{i}:")
+            for field in self.SHOWN_FIELD:
+                value = status.get(field, None)
+                ui.write(f"\t\t{field:20}: {value}")
+
     def run(self):
         if self.repo.machine is None:
             raise MachineDisabledError
 
-        all_status = self.repo.machine.status(self.args.name)
-        for i, status in enumerate(all_status, start=1):
-            ui.write(f"instance_num_{i}:")
-            for field in self.SHOWN_FIELD:
-                value = status.get(field, None)
-                ui.write(f"\t{field:20}: {value}")
+        if self.args.name:
+            self._show_machine_status(self.args.name)
+        else:
+            name_set = set()
+            for level in self.repo.config.LEVELS:
+                conf = self.repo.config.read(level)["machine"]
+                name_set.update(conf.keys())
+            name_list = list(name_set)
+            for name in sorted(name_list):
+                self._show_machine_status(name)
+
         return 0
 
 
@@ -390,7 +406,9 @@ def add_parser(subparsers, parent_parser):
     )
     machine_create_parser.set_defaults(func=CmdMachineCreate)
 
-    machine_STATUS_HELP = "List the status of a running machine."
+    machine_STATUS_HELP = (
+        "List the status of running instances for one/all machines."
+    )
     machine_status_parser = machine_subparsers.add_parser(
         "status",
         parents=[parent_config_parser, parent_parser],
@@ -399,7 +417,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     machine_status_parser.add_argument(
-        "name", help="Name of the running machine."
+        "name", nargs="?", help="(optional) Name of the machine."
     )
     machine_status_parser.set_defaults(func=CmdMachineStatus)
 
