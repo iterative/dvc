@@ -1,7 +1,9 @@
+import errno
 import logging
 import os
 from typing import TYPE_CHECKING
 
+from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
@@ -19,10 +21,20 @@ def transfer(
     to_info: "DvcPath",
     move: bool = False,
 ) -> None:
-    use_move = isinstance(from_fs, type(to_fs)) and move
+    same_fs = isinstance(from_fs, type(to_fs))
+    use_move = same_fs and move
     try:
         if use_move:
             return to_fs.move(from_info, to_info)
+
+        if same_fs:
+            try:
+                return from_fs.reflink(from_info, to_info)
+            except RemoteActionNotImplemented:
+                pass
+            except OSError as exc:
+                if exc.errno not in [errno.EXDEV, errno.ENOTSUP]:
+                    raise
 
         if isinstance(from_fs, LocalFileSystem):
             if not isinstance(from_info, from_fs.PATH_CLS):
