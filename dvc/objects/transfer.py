@@ -133,7 +133,7 @@ def transfer(
     obj_ids: Iterable["HashInfo"],
     jobs: Optional[int] = None,
     verify: bool = False,
-    move: bool = False,
+    hardlink: bool = False,
     **kwargs,
 ) -> int:
     """Transfer (copy) the specified objects from one ODB to another.
@@ -157,7 +157,11 @@ def transfer(
     def func(hash_info: "HashInfo") -> None:
         obj = src.get(hash_info)
         return dest.add(
-            obj.path_info, obj.fs, obj.hash_info, verify=verify, move=move
+            obj.path_info,
+            obj.fs,
+            obj.hash_info,
+            verify=verify,
+            hardlink=hardlink,
         )
 
     total = len(status.new)

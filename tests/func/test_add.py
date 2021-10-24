@@ -496,27 +496,27 @@ def test_should_update_state_entry_for_directory_after_add(
 
     ret = main(["add", "data"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
     ls = "dir" if os.name == "nt" else "ls"
     ret = main(
         ["run", "--single-stage", "-d", "data", "{} {}".format(ls, "data")]
     )
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
     os.rename("data", "data" + ".back")
     ret = main(["checkout"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
     ret = main(["status"])
     assert ret == 0
-    assert file_md5_counter.mock.call_count == 4
+    assert file_md5_counter.mock.call_count == 3
 
 
 class TestAddCommit(TestDvc):
@@ -537,15 +537,15 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     counter = mocker.spy(dvc_module.objects.stage, "_stage_tree")
     ret = main(["add", "data"])
     assert ret == 0
-    assert counter.mock.call_count == 2
+    assert counter.mock.call_count == 1
 
     ret = main(["status"])
     assert ret == 0
-    assert counter.mock.call_count == 2
+    assert counter.mock.call_count == 1
 
     ret = main(["status"])
     assert ret == 0
-    assert counter.mock.call_count == 2
+    assert counter.mock.call_count == 1
 
 
 class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
@@ -964,7 +964,7 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     err = capsys.readouterr()[1]
     assert "reconfigure cache types" in err
 
-    assert not (tmp_dir / "foo").exists()
+    assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
     assert (tmp_dir / ".dvc" / "cache").read_text() == {
         "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}

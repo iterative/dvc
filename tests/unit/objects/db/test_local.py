@@ -103,10 +103,9 @@ def test_staging_file(tmp_dir, dvc):
         check(local_odb, obj)
     check(staging_odb, obj)
 
-    transfer(staging_odb, local_odb, {obj.hash_info}, move=True)
+    transfer(staging_odb, local_odb, {obj.hash_info}, hardlink=True)
     check(local_odb, obj)
-    with pytest.raises(FileNotFoundError):
-        check(staging_odb, obj)
+    check(staging_odb, obj)
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)
@@ -130,10 +129,11 @@ def test_staging_dir(tmp_dir, dvc):
         check(local_odb, obj)
     check(staging_odb, obj)
 
-    transfer(staging_odb, local_odb, {obj.hash_info}, shallow=False, move=True)
+    transfer(
+        staging_odb, local_odb, {obj.hash_info}, shallow=False, hardlink=True
+    )
     check(local_odb, obj)
-    with pytest.raises(FileNotFoundError):
-        check(staging_odb, obj)
+    check(staging_odb, obj)
 
     path_info = local_odb.hash_to_path_info(obj.hash_info.value)
     assert fs.exists(path_info)

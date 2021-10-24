@@ -14,27 +14,48 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _link(
+    from_fs: "BaseFileSystem",
+    from_info: "AnyPath",
+    to_fs: "BaseFileSystem",
+    to_info: "DvcPath",
+    hardlink: bool = False,
+) -> None:
+    if not isinstance(from_fs, type(to_fs)):
+        raise OSError(errno.EXDEV, "can't link across filesystems")
+
+    links = ["reflink"] + ["hardlink"] if hardlink else []
+    while links:
+        link = links.pop(0)
+        try:
+            func = getattr(to_fs, link)
+        except AttributeError:
+            continue
+
+        try:
+            return func(from_info, to_info)
+        except RemoteActionNotImplemented:
+            continue
+        except OSError as exc:
+            if exc.errno not in [errno.EXDEV, errno.ENOTSUP]:
+                raise
+
+    raise OSError(errno.ENOTSUP, "reflink and hardlink are not supported")
+
+
 def transfer(
     from_fs: "BaseFileSystem",
     from_info: "AnyPath",
     to_fs: "BaseFileSystem",
     to_info: "DvcPath",
-    move: bool = False,
+    hardlink: bool = False,
 ) -> None:
-    same_fs = isinstance(from_fs, type(to_fs))
-    use_move = same_fs and move
     try:
-        if use_move:
-            return to_fs.move(from_info, to_info)
-
-        if same_fs:
-            try:
-                return from_fs.reflink(from_info, to_info)
-            except RemoteActionNotImplemented:
-                pass
-            except OSError as exc:
-                if exc.errno not in [errno.EXDEV, errno.ENOTSUP]:
-                    raise
+        try:
+            return _link(from_fs, from_info, to_fs, to_info, hardlink=hardlink)
+        except OSError as exc:
+            if exc.errno not in [errno.EXDEV, errno.ENOTSUP]:
+                raise
 
         if isinstance(from_fs, LocalFileSystem):
             if not isinstance(from_info, from_fs.PATH_CLS):
@@ -61,8 +82,6 @@ def transfer(
             and isinstance(exc.__context__, FileExistsError)
         ):
             logger.debug("'%s' file already exists, skipping", to_info)
-            if use_move:
-                from_fs.remove(from_info)
             return None
 
         raise

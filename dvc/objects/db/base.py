@@ -81,13 +81,17 @@ class ObjectDB:
         from_info: "AnyPath",
         to_info: "DvcPath",
         _hash_info: "HashInfo",
-        move: bool = False,
+        hardlink: bool = False,
     ):
         from dvc import fs
 
         self.makedirs(to_info.parent)
         return fs.utils.transfer(
-            from_fs, from_info, self.fs, to_info, move=move
+            from_fs,
+            from_info,
+            self.fs,
+            to_info,
+            hardlink=hardlink,
         )
 
     def add(
@@ -95,7 +99,7 @@ class ObjectDB:
         path_info: "AnyPath",
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
-        move: bool = True,
+        hardlink: bool = False,
         verify: Optional[bool] = None,
     ):
         if self.read_only:
@@ -110,7 +114,7 @@ class ObjectDB:
             pass
 
         cache_info = self.hash_to_path_info(hash_info.value)
-        self._add_file(fs, path_info, cache_info, hash_info, move=move)
+        self._add_file(fs, path_info, cache_info, hash_info, hardlink=hardlink)
 
         try:
             if verify:
