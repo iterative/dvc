@@ -53,6 +53,7 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
         tmp_dir=not workspace,
     )
 
+    new_mock = mocker.spy(dvc.experiments, "_stash_exp")
     with pytest.raises(ExperimentExistsError):
         dvc.experiments.run(
             exp_stage.addressing,
@@ -61,6 +62,8 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
             tmp_dir=not workspace,
         )
 
+    new_mock.assert_not_called()
+
     results = dvc.experiments.run(
         exp_stage.addressing,
         name="foo",
@@ -68,6 +71,7 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
         force=True,
         tmp_dir=not workspace,
     )
+
     exp = first(results)
 
     fs = scm.get_fs(exp)
@@ -685,3 +689,17 @@ def test_exp_run_recursive(tmp_dir, scm, dvc, run_copy_metrics):
     )
     assert dvc.experiments.run(".", recursive=True)
     assert (tmp_dir / "metric.json").parse() == {"foo": 1}
+
+
+def test_experiment_name_invalid(tmp_dir, scm, dvc, exp_stage, mocker):
+    from dvc.exceptions import InvalidArgumentError
+
+    new_mock = mocker.spy(dvc.experiments, "_stash_exp")
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.run(
+            exp_stage.addressing,
+            name="fo/o",
+            params=["foo=3"],
+        )
+
+    new_mock.assert_not_called()

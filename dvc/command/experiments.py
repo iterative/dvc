@@ -594,29 +594,8 @@ class CmdExperimentsDiff(CmdBase):
 
 
 class CmdExperimentsRun(CmdRepro):
-    @staticmethod
-    def _check_ref_format(name: Optional[str]):
-        import re
-
-        if not name:
-            return
-
-        invalid_ref_re = (
-            r".*\/.*|"
-            r".*(\/\.|\.lock\/|\.\.|[\00-\040\177]"
-            r"|\^|~|:|\?|\*|\[|\]|\/{2,}|@\{}|\\).*"
-            r"|^(\.|\/).*|.*(\.lock|\.|\/)$|^@$"
-        )
-        if re.compile(invalid_ref_re).match(name):
-            raise InvalidArgumentError(
-                f"Invalid exp name {name}, the exp name must follow rules in "
-                "https://git-scm.com/docs/git-check-ref-format"
-            )
-
     def run(self):
         from dvc.compare import show_metrics
-
-        self._check_ref_format(self.args.name)
 
         if self.args.checkpoint_resume:
             if self.args.reset:
@@ -628,13 +607,6 @@ class CmdExperimentsRun(CmdRepro):
                     "--rev can only be used in conjunction with "
                     "--queue or --temp."
                 )
-        elif self.args.name:
-            exps = self.repo.experiments.ls()
-            for _, exp_list in exps.items():
-                if self.args.name in exp_list:
-                    raise InvalidArgumentError(
-                        f"Duplicate experiment name {self.args.name}"
-                    )
 
         if self.args.reset:
             ui.write("Any existing checkpoints will be reset and re-run.")
