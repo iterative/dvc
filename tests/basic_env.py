@@ -6,8 +6,6 @@ from unittest import TestCase
 
 import pytest
 import shortuuid
-from git import Repo
-from git.exc import GitCommandNotFound
 
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
@@ -116,24 +114,11 @@ class TestGitFixture(TestDirFixture):
     N_RETRIES = 5
 
     def setUp(self):
-        super().setUp()
-        # NOTE: handles EAGAIN error on BSD systems (osx in our case).
-        # Otherwise when running tests you might get this exception:
-        #
-        #    GitCommandNotFound: Cmd('git') not found due to:
-        #        OSError('[Errno 35] Resource temporarily unavailable')
-        retries = self.N_RETRIES
-        while True:
-            try:
-                self.git = Repo.init()
-                break
-            except GitCommandNotFound:
-                retries -= 1
-                if not retries:
-                    raise
+        from scmrepo.git import Git
 
-        self.git.index.add([self.CODE])
-        self.git.index.commit("add code")
+        super().setUp()
+        self.git = Git.init(".")
+        self.git.add_commit(self.CODE, message="add code")
 
     def tearDown(self):
         self.git.close()

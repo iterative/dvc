@@ -52,18 +52,15 @@ from textwrap import dedent
 import pytest
 
 from dvc.logger import disable_other_loggers
-from dvc.testing.tmp_dir import git_init
 
 __all__ = [
     "run_copy",
     "run_head",
     "erepo_dir",
     "git_dir",
-    "git_init",
     "git_upstream",
     "git_downstream",
 ]
-
 
 # see https://github.com/iterative/dvc/issues/3167
 disable_other_loggers()

@@ -51,8 +51,6 @@ import sys
 from contextlib import contextmanager
 from functools import partialmethod
 
-from funcy import lmap, retry
-
 from dvc.utils import serialize
 from dvc.utils.fs import makedirs
 
@@ -62,7 +60,7 @@ class TmpDir(pathlib.Path):
 
     @property
     def fs_path(self):
-        return str(self)
+        return os.fspath(self)
 
     @property
     def url(self):
@@ -98,18 +96,18 @@ class TmpDir(pathlib.Path):
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")
 
-        str_path = os.fspath(self)
-
         if scm:
-            git_init(str_path)
+            Git.init(self.fs_path).close()
         if dvc:
             self.dvc = Repo.init(
-                str_path,
+                self.fs_path,
                 no_scm=not scm and not hasattr(self, "scm"),
                 subdir=subdir,
             )
         if scm:
-            self.scm = self.dvc.scm if hasattr(self, "dvc") else Git(str_path)
+            self.scm = (
+                self.dvc.scm if hasattr(self, "dvc") else Git(self.fs_path)
+            )
         if dvc and hasattr(self, "scm"):
             self.scm.commit("init dvc")
 
@@ -264,7 +262,7 @@ class TmpDir(pathlib.Path):
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
-    return lmap(os.fspath, filenames)
+    return list(map(os.fspath, filenames))
 
 
 class WindowsTmpDir(TmpDir, pathlib.PureWindowsPath):
@@ -273,16 +271,3 @@ class WindowsTmpDir(TmpDir, pathlib.PureWindowsPath):
 
 class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
     pass
-
-
-def git_init(path):
-    from git import Repo
-    from git.exc import GitCommandNotFound
-
-    # NOTE: handles EAGAIN error on BSD systems (osx in our case).
-    # Otherwise when running tests you might get this exception:
-    #
-    #    GitCommandNotFound: Cmd('git') not found due to:
-    #        OSError('[Errno 35] Resource temporarily unavailable')
-    git = retry(5, GitCommandNotFound)(Repo.init)(path)
-    git.close()
