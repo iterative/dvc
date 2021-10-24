@@ -58,12 +58,16 @@ class ReferenceObjectDB(ObjectDB):
         from_info: "AnyPath",
         to_info: "DvcPath",
         hash_info: "HashInfo",
-        move: bool = False,
+        hardlink: bool = False,
     ):
         self.makedirs(to_info.parent)
         if hash_info.isdir:
             return super()._add_file(
-                from_fs, from_info, to_info, hash_info, move
+                from_fs,
+                from_info,
+                to_info,
+                hash_info,
+                hardlink=hardlink,
             )
         ref_file = ReferenceHashFile(from_info, from_fs, hash_info)
         self._obj_cache[hash_info] = ref_file

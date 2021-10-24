@@ -216,7 +216,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             repo.odb.local,
             {obj.hash_info},
             shallow=False,
-            move=True,
+            hardlink=True,
         )
         assert set(cache_dir.glob("??/*")) == {
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",

@@ -88,7 +88,7 @@ def _stage_file(path_info, fs, name, odb=None, upload_odb=None, dry_run=False):
     if dry_run:
         obj = HashFile(path_info, fs, hash_info)
     else:
-        odb.add(path_info, fs, hash_info, move=False)
+        odb.add(path_info, fs, hash_info, hardlink=False)
         obj = odb.get(hash_info)
 
     return path_info, meta, obj
@@ -175,7 +175,7 @@ def _stage_tree(path_info, fs, fs_info, name, odb=None, **kwargs):
             path_info, fs
         )
     tree.digest(hash_info=hash_info)
-    odb.add(tree.path_info, tree.fs, tree.hash_info, move=True)
+    odb.add(tree.path_info, tree.fs, tree.hash_info, hardlink=False)
     raw = odb.get(tree.hash_info)
     # cleanup unneeded memfs tmpfile and return tree based on the
     # ODB fs/path

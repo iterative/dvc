@@ -600,7 +600,7 @@ class Output:
                     self.odb,
                     {obj.hash_info},
                     shallow=False,
-                    move=True,
+                    hardlink=True,
                 )
             checkout(
                 filter_info or self.path_info,
@@ -629,7 +629,7 @@ class Output:
             self.odb,
             {save_obj.hash_info} | {oid for _, _, oid in save_obj},
             shallow=True,
-            move=True,
+            hardlink=True,
         )
         return checkout_obj
 
@@ -826,7 +826,7 @@ class Output:
             odb,
             {obj.hash_info},
             jobs=jobs,
-            move=upload,
+            hardlink=False,
             shallow=False,
         )
 
