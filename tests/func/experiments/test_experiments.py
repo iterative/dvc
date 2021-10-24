@@ -61,7 +61,6 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
             params=["foo=3"],
             tmp_dir=not workspace,
         )
-
     new_mock.assert_not_called()
 
     results = dvc.experiments.run(
@@ -71,7 +70,6 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
         force=True,
         tmp_dir=not workspace,
     )
-
     exp = first(results)
 
     fs = scm.get_fs(exp)
@@ -698,8 +696,7 @@ def test_experiment_name_invalid(tmp_dir, scm, dvc, exp_stage, mocker):
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.run(
             exp_stage.addressing,
-            name="fo/o",
+            name="fo^o",
             params=["foo=3"],
         )
-
     new_mock.assert_not_called()

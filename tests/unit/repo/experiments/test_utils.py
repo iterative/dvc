@@ -35,11 +35,11 @@ def test_run_check_ref_format(scm):
         ref = ExpRefInfo(baseline_rev, name)
         check_ref_format(scm, ref)
 
+    fun("name")
+
     # Forbid slash / here because we didn't support it for now.
     with pytest.raises(InvalidArgumentError):
         fun("group/name")
-
-    fun("name")
 
     with pytest.raises(InvalidArgumentError):
         fun("na\05me")

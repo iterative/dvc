@@ -473,7 +473,7 @@ class Experiments:
             "\tdvc exp branch <exp> <branch>\n"
         )
 
-    def _ref_name_validation(self, name: Optional[str], force: bool):
+    def _ref_name_validation(self, name: Optional[str], **kwargs):
         from .utils import check_ref_format
 
         if name is None:
@@ -482,7 +482,10 @@ class Experiments:
         baseline_sha = self.repo.scm.get_rev()
         exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
         check_ref_format(self.scm, exp_ref)
-        if not force and self.scm.get_ref(str(exp_ref)):
+
+        reset = kwargs.get("reset", False)
+        force = kwargs.get("force", False)
+        if not (force or reset) and self.scm.get_ref(str(exp_ref)):
             raise ExperimentExistsError(name)
 
     @scm_locked
@@ -497,11 +500,10 @@ class Experiments:
                 *args, resume_rev=checkpoint_resume, **kwargs
             )
 
-        name = kwargs.get("name", None)
-        force = kwargs.get("force", False)
-        self._ref_name_validation(name, force)
+        name = kwargs.pop("name", None)
+        self._ref_name_validation(name, **kwargs)
 
-        return self._stash_exp(*args, **kwargs)
+        return self._stash_exp(*args, name=name, **kwargs)
 
     def _resume_checkpoint(
         self, *args, resume_rev: Optional[str] = None, **kwargs
