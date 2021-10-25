@@ -144,6 +144,8 @@ def init_interactive(
         )
         workspace = {**defaults, **provided}
         workspace.pop("cmd", None)
+        if not live and "live" not in provided:
+            workspace.pop("live", None)
         for value in sorted(workspace.values()):
             tree.add(f"[green]{value}[/green]")
         ui.error_write(tree, styled=True)
