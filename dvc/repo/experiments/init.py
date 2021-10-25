@@ -79,7 +79,7 @@ class SkippablePrompt(RequiredPrompt):
             prompt.append(_default)
             prompt.append(", ")
 
-        prompt.append(f"{self.skip_value} to skip", style="italic")
+        prompt.append(f"{self.skip_value} to omit", style="italic")
         prompt.append("]")
         prompt.append(self.prompt_suffix)
         return prompt
