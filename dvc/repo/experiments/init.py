@@ -112,6 +112,11 @@ def _disable_logging(highest_level=logging.CRITICAL):
         logging.disable(previous_level)
 
 
+PIPELINE_FILE_LINK = (
+    "https://dvc.org/doc/user-guide/project-structure/pipelines-files"
+)
+
+
 def init_interactive(
     name: str,
     defaults: Dict[str, str],
@@ -129,11 +134,17 @@ def init_interactive(
     if not (primary or secondary):
         return {}
 
-    message = (
-        "This command will guide you to set up a "
-        f"[bright_blue]{name}[/] stage in [green]dvc.yaml[/].\n"
+    message = ui.rich_text.assemble(
+        "This command will guide you to set up a ",
+        (name, "bright_blue"),
+        " stage in ",
+        ("dvc.yaml", "green"),
+        ".",
     )
-    ui.error_write(message, styled=True)
+    doc_link = ui.rich_text.assemble(
+        "See ", (PIPELINE_FILE_LINK, "repr.url"), "."
+    )
+    ui.error_write(message, doc_link, "", sep="\n", styled=True)
 
     if show_tree:
         from rich.tree import Tree
