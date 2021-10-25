@@ -18,7 +18,7 @@ class TestRemoteGDrive:
         fs = GDriveFileSystem(
             gdrive_credentials_tmp_dir=dvc.tmp_dir, **self.CONFIG
         )
-        assert str(fs.path_info) == self.CONFIG["url"]
+        assert fs.url == self.CONFIG["url"]
 
     def test_drive(self, dvc, monkeypatch):
         fs = GDriveFileSystem(

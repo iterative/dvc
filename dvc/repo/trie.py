@@ -9,7 +9,7 @@ def build_outs_trie(stages):
 
     for stage in stages:
         for out in stage.outs:
-            out_key = out.path_info.parts
+            out_key = out.fs.path.parts(out.fs_path)
 
             # Check for dup outs
             if out_key in outs:

@@ -6,22 +6,22 @@ if TYPE_CHECKING:
     from .index import ObjectDBIndexBase
 
 
-def get_odb(fs, path_info, **config):
+def get_odb(fs, fs_path, **config):
     from .base import ObjectDB
     from .gdrive import GDriveObjectDB
     from .local import LocalObjectDB
     from .oss import OSSObjectDB
 
     if fs.scheme == Schemes.LOCAL:
-        return LocalObjectDB(fs, path_info, **config)
+        return LocalObjectDB(fs, fs_path, **config)
 
     if fs.scheme == Schemes.GDRIVE:
-        return GDriveObjectDB(fs, path_info, **config)
+        return GDriveObjectDB(fs, fs_path, **config)
 
     if fs.scheme == Schemes.OSS:
-        return OSSObjectDB(fs, path_info, **config)
+        return OSSObjectDB(fs, fs_path, **config)
 
-    return ObjectDB(fs, path_info, **config)
+    return ObjectDB(fs, fs_path, **config)
 
 
 def _get_odb(repo, settings):
@@ -30,9 +30,9 @@ def _get_odb(repo, settings):
     if not settings:
         return None
 
-    cls, config, path_info = get_cloud_fs(repo, **settings)
+    cls, config, fs_path = get_cloud_fs(repo, **settings)
     config["tmp_dir"] = repo.tmp_dir
-    return get_odb(cls(**config), path_info, state=repo.state, **config)
+    return get_odb(cls(**config), fs_path, state=repo.state, **config)
 
 
 def get_index(odb) -> "ObjectDBIndexBase":
@@ -43,7 +43,9 @@ def get_index(odb) -> "ObjectDBIndexBase":
     cls = ObjectDBIndex if odb.tmp_dir else ObjectDBIndexNoop
     return cls(
         odb.tmp_dir,
-        hashlib.sha256(odb.path_info.url.encode("utf-8")).hexdigest(),
+        hashlib.sha256(
+            odb.fs.unstrip_protocol(odb.fs_path).encode("utf-8")
+        ).hexdigest(),
         odb.fs.CHECKSUM_DIR_SUFFIX,
     )
 

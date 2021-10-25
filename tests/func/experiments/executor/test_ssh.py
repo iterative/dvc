@@ -5,7 +5,6 @@ from functools import partial
 import pytest
 
 from dvc.fs.ssh import SSHFileSystem
-from dvc.path_info import URLInfo
 from dvc.repo.experiments.base import EXEC_HEAD, EXEC_MERGE
 from dvc.repo.experiments.executor.ssh import SSHExecutor
 from tests.func.machine.conftest import *  # noqa, pylint: disable=wildcard-import
@@ -39,7 +38,7 @@ def test_init_git(tmp_dir, scm, cloud):
     rev = scm.resolve_rev("stash@{0}")
     scm.set_ref(EXEC_MERGE, rev)
 
-    root_url = URLInfo(str(cloud)) / SSHExecutor.gen_dirname()
+    root_url = cloud / SSHExecutor.gen_dirname()
 
     executor = SSHExecutor(
         scm,
@@ -65,7 +64,7 @@ def test_init_cache(tmp_dir, dvc, scm, cloud):
     rev = scm.get_rev()
     scm.set_ref(EXEC_HEAD, rev)
     scm.set_ref(EXEC_MERGE, rev)
-    root_url = URLInfo(str(cloud)) / SSHExecutor.gen_dirname()
+    root_url = cloud / SSHExecutor.gen_dirname()
 
     executor = SSHExecutor(
         scm,

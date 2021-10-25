@@ -2,7 +2,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
 from .fsspec_wrapper import FSSpecWrapper
@@ -11,7 +10,6 @@ from .fsspec_wrapper import FSSpecWrapper
 class MemoryFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.MEMORY
     PARAM_CHECKSUM = "md5"
-    PATH_CLS = CloudURLInfo
     TRAVERSE_PREFIX_LEN = 2
     DEFAULT_BLOCKSIZE = 4096
 

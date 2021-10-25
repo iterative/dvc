@@ -36,19 +36,18 @@ class Tree(HashFile):
 
     def digest(self, hash_info: Optional["HashInfo"] = None):
         from dvc.fs.memory import MemoryFileSystem
-        from dvc.path_info import CloudURLInfo
         from dvc.utils import tmp_fname
 
         memfs = MemoryFileSystem()
-        path_info = CloudURLInfo("memory://{}".format(tmp_fname("")))
-        with memfs.open(path_info, "wb") as fobj:
+        fs_path = "memory://{}".format(tmp_fname(""))
+        with memfs.open(fs_path, "wb") as fobj:
             fobj.write(self.as_bytes())
         self.fs = memfs
-        self.path_info = path_info
+        self.fs_path = fs_path
         if hash_info:
             self.hash_info = hash_info
         else:
-            _, self.hash_info = get_file_hash(path_info, memfs, "md5")
+            _, self.hash_info = get_file_hash(fs_path, memfs, "md5")
             assert self.hash_info.value
             self.hash_info.value += ".dir"
 
@@ -101,7 +100,7 @@ class Tree(HashFile):
         obj = odb.get(hash_info)
 
         try:
-            with obj.fs.open(obj.path_info, "r") as fobj:
+            with obj.fs.open(obj.fs_path, "r") as fobj:
                 raw = json.load(fobj)
         except ValueError as exc:
             raise ObjectFormatError(f"{obj} is corrupted") from exc
@@ -109,12 +108,12 @@ class Tree(HashFile):
         if not isinstance(raw, list):
             logger.error(
                 "dir cache file format error '%s' [skipping the file]",
-                obj.path_info,
+                obj.fs_path,
             )
             raise ObjectFormatError(f"{obj} is corrupted")
 
         tree = cls.from_list(raw)
-        tree.path_info = obj.path_info
+        tree.fs_path = obj.fs_path
         tree.fs = obj.fs
         tree.hash_info = hash_info
 
@@ -125,11 +124,11 @@ class Tree(HashFile):
         inside prefix.
 
         The returned tree will contain the original tree's hash_info and
-        path_info.
+        fs_path.
 
         Returns an empty tree if no object exists at the specified prefix.
         """
-        tree = Tree(self.path_info, self.fs, self.hash_info)
+        tree = Tree(self.fs_path, self.fs, self.hash_info)
         try:
             for key, (meta, oid) in self.trie.items(prefix):
                 tree.add(key, meta, oid)
@@ -160,8 +159,7 @@ class Tree(HashFile):
 def du(odb, tree):
     try:
         return sum(
-            odb.fs.getsize(odb.hash_to_path_info(oid.value))
-            for _, _, oid in tree
+            odb.fs.getsize(odb.hash_to_path(oid.value)) for _, _, oid in tree
         )
     except FileNotFoundError:
         return None

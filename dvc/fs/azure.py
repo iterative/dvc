@@ -7,7 +7,6 @@ from fsspec.utils import infer_storage_options
 from funcy import cached_property, memoize, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
@@ -41,7 +40,6 @@ def _az_config():
 # pylint:disable=abstract-method
 class AzureFileSystem(CallbackMixin, ObjectFSWrapper):
     scheme = Schemes.AZURE
-    PATH_CLS = CloudURLInfo
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
     REQUIRES = {
@@ -52,12 +50,14 @@ class AzureFileSystem(CallbackMixin, ObjectFSWrapper):
 
     @classmethod
     def _strip_protocol(cls, path: str):
-        bucket = infer_storage_options(path).get("host")
-        if bucket:
-            return path
+        opts = infer_storage_options(path)
+        if opts.get("host"):
+            return "{host}{path}".format(**opts)
 
-        bucket = _az_config().get("storage", "container_name", None)
-        return f"azure://{bucket}"
+        return _az_config().get("storage", "container_name", None)
+
+    def unstrip_protocol(self, path: str) -> str:
+        return "azure://" + path.lstrip("/")
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):

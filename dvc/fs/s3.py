@@ -5,7 +5,6 @@ from collections import defaultdict
 
 from funcy import cached_property, wrap_prop
 
-from dvc.path_info import CloudURLInfo
 from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
@@ -17,7 +16,6 @@ _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 # pylint:disable=abstract-method
 class BaseS3FileSystem(ObjectFSWrapper):
     scheme = Schemes.S3
-    PATH_CLS = CloudURLInfo
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
@@ -148,18 +146,21 @@ class BaseS3FileSystem(ObjectFSWrapper):
             }
         )
 
-    def _entry_hook(self, entry):
-        entry = entry.copy()
-        if "ETag" in entry:
-            entry["etag"] = entry["ETag"].strip('"')
-        return entry
-
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
         from s3fs import S3FileSystem as _S3FileSystem
 
         return _S3FileSystem(**self.fs_args)
+
+    @classmethod
+    def _strip_protocol(cls, path: str) -> str:
+        from fsspec.utils import infer_storage_options
+
+        return infer_storage_options(path)["path"]
+
+    def unstrip_protocol(self, path):
+        return "s3://" + path.lstrip("/")
 
 
 def _translate_exceptions(func):
@@ -204,9 +205,10 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
             verify=client_kwargs.get("verify"),
         )
 
-    def _get_obj(self, path_info):
-        bucket = self.s3.Bucket(path_info.bucket)
-        return bucket.Object(path_info.path)
+    def _get_obj(self, path):
+        bucket_name, key, _ = self.fs.split_path(path)
+        bucket = self.s3.Bucket(bucket_name)
+        return bucket.Object(key)
 
     @_translate_exceptions
     def put_file(
@@ -220,7 +222,7 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
             ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
             Config=self._transfer_config,
         )
-        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
+        self.fs.invalidate_cache(self.path.parent(to_info))
 
     @_translate_exceptions
     def get_file(

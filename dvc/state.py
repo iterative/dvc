@@ -18,15 +18,15 @@ class StateBase(ABC):
         pass
 
     @abstractmethod
-    def save(self, path_info, fs, hash_info):
+    def save(self, path, fs, hash_info):
         pass
 
     @abstractmethod
-    def get(self, path_info, fs):
+    def get(self, path, fs):
         pass
 
     @abstractmethod
-    def save_link(self, path_info, fs):
+    def save_link(self, path, fs):
         pass
 
 
@@ -34,13 +34,13 @@ class StateNoop(StateBase):
     def close(self):
         pass
 
-    def save(self, path_info, fs, hash_info):
+    def save(self, path, fs, hash_info):
         pass
 
-    def get(self, path_info, fs):  # pylint: disable=unused-argument
+    def get(self, path, fs):  # pylint: disable=unused-argument
         return None, None
 
-    def save_link(self, path_info, fs):
+    def save_link(self, path, fs):
         pass
 
 
@@ -68,19 +68,19 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.md5s.close()
         self.links.close()
 
-    def save(self, path_info, fs, hash_info):
+    def save(self, path, fs, hash_info):
         """Save hash for the specified path info.
 
         Args:
-            path_info (dict): path_info to save hash for.
+            path (str): path to save hash for.
             hash_info (HashInfo): hash to save.
         """
 
         if not isinstance(fs, LocalFileSystem):
             return
 
-        mtime, size = get_mtime_and_size(path_info, fs, self.dvcignore)
-        inode = get_inode(path_info)
+        mtime, size = get_mtime_and_size(path, fs, self.dvcignore)
+        inode = get_inode(path)
 
         logger.debug(
             "state save (%s, %s, %s) %s",
@@ -92,12 +92,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         self.md5s[inode] = (mtime, str(size), hash_info.value)
 
-    def get(self, path_info, fs):
+    def get(self, path, fs):
         """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
 
         Args:
-            path_info (dict): path info to get the hash for.
+            path (str): path info to get the hash for.
 
         Returns:
             HashInfo or None: hash for the specified path info or None if it
@@ -109,11 +109,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None, None
 
         try:
-            mtime, size = get_mtime_and_size(path_info, fs, self.dvcignore)
+            mtime, size = get_mtime_and_size(path, fs, self.dvcignore)
         except FileNotFoundError:
             return None, None
 
-        inode = get_inode(path_info)
+        inode = get_inode(path)
 
         value = self.md5s.get(inode)
 
@@ -122,23 +122,23 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         return Meta(size=size), HashInfo("md5", value[2])
 
-    def save_link(self, path_info, fs):
+    def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This
         list is later used on `dvc checkout` to cleanup old links.
 
         Args:
-            path_info (dict): path info to add to the list of links.
+            path (str): path info to add to the list of links.
         """
         if not isinstance(fs, LocalFileSystem):
             return
 
         try:
-            mtime, _ = get_mtime_and_size(path_info, fs, self.dvcignore)
+            mtime, _ = get_mtime_and_size(path, fs, self.dvcignore)
         except FileNotFoundError:
             return
 
-        inode = get_inode(path_info)
-        relative_path = relpath(path_info, self.root_dir)
+        inode = get_inode(path)
+        relative_path = relpath(path, self.root_dir)
 
         with self.links as ref:
             ref[relative_path] = (inode, mtime)

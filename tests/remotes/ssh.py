@@ -5,9 +5,8 @@ import uuid
 import pytest
 from funcy import cached_property
 
-from dvc.path_info import URLInfo
-
 from .base import Base
+from .path_info import URLInfo
 
 TEST_SSH_USER = "user"
 TEST_SSH_KEY_PATH = os.path.join(
@@ -68,6 +67,10 @@ class SSH(Base, URLInfo):
             encoding = locale.getpreferredencoding(False)
         assert errors is None
         return self.read_bytes().decode(encoding)
+
+    @property
+    def fs_path(self):
+        return self.path
 
 
 @pytest.fixture(scope="session")

@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Optional
 from funcy import cached_property, first
 
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
@@ -167,13 +166,14 @@ class StageCache:
         # sanity check
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
 
-        path = PathInfo(self._get_cache_path(cache_key, cache_value))
-        self.repo.odb.local.makedirs(path.parent)
-        tmp = tempfile.NamedTemporaryFile(delete=False, dir=path.parent).name
-        assert os.path.exists(path.parent)
-        assert os.path.isdir(path.parent)
+        path = self._get_cache_path(cache_key, cache_value)
+        parent = self.repo.odb.local.fs.path.parent(path)
+        self.repo.odb.local.makedirs(parent)
+        tmp = tempfile.NamedTemporaryFile(delete=False, dir=parent).name
+        assert os.path.exists(parent)
+        assert os.path.isdir(parent)
         dump_yaml(tmp, cache)
-        self.repo.odb.local.move(PathInfo(tmp), path)
+        self.repo.odb.local.move(tmp, path)
 
     def restore(self, stage, run_cache=True, pull=False):
         from .serialize import to_single_stage_lockfile
@@ -214,21 +214,24 @@ class StageCache:
     def _transfer(func, from_remote, to_remote):
         ret = []
 
-        runs = from_remote.path_info / "runs"
+        runs = from_remote.fs.path.join(from_remote.fs_path, "runs")
         if not from_remote.fs.exists(runs):
             return []
 
-        for src in from_remote.fs.walk_files(runs):
-            rel = src.relative_to(from_remote.path_info)
-            dst = to_remote.path_info / rel
-            key = dst.parent
+        from_path = from_remote.fs.path
+        for src in from_remote.fs.find(runs):
+            rel = from_path.relpath(src, from_remote.fs_path)
+            dst = to_remote.fs.path.join(to_remote.fs_path, rel)
+            key = to_remote.fs.path.parent(dst)
             # check if any build cache already exists for this key
-            if to_remote.fs.exists(key) and first(
-                to_remote.fs.walk_files(key)
-            ):
+            # TODO: check if MaxKeys=1 or something like that applies
+            # or otherwise this will take a lot of time!
+            if to_remote.fs.exists(key) and first(to_remote.fs.find(key)):
                 continue
             func(src, dst)
-            ret.append((src.parent.name, src.name))
+            ret.append(
+                (from_path.name(from_path.parent(src)), from_path.name(src))
+            )
 
         return ret
 

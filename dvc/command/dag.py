@@ -38,12 +38,14 @@ def _collect_targets(repo, target, outs):
     targets = []
 
     outs_trie = repo.index.outs_trie
-    for stage, info in pairs:
-        if not info:
+    for stage, path in pairs:
+        if not path:
             targets.extend([str(out) for out in stage.outs])
             continue
 
-        for out in outs_trie.itervalues(prefix=info.parts):  # noqa: B301
+        for out in outs_trie.itervalues(
+            prefix=repo.fs.path.parts(path)
+        ):  # noqa: B301
             targets.extend(str(out))
 
     return targets

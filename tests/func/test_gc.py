@@ -22,7 +22,7 @@ class TestGC(TestDvcGit):
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
         self.good_cache = [
-            self.dvc.odb.local.hash_to_path_info(md5)
+            self.dvc.odb.local.hash_to_path(md5)
             for md5 in self.dvc.odb.local.all()
         ]
 

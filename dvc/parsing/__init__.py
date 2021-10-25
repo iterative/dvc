@@ -17,7 +17,6 @@ from funcy import cached_property, collecting, first, isa, join, reraise
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import ParseError
-from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
 from .context import (
@@ -134,10 +133,10 @@ def make_definition(
 
 
 class DataResolver:
-    def __init__(self, repo: "Repo", wdir: PathInfo, d: dict):
+    def __init__(self, repo: "Repo", wdir: str, d: dict):
         self.fs = fs = repo.fs
         self.wdir = wdir
-        self.relpath = relpath(self.wdir / "dvc.yaml")
+        self.relpath = relpath(fs.path.join(self.wdir, "dvc.yaml"))
 
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)
@@ -232,7 +231,7 @@ class EntryDefinition:
 
     def _resolve_wdir(
         self, context: Context, name: str, wdir: str = None
-    ) -> PathInfo:
+    ) -> str:
         if not wdir:
             return self.wdir
 
@@ -240,7 +239,7 @@ class EntryDefinition:
             wdir = to_str(context.resolve_str(wdir))
         except (ContextError, ParseError) as exc:
             format_and_raise(exc, f"'{self.where}.{name}.wdir'", self.relpath)
-        return self.wdir / wdir
+        return self.resolver.fs.path.join(self.wdir, wdir)
 
     def resolve(self, **kwargs):
         try:

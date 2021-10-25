@@ -39,7 +39,10 @@ USED_VARS = {
 
 def make_entry_definition(wdir, name, data, context=None) -> EntryDefinition:
     return EntryDefinition(
-        DataResolver(wdir.dvc, wdir, {}), context or Context(), name, data
+        DataResolver(wdir.dvc, wdir.fs_path, {}),
+        context or Context(),
+        name,
+        data,
     )
 
 
@@ -47,7 +50,7 @@ def make_foreach_def(
     wdir, name, foreach_data, do_data=None, context=None
 ) -> ForeachDefinition:
     return ForeachDefinition(
-        DataResolver(wdir.dvc, wdir, {}),
+        DataResolver(wdir.dvc, wdir.fs_path, {}),
         context or Context(),
         name,
         {"foreach": foreach_data, "do": do_data or {}},

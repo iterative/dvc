@@ -1,11 +1,12 @@
 import logging
+import os
 from typing import List
 
 from dvc.fs.repo import RepoFileSystem
 from dvc.output import Output
 from dvc.repo import locked
-from dvc.repo.collect import DvcPaths, collect
-from dvc.repo.live import summary_path_info
+from dvc.repo.collect import StrPaths, collect
+from dvc.repo.live import summary_fs_path
 from dvc.scm.base import SCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.serialize import load_yaml
@@ -17,27 +18,27 @@ def _is_metric(out: Output) -> bool:
     return bool(out.metric) or bool(out.live)
 
 
-def _to_path_infos(metrics: List[Output]) -> DvcPaths:
+def _to_fs_paths(metrics: List[Output]) -> StrPaths:
     result = []
     for out in metrics:
         if out.metric:
-            result.append(out.path_info)
+            result.append(out.fs_path)
         elif out.live:
-            path_info = summary_path_info(out)
-            if path_info:
-                result.append(path_info)
+            fs_path = summary_fs_path(out)
+            if fs_path:
+                result.append(fs_path)
     return result
 
 
 def _collect_metrics(repo, targets, revision, recursive):
-    metrics, path_infos = collect(
+    metrics, fs_paths = collect(
         repo,
         targets=targets,
         output_filter=_is_metric,
         recursive=recursive,
         rev=revision,
     )
-    return _to_path_infos(metrics) + list(path_infos)
+    return _to_fs_paths(metrics) + list(fs_paths)
 
 
 def _extract_metrics(metrics, path, rev):
@@ -80,7 +81,9 @@ def _read_metrics(repo, metrics, rev, onerror=None):
         if not fs.isfile(metric):
             continue
 
-        res[str(metric)] = _read_metric(metric, fs, rev, onerror=onerror)
+        res[fs.path.relpath(metric, os.getcwd())] = _read_metric(
+            metric, fs, rev, onerror=onerror
+        )
 
     return res
 

@@ -3,7 +3,6 @@ import os
 import pytest
 
 from dvc.lock import LockError
-from dvc.path_info import PathInfo
 from dvc.rwlock import (
     RWLockFileCorruptedError,
     RWLockFileFormatError,
@@ -14,7 +13,7 @@ from dvc.rwlock import (
 
 def test_rwlock(tmp_path):
     path = os.fspath(tmp_path)
-    foo = PathInfo("foo")
+    foo = "foo"
 
     with rwlock(path, "cmd1", [foo], []):
         with pytest.raises(LockError):
@@ -34,7 +33,7 @@ def test_rwlock(tmp_path):
 
 def test_rwlock_reentrant(tmp_path):
     path = os.fspath(tmp_path)
-    foo = PathInfo("foo")
+    foo = "foo"
 
     with rwlock(path, "cmd1", [], [foo]):
         with rwlock(path, "cmd1", [], [foo]):
@@ -57,8 +56,8 @@ def test_rwlock_reentrant(tmp_path):
 
 def test_rwlock_subdirs(tmp_path):
     path = os.fspath(tmp_path)
-    foo = PathInfo("foo")
-    subfoo = PathInfo("foo/subfoo")
+    foo = "foo"
+    subfoo = os.path.join("foo", "subfoo")
 
     with rwlock(path, "cmd1", [foo], []):
         with pytest.raises(LockError, match=r"subfoo(.|\n)*cmd1"):

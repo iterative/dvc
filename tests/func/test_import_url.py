@@ -87,7 +87,7 @@ def test_import_url_to_dir(dname, tmp_dir, dvc):
 
     dst = tmp_dir / dname / "file"
 
-    assert stage.outs[0].path_info == dst
+    assert stage.outs[0].fs_path == os.fspath(dst)
     assert os.path.isdir(dname)
     assert dst.read_text() == "file content"
 
@@ -290,7 +290,10 @@ def test_import_url_to_remote_single_file(
     assert len(stage.outs) == 1
 
     hash_info = stage.outs[0].hash_info
-    assert local_remote.hash_to_path_info(hash_info.value).read_text() == "foo"
+    with open(
+        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
+    ) as fobj:
+        assert fobj.read() == "foo"
     assert stage.outs[0].meta.size == len("foo")
 
 
@@ -335,7 +338,7 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
     hash_info = stage.outs[0].hash_info
     with open(
-        local_remote.hash_to_path_info(hash_info.value), encoding="utf-8"
+        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
     ) as stream:
         file_parts = json.load(stream)
 
@@ -347,10 +350,10 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
     }
 
     for file_part in file_parts:
-        assert (
-            local_remote.hash_to_path_info(file_part["md5"]).read_text()
-            == file_part["relpath"]
-        )
+        with open(
+            local_remote.hash_to_path(file_part["md5"]), encoding="utf-8"
+        ) as fobj:
+            assert fobj.read() == file_part["relpath"]
 
 
 def test_import_url_to_remote_absolute(

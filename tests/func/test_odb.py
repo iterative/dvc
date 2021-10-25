@@ -37,7 +37,7 @@ class TestCache(TestDvc):
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
-        cache = ODBManager(self.dvc).local.hash_to_path_info(self.cache1_md5)
+        cache = ODBManager(self.dvc).local.hash_to_path(self.cache1_md5)
         self.assertEqual(os.fspath(cache), self.cache1)
 
 
@@ -50,13 +50,13 @@ class TestCacheLoadBadDirCache(TestDvc):
         from dvc.objects import load
 
         dir_hash = "123.dir"
-        fname = os.fspath(self.dvc.odb.local.hash_to_path_info(dir_hash))
+        fname = os.fspath(self.dvc.odb.local.hash_to_path(dir_hash))
         self.create(fname, "<clearly>not,json")
         with pytest.raises(ObjectFormatError):
             load(self.dvc.odb.local, HashInfo("md5", dir_hash))
 
         dir_hash = "234.dir"
-        fname = os.fspath(self.dvc.odb.local.hash_to_path_info(dir_hash))
+        fname = os.fspath(self.dvc.odb.local.hash_to_path(dir_hash))
         self.create(fname, '{"a": "b"}')
         with pytest.raises(ObjectFormatError):
             load(self.dvc.odb.local, HashInfo("md5", dir_hash))
@@ -88,7 +88,7 @@ class TestExternalCacheDir(TestDvc):
 
         self.dvc.__init__()
 
-        assert self.dvc.odb.ssh.path_info == ssh_url + "/tmp"
+        assert self.dvc.odb.ssh.fs_path == "/tmp"
 
 
 class TestSharedCacheDir(TestDir):
@@ -158,7 +158,7 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(ret, 0)
 
         config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(config["cache"]["dir"], dname.replace("\\", "/"))
+        self.assertEqual(config["cache"]["dir"], dname)
 
     def test_relative_path(self):
         tmpdir = os.path.realpath(self.mkdtemp())

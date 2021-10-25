@@ -2,8 +2,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
 
-from dvc.path_info import PathInfo
-from dvc.types import DvcPath
+from dvc.types import AnyPath
 
 if TYPE_CHECKING:
     from dvc.output import Output
@@ -14,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 FilterFn = Callable[["Output"], bool]
 Outputs = List["Output"]
-DvcPaths = List[DvcPath]
+AnyPaths = List[AnyPath]
+StrPaths = List[str]
 
 
 def _collect_outs(
@@ -32,39 +32,40 @@ def _collect_paths(
     rev: str = None,
 ):
     from dvc.fs.repo import RepoFileSystem
+    from dvc.utils import relpath
 
-    path_infos = [PathInfo(os.path.abspath(target)) for target in targets]
+    fs_paths = [os.path.abspath(target) for target in targets]
     fs = RepoFileSystem(repo)
 
-    target_infos = []
-    for path_info in path_infos:
+    target_paths = []
+    for fs_path in fs_paths:
 
-        if recursive and fs.isdir(path_info):
-            target_infos.extend(repo.dvcignore.walk_files(fs, path_info))
+        if recursive and fs.isdir(fs_path):
+            target_paths.extend(repo.dvcignore.find(fs, fs_path))
 
-        if not fs.exists(path_info):
+        if not fs.exists(fs_path):
+            rel = relpath(fs_path)
             if rev == "workspace" or rev == "":
-                logger.warning(
-                    "'%s' was not found in current workspace.", path_info
-                )
+                logger.warning("'%s' was not found in current workspace.", rel)
             else:
-                logger.warning("'%s' was not found at: '%s'.", path_info, rev)
-        target_infos.append(path_info)
-    return target_infos
+                logger.warning("'%s' was not found at: '%s'.", rel, rev)
+        target_paths.append(fs_path)
+    return target_paths
 
 
 def _filter_duplicates(
-    outs: Outputs, path_infos: DvcPaths
-) -> Tuple[Outputs, DvcPaths]:
+    outs: Outputs, fs_paths: StrPaths
+) -> Tuple[Outputs, StrPaths]:
     res_outs: Outputs = []
-    res_infos = path_infos
+    fs_res_paths = fs_paths
 
     for out in outs:
-        if out.path_info in path_infos:
+        if out.fs_path in fs_paths:
             res_outs.append(out)
-            res_infos.remove(out.path_info)
+            # MUTATING THE SAME LIST!!
+            fs_res_paths.remove(out.fs_path)
 
-    return res_outs, res_infos
+    return res_outs, fs_res_paths
 
 
 def collect(
@@ -74,15 +75,15 @@ def collect(
     output_filter: FilterFn = None,
     rev: str = None,
     recursive: bool = False,
-) -> Tuple[Outputs, DvcPaths]:
+) -> Tuple[Outputs, StrPaths]:
     assert targets or output_filter
 
     outs: Outputs = _collect_outs(repo, output_filter=output_filter, deps=deps)
 
     if not targets:
-        path_infos: DvcPaths = []
-        return outs, path_infos
+        fs_paths: StrPaths = []
+        return outs, fs_paths
 
-    target_infos = _collect_paths(repo, targets, recursive=recursive, rev=rev)
+    target_paths = _collect_paths(repo, targets, recursive=recursive, rev=rev)
 
-    return _filter_duplicates(outs, target_infos)
+    return _filter_duplicates(outs, target_paths)

@@ -3,7 +3,7 @@ import pathlib
 
 from funcy import cached_property
 
-from dvc.path_info import URLInfo
+from .path_info import URLInfo
 
 
 class Base(URLInfo):

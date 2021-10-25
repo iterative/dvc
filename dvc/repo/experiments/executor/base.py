@@ -16,7 +16,6 @@ from typing import (
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.repo.experiments.base import (
     EXEC_BASELINE,
@@ -101,7 +100,7 @@ class BaseExecutor(ABC):
         self,
         src: "Git",
         dvc_dir: str,
-        root_dir: Optional[Union[str, PathInfo]] = None,
+        root_dir: Optional[str] = None,
         branch: Optional[str] = None,
         name: Optional[str] = None,
         **kwargs,

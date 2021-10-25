@@ -61,8 +61,8 @@ def test_clear_on_download_err(tmp_dir, dvc, index, mocker):
     dvc.push()
 
     for _, _, oid in out.obj:
-        remove(dvc.odb.local.get(oid).path_info)
-    remove(out.path_info)
+        remove(dvc.odb.local.get(oid).fs_path)
+    remove(out.fs_path)
 
     assert list(index.hashes())
 

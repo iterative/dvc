@@ -87,8 +87,8 @@ def translate_graph_error(stages: Stages) -> Iterator[None]:
         yield
     except OverlappingOutputPathsError as exc:
         msg = OVERLAPPING_OUTPUT_FMT.format(
-            out=exc.overlapping_out.path_info,
-            parent=exc.parent.path_info,
+            out=exc.overlapping_out.fs_path,
+            parent=exc.parent.fs_path,
             parent_stage=exc.parent.stage.addressing,
         )
         raise OverlappingOutputPathsError(exc.parent, exc.overlapping_out, msg)
@@ -228,7 +228,7 @@ def _find_all_targets(
     from dvc.dvcfile import is_dvc_file
 
     if os.path.isdir(target) and recursive:
-        files = map(os.fspath, repo.dvcignore.walk_files(repo.fs, target))
+        files = repo.dvcignore.find(repo.fs, target)
         yield from (
             path
             for path in files

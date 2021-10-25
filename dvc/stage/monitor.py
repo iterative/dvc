@@ -88,7 +88,7 @@ class LiveTask(MonitorTask):
 
     def __init__(self, stage: "Stage", out: "Output", proc: subprocess.Popen):
         self.output_path = os.path.join(
-            os.getcwd(), out.path_info.fspath + "_dvc_plots", "index.html"
+            os.getcwd(), out.fs_path + "_dvc_plots", "index.html"
         )
         ui.write(f"Live summary will be created at:\n{self.output_path}")
         super().__init__(stage, functools.partial(create_summary, out), proc)

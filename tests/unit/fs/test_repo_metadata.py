@@ -1,7 +1,8 @@
+import os
+
 import pytest
 
 from dvc.fs.repo import RepoFileSystem
-from dvc.path_info import PathInfo
 from tests.unit.fs.test_repo import make_subrepo
 
 
@@ -31,7 +32,7 @@ def repo_fs(tmp_dir, dvc, scm):
                 "processed-2.csv": "2, dot, csv",
             },
         },
-        "models/transform.pickle": "model model",  # file
+        os.path.join("models", "transform.pickle"): "model model",  # file
     }
 
     tmp_dir.scm_gen(fs_structure, commit="repo init")
@@ -41,7 +42,7 @@ def repo_fs(tmp_dir, dvc, scm):
 
 
 def test_metadata_not_existing(repo_fs):
-    path = PathInfo("path") / "that" / "does" / "not" / "exist"
+    path = os.path.join("path", "that", "does", "not", "exist")
 
     with pytest.raises(FileNotFoundError):
         repo_fs.metadata(path)
@@ -51,17 +52,16 @@ def test_metadata_not_existing(repo_fs):
     "path",
     [
         "README.md",
-        "models/train.py",
-        "models/test.py",
-        PathInfo("src") / "utils" / "__init__.py",
-        PathInfo("src") / "utils" / "serve_model.py",
+        os.path.join("models", "train.py"),
+        os.path.join("models", "test.py"),
+        os.path.join("src", "utils", "__init__.py"),
+        os.path.join("src", "utils", "serve_model.py"),
     ],
 )
 def test_metadata_git_tracked_file(repo_fs, path):
-    root = PathInfo(repo_fs.root_dir)
     meta = repo_fs.metadata(path)
 
-    assert meta.path_info == root / path
+    assert meta.fs_path == os.path.join(repo_fs.root_dir, path)
     assert meta.repo.root_dir == repo_fs.root_dir
     assert not meta.is_output
     assert not meta.part_of_output
@@ -77,30 +77,29 @@ def test_metadata_git_tracked_file(repo_fs, path):
 @pytest.mark.parametrize(
     "path, outs, is_output",
     [
-        (PathInfo("data") / "raw" / "raw-1.csv", [PathInfo("data")], False),
-        (PathInfo("data") / "raw" / "raw-2.csv", [PathInfo("data")], False),
+        (os.path.join("data", "raw", "raw-1.csv"), ["data"], False),
+        (os.path.join("data", "raw", "raw-2.csv"), ["data"], False),
         (
-            PathInfo("data") / "processed" / "processed-1.csv",
-            [PathInfo("data")],
+            os.path.join("data", "processed", "processed-1.csv"),
+            ["data"],
             False,
         ),
         (
-            PathInfo("data") / "processed" / "processed-2.csv",
-            [PathInfo("data")],
+            os.path.join("data", "processed", "processed-2.csv"),
+            ["data"],
             False,
         ),
         (
-            "models/transform.pickle",
-            [PathInfo("models") / "transform.pickle"],
+            os.path.join("models", "transform.pickle"),
+            [os.path.join("models", "transform.pickle")],
             True,
         ),
     ],
 )
 def test_metadata_dvc_tracked_file(repo_fs, path, outs, is_output):
-    root = PathInfo(repo_fs.root_dir)
     meta = repo_fs.metadata(path)
 
-    assert meta.path_info == root / path
+    assert meta.fs_path == os.path.join(repo_fs.root_dir, path)
     assert meta.repo.root_dir == repo_fs.root_dir
     assert meta.is_output == is_output
     assert meta.part_of_output != is_output
@@ -110,15 +109,16 @@ def test_metadata_dvc_tracked_file(repo_fs, path, outs, is_output):
     assert not meta.isdir
     assert not meta.is_exec
     assert meta.isfile
-    assert {out.path_info for out in meta.outs} == {root / out for out in outs}
+    assert {out.fs_path for out in meta.outs} == {
+        os.path.join(repo_fs.root_dir, out) for out in outs
+    }
 
 
-@pytest.mark.parametrize("path", ["src", "src/utils"])
+@pytest.mark.parametrize("path", ["src", os.path.join("src", "utils")])
 def test_metadata_git_only_dirs(repo_fs, path):
-    root = PathInfo(repo_fs.root_dir)
     meta = repo_fs.metadata(path)
 
-    assert meta.path_info == root / path
+    assert meta.fs_path == os.path.join(repo_fs.root_dir, path)
     assert meta.repo.root_dir == repo_fs.root_dir
     assert not meta.is_output
     assert not meta.part_of_output
@@ -134,15 +134,16 @@ def test_metadata_git_only_dirs(repo_fs, path):
 @pytest.mark.parametrize(
     "path, expected_outs",
     [
-        (".", [PathInfo("data"), PathInfo("models") / "transform.pickle"]),
-        ("models", [PathInfo("models") / "transform.pickle"]),
+        (".", ["data", os.path.join("models", "transform.pickle")]),
+        ("models", [os.path.join("models", "transform.pickle")]),
     ],
 )
 def test_metadata_git_dvc_mixed_dirs(repo_fs, path, expected_outs):
-    root = PathInfo(repo_fs.root_dir)
-    meta = repo_fs.metadata(root / path)
+    meta = repo_fs.metadata(os.path.join(repo_fs.root_dir, path))
 
-    assert meta.path_info == root / path
+    assert meta.fs_path == os.path.normpath(
+        os.path.join(repo_fs.root_dir, path)
+    )
     assert meta.repo.root_dir == repo_fs.root_dir
     assert not meta.is_output
     assert not meta.part_of_output
@@ -153,8 +154,8 @@ def test_metadata_git_dvc_mixed_dirs(repo_fs, path, expected_outs):
     assert not meta.is_exec
     assert not meta.isfile
 
-    assert {out.path_info for out in meta.outs} == {
-        root / out for out in expected_outs
+    assert {out.fs_path for out in meta.outs} == {
+        os.path.join(repo_fs.root_dir, out) for out in expected_outs
     }
 
 
@@ -162,16 +163,14 @@ def test_metadata_git_dvc_mixed_dirs(repo_fs, path, expected_outs):
     "path, is_output",
     [
         ("data", True),
-        ("data/raw", False),  # is inside output
-        ("data/processed", False),
+        (os.path.join("data", "raw"), False),  # is inside output
+        (os.path.join("data", "processed"), False),
     ],
 )
 def test_metadata_dvc_only_dirs(repo_fs, path, is_output):
-    data = PathInfo(repo_fs.root_dir) / "data"
-    root = PathInfo(repo_fs.root_dir)
-    meta = repo_fs.metadata(root / path)
+    meta = repo_fs.metadata(os.path.join(repo_fs.root_dir, path))
 
-    assert meta.path_info == root / path
+    assert meta.fs_path == os.path.join(repo_fs.root_dir, path)
     assert meta.repo.root_dir == repo_fs.root_dir
     assert meta.is_output == is_output
     assert meta.part_of_output != is_output
@@ -181,16 +180,23 @@ def test_metadata_dvc_only_dirs(repo_fs, path, is_output):
     assert meta.isdir
     assert not meta.is_exec
     assert not meta.isfile
-    assert {out.path_info for out in meta.outs} == {data}
+    assert {out.fs_path for out in meta.outs} == {
+        os.path.join(repo_fs.root_dir, "data")
+    }
 
 
 def test_metadata_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
-    subrepo.scm_gen("foo", "foo", commit="add foo on subrepo")
-    subrepo.dvc_gen("foobar", "foobar", commit="add foobar on subrepo")
+    with subrepo.chdir():
+        subrepo.scm_gen("foo", "foo", commit="add foo on subrepo")
+        subrepo.dvc_gen("foobar", "foobar", commit="add foobar on subrepo")
 
-    for path in ["subrepo", "subrepo/foo", "subrepo/foobar"]:
+    for path in [
+        "subrepo",
+        os.path.join("subrepo", "foo"),
+        os.path.join("subrepo", "foobar"),
+    ]:
         meta = repo_fs.metadata(tmp_dir / path)
         assert meta.repo.root_dir == str(
             subrepo
@@ -200,5 +206,5 @@ def test_metadata_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):
     external_dir = make_tmp_dir("external-output")
     external_dir.gen("bar", "bar")
     dvc.add(str(external_dir / "bar"), external=True)
-    meta = repo_fs.metadata(external_dir / "bar")
+    meta = repo_fs.metadata((external_dir / "bar").fs_path)
     assert meta.repo.root_dir == str(tmp_dir)

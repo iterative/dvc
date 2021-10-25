@@ -9,7 +9,6 @@ import pytest
 from dvc.config import Config
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.main import main
-from dvc.path_info import PathInfo
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 from tests.remotes import Local
@@ -149,14 +148,14 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
-    path_info = PathInfo("data")
+    path = (tmp_dir / "data").fs_path
 
     tree = Tree.from_list(
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
     tree.digest()
     with patch("dvc.objects.stage._stage_tree", return_value=(None, tree)):
-        _, _, obj = stage(dvc.odb.local, path_info, dvc.odb.local.fs, "md5")
+        _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash1 = obj.hash_info
 
     tree = Tree.from_list(
@@ -164,7 +163,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
     )
     tree.digest()
     with patch("dvc.objects.stage._stage_tree", return_value=(None, tree)):
-        _, _, obj = stage(dvc.odb.local, path_info, dvc.odb.local.fs, "md5")
+        _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash2 = obj.hash_info
 
     assert hash1 == hash2
@@ -183,7 +182,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
     def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
         if os.path.abspath(to_info) == os.path.abspath(
-            odb.get(foo.hash_info).path_info
+            odb.get(foo.hash_info).fs_path
         ):
             raise Exception("stop foo")
         return original(from_fs, from_info, to_fs, to_info, **kwargs)
@@ -273,8 +272,8 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
 
     # foo .dir file should be uploaded after bar
     odb = dvc.cloud.get_remote_odb("upstream")
-    foo_path = odb.hash_to_path_info(foo.hash_info.value)
-    bar_path = odb.hash_to_path_info(foo.obj.trie[("bar",)][1].value)
+    foo_path = odb.hash_to_path(foo.hash_info.value)
+    bar_path = odb.hash_to_path(foo.obj.trie[("bar",)][1].value)
     paths = [args[3] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 
@@ -412,7 +411,7 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     dvc.push()
     odb = dvc.cloud.get_remote_odb("upstream")
-    remote_cache_file = odb.hash_to_path_info(stage.outs[0].hash_info.value)
+    remote_cache_file = odb.hash_to_path(stage.outs[0].hash_info.value)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444
@@ -427,7 +426,7 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     file_objs = [entry_obj for _, _, entry_obj in out.obj]
 
     # remove one of the cache files for directory
-    remove(odb.hash_to_path_info(file_objs[0].value))
+    remove(odb.hash_to_path(file_objs[0].value))
 
     dvc.push()
     assert not remote_odb.exists(out.hash_info)
@@ -442,8 +441,8 @@ def test_upload_exists(tmp_dir, dvc, local_remote):
     # normally they are set to read-only for DVC remotes
     odb.fs.CACHE_MODE = 0o644
 
-    from_info = PathInfo(tmp_dir / "foo")
-    to_info = odb.path_info / "foo"
+    from_info = (tmp_dir / "foo").fs_path
+    to_info = odb.fs.path.join(odb.fs_path, "foo")
     odb.fs.upload(from_info, to_info)
     assert odb.fs.exists(to_info)
 

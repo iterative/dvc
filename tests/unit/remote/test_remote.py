@@ -56,7 +56,7 @@ def test_makedirs_not_create_for_top_level_path(fs_cls, dvc, mocker):
     mocked_client = mocker.PropertyMock()
     mocker.patch.object(fs_cls, "fs", mocked_client)
 
-    fs.makedirs(fs.PATH_CLS(url))
+    fs.makedirs(url)
     assert not mocked_client.called
 
 

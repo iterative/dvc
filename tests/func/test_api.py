@@ -5,7 +5,6 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import FileMissingError, OutputNotFoundError
-from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
 from tests.unit.fs.test_repo import make_subrepo
 
@@ -32,7 +31,7 @@ all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
 def test_get_url(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
-    expected_url = URLInfo(remote.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = (remote / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
     assert api.get_url("foo") == expected_url
 
 
@@ -45,7 +44,7 @@ def test_get_url_external(tmp_dir, erepo_dir, cloud):
 
     # Using file url to force clone to tmp repo
     repo_url = f"file://{erepo_dir}"
-    expected_url = URLInfo(cloud.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = (cloud / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
     assert api.get_url("foo", repo=repo_url) == expected_url
 
 
@@ -255,16 +254,16 @@ def test_get_url_granular(tmp_dir, dvc, s3):
         {"dir": {"foo": "foo", "bar": "bar", "nested": {"file": "file"}}}
     )
 
-    expected_url = URLInfo(s3.url) / "5f/c28ea78987408341668eba6525ebd1.dir"
+    expected_url = (s3 / "5f/c28ea78987408341668eba6525ebd1.dir").url
     assert api.get_url("dir") == expected_url
 
-    expected_url = URLInfo(s3.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    expected_url = (s3 / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
     assert api.get_url("dir/foo") == expected_url
 
-    expected_url = URLInfo(s3.url) / "37/b51d194a7513e45b56f6524f2d51f2"
+    expected_url = (s3 / "37/b51d194a7513e45b56f6524f2d51f2").url
     assert api.get_url("dir/bar") == expected_url
 
-    expected_url = URLInfo(s3.url) / "8c/7dd922ad47494fc02c388e12c00eac"
+    expected_url = (s3 / "8c/7dd922ad47494fc02c388e12c00eac").url
     assert api.get_url(os.path.join("dir", "nested", "file")) == expected_url
 
 
@@ -277,10 +276,12 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
         )
         subrepo.dvc.push()
 
-    path = os.path.relpath(local_cloud.config["url"])
-
-    expected_url = os.path.join(path, "ac", "bd18db4cc2f85cedef654fccc4a4d8")
+    expected_url = os.fspath(
+        local_cloud / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
+    )
     assert api.get_url(os.path.join("subrepo", "dir", "foo")) == expected_url
 
-    expected_url = os.path.join(path, "37", "b51d194a7513e45b56f6524f2d51f2")
+    expected_url = os.fspath(
+        local_cloud / "37" / "b51d194a7513e45b56f6524f2d51f2"
+    )
     assert api.get_url("subrepo/bar") == expected_url

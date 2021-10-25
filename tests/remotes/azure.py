@@ -6,9 +6,8 @@ import uuid
 import pytest
 from funcy import cached_property
 
-from dvc.path_info import CloudURLInfo
-
 from .base import Base
+from .path_info import CloudURLInfo
 
 TEST_AZURE_CONTAINER = "tests"
 TEST_AZURE_CONNECTION_STRING = (
@@ -56,6 +55,12 @@ class Azure(Base, CloudURLInfo):
             encoding = locale.getpreferredencoding(False)
         assert errors is None
         return self.read_bytes().decode(encoding)
+
+    @property
+    def fs_path(self):
+        bucket = self.bucket.rstrip("/")
+        path = self.path.lstrip("/")
+        return f"{bucket}/{path}"
 
 
 @pytest.fixture(scope="session")

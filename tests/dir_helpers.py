@@ -81,6 +81,10 @@ disable_other_loggers()
 class TmpDir(pathlib.Path):
     scheme = "local"
 
+    @property
+    def fs_path(self):
+        return str(self)
+
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:
             cls = (  # pylint: disable=self-cls-assignment
@@ -249,8 +253,8 @@ class TmpDir(pathlib.Path):
             }
         return super().read_text(*args, encoding="utf-8", **kwargs)
 
-    def hash_to_path_info(self, hash_):
-        return self / hash_[0:2] / hash_[2:]
+    def hash_to_path(self, hash_):
+        return str(self / hash_[0:2] / hash_[2:])
 
     def dump(self, *args, **kwargs):
         return serialize.DUMPERS[self.suffix](self, *args, **kwargs)

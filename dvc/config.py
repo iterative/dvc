@@ -8,7 +8,6 @@ from functools import partial
 from funcy import cached_property, compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
-from dvc.path_info import PathInfo
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +228,7 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
+        from dvc.fs.local import localfs
         from dvc.utils import relpath
 
         from .config_schema import RelPath
@@ -238,8 +238,9 @@ class Config(dict):
 
         if isinstance(path, RelPath) or not os.path.isabs(path):
             path = relpath(path, conf_dir)
+            return localfs.path.as_posix(path)
 
-        return PathInfo(path).as_posix()
+        return path
 
     @staticmethod
     def _save_paths(conf, filename):

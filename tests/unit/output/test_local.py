@@ -36,7 +36,7 @@ def test_str_on_local_absolute_path(dvc):
     output = Output(stage, abs_path, cache=False)
 
     assert output.def_path == rel_path
-    assert output.path_info.fspath == abs_path
+    assert output.fs_path == abs_path
     assert str(output) == rel_path
 
 
@@ -48,7 +48,7 @@ def test_str_on_external_absolute_path(dvc):
     output = Output(stage, abs_path, cache=False)
 
     assert output.def_path == abs_path
-    assert output.path_info.fspath == abs_path
+    assert output.fs_path == abs_path
     assert str(output) == abs_path
 
 

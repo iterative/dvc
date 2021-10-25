@@ -1,10 +1,9 @@
 import hashlib
 import logging
 import os
-import pathlib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import TYPE_CHECKING, Dict, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
@@ -18,7 +17,7 @@ from .meta import Meta
 
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
-    from dvc.types import AnyPath, DvcPath
+    from dvc.types import AnyPath
 
     from .db.base import ObjectDB
 
@@ -28,31 +27,47 @@ logger = logging.getLogger(__name__)
 _STAGING_MEMFS_PATH = "dvc-staging"
 
 
-def _upload_file(path_info, fs, odb, upload_odb):
+def _upload_file(from_fs_path, fs, odb, upload_odb):
     from dvc.utils import tmp_fname
     from dvc.utils.stream import HashedStreamReader
 
-    tmp_info = upload_odb.path_info / tmp_fname()
-    with fs.open(path_info, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
+    fs_path = upload_odb.fs.path
+    tmp_info = fs_path.join(upload_odb.fs_path, tmp_fname())
+    with fs.open(from_fs_path, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
         stream = HashedStreamReader(stream)
-        size = fs.getsize(path_info)
-        upload_odb.fs.upload(stream, tmp_info, desc=path_info.name, total=size)
+        size = fs.getsize(from_fs_path)
+        upload_odb.fs.upload(
+            stream, tmp_info, desc=fs_path.name(from_fs_path), total=size
+        )
 
     odb.add(tmp_info, upload_odb.fs, stream.hash_info)
     meta = Meta(size=size)
-    return path_info, meta, odb.get(stream.hash_info)
+    return from_fs_path, meta, odb.get(stream.hash_info)
 
 
-def _get_file_hash(path_info, fs, name):
-    info = fs.info(path_info)
+def _adapt_info(info, scheme):
+    if scheme == "s3" and "ETag" in info:
+        info["etag"] = info["ETag"].strip('"')
+    elif scheme == "gs" and "etag" in info:
+        import base64
+
+        info["etag"] = base64.b64decode(info["etag"]).hex()
+    elif scheme == "http" and ("ETag" in info or "Content-MD5" in info):
+        info["checksum"] = info.get("ETag") or info.get("Content-MD5")
+    return info
+
+
+def _get_file_hash(fs_path, fs, name):
+    info = _adapt_info(fs.info(fs_path), fs.scheme)
+
     if name in info:
         assert not info[name].endswith(".dir")
         hash_value = info[name]
     elif hasattr(fs, name):
         func = getattr(fs, name)
-        hash_value = func(path_info)
+        hash_value = func(fs_path)
     elif name == "md5":
-        hash_value = file_md5(path_info, fs)
+        hash_value = file_md5(fs_path, fs)
     else:
         raise NotImplementedError
 
@@ -61,41 +76,41 @@ def _get_file_hash(path_info, fs, name):
     return meta, hash_info
 
 
-def get_file_hash(path_info, fs, name, state=None):
+def get_file_hash(fs_path, fs, name, state=None):
     if state:
         meta, hash_info = state.get(  # pylint: disable=assignment-from-none
-            path_info, fs
+            fs_path, fs
         )
         if hash_info:
             return meta, hash_info
 
-    meta, hash_info = _get_file_hash(path_info, fs, name)
+    meta, hash_info = _get_file_hash(fs_path, fs, name)
 
     if state:
         assert ".dir" not in hash_info.value
-        state.save(path_info, fs, hash_info)
+        state.save(fs_path, fs, hash_info)
 
     return meta, hash_info
 
 
-def _stage_file(path_info, fs, name, odb=None, upload_odb=None, dry_run=False):
+def _stage_file(fs_path, fs, name, odb=None, upload_odb=None, dry_run=False):
     state = odb.state if odb else None
-    meta, hash_info = get_file_hash(path_info, fs, name, state=state)
+    meta, hash_info = get_file_hash(fs_path, fs, name, state=state)
     if upload_odb and not dry_run:
         assert odb and name == "md5"
-        return _upload_file(path_info, fs, odb, upload_odb)
+        return _upload_file(fs_path, fs, odb, upload_odb)
 
     if dry_run:
-        obj = HashFile(path_info, fs, hash_info)
+        obj = HashFile(fs_path, fs, hash_info)
     else:
-        odb.add(path_info, fs, hash_info, hardlink=False)
+        odb.add(fs_path, fs, hash_info, hardlink=False)
         obj = odb.get(hash_info)
 
-    return path_info, meta, obj
+    return fs_path, meta, obj
 
 
 def _build_objects(
-    path_info,
+    fs_path,
     fs,
     name,
     dvcignore=None,
@@ -104,9 +119,9 @@ def _build_objects(
     **kwargs,
 ):
     if dvcignore:
-        walk_iterator = dvcignore.walk_files(fs, path_info)
+        walk_iterator = dvcignore.find(fs, fs_path)
     else:
-        walk_iterator = fs.walk_files(path_info)
+        walk_iterator = fs.find(fs_path)
     with Tqdm(
         unit="md5",
         desc="Computing file/dir hashes (only done once)",
@@ -126,18 +141,18 @@ def _build_objects(
             yield from executor.map(worker, walk_iterator)
 
 
-def _iter_objects(path_info, fs, name, **kwargs):
-    yield from _build_objects(path_info, fs, name, **kwargs)
+def _iter_objects(fs_path, fs, name, **kwargs):
+    yield from _build_objects(fs_path, fs, name, **kwargs)
 
 
-def _build_tree(path_info, fs, name, **kwargs):
+def _build_tree(fs_path, fs, name, **kwargs):
     from .tree import Tree
 
     tree_meta = Meta(size=0, nfiles=0)
     tree = Tree(None, None, None)
-    for file_info, meta, obj in _iter_objects(path_info, fs, name, **kwargs):
-        if DvcIgnore.DVCIGNORE_FILE == file_info.name:
-            raise DvcIgnoreInCollectedDirError(file_info.parent)
+    for file_fs_path, meta, obj in _iter_objects(fs_path, fs, name, **kwargs):
+        if DvcIgnore.DVCIGNORE_FILE == fs.path.name(file_fs_path):
+            raise DvcIgnoreInCollectedDirError(fs.path.parent(file_fs_path))
 
         # NOTE: this is lossy transformation:
         #   "hey\there" -> "hey/there"
@@ -147,7 +162,11 @@ def _build_tree(path_info, fs, name, **kwargs):
         #
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
-        tree.add(file_info.relative_to(path_info).parts, meta, obj.hash_info)
+
+        relpath = fs.path.relpath(file_fs_path, fs_path)
+        key = tuple(relpath.split(fs.path.sep))
+        assert key
+        tree.add(key, meta, obj.hash_info)
 
         tree_meta.size += meta.size
         tree_meta.nfiles += 1
@@ -155,7 +174,7 @@ def _build_tree(path_info, fs, name, **kwargs):
     return tree_meta, tree
 
 
-def _stage_tree(path_info, fs, fs_info, name, odb=None, **kwargs):
+def _stage_tree(fs_path, fs, fs_info, name, odb=None, **kwargs):
     from .tree import Tree
 
     value = fs_info.get(name)
@@ -167,41 +186,46 @@ def _stage_tree(path_info, fs, fs_info, name, odb=None, **kwargs):
         except FileNotFoundError:
             pass
 
-    meta, tree = _build_tree(path_info, fs, name, odb=odb, **kwargs)
+    meta, tree = _build_tree(fs_path, fs, name, odb=odb, **kwargs)
     state = odb.state if odb and odb.state else None
     hash_info = None
     if state:
         _, hash_info = state.get(  # pylint: disable=assignment-from-none
-            path_info, fs
+            fs_path, fs
         )
     tree.digest(hash_info=hash_info)
-    odb.add(tree.path_info, tree.fs, tree.hash_info, hardlink=False)
+    odb.add(tree.fs_path, tree.fs, tree.hash_info, hardlink=False)
     raw = odb.get(tree.hash_info)
     # cleanup unneeded memfs tmpfile and return tree based on the
     # ODB fs/path
     if odb.fs != tree.fs:
-        tree.fs.remove(tree.path_info)
+        tree.fs.remove(tree.fs_path)
     tree.fs = raw.fs
-    tree.path_info = raw.path_info
+    tree.fs_path = raw.fs_path
     return meta, tree
 
 
 _url_cache: Dict[str, str] = {}
 
 
-def _make_staging_url(path_info: "AnyPath"):
-    from dvc.path_info import CloudURLInfo
+def _make_staging_url(
+    fs: "BaseFileSystem", odb: "ObjectDB", fs_path: Optional[str]
+):
     from dvc.scheme import Schemes
 
-    url = CloudURLInfo(f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}")
-    if path_info:
-        if isinstance(path_info, (str, pathlib.PurePath)):
-            path = os.path.abspath(path_info)
-        else:
-            path = str(path_info)
-        if path not in _url_cache:
-            _url_cache[path] = hashlib.sha256(path.encode("utf-8")).hexdigest()
-        url /= _url_cache[path]
+    url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}"
+
+    if fs_path is not None:
+        if odb.fs.scheme == Schemes.LOCAL:
+            fs_path = os.path.abspath(fs_path)
+
+        if fs_path not in _url_cache:
+            _url_cache[fs_path] = hashlib.sha256(
+                fs_path.encode("utf-8")
+            ).hexdigest()
+
+        url = fs.path.join(url, _url_cache[fs_path])
+
     return url
 
 
@@ -214,18 +238,18 @@ def _get_staging(odb: "ObjectDB") -> "ObjectDB":
     from dvc.fs.memory import MemoryFileSystem
 
     fs = MemoryFileSystem()
-    path_info = _make_staging_url(odb.path_info)
+    fs_path = _make_staging_url(fs, odb, odb.fs_path)
     state = odb.state
-    return ReferenceObjectDB(fs, path_info, state=state)
+    return ReferenceObjectDB(fs, fs_path, state=state)
 
 
-def _load_from_state(odb, staging, path_info, fs, name):
+def _load_from_state(odb, staging, fs_path, fs, name):
     from . import check, load
     from .errors import ObjectFormatError
     from .tree import Tree
 
     state = odb.state
-    meta, hash_info = state.get(path_info, fs)
+    meta, hash_info = state.get(fs_path, fs)
     if hash_info:
         for odb_ in (odb, staging):
             if odb_.exists(hash_info):
@@ -248,10 +272,10 @@ def _stage_external_tree_info(odb, tree, name):
     # that would be universal for all clouds.
     assert odb and name != "md5"
 
-    odb.add(tree.path_info, tree.fs, tree.hash_info)
+    odb.add(tree.fs_path, tree.fs, tree.hash_info)
     raw = odb.get(tree.hash_info)
-    _, hash_info = get_file_hash(raw.path_info, raw.fs, name, state=odb.state)
-    tree.path_info = raw.path_info
+    _, hash_info = get_file_hash(raw.fs_path, raw.fs, name, state=odb.state)
+    tree.fs_path = raw.fs_path
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name
     tree.hash_info.value = hash_info.value
@@ -262,7 +286,7 @@ def _stage_external_tree_info(odb, tree, name):
 
 def stage(
     odb: "ObjectDB",
-    path_info: "DvcPath",
+    fs_path: "AnyPath",
     fs: "BaseFileSystem",
     name: str,
     upload: bool = False,
@@ -282,19 +306,20 @@ def stage(
     ODB filesystem, and staged objects will reference the uploaded path rather
     than the original source path.
     """
-    assert path_info and path_info.scheme == fs.scheme
+    assert fs_path
+    # assert scheme(fs_path) == fs.scheme
 
-    details = fs.info(path_info)
+    details = fs.info(fs_path)
     staging = _get_staging(odb)
     if odb:
         try:
-            return _load_from_state(odb, staging, path_info, fs, name)
+            return _load_from_state(odb, staging, fs_path, fs, name)
         except FileNotFoundError:
             pass
 
     if details["type"] == "directory":
         meta, obj = _stage_tree(
-            path_info,
+            fs_path,
             fs,
             details,
             name,
@@ -308,7 +333,7 @@ def stage(
             obj = _stage_external_tree_info(odb, obj, name)
     else:
         _, meta, obj = _stage_file(
-            path_info,
+            fs_path,
             fs,
             name,
             odb=staging,
@@ -317,6 +342,6 @@ def stage(
         )
 
     if odb and odb.state and obj.hash_info:
-        odb.state.save(path_info, fs, obj.hash_info)
+        odb.state.save(fs_path, fs, obj.hash_info)
 
     return staging, meta, obj

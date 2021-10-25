@@ -4,7 +4,6 @@ import re
 import pytest
 
 from dvc.fs.local import LocalFileSystem
-from dvc.path_info import PathInfo
 from dvc.utils import (
     dict_sha256,
     file_md5,
@@ -88,29 +87,21 @@ def test_file_md5(tmp_dir):
     tmp_dir.gen("foo", "foo content")
 
     fs = LocalFileSystem()
-    assert file_md5("foo", fs) == file_md5(PathInfo("foo"), fs)
+    assert file_md5("foo", fs) == file_md5("foo", fs)
 
 
 def test_tmp_fname():
     file_path = os.path.join("path", "to", "file")
-    file_path_info = PathInfo(file_path)
 
     def pattern(path):
         return r"^" + re.escape(path) + r"\.[a-z0-9]{22}\.tmp$"
 
     assert re.search(pattern(file_path), tmp_fname(file_path), re.IGNORECASE)
     assert re.search(
-        pattern(file_path_info.fspath),
-        tmp_fname(file_path_info),
+        pattern(file_path),
+        tmp_fname(file_path),
         re.IGNORECASE,
     )
-
-
-def test_relpath():
-    path = "path"
-    path_info = PathInfo(path)
-
-    assert relpath(path) == relpath(path_info)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")

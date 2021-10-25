@@ -55,16 +55,16 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 errno.EISDIR, os.strerror(errno.EISDIR), path
             ) from exc
 
-    def exists(self, path_info) -> bool:
-        key = self._get_key(path_info)
+    def exists(self, path) -> bool:
+        key = self._get_key(path)
         return self.trie.exists(key)
 
-    def isdir(self, path_info) -> bool:
-        key = self._get_key(path_info)
+    def isdir(self, path) -> bool:
+        key = self._get_key(path)
         return self.trie.isdir(key)
 
-    def isfile(self, path_info) -> bool:
-        key = self._get_key(path_info)
+    def isfile(self, path) -> bool:
+        key = self._get_key(path)
         return self.trie.isfile(key)
 
     def walk(self, top, topdown=True, onerror=None, **kwargs):
@@ -94,27 +94,27 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 root = self._root
             yield root, dirs, files
 
-    def isexec(self, path_info):
-        if not self.exists(path_info):
+    def isexec(self, path):
+        if not self.exists(path):
             return False
 
-        mode = self.info(path_info)["mode"]
+        mode = self.info(path)["mode"]
         return is_exec(mode)
 
-    def info(self, path_info):
-        key = self._get_key(path_info)
+    def info(self, path):
+        key = self._get_key(path)
         try:
             return self.trie.info(key)
         except KeyError:
             raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), path_info
+                errno.ENOENT, os.strerror(errno.ENOENT), path
             )
 
-    def checksum(self, path_info):
-        return self.info(path_info)["sha"]
+    def checksum(self, path):
+        return self.info(path)["sha"]
 
-    def walk_files(self, path_info, **kwargs):
-        for root, _, files in self.walk(path_info, **kwargs):
+    def find(self, path, prefix=None):
+        for root, _, files in self.walk(path):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
                 yield f"{root}{os.sep}{file}"

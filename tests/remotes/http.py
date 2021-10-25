@@ -5,9 +5,8 @@ import uuid
 import pytest
 import requests
 
-from dvc.path_info import HTTPURLInfo
-
 from .base import Base
+from .path_info import HTTPURLInfo
 
 
 class HTTP(Base, HTTPURLInfo):
@@ -24,6 +23,10 @@ class HTTP(Base, HTTPURLInfo):
         assert isinstance(contents, bytes)
         response = requests.post(self.url, data=contents)
         assert response.status_code == 200
+
+    @property
+    def fs_path(self):
+        return self.url
 
 
 @pytest.fixture(scope="session")

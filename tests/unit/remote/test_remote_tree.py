@@ -1,11 +1,7 @@
-import os
-
 import pytest
 
 from dvc.fs.s3 import S3FileSystem
 from dvc.objects.db import _get_odb
-from dvc.path_info import PathInfo
-from dvc.utils.fs import walk_files
 
 remotes = [pytest.lazy_fixture(fix) for fix in ["gs", "s3"]]
 
@@ -25,68 +21,6 @@ FILE_WITH_CONTENTS = {
 }
 
 
-@pytest.fixture
-def remote(request, dvc):
-    cloud = request.param
-    cloud.gen(FILE_WITH_CONTENTS)
-    return _get_odb(dvc, cloud.config)
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", remotes, indirect=True)
-def test_isdir(remote):
-    test_cases = [
-        (True, "data"),
-        (True, "data/"),
-        (True, "data/subdir"),
-        #       (True, "empty_dir"),
-        (False, "foo"),
-        (False, "data/alice"),
-        (False, "data/al"),
-        (False, "data/subdir/1"),
-    ]
-
-    for expected, path in test_cases:
-        assert remote.fs.isdir(remote.path_info / path) == expected
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", remotes, indirect=True)
-def test_exists(remote):
-    test_cases = [
-        (True, "data"),
-        (True, "data/"),
-        (True, "data/subdir"),
-        #       (True, "empty_dir"),
-        (True, "empty_file"),
-        (True, "foo"),
-        (True, "data/alice"),
-        (True, "data/subdir/1"),
-        (False, "data/al"),
-        #       (False, "foo/"),
-        (True, "data1.txt"),
-    ]
-
-    for expected, path in test_cases:
-        assert remote.fs.exists(remote.path_info / path) == expected
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", remotes, indirect=True)
-def test_walk_files(remote):
-    files = [
-        remote.path_info / "data/alice",
-        remote.path_info / "data/alpha",
-        remote.path_info / "data/subdir-file.txt",
-        remote.path_info / "data/subdir/1",
-        remote.path_info / "data/subdir/2",
-        remote.path_info / "data/subdir/3",
-        remote.path_info / "data/subdir/empty_file",
-    ]
-
-    assert list(remote.fs.walk_files(remote.path_info / "data")) == files
-
-
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("s3")])
 def test_copy_preserve_etag_across_buckets(cloud, dvc):
     cloud.gen(FILE_WITH_CONTENTS)
@@ -100,57 +34,12 @@ def test_copy_preserve_etag_across_buckets(cloud, dvc):
 
     another = S3FileSystem(**config)
 
-    from_info = rem.path_info / "foo"
-    to_info = another.PATH_CLS("s3://another/foo")
+    from_info = rem.fs.path.join(rem.fs_path, "foo")
+    to_info = "another/foo"
 
     rem.fs.copy(from_info, to_info)
 
-    from_hash = rem.fs.info(from_info)["etag"]
-    to_hash = another.info(to_info)["etag"]
+    from_hash = rem.fs.info(from_info)["ETag"].strip('"')
+    to_hash = another.info(to_info)["ETag"].strip('"')
 
     assert from_hash == to_hash
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", remotes, indirect=True)
-def test_isfile(remote):
-    test_cases = [
-        #       (False, "empty_dir/"),
-        (True, "empty_file"),
-        (True, "foo"),
-        (True, "data/alice"),
-        (True, "data/alpha"),
-        (True, "data/subdir/1"),
-        (True, "data/subdir/2"),
-        (True, "data/subdir/3"),
-        #       (False, "data/subdir/empty_dir/"),
-        (True, "data/subdir/empty_file"),
-        (False, "something-that-does-not-exist"),
-        (False, "data/subdir/empty-file/"),
-        #       (False, "empty_dir"),
-    ]
-
-    for expected, path in test_cases:
-        assert remote.fs.isfile(remote.path_info / path) == expected
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", remotes, indirect=True)
-def test_download_dir(remote, tmpdir):
-    path = str(tmpdir / "data")
-    to_info = PathInfo(path)
-    remote.fs.download(remote.path_info / "data", to_info)
-    assert os.path.isdir(path)
-    data_dir = tmpdir / "data"
-    assert len(list(walk_files(path))) == 7
-    assert (data_dir / "alice").read_text(encoding="utf-8") == "alice"
-    assert (data_dir / "alpha").read_text(encoding="utf-8") == "alpha"
-    assert (data_dir / "subdir-file.txt").read_text(
-        encoding="utf-8"
-    ) == "subdir"
-    assert (data_dir / "subdir" / "1").read_text(encoding="utf-8") == "1"
-    assert (data_dir / "subdir" / "2").read_text(encoding="utf-8") == "2"
-    assert (data_dir / "subdir" / "3").read_text(encoding="utf-8") == "3"
-    assert (data_dir / "subdir" / "empty_file").read_text(
-        encoding="utf-8"
-    ) == ""
