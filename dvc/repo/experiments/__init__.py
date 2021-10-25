@@ -473,20 +473,16 @@ class Experiments:
             "\tdvc exp branch <exp> <branch>\n"
         )
 
-    def _validate_ref_name(self, name: Optional[str], **kwargs):
+    def _validate_new_ref(self, exp_ref: ExpRefInfo):
         from .utils import check_ref_format
 
-        if name is None:
+        if not exp_ref.name:
             return
 
-        baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
-        exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
         check_ref_format(self.scm, exp_ref)
 
-        reset = kwargs.get("reset", False)
-        force = kwargs.get("force", False)
-        if not (force or reset) and self.scm.get_ref(str(exp_ref)):
-            raise ExperimentExistsError(name)
+        if self.scm.get_ref(str(exp_ref)):
+            raise ExperimentExistsError(exp_ref.name)
 
     @scm_locked
     def new(self, *args, checkpoint_resume: Optional[str] = None, **kwargs):
@@ -500,10 +496,17 @@ class Experiments:
                 *args, resume_rev=checkpoint_resume, **kwargs
             )
 
-        name = kwargs.pop("name", None)
-        self._validate_ref_name(name, **kwargs)
+        name = kwargs.get("name", None)
+        baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
+        exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
 
-        return self._stash_exp(*args, name=name, **kwargs)
+        try:
+            self._validate_new_ref(exp_ref)
+        except ExperimentExistsError as err:
+            if not (kwargs.get("force", False) or kwargs.get("reset", False)):
+                raise err
+
+        return self._stash_exp(*args, **kwargs)
 
     def _resume_checkpoint(
         self, *args, resume_rev: Optional[str] = None, **kwargs
