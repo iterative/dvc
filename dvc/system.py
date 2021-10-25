@@ -2,14 +2,42 @@ import errno
 import logging
 import os
 import platform
+import stat
+import sys
 
 logger = logging.getLogger(__name__)
+
+
+if os.name == "nt" and sys.version_info < (3, 8):
+    # NOTE: using backports for `os.path.realpath`
+    # See https://bugs.python.org/issue9949 for more info.
+    # pylint: disable=import-error, no-name-in-module
+    from jaraco.windows.filesystem.backports import realpath as _realpath
+
+    def realpath(path):
+        return _realpath(os.fspath(path))
+
+
+else:
+    realpath = os.path.realpath
 
 
 class System:
     @staticmethod
     def hardlink(source, link_name):
-        os.link(source, link_name)
+        # NOTE: we should really be using `os.link()` here with
+        # `follow_symlinks=True`, but unfortunately the implementation is
+        # buggy across platforms, so until it is fixed, we just dereference
+        # the symlink ourselves here.
+        #
+        # See https://bugs.python.org/issue41355 for more info.
+        st = os.lstat(source)
+        if stat.S_ISLNK(st.st_mode):
+            src = realpath(source)
+        else:
+            src = source
+
+        os.link(src, link_name)
 
     @staticmethod
     def symlink(source, link_name):
