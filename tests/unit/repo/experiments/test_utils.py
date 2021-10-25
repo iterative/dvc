@@ -28,20 +28,14 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
     assert str(remote_ref_info) == ref
 
 
-def test_run_check_ref_format(scm):
-    baseline_rev = "b05eecc666734e899f79af228ff49a7ae5a18cc0"
+@pytest.mark.parametrize(
+    "name,result", [("name", True), ("group/name", False), ("na me", False)]
+)
+def test_run_check_ref_format(scm, name, result):
 
-    def fun(name):
-        ref = ExpRefInfo(baseline_rev, name)
+    ref = ExpRefInfo("abc123", name)
+    if result:
         check_ref_format(scm, ref)
-
-    fun("name")
-
-    # Forbid slash / here because we didn't support it for now.
-    with pytest.raises(InvalidArgumentError):
-        fun("group/name")
-
-    with pytest.raises(InvalidArgumentError):
-        fun("na\05me")
-    with pytest.raises(InvalidArgumentError):
-        fun("na me")
+    else:
+        with pytest.raises(InvalidArgumentError):
+            check_ref_format(scm, ref)

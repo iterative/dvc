@@ -501,7 +501,7 @@ class Experiments:
             )
 
         name = kwargs.pop("name", None)
-        self._ref_name_validation(name, **kwargs)
+        self._validate_ref_name(name, **kwargs)
 
         return self._stash_exp(*args, name=name, **kwargs)
 
