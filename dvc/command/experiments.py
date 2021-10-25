@@ -851,7 +851,8 @@ class CmdExperimentsInit(CmdBase):
         name = self.args.name or self.args.type
 
         text = ui.rich_text.assemble(
-            "\nCreated ",
+            "\n" if self.args.interactive else "",
+            "Created ",
             (name, "bright_blue"),
             " stage in ",
             ("dvc.yaml", "green"),
