@@ -229,7 +229,7 @@ def _unshallow(git):
         # the default branch
         origin_refs = git.gitpython.repo.remotes["origin"].refs
         ref = origin_refs["HEAD"].reference
-        branch_name = ref.name.split("/")[-1]
+        branch_name = "/".join(ref.name.split("/")[1:])
         branch = git.gitpython.repo.create_head(branch_name, ref)
         branch.set_tracking_branch(ref)
         branch.checkout()

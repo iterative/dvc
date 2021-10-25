@@ -59,11 +59,11 @@ def _collect_experiment_commit(
             for refspec in ["refs/tags", "refs/heads"]:
                 name = repo.scm.describe(rev, base=refspec)
                 if name:
+                    name = name.rsplit("/")[-1]
                     break
             if not name:
                 name = repo.experiments.get_exact_name(rev)
             if name:
-                name = name.rsplit("/")[-1]
                 res["name"] = name
 
     return res
