@@ -39,7 +39,11 @@ class LocalFileSystem(BaseFileSystem):
         return os.path.lexists(path_info)
 
     def checksum(self, path_info) -> str:
-        return self.fs.checksum(path_info)
+        from fsspec.utils import tokenize
+
+        st = os.stat(path_info)
+
+        return str(int(tokenize([st.st_ino, st.st_mtime, st.st_size]), 16))
 
     def isfile(self, path_info) -> bool:
         return os.path.isfile(path_info)
