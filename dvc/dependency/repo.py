@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
 from voluptuous import Required
 
-from dvc.path_info import PathInfo
-
 from .base import Dependency
 
 if TYPE_CHECKING:
@@ -70,7 +68,7 @@ class RepoDependency(Dependency):
 
         obj = self.get_obj()
         checkout(
-            to.path_info,
+            to.fs_path,
             to.fs,
             obj,
             self.repo.odb.local,
@@ -114,7 +112,7 @@ class RepoDependency(Dependency):
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = rev
 
-            path_info = PathInfo(repo.root_dir) / str(self.def_path)
+            path_info = repo.fs.path.join(repo.root_dir, self.def_path)
             if not obj_only:
                 try:
                     for odb, obj_ids in repo.used_objs(

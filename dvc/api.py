@@ -4,7 +4,6 @@ from contextlib import _GeneratorContextManager as GCM
 from funcy import reraise
 
 from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.path_info import PathInfo
 from dvc.repo import Repo
 
 
@@ -20,15 +19,15 @@ def get_url(path, repo=None, rev=None, remote=None):
     directory in the remote storage.
     """
     with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        path_info = PathInfo(_repo.root_dir) / path
+        fs_path = _repo.fs.path.join(_repo.root_dir, path)
         with reraise(FileNotFoundError, PathMissingError(path, repo)):
-            metadata = _repo.repo_fs.metadata(path_info)
+            metadata = _repo.repo_fs.metadata(fs_path)
 
         if not metadata.is_dvc:
             raise OutputNotFoundError(path, repo)
 
         cloud = metadata.repo.cloud
-        md5 = metadata.repo.dvcfs.info(path_info)["md5"]
+        md5 = metadata.repo.dvcfs.info(fs_path)["md5"]
         return cloud.get_url_for(remote, checksum=md5)
 
 

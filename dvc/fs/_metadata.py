@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List
 
 from dvc.output import Output
-from dvc.path_info import PathInfo
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -16,7 +15,7 @@ class Metadata:
     """
 
     # required field
-    path_info: PathInfo
+    fs_path: str
     repo: "Repo"
 
     # computed fields
@@ -47,11 +46,13 @@ class Metadata:
         else:
             out = self.outs[0]
             # or, the path itself could be an output
-            self.is_output = self.path_info == out.path_info
+            self.is_output = self.repo.fs.path.eq(self.fs_path, out.fs_path)
 
             # or, a directory must have an output somewhere deep inside it
             if not self.is_output:
-                self.contains_outputs = out.path_info.isin(self.path_info)
+                self.contains_outputs = self.repo.fs.path.isin(
+                    out.fs_path, self.fs_path
+                )
 
         # or, the path could be a part of an output, i.e. inside of an output
         self.part_of_output = not self.is_output and not self.contains_outputs
@@ -69,4 +70,4 @@ class Metadata:
         return not self.isdir
 
     def __str__(self):
-        return f"Metadata: {self.path_info}"
+        return f"Metadata: {self.fs_path}"

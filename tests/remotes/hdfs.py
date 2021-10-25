@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 import pytest
 
 from dvc.path_info import URLInfo
+from dvc.utils.path import as_string
 
 from .base import Base
 
@@ -204,7 +205,9 @@ def md5md5crc32c(path):
 
 
 def hadoop_fs_checksum(_, path_info):
-    return md5md5crc32c(Path(_hdfs_root.name) / path_info.path.lstrip("/"))
+    return md5md5crc32c(
+        Path(_hdfs_root.name) / as_string(path_info).lstrip("/")
+    )
 
 
 class FakeHadoopFileSystem:

@@ -3,7 +3,6 @@ import threading
 from funcy import cached_property, memoize, wrap_with
 
 from dvc import prompt
-from dvc.path_info import HTTPURLInfo
 from dvc.scheme import Schemes
 
 from .fsspec_wrapper import FSSpecWrapper, NoDirectoriesMixin
@@ -34,7 +33,6 @@ def make_context(ssl_verify):
 # pylint: disable=abstract-method
 class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
     scheme = Schemes.HTTP
-    PATH_CLS = HTTPURLInfo
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"aiohttp": "aiohttp", "aiohttp-retry": "aiohttp_retry"}
     CAN_TRAVERSE = False

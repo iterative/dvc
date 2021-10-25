@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
-    from dvc.types import AnyPath, DvcPath
+    from dvc.types import AnyPath
 
     from .base import BaseFileSystem
 
@@ -16,7 +16,7 @@ def transfer(
     from_fs: "BaseFileSystem",
     from_info: "AnyPath",
     to_fs: "BaseFileSystem",
-    to_info: "DvcPath",
+    to_info: "AnyPath",
     move: bool = False,
 ) -> None:
     use_move = isinstance(from_fs, type(to_fs)) and move
@@ -25,8 +25,6 @@ def transfer(
             return to_fs.move(from_info, to_info)
 
         if isinstance(from_fs, LocalFileSystem):
-            if not isinstance(from_info, from_fs.PATH_CLS):
-                from_info = from_fs.PATH_CLS(from_info)
             return to_fs.upload(from_info, to_info)
 
         if isinstance(to_fs, LocalFileSystem):

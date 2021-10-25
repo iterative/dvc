@@ -4,16 +4,17 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partialmethod
 from multiprocessing import cpu_count
-from typing import Any, ClassVar, Dict, FrozenSet, Optional
+from typing import ClassVar, Dict, FrozenSet, Optional
 
+from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
 
 from dvc.exceptions import DvcException
-from dvc.path_info import URLInfo
 from dvc.progress import DEFAULT_CALLBACK, FsspecCallback
 from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
+from dvc.utils.path import Proxy
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,15 @@ class RemoteMissingDepsError(DvcException):
 
 
 class BaseFileSystem:
+    local_path = Proxy(
+        os.path, "local"
+    )  # when dealing with downloads/uploads, the left or right argument
+    # is always the local one, so we need a way to also access this.
+
     sep = "/"
 
     scheme = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
-    PATH_CLS = URLInfo  # type: Any
     _JOBS = 4 * cpu_count()
 
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -68,6 +73,18 @@ class BaseFileSystem:
     @property
     def config(self):
         return self._config
+
+    @cached_property
+    def path(self):
+        import ntpath
+        import posixpath
+
+        if self.sep == posixpath.sep:
+            path_manager = posixpath
+        else:
+            path_manager = ntpath
+
+        return Proxy(path_manager, self.scheme)
 
     @classmethod
     def _strip_protocol(cls, path: str):
@@ -166,8 +183,8 @@ class BaseFileSystem:
         """Return a generator with (root, dirs, files)."""
         raise NotImplementedError
 
-    def walk_files(self, path_info, **kwargs):
-        """Return a generator with `PathInfo`s to all the files.
+    def find(self, path_info, **kwargs):
+        """Return a generator with `str`s to all the files.
 
         Optional kwargs:
             prefix (bool): If true `path_info` will be treated as a prefix
@@ -231,11 +248,13 @@ class BaseFileSystem:
         if not hasattr(self, method):
             raise RemoteActionNotImplemented(method, self.scheme)
 
+        """
         if to_info.scheme != self.scheme:
             raise NotImplementedError
+        """
 
         if not is_file_obj:
-            desc = desc or from_info.name
+            desc = desc or self.local_path.name(from_info)
 
         stack = contextlib.ExitStack()
         if not callback:
@@ -261,8 +280,10 @@ class BaseFileSystem:
                 # pylint: disable=no-member
                 return self.upload_fobj(wrapped, to_info, size=total)
 
+            """
             if from_info.scheme != "local":
                 raise NotImplementedError
+            """
 
             logger.debug("Uploading '%s' to '%s'", from_info, to_info)
             # pylint: disable=no-member
@@ -284,15 +305,17 @@ class BaseFileSystem:
         if not hasattr(self, "get_file"):
             raise RemoteActionNotImplemented("get_file", self.scheme)
 
+        """
         if from_info.scheme != self.scheme:
             raise NotImplementedError
 
         if to_info.scheme != "local":
             raise NotImplementedError
+        """
 
         download_dir = not _only_file and self.isdir(from_info)
 
-        desc = name or to_info.name
+        desc = name or self.local_path.name(to_info)
         stack = contextlib.ExitStack()
         if not callback:
             pbar_kwargs = {"unit": "Files"} if download_dir else {}
@@ -323,13 +346,14 @@ class BaseFileSystem:
         jobs=None,
         **kwargs,
     ):
-        from_infos = list(self.walk_files(from_info, **kwargs))
+        from_infos = list(self.find(from_info, **kwargs))
         if not from_infos:
             makedirs(to_info, exist_ok=True)
             return None
 
         to_infos = (
-            to_info / info.relative_to(from_info) for info in from_infos
+            self.local_path.join(to_info, self.path.relpath(info, from_info))
+            for info in from_infos
         )
         callback.set_size(len(from_infos))
 
@@ -362,7 +386,7 @@ class BaseFileSystem:
         to_info,
         callback=DEFAULT_CALLBACK,
     ):
-        makedirs(to_info.parent, exist_ok=True)
+        makedirs(self.local_path.parent(to_info), exist_ok=True)
         tmp_file = tmp_fname(to_info)
 
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)

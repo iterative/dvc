@@ -64,16 +64,16 @@ def _track_stage(stage):
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
-            and not stage.repo.repo_fs.isdvc(dep.path_info)
+            and not stage.repo.repo_fs.isdvc(dep.fs_path)
         ):
-            stage.repo.scm.track_file(relpath(dep.path_info))
+            stage.repo.scm.track_file(relpath(dep.fs_path))
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
-            stage.repo.scm.track_file(relpath(out.path_info))
+            stage.repo.scm.track_file(relpath(out.fs_path))
         if out.live:
-            from dvc.repo.live import summary_path_info
+            from dvc.repo.live import summary_fs_path
 
-            summary = summary_path_info(out)
+            summary = summary_fs_path(out)
             if summary:
                 stage.repo.scm.track_file(relpath(summary))
     stage.repo.scm.track_changed_files()

@@ -88,15 +88,15 @@ class Plots:
         fs = RepoFileSystem(self.repo)
         plots = _collect_plots(self.repo, targets, revision, recursive)
         res = {}
-        for path_info, rev_props in plots.items():
+        for fs_path_info, rev_props in plots.items():
 
-            if fs.isdir(path_info):
+            if fs.isdir(fs_path_info):
                 plot_files = []
-                for pi in fs.walk_files(path_info):
+                for pi in fs.find(fs_path_info):
                     plot_files.append((pi, relpath(pi, self.repo.root_dir)))
             else:
                 plot_files = [
-                    (path_info, relpath(path_info, self.repo.root_dir))
+                    (fs_path_info, relpath(fs_path_info, self.repo.root_dir))
                 ]
 
             props = props or {}
@@ -204,10 +204,10 @@ def _collect_plots(
     targets: List[str] = None,
     rev: str = None,
     recursive: bool = False,
-) -> Dict[str, Dict]:
+) -> Dict["List[str]", Dict]:
     from dvc.repo.collect import collect
 
-    plots, path_infos = collect(
+    plots, fs_paths = collect(
         repo,
         output_filter=_is_plot,
         targets=targets,
@@ -215,8 +215,8 @@ def _collect_plots(
         recursive=recursive,
     )
 
-    result = {plot.path_info: _plot_props(plot) for plot in plots}
-    result.update({path_info: {} for path_info in path_infos})
+    result = {plot.fs_path: _plot_props(plot) for plot in plots}
+    result.update({fs_path: {} for fs_path in fs_paths})
     return result
 
 

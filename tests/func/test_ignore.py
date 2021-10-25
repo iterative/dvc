@@ -7,6 +7,7 @@ import pytest
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.output import OutputIsIgnoredError
+from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.types import List
@@ -18,6 +19,11 @@ def _to_pattern_info_list(str_list: List):
     return [PatternInfo(a, "") for a in str_list]
 
 
+def walk_files(dvc, *args):
+    for fs_path in dvc.dvcignore.find(*args):
+        yield PathInfo(fs_path)
+
+
 @pytest.mark.parametrize("filename", ["ignored", "тест"])
 def test_ignore(tmp_dir, dvc, filename):
     tmp_dir.gen({"dir": {filename: filename, "other": "text2"}})
@@ -25,7 +31,7 @@ def test_ignore(tmp_dir, dvc, filename):
 
     dvc._reset()
 
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir)
+    result = walk_files(dvc, dvc.fs, tmp_dir)
     assert set(result) == {
         tmp_dir / DvcIgnore.DVCIGNORE_FILE,
         tmp_dir / "dir" / "other",
@@ -125,7 +131,7 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
 
     dvc._reset()
 
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir)
+    result = walk_files(dvc, dvc.fs, tmp_dir)
     assert set(result) == {
         tmp_dir / "foo",
         tmp_dir / "bar",
@@ -146,7 +152,7 @@ def test_match_nested(tmp_dir, dvc):
         }
     )
     dvc._reset()
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir)
+    result = walk_files(dvc, dvc.fs, tmp_dir)
     assert set(result) == {tmp_dir / DvcIgnore.DVCIGNORE_FILE, tmp_dir / "foo"}
 
 
@@ -155,7 +161,7 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     ext_dir = TmpDir(os.fspath(tmp_path_factory.mktemp("external_dir")))
     ext_dir.gen({"y.backup": "y", "tmp": {"file": "ext tmp"}})
 
-    result = dvc.dvcignore.walk_files(dvc.fs, ext_dir)
+    result = walk_files(dvc, dvc.fs, ext_dir)
     assert set(result) == {ext_dir / "y.backup", ext_dir / "tmp" / "file"}
     assert dvc.dvcignore.is_ignored_dir(os.fspath(ext_dir / "tmp")) is False
     assert (
@@ -171,7 +177,7 @@ def test_ignore_subrepo(tmp_dir, scm, dvc):
 
     subrepo_dir = tmp_dir / "subdir"
 
-    result = dvc.dvcignore.walk_files(dvc.fs, subrepo_dir)
+    result = walk_files(dvc, dvc.fs, subrepo_dir)
     assert set(result) == set()
 
     with subrepo_dir.chdir():
@@ -212,7 +218,7 @@ def test_ignore_blank_line(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")
     dvc._reset()
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir / "dir")
+    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
     assert set(result) == {tmp_dir / "dir" / "other"}
 
 
@@ -247,7 +253,7 @@ def test_ignore_file_in_parent_path(
     tmp_dir.gen(data_struct)
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
     dvc._reset()
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir / "dir")
+    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
     assert set(result) == {tmp_dir / relpath for relpath in result_set}
 
 
@@ -268,7 +274,7 @@ def test_ignore_sub_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "doc/fortz"}})
 
     dvc._reset()
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir / "dir")
+    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
     assert set(result) == {
         tmp_dir / "dir" / "a" / "doc" / "fortz" / "a",
         tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE,
@@ -280,7 +286,7 @@ def test_ignore_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"fortz": {}, "a": {"fortz": {}}}})
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
     dvc._reset()
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir / "dir")
+    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
     assert set(result) == {tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE}
 
 
@@ -289,7 +295,7 @@ def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/subdir/*_ignore")
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "!subdir/not_ignore"}})
     dvc._reset()
-    result = dvc.dvcignore.walk_files(dvc.fs, tmp_dir / "dir")
+    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
     assert set(result) == {
         tmp_dir / "dir" / "subdir" / "not_ignore",
         tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE,
@@ -384,7 +390,7 @@ def test_ignore_in_added_dir(tmp_dir, dvc):
     dvc._reset()
 
     ignored_path = tmp_dir / "dir" / "sub" / "ignored"
-    result = dvc.dvcignore.walk_files(dvc.fs, ignored_path)
+    result = walk_files(dvc, dvc.fs, ignored_path)
     assert set(result) == set()
     assert ignored_path.exists()
 

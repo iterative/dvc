@@ -3,7 +3,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
 # pylint:disable=abstract-method
@@ -12,7 +11,6 @@ from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
 
 class GSFileSystem(CallbackMixin, ObjectFSWrapper):
     scheme = Schemes.GS
-    PATH_CLS = CloudURLInfo
     REQUIRES = {"gcsfs": "gcsfs"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))

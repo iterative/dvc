@@ -7,7 +7,6 @@ from fsspec.utils import infer_storage_options
 from funcy import cached_property, memoize, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
@@ -41,7 +40,6 @@ def _az_config():
 # pylint:disable=abstract-method
 class AzureFileSystem(CallbackMixin, ObjectFSWrapper):
     scheme = Schemes.AZURE
-    PATH_CLS = CloudURLInfo
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
     REQUIRES = {

@@ -1,6 +1,8 @@
 import posixpath
 from urllib.parse import urlparse
 
+from dvc.utils.path import as_string
+
 from ..scheme import Schemes
 from . import utils  # noqa: F401
 from .azure import AzureFileSystem
@@ -113,10 +115,10 @@ def get_cloud_fs(repo, **kwargs):
         remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
 
     url = remote_conf.pop("url")
-    path_info = cls.PATH_CLS(
-        cls._strip_protocol(url)  # pylint:disable=protected-access
-    )
+    fs_path = as_string(
+        cls._strip_protocol(url)
+    )  # pylint:disable=protected-access
 
     extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
     conf = {**extras, **remote_conf}  # remote config takes priority
-    return cls, conf, path_info
+    return cls, conf, fs_path

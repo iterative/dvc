@@ -11,7 +11,6 @@ from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
 from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
-from dvc.path_info import PathInfo
 from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
 
@@ -354,7 +353,7 @@ class Repo:
         )
 
     def unprotect(self, target):
-        return self.odb.local.unprotect(PathInfo(target))
+        return self.odb.local.unprotect(target)
 
     def _ignore(self):
         flist = [self.config.files["local"], self.tmp_dir]
@@ -446,14 +445,15 @@ class Repo:
         outs = outs or self.index.outs_graph
 
         abs_path = os.path.abspath(path)
-        path_info = PathInfo(abs_path)
-        match = path_info.__eq__ if strict else path_info.isin_or_eq
+        fs_path = abs_path
 
         def func(out):
-            if out.scheme == "local" and match(out.path_info):
+            match = out.fs.path.eq if strict else out.fs.path.isin_or_eq
+
+            if out.scheme == "local" and match(fs_path, out.fs_path):
                 return True
 
-            if recursive and out.path_info.isin(path_info):
+            if recursive and out.fs.path.isin(out.fs_path, fs_path):
                 return True
 
             return False
@@ -490,7 +490,7 @@ class Repo:
         from dvc.fs.repo import RepoFileSystem
 
         fs = RepoFileSystem(self, subrepos=True)
-        path = PathInfo(self.root_dir) / path
+        path = self.fs.path.join(self.root_dir, path)
         try:
             with fs.open(
                 path, mode=mode, encoding=encoding, remote=remote

@@ -365,20 +365,21 @@ def resolve_paths(repo, out, always_local=False):
 
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
-    from ..path_info import PathInfo
     from ..system import System
     from .fs import contains_symlink_up_to
+    from .path import manager
 
-    abspath = PathInfo(os.path.abspath(out))
+    abspath = os.path.abspath(out)
     dirname = os.path.dirname(abspath)
     base = os.path.basename(os.path.normpath(out))
 
     scheme = urlparse(out).scheme
-    if os.name == "nt" and scheme == abspath.drive[0].lower():
+
+    if os.name == "nt" and scheme == manager.splitdrive(abspath)[0].lower():
         # urlparse interprets windows drive letters as URL scheme
         scheme = ""
 
-    if scheme or not abspath.isin_or_eq(repo.root_dir):
+    if scheme or not manager.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
         os.path.isdir(abspath) and System.is_symlink(abspath)

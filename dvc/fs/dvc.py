@@ -3,8 +3,8 @@ import os
 import typing
 
 from dvc.exceptions import OutputNotFoundError
-from dvc.path_info import PathInfo
 from dvc.utils import relpath
+from dvc.utils.path import as_string
 
 from ..progress import DEFAULT_CALLBACK
 from ._metadata import Metadata
@@ -12,7 +12,7 @@ from .base import BaseFileSystem
 
 if typing.TYPE_CHECKING:
     from dvc.output import Output
-
+    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +50,10 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return outs
 
     def _get_granular_hash(
-        self, path_info: PathInfo, out: "Output", remote=None
+        self, path_info: "AnyPath", out: "Output", remote=None
     ):
-        assert isinstance(path_info, PathInfo)
         # NOTE: use string paths here for performance reasons
-        key = tuple(relpath(path_info, out.path_info).split(os.sep))
+        key = tuple(relpath(path_info, out.fs_path).split(os.sep))
         out.get_dir_cache(remote=remote)
         if out.obj is None:
             raise FileNotFoundError
@@ -63,14 +62,14 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             return oid
         raise FileNotFoundError
 
-    def _get_fs_path(self, path: PathInfo, remote=None):
+    def _get_fs_path(self, path: "AnyPath", remote=None):
         try:
             outs = self._find_outs(path, strict=False)
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
         if len(outs) != 1 or (
-            outs[0].is_dir_checksum and path == outs[0].path_info
+            outs[0].is_dir_checksum and self.path.eq(path, outs[0].fs_path)
         ):
             raise IsADirectoryError
 
@@ -90,8 +89,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
                 checksum = self._get_granular_hash(path, out).value
             else:
                 checksum = out.hash_info.value
-            remote_info = remote_odb.hash_to_path_info(checksum)
-            return remote_odb.fs, remote_info
+            remote_fs_path = remote_odb.hash_to_path(checksum)
+            return remote_odb.fs, remote_fs_path
 
         if out.is_dir_checksum:
             checksum = self._get_granular_hash(path, out).value
@@ -101,7 +100,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         return out.odb.fs, cache_path
 
     def open(  # type: ignore
-        self, path: PathInfo, mode="r", encoding=None, **kwargs
+        self, path: str, mode="r", encoding=None, **kwargs
     ):  # pylint: disable=arguments-renamed
         fs, fspath = self._get_fs_path(path, **kwargs)
         return fs.open(fspath, mode=mode, encoding=encoding)
@@ -126,8 +125,8 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         out = outs[0]
         if not out.is_dir_checksum:
-            return out.path_info != path_info
-        if out.path_info == path_info:
+            return not self.path.eq(out.fs_path, path_info)
+        if self.path.eq(out.fs_path, path_info):
             return True
 
         try:
@@ -153,7 +152,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def _add_dir(self, trie, out, **kwargs):
         self._fetch_dir(out, **kwargs)
 
-        base = out.path_info.parts
+        base = out.fs.path.parts(out.fs_path)
         for key, _, _ in out.obj:  # noqa: B301
             trie[base + key] = None
 
@@ -161,13 +160,14 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         dirs = set()
         files = []
 
-        out = trie.get(root.parts)
+        root_parts = self.path.parts(root)
+        out = trie.get(root_parts)
         if out and out.is_dir_checksum:
             self._add_dir(trie, out, **kwargs)
 
-        root_len = len(root.parts)
-        for key, out in trie.iteritems(prefix=root.parts):  # noqa: B301
-            if key == root.parts:
+        root_len = len(root_parts)
+        for key, out in trie.iteritems(prefix=root_parts):  # noqa: B301
+            if key == root_parts:
                 continue
 
             name = key[root_len]
@@ -179,16 +179,16 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         assert topdown
         dirs = list(dirs)
-        yield root.fspath, dirs, files
+        yield as_string(root), dirs, files
 
         for dname in dirs:
-            yield from self._walk(root / dname, trie)
+            yield from self._walk(self.path.join(root, dname), trie)
 
     def walk(self, top, topdown=True, onerror=None, **kwargs):
         from pygtrie import Trie
 
         assert topdown
-        root = PathInfo(os.path.abspath(top))
+        root = os.path.abspath(top)
         try:
             meta = self.metadata(root)
         except FileNotFoundError:
@@ -203,18 +203,18 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         trie = Trie()
         for out in meta.outs:
-            trie[out.path_info.parts] = out
+            trie[out.fs.path.parts(out.fs_path)] = out
 
-            if out.is_dir_checksum and root.isin_or_eq(out.path_info):
+            if out.is_dir_checksum and self.path.isin_or_eq(root, out.fs_path):
                 self._add_dir(trie, out, **kwargs)
 
         yield from self._walk(root, trie, topdown=topdown, **kwargs)
 
-    def walk_files(self, path_info, **kwargs):
+    def find(self, path_info, **kwargs):
         for root, _, files in self.walk(path_info):
             for fname in files:
                 # NOTE: os.path.join is ~5.5 times slower
-                yield PathInfo(f"{root}{os.sep}{fname}")
+                yield f"{root}{os.sep}{fname}"
 
     def isdvc(self, path, recursive=False, strict=True):
         try:
@@ -228,16 +228,14 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def isexec(self, path_info):  # pylint: disable=unused-argument
         return False
 
-    def metadata(self, path_info):
-        path_info = PathInfo(os.path.abspath(path_info))
-
+    def metadata(self, fs_path):
         try:
-            outs = self._find_outs(path_info, strict=False, recursive=True)
+            outs = self._find_outs(fs_path, strict=False, recursive=True)
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
-        meta = Metadata(path_info=path_info, outs=outs, repo=self.repo)
-        meta.isdir = meta.isdir or self.check_isdir(meta.path_info, meta.outs)
+        meta = Metadata(fs_path=as_string(fs_path), outs=outs, repo=self.repo)
+        meta.isdir = meta.isdir or self.check_isdir(meta.fs_path, meta.outs)
         return meta
 
     def info(self, path_info):
@@ -249,7 +247,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
             ret[out.hash_info.name] = out.hash_info.value
         elif meta.part_of_output:
             (out,) = meta.outs
-            key = path_info.relative_to(out.path_info).parts
+            key = self.path.parts(self.path.relpath(path_info, out.fs_path))
             (obj_meta, oid) = out.obj.trie.get(key) or (None, None)
             if oid:
                 ret["size"] = obj_meta.size if obj_meta else 0

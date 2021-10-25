@@ -5,7 +5,6 @@ from collections import defaultdict
 
 from funcy import cached_property, wrap_prop
 
-from dvc.path_info import CloudURLInfo
 from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
@@ -17,7 +16,6 @@ _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 # pylint:disable=abstract-method
 class BaseS3FileSystem(ObjectFSWrapper):
     scheme = Schemes.S3
-    PATH_CLS = CloudURLInfo
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
     DETAIL_FIELDS = frozenset(("etag", "size"))
@@ -205,8 +203,9 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
         )
 
     def _get_obj(self, path_info):
-        bucket = self.s3.Bucket(path_info.bucket)
-        return bucket.Object(path_info.path)
+        _, bucket, *parts = self.path.parts(path_info)
+        bucket = self.s3.Bucket(bucket)
+        return bucket.Object(self.path.join(*parts))
 
     @_translate_exceptions
     def put_file(
@@ -220,7 +219,7 @@ class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
             ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
             Config=self._transfer_config,
         )
-        self.fs.invalidate_cache(self._with_bucket(to_info.parent))
+        self.fs.invalidate_cache(self._with_bucket(self.path.parent(to_info)))
 
     @_translate_exceptions
     def get_file(

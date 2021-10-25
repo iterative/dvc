@@ -12,7 +12,6 @@ from funcy import cached_property, first
 
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.stage.monitor import CheckpointKilledError
 from dvc.utils import relpath
 
@@ -358,10 +357,9 @@ class Experiments:
         logger.debug("Using experiment params '%s'", params)
 
         for params_fname in params:
-            path = PathInfo(params_fname)
-            suffix = path.suffix.lower()
+            suffix = self.repo.fs.path.suffix(params_fname).lower()
             modify_data = MODIFIERS[suffix]
-            with modify_data(path, fs=self.repo.fs) as data:
+            with modify_data(params_fname, fs=self.repo.fs) as data:
                 merge_params(data, params[params_fname])
 
         # Force params file changes to be staged in git
@@ -893,7 +891,7 @@ class Experiments:
         from .executor.base import BaseExecutor, ExecutorInfo
 
         result = {}
-        for pidfile in self.repo.fs.walk_files(
+        for pidfile in self.repo.fs.find(
             os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
         ):
             rev, _ = os.path.splitext(os.path.basename(pidfile))

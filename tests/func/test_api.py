@@ -7,6 +7,7 @@ from dvc import api
 from dvc.exceptions import FileMissingError, OutputNotFoundError
 from dvc.path_info import URLInfo
 from dvc.utils.fs import remove
+from dvc.utils.path import as_string
 from tests.unit.fs.test_repo import make_subrepo
 
 cloud_names = [
@@ -46,7 +47,7 @@ def test_get_url_external(tmp_dir, erepo_dir, cloud):
     # Using file url to force clone to tmp repo
     repo_url = f"file://{erepo_dir}"
     expected_url = URLInfo(cloud.url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
-    assert api.get_url("foo", repo=repo_url) == expected_url
+    assert api.get_url("foo", repo=repo_url) == as_string(expected_url)
 
 
 def test_get_url_requires_dvc(tmp_dir, scm):

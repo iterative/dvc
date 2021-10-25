@@ -3,16 +3,35 @@ import json
 import os
 import uuid
 from functools import partialmethod
+from urllib.parse import urlparse
 
 import pytest
 from funcy import cached_property, retry
 
-from dvc.fs.gdrive import GDriveFileSystem, GDriveURLInfo
+from dvc.fs.gdrive import GDriveFileSystem
+from dvc.path_info import CloudURLInfo
 from dvc.utils import tmp_fname
 
 from .base import Base
 
 TEST_GDRIVE_REPO_BUCKET = "root"
+
+
+class GDriveURLInfo(CloudURLInfo):
+    def __init__(self, url):
+        super().__init__(url)
+
+        # GDrive URL host part is case sensitive,
+        # we are restoring it here.
+        p = urlparse(url)
+        self.host = p.netloc
+        assert self.netloc == self.host
+
+        # Normalize path. Important since we have a cache (path to ID)
+        # and don't want to deal with different variations of path in it.
+        import re
+
+        self._spath = re.sub("/{2,}", "/", self._spath.rstrip("/"))
 
 
 def _gdrive_retry(func):

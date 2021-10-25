@@ -92,10 +92,10 @@ class ParamsDependency(Dependency):
         if not self.exists:
             return {}
 
-        suffix = self.path_info.suffix.lower()
+        suffix = self.repo.fs.path.suffix(self.fs_path).lower()
         loader = LOADERS[suffix]
         try:
-            return loader(self.path_info, fs=self.repo.fs)
+            return loader(self.fs_path, fs=self.repo.fs)
         except ParseError as exc:
             raise BadParamFileError(
                 f"Unable to read parameters from '{self}'"

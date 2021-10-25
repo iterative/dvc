@@ -1,7 +1,6 @@
 import logging
 import os
 
-from dvc.path_info import PathInfo
 from dvc.scheme import Schemes
 from dvc.system import System
 from dvc.utils import is_exec, tmp_fname
@@ -17,7 +16,6 @@ class LocalFileSystem(BaseFileSystem):
     sep = os.sep
 
     scheme = Schemes.LOCAL
-    PATH_CLS = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2
@@ -33,7 +31,6 @@ class LocalFileSystem(BaseFileSystem):
         return open(path_info, mode=mode, encoding=encoding)
 
     def exists(self, path_info) -> bool:
-        assert isinstance(path_info, str) or path_info.scheme == "local"
         # TODO: replace this with os.path.exists once the problem is fixed on
         # the fsspec https://github.com/intake/filesystem_spec/issues/742
         return os.path.lexists(path_info)
@@ -63,11 +60,11 @@ class LocalFileSystem(BaseFileSystem):
         ):
             yield os.path.normpath(root), dirs, files
 
-    def walk_files(self, path_info, **kwargs):
+    def find(self, path_info, **kwargs):
         for root, _, files in self.walk(path_info):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower
-                yield PathInfo(f"{root}{os.sep}{file}")
+                yield f"{root}{os.sep}{file}"
 
     def is_empty(self, path_info):
         if self.isfile(path_info) and os.path.getsize(path_info) == 0:
@@ -79,9 +76,6 @@ class LocalFileSystem(BaseFileSystem):
         return False
 
     def remove(self, path_info):
-        if isinstance(path_info, PathInfo):
-            if path_info.scheme != "local":
-                raise NotImplementedError
         remove(path_info)
 
     def makedirs(self, path_info, **kwargs):
@@ -92,16 +86,11 @@ class LocalFileSystem(BaseFileSystem):
         return is_exec(mode)
 
     def move(self, from_info, to_info):
-        if (
-            isinstance(from_info, PathInfo) and from_info.scheme != "local"
-        ) or (isinstance(to_info, PathInfo) and to_info.scheme != "local"):
-            raise NotImplementedError
-
-        self.makedirs(to_info.parent)
+        self.makedirs(self.path.parent(to_info))
         move(from_info, to_info)
 
     def copy(self, from_info, to_info):
-        tmp_info = to_info.parent / tmp_fname("")
+        tmp_info = self.path.join(self.path.parent(to_info), tmp_fname(""))
         try:
             copyfile(from_info, tmp_info)
             os.rename(tmp_info, to_info)
@@ -110,8 +99,8 @@ class LocalFileSystem(BaseFileSystem):
             raise
 
     def upload_fobj(self, fobj, to_info, **kwargs):
-        self.makedirs(to_info.parent)
-        tmp_info = to_info.parent / tmp_fname("")
+        self.makedirs(self.path.parent(to_info))
+        tmp_info = self.path.join(self.path.parent(to_info), tmp_fname(""))
         try:
             copy_fobj_to_file(fobj, tmp_info)
             os.rename(tmp_info, to_info)
@@ -162,7 +151,7 @@ class LocalFileSystem(BaseFileSystem):
     def put_file(
         self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        makedirs(to_info.parent, exist_ok=True)
+        makedirs(self.path.parent(to_info), exist_ok=True)
         tmp_file = tmp_fname(to_info)
         copyfile(from_file, tmp_file, callback=callback)
         os.replace(tmp_file, to_info)

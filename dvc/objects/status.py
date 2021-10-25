@@ -86,7 +86,7 @@ def status(
         exists: objs that exist in odb
         missing: objs that do not exist in ODB
     """
-    logger.debug("Preparing to collect status from '%s'", odb.path_info)
+    logger.debug("Preparing to collect status from '%s'", odb.fs_path)
     if not name:
         name = odb.fs.PARAM_CHECKSUM
 
@@ -116,7 +116,7 @@ def status(
     hashes: Set[str] = set(hash_infos.keys())
     exists: Set[str] = set()
 
-    logger.debug("Collecting status from '%s'", odb.path_info)
+    logger.debug("Collecting status from '%s'", odb.fs_path)
     if index and hashes:
         if dir_objs:
             exists = hashes.intersection(
@@ -128,9 +128,7 @@ def status(
             hashes.difference_update(exists)
 
     if hashes:
-        exists.update(
-            odb.hashes_exist(hashes, name=str(odb.path_info), **kwargs)
-        )
+        exists.update(odb.hashes_exist(hashes, name=odb.fs_path, **kwargs))
     return StatusResult(
         {hash_infos[hash_] for hash_ in exists},
         {hash_infos[hash_] for hash_ in (hashes - exists)},

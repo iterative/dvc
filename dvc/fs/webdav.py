@@ -1,10 +1,8 @@
 import logging
 import threading
-from functools import lru_cache
 
 from funcy import cached_property, wrap_prop
 
-from dvc.path_info import WebDAVURLInfo
 from dvc.scheme import Schemes
 
 from .fsspec_wrapper import FSSpecWrapper
@@ -15,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.WEBDAV
-    PATH_CLS = WebDAVURLInfo
     CAN_TRAVERSE = True
     TRAVERSE_PREFIX_LEN = 2
     REQUIRES = {"webdav4": "webdav4"}
@@ -39,6 +36,8 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):
+        from dvc.path_info import WebDAVURLInfo
+
         path_info = WebDAVURLInfo(urlpath)
         return {
             "prefix": path_info.path.rstrip("/"),
@@ -71,20 +70,12 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         return WebdavFileSystem(**self.fs_args)
 
     def upload_fobj(self, fobj, to_info, **kwargs):
-        rpath = self.translate_path_info(to_info)
+        rpath = self._with_bucket(to_info)
         size = kwargs.get("size")
         # using upload_fileobj to directly upload fileobj rather than buffering
         # and using overwrite=True to avoid check for an extra exists call,
         # as caller should ensure that the file does not exist beforehand.
         return self.fs.upload_fileobj(fobj, rpath, overwrite=True, size=size)
-
-    @lru_cache(512)
-    def translate_path_info(self, path):
-        if isinstance(path, self.PATH_CLS):
-            return path.path[len(self.prefix) :].lstrip("/")
-        return path
-
-    _with_bucket = translate_path_info  # type: ignore
 
 
 class WebDAVSFileSystem(WebDAVFileSystem):  # pylint:disable=abstract-method

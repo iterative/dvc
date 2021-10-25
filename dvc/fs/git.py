@@ -113,7 +113,7 @@ class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
     def checksum(self, path_info):
         return self.info(path_info)["sha"]
 
-    def walk_files(self, path_info, **kwargs):
+    def find(self, path_info, **kwargs):
         for root, _, files in self.walk(path_info, **kwargs):
             for file in files:
                 # NOTE: os.path.join is ~5.5 times slower

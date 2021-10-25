@@ -133,13 +133,14 @@ def _output_paths(repo, targets):
     for output in repo.index.outs:
         if _exists(output):
             yield_output = targets is None or any(
-                output.path_info.isin_or_eq(target) for target in targets
+                output.fs.path.isin_or_eq(output.fs_path, target)
+                for target in targets
             )
 
             if on_working_fs:
                 _, _, obj = ostage(
                     repo.odb.local,
-                    output.path_info,
+                    output.fs_path,
                     repo.odb.local.fs,
                     "md5",
                     dry_run=True,
@@ -158,19 +159,24 @@ def _output_paths(repo, targets):
 
             if output.is_dir_checksum and (
                 yield_output
-                or any(target.isin(output.path_info) for target in targets)
+                or any(
+                    output.fs.path.isin(target, output.fs_path)
+                    for target in targets
+                )
             ):
-                yield from _dir_output_paths(output.path_info, obj, targets)
+                yield from _dir_output_paths(
+                    output.fs, output.fs_path, obj, targets
+                )
 
 
-def _dir_output_paths(path_info, obj, targets=None):
+def _dir_output_paths(fs, fs_path, obj, targets=None):
     for key, _, oid in obj:
-        fname = path_info.joinpath(*key)
+        fname = fs.path.join(fs_path, *key)
         if targets is None or any(
-            fname.isin_or_eq(target) for target in targets
+            fs.path.isin_or_eq(fname, target) for target in targets
         ):
             # pylint: disable=no-member
-            yield str(fname), oid.value
+            yield fname, oid.value
 
 
 def _filter_missing(repo_fs, paths):
@@ -191,7 +197,7 @@ def _targets_to_path_infos(repo_fs, targets):
 
     for target in targets:
         if repo_fs.exists(target):
-            path_infos.append(repo_fs.metadata(target).path_info)
+            path_infos.append(repo_fs.metadata(target).fs_path)
         else:
             missing.append(target)
 

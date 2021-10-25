@@ -34,11 +34,6 @@ class SSHFileSystem(FSSpecWrapper):
     DEFAULT_PORT = 22
     PARAM_CHECKSUM = "md5"
 
-    def _with_bucket(self, path):
-        if isinstance(path, self.PATH_CLS):
-            return path.path
-        return super()._with_bucket(path)
-
     def _prepare_credentials(self, **config):
         self.CAN_TRAVERSE = True
         from sshfs.config import parse_config

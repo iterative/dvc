@@ -8,12 +8,12 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 
 from dvc.fs.base import BaseFileSystem
-from dvc.path_info import PathInfo
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.scheme import Schemes
 from dvc.types import AnyPath, List, Optional
 from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
+from dvc.utils.path import manager
 
 logger = logging.getLogger(__name__)
 
@@ -278,14 +278,14 @@ class DvcIgnoreFilter:
         else:
             yield from fs.walk(path_info, **kwargs)
 
-    def walk_files(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
+    def find(self, fs: BaseFileSystem, path_info: AnyPath, **kwargs):
         if fs.scheme == Schemes.LOCAL:
             for root, _, files in self.walk(fs, path_info, **kwargs):
                 for file in files:
                     # NOTE: os.path.join is ~5.5 times slower
-                    yield PathInfo(f"{root}{os.sep}{file}")
+                    yield f"{root}{os.sep}{file}"
         else:
-            yield from fs.walk_files(path_info)
+            yield from fs.find(path_info)
 
     def _get_trie_pattern(
         self, dirname, dnames: Optional["List"] = None, ignore_subrepos=True
@@ -307,7 +307,7 @@ class DvcIgnoreFilter:
         dirs = list(
             takewhile(
                 lambda path: path != prefix,
-                (parent.fspath for parent in PathInfo(dirname).parents),
+                (parent for parent in manager.parents(dirname)),
             )
         )
         dirs.reverse()
@@ -343,8 +343,6 @@ class DvcIgnoreFilter:
         return self._is_ignored(path, False)
 
     def _outside_repo(self, path):
-        path = PathInfo(path)
-
         # paths outside of the repo should be ignored
         path = relpath(path, self.root_dir)
         if path.startswith("..") or (
