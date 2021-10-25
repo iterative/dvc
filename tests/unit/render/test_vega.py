@@ -451,3 +451,29 @@ def test_find_vega(tmp_dir, dvc):
         first(plot_content["layer"])["encoding"]["x"]["field"] == INDEX_FIELD
     )
     assert first(plot_content["layer"])["encoding"]["y"]["field"] == "y"
+
+
+@pytest.mark.parametrize(
+    "template_path, target_name",
+    [
+        (os.path.join(".dvc", "plots", "template.json"), "template"),
+        (os.path.join(".dvc", "plots", "template.json"), "template.json"),
+        (
+            os.path.join(".dvc", "plots", "subdir", "template.json"),
+            os.path.join("subdir", "template.json"),
+        ),
+        (
+            os.path.join(".dvc", "plots", "subdir", "template.json"),
+            os.path.join("subdir", "template"),
+        ),
+        ("template.json", "template.json"),
+    ],
+)
+def test_should_resolve_template(tmp_dir, dvc, template_path, target_name):
+    os.makedirs(os.path.abspath(os.path.dirname(template_path)), exist_ok=True)
+    with open(template_path, "w", encoding="utf-8") as fd:
+        fd.write("template_content")
+
+    assert dvc.plots.templates._find_in_project(
+        target_name
+    ) == os.path.abspath(template_path)
