@@ -140,12 +140,13 @@ def init_interactive(
         from rich.tree import Tree
 
         tree = Tree(
-            "By default, DVC assumes following workspace structure:",
+            "DVC assumes the following workspace structure:",
             highlight=True,
         )
-        for key, value in {**defaults, **provided}.items():
-            if key != "cmd":
-                tree.add(f"[green]{value}[/green]")
+        workspace = {**defaults, **provided}
+        workspace.pop("cmd", None)
+        for value in sorted(workspace.values()):
+            tree.add(f"[green]{value}[/green]")
         ui.error_write(tree, styled=True)
         ui.error_write()
 
