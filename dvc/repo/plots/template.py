@@ -109,16 +109,16 @@ class PlotTemplates:
     @staticmethod
     def _find(templates, template_name):
         for template in templates:
-            if (
-                template_name == template
-                or template_name + ".json" == template
+            if template.endswith(template_name) or template.endswith(
+                template_name + ".json"
             ):
                 return template
         return None
 
     def _find_in_project(self, name: str) -> Optional["StrPath"]:
-        if os.path.exists(name):
-            return name
+        full_path = os.path.abspath(name)
+        if os.path.exists(full_path):
+            return full_path
 
         if os.path.exists(self.templates_dir):
             templates = [
