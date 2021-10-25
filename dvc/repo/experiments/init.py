@@ -113,9 +113,9 @@ def _disable_logging(highest_level=logging.CRITICAL):
 
 
 def init_interactive(
+    name: str,
     defaults: Dict[str, str],
     provided: Dict[str, str],
-    show_heading: bool = False,
     show_tree: bool = False,
     live: bool = False,
 ) -> Dict[str, str]:
@@ -130,11 +130,10 @@ def init_interactive(
         return {}
 
     message = (
-        "This command will guide you to set up your first stage in "
-        "[green]dvc.yaml[/green].\n"
+        "This command will guide you to set up a "
+        f"[bright_blue]{name}[/] stage in [green]dvc.yaml[/].\n"
     )
-    if show_heading:
-        ui.error_write(message, styled=True)
+    ui.error_write(message, styled=True)
 
     if show_tree:
         from rich.tree import Tree
@@ -192,10 +191,10 @@ def init(
     with_live = type == "live"
     if interactive:
         defaults = init_interactive(
+            name,
             defaults=defaults,
             live=with_live,
             provided=overrides,
-            show_heading=not dvcfile.exists(),
             show_tree=True,
         )
     else:
