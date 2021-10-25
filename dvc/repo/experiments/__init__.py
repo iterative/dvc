@@ -473,7 +473,7 @@ class Experiments:
             "\tdvc exp branch <exp> <branch>\n"
         )
 
-    def _ref_name_validation(self, name: Optional[str], **kwargs):
+    def _validate_ref_name(self, name: Optional[str], **kwargs):
         from .utils import check_ref_format
 
         if name is None:
