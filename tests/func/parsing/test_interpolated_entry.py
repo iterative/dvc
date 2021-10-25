@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 
 import pytest
@@ -5,7 +6,6 @@ import pytest
 from dvc.dependency import _merge_params
 from dvc.parsing import DEFAULT_PARAMS_FILE, DataResolver
 from dvc.parsing.context import recurse_not_a_node
-from dvc.path_info import PathInfo
 
 from . import (
     CONTEXT_DATA,
@@ -31,7 +31,7 @@ def assert_stage_equal(d1, d2):
 def test_simple(tmp_dir, dvc):
     (tmp_dir / DEFAULT_PARAMS_FILE).dump(CONTEXT_DATA)
     resolver = DataResolver(
-        dvc, PathInfo(str(tmp_dir)), deepcopy(TEMPLATED_DVC_YAML_DATA)
+        dvc, tmp_dir.fs_path, deepcopy(TEMPLATED_DVC_YAML_DATA)
     )
     assert_stage_equal(resolver.resolve(), deepcopy(RESOLVED_DVC_YAML_DATA))
     assert resolver.tracked_vars == {
@@ -48,7 +48,7 @@ def test_vars_import(tmp_dir, dvc):
     (tmp_dir / "params2.yaml").dump(CONTEXT_DATA)
     d = deepcopy(TEMPLATED_DVC_YAML_DATA)
     d["vars"] = ["params2.yaml"]
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
 
     resolved_data = deepcopy(RESOLVED_DVC_YAML_DATA)
     assert_stage_equal(resolver.resolve(), resolved_data)
@@ -68,7 +68,7 @@ def test_vars_and_params_import(tmp_dir, dvc):
         "stages": {"stage1": {"cmd": "echo ${dict.foo} ${dict.bar}"}},
     }
     (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar"}})
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert_stage_equal(
         resolver.resolve(), {"stages": {"stage1": {"cmd": "echo foobar bar"}}}
@@ -97,7 +97,7 @@ def test_stage_with_wdir(tmp_dir, dvc):
     data_dir.mkdir()
     (tmp_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"bar": "bar"}})
     (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert_stage_equal(
         resolver.resolve(),
@@ -113,7 +113,7 @@ def test_stage_with_wdir(tmp_dir, dvc):
     )
     assert resolver.tracked_vars == {
         "stage1": {
-            str(PathInfo("data") / DEFAULT_PARAMS_FILE): {"dict.foo": "foo"},
+            os.path.join("data", DEFAULT_PARAMS_FILE): {"dict.foo": "foo"},
             DEFAULT_PARAMS_FILE: {"dict.bar": "bar"},
         }
     }
@@ -140,7 +140,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
     data_dir = tmp_dir / "data"
     data_dir.mkdir()
     (data_dir / DEFAULT_PARAMS_FILE).dump({"dict": {"foo": "foo"}})
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert_stage_equal(
         resolver.resolve(),
@@ -156,7 +156,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
     )
     assert resolver.tracked_vars == {
         "stage1": {
-            str(PathInfo("data") / DEFAULT_PARAMS_FILE): {"dict.foo": "foo"},
+            os.path.join("data", DEFAULT_PARAMS_FILE): {"dict.foo": "foo"},
             DEFAULT_PARAMS_FILE: {"dict.bar": "bar", "dict.ws": "data"},
         }
     }
@@ -178,7 +178,7 @@ def test_resolve_local_tries_to_load_globally_used_files(tmp_dir, dvc):
             }
         },
     }
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     assert_stage_equal(
         resolver.resolve(),
         {
@@ -206,7 +206,7 @@ def test_resolve_local_tries_to_load_globally_used_params_yaml(tmp_dir, dvc):
             }
         }
     }
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     assert_stage_equal(
         resolver.resolve(),
         {
@@ -234,7 +234,7 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
             }
         },
     }
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()
     assert resolver.context.imports == {str(tmp_dir / "params.yaml"): None}
 
@@ -257,5 +257,5 @@ def test_vars_load_partial(tmp_dir, dvc, local, vars_):
         d["stages"]["build"]["vars"] = vars_
     else:
         d["vars"] = vars_
-    resolver = DataResolver(dvc, PathInfo(str(tmp_dir)), d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()

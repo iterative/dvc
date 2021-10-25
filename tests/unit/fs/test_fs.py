@@ -34,4 +34,4 @@ def test_get_fs_cls(url, cls):
 
 def test_get_fs_config():
     with pytest.raises(RemoteNotFoundError):
-        get_fs_config({"remote": {}}, name="myremote")
+        get_fs_config(None, {"remote": {}}, name="myremote")

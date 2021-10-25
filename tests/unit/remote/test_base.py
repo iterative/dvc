@@ -1,11 +1,11 @@
 import math
+import posixpath
 from unittest import mock
 
 import pytest
 
 from dvc.fs.base import BaseFileSystem, RemoteCmdError
 from dvc.objects.db.base import ObjectDB
-from dvc.path_info import PathInfo
 
 
 class _CallableOrNone:
@@ -87,7 +87,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(ObjectDB, "_path_to_hash", side_effect=lambda x: x)
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     odb = ObjectDB(BaseFileSystem(), None)
-    odb.path_info = PathInfo("foo")
+    odb.fs_path = "foo"
 
     # parallel traverse
     size = 256 / odb.fs._JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
@@ -112,7 +112,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
 
 def test_list_hashes(dvc):
     odb = ObjectDB(BaseFileSystem(), None)
-    odb.path_info = PathInfo("foo")
+    odb.fs_path = "foo"
 
     with mock.patch.object(
         odb, "_list_paths", return_value=["12/3456", "bar"]
@@ -122,17 +122,19 @@ def test_list_hashes(dvc):
 
 
 def test_list_paths(dvc):
-    path_info = PathInfo("foo")
-    odb = ObjectDB(BaseFileSystem(), path_info)
+    path = "foo"
+    odb = ObjectDB(BaseFileSystem(), path)
 
-    with mock.patch.object(odb.fs, "walk_files", return_value=[]) as walk_mock:
+    with mock.patch.object(odb.fs, "find", return_value=[]) as walk_mock:
         for _ in odb._list_paths():
             pass
-        walk_mock.assert_called_with(path_info, prefix=False)
+        walk_mock.assert_called_with(path, prefix=False)
 
         for _ in odb._list_paths(prefix="000"):
             pass
-        walk_mock.assert_called_with(path_info / "00" / "0", prefix=True)
+        walk_mock.assert_called_with(
+            posixpath.join(path, "00", "0"), prefix=True
+        )
 
 
 @pytest.mark.parametrize(

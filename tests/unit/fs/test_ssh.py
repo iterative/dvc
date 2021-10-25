@@ -178,23 +178,3 @@ def test_ssh_multi_identity_files(mock_file):
 def test_ssh_gss_auth(mock_file, config, expected_gss_auth):
     fs = SSHFileSystem(**config)
     assert fs.fs_args["gss_auth"] == expected_gss_auth
-
-
-@pytest.mark.parametrize(
-    "url, path",
-    [
-        ("ssh://a@b/", "/"),
-        ("ssh://a@b:/", "/"),
-        ("ssh://a@b/home", "/home"),
-        ("ssh://a@b:/home", "/home"),
-        ("ssh://a@b/home/tmp", "/home/tmp"),
-        ("ssh://a@b:/home/tmp", "/home/tmp"),
-        ("ssh://a@b/home/tmp/something", "/home/tmp/something"),
-        ("ssh://a@b:/home/tmp/something", "/home/tmp/something"),
-    ],
-)
-def test_ssh_fs_path_management(url, path):
-    fs = SSHFileSystem(host="x.y.z")
-
-    path_info = fs.PATH_CLS(url)
-    assert fs._with_bucket(path_info) == path

@@ -1,7 +1,6 @@
 import pytest
 
 from dvc.fs.azure import AzureAuthError, AzureFileSystem
-from dvc.path_info import PathInfo
 
 container_name = "container-name"
 connection_string = (
@@ -16,16 +15,13 @@ def test_strip_protocol_env_var(monkeypatch, dvc):
     monkeypatch.setenv("AZURE_STORAGE_CONTAINER_NAME", container_name)
     monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", connection_string)
 
-    assert (
-        AzureFileSystem._strip_protocol("azure://")
-        == f"azure://{container_name}"
-    )
+    assert AzureFileSystem._strip_protocol("azure://") == container_name
 
 
 def test_strip_protocol(dvc):
     assert (
         AzureFileSystem._strip_protocol(f"azure://{container_name}")
-        == f"azure://{container_name}"
+        == container_name
     )
 
 
@@ -33,18 +29,6 @@ def test_init(dvc):
     config = {"connection_string": connection_string}
     fs = AzureFileSystem(**config)
     assert fs.fs_args["connection_string"] == connection_string
-
-
-def test_info(tmp_dir, azure):
-    tmp_dir.gen("foo", "foo")
-
-    fs = AzureFileSystem(**azure.config)
-    to_info = azure
-    fs.upload(PathInfo("foo"), to_info)
-    assert fs.exists(to_info)
-    hash_ = fs.info(to_info)["etag"]
-    assert isinstance(hash_, str)
-    assert hash_.strip("'").strip('"') == hash_
 
 
 def test_azure_login_methods():

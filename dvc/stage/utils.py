@@ -142,8 +142,8 @@ def check_no_externals(stage):
 def check_circular_dependency(stage):
     from dvc.exceptions import CircularDependencyError
 
-    circular_dependencies = {d.path_info for d in stage.deps} & {
-        o.path_info for o in stage.outs
+    circular_dependencies = {d.fs_path for d in stage.deps} & {
+        o.fs_path for o in stage.outs
     }
 
     if circular_dependencies:
@@ -155,7 +155,7 @@ def check_duplicated_arguments(stage):
 
     from dvc.exceptions import ArgumentDuplicationError
 
-    path_counts = Counter(edge.path_info for edge in stage.deps + stage.outs)
+    path_counts = Counter(edge.fs_path for edge in stage.deps + stage.outs)
 
     for path, occurrence in path_counts.items():
         if occurrence > 1:

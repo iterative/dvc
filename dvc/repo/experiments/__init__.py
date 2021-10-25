@@ -13,7 +13,6 @@ from funcy import cached_property, first
 from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.stage.monitor import CheckpointKilledError
 from dvc.utils import relpath
 
@@ -368,13 +367,12 @@ class Experiments:
 
         logger.debug("Using experiment params '%s'", params)
 
-        for params_fname in params:
-            path = PathInfo(params_fname)
-            suffix = path.suffix.lower()
+        for path in params:
+            suffix = self.repo.fs.path.suffix(path).lower()
             modify_data = MODIFIERS[suffix]
             with modify_data(path, fs=self.repo.fs) as data:
                 try:
-                    merge_params(data, params[params_fname], allow_new=False)
+                    merge_params(data, params[path], allow_new=False)
                 except NewParamsFound as e:
                     msg = self._format_new_params_msg(e.new_params, path)
                     raise MissingParamsError(msg)
@@ -929,7 +927,7 @@ class Experiments:
         from .executor.base import BaseExecutor, ExecutorInfo
 
         result = {}
-        for pidfile in self.repo.fs.walk_files(
+        for pidfile in self.repo.fs.find(
             os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
         ):
             rev, _ = os.path.splitext(os.path.basename(pidfile))

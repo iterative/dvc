@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
+from .fs.local import localfs
 from .utils import relpath
 
 INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}
@@ -59,11 +60,11 @@ def _infos_to_str(infos):
 def _check_blockers(lock, info, *, mode, waiters):
     from .lock import LockError
 
-    for path_info in waiters:
+    for waiter_path in waiters:
         blockers = [
             blocker
             for path, infos in lock[mode].items()
-            if path_info.overlaps(path)
+            if localfs.path.overlaps(waiter_path, path)
             for blocker in (infos if isinstance(infos, list) else [infos])
             if blocker != info
         ]
@@ -77,38 +78,34 @@ def _check_blockers(lock, info, *, mode, waiters):
             "\n"
             "If there are no processes with such PIDs, you can manually "
             "remove '.dvc/tmp/rwlock' and try again.".format(
-                path=str(path_info), blockers=_infos_to_str(blockers)
+                path=waiter_path, blockers=_infos_to_str(blockers)
             )
         )
 
 
-def _acquire_read(lock, info, path_infos):
+def _acquire_read(lock, info, paths):
     changes = []
 
-    for path_info in path_infos:
-        url = path_info.url
-
-        readers = lock["read"][url]
+    for path in paths:
+        readers = lock["read"][path]
         if info in readers:
             continue
 
-        changes.append(url)
+        changes.append(path)
         readers.append(info)
 
     return changes
 
 
-def _acquire_write(lock, info, path_infos):
+def _acquire_write(lock, info, paths):
     changes = []
 
-    for path_info in path_infos:
-        url = path_info.url
-
-        if lock["write"][url] == info:
+    for path in paths:
+        if lock["write"][path] == info:
             continue
 
-        changes.append(url)
-        lock["write"][url] = info
+        changes.append(path)
+        lock["write"][path] = info
 
     return changes
 
@@ -137,17 +134,17 @@ def _release_read(lock, info, changes):
 
 @contextmanager
 def rwlock(tmp_dir, cmd, read, write):
-    """Create non-thread-safe RWLock for PathInfos.
+    """Create non-thread-safe RWLock for file paths.
 
     Args:
         tmp_dir (str): existing directory where to create the rwlock file.
-        cmd (str): command that will be working on these PathInfos.
-        read ([PathInfo]): PathInfos that are going to be read.
-        write ([PathInfo]): PathInfos that are going to be written.
+        cmd (str): command that will be working on these file path.
+        read ([str]): file paths that are going to be read.
+        write ([str]): file paths that are going to be written.
 
     Raises:
-        LockError: raised if PathInfo we want to read is being written to by
-            another command or if PathInfo we want to write is being written
+        LockError: raised if file paths we want to read is being written to by
+            another command or if file paths we want to write is being written
             to or read from by another command.
         RWLockFileCorruptedError: raised if rwlock file is not a valid JSON.
         RWLockFileFormatError: raised if rwlock file is a valid JSON, but

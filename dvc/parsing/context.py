@@ -19,7 +19,6 @@ from dvc.parsing.interpolate import (
     recurse,
     str_interpolate,
 )
-from dvc.path_info import PathInfo
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -356,7 +355,7 @@ class Context(CtxDict):
 
     @classmethod
     def load_from(
-        cls, fs, path: PathInfo, select_keys: List[str] = None
+        cls, fs, path: str, select_keys: List[str] = None
     ) -> "Context":
         from dvc.utils.serialize import LOADERS
 
@@ -396,18 +395,17 @@ class Context(CtxDict):
             raise ReservedKeyError(matches)
         return super().merge_update(other, overwrite=overwrite)
 
-    def merge_from(self, fs, item: str, wdir: PathInfo, overwrite=False):
+    def merge_from(self, fs, item: str, wdir: str, overwrite=False):
         path, _, keys_str = item.partition(":")
         select_keys = lfilter(bool, keys_str.split(",")) if keys_str else None
 
-        abspath = os.path.abspath(wdir / path)
-        path_info = PathInfo(abspath)
+        abspath = os.path.abspath(fs.path.join(wdir, path))
         if abspath in self.imports:
             if not select_keys and self.imports[abspath] is None:
                 return  # allow specifying complete filepath multiple times
             self.check_loaded(abspath, item, select_keys)
 
-        ctx = Context.load_from(fs, path_info, select_keys)
+        ctx = Context.load_from(fs, abspath, select_keys)
 
         try:
             self.merge_update(ctx, overwrite=overwrite)
@@ -439,12 +437,12 @@ class Context(CtxDict):
         self,
         fs,
         vars_: List,
-        wdir: PathInfo,
+        wdir: str,
         stage_name: str = None,
         default: str = None,
     ):
         if default:
-            to_import = wdir / default
+            to_import = fs.path.join(wdir, default)
             if fs.exists(to_import):
                 self.merge_from(fs, default, wdir)
             else:

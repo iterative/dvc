@@ -4,10 +4,10 @@ import uuid
 
 import pytest
 
-from dvc.path_info import CloudURLInfo
 from dvc.utils import env2bool
 
 from .base import Base
+from .path_info import CloudURLInfo
 
 TEST_OSS_REPO_BUCKET = "dvc-test-github"
 EMULATOR_OSS_ENDPOINT = "127.0.0.1:{port}"

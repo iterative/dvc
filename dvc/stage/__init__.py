@@ -273,7 +273,7 @@ class Stage(params.StageParams):
             from dvc.output import Output
             from dvc.schema import LIVE_PROPS
 
-            env[DVCLIVE_PATH] = relpath(out.path_info, self.wdir)
+            env[DVCLIVE_PATH] = relpath(out.fs_path, self.wdir)
             if isinstance(out.live, dict):
                 config = project(out.live, LIVE_PROPS)
 
@@ -511,7 +511,7 @@ class Stage(params.StageParams):
                 if not (allow_missing or out.checkpoint):
                     raise
             except CacheLinkError:
-                link_failures.append(out.path_info)
+                link_failures.append(out.fs_path)
         if link_failures:
             raise CacheLinkError(link_failures)
 
@@ -559,11 +559,11 @@ class Stage(params.StageParams):
     def _check_missing_outputs(self):
         check_missing_outputs(self)
 
-    def filter_outs(self, path_info):
+    def filter_outs(self, fs_path):
         def _func(o):
-            return path_info.isin_or_eq(o.path_info)
+            return o.fs.path.isin_or_eq(fs_path, o.fs_path)
 
-        return filter(_func, self.outs) if path_info else self.outs
+        return filter(_func, self.outs) if fs_path else self.outs
 
     @rwlocked(write=["outs"])
     def checkout(self, allow_missing=False, **kwargs):
@@ -585,7 +585,7 @@ class Stage(params.StageParams):
             added, modified = result or (None, None)
             if not (added or modified):
                 return None, []
-            return "modified" if modified else "added", [out.path_info]
+            return "modified" if modified else "added", [str(out)]
         except CheckoutError as exc:
             return "failed", exc.target_infos
 

@@ -28,7 +28,7 @@ def test_find_outs_by_path(tmp_dir, dvc, path):
 
     outs = dvc.find_outs_by_path(path, strict=False)
     assert len(outs) == 1
-    assert outs[0].path_info == stage.outs[0].path_info
+    assert outs[0].fs_path == stage.outs[0].fs_path
 
 
 def test_find_outs_by_path_does_graph_checks(tmp_dir, dvc):

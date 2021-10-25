@@ -42,9 +42,9 @@ def get_mtime_and_size(path, fs, dvcignore=None):
         size = 0
         files_mtimes = {}
         if dvcignore:
-            walk_iterator = dvcignore.walk_files(fs, path)
+            walk_iterator = dvcignore.find(fs, path)
         else:
-            walk_iterator = fs.walk_files(path)
+            walk_iterator = fs.find(path)
         for file_path in walk_iterator:
             try:
                 stats = fs.info(file_path)
@@ -54,7 +54,7 @@ def get_mtime_and_size(path, fs, dvcignore=None):
                     raise
                 continue
             size += stats["size"]
-            files_mtimes[os.fspath(file_path)] = stats["mtime"]
+            files_mtimes[file_path] = stats["mtime"]
 
         # We track file changes and moves, which cannot be detected with simply
         # max(mtime(f) for f in non_ignored_files)
@@ -244,7 +244,7 @@ def walk_files(directory):
 def as_atomic(fs, to_info):
     from dvc.utils import tmp_fname
 
-    tmp_info = to_info.parent / tmp_fname()
+    tmp_info = fs.path.join(fs.path.parent(to_info), tmp_fname())
     try:
         yield tmp_info
     except BaseException:

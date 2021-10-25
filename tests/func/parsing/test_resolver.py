@@ -13,25 +13,25 @@ DATA = {"models": {"bar": "bar", "foo": "foo"}}
 
 
 def test_resolver(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir, TEMPLATED_DVC_YAML_DATA)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, TEMPLATED_DVC_YAML_DATA)
     resolver.context.merge_update(Context(CONTEXT_DATA))
     assert resolver.resolve() == RESOLVED_DVC_YAML_DATA
 
 
 def test_default_params_file_not_exist(tmp_dir, dvc):
     d = {"vars": [DATA["models"]]}
-    resolver = DataResolver(dvc, tmp_dir, d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     assert resolver.context == d["vars"][0]
 
 
 def test_no_params_yaml_and_vars(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     assert not resolver.context
 
 
 def test_local_vars(tmp_dir, dvc):
     resolver = DataResolver(
-        dvc, tmp_dir, {"vars": [{"foo": "bar", "bar": "foo"}]}
+        dvc, tmp_dir.fs_path, {"vars": [{"foo": "bar", "bar": "foo"}]}
     )
     assert resolver.context == {"foo": "bar", "bar": "foo"}
 
@@ -39,7 +39,7 @@ def test_local_vars(tmp_dir, dvc):
 @pytest.mark.parametrize("vars_", ["${file}_params.yaml", {"foo": "${foo}"}])
 def test_vars_interpolation_errors(tmp_dir, dvc, vars_):
     with pytest.raises(ResolveError) as exc_info:
-        DataResolver(dvc, tmp_dir, {"vars": [vars_, {"bar": "foo"}]})
+        DataResolver(dvc, tmp_dir.fs_path, {"vars": [vars_, {"bar": "foo"}]})
     assert (
         str(exc_info.value)
         == "failed to parse 'vars' in 'dvc.yaml': interpolating is not allowed"
@@ -51,7 +51,7 @@ def test_vars_interpolation_errors(tmp_dir, dvc, vars_):
 )
 def test_default_params_file(tmp_dir, dvc, vars_):
     (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
-    resolver = DataResolver(dvc, tmp_dir, vars_)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, vars_)
     assert resolver.context == DATA
 
 
@@ -61,7 +61,7 @@ def test_load_vars_from_file(tmp_dir, dvc):
     datasets = {"datasets": ["foo", "bar"]}
     (tmp_dir / "params.json").dump(datasets)
     d = {"vars": [DEFAULT_PARAMS_FILE, "params.json"]}
-    resolver = DataResolver(dvc, tmp_dir, d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
 
     expected = deepcopy(DATA)
     expected.update(datasets)
@@ -77,7 +77,7 @@ def test_load_vars_with_relpath(tmp_dir, scm, dvc):
     revisions = ["HEAD", "workspace"]
     for rev in dvc.brancher(revs=["HEAD"]):
         assert rev == revisions.pop()
-        resolver = DataResolver(dvc, subdir, d)
+        resolver = DataResolver(dvc, subdir.fs_path, d)
         assert resolver.context == deepcopy(DATA)
 
 
@@ -85,7 +85,7 @@ def test_partial_vars_doesnot_exist(tmp_dir, dvc):
     (tmp_dir / "test_params.yaml").dump({"sub1": "sub1"})
 
     with pytest.raises(ResolveError) as exc_info:
-        DataResolver(dvc, tmp_dir, {"vars": ["test_params.yaml:sub2"]})
+        DataResolver(dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml:sub2"]})
 
     assert (
         str(exc_info.value) == "failed to parse 'vars' in 'dvc.yaml': "
@@ -99,7 +99,7 @@ def test_global_overwrite_error_on_imports(tmp_dir, dvc):
 
     d = {"vars": [DEFAULT_PARAMS_FILE, "params.json"]}
     with pytest.raises(ResolveError) as exc_info:
-        DataResolver(dvc, tmp_dir, d)
+        DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert str(exc_info.value) == (
         "failed to parse 'vars' in 'dvc.yaml':\n"
@@ -113,7 +113,7 @@ def test_global_overwrite_vars(tmp_dir, dvc):
     d = {"vars": [DATA]}
 
     with pytest.raises(ResolveError) as exc_info:
-        DataResolver(dvc, tmp_dir, d)
+        DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert str(exc_info.value) == (
         "failed to parse 'vars' in 'dvc.yaml':\n"
@@ -127,7 +127,7 @@ def test_local_declared_vars_overwrite(tmp_dir, dvc):
 
     d = {"vars": [DATA["models"], DATA["models"]]}
     with pytest.raises(ResolveError) as exc_info:
-        DataResolver(dvc, tmp_dir, d)
+        DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert str(exc_info.value) == (
         "failed to parse 'vars' in 'dvc.yaml':\n"
@@ -139,7 +139,7 @@ def test_local_declared_vars_overwrite(tmp_dir, dvc):
 def test_specified_params_file_not_exist(tmp_dir, dvc):
     d = {"vars": ["not_existing_params.yaml"]}
     with pytest.raises(ResolveError) as exc_info:
-        DataResolver(dvc, tmp_dir, d)
+        DataResolver(dvc, tmp_dir.fs_path, d)
 
     assert str(exc_info.value) == (
         "failed to parse 'vars' in 'dvc.yaml': "
@@ -165,7 +165,7 @@ def test_vars_already_loaded_message(tmp_dir, dvc, local, vars_):
         d["stages"]["build"]["vars"] = vars_
 
     with pytest.raises(ResolveError) as exc_info:
-        resolver = DataResolver(dvc, tmp_dir, d)
+        resolver = DataResolver(dvc, tmp_dir.fs_path, d)
         resolver.resolve()
 
     assert "partially" in str(exc_info.value)
@@ -180,7 +180,7 @@ def test_local_overwrite_error(tmp_dir, dvc, vars_, loc):
 
     d = {"stages": {"build": {"cmd": "echo ${models.foo}", "vars": [vars_]}}}
 
-    resolver = DataResolver(dvc, tmp_dir, d)
+    resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     with pytest.raises(ResolveError) as exc_info:
         resolver.resolve()
 

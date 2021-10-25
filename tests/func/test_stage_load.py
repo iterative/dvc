@@ -6,7 +6,6 @@ from funcy import raiser
 
 from dvc.dvcfile import PIPELINE_FILE, FileIsGitIgnored
 from dvc.exceptions import NoOutputOrStageError
-from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.stage.exceptions import (
     StageFileDoesNotExistError,
@@ -226,7 +225,7 @@ def test_collect_granular_with_target(tmp_dir, dvc, stages):
         ) == [(stages["copy-bar-foobar"], None)]
 
     assert dvc.stage.collect_granular("foobar") == [
-        (stages["copy-bar-foobar"], PathInfo(tmp_dir / "foobar"))
+        (stages["copy-bar-foobar"], os.path.join(tmp_dir, "foobar"))
     ]
 
 
@@ -296,10 +295,10 @@ def test_collect_granular_same_output_name_stage_name(tmp_dir, dvc, run_copy):
     assert list(map(itemgetter(1), coll)) == [None] * 2
 
     assert dvc.stage.collect_granular("./copy-foo-bar") == [
-        (stage2, PathInfo(tmp_dir / "copy-foo-bar"))
+        (stage2, os.path.join(tmp_dir / "copy-foo-bar"))
     ]
     assert dvc.stage.collect_granular("./copy-foo-bar", with_deps=True) == [
-        (stage2, PathInfo(tmp_dir / "copy-foo-bar"))
+        (stage2, os.path.join(tmp_dir / "copy-foo-bar"))
     ]
 
 
@@ -330,7 +329,7 @@ def test_collect_granular_collision_output_dir_stage_name(
     assert dvc.stage.collect_granular("dir") == [(stage3, None)]
     assert not dvc.stage.collect_granular("dir", recursive=True)
     assert dvc.stage.collect_granular("./dir") == [
-        (stage1, PathInfo(tmp_dir / "dir"))
+        (stage1, os.path.join(tmp_dir / "dir"))
     ]
 
 
@@ -468,24 +467,24 @@ def test_gitignored_file_try_collect_granular_for_data_files(
     tmp_dir, dvc, scm
 ):
     (stage,) = tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}})
-    path = PathInfo("data") / "foo"
+    path = os.path.join("data", "foo")
 
-    assert dvc.stage.collect_granular(str(path)) == [
-        (stage, PathInfo(tmp_dir / path))
+    assert dvc.stage.collect_granular(path) == [
+        (stage, os.path.join(tmp_dir, path))
     ]
 
     scm.ignore(stage.path)
     dvc._reset()
 
     with pytest.raises(NoOutputOrStageError):
-        dvc.stage.collect_granular(str(path))
+        dvc.stage.collect_granular(path)
 
 
 def test_gitignored_file_try_collect_granular_for_dvc_yaml_files(
     tmp_dir, dvc, scm, stages
 ):
     assert dvc.stage.collect_granular("bar") == [
-        (stages["copy-foo-bar"], PathInfo(tmp_dir / "bar"))
+        (stages["copy-foo-bar"], os.path.join(tmp_dir, "bar"))
     ]
 
     scm.ignore(tmp_dir / "dvc.yaml")

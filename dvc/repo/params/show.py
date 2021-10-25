@@ -1,10 +1,10 @@
 import logging
+import os
 from collections import defaultdict
 from copy import copy
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 from dvc.dependency.param import ParamsDependency
-from dvc.path_info import PathInfo
 from dvc.repo import locked
 from dvc.repo.collect import collect
 from dvc.scm.base import SCMError
@@ -16,7 +16,6 @@ from dvc.utils.serialize import LOADERS
 if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
-    from dvc.types import DvcPath
 
 logger = logging.getLogger(__name__)
 
@@ -27,56 +26,58 @@ def _is_params(dep: "Output"):
 
 def _collect_configs(
     repo: "Repo", rev, targets=None
-) -> Tuple[List["Output"], List["DvcPath"]]:
+) -> Tuple[List["Output"], List[str]]:
 
-    params, path_infos = collect(
+    params, fs_paths = collect(
         repo,
         targets=targets or [],
         deps=True,
         output_filter=_is_params,
         rev=rev,
     )
-    all_path_infos = path_infos + [p.path_info for p in params]
+    all_fs_paths = fs_paths + [p.fs_path for p in params]
     if not targets:
-        default_params = (
-            PathInfo(repo.root_dir) / ParamsDependency.DEFAULT_PARAMS_FILE
+        default_params = os.path.join(
+            repo.root_dir, ParamsDependency.DEFAULT_PARAMS_FILE
         )
-        if default_params not in all_path_infos and repo.fs.exists(
+        if default_params not in all_fs_paths and repo.fs.exists(
             default_params
         ):
-            path_infos.append(default_params)
-    return params, path_infos
+            fs_paths.append(default_params)
+    return params, fs_paths
 
 
 @error_handler
-def _read_path_info(fs, path_info, **kwargs):
-    suffix = path_info.suffix.lower()
+def _read_fs_path(fs, fs_path, **kwargs):
+    suffix = fs.path.suffix(fs_path).lower()
     loader = LOADERS[suffix]
-    return loader(path_info, fs=fs)
+    return loader(fs_path, fs=fs)
 
 
 def _read_params(
     repo,
     params,
-    params_path_infos,
+    params_fs_paths,
     deps=False,
     onerror: Optional[Callable] = None,
 ):
     res: Dict[str, Dict] = defaultdict(dict)
-    path_infos = copy(params_path_infos)
+    fs_paths = copy(params_fs_paths)
 
     if deps:
         for param in params:
             params_dict = error_handler(param.read_params_d)(onerror=onerror)
             if params_dict:
-                res[str(param.path_info)] = params_dict
+                res[
+                    repo.fs.path.relpath(param.fs_path, os.getcwd())
+                ] = params_dict
     else:
-        path_infos += [param.path_info for param in params]
+        fs_paths += [param.fs_path for param in params]
 
-    for path_info in path_infos:
-        from_path = _read_path_info(repo.fs, path_info, onerror=onerror)
+    for fs_path in fs_paths:
+        from_path = _read_fs_path(repo.fs, fs_path, onerror=onerror)
         if from_path:
-            res[str(path_info)] = from_path
+            res[repo.fs.path.relpath(fs_path, os.getcwd())] = from_path
 
     return res
 
@@ -131,13 +132,11 @@ def show(repo, revs=None, targets=None, deps=False, onerror: Callable = None):
 
 
 def _gather_params(repo, rev, targets=None, deps=False, onerror=None):
-    param_outs, params_path_infos = _collect_configs(
-        repo, rev, targets=targets
-    )
+    param_outs, params_fs_paths = _collect_configs(repo, rev, targets=targets)
     params = _read_params(
         repo,
         params=param_outs,
-        params_path_infos=params_path_infos,
+        params_fs_paths=params_fs_paths,
         deps=deps,
         onerror=onerror,
     )

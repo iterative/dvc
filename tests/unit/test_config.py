@@ -12,7 +12,7 @@ from dvc.fs.local import LocalFileSystem
     [
         ("cache", "../cache"),
         (os.path.join("..", "cache"), "../../cache"),
-        (os.getcwd(), os.getcwd().replace("\\", "/")),
+        (os.getcwd(), os.getcwd()),
         ("ssh://some/path", "ssh://some/path"),
     ],
 )

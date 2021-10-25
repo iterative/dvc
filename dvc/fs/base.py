@@ -4,12 +4,12 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partialmethod
 from multiprocessing import cpu_count
-from typing import Any, ClassVar, Dict, FrozenSet, Optional
+from typing import ClassVar, Dict, FrozenSet, Optional
 
+from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
 
 from dvc.exceptions import DvcException
-from dvc.path_info import URLInfo
 from dvc.progress import DEFAULT_CALLBACK, FsspecCallback
 from dvc.ui import ui
 from dvc.utils import tmp_fname
@@ -41,7 +41,6 @@ class BaseFileSystem:
 
     scheme = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
-    PATH_CLS = URLInfo  # type: Any
     _JOBS = 4 * cpu_count()
 
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -69,8 +68,17 @@ class BaseFileSystem:
     def config(self):
         return self._config
 
+    @cached_property
+    def path(self):
+        from .path import Path
+
+        return Path(self.sep)
+
     @classmethod
     def _strip_protocol(cls, path: str):
+        return path
+
+    def unstrip_protocol(self, path):
         return path
 
     @staticmethod
@@ -129,36 +137,36 @@ class BaseFileSystem:
             f"dependencies: {missing}. {hint}"
         )
 
-    def checksum(self, path_info) -> str:
+    def checksum(self, path) -> str:
         raise NotImplementedError
 
-    def open(self, path_info, mode: str = "r", encoding: str = None, **kwargs):
+    def open(self, path, mode: str = "r", encoding: str = None, **kwargs):
         raise RemoteActionNotImplemented("open", self.scheme)
 
-    def exists(self, path_info) -> bool:
+    def exists(self, path) -> bool:
         raise NotImplementedError
 
     # pylint: disable=unused-argument
 
-    def isdir(self, path_info):
+    def isdir(self, path):
         """Optional: Overwrite only if the remote has a way to distinguish
         between a directory and a file.
         """
         return False
 
-    def isfile(self, path_info):
+    def isfile(self, path):
         """Optional: Overwrite only if the remote has a way to distinguish
         between a directory and a file.
         """
         return True
 
-    def isexec(self, path_info):
+    def isexec(self, path):
         """Optional: Overwrite only if the remote has a way to distinguish
         between executable and non-executable file.
         """
         return False
 
-    def iscopy(self, path_info):
+    def iscopy(self, path):
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
 
@@ -166,28 +174,28 @@ class BaseFileSystem:
         """Return a generator with (root, dirs, files)."""
         raise NotImplementedError
 
-    def walk_files(self, path_info, **kwargs):
-        """Return a generator with `PathInfo`s to all the files.
+    def find(self, path, prefix=None):
+        """Return a generator with `str`s to all the files.
 
         Optional kwargs:
-            prefix (bool): If true `path_info` will be treated as a prefix
+            prefix (bool): If true `path` will be treated as a prefix
                 rather than directory path.
         """
         raise NotImplementedError
 
-    def is_empty(self, path_info):
+    def is_empty(self, path):
         return False
 
-    def info(self, path_info):
+    def info(self, path):
         raise NotImplementedError
 
-    def getsize(self, path_info):
-        return self.info(path_info).get("size")
+    def getsize(self, path):
+        return self.info(path).get("size")
 
-    def remove(self, path_info):
+    def remove(self, path):
         raise RemoteActionNotImplemented("remove", self.scheme)
 
-    def makedirs(self, path_info, **kwargs):
+    def makedirs(self, path, **kwargs):
         """Optional: Implement only if the remote needs to create
         directories before copying/linking/moving data
         """
@@ -231,11 +239,10 @@ class BaseFileSystem:
         if not hasattr(self, method):
             raise RemoteActionNotImplemented(method, self.scheme)
 
-        if to_info.scheme != self.scheme:
-            raise NotImplementedError
-
         if not is_file_obj:
-            desc = desc or from_info.name
+            from .local import localfs
+
+            desc = desc or localfs.path.name(from_info)
 
         stack = contextlib.ExitStack()
         if not callback:
@@ -261,9 +268,6 @@ class BaseFileSystem:
                 # pylint: disable=no-member
                 return self.upload_fobj(wrapped, to_info, size=total)
 
-            if from_info.scheme != "local":
-                raise NotImplementedError
-
             logger.debug("Uploading '%s' to '%s'", from_info, to_info)
             # pylint: disable=no-member
             return self.put_file(
@@ -281,18 +285,14 @@ class BaseFileSystem:
         _only_file=False,
         **kwargs,
     ):
+        from .local import localfs
+
         if not hasattr(self, "get_file"):
             raise RemoteActionNotImplemented("get_file", self.scheme)
 
-        if from_info.scheme != self.scheme:
-            raise NotImplementedError
-
-        if to_info.scheme != "local":
-            raise NotImplementedError
-
         download_dir = not _only_file and self.isdir(from_info)
 
-        desc = name or to_info.name
+        desc = name or localfs.path.name(to_info)
         stack = contextlib.ExitStack()
         if not callback:
             pbar_kwargs = {"unit": "Files"} if download_dir else {}
@@ -323,13 +323,16 @@ class BaseFileSystem:
         jobs=None,
         **kwargs,
     ):
-        from_infos = list(self.walk_files(from_info, **kwargs))
+        from .local import localfs
+
+        from_infos = list(self.find(from_info, **kwargs))
         if not from_infos:
             makedirs(to_info, exist_ok=True)
             return None
 
         to_infos = (
-            to_info / info.relative_to(from_info) for info in from_infos
+            localfs.path.join(to_info, self.path.relpath(info, from_info))
+            for info in from_infos
         )
         callback.set_size(len(from_infos))
 
@@ -362,7 +365,9 @@ class BaseFileSystem:
         to_info,
         callback=DEFAULT_CALLBACK,
     ):
-        makedirs(to_info.parent, exist_ok=True)
+        from .local import localfs
+
+        makedirs(localfs.path.parent(to_info), exist_ok=True)
         tmp_file = tmp_fname(to_info)
 
         logger.debug("Downloading '%s' to '%s'", from_info, to_info)

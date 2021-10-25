@@ -4,7 +4,6 @@ from unittest.mock import ANY, patch
 from dvc.external_repo import CLONES, external_repo
 from dvc.objects.stage import stage
 from dvc.objects.transfer import transfer
-from dvc.path_info import PathInfo
 from dvc.scm.git import Git
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
@@ -96,7 +95,8 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            PathInfo(repo.root_dir) / "subdir" / "file", PathInfo(dest)
+            os.path.join(repo.root_dir, "subdir", "file"),
+            os.fspath(dest),
         )
 
     assert dest.is_file()
@@ -191,9 +191,8 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
 
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            PathInfo(repo.root_dir) / "dir",
-            PathInfo(tmp_dir / "out"),
-            follow_subrepos=False,
+            os.path.join(repo.root_dir, "dir"),
+            os.fspath(tmp_dir / "out"),
         )
         expected_files = {"foo": "foo", "bar": "bar", ".gitignore": "/foo\n"}
         assert (tmp_dir / "out").read_text() == expected_files
@@ -206,7 +205,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
 
         staging, _, obj = stage(
             repo.odb.local,
-            PathInfo(repo.root_dir) / "dir",
+            os.path.join(repo.root_dir, "dir"),
             repo.repo_fs,
             "md5",
             dvcignore=repo.dvcignore,
@@ -238,9 +237,8 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
 
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            PathInfo(repo.root_dir) / "dir",
-            PathInfo(tmp_dir / "out"),
-            follow_subrepos=False,
+            os.path.join(repo.root_dir, "dir"),
+            os.fspath(tmp_dir / "out"),
         )
         # subrepo files should not be here
         assert (tmp_dir / "out").read_text() == scm_files

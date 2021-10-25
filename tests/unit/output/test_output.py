@@ -7,7 +7,6 @@ from voluptuous import MultipleInvalid, Schema
 
 from dvc.ignore import _no_match
 from dvc.output import CHECKSUM_SCHEMA, Output
-from dvc.path_info import PathInfo
 from dvc.stage import Stage
 
 
@@ -83,7 +82,7 @@ def test_get_used_objs(exists, expected_message, mocker, caplog):
     stage = mocker.MagicMock()
     mocker.patch.object(stage, "__str__", return_value="stage: 'stage.dvc'")
     mocker.patch.object(stage, "addressing", "stage.dvc")
-    mocker.patch.object(stage, "wdir", PathInfo(os.getcwd()))
+    mocker.patch.object(stage, "wdir", os.getcwd())
     mocker.patch.object(stage.repo, "root_dir", os.getcwd())
     mocker.patch.object(stage.repo.dvcignore, "is_ignored", return_value=False)
     mocker.patch.object(

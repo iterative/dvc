@@ -7,7 +7,6 @@ from shortuuid import uuid
 
 from dvc.hash_info import HashInfo
 from dvc.objects.errors import ObjectFormatError
-from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.utils import relpath
 from dvc.utils.fs import copyfile, remove, umask, walk_files
@@ -22,9 +21,9 @@ class LocalObjectDB(ObjectDB):
     CACHE_MODE = 0o444
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
-    def __init__(self, fs, path_info, **config):
-        super().__init__(fs, path_info, **config)
-        self.cache_dir = path_info.fspath
+    def __init__(self, fs, fs_path, **config):
+        super().__init__(fs, fs_path, **config)
+        self.cache_dir = fs_path
 
         shared = config.get("shared")
         if shared:
@@ -36,11 +35,11 @@ class LocalObjectDB(ObjectDB):
 
     @property
     def cache_dir(self):
-        return self.path_info.fspath if self.path_info else None
+        return self.fs_path if self.fs_path else None
 
     @cache_dir.setter
     def cache_dir(self, value):
-        self.path_info = PathInfo(value) if value else None
+        self.fs_path = value
 
     @cached_property
     def cache_path(self):
@@ -50,10 +49,10 @@ class LocalObjectDB(ObjectDB):
         super().move(from_info, to_info)
         os.chmod(to_info, self._file_mode)
 
-    def makedirs(self, path_info):
+    def makedirs(self, fs_path):
         from dvc.utils.fs import makedirs
 
-        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
+        makedirs(fs_path, exist_ok=True, mode=self._dir_mode)
 
     def hash_to_path(self, hash_):
         # NOTE: `self.cache_path` is already normalized so we can simply use
@@ -81,26 +80,30 @@ class LocalObjectDB(ObjectDB):
         return ret
 
     def _list_paths(self, prefix=None, progress_callback=None):
-        assert self.path_info is not None
+        assert self.fs_path is not None
         if prefix:
-            path_info = self.path_info / prefix[:2]
-            if not self.fs.exists(path_info):
+            fs_path = self.fs.path.join(self.fs_path, prefix[:2])
+            if not self.fs.exists(fs_path):
                 return
         else:
-            path_info = self.path_info
+            fs_path = self.fs_path
+
         # NOTE: use utils.fs walk_files since fs.walk_files will not follow
         # symlinks
         if progress_callback:
-            for path in walk_files(path_info):
+            for path in walk_files(fs_path):
                 progress_callback()
                 yield path
         else:
-            yield from walk_files(path_info)
+            yield from walk_files(fs_path)
 
     def _remove_unpacked_dir(self, hash_):
-        info = self.hash_to_path_info(hash_)
-        path_info = info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
-        self.fs.remove(path_info)
+        hash_fs_path = self.hash_to_path(hash_)
+        fs_path = self.fs.path.with_name(
+            hash_fs_path,
+            self.fs.path.name(hash_fs_path) + self.UNPACKED_DIR_SUFFIX,
+        )
+        self.fs.remove(fs_path)
 
     def _unprotect_file(self, path):
         if self.fs.is_symlink(path) or self.fs.is_hardlink(path):
@@ -126,47 +129,47 @@ class LocalObjectDB(ObjectDB):
         os.chmod(path, self._file_mode)
 
     def _unprotect_dir(self, path):
-        for fname in self.fs.walk_files(path):
+        for fname in self.fs.find(path):
             self._unprotect_file(fname)
 
-    def unprotect(self, path_info):
-        if not os.path.exists(path_info):
+    def unprotect(self, fs_path):
+        if not os.path.exists(fs_path):
             from dvc.exceptions import DvcException
 
             raise DvcException(
-                f"can't unprotect non-existing data '{path_info}'"
+                f"can't unprotect non-existing data '{fs_path}'"
             )
 
-        if os.path.isdir(path_info):
-            self._unprotect_dir(path_info)
+        if os.path.isdir(fs_path):
+            self._unprotect_dir(fs_path)
         else:
-            self._unprotect_file(path_info)
+            self._unprotect_file(fs_path)
 
-    def protect(self, path_info):
+    def protect(self, fs_path):
         try:
-            os.chmod(path_info, self.CACHE_MODE)
+            os.chmod(fs_path, self.CACHE_MODE)
         except OSError:
             # NOTE: not being able to protect cache file is not fatal, it
             # might happen on funky filesystems (e.g. Samba, see #5255),
             # read-only filesystems or in a shared cache scenario.
-            logger.trace("failed to protect '%s'", path_info, exc_info=True)
+            logger.trace("failed to protect '%s'", fs_path, exc_info=True)
 
-    def is_protected(self, path_info):
+    def is_protected(self, fs_path):
         try:
-            mode = os.stat(path_info).st_mode
+            mode = os.stat(fs_path).st_mode
         except FileNotFoundError:
             return False
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
-    def set_exec(self, path_info):
-        mode = os.stat(path_info).st_mode | stat.S_IEXEC
+    def set_exec(self, fs_path):
+        mode = os.stat(fs_path).st_mode | stat.S_IEXEC
         try:
-            os.chmod(path_info, mode)
+            os.chmod(fs_path, mode)
         except OSError:
             logger.trace(
                 "failed to chmod '%s' '%s'",
                 oct(mode),
-                path_info,
+                fs_path,
                 exc_info=True,
             )

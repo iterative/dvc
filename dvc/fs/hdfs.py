@@ -19,10 +19,17 @@ class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
     REQUIRES = {"fsspec": "fsspec", "pyarrow": "pyarrow"}
     PARAM_CHECKSUM = "checksum"
 
-    def _with_bucket(self, path):
-        if isinstance(path, self.PATH_CLS):
-            return path.path
-        return super()._with_bucket(path)
+    @classmethod
+    def _strip_protocol(cls, path: str) -> str:
+        from fsspec.utils import infer_storage_options
+
+        return infer_storage_options(path)["path"].lstrip("/")
+
+    def unstrip_protocol(self, path: str) -> str:
+        host = self.fs_args["host"]
+        port = self.fs_args["port"]
+        path = path.lstrip("/")
+        return f"hdfs://{host}:{port}/{path}"
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):
@@ -41,17 +48,19 @@ class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
 
         return HadoopFileSystem(**self.fs_args)
 
-    def checksum(self, path_info):
-        return self._checksum(path_info)
+    def checksum(self, path):
+        return self._checksum(path)
 
-    def _checksum(self, path_info, **kwargs):
+    def _checksum(self, path, **kwargs):
         # PyArrow doesn't natively support retrieving the
         # checksum, so we have to use hadoop fs
 
+        url = self.unstrip_protocol(path)
+
         result = self._run_command(
-            f"checksum {path_info.url}",
+            f"checksum {url}",
             env=fix_env(os.environ),
-            user=path_info.user,
+            user=self.fs_args["user"],
         )
         if result is None:
             return None

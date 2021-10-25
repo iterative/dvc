@@ -148,12 +148,12 @@ class SSHExecutor(BaseExecutor):
         from dvc.repo import Repo
         from dvc.repo.push import push
 
-        cache_url = posixpath.join(
-            self.abs_url,
-            self._dvc_dir,
+        cache_path = posixpath.join(
+            self._repo_abspath,
             Repo.DVC_DIR,
             ODBManager.CACHE_DIR,
         )
+
         with self.sshfs() as fs:
-            odb = get_odb(fs, fs.PATH_CLS(cache_url), **fs.config)
+            odb = get_odb(fs, cache_path, **fs.config)
             push(dvc, revs=[rev], run_cache=run_cache, odb=odb)

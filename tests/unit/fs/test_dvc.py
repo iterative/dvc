@@ -7,7 +7,6 @@ from dvc.config import NoRemoteError
 from dvc.fs.dvc import DvcFileSystem
 from dvc.hash_info import HashInfo
 from dvc.objects.stage import stage
-from dvc.path_info import PathInfo
 from dvc.utils.fs import remove
 
 
@@ -26,7 +25,7 @@ def test_open(tmp_dir, dvc):
     (tmp_dir / "foo").unlink()
 
     fs = DvcFileSystem(repo=dvc)
-    with fs.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
+    with fs.open((tmp_dir / "foo").fs_path, "r") as fobj:
         assert fobj.read() == "foo"
 
 
@@ -35,7 +34,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     (tmp_dir / "file").write_text("something")
 
     fs = DvcFileSystem(repo=dvc)
-    with fs.open(PathInfo(tmp_dir) / "file", "r") as fobj:
+    with fs.open((tmp_dir / "file").fs_path, "r") as fobj:
         # NOTE: Unlike RepoFileSystem, DvcFileSystem should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
@@ -48,7 +47,7 @@ def test_open_no_remote(tmp_dir, dvc):
 
     fs = DvcFileSystem(repo=dvc)
     with pytest.raises(FileNotFoundError) as exc_info:
-        with fs.open(PathInfo(tmp_dir) / "file", "r"):
+        with fs.open((tmp_dir / "file").fs_path, "r"):
             pass
     assert isinstance(exc_info.value.__cause__, NoRemoteError)
 
@@ -61,7 +60,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     # NOTE: Unlike RepoFileSystem, DvcFileSystem should not
     # be affected by a dirty workspace.
     with pytest.raises(FileNotFoundError):
-        with fs.open(PathInfo(tmp_dir) / "file", "r"):
+        with fs.open((tmp_dir / "file").fs_path, "r"):
             pass
 
 
@@ -81,7 +80,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
             continue
 
         fs = DvcFileSystem(repo=dvc)
-        with fs.open(PathInfo(tmp_dir) / "foo", "r") as fobj:
+        with fs.open((tmp_dir / "foo").fs_path, "r") as fobj:
             assert fobj.read() == "foo"
 
 
@@ -216,7 +215,7 @@ def test_get_hash_file(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
     fs = DvcFileSystem(repo=dvc)
     assert (
-        fs.info(PathInfo(tmp_dir) / "foo")["md5"]
+        fs.info((tmp_dir / "foo").fs_path)["md5"]
         == "acbd18db4cc2f85cedef654fccc4a4d8"
     )
 
@@ -230,7 +229,7 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
     fs = DvcFileSystem(repo=dvc)
     get_file_hash_spy = mocker.spy(dvc_module.objects.stage, "get_file_hash")
     assert (
-        fs.info(PathInfo(tmp_dir) / "dir")["md5"]
+        fs.info((tmp_dir / "dir").fs_path)["md5"]
         == "8761c4e9acad696bee718615e23e22db.dir"
     )
     assert not get_file_hash_spy.called
@@ -241,16 +240,19 @@ def test_get_hash_granular(tmp_dir, dvc):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = DvcFileSystem(repo=dvc)
-    subdir = PathInfo(tmp_dir) / "dir" / "subdir"
-    assert fs.info(subdir).get("md5") is None
-    _, _, obj = stage(dvc.odb.local, subdir, fs, "md5", dry_run=True)
+    subdir = tmp_dir / "dir" / "subdir"
+    assert fs.info(subdir.fs_path).get("md5") is None
+    _, _, obj = stage(dvc.odb.local, subdir.fs_path, fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
     assert (
-        fs.info(subdir / "data")["md5"] == "8d777f385d3dfec8815d20f7496026dc"
+        fs.info((subdir / "data").fs_path)["md5"]
+        == "8d777f385d3dfec8815d20f7496026dc"
     )
-    _, _, obj = stage(dvc.odb.local, subdir / "data", fs, "md5", dry_run=True)
+    _, _, obj = stage(
+        dvc.odb.local, (subdir / "data").fs_path, fs, "md5", dry_run=True
+    )
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
 
 
@@ -260,9 +262,9 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 
     fs = DvcFileSystem(repo=dvc)
     expected = "8c7dd922ad47494fc02c388e12c00eac"
-    assert fs.info(PathInfo(tmp_dir) / "file").get("md5") == expected
+    assert fs.info((tmp_dir / "file").fs_path).get("md5") == expected
     _, _, obj = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "file", fs, "md5", dry_run=True
+        dvc.odb.local, (tmp_dir / "file").fs_path, fs, "md5", dry_run=True
     )
     assert obj.hash_info == HashInfo("md5", expected)
 
@@ -273,8 +275,8 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
 
     fs = DvcFileSystem(repo=dvc)
     expected = "5ea40360f5b4ec688df672a4db9c17d1.dir"
-    assert fs.info(PathInfo(tmp_dir) / "dir").get("md5") == expected
+    assert fs.info((tmp_dir / "dir").fs_path).get("md5") == expected
     _, _, obj = stage(
-        dvc.odb.local, PathInfo(tmp_dir) / "dir", fs, "md5", dry_run=True
+        dvc.odb.local, (tmp_dir / "dir").fs_path, fs, "md5", dry_run=True
     )
     assert obj.hash_info == HashInfo("md5", expected)

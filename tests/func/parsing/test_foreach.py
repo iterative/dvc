@@ -9,7 +9,7 @@ from dvc.parsing.context import Context
 
 def test_with_simple_list_data(tmp_dir, dvc):
     """Testing a simple non-nested list as a foreach data"""
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
 
     context = Context()
     data = {"foreach": ["foo", "bar", "baz"], "do": {"cmd": "echo ${item}"}}
@@ -24,7 +24,7 @@ def test_with_simple_list_data(tmp_dir, dvc):
 
 
 def test_with_dict_data(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     context = Context()
 
     foreach_data = {"model1": "foo", "model2": "bar"}
@@ -45,7 +45,7 @@ def test_with_dict_data(tmp_dir, dvc):
 
 
 def test_with_composite_list(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
 
     context = Context()
     foreach_data = [{"thresh": "foo"}, {"thresh": "bar"}]
@@ -64,7 +64,7 @@ def test_with_composite_list(tmp_dir, dvc):
 def test_foreach_interpolated_simple_list(tmp_dir, dvc):
     foreach_data = ["foo", "bar", "baz"]
     vars_ = {"models": foreach_data}
-    resolver = DataResolver(dvc, tmp_dir, {"vars": [vars_]})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {"vars": [vars_]})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -98,7 +98,7 @@ def test_foreach_interpolate_with_composite_data(
     tmp_dir, dvc, foreach_def, foreach_data, result
 ):
     vars_ = [{"models": foreach_data}]
-    resolver = DataResolver(dvc, tmp_dir, {"vars": vars_})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {"vars": vars_})
     data = {"foreach": "${models}", "do": {"cmd": f"echo {foreach_def}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -112,7 +112,7 @@ def test_params_file_with_dict_tracked(tmp_dir, dvc):
     params = {"models": foreach_data}
     (tmp_dir / "params.yaml").dump(params)
 
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item.thresh}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -133,7 +133,7 @@ def test_params_file_tracked_for_composite_list(tmp_dir, dvc):
     params = {"models": foreach_data}
     (tmp_dir / "params.yaml").dump(params)
 
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item.thresh}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -150,7 +150,7 @@ def test_params_file_tracked_for_composite_list(tmp_dir, dvc):
 
 def test_foreach_data_from_nested_vars(tmp_dir, dvc):
     vars_ = {"models": {"lst": [{"thresh": 10}, {"thresh": 15}]}}
-    resolver = DataResolver(dvc, tmp_dir, {"vars": [vars_]})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {"vars": [vars_]})
     data = {"foreach": "${models.lst}", "do": {"cmd": "echo ${item.thresh}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -163,7 +163,7 @@ def test_foreach_data_from_nested_vars(tmp_dir, dvc):
 
 
 def test_foreach_partial_interpolations(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir, {"vars": [{"bar": "bar"}]})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {"vars": [{"bar": "bar"}]})
     foreach_data = {"model1": "foo", "model2": "${bar}"}
     data = {"foreach": foreach_data, "do": {"cmd": "echo ${item}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
@@ -180,7 +180,9 @@ def test_mixed_vars_for_foreach_data(tmp_dir, dvc):
     (tmp_dir / "params.yaml").dump({"models": {"model1": "foo"}})
     (tmp_dir / "test_params.yaml").dump({"models": {"model2": "bar"}})
 
-    resolver = DataResolver(dvc, tmp_dir, {"vars": ["test_params.yaml"]})
+    resolver = DataResolver(
+        dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml"]}
+    )
     data = {"foreach": "${models}", "do": {"cmd": "echo ${item}"}}
     definition = ForeachDefinition(resolver, resolver.context, "build", data)
 
@@ -203,7 +205,9 @@ def test_mixed_vars_for_foreach_data_2(tmp_dir, dvc):
         {"models": {"model1": {"epochs": 5}, "model2": {"epochs": 10}}},
     )
 
-    resolver = DataResolver(dvc, tmp_dir, {"vars": ["test_params.yaml"]})
+    resolver = DataResolver(
+        dvc, tmp_dir.fs_path, {"vars": ["test_params.yaml"]}
+    )
     data = {
         "foreach": "${models}",
         "do": {"cmd": "echo ${item.thresh} ${item.epochs}"},
@@ -233,7 +237,7 @@ def test_mixed_vars_for_foreach_data_2(tmp_dir, dvc):
 
 
 def test_foreach_with_interpolated_wdir(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir / "data", {})
+    resolver = DataResolver(dvc, (tmp_dir / "data").fs_path, {})
     foreach_data = ["foo", "bar"]
     data = {
         "foreach": foreach_data,
@@ -254,7 +258,7 @@ def test_foreach_with_interpolated_wdir(tmp_dir, dvc):
 
 
 def test_foreach_with_local_vars(tmp_dir, dvc):
-    resolver = DataResolver(dvc, tmp_dir / "data", {})
+    resolver = DataResolver(dvc, (tmp_dir / "data").fs_path, {})
     foreach_data = ["foo", "bar"]
     data = {
         "foreach": foreach_data,
@@ -289,7 +293,7 @@ def test_foreach_with_imported_vars(tmp_dir, dvc, local_import):
     (tmp_dir / "test_params.yaml").dump(
         {"train": {"epochs": 10}, "prepare": {"nums": 25}}
     )
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     foreach_data = ["foo", "bar"]
     data = {
         "foreach": foreach_data,
@@ -327,7 +331,7 @@ def test_foreach_with_interpolated_wdir_and_local_vars(
             {"train": {"epochs": 1 + i}, "prepare": {"nums": 10 * i}},
         )
 
-    resolver = DataResolver(dvc, tmp_dir, {})
+    resolver = DataResolver(dvc, tmp_dir.fs_path, {})
     data = {
         "foreach": [0, 1, 2, 3, 4],
         "do": {
@@ -391,7 +395,7 @@ def test_foreach_do_syntax_is_checked_once(tmp_dir, dvc, mocker):
     do_def = {"cmd": "python script.py --epochs ${item}"}
     data = {"foreach": [0, 1, 2, 3, 4], "do": do_def}
     definition = ForeachDefinition(
-        DataResolver(dvc, tmp_dir, {}), Context(), "build", data
+        DataResolver(dvc, tmp_dir.fs_path, {}), Context(), "build", data
     )
     mock = mocker.patch("dvc.parsing.check_syntax_errors", return_value=True)
     definition.resolve_all()
@@ -403,7 +407,7 @@ def test_foreach_data_is_only_resolved_once(tmp_dir, dvc, mocker):
     context = Context(models=["foo", "bar", "baz"])
     data = {"foreach": "${models}", "do": {}}
     definition = ForeachDefinition(
-        DataResolver(dvc, tmp_dir, {}), context, "build", data
+        DataResolver(dvc, tmp_dir.fs_path, {}), context, "build", data
     )
     mock = mocker.spy(definition, "_resolve_foreach_data")
 

@@ -18,7 +18,6 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.scm.base import GitAuthError, InvalidRemoteSCMRepo, SCMError
 from dvc.utils import relpath
@@ -105,22 +104,22 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         except NotGitRepository as exc:
             raise SCMError(f"{root_dir} is not a git repository") from exc
 
-        self._submodules: Dict[str, "PathInfo"] = self._find_submodules()
+        self._submodules: Dict[str, str] = self._find_submodules()
         self._stashes: dict = {}
 
-    def _find_submodules(self) -> Dict[str, "PathInfo"]:
+    def _find_submodules(self) -> Dict[str, str]:
         """Return dict mapping submodule names to submodule paths.
 
         Submodule paths will be relative to Git repo root.
         """
         from dulwich.config import ConfigFile, parse_submodules
 
-        submodules: Dict[str, "PathInfo"] = {}
+        submodules: Dict[str, str] = {}
         config_path = os.path.join(self.root_dir, ".gitmodules")
         if os.path.isfile(config_path):
             config = ConfigFile.from_path(config_path)
             for path, _url, section in parse_submodules(config):
-                submodules[os.fsdecode(section)] = PathInfo(os.fsdecode(path))
+                submodules[os.fsdecode(section)] = os.fsdecode(path)
         return submodules
 
     def close(self):
@@ -163,11 +162,12 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 # parent git repo root). We append path to root_dir here so
                 # that the result of relpath(path, root_dir) is actually the
                 # path relative to the submodule root.
-                path_info = PathInfo(path).relative_to(self.root_dir)
+                fs_path = relpath(path, self.root_dir)
                 for sm_path in self._submodules.values():
-                    if path_info.isin(sm_path):
+                    if fs_path.startswith(sm_path):
                         path = os.path.join(
-                            self.root_dir, path_info.relative_to(sm_path)
+                            self.root_dir,
+                            relpath(fs_path, sm_path),
                         )
                         break
             if os.path.isdir(path):
@@ -241,7 +241,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return untracked
 
     def is_tracked(self, path: str) -> bool:
-        rel = PathInfo(path).relative_to(self.root_dir).as_posix().encode()
+        rel = relpath(path, self.root_dir).replace(os.path.sep, "/").encode()
         rel_dir = rel + b"/"
         for path in self.repo.open_index():
             if path == rel or path.startswith(rel_dir):

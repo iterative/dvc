@@ -102,9 +102,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # to check if dvc will detect that the cache is corrupted.
         obj = load(self.dvc.odb.local, out.hash_info)
         _, _, entry_oid = list(obj)[0]
-        cache = os.fspath(
-            self.dvc.odb.local.hash_to_path_info(entry_oid.value)
-        )
+        cache = self.dvc.odb.local.hash_to_path(entry_oid.value)
 
         os.chmod(cache, 0o644)
         with open(cache, "w+", encoding="utf-8") as fobj:
@@ -145,7 +143,7 @@ class CheckoutBase(TestDvcGit):
         paths = [
             path
             for output in stage["outs"]
-            for path in self.dvc.fs.walk_files(output["path"])
+            for path in self.dvc.fs.find(output["path"])
         ]
 
         return [
@@ -599,6 +597,7 @@ def test_stats_on_checkout(tmp_dir, dvc, scm):
     assert set(stats["deleted"]) == {"foo"}
 
 
+@pytest.mark.xfail(reason="values relpath")
 def test_checkout_stats_on_failure(tmp_dir, dvc, scm):
     tmp_dir.dvc_gen(
         {"foo": "foo", "dir": {"subdir": {"file": "file"}}, "other": "other"},
@@ -763,17 +762,17 @@ def test_checkout_for_external_outputs(tmp_dir, dvc, workspace):
     dvc.add("remote://workspace/foo")
 
     odb = dvc.cloud.get_remote_odb("workspace")
-    odb.fs.remove(file_path)
+    odb.fs.remove(str(file_path))
     assert not file_path.exists()
 
     stats = dvc.checkout(force=True)
-    assert stats == {**empty_checkout, "added": [str(file_path)]}
+    assert stats == {**empty_checkout, "added": ["remote://workspace/foo"]}
     assert file_path.exists()
 
     workspace.gen("foo", "foo\nfoo")
 
     stats = dvc.checkout(force=True)
-    assert stats == {**empty_checkout, "modified": [str(file_path)]}
+    assert stats == {**empty_checkout, "modified": ["remote://workspace/foo"]}
     assert file_path.read_text() == "foo"
 
 

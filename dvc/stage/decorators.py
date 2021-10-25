@@ -22,7 +22,7 @@ def rwlocked(call, read=None, write=None):
 
     def _chain(names):
         return [
-            item.path_info
+            item.fs_path
             for attr in names
             for item in getattr(stage, attr)
             # There is no need to lock RepoDependency deps, as there is no

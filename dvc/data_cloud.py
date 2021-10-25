@@ -58,9 +58,9 @@ class DataCloud:
         from dvc.fs import get_cloud_fs
         from dvc.objects.db import get_odb
 
-        cls, config, path_info = get_cloud_fs(self.repo, name=name)
+        cls, config, fs_path = get_cloud_fs(self.repo, name=name)
         config["tmp_dir"] = self.repo.index_db_dir
-        return get_odb(cls(**config), path_info, **config)
+        return get_odb(cls(**config), fs_path, **config)
 
     def push(
         self,
@@ -156,5 +156,6 @@ class DataCloud:
         )
 
     def get_url_for(self, remote, checksum):
-        remote_odb = self.get_remote_odb(remote)
-        return str(remote_odb.hash_to_path_info(checksum))
+        odb = self.get_remote_odb(remote)
+        path = odb.hash_to_path(checksum)
+        return odb.fs.unstrip_protocol(path)

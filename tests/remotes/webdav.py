@@ -6,10 +6,10 @@ import pytest
 from funcy import cached_property, first
 from wsgidav.wsgidav_app import WsgiDAVApp
 
-from dvc.path_info import WebDAVURLInfo
 from tests.utils.httpd import run_server_on_thread
 
 from .base import Base
+from .path_info import WebDAVURLInfo
 
 AUTH = {"user1": {"password": "password1"}}
 
@@ -40,6 +40,10 @@ class Webdav(Base, WebDAVURLInfo):
         from io import BytesIO
 
         self.client.upload_fileobj(BytesIO(contents), self.path)
+
+    @property
+    def fs_path(self):
+        return self.path.lstrip("/")
 
 
 @pytest.fixture

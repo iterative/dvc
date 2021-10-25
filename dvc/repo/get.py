@@ -2,7 +2,6 @@ import logging
 import os
 
 from dvc.exceptions import DvcException
-from dvc.path_info import PathInfo
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
 
@@ -50,8 +49,9 @@ def get(url, path, out=None, rev=None, jobs=None):
         with external_repo(
             url=url, rev=rev, cache_dir=tmp_dir, cache_types=cache_types
         ) as repo:
-            from_info = PathInfo(repo.root_dir) / path
-            to_info = PathInfo(out)
-            repo.repo_fs.download(from_info, to_info, jobs=jobs)
+            from_fs_path = os.path.abspath(os.path.join(repo.root_dir, path))
+            repo.repo_fs.download(
+                from_fs_path, os.path.abspath(out), jobs=jobs
+            )
     finally:
         remove(tmp_dir)

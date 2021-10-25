@@ -25,23 +25,23 @@ class ReferenceHashFile(HashFile):
 
     def __init__(
         self,
-        path_info: "AnyPath",
+        fs_path: "AnyPath",
         fs: "BaseFileSystem",
         hash_info: "HashInfo",
         checksum: Optional[str] = None,
         **kwargs,
     ):
-        super().__init__(path_info, fs, hash_info, **kwargs)
-        self.checksum = checksum or fs.checksum(path_info)
+        super().__init__(fs_path, fs, hash_info, **kwargs)
+        self.checksum = checksum or fs.checksum(fs_path)
 
     def __str__(self):
-        return f"ref object {self.hash_info} -> {self.path_info}"
+        return f"ref object {self.hash_info} -> {self.fs_path}"
 
     def check(self, odb: "ObjectDB", check_hash: bool = True):
         assert self.fs
-        if not self.fs.exists(self.path_info):
+        if not self.fs.exists(self.fs_path):
             raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), self.path_info
+                errno.ENOENT, os.strerror(errno.ENOENT), self.fs_path
             )
         if self.checksum != self._get_checksum():
             raise ObjectFormatError(f"{self} is changed")
@@ -50,23 +50,22 @@ class ReferenceHashFile(HashFile):
 
     def _get_checksum(self) -> str:
         assert self.fs
-        return self.fs.checksum(self.path_info)
+        return self.fs.checksum(self.fs_path)
 
     def to_bytes(self):
         from dvc.fs.repo import RepoFileSystem
-        from dvc.path_info import PathInfo
 
         # NOTE: dumping reference FS's this way is insecure, as the
         # fully parsed remote FS config will include credentials
         #
         # ReferenceHashFiles should currently only be serialized in
         # memory and not to disk
-        path_info = self.path_info
+        fs_path = self.fs_path
         if isinstance(self.fs, RepoFileSystem):
-            path_info = PathInfo(path_info).relative_to(self.fs.root_dir)
+            fs_path = self.fs.path.relpath(fs_path, self.fs.root_dir)
 
         dict_ = {
-            self.PARAM_PATH: path_info,
+            self.PARAM_PATH: fs_path,
             self.PARAM_HASH: self.hash_info,
             self.PARAM_CHECKSUM: self.checksum,
             self.PARAM_FS_CONFIG: self.config_tuple(self.fs),
@@ -87,7 +86,7 @@ class ReferenceHashFile(HashFile):
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
 
         try:
-            path_info = dict_[cls.PARAM_PATH]
+            fs_path = dict_[cls.PARAM_PATH]
             hash_info = dict_[cls.PARAM_HASH]
         except KeyError as exc:
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
@@ -98,12 +97,12 @@ class ReferenceHashFile(HashFile):
             config = dict(config_pairs)
             if RepoFileSystem.PARAM_REPO_URL in config:
                 fs = RepoFileSystem(**config)
-                path_info = fs.root_dir / path_info
+                fs_path = fs.path.join(fs.root_dir, fs_path)
             else:
-                fs_cls = get_fs_cls(config, scheme=path_info.scheme)
+                fs_cls = get_fs_cls(config, scheme=scheme)
                 fs = fs_cls(**config)
         return ReferenceHashFile(
-            path_info,
+            fs_path,
             fs,
             hash_info,
             checksum=dict_.get(cls.PARAM_CHECKSUM),

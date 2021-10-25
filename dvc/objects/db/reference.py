@@ -12,7 +12,7 @@ from .base import ObjectDB
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath, DvcPath
+    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,9 @@ class ReferenceObjectDB(ObjectDB):
             return self._obj_cache[hash_info]
         except KeyError:
             pass
-        path_info = self.hash_to_path(hash_info.value)
+        fs_path = self.hash_to_path(hash_info.value)
         try:
-            with self.fs.open(path_info, "rb") as fobj:
+            with self.fs.open(fs_path, "rb") as fobj:
                 ref_file = ReferenceHashFile.from_bytes(
                     fobj.read(), fs_cache=self._fs_cache
                 )
@@ -47,7 +47,7 @@ class ReferenceObjectDB(ObjectDB):
         try:
             ref_file.check(self, check_hash=False)
         except ObjectFormatError:
-            self.fs.remove(path_info)
+            self.fs.remove(fs_path)
             raise
         self._obj_cache[hash_info] = ref_file
         return ref_file
@@ -56,11 +56,11 @@ class ReferenceObjectDB(ObjectDB):
         self,
         from_fs: "BaseFileSystem",
         from_info: "AnyPath",
-        to_info: "DvcPath",
+        to_info: "AnyPath",
         hash_info: "HashInfo",
         hardlink: bool = False,
     ):
-        self.makedirs(to_info.parent)
+        self.makedirs(self.fs.path.parent(to_info))
         if hash_info.isdir:
             return super()._add_file(
                 from_fs,

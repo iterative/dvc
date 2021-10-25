@@ -1,4 +1,3 @@
-import posixpath
 from urllib.parse import urlparse
 
 from ..scheme import Schemes
@@ -39,7 +38,7 @@ def get_fs_cls(remote_conf, scheme=None):
     return FS_MAP.get(scheme, LocalFileSystem)
 
 
-def get_fs_config(config, **kwargs):
+def get_fs_config(repo, config, **kwargs):
     name = kwargs.get("name")
     if name:
         try:
@@ -50,10 +49,10 @@ def get_fs_config(config, **kwargs):
             raise RemoteNotFoundError(f"remote '{name}' doesn't exist")
     else:
         remote_conf = kwargs
-    return _resolve_remote_refs(config, remote_conf)
+    return _resolve_remote_refs(repo, config, remote_conf)
 
 
-def _resolve_remote_refs(config, remote_conf):
+def _resolve_remote_refs(repo, config, remote_conf):
     # Support for cross referenced remotes.
     # This will merge the settings, shadowing base ref with remote_conf.
     # For example, having:
@@ -79,8 +78,10 @@ def _resolve_remote_refs(config, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = get_fs_config(config, name=parsed.netloc)
-    url = posixpath.join(base["url"], parsed.path.lstrip("/"))
+    base = get_fs_config(repo, config, name=parsed.netloc)
+    cls, _, _ = get_cloud_fs(repo, **base)
+    relpath = parsed.path.lstrip("/").replace("/", cls.sep)
+    url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
@@ -91,7 +92,7 @@ def get_cloud_fs(repo, **kwargs):
     repo_config = repo.config if repo else {}
     core_config = repo_config.get("core", {})
 
-    remote_conf = get_fs_config(repo_config, **kwargs)
+    remote_conf = get_fs_config(repo, repo_config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
@@ -113,10 +114,8 @@ def get_cloud_fs(repo, **kwargs):
         remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
 
     url = remote_conf.pop("url")
-    path_info = cls.PATH_CLS(
-        cls._strip_protocol(url)  # pylint:disable=protected-access
-    )
+    fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
 
     extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
     conf = {**extras, **remote_conf}  # remote config takes priority
-    return cls, conf, path_info
+    return cls, conf, fs_path

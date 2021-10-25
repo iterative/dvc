@@ -6,7 +6,6 @@ import pytest
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.objects.db.local import LocalObjectDB
-from dvc.path_info import PathInfo
 
 
 def test_status_download_optimization(mocker, dvc):
@@ -16,7 +15,7 @@ def test_status_download_optimization(mocker, dvc):
     """
     from dvc.objects.status import compare_status
 
-    odb = LocalObjectDB(LocalFileSystem(), PathInfo("."))
+    odb = LocalObjectDB(LocalFileSystem(), os.getcwd())
     obj_ids = {
         HashInfo("md5", "acbd18db4cc2f85cedef654fccc4a4d8"),
         HashInfo("md5", "37b51d194a7513e45b56f6524f2d51f2"),
@@ -39,8 +38,8 @@ def test_is_protected(tmp_dir, dvc, link_name):
 
     (tmp_dir / "foo").write_text("foo")
 
-    foo = PathInfo(tmp_dir / "foo")
-    link = PathInfo(tmp_dir / "link")
+    foo = tmp_dir / "foo"
+    link = tmp_dir / "link"
 
     link_method(foo, link)
 
@@ -70,7 +69,7 @@ def test_protect_ignore_errors(tmp_dir, dvc, mocker, err):
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(err, "something")
     )
-    dvc.odb.local.protect(PathInfo("foo"))
+    dvc.odb.local.protect("foo")
     assert mock_chmod.called
 
 
@@ -81,7 +80,7 @@ def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
     mock_chmod = mocker.patch(
         "os.chmod", side_effect=OSError(err, "something")
     )
-    dvc.odb.local.set_exec(PathInfo("foo"))
+    dvc.odb.local.set_exec("foo")
     assert mock_chmod.called
 
 
@@ -94,7 +93,9 @@ def test_staging_file(tmp_dir, dvc):
     fs = LocalFileSystem()
 
     local_odb = dvc.odb.local
-    staging_odb, _, obj = stage(local_odb, tmp_dir / "foo", fs, "md5")
+    staging_odb, _, obj = stage(
+        local_odb, (tmp_dir / "foo").fs_path, fs, "md5"
+    )
 
     assert not local_odb.exists(obj.hash_info)
     assert staging_odb.exists(obj.hash_info)
@@ -107,8 +108,8 @@ def test_staging_file(tmp_dir, dvc):
     check(local_odb, obj)
     check(staging_odb, obj)
 
-    path_info = local_odb.hash_to_path_info(obj.hash_info.value)
-    assert fs.exists(path_info)
+    path = local_odb.hash_to_path(obj.hash_info.value)
+    assert fs.exists(path)
 
 
 def test_staging_dir(tmp_dir, dvc):
@@ -120,7 +121,9 @@ def test_staging_dir(tmp_dir, dvc):
     fs = LocalFileSystem()
     local_odb = dvc.odb.local
 
-    staging_odb, _, obj = stage(local_odb, tmp_dir / "dir", fs, "md5")
+    staging_odb, _, obj = stage(
+        local_odb, (tmp_dir / "dir").fs_path, fs, "md5"
+    )
 
     assert not local_odb.exists(obj.hash_info)
     assert staging_odb.exists(obj.hash_info)
@@ -135,5 +138,5 @@ def test_staging_dir(tmp_dir, dvc):
     check(local_odb, obj)
     check(staging_odb, obj)
 
-    path_info = local_odb.hash_to_path_info(obj.hash_info.value)
-    assert fs.exists(path_info)
+    path = local_odb.hash_to_path(obj.hash_info.value)
+    assert fs.exists(path)

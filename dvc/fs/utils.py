@@ -7,7 +7,7 @@ from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
-    from dvc.types import AnyPath, DvcPath
+    from dvc.types import AnyPath
 
     from .base import BaseFileSystem
 
@@ -18,7 +18,7 @@ def _link(
     from_fs: "BaseFileSystem",
     from_info: "AnyPath",
     to_fs: "BaseFileSystem",
-    to_info: "DvcPath",
+    to_info: "AnyPath",
     hardlink: bool = False,
 ) -> None:
     if not isinstance(from_fs, type(to_fs)):
@@ -47,7 +47,7 @@ def transfer(
     from_fs: "BaseFileSystem",
     from_info: "AnyPath",
     to_fs: "BaseFileSystem",
-    to_info: "DvcPath",
+    to_info: "AnyPath",
     hardlink: bool = False,
 ) -> None:
     try:
@@ -58,8 +58,6 @@ def transfer(
                 raise
 
         if isinstance(from_fs, LocalFileSystem):
-            if not isinstance(from_info, from_fs.PATH_CLS):
-                from_info = from_fs.PATH_CLS(from_info)
             return to_fs.upload(from_info, to_info)
 
         if isinstance(to_fs, LocalFileSystem):

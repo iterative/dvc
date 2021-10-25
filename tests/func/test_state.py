@@ -2,7 +2,6 @@ import os
 import re
 
 from dvc.hash_info import HashInfo
-from dvc.path_info import PathInfo
 from dvc.repo import Repo
 from dvc.state import State
 from dvc.utils import file_md5
@@ -11,23 +10,22 @@ from dvc.utils import file_md5
 def test_state(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo content")
     path = tmp_dir / "foo"
-    path_info = PathInfo(path)
     hash_info = HashInfo("md5", file_md5(path, dvc.fs))
 
     state = State(dvc.root_dir, dvc.tmp_dir, dvc.dvcignore)
 
-    state.save(path_info, dvc.fs, hash_info)
-    assert state.get(path_info, dvc.fs)[1] == hash_info
+    state.save(path, dvc.fs, hash_info)
+    assert state.get(path, dvc.fs)[1] == hash_info
 
     path.unlink()
     path.write_text("1")
 
-    assert state.get(path_info, dvc.fs) == (None, None)
+    assert state.get(path, dvc.fs) == (None, None)
 
     hash_info = HashInfo("md5", file_md5(path, dvc.fs))
-    state.save(path_info, dvc.fs, hash_info)
+    state.save(path, dvc.fs, hash_info)
 
-    assert state.get(path_info, dvc.fs)[1] == hash_info
+    assert state.get(path, dvc.fs)[1] == hash_info
 
 
 def test_state_overflow(tmp_dir, dvc):

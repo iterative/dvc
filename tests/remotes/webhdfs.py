@@ -4,9 +4,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from dvc.path_info import CloudURLInfo
-
 from .base import Base
+from .path_info import CloudURLInfo
 
 
 class WebHDFS(Base, CloudURLInfo):  # pylint: disable=abstract-method
@@ -54,6 +53,10 @@ class WebHDFS(Base, CloudURLInfo):  # pylint: disable=abstract-method
             encoding = locale.getpreferredencoding(False)
         assert errors is None
         return self.read_bytes().decode(encoding)
+
+    @property
+    def fs_path(self):
+        return "/" + self.path.lstrip("/")
 
 
 @pytest.fixture
