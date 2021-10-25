@@ -479,7 +479,7 @@ class Experiments:
         if name is None:
             return
 
-        baseline_sha = self.repo.scm.get_rev()
+        baseline_sha = kwargs.get("baseline_rev") or self.repo.scm.get_rev()
         exp_ref = ExpRefInfo(baseline_sha=baseline_sha, name=name)
         check_ref_format(self.scm, exp_ref)
 
