@@ -242,17 +242,11 @@ def init(
         ui.error_write(syn, styled=True)
 
     if not interactive or ui.confirm(
-        "Do you want to add above contents to dvc.yaml?"
+        "Do you want to add the above contents to dvc.yaml?"
     ):
         with _disable_logging():
             stage.dump(update_lock=False)
         stage.ignore_outs()
     else:
         raise DvcException("Aborting ...")
-
-    ui.write(
-        f"Created [bright_blue]{name}[/bright_blue] stage in "
-        "[green]dvc.yaml[/green].\n",
-        styled=True,
-    )
     return stage
