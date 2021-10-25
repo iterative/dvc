@@ -681,3 +681,8 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             os.path.join("", path)
         ):
             raise InvalidRemoteSCMRepo(url)
+
+    def check_ref_format(self, refname: str):
+        from dulwich.refs import check_ref_format
+
+        return check_ref_format(refname.encode())

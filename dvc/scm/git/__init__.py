@@ -346,6 +346,7 @@ class Git(Base):
     status = partialmethod(_backend_func, "status")
     merge = partialmethod(_backend_func, "merge")
     validate_git_remote = partialmethod(_backend_func, "validate_git_remote")
+    check_ref_format = partialmethod(_backend_func, "check_ref_format")
 
     def resolve_rev(self, rev: str) -> str:
         from dvc.repo.experiments.utils import exp_refs_by_name

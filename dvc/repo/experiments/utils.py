@@ -157,3 +157,12 @@ def resolve_exp_ref(
         msg.extend([f"\t{info}" for info in exp_ref_list])
         raise InvalidArgumentError("\n".join(msg))
     return exp_ref_list[0]
+
+
+def check_ref_format(scm: "Git", ref: ExpRefInfo):
+    # "/" forbidden, only in dvc exp as we didn't support it for now.
+    if not scm.check_ref_format(str(ref)) or "/" in ref.name:
+        raise InvalidArgumentError(
+            f"Invalid exp name {ref.name}, the exp name must follow rules in "
+            "https://git-scm.com/docs/git-check-ref-format"
+        )
