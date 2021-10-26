@@ -97,13 +97,13 @@ def _link(cache, from_info, to_info):
         raise CheckoutError([str(to_info)]) from exc
 
 
-def _cache_is_copy(cache, path_info):
+def _confirm_cache_type(cache, path_info):
     """Checks whether cache uses copies."""
     if cache.cache_type_confirmed:
-        return cache.cache_types[0] == "copy"
+        return
 
     if set(cache.cache_types) <= {"copy"}:
-        return True
+        return
 
     workspace_file = path_info.with_name("." + uuid())
     test_cache_file = cache.path_info / ".cache_type_test_file"
@@ -118,7 +118,6 @@ def _cache_is_copy(cache, path_info):
         cache.fs.remove(test_cache_file)
 
     cache.cache_type_confirmed = True
-    return cache.cache_types[0] == "copy"
 
 
 def _relink(cache, cache_info, fs, path_info, in_cache, force):
@@ -143,10 +142,13 @@ def _checkout_file(
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
+
+    _confirm_cache_type(cache, path_info)
+
     cache_info = cache.hash_to_path_info(change.new.oid.value)
     if change.old.oid:
         if relink:
-            if fs.iscopy(path_info) and _cache_is_copy(cache, path_info):
+            if fs.iscopy(path_info) and cache.cache_types[0] == "copy":
                 cache.unprotect(path_info)
             else:
                 _relink(
