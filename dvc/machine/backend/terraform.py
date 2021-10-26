@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from functools import partialmethod
+from functools import partial, partialmethod
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from dvc.exceptions import DvcException
@@ -10,8 +10,20 @@ from dvc.utils.fs import makedirs
 from .base import BaseMachineBackend
 
 if TYPE_CHECKING:
-    from dvc.repo.experiments.executor.base import BaseExecutor
     from dvc.types import StrPath
+
+
+@contextmanager
+def _sshfs(resource: dict):
+    from tpi import TerraformProviderIterative
+
+    with TerraformProviderIterative.pemfile(resource) as pem:
+        fs = SSHFileSystem(
+            host=resource["instance_ip"],
+            user="ubuntu",
+            keyfile=pem,
+        )
+        yield fs
 
 
 class TerraformBackend(BaseMachineBackend):
@@ -51,26 +63,24 @@ class TerraformBackend(BaseMachineBackend):
         _tpi_func, "run_shell"
     )  # type: ignore[assignment]
 
-    def get_executor(
-        self, name: Optional[str] = None, **config
-    ) -> "BaseExecutor":
-        raise NotImplementedError
+    def get_executor_kwargs(self, name: str, **config) -> dict:
+        with self.make_tpi(name) as tpi:
+            resource = tpi.default_resource(name)
+        return {
+            "host": resource["instance_ip"],
+            "port": SSHFileSystem.DEFAULT_PORT,
+            "username": "ubuntu",
+            "fs_factory": partial(_sshfs, dict(resource)),
+        }
 
     @contextmanager
     def get_sshfs(  # pylint: disable=unused-argument
         self, name: Optional[str] = None, **config
     ) -> Iterator["SSHFileSystem"]:
-        from tpi import TerraformProviderIterative
-
         assert name
         with self.make_tpi(name) as tpi:
             resource = tpi.default_resource(name)
-        with TerraformProviderIterative.pemfile(resource) as pem:
-            fs = SSHFileSystem(
-                host=resource["instance_ip"],
-                user="ubuntu",
-                keyfile=pem,
-            )
+        with _sshfs(resource) as fs:
             yield fs
 
     def rename(self, name: str, new: str, **config):

@@ -674,8 +674,8 @@ class Experiments:
                 name=item.name,
                 branch=item.branch,
                 tmp_dir=base_tmp_dir,
-                cache_dir=self.repo.odb.local.cache_dir,
             )
+            executor.init_cache(self.repo, stash_rev)
             executors[stash_rev] = executor
 
         for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
