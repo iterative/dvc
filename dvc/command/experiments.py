@@ -806,6 +806,10 @@ class CmdExperimentsInit(CmdBase):
         "plots": PLOTS,
         "live": DVCLIVE,
     }
+    EXP_LINK = (
+        "https://dvc.org/doc"
+        "/user-guide/experiment-management/running-experiments"
+    )
 
     def run(self):
         from dvc.command.stage import parse_cmd
@@ -843,10 +847,34 @@ class CmdExperimentsInit(CmdBase):
             interactive=self.args.interactive,
             force=self.args.force,
         )
+
+        name = self.args.name or self.args.type
+
+        text = ui.rich_text.assemble(
+            "\n" if self.args.interactive else "",
+            "Created ",
+            (name, "bright_blue"),
+            " stage in ",
+            ("dvc.yaml", "green"),
+            ".",
+        )
+        if not self.args.run:
+            text.append_text(
+                ui.rich_text.assemble(
+                    " To run, use ",
+                    ('"dvc exp run"', "green"),
+                    ".\nSee ",
+                    (self.EXP_LINK, "repr.url"),
+                    ".",
+                )
+            )
+
+        ui.write(text, styled=True)
         if self.args.run:
             return self.repo.experiments.run(
                 targets=[initialized_stage.addressing]
             )
+
         return 0
 
 
