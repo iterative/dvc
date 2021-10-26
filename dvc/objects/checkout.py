@@ -121,6 +121,16 @@ def _cache_is_copy(cache, path_info):
     return cache.cache_types[0] == "copy"
 
 
+def _relink(cache, cache_info, fs, path_info, in_cache, force):
+    _remove(path_info, fs, in_cache, force=force)
+    _link(cache, cache_info, path_info)
+    # NOTE: Depending on a file system (e.g. on NTFS), `_remove` might reset
+    # read-only permissions in order to delete a hardlink to protected object,
+    # which will also reset it for the object itself, making it unprotected,
+    # so we need to protect it back.
+    cache.protect(cache_info)
+
+
 def _checkout_file(
     path_info,
     fs,
@@ -139,12 +149,24 @@ def _checkout_file(
             if fs.iscopy(path_info) and _cache_is_copy(cache, path_info):
                 cache.unprotect(path_info)
             else:
-                _remove(path_info, fs, change.old.in_cache, force=force)
-                _link(cache, cache_info, path_info)
+                _relink(
+                    cache,
+                    cache_info,
+                    fs,
+                    path_info,
+                    change.old.in_cache,
+                    force=force,
+                )
         else:
             modified = True
-            _remove(path_info, fs, change.old.in_cache, force=force)
-            _link(cache, cache_info, path_info)
+            _relink(
+                cache,
+                cache_info,
+                fs,
+                path_info,
+                change.old.in_cache,
+                force=force,
+            )
     else:
         _link(cache, cache_info, path_info)
         modified = True
