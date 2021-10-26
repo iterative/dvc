@@ -345,6 +345,14 @@ class Repo:
         root_dir = cls.find_root(root)
         return os.path.join(root_dir, cls.DVC_DIR)
 
+    @property
+    def is_initialized(self):
+        try:
+            self.find_root()
+            return True
+        except NotDvcRepoError:
+            return False
+
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
         from dvc.repo.init import init

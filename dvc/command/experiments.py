@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional
 from funcy import compact, lmap
 
 from dvc.command import completion
-from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.command.base import (
+    CmdBase,
+    CmdBaseNoRepo,
+    append_doc_link,
+    fix_subparsers,
+)
 from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
@@ -789,7 +794,7 @@ class CmdExperimentsRemove(CmdBase):
         return 0
 
 
-class CmdExperimentsInit(CmdBase):
+class CmdExperimentsInit(CmdBaseNoRepo):
     CODE = "src"
     DATA = "data"
     MODELS = "models"
@@ -813,7 +818,15 @@ class CmdExperimentsInit(CmdBase):
 
     def run(self):
         from dvc.command.stage import parse_cmd
+        from dvc.repo import Repo
+        from dvc.scm import Git
+        from dvc.scm.base import SCMError
 
+        repo = Repo(uninitialized=True)
+        if not isinstance(repo.scm, Git) and not repo.is_initialized:
+            raise SCMError(f"{repo.scm.root_dir} is not a git repository")
+
+        initialize = not repo.is_initialized
         cmd = parse_cmd(self.args.cmd)
         if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
@@ -822,7 +835,7 @@ class CmdExperimentsInit(CmdBase):
 
         defaults = {}
         if not self.args.explicit:
-            config = self.repo.config["exp"]
+            config = repo.config["exp"]
             defaults.update({**self.DEFAULTS, **config})
 
         cli_args = compact(
@@ -839,19 +852,25 @@ class CmdExperimentsInit(CmdBase):
         )
 
         initialized_stage = init(
-            self.repo,
+            repo,
             name=self.args.name,
             type=self.args.type,
             defaults=defaults,
             overrides=cli_args,
             interactive=self.args.interactive,
             force=self.args.force,
+            initialize=initialize,
         )
 
         name = self.args.name or self.args.type
 
+        if self.args.interactive:
+            ui.write()
+
+        if initialize:
+            ui.write("Initialized DVC repository.", styled=True)
+
         text = ui.rich_text.assemble(
-            "\n" if self.args.interactive else "",
             "Created ",
             (name, "bright_blue"),
             " stage in ",
@@ -871,9 +890,7 @@ class CmdExperimentsInit(CmdBase):
 
         ui.write(text, styled=True)
         if self.args.run:
-            return self.repo.experiments.run(
-                targets=[initialized_stage.addressing]
-            )
+            return repo.experiments.run(targets=[initialized_stage.addressing])
 
         return 0
 

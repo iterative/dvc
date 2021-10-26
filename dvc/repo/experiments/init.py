@@ -102,6 +102,12 @@ def _prompts(keys: Iterable[str], defaults: Dict[str, OptStr]):
 
 @contextmanager
 def _disable_logging(highest_level=logging.CRITICAL):
+    from dvc.logger import _is_verbose
+
+    if _is_verbose():
+        yield
+        return
+
     previous_level = logging.root.manager.disable
 
     logging.disable(highest_level)
@@ -189,6 +195,7 @@ def init(
     overrides: Dict[str, str] = None,
     interactive: bool = False,
     force: bool = False,
+    initialize: bool = False,
 ) -> "Stage":
     from dvc.dvcfile import make_dvcfile
 
@@ -251,11 +258,16 @@ def init(
         syn = Syntax(_yaml, "yaml", theme="ansi_dark")
         ui.error_write(syn, styled=True)
 
-    if not interactive or ui.confirm(
-        "Do you want to add the above contents to dvc.yaml?"
-    ):
+    confirmation_message = (
+        "Do you want to "
+        + ("initialize DVC and " if initialize else "")
+        + "add the above contents to dvc.yaml?"
+    )
+    if not interactive or ui.confirm(confirmation_message):
         scm = repo.scm
         with _disable_logging(), scm.track_file_changes(autostage=True):
+            if initialize:
+                repo.init()
             stage.dump(update_lock=False)
             stage.ignore_outs()
             scm.track_file(params)
