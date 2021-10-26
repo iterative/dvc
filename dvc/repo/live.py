@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import TYPE_CHECKING, List, Optional
 
 from dvc.render.utils import render
@@ -19,10 +18,7 @@ def create_summary(out):
 
     html_path = out.path_info.fspath + "_dvc_plots"
 
-    index_path = render(
-        out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5
-    )
-    logger.info(f"\nfile://{os.path.abspath(index_path)}")
+    render(out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5)
 
 
 def summary_path_info(out: "Output") -> Optional["PathInfo"]:
