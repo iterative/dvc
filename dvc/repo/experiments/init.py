@@ -224,13 +224,13 @@ def init(
     assert "cmd" in context
 
     params_kv = []
-    if context.get("params"):
+    params = context.get("params")
+    if params:
         from dvc.utils.serialize import LOADERS
 
-        path = context["params"]
-        assert isinstance(path, str)
-        _, ext = os.path.splitext(path)
-        params_kv = [{path: list(LOADERS[ext](path))}]
+        assert isinstance(params, str)
+        _, ext = os.path.splitext(params)
+        params_kv = [{params: list(LOADERS[ext](params))}]
 
     checkpoint_out = bool(context.get("live"))
     models = context.get("models")
@@ -255,9 +255,11 @@ def init(
     if not interactive or ui.confirm(
         "Do you want to add the above contents to dvc.yaml?"
     ):
-        with _disable_logging():
+        scm = repo.scm
+        with _disable_logging(), scm.track_file_changes(autostage=True):
             stage.dump(update_lock=False)
-        stage.ignore_outs()
+            stage.ignore_outs()
+            scm.track_file(params)
     else:
         raise DvcException("Aborting ...")
     return stage
