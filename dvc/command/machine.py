@@ -193,7 +193,14 @@ class CmdMachineCreate(CmdBase):
 
 
 class CmdMachineStatus(CmdBase):
-    SHOWN_FIELD = ["name", "cloud", "instance_hdd_size", "instance_ip"]
+    SHOWN_FIELD = [
+        "name",
+        "cloud",
+        "instance_ip",
+        "instance_type",
+        "instance_hdd_size",
+        "instance_gpu",
+    ]
 
     def run(self):
         if self.repo.machine is None:
