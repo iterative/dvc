@@ -183,8 +183,10 @@ class Base:
         """
 
     @contextmanager
-    def track_file_changes(self, config=None):
-        autostage = get_in(config or {}, ["core", "autostage"])
+    def track_file_changes(self, config=None, autostage=False):
+        autostage = get_in(
+            config or {}, ["core", "autostage"], default=autostage
+        )
 
         try:
             yield
