@@ -146,16 +146,14 @@ def init_interactive(
     show_tree: bool = False,
     live: bool = False,
 ) -> Dict[str, str]:
-    primary = lremove(
-        provided.keys(), ["cmd", "code", "data", "models", "params"]
-    )
+    command = provided.pop("cmd", None)
+    primary = lremove(provided.keys(), ["code", "data", "models", "params"])
     secondary = lremove(
         provided.keys(), ["live"] if live else ["metrics", "plots"]
     )
 
     ret: Dict[str, str] = {}
-
-    if not (primary or secondary):
+    if not (command or primary or secondary):
         return ret
 
     message = ui.rich_text.assemble(
@@ -170,6 +168,13 @@ def init_interactive(
     )
     ui.error_write(message, doc_link, "", sep="\n", styled=True)
 
+    if not command:
+        ret.update(_prompts(["cmd"], defaults))
+        ui.write()
+    else:
+        ret.update({"cmd": command})
+
+    ui.write("Enter the paths for dependencies and outputs of the command.")
     if show_tree:
         from rich.tree import Tree
 
@@ -178,7 +183,6 @@ def init_interactive(
             highlight=True,
         )
         workspace = {**defaults, **provided}
-        workspace.pop("cmd", None)
         if not live and "live" not in provided:
             workspace.pop("live", None)
         for value in sorted(workspace.values()):
