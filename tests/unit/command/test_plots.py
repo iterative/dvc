@@ -1,5 +1,6 @@
 import os
 import posixpath
+from pathlib import Path
 
 import pytest
 
@@ -149,10 +150,29 @@ def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data):
     mocker.patch("dvc.command.plots.render", return_value=index_path)
 
     assert cmd.run() == 0
-    mocked_open.assert_called_once_with(index_path)
+    mocked_open.assert_called_once_with(index_path.as_uri())
 
     out, _ = capsys.readouterr()
     assert index_path.as_uri() in out
+
+
+def test_plots_diff_open_WSL(tmp_dir, dvc, mocker, plots_data):
+    mocked_open = mocker.patch("webbrowser.open", return_value=True)
+    mocked_uname_result = mocker.MagicMock()
+    mocked_uname_result.release = "Microsoft"
+    mocker.patch("platform.uname", return_value=mocked_uname_result)
+
+    cli_args = parse_args(
+        ["plots", "diff", "--targets", "plots.csv", "--open"]
+    )
+    cmd = cli_args.func(cli_args)
+    mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
+
+    index_path = tmp_dir / "dvc_plots" / "index.html"
+    mocker.patch("dvc.command.plots.render", return_value=index_path)
+
+    assert cmd.run() == 0
+    mocked_open.assert_called_once_with(Path("dvc_plots") / "index.html")
 
 
 def test_plots_diff_open_failed(tmp_dir, dvc, mocker, capsys, plots_data):
@@ -167,7 +187,7 @@ def test_plots_diff_open_failed(tmp_dir, dvc, mocker, capsys, plots_data):
 
     assert cmd.run() == 1
     expected_url = tmp_dir / "dvc_plots" / "index.html"
-    mocked_open.assert_called_once_with(expected_url)
+    mocked_open.assert_called_once_with(expected_url.as_uri())
 
     error_message = "Failed to open. Please try opening it manually."
 

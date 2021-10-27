@@ -68,8 +68,12 @@ class CmdPlots(CmdBase):
 
             if self.args.open:
                 import webbrowser
+                from platform import uname
 
-                opened = webbrowser.open(index_path)
+                if "Microsoft" in uname().release:
+                    url = Path(rel) / "index.html"
+
+                opened = webbrowser.open(url)
                 if not opened:
                     ui.error_write(
                         "Failed to open. Please try opening it manually."
