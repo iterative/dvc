@@ -471,6 +471,9 @@ def show_experiments(
         }
     )
 
+    if kwargs.get("only_changed", False):
+        td.drop_duplicates("cols")
+
     td.render(
         pager=pager,
         borders=True,
@@ -537,6 +540,7 @@ class CmdExperimentsShow(CmdBase):
                 pager=not self.args.no_pager,
                 csv=self.args.csv,
                 markdown=self.args.markdown,
+                only_changed=self.args.only_changed,
             )
         return 0
 
@@ -1032,6 +1036,15 @@ def add_parser(subparsers, parent_parser):
             f"point. Rounds to {DEFAULT_PRECISION} digits by default."
         ),
         metavar="<n>",
+    )
+    experiments_show_parser.add_argument(
+        "--only-changed",
+        action="store_true",
+        default=False,
+        help=(
+            "Only show metrics/params with values varying "
+            "across the selected experiments."
+        ),
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
 

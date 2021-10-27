@@ -538,3 +538,47 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
         )
         in cap.out
     )
+
+
+def test_show_only_changed(tmp_dir, dvc, scm, capsys):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    params_file = tmp_dir / "params.yaml"
+    params_data = {
+        "foo": 1,
+        "bar": 1,
+    }
+    (tmp_dir / params_file).dump(params_data)
+
+    dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo", "bar"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
+    dvc.experiments.run(params=["foo=2"])
+
+    capsys.readouterr()
+    assert main(["exp", "show"]) == 0
+    cap = capsys.readouterr()
+
+    print(cap)
+    assert "bar" in cap.out
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--only-changed"]) == 0
+    cap = capsys.readouterr()
+
+    assert "bar" not in cap.out
