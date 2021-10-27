@@ -188,7 +188,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 f"Invalid 'axis' value {axis}."
                 "Choose one of ['rows', 'cols']"
             )
-
         to_drop: Set = set()
         for n_row, row in enumerate(self):
             for n_col, col in enumerate(row):
@@ -210,6 +209,41 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 )
         else:
             self.drop(*to_drop)
+
+    def drop_duplicates(self, axis: str = "rows"):
+        if axis not in ["rows", "cols"]:
+            raise ValueError(
+                f"Invalid 'axis' value {axis}."
+                "Choose one of ['rows', 'cols']"
+            )
+
+        if axis == "cols":
+            cols_to_drop: List[str] = []
+            for n_col, col in enumerate(self.columns):
+                # Cast to str because Text is not hashable error
+                unique_vals = {str(x) for x in col if x != self._fill_value}
+                if len(unique_vals) == 1:
+                    cols_to_drop.append(self.keys()[n_col])
+            self.drop(*cols_to_drop)
+
+        elif axis == "rows":
+            unique_rows = []
+            rows_to_drop: List[int] = []
+            for n_row, row in enumerate(self):
+                tuple_row = tuple(row)
+                if tuple_row in unique_rows:
+                    rows_to_drop.append(n_row)
+                else:
+                    unique_rows.append(tuple_row)
+
+            for name in self.keys():
+                self._columns[name] = Column(
+                    [
+                        x
+                        for n, x in enumerate(self._columns[name])
+                        if n not in rows_to_drop
+                    ]
+                )
 
 
 def _normalize_float(val: float, precision: int):
