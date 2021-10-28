@@ -555,10 +555,6 @@ class Output:
 
         assert not self.IS_DEPENDENCY
 
-        if not self.changed():
-            logger.debug("Output '%s' didn't change. Skipping saving.", self)
-            return
-
         _, self.meta, self.obj = ostage(
             self.odb,
             self.path_info,
