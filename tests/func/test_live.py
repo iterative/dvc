@@ -237,6 +237,7 @@ def test_live_checkpoints_resume(
 
 def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     show_spy = mocker.spy(dvc.live, "show")
+    webbrowser_open = mocker.patch("dvc.repo.live.webbrowser_open")
 
     # make sure script takes more time to execute than one monitor sleep cycle
     monitor_await_time = 0.01
@@ -258,6 +259,7 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     live_stage(summary=True, live="logs", code=script)
 
     assert show_spy.call_count == 2
+    assert webbrowser_open.call_count == 2
 
 
 def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):
