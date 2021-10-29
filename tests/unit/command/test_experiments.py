@@ -46,7 +46,6 @@ def test_experiments_diff(dvc, scm, mocker):
             "--param-deps",
             "--json",
             "--md",
-            "--old",
             "--precision",
             "10",
         ]
@@ -61,6 +60,29 @@ def test_experiments_diff(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo, a_rev="HEAD~10", b_rev="HEAD~1", all=True, param_deps=True
     )
+
+
+def test_experiments_diff_revs(mocker, capsys):
+    mocker.patch(
+        "dvc.repo.experiments.diff.diff",
+        return_value={
+            "params": {
+                "params.yaml": {"foo": {"diff": 1, "old": 1, "new": 2}}
+            },
+            "metrics": {
+                "metrics.yaml": {"foo": {"diff": 1, "old": 1, "new": 2}}
+            },
+        },
+    )
+
+    cli_args = parse_args(["exp", "diff", "exp_a", "exp_b"])
+    cmd = cli_args.func(cli_args)
+
+    capsys.readouterr()
+    assert cmd.run() == 0
+    cap = capsys.readouterr()
+    assert "exp_a" in cap.out
+    assert "exp_b" in cap.out
 
 
 def test_experiments_show(dvc, scm, mocker):
