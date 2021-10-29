@@ -587,7 +587,6 @@ class CmdExperimentsDiff(CmdBase):
                     title=title,
                     markdown=self.args.markdown,
                     no_path=self.args.no_path,
-                    old=self.args.old,
                     on_empty_diff="diff not supported",
                     precision=precision if key == "metrics" else None,
                     a_rev=self.args.a_rev,
@@ -1113,12 +1112,6 @@ def add_parser(subparsers, parent_parser):
         default=False,
         dest="markdown",
         help="Show tabulated output in the Markdown format (GFM).",
-    )
-    experiments_diff_parser.add_argument(
-        "--old",
-        action="store_true",
-        default=False,
-        help="Show old ('a_rev') metric/param value.",
     )
     experiments_diff_parser.add_argument(
         "--no-path",
