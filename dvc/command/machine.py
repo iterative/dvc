@@ -300,7 +300,7 @@ def add_parser(subparsers, parent_parser):
     )
     machine_default_parser.set_defaults(func=CmdMachineDefault)
 
-    machine_LIST_HELP = "List the configuration of one/all machines."
+    machine_LIST_HELP = "List the config of one specified or all machines."
     machine_list_parser = machine_subparsers.add_parser(
         "list",
         parents=[parent_config_parser, parent_parser],
@@ -318,7 +318,7 @@ def add_parser(subparsers, parent_parser):
         "name",
         nargs="?",
         type=str,
-        help="name of machine to specify",
+        help="Specified machine name. will list all machines if not provided",
     )
     machine_list_parser.set_defaults(func=CmdMachineList)
     machine_MODIFY_HELP = "Modify the configuration of an machine."
