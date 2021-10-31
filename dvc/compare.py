@@ -182,21 +182,42 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             {k: self._columns[k][i] for k in keys} for i in range(len(self))
         ]
 
-    def dropna(self, axis: str = "rows"):
+    def dropna(self, axis: str = "rows", how="any"):
         if axis not in ["rows", "cols"]:
             raise ValueError(
                 f"Invalid 'axis' value {axis}."
                 "Choose one of ['rows', 'cols']"
             )
+<<<<<<< HEAD
         to_drop: Set = set()
+=======
+        if how not in ["any", "all"]:
+            raise ValueError(
+                f"Invalid 'how' value {how}." "Choose one of ['any', 'all']"
+            )
+
+        match_line: Set = set()
+        match = True
+        if how == "all":
+            match = False
+
+>>>>>>> 8ad4b8aa (TabularData: add a new how `arg` to dropna(#6892))
         for n_row, row in enumerate(self):
             for n_col, col in enumerate(row):
-                if col == self._fill_value:
+                if (col == self._fill_value) is match:
                     if axis == "rows":
-                        to_drop.add(n_row)
+                        match_line.add(n_row)
                         break
                     else:
-                        to_drop.add(self.keys()[n_col])
+                        match_line.add(self.keys()[n_col])
+
+        to_drop = match_line
+        if how == "all":
+            if axis == "rows":
+                to_drop = set(range(len(self)))
+            else:
+                to_drop = set(self.keys())
+            to_drop -= match_line
 
         if axis == "rows":
             for name in self.keys():
