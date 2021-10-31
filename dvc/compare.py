@@ -188,9 +188,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
                 f"Invalid 'axis' value {axis}."
                 "Choose one of ['rows', 'cols']"
             )
-<<<<<<< HEAD
-        to_drop: Set = set()
-=======
         if how not in ["any", "all"]:
             raise ValueError(
                 f"Invalid 'how' value {how}." "Choose one of ['any', 'all']"
@@ -201,7 +198,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         if how == "all":
             match = False
 
->>>>>>> 8ad4b8aa (TabularData: add a new how `arg` to dropna(#6892))
         for n_row, row in enumerate(self):
             for n_col, col in enumerate(row):
                 if (col == self._fill_value) is match:

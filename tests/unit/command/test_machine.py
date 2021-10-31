@@ -1,3 +1,5 @@
+import os
+
 import configobj
 import pytest
 from mock import call
@@ -110,16 +112,24 @@ def test_ssh(tmp_dir, dvc, mocker):
     m.assert_called_once_with("foo")
 
 
-def test_list(tmp_dir, mocker):
+@pytest.mark.parametrize("show_origin", [["--show-origin"], []])
+def test_list(tmp_dir, mocker, show_origin):
+    from dvc.compare import TabularData
     from dvc.ui import ui
 
     tmp_dir.gen(DATA)
-    cli_args = parse_args(["machine", "list", "foo"])
+    cli_args = parse_args(["machine", "list"] + show_origin + ["foo"])
     assert cli_args.func == CmdMachineList
     cmd = cli_args.func(cli_args)
-    m = mocker.patch.object(ui, "write", autospec=True)
+    if show_origin:
+        m = mocker.patch.object(ui, "write", autospec=True)
+    else:
+        m = mocker.patch.object(TabularData, "render", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with("cloud=aws")
+    if show_origin:
+        m.assert_called_once_with(f".dvc{os.sep}config	cloud=aws")
+    else:
+        m.assert_called_once()
 
 
 def test_modified(tmp_dir):
