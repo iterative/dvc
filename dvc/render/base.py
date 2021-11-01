@@ -45,8 +45,17 @@ class Renderer(abc.ABC):
     def as_json(self):
         raise NotImplementedError
 
+    @staticmethod
+    def _remove_special_chars(string: str):
+        return string.translate(
+            {ord(c): "_" for c in r"!@#$%^&*()[]{};,<>?\/:.|`~=_+"}
+        )
+
     def generate_html(self, path: "StrPath"):
         """this method might edit content of path"""
         partial = self._convert(path)
-        div_id = f"plot_{self.filename.replace('.', '_').replace('/', '_')}"
+
+        div_id = self._remove_special_chars(self.filename)
+        div_id = f"plot_{div_id}"
+
         return self.DIV.format(id=div_id, partial=partial)
