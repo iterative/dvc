@@ -6,7 +6,7 @@ repos:
       - id: black
         language_version: python3
     repo: https://github.com/ambv/black
-    rev: 21.9b0
+    rev: 21.10b0
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:
