@@ -2,7 +2,6 @@ import locale
 import os
 import platform
 import subprocess
-import sys
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -74,10 +73,7 @@ class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
 @pytest.fixture(scope="session")
 def hadoop(test_config):
     test_config.requires("real_hdfs")
-
-    if sys.version_info >= (3, 10):
-        pytest.skip("pyarrow is not available for 3.10 yet.")
-
+    pytest.importorskip("pyarrow.fs")
     if platform.system() != "Linux":
         pytest.skip("only supported on Linux")
 
@@ -280,9 +276,7 @@ def hdfs(test_config, mocker):
     # "The pyarrow installation is not built with support for
     # 'HadoopFileSystem'"
     test_config.requires("hdfs")
-
-    if sys.version_info >= (3, 10):
-        pytest.skip("pyarrow is not available for 3.10 yet.")
+    pytest.importorskip("pyarrow.fs")
 
     mocker.patch("pyarrow.fs._not_imported", [])
     mocker.patch(
