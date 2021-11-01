@@ -241,7 +241,6 @@ SCHEMA = {
                 Lower, Choices("us-west", "us-east", "eu-west", "eu-north")
             ),
             "image": str,
-            "name": str,
             "spot": Bool,
             "spot_price": Coerce(float),
             "instance_hdd_size": Coerce(int),
