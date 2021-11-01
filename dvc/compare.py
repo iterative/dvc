@@ -116,6 +116,8 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             del col[item]
 
     def __len__(self) -> int:
+        if not self._columns:
+            return 0
         return len(self.columns[0])
 
     @property
