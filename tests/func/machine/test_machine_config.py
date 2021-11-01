@@ -16,7 +16,6 @@ from .conftest import BASIC_CONFIG
     [
         ("region", "us-west"),
         ("image", "iterative-cml"),
-        ("name", "iterative_test"),
         ("spot", "True"),
         ("spot_price", "1.2345"),
         ("spot_price", "12345"),
@@ -75,7 +74,6 @@ FULL_CONFIG_TEXT = textwrap.dedent(
             cloud = aws
             region = us-west
             image = iterative-cml
-            name = iterative_test
             spot = True
             spot_price = 1.2345
             instance_hdd_size = 10
