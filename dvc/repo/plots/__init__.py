@@ -187,7 +187,7 @@ class Plots:
         props = props or {}
         template = props.get("template")
         if template:
-            self.templates.load(template)
+            self.templates.get_template(template)
 
         (out,) = self.repo.find_outs_by_path(path)
         if not out.plot and unset is not None:
