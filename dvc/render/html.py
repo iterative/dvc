@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.render import Renderer
+    from dvc.render.base import Renderer
     from dvc.types import StrPath
 
 PAGE_HTML = """<!DOCTYPE html>
@@ -13,9 +13,7 @@ PAGE_HTML = """<!DOCTYPE html>
 <head>
     {refresh_tag}
     <title>DVC Plot</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
+    {scripts}
 </head>
 <body>
     {plot_divs}
@@ -29,8 +27,9 @@ class MissingPlaceholderError(DvcException):
 
 
 class HTML:
-    PLACEHOLDER = "plot_divs"
-    PLACEHOLDER_FORMAT_STR = f"{{{PLACEHOLDER}}}"
+    SCRIPTS_PLACEHOLDER = "scripts"
+    PLOTS_PLACEHOLDER = "plot_divs"
+    PLOTS_PLACEHOLDER_FORMAT_STR = f"{{{PLOTS_PLACEHOLDER}}}"
     REFRESH_PLACEHOLDER = "refresh_tag"
     REFRESH_TAG = '<meta http-equiv="refresh" content="{}">'
 
@@ -40,11 +39,12 @@ class HTML:
         refresh_seconds: Optional[int] = None,
     ):
         template = template or PAGE_HTML
-        if self.PLACEHOLDER_FORMAT_STR not in template:
-            raise MissingPlaceholderError(self.PLACEHOLDER_FORMAT_STR)
+        if self.PLOTS_PLACEHOLDER_FORMAT_STR not in template:
+            raise MissingPlaceholderError(self.PLOTS_PLACEHOLDER_FORMAT_STR)
 
         self.template = template
         self.elements: List[str] = []
+        self.scripts: str = ""
         self.refresh_tag = ""
         if refresh_seconds is not None:
             self.refresh_tag = self.REFRESH_TAG.format(refresh_seconds)
@@ -65,13 +65,19 @@ class HTML:
         self.elements.append(tabulate.tabulate(rows, header, tablefmt="html"))
         return self
 
+    def with_scripts(self, scripts: str) -> "HTML":
+        if scripts not in self.scripts:
+            self.scripts += f"\n{scripts}"
+        return self
+
     def with_element(self, html: str) -> "HTML":
         self.elements.append(html)
         return self
 
     def embed(self) -> str:
         kwargs = {
-            self.PLACEHOLDER: "\n".join(self.elements),
+            self.SCRIPTS_PLACEHOLDER: self.scripts,
+            self.PLOTS_PLACEHOLDER: "\n".join(self.elements),
             self.REFRESH_PLACEHOLDER: self.refresh_tag,
         }
         return self.template.format(**kwargs)
@@ -98,6 +104,7 @@ def write(
         document.with_element("<br>")
 
     for renderer in renderers:
+        document.with_scripts(renderer.SCRIPTS)
         document.with_element(renderer.generate_html(path))
 
     index = Path(os.path.join(path, "index.html"))

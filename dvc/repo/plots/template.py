@@ -20,10 +20,6 @@ class TemplateNotFoundError(DvcException):
         super().__init__(f"Template '{name}' not found.")
 
 
-class BadTemplateError(DvcException):
-    pass
-
-
 class NoFieldInDataError(DvcException):
     def __init__(self, field_name):
         super().__init__(
@@ -41,59 +37,26 @@ class Template:
         self.content = content
         self.name = name
 
-    def render(self, data, props=None):
-        props = props or {}
-
-        if self._anchor_str("data") not in self.content:
-            anchor = self.anchor("data")
-            raise BadTemplateError(
-                f"Template '{self.name}' is not using '{anchor}' anchor"
-            )
-
-        if props.get("x"):
-            Template._check_field_exists(data, props.get("x"))
-        if props.get("y"):
-            Template._check_field_exists(data, props.get("y"))
-
-        content = self._fill_anchor(self.content, "data", data)
-        content = self._fill_metadata(content, props)
-
-        return content
-
     @classmethod
     def anchor(cls, name):
         return cls.ANCHOR.format(name.upper())
 
     def has_anchor(self, name):
-        return self._anchor_str(name) in self.content
+        return self.anchor_str(name) in self.content
 
     @classmethod
-    def _fill_anchor(cls, content, name, value):
+    def fill_anchor(cls, content, name, value):
         value_str = json.dumps(
             value, indent=cls.INDENT, separators=cls.SEPARATORS, sort_keys=True
         )
-        return content.replace(cls._anchor_str(name), value_str)
+        return content.replace(cls.anchor_str(name), value_str)
 
     @classmethod
-    def _anchor_str(cls, name):
+    def anchor_str(cls, name):
         return f'"{cls.anchor(name)}"'
 
-    @classmethod
-    def _fill_metadata(cls, content, props):
-        props.setdefault("title", "")
-        props.setdefault("x_label", props.get("x"))
-        props.setdefault("y_label", props.get("y"))
-
-        names = ["title", "x", "y", "x_label", "y_label"]
-        for name in names:
-            value = props.get(name)
-            if value is not None:
-                content = cls._fill_anchor(content, name, value)
-
-        return content
-
     @staticmethod
-    def _check_field_exists(data, field):
+    def check_field_exists(data, field):
         if not any(field in row for row in data):
             raise NoFieldInDataError(field)
 
