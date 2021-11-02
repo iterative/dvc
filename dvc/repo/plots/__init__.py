@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Callable, Dict, Generator, List, Optional
 from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException
-from dvc.render.vega import PlotMetricTypeError
 from dvc.utils import (
     error_handler,
     errored_revisions,
@@ -22,6 +21,14 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
+
+
+class PlotMetricTypeError(DvcException):
+    def __init__(self, file):
+        super().__init__(
+            "'{}' - file type error\n"
+            "Only JSON, YAML, CSV and TSV formats are supported.".format(file)
+        )
 
 
 class NotAPlotError(DvcException):

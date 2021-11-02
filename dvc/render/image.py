@@ -1,7 +1,7 @@
 import os
 from typing import TYPE_CHECKING
 
-from dvc.render import Renderer
+from dvc.render.base import Renderer
 from dvc.render.utils import get_files
 from dvc.utils import relpath
 
@@ -16,6 +16,8 @@ class ImageRenderer(Renderer):
             style="border: 1px solid;">
             {partial}
         </div>"""
+
+    SCRIPTS = ""
 
     def _write_image(
         self,
@@ -55,6 +57,9 @@ class ImageRenderer(Renderer):
             div_content.insert(0, f"<p>{self.filename}</p>")
             return "\n".join(div_content)
         return ""
+
+    def as_json(self):
+        raise NotImplementedError
 
     @staticmethod
     def matches(data):

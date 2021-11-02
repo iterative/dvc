@@ -22,7 +22,7 @@ CUSTOM_PAGE_HTML = """<!DOCTYPE html>
         (
             None,
             ["content"],
-            PAGE_HTML.format(plot_divs="content", refresh_tag=""),
+            PAGE_HTML.format(plot_divs="content", refresh_tag="", scripts=""),
         ),
         (
             CUSTOM_PAGE_HTML,
