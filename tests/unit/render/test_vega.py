@@ -471,6 +471,6 @@ def test_should_resolve_template(tmp_dir, dvc, template_path, target_name):
     with open(template_path, "w", encoding="utf-8") as fd:
         fd.write("template_content")
 
-    assert dvc.plots.templates._find_in_project(
-        target_name
-    ) == os.path.abspath(template_path)
+    assert dvc.plots.templates.get_template(target_name) == os.path.abspath(
+        template_path
+    )
