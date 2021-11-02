@@ -202,15 +202,15 @@ def test_cleanfs_subrepo(tmp_dir, dvc, scm, monkeypatch):
 
     path = PathInfo(subrepo_dir)
 
-    assert dvc.fs.exists(path / "foo")
-    assert dvc.fs.isfile(path / "foo")
-    assert dvc.fs.exists(path / "dir")
-    assert dvc.fs.isdir(path / "dir")
+    assert dvc.fs.exists(dvc.fs.path.join(path, "foo"))
+    assert dvc.fs.isfile(dvc.fs.path.join(path, "foo"))
+    assert dvc.fs.exists(dvc.fs.path.join(path, "dir"))
+    assert dvc.fs.isdir(dvc.fs.path.join(path, "dir"))
 
-    assert subrepo.fs.exists(path / "foo")
-    assert subrepo.fs.isfile(path / "foo")
-    assert subrepo.fs.exists(path / "dir")
-    assert subrepo.fs.isdir(path / "dir")
+    assert subrepo.fs.exists(subrepo.fs.path.join(path, "foo"))
+    assert subrepo.fs.isfile(subrepo.fs.path.join(path, "foo"))
+    assert subrepo.fs.exists(subrepo.fs.path.join(path, "dir"))
+    assert subrepo.fs.isdir(subrepo.fs.path.join(path, "dir"))
 
 
 def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
@@ -249,8 +249,8 @@ def test_fs_getsize(dvc, cloud):
     cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
 
-    assert fs.getsize(path_info / "baz") == 7
-    assert fs.getsize(path_info / "data" / "foo") == 3
+    assert fs.getsize(fs.path.join(path_info, "baz")) == 7
+    assert fs.getsize(fs.path.join(path_info, "data", "foo")) == 3
 
 
 @pytest.mark.needs_internet
@@ -274,7 +274,7 @@ def test_fs_upload_fobj(dvc, tmp_dir, cloud):
     fs = cls(**config)
 
     from_info = tmp_dir / "foo"
-    to_info = path_info / "foo"
+    to_info = fs.path.join(path_info, "foo")
 
     with open(from_info, "rb") as stream:
         fs.upload_fobj(stream, to_info)
@@ -309,10 +309,10 @@ def test_fs_ls(dvc, cloud):
         "baz",
         "empty",
     }
-    assert set(fs.ls(path_info / "empty")) == set()
+    assert set(fs.ls(fs.path.join(path_info, "empty"))) == set()
     assert {
         (detail["type"], os.path.basename(detail["name"].rstrip("/")))
-        for detail in fs.ls(path_info / "baz", detail=True)
+        for detail in fs.ls(fs.path.join(path_info, "baz"), detail=True)
     } == {("file", "quux"), ("directory", "egg")}
 
 
@@ -333,11 +333,12 @@ def test_fs_find(dvc, cloud):
     fs = cls(**config)
 
     assert {
-        os.path.basename(file_key) for file_key in fs.find(path_info / "data")
+        os.path.basename(file_key)
+        for file_key in fs.find(fs.path.join(path_info, "data"))
     } == {"foo", "baz", "quux"}
     assert {
         os.path.basename(file_info["name"])
-        for file_info in fs.find(path_info / "data", detail=True)
+        for file_info in fs.find(fs.path.join(path_info, "data"), detail=True)
     } == {"foo", "baz", "quux"}
 
 
@@ -357,11 +358,8 @@ def test_fs_find_with_etag(dvc, cloud):
     cls, config, path_info = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
 
-    for details in fs.find(path_info / "data", detail=True):
-        assert (
-            fs.info(path_info.replace(path=details["name"]))["etag"]
-            == details["etag"]
-        )
+    for details in fs.find(fs.path.join(path_info, "data"), detail=True):
+        assert fs.info(details["name"])["etag"] == details["etag"]
 
 
 @pytest.mark.parametrize(
@@ -406,14 +404,16 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     fs = cls(**config)
 
     with io.BytesIO(b"foo") as stream:
-        fs.upload(stream, cloud / "dir" / "foo")
+        fs.upload(stream, fs.path.join(cloud, "dir", "foo"))
 
-    assert fs.isdir(cloud / "dir")
-    assert fs.exists(cloud / "dir" / "foo")
+    assert fs.isdir(fs.path.join(cloud, "dir"))
+    assert fs.exists(fs.path.join(cloud, "dir", "foo"))
 
-    fs.copy(cloud / "dir" / "foo", cloud / "dir2" / "foo")
-    assert fs.isdir(cloud / "dir2")
-    assert fs.exists(cloud / "dir2" / "foo")
+    fs.copy(
+        fs.path.join(cloud, "dir", "foo"), fs.path.join(cloud, "dir2", "foo")
+    )
+    assert fs.isdir(fs.path.join(cloud, "dir2"))
+    assert fs.exists(fs.path.join(cloud, "dir2", "foo"))
 
 
 @pytest.mark.needs_internet
@@ -440,7 +440,11 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     expected_size = os.path.getsize(tmp_dir / "foo")
 
     callback = fsspec.Callback()
-    fs.upload(tmp_dir / "foo", cloud / "foo", callback=callback)
+    fs.upload(
+        fs.path.join(tmp_dir, "foo"),
+        fs.path.join(cloud, "foo"),
+        callback=callback,
+    )
 
     assert callback.size == expected_size
     assert callback.value == expected_size
@@ -468,11 +472,15 @@ def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
     fs = cls(**config)
 
     (tmp_dir / "to_upload").write_text("foo")
-    fs.upload(tmp_dir / "to_upload", cloud / "foo")
-    expected_size = fs.getsize(cloud / "foo")
+    fs.upload(fs.path.join(tmp_dir, "to_upload"), fs.path.join(cloud, "foo"))
+    expected_size = fs.getsize(fs.path.join(cloud, "foo"))
 
     callback = fsspec.Callback()
-    fs.download_file(cloud / "foo", tmp_dir / "foo", callback=callback)
+    fs.download_file(
+        fs.path.join(cloud, "foo"),
+        fs.path.join(tmp_dir, "foo"),
+        callback=callback,
+    )
 
     assert callback.size == expected_size
     assert callback.value == expected_size
@@ -504,7 +512,7 @@ def test_download_dir_callback(tmp_dir, dvc, cloud):
     cloud.gen({"dir": {"foo": "foo", "bar": "bar"}})
 
     callback = fsspec.Callback()
-    fs.download(cloud / "dir", tmp_dir / "dir", callback=callback)
+    fs.download(fs.path.join(cloud, "dir"), tmp_dir / "dir", callback=callback)
 
     assert callback.size == 2
     assert callback.value == 2
@@ -519,7 +527,11 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
     fs = dvc.dvcfs if fs_type == "dvc" else scm.get_fs("HEAD")
 
     callback = fsspec.Callback()
-    fs.download(tmp_dir / "file", tmp_dir / "file2", callback=callback)
+    fs.download(
+        fs.path.join(tmp_dir, "file"),
+        fs.path.join(tmp_dir, "file2"),
+        callback=callback,
+    )
 
     size = os.path.getsize(tmp_dir / "file")
     assert (tmp_dir / "file2").read_text() == "file"
@@ -530,7 +542,11 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
         pytest.skip("gitfs does not support download_dir")
 
     callback = fsspec.Callback()
-    fs.download(tmp_dir / "dir", tmp_dir / "dir2", callback=callback)
+    fs.download(
+        fs.path.join(tmp_dir, "dir"),
+        fs.path.join(tmp_dir, "dir2"),
+        callback=callback,
+    )
 
     assert (tmp_dir / "dir2").read_text() == {"foo": "foo", "bar": "bar"}
     assert callback.size == 2
@@ -544,14 +560,22 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
     fs = dvc.repo_fs
 
     callback = fsspec.Callback()
-    fs.download(tmp_dir / "dir", tmp_dir / "dir2", callback=callback)
+    fs.download(
+        fs.path.join(tmp_dir, "dir"),
+        fs.path.join(tmp_dir, "dir2"),
+        callback=callback,
+    )
 
     assert (tmp_dir / "dir2").read_text() == {"foo": "foo", "bar": "bar"}
     assert callback.size == 2
     assert callback.value == 2
 
     callback = fsspec.Callback()
-    fs.download(tmp_dir / "dir" / "foo", tmp_dir / "foo", callback=callback)
+    fs.download(
+        fs.path.join(tmp_dir, "dir", "foo"),
+        fs.path.join(tmp_dir, "foo"),
+        callback=callback,
+    )
 
     size = os.path.getsize(tmp_dir / "dir" / "foo")
     assert (tmp_dir / "foo").read_text() == "foo"
@@ -559,7 +583,11 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
     assert callback.value == size
 
     callback = fsspec.Callback()
-    fs.download(tmp_dir / "dir" / "bar", tmp_dir / "bar", callback=callback)
+    fs.download(
+        fs.path.join(tmp_dir, "dir", "bar"),
+        fs.path.join(tmp_dir, "bar"),
+        callback=callback,
+    )
 
     size = os.path.getsize(tmp_dir / "dir" / "bar")
     assert (tmp_dir / "bar").read_text() == "bar"
