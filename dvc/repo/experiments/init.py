@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Dict, Iterable, cast
 
 from funcy import compact, lremove, post_processing
-from rich.prompt import Prompt
+from rich.prompt import Confirm, Prompt
 from rich.rule import Rule
 from rich.syntax import Syntax
 
@@ -33,7 +33,37 @@ PROMPTS = {
 }
 
 
-class RequiredPrompt(Prompt):
+class RichInputMixin:
+    """Prevents exc message from printing in the same line on Ctrl + D/C."""
+
+    @classmethod
+    def get_input(cls, *args, **kwargs) -> str:
+        try:
+            return super().get_input(*args, **kwargs)  # type: ignore[misc]
+        except (KeyboardInterrupt, EOFError):
+            ui.error_write()
+            raise
+
+
+class ConfirmationPrompt(RichInputMixin, Confirm):
+    def make_prompt(self, default):
+        prompt = self.prompt.copy()
+        prompt.end = ""
+
+        prompt.append(" [")
+        yes, no = self.choices
+        for idx, (val, choice) in enumerate(((True, yes), (False, no))):
+            if idx:
+                prompt.append("/")
+            if val == default:
+                prompt.append(choice.upper(), "green")
+            else:
+                prompt.append(choice)
+        prompt.append("] ")
+        return prompt
+
+
+class RequiredPrompt(RichInputMixin, Prompt):
     def process_response(self, value: str):
         from rich.prompt import InvalidResponse
 
@@ -43,14 +73,6 @@ class RequiredPrompt(Prompt):
                 "[prompt.invalid]Response required. Please try again."
             )
         return ret
-
-    @classmethod
-    def get_input(cls, *args, **kwargs) -> str:
-        try:
-            return super().get_input(*args, **kwargs)
-        except (KeyboardInterrupt, EOFError):
-            ui.error_write()
-            raise
 
     def render_default(self, default):
         from rich.text import Text
@@ -251,8 +273,10 @@ def init(
         syn = Syntax(_yaml, "yaml", theme="ansi_dark")
         ui.error_write(syn, styled=True)
 
-    if not interactive or ui.confirm(
-        "Do you want to add the above contents to dvc.yaml?"
+    if not interactive or ConfirmationPrompt.ask(
+        "Do you want to add the above contents to dvc.yaml?",
+        console=ui.error_console,
+        default=True,
     ):
         scm = repo.scm
         with _disable_logging(), scm.track_file_changes(autostage=True):
