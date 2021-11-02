@@ -131,8 +131,10 @@ def init_interactive(
         provided.keys(), ["live"] if live else ["metrics", "plots"]
     )
 
+    ret: Dict[str, str] = {}
+
     if not (primary or secondary):
-        return {}
+        return ret
 
     message = ui.rich_text.assemble(
         "This command will guide you to set up a ",
@@ -162,12 +164,9 @@ def init_interactive(
         ui.error_write(tree, styled=True)
         ui.error_write()
 
-    return compact(
-        {
-            **_prompts(primary, defaults),
-            **_prompts(secondary, defaults),
-        }
-    )
+    ret.update(_prompts(primary, defaults))
+    ret.update(_prompts(secondary, defaults))
+    return compact(ret)
 
 
 def _check_stage_exists(
