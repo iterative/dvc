@@ -8,7 +8,6 @@ from dvc.repo.collect import StrPaths, collect
 from dvc.repo.live import summary_fs_path
 from dvc.scm.base import SCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
-from dvc.utils.path import as_string
 from dvc.utils.serialize import load_yaml
 
 logger = logging.getLogger(__name__)
@@ -81,7 +80,9 @@ def _read_metrics(repo, metrics, rev, onerror=None):
         if not fs.isfile(metric):
             continue
 
-        res[as_string(metric)] = _read_metric(metric, fs, rev, onerror=onerror)
+        res[fs.path.relpath(metric, str(repo))] = _read_metric(
+            metric, fs, rev, onerror=onerror
+        )
 
     return res
 

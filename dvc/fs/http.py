@@ -128,3 +128,6 @@ class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
     def _entry_hook(self, entry):
         entry["checksum"] = entry.get("ETag") or entry.get("Content-MD5")
         return entry
+
+    def _with_bucket(self, entry):
+        return str(entry)

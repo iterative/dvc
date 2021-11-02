@@ -77,7 +77,10 @@ def _read_params(
         if from_path:
             res[fs_path] = from_path
 
-    return res
+    return {
+        repo.fs.path.relpath(path, str(repo)): items
+        for path, items in res.items()
+    }
 
 
 def _collect_vars(repo, params) -> Dict:

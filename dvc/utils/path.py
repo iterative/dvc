@@ -1,7 +1,8 @@
 import os
 import posixpath
+from urllib.parse import urlparse
 
-from dvc.path_info import HTTPURLInfo, URLInfo
+from dvc.path_info import URLInfo
 
 
 def add_prefix(prefix, result, suffix):
@@ -34,7 +35,7 @@ def manipulation(
             else:
                 prefix, real_path, suffix = manager.split_path(path)
 
-            result = func(manager, path, *args, **kwargs)
+            result = func(manager, real_path, *args, **kwargs)
             return add_prefix(prefix, result, suffix)
 
         return wrapper
@@ -59,19 +60,24 @@ class Proxy:
         assert len(new_path) > 0
         return new_path
 
+    def scheme(self, path):
+        parse_result = urlparse(path)
+        return parse_result.scheme
+
     def split_path(self, path):
         from urllib.parse import urlparse, urlunparse
 
         if self.scheme == "local":
             return "", path, ""
 
+        path = as_string(path)
         parse_result = urlparse(path)
         prefix = ""
         if parse_result.scheme:
             prefix += parse_result.scheme + "://"
         suffix = ""
 
-        if set(parse_result.netloc) & {".", "@"} or parse_result.scheme in (
+        if set(parse_result.netloc) & {":", "@"} or parse_result.scheme in (
             "http",
             "https",
         ):
@@ -222,18 +228,8 @@ url_manager = Proxy(posixpath, "url")
 
 def as_string(path):
     if isinstance(path, URLInfo):
-        # TODO: change this to a proper parser FQN
-        if isinstance(path, HTTPURLInfo):
-            return path.url
-        elif "@" in path.bucket or "example.com" in path.bucket:
-            return path.path
-        else:
-            return "/" + path.bucket.rstrip("/") + "/" + path.path.lstrip("/")
-    elif path is None:
+        return path.url
+    elif path is not None:
+        return os.fspath(path)  # bytes
+    else:
         return None
-
-    res_path = os.fspath(path)
-    if not isinstance(res_path, str):
-        res_path = res_path.decode()
-
-    return url_manager.split_path(res_path)[1]

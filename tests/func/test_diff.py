@@ -440,6 +440,7 @@ def test_diff_add_similar_files(tmp_dir, scm, dvc, commit_last):
         {"dir2": {"file": "text1", "subdir": {"file2": "text2"}}},
         commit=last_commit_msg,
     )
+
     assert dvc.diff(a_rev) == {
         "added": [
             {

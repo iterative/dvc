@@ -94,7 +94,7 @@ class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
 
         if out.is_dir_checksum:
             checksum = self._get_granular_hash(path, out).value
-            cache_path = out.odb.hash_to_path_info(checksum).url
+            cache_path = out.odb.hash_to_path(checksum).url
         else:
             cache_path = out.cache_path
         return out.odb.fs, cache_path

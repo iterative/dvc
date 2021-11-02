@@ -6,7 +6,6 @@ from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
 
 from dvc.progress import DEFAULT_CALLBACK
-from dvc.utils.path import as_string
 
 from .base import BaseFileSystem
 
@@ -47,7 +46,8 @@ class FSSpecWrapper(BaseFileSystem):
         raise NotImplementedError
 
     def _with_bucket(self, path: AnyFSPath) -> str:
-        return as_string(path)
+        _, real_path, _ = self.path.split_path(path)
+        return real_path
 
     def _strip_bucket(self, entry: str) -> str:
         return entry
@@ -219,6 +219,9 @@ class FSSpecWrapper(BaseFileSystem):
 # pylint: disable=abstract-method
 class ObjectFSWrapper(FSSpecWrapper):
     TRAVERSE_PREFIX_LEN = 3
+
+    def _strip_bucket(self, entry: str) -> str:
+        return "/" + entry.lstrip("/")
 
     def makedirs(self, path_info: AnyFSPath, **kwargs) -> None:
         # For object storages make this method a no-op. The original

@@ -176,7 +176,7 @@ def _dir_output_paths(fs, fs_path, obj, targets=None):
             fs.path.isin_or_eq(fname, target) for target in targets
         ):
             # pylint: disable=no-member
-            yield fname, oid.value
+            yield fs.path.join(fs.path.name(fs_path), *key), oid.value
 
 
 def _filter_missing(repo_fs, paths):

@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 
@@ -27,11 +25,7 @@ def run_copy_metrics(tmp_dir, run_copy):
 
         if hasattr(tmp_dir.dvc, "scm"):
             files = [stage.path]
-            files += [
-                os.fspath(out.path_info)
-                for out in stage.outs
-                if not out.use_cache
-            ]
+            files += [out.fs_path for out in stage.outs if not out.use_cache]
             tmp_dir.dvc.scm.add(files)
             if commit:
                 tmp_dir.dvc.scm.commit(commit)
