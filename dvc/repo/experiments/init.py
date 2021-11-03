@@ -281,6 +281,13 @@ def init(
                     f"'{value}' {reason}. "
                     "Please retry with an existing parameters file."
                 )
+        elif key in ("code", "data"):
+            if not os.path.exists(value):
+                ui.error_write(
+                    f"[yellow]'{value}' does not exist in the workspace. "
+                    '"exp run" may fail.[/]',
+                    styled=True,
+                )
 
     if interactive:
         defaults = init_interactive(
