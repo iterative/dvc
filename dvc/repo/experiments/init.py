@@ -240,10 +240,10 @@ def init(
             # suppress `metrics`/`params` if live is selected, unless
             # it is also provided via overrides/cli.
             # This makes output to be a checkpoint as well.
-            defaults.pop("metrics")
-            defaults.pop("params")
+            defaults.pop("metrics", None)
+            defaults.pop("params", None)
         else:
-            defaults.pop("live")  # suppress live otherwise
+            defaults.pop("live", None)  # suppress live otherwise
 
     context: Dict[str, str] = {**defaults, **overrides}
     assert "cmd" in context
