@@ -175,21 +175,21 @@ def init_interactive(
         ret.update({"cmd": command})
 
     ui.write("Enter the paths for dependencies and outputs of the command.")
-    if show_tree:
+    workspace = {**defaults, **provided}
+    if show_tree and workspace:
         from rich.tree import Tree
 
         tree = Tree(
             "DVC assumes the following workspace structure:",
             highlight=True,
         )
-        workspace = {**defaults, **provided}
         if not live and "live" not in provided:
             workspace.pop("live", None)
         for value in sorted(workspace.values()):
             tree.add(f"[green]{value}[/green]")
         ui.error_write(tree, styled=True)
-        ui.error_write()
 
+    ui.error_write()
     ret.update(_prompts(primary, defaults))
     ret.update(_prompts(secondary, defaults))
     return compact(ret)
