@@ -286,7 +286,8 @@ def init(
         with _disable_logging(), scm.track_file_changes(autostage=True):
             stage.dump(update_lock=False)
             stage.ignore_outs()
-            scm.track_file(params)
+            if params:
+                scm.track_file(params)
     else:
         raise DvcException("Aborting ...")
     return stage
