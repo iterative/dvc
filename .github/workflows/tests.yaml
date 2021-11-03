@@ -20,7 +20,7 @@ jobs:
       uses: styfle/cancel-workflow-action@0.9.1
       with:
         access_token: ${{ github.token }}
-    - uses: actions/checkout@v2.3.5
+    - uses: actions/checkout@v2.4.0
       with:
         fetch-depth: 0
     - name: Set up Python 3.8
@@ -51,7 +51,7 @@ jobs:
           - os: windows-latest
             pyv: "3.10"
     steps:
-    - uses: actions/checkout@v2.3.5
+    - uses: actions/checkout@v2.4.0
       with:
         fetch-depth: 0
     - name: Set up Python
