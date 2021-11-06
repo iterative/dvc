@@ -179,10 +179,12 @@ SCHEMA = {
                 },
                 "hdfs": {"user": str, "kerb_ticket": str, **REMOTE_COMMON},
                 "webhdfs": {
-                    "hdfscli_config": str,
-                    "webhdfs_token": str,
-                    "user": str,
-                    "webhdfs_alias": str,
+                    "kerberos": Bool,
+                    "kerberos_principal": str,
+                    "proxy_to": str,
+                    "ssl_verify": Any(Bool, str),
+                    "token": str,
+                    "use_https": Bool,
                     **REMOTE_COMMON,
                 },
                 "azure": {
