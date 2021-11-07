@@ -84,21 +84,35 @@ class Console:
         )
 
     def write_json(
-        self, data: Any, indent: int = 2, default: Callable = None
+        self,
+        data: Any,
+        indent: int = None,
+        highlight: bool = None,
+        stderr: bool = False,
+        skip_keys: bool = False,
+        ensure_ascii: bool = True,
+        check_circular: bool = True,
+        allow_nan: bool = True,
+        default: Optional[Callable[[Any], Any]] = None,
+        sort_keys: bool = False,
     ) -> None:
-        import json
+        if highlight is None:
+            highlight = self.isatty()
+        if indent is None and self.isatty():
+            indent = 2
 
-        if self.isatty():
-            from rich.highlighter import JSONHighlighter
-
-            j = json.dumps(data, indent=indent, default=default)
-            highlighter = JSONHighlighter()
-            text = highlighter(j)
-            text.no_wrap = True
-            text.overflow = None
-            return self.write(text, styled=True)
-
-        return self.write(json.dumps(data, default=default))
+        console = self.error_console if stderr else self.rich_console
+        return console.print_json(
+            data=data,
+            indent=indent,
+            highlight=bool(highlight),
+            skip_keys=skip_keys,
+            ensure_ascii=ensure_ascii,
+            check_circular=check_circular,
+            allow_nan=allow_nan,
+            default=default,
+            sort_keys=sort_keys,
+        )
 
     def write(
         self,
