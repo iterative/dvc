@@ -32,11 +32,9 @@ class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
 
     def _prepare_credentials(self, **config):
         self._ssl_verify = config.pop("ssl_verify", True)
-        config["kerb_kwargs"] = {}
-        if "kerberos_principal" in config:
-            config["kerb_kwargs"]["principal"] = config.pop(
-                "kerberos_principal"
-            )
+        principal = config.pop("kerberos_principal", None)
+        if principal:
+            config["kerb_kwargs"] = {"principal": principal}
         return config
 
     @wrap_prop(threading.Lock())
