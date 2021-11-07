@@ -31,9 +31,10 @@ class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
         )
 
     def _prepare_credentials(self, **config):
-        if "webhdfs_token" in config:
-            config["token"] = config.pop("webhdfs_token")
-
+        self._ssl_verify = config.pop("ssl_verify", True)
+        principal = config.pop("kerberos_principal", None)
+        if principal:
+            config["kerb_kwargs"] = {"principal": principal}
         return config
 
     @wrap_prop(threading.Lock())
@@ -41,7 +42,9 @@ class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
     def fs(self):
         from fsspec.implementations.webhdfs import WebHDFS
 
-        return WebHDFS(**self.fs_args)
+        fs = WebHDFS(**self.fs_args)
+        fs.session.verify = self._ssl_verify
+        return fs
 
     def checksum(self, path_info):
         path = self._with_bucket(path_info)
