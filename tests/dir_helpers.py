@@ -290,6 +290,15 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
 CACHE = {}
 
 
+def _fs_copy(src, dst, ignore=None):
+    import shutil
+
+    if os.path.isdir(src):
+        shutil.copytree(src, dst, ignore=ignore)
+    else:
+        shutil.copy2(src, dst)
+
+
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
     def make(name, *, scm=False, dvc=False, subdir=False):
@@ -297,7 +306,6 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
 
         from dvc.repo import Repo
         from dvc.scm.git import Git
-        from dvc.utils.fs import fs_copy
 
         cache = CACHE.get((scm, dvc, subdir))
         if not cache:
@@ -311,7 +319,7 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
         ignore = ignore_patterns("cache.db*")
         for entry in os.listdir(cache):
             # shutil.copytree's dirs_exist_ok is only available in >=3.8
-            fs_copy(
+            _fs_copy(
                 os.path.join(cache, entry),
                 os.path.join(path, entry),
                 ignore=ignore,
