@@ -376,7 +376,7 @@ def resolve_paths(repo, out, always_local=False):
 
     scheme = urlparse(out).scheme
 
-    if os.name == "nt" and scheme == localfs.path.drive(abspath)[0].lower():
+    if os.name == "nt" and scheme == os.path.splitdrive(abspath)[0][0].lower():
         # urlparse interprets windows drive letters as URL scheme
         scheme = ""
 
