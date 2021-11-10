@@ -1,8 +1,6 @@
 import logging
 import os
 
-from funcy import cached_property
-
 from dvc.scheme import Schemes
 from dvc.system import System
 from dvc.utils import is_exec, tmp_fname
@@ -10,17 +8,8 @@ from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from ..progress import DEFAULT_CALLBACK
 from .base import BaseFileSystem
-from .path import Path
 
 logger = logging.getLogger(__name__)
-
-
-class LocalPath(Path):
-    def parent(self, path):
-        return os.path.dirname(path)
-
-    def drive(self, path):
-        return os.path.splitdrive(path)[0]
 
 
 class LocalFileSystem(BaseFileSystem):
@@ -36,10 +25,6 @@ class LocalFileSystem(BaseFileSystem):
 
         super().__init__(**config)
         self.fs = LocalFS()
-
-    @cached_property
-    def path(self):
-        return LocalPath(os.sep)
 
     @staticmethod
     def open(path, mode="r", encoding=None, **kwargs):
