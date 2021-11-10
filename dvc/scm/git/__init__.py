@@ -3,11 +3,10 @@
 import logging
 import os
 import re
-import shlex
 from collections.abc import Mapping
 from contextlib import contextmanager
 from functools import partialmethod
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Type
+from typing import Dict, Iterable, Optional, Tuple, Type
 
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
@@ -82,10 +81,6 @@ class Git(Base):
     def __init__(
         self, *args, backends: Optional[Iterable[str]] = None, **kwargs
     ):
-        self.ignored_paths: List[str] = []
-        self.files_to_track: Set[str] = set()
-        self.quiet: bool = False
-
         self.backends = GitBackends(backends, *args, **kwargs)
         first_ = first(self.backends.values())
         super().__init__(first_.root_dir)
@@ -163,20 +158,13 @@ class Git(Base):
 
         return entry, gitignore
 
-    def ignore(self, path):
+    def ignore(self, path: str) -> Optional[str]:
         entry, gitignore = self._get_gitignore(path)
-
         if self.is_ignored(path):
-            return
-
-        msg = f"Adding '{relpath(path)}' to '{relpath(gitignore)}'."
-        logger.debug(msg)
+            return None
 
         self._add_entry_to_gitignore(entry, gitignore)
-
-        self.track_file(relpath(gitignore))
-
-        self.ignored_paths.append(path)
+        return relpath(gitignore)
 
     def _add_entry_to_gitignore(self, entry, gitignore):
         entry = GitWildMatchPattern.escape(entry)
@@ -195,11 +183,11 @@ class Git(Base):
             if new_entry not in unique_lines:
                 fobj.write(new_entry)
 
-    def ignore_remove(self, path):
+    def ignore_remove(self, path: str) -> Optional[str]:
         entry, gitignore = self._get_gitignore(path)
 
         if not os.path.exists(gitignore):
-            return
+            return None
 
         with open(gitignore, encoding="utf-8") as fobj:
             lines = fobj.readlines()
@@ -208,12 +196,11 @@ class Git(Base):
 
         if not filtered:
             os.unlink(gitignore)
-            return
+            return None
 
         with open(gitignore, "w", encoding="utf-8") as fobj:
             fobj.writelines(filtered)
-
-        self.track_file(relpath(gitignore))
+        return relpath(gitignore)
 
     def verify_hook(self, name):
         if (self.hooks_dir / name).exists():
@@ -236,43 +223,6 @@ class Git(Base):
     ) -> None:
         self.gitpython.repo.git.config(f"merge.{name}.name", description)
         self.gitpython.repo.git.config(f"merge.{name}.driver", driver)
-
-    def cleanup_ignores(self):
-        for path in self.ignored_paths:
-            self.ignore_remove(path)
-        self.reset_ignores()
-
-    def reset_ignores(self):
-        self.ignored_paths = []
-
-    def reset_tracked_files(self):
-        self.files_to_track = set()
-
-    def remind_to_track(self):
-        if self.quiet or not self.files_to_track:
-            return
-
-        files = " ".join(shlex.quote(path) for path in self.files_to_track)
-
-        logger.info(
-            "\n"
-            "To track the changes with git, run:\n"
-            "\n"
-            "\tgit add {files}\n"
-            "\n"
-            "To enable auto staging, run:\n"
-            "\n"
-            "\tdvc config core.autostage true".format(files=files)
-        )
-
-    def track_changed_files(self):
-        if not self.files_to_track:
-            return
-
-        self.add(self.files_to_track)
-
-    def track_file(self, path: str):
-        self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):
         basename = os.path.basename(path)

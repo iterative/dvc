@@ -130,8 +130,7 @@ class StageLoad:
             force=force,
             **stage_data,
         )
-        scm = self.repo.scm
-        with scm.track_file_changes(config=self.repo.config):
+        with self.repo.scm_context:
             stage.dump(update_lock=update_lock)
             stage.ignore_outs()
 

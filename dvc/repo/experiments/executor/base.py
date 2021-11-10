@@ -392,7 +392,7 @@ class BaseExecutor(ABC):
 
         dvc = Repo(dvc_dir)
         if cls.QUIET:
-            dvc.scm.quiet = cls.QUIET
+            dvc.scm_context.quiet = cls.QUIET
         if dvc_dir is not None:
             old_cwd: Optional[str] = os.getcwd()
             if rel_cwd:

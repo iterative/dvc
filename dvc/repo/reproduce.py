@@ -8,12 +8,14 @@ from dvc.repo.scm_context import scm_context
 from . import locked
 
 if typing.TYPE_CHECKING:
+    from dvc.stage import Stage
+
     from . import Repo
 
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stage, **kwargs):
+def _reproduce_stage(stage: "Stage", **kwargs):
     def _run_callback(repro_callback):
         _dump_stage(stage)
         _track_stage(stage)
@@ -56,27 +58,33 @@ def _dump_stage(stage):
     dvcfile.dump(stage, update_pipeline=False)
 
 
-def _track_stage(stage):
-    from dvc.utils import relpath
-
-    stage.repo.scm.track_file(stage.dvcfile.relpath)
+def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
+    yield stage.dvcfile.relpath
     for dep in stage.deps:
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
             and not stage.repo.repo_fs.isdvc(dep.fs_path)
         ):
-            stage.repo.scm.track_file(relpath(dep.fs_path))
+            yield dep.fs_path
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
-            stage.repo.scm.track_file(relpath(out.fs_path))
+            yield out.fs_path
         if out.live:
             from dvc.repo.live import summary_fs_path
 
             summary = summary_fs_path(out)
             if summary:
-                stage.repo.scm.track_file(relpath(summary))
-    stage.repo.scm.track_changed_files()
+                yield summary
+
+
+def _track_stage(stage: "Stage") -> None:
+    from dvc.utils import relpath
+
+    context = stage.repo.scm_context
+    for path in _get_stage_files(stage):
+        context.track_file(relpath(path))
+    return context.track_changed_files()
 
 
 @locked
