@@ -396,7 +396,7 @@ def add_parser(subparsers, parent_parser):
     machine_CREATE_HELP = "Create and start a machine instance."
     machine_create_parser = machine_subparsers.add_parser(
         "create",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_parser],
         description=append_doc_link(machine_CREATE_HELP, "machine/create"),
         help=machine_CREATE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -411,7 +411,7 @@ def add_parser(subparsers, parent_parser):
     )
     machine_status_parser = machine_subparsers.add_parser(
         "status",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_parser],
         description=append_doc_link(machine_STATUS_HELP, "machine/status"),
         help=machine_STATUS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -424,7 +424,7 @@ def add_parser(subparsers, parent_parser):
     machine_DESTROY_HELP = "Destroy an machine instance."
     machine_destroy_parser = machine_subparsers.add_parser(
         "destroy",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_parser],
         description=append_doc_link(machine_DESTROY_HELP, "machine/destroy"),
         help=machine_DESTROY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -437,7 +437,7 @@ def add_parser(subparsers, parent_parser):
     machine_SSH_HELP = "Connect to a machine via SSH."
     machine_ssh_parser = machine_subparsers.add_parser(
         "ssh",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_parser],
         description=append_doc_link(machine_SSH_HELP, "machine/ssh"),
         help=machine_SSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
