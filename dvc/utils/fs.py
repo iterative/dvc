@@ -22,13 +22,6 @@ umask = os.umask(0)
 os.umask(umask)
 
 
-def fs_copy(src, dst, ignore=None):
-    if os.path.isdir(src):
-        shutil.copytree(src, dst, ignore=ignore)
-    else:
-        shutil.copy2(src, dst)
-
-
 def get_inode(path):
     inode = System.inode(path)
     logger.trace("Path '%s' inode '%d'", path, inode)
