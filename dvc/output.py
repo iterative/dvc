@@ -718,7 +718,7 @@ class Output:
 
         fs_path = self.fs.path
         if filter_info and filter_info != self.fs_path:
-            prefix = fs_path.parts(fs_path.relpath(filter_info, self.fs_path))
+            prefix = fs_path.relparts(filter_info, self.fs_path)
             obj = obj.get(self.odb, prefix)
 
         return obj
