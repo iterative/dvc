@@ -331,7 +331,7 @@ class BaseFileSystem:
             return None
 
         to_infos = (
-            localfs.path.join(to_info, self.path.relpath(info, from_info))
+            localfs.path.join(to_info, *self.path.relparts(info, from_info))
             for info in from_infos
         )
         callback.set_size(len(from_infos))

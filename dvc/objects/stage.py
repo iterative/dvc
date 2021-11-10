@@ -163,8 +163,7 @@ def _build_tree(fs_path, fs, name, **kwargs):
         # Yes, this is a BUG, as long as we permit "/" in
         # filenames on Windows and "\" on Unix
 
-        relpath = fs.path.relpath(file_fs_path, fs_path)
-        key = tuple(relpath.split(fs.path.sep))
+        key = fs.path.relparts(file_fs_path, fs_path)
         assert key
         tree.add(key, meta, obj.hash_info)
 

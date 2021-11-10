@@ -77,5 +77,8 @@ class Path:
         normbase = base.rstrip(self.sep)
         return normpath[len(normbase) + 1 :]
 
+    def relparts(self, path, base):
+        return self.parts(self.relpath(path, base))
+
     def as_posix(self, path):
         return path.replace(self.sep, posixpath.sep)
