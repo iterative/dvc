@@ -1,4 +1,5 @@
 import configobj
+import pytest
 from mock import call
 
 from dvc.cli import parse_args
@@ -139,3 +140,29 @@ def test_rename(tmp_dir, scm, dvc):
     assert cmd.run() == 0
     config = configobj.ConfigObj(str(tmp_dir / ".dvc" / "config"))
     assert config['machine "bar"']["cloud"] == "aws"
+
+
+@pytest.mark.parametrize(
+    "cmd,use_config",
+    [
+        ("add", True),
+        ("default", True),
+        ("remove", True),
+        ("list", True),
+        ("modify", True),
+        ("create", False),
+        ("destroy", False),
+        ("rename", True),
+        ("status", False),
+        ("ssh", False),
+    ],
+)
+def test_help_message(tmp_dir, scm, dvc, cmd, use_config, capsys):
+
+    try:
+        parse_args(["machine", cmd, "--help"])
+    except SystemExit:
+        pass
+    cap = capsys.readouterr()
+    print(cap.out)
+    assert ("--global" in cap.out) is use_config
