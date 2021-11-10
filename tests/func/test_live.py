@@ -11,12 +11,16 @@ from dvc.render.utils import get_files
 LIVE_SCRIPT = dedent(
     """
         from dvclive import Live
+        from PIL import Image
+
         import sys
         r = 2
         metrics_logger = Live()
         for i in range(r):
            metrics_logger.log("loss", 1-i/r)
            metrics_logger.log("accuracy", i/r)
+           image = Image.new("RGB", (10,10), (i,i,i))
+           metrics_logger.log("image.jpg", image)
            metrics_logger.next_step()"""
 )
 
@@ -129,6 +133,8 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
     files = get_files(plots_data)
     assert os.path.join("logs", "accuracy.tsv") in files
     assert os.path.join("logs", "loss.tsv") in files
+    assert os.path.join("logs", "0", "image.jpg") in files
+    assert os.path.join("logs", "1", "image.jpg") in files
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
