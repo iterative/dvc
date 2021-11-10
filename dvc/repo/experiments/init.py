@@ -344,12 +344,11 @@ def init(
         console=ui.error_console,
         default=True,
     ):
-        scm = repo.scm
-        with _disable_logging(), scm.track_file_changes(autostage=True):
+        with repo.scm_context(autostage=True, quiet=True), _disable_logging():
             stage.dump(update_lock=False)
             stage.ignore_outs()
             if params:
-                scm.track_file(params)
+                repo.scm_context.track_file(params)
     else:
         raise DvcException("Aborting ...")
     return stage

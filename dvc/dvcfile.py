@@ -199,7 +199,7 @@ class SingleStageFile(FileMixin):
             check_dvcfile_path(self.repo, self.path)
         logger.debug(f"Saving information to '{relpath(self.path)}'.")
         dump_yaml(self.path, serialize.to_single_stage_file(stage))
-        self.repo.scm.track_file(self.relpath)
+        self.repo.scm_context.track_file(self.relpath)
 
     def remove_stage(self, stage):  # pylint: disable=unused-argument
         self.remove()
@@ -268,7 +268,7 @@ class PipelineFile(FileMixin):
             else:
                 data["stages"].update(stage_data)
 
-        self.repo.scm.track_file(self.relpath)
+        self.repo.scm_context.track_file(self.relpath)
 
     @property
     def stage(self):
@@ -388,7 +388,7 @@ class Lockfile(FileMixin):
             data["stages"].update(stage_data)
 
         if modified:
-            self.repo.scm.track_file(self.relpath)
+            self.repo.scm_context.track_file(self.relpath)
 
     def remove_stage(self, stage):
         if not self.exists():

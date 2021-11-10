@@ -513,13 +513,13 @@ class Output:
         if self.repo.scm.is_tracked(self.fspath):
             raise OutputAlreadyTrackedError(self)
 
-        self.repo.scm.ignore(self.fspath)
+        self.repo.scm_context.ignore(self.fspath)
 
     def ignore_remove(self):
         if not self.use_scm_ignore:
             return
 
-        self.repo.scm.ignore_remove(self.fspath)
+        self.repo.scm_context.ignore_remove(self.fspath)
 
     # pylint: enable=no-member
 
@@ -782,7 +782,7 @@ class Output:
     def move(self, out):
         # pylint: disable=no-member
         if self.scheme == "local" and self.use_scm_ignore:
-            self.repo.scm.ignore_remove(self.fspath)
+            self.repo.scm_context.ignore_remove(self.fspath)
 
         self.fs.move(self.fs_path, out.fs_path)
         self.def_path = out.def_path
@@ -791,7 +791,7 @@ class Output:
         self.commit()
 
         if self.scheme == "local" and self.use_scm_ignore:
-            self.repo.scm.ignore(self.fspath)
+            self.repo.scm_context.ignore(self.fspath)
 
     def transfer(
         self, source, odb=None, jobs=None, update=False, no_progress_bar=False

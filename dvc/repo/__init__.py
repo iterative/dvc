@@ -17,6 +17,7 @@ from dvc.utils.fs import path_isin
 if TYPE_CHECKING:
     from dvc.fs.base import BaseFileSystem
     from dvc.objects.file import HashFile
+    from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
 
 
@@ -268,6 +269,12 @@ class Repo:
                 # used in `params/metrics/plots/live` targets
                 return SCM(self.root_dir, no_scm=True)
             raise
+
+    @cached_property
+    def scm_context(self) -> "SCMContext":
+        from dvc.repo.scm_context import SCMContext
+
+        return SCMContext(self.scm, self.config)
 
     @cached_property
     def dvcignore(self) -> DvcIgnoreFilter:

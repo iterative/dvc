@@ -522,12 +522,6 @@ def test_reset(tmp_dir, scm, git):
     assert len(unstaged) == 2
 
 
-def test_remind_to_track(scm, caplog):
-    scm.files_to_track = ["fname with spaces.txt", "тест", "foo"]
-    scm.remind_to_track()
-    assert "git add 'fname with spaces.txt' 'тест' foo" in caplog.text
-
-
 def test_add(tmp_dir, scm, git):
     if git.test_backend == "pygit2":
         pytest.skip()

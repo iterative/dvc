@@ -1,9 +1,6 @@
 """Manages source control systems (e.g. Git) in DVC."""
 
 import os
-from contextlib import contextmanager
-
-from funcy import get_in
 
 from dvc.exceptions import DvcException
 
@@ -148,58 +145,6 @@ class Base:
     def list_all_commits(self):  # pylint: disable=no-self-use
         """Returns a list of commits in the repo."""
         return []
-
-    def cleanup_ignores(self):
-        """
-        This method should clean up ignores (eg. entries in .gitignore),
-        use, when method editing ignores (eg. add, run, import) fails to
-        perform its task.
-        """
-
-    def reset_ignores(self):
-        """
-        Method to reset in-memory ignore storing mechanism.
-        """
-
-    def reset_tracked_files(self):
-        """
-        Method to reset in-memory tracked files storing mechanism.
-        """
-
-    def remind_to_track(self):
-        """
-        Method to remind user to track newly created files handled by scm
-        """
-
-    def track_changed_files(self):
-        """
-        Method to stage files that have changed
-        """
-
-    def track_file(self, path):
-        """
-        Method to add file to mechanism that will remind user
-        to track new files
-        """
-
-    @contextmanager
-    def track_file_changes(self, config=None, autostage=False):
-        autostage = get_in(
-            config or {}, ["core", "autostage"], default=autostage
-        )
-
-        try:
-            yield
-        except Exception:
-            self.cleanup_ignores()
-            raise
-
-        self.reset_ignores()
-        if autostage:
-            self.track_changed_files()
-        else:
-            self.remind_to_track()
-        self.reset_tracked_files()
 
     def belongs_to_scm(self, path):
         """Return boolean whether file belongs to scm"""
