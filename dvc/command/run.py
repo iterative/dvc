@@ -23,7 +23,7 @@ class CmdRun(CmdBase):
                 self.args.outs_persist_no_cache,
                 self.args.checkpoints,
                 self.args.params,
-                self.args.cmd,
+                self.args.command,
             ]
         ):  # pragma: no cover
             logger.error(
@@ -36,7 +36,7 @@ class CmdRun(CmdBase):
         kwargs = vars(self.args)
         kwargs.update(
             {
-                "cmd": parse_cmd(self.args.cmd),
+                "cmd": parse_cmd(self.args.command),
                 "fname": kwargs.pop("file"),
                 "no_exec": (self.args.no_exec or bool(self.args.checkpoints)),
                 "run_cache": not kwargs.pop("no_run_cache"),

@@ -590,3 +590,4 @@ def test_experiments_init_config(dvc, mocker):
         "plots": "plots",
         "live": "dvclive",
     }
+    assert m.call_args[1]["overrides"] == {"cmd": "cmd"}
