@@ -818,7 +818,7 @@ class CmdExperimentsInit(CmdBase):
     def run(self):
         from dvc.command.stage import parse_cmd
 
-        cmd = parse_cmd(self.args.cmd)
+        cmd = parse_cmd(self.args.command)
         if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
 
@@ -1429,7 +1429,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     experiments_init_parser.add_argument(
-        "cmd",
+        "command",
         nargs=argparse.REMAINDER,
         help="Command to execute.",
         metavar="command",

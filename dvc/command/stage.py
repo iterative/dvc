@@ -129,7 +129,7 @@ class CmdStageAdd(CmdBase):
         kwargs = vars(self.args)
         kwargs.update(
             {
-                "cmd": parse_cmd(kwargs.pop("cmd")),
+                "cmd": parse_cmd(kwargs.pop("command")),
                 "params": parse_params(self.args.params),
             }
         )
@@ -281,7 +281,7 @@ def _add_common_args(parser):
         ),
     )
     parser.add_argument(
-        "cmd",
+        "command",
         nargs=argparse.REMAINDER,
         help="Command to execute.",
         metavar="command",

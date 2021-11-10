@@ -66,7 +66,7 @@ class TestRun(TestDvc):
         self.assertEqual(args.outs, [out1, out2])
         self.assertEqual(args.outs_no_cache, [out_no_cache1, out_no_cache2])
         self.assertEqual(args.file, fname)
-        self.assertEqual(args.cmd, [cmd, arg1, arg2])
+        self.assertEqual(args.command, [cmd, arg1, arg2])
 
         cmd_cls.repo.close()
 
