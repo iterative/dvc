@@ -52,7 +52,9 @@ def _adapt_info(info, scheme):
         import base64
 
         info["etag"] = base64.b64decode(info["etag"]).hex()
-    elif scheme == "http" and ("ETag" in info or "Content-MD5" in info):
+    elif scheme.startswith("http") and (
+        "ETag" in info or "Content-MD5" in info
+    ):
         info["checksum"] = info.get("ETag") or info.get("Content-MD5")
     return info
 
