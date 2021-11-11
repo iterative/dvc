@@ -79,7 +79,7 @@ def _try_links(cache, from_info, to_info, link_types):
             return
 
         except OSError as exc:
-            if exc.errno not in [errno.EXDEV, errno.ENOTSUP]:
+            if exc.errno not in [errno.EXDEV, errno.ENOTSUP, errno.ENOSYS]:
                 raise
             logger.debug(
                 "Cache type '%s' is not supported: %s", link_types[0], exc
