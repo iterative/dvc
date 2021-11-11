@@ -37,7 +37,11 @@ def _link(
         except RemoteActionNotImplemented:
             continue
         except OSError as exc:
-            if exc.errno not in [errno.EXDEV, errno.ENOTSUP]:
+            if exc.errno not in [
+                errno.EXDEV,
+                errno.ENOTSUP,
+                errno.ENOSYS,  # https://github.com/iterative/dvc/issues/6962
+            ]:
                 raise
 
     raise OSError(errno.ENOTSUP, "reflink and hardlink are not supported")
