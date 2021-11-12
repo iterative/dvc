@@ -215,6 +215,9 @@ def init_interactive(
         )
         if not live and "live" not in provided:
             workspace.pop("live", None)
+        for key in ("plots", "metrics"):
+            if live and key not in provided:
+                workspace.pop(key, None)
         for value in sorted(workspace.values()):
             tree.add(f"[green]{value}[/green]")
         ui.error_write(tree, styled=True)
