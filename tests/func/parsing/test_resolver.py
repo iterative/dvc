@@ -51,7 +51,7 @@ def test_vars_interpolation_errors(tmp_dir, dvc, vars_):
 )
 def test_default_params_file(tmp_dir, dvc, vars_):
     (tmp_dir / DEFAULT_PARAMS_FILE).dump(DATA)
-    resolver = DataResolver(dvc, tmp_dir.fs_path, vars_)
+    resolver = DataResolver(dvc, d=vars_)
     assert resolver.context == DATA
 
 

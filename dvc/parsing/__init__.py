@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import (
@@ -133,17 +134,18 @@ def make_definition(
 
 
 class DataResolver:
-    def __init__(self, repo: "Repo", wdir: str, d: dict):
+    def __init__(self, repo: "Repo", wdir: str = "", d: Dict = None):
         self.fs = fs = repo.fs
-        self.wdir = wdir
+        self.wdir = wdir or os.curdir
         self.relpath = relpath(fs.path.join(self.wdir, "dvc.yaml"))
 
+        d = d or {}
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)
         self.context: Context = Context()
 
         try:
-            args = fs, vars_, wdir  # load from `vars` section
+            args = fs, vars_, self.wdir  # load from `vars` section
             self.context.load_from_vars(*args, default=DEFAULT_PARAMS_FILE)
         except ContextError as exc:
             format_and_raise(exc, "'vars'", self.relpath)
