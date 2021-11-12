@@ -303,11 +303,11 @@ def init(
         )
     else:
         if with_live:
-            # suppress `metrics`/`params` if live is selected, unless
+            # suppress `metrics`/`plots` if live is selected, unless
             # it is also provided via overrides/cli.
             # This makes output to be a checkpoint as well.
             defaults.pop("metrics", None)
-            defaults.pop("params", None)
+            defaults.pop("plots", None)
         else:
             defaults.pop("live", None)  # suppress live otherwise
 
