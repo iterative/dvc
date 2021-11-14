@@ -1,11 +1,13 @@
 import threading
+from typing import Any
 
 from funcy import cached_property, memoize, wrap_with
 
 from dvc import prompt
+from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import FSSpecWrapper, NoDirectoriesMixin
+from .fsspec_wrapper import AnyFSPath, FSSpecWrapper, NoDirectoriesMixin
 
 
 @wrap_with(threading.Lock())
@@ -127,3 +129,14 @@ class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
 
     def unstrip_protocol(self, path: str) -> str:
         return path
+
+    def put_file(
+        self,
+        from_file: AnyFSPath,
+        to_info: AnyFSPath,
+        callback: Any = DEFAULT_CALLBACK,
+        **kwargs,
+    ) -> None:
+        kwargs["method"] = self.upload_method
+        self.fs.put_file(from_file, to_info, callback=callback, **kwargs)
+        self.fs.invalidate_cache(self.path.parent(to_info))
