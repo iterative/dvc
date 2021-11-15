@@ -3,10 +3,12 @@ import logging
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
+from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import lmap
 
+from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import DEFAULT_PRECISION
 from dvc.exceptions import DvcException, InvalidArgumentError
@@ -382,6 +384,7 @@ def show_experiments(
     no_timestamp=False,
     csv=False,
     markdown=False,
+    html=False,
     **kwargs,
 ):
     from funcy.seqs import flatten as flatten_list
@@ -429,7 +432,7 @@ def show_experiments(
         kwargs.get("iso"),
     )
 
-    if no_timestamp:
+    if no_timestamp or html:
         td.drop("Created")
 
     for col in ("State", "Executor"):
@@ -466,8 +469,20 @@ def show_experiments(
         }
     )
 
-    if kwargs.get("only_changed", False):
+    if kwargs.get("only_changed", False) or html:
         td.drop_duplicates("cols")
+
+    html_args = {}
+    if html:
+        td.dropna("rows", how="all")
+        td.column("Experiment")[:] = [
+            # remove tree characters
+            str(x).encode("ascii", "ignore").strip().decode()
+            for x in td.column("Experiment")
+        ]
+        out = kwargs.get("out") or "dvc_plots"
+        html_args["output_path"] = (Path.cwd() / out).resolve()
+        html_args["color_by"] = kwargs.get("sort_by") or "Experiment"
 
     td.render(
         pager=pager,
@@ -477,7 +492,12 @@ def show_experiments(
         row_styles=row_styles,
         csv=csv,
         markdown=markdown,
+        html=html,
+        **html_args,
     )
+
+    if html and kwargs.get("open"):
+        return ui.open_browser(Path(out) / "index.html")
 
 
 def _normalize_headers(names, count):
@@ -544,6 +564,9 @@ class CmdExperimentsShow(CmdBase):
                 csv=self.args.csv,
                 markdown=self.args.markdown,
                 only_changed=self.args.only_changed,
+                html=self.args.html,
+                out=self.args.out,
+                open=self.args.open,
             )
         return 0
 
@@ -692,5 +715,24 @@ def add_parser(experiments_subparsers, parent_parser):
             "Only show metrics/params with values varying "
             "across the selected experiments."
         ),
+    )
+    experiments_show_parser.add_argument(
+        "--html",
+        action="store_true",
+        default=False,
+        help="Generate a parallel coordinates plot from the tabulated output.",
+    )
+    experiments_show_parser.add_argument(
+        "-o",
+        "--out",
+        default=None,
+        help="Destination folder to save the HTML to",
+        metavar="<path>",
+    ).complete = completion.DIR
+    experiments_show_parser.add_argument(
+        "--open",
+        action="store_true",
+        default=False,
+        help="Open the HTML directly in the browser.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)
