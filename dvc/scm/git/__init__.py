@@ -258,7 +258,11 @@ class Git(Base):
             "\n"
             "To track the changes with git, run:\n"
             "\n"
-            "\tgit add {files}".format(files=files)
+            "\tgit add {files}\n"
+            "\n"
+            "To enable auto staging, run:\n"
+            "\n"
+            "\tdvc config core.autostage true".format(files=files)
         )
 
     def track_changed_files(self):
