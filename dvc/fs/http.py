@@ -138,5 +138,4 @@ class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
         **kwargs,
     ) -> None:
         kwargs.setdefault("method", self.upload_method)
-        self.fs.put_file(from_file, to_info, callback=callback, **kwargs)
-        self.fs.invalidate_cache(self.path.parent(to_info))
+        super().put_file(from_file, to_info, callback=callback, **kwargs)
