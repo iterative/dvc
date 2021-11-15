@@ -646,6 +646,7 @@ def test_experiments_init_config(dvc, scm, mocker):
 
     assert isinstance(cmd, CmdExperimentsInit)
     assert cmd.run() == 0
+
     m.assert_called_once_with(
         ANY(Repo),
         name="train",
@@ -758,3 +759,37 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
 def test_experiments_init_type_invalid_choice():
     with pytest.raises(DvcParserError):
         parse_args(["exp", "init", "--type=invalid", "cmd"])
+
+
+def test_show_experiments_html(tmp_dir, mocker):
+    all_experiments = {
+        "workspace": {
+            "baseline": {
+                "data": {
+                    "timestamp": None,
+                    "params": {"params.yaml": {"data": {"foo": 1}}},
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {
+                        "scores.json": {"data": {"bar": 0.9544670443829399}}
+                    },
+                }
+            }
+        },
+    }
+    experiments_table = mocker.patch(
+        "dvc.command.experiments.show.experiments_table"
+    )
+    td = experiments_table.return_value
+
+    show_experiments(all_experiments, html=True)
+
+    td.dropna.assert_called_with("rows")
+
+    render_kwargs = td.render.call_args[1]
+
+    for arg in ["html", "output_path", "color_by"]:
+        assert arg in render_kwargs
+    assert render_kwargs["output_path"] == tmp_dir / "dvc_plots"
+    assert render_kwargs["color_by"] == "Experiment"

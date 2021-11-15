@@ -596,3 +596,75 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
     cap = capsys.readouterr()
 
     assert "bar" not in cap.out
+
+
+def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
+    from dvc.command.experiments import show
+
+    webbroser_open = mocker.patch("webbrowser.open")
+    show_experiments = mocker.spy(show, "show_experiments")
+
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    params_file = tmp_dir / "params.yaml"
+    params_data = {
+        "foo": 1,
+        "bar": 1,
+    }
+    (tmp_dir / params_file).dump(params_data)
+
+    dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo", "bar"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
+    dvc.experiments.run(params=["foo=2"])
+
+    assert main(["exp", "show", "--html"]) == 0
+    kwargs = show_experiments.call_args[1]
+
+    assert kwargs["color_by"] == "Experiment"
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+
+    assert all(rev in html_text for rev in ["workspace", "master", "[exp-"])
+
+    assert (
+        '{"label": "metrics.yaml:foo", "values": [2.0, 1.0, 2.0]}' in html_text
+    )
+    assert (
+        '{"label": "params.yaml:foo", "values": [2.0, 1.0, 2.0]}' in html_text
+    )
+    assert '"line": {"color": [2, 1, 0]' in html_text
+    assert '"label": "metrics.yaml:bar"' not in html_text
+
+    assert (
+        main(["exp", "show", "--html", "--color-by", "metrics.yaml:foo"]) == 0
+    )
+    kwargs = show_experiments.call_args[1]
+
+    assert kwargs["color_by"] == "metrics.yaml:foo"
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+    assert '"line": {"color": [2.0, 1.0, 2.0]' in html_text
+
+    assert main(["exp", "show", "--html", "--out", "experiments"]) == 0
+    kwargs = show_experiments.call_args[1]
+
+    assert kwargs["out"] == "experiments"
+    assert (tmp_dir / "experiments" / "index.html").exists()
+
+    assert main(["exp", "show", "--html", "--open"]) == 0
+
+    webbroser_open.assert_called()

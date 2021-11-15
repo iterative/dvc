@@ -49,9 +49,10 @@ class ParallelCoordinatesRenderer(Renderer):
                 float_values = [float(x) for x in values]
             except ValueError:
                 is_categorical = True
-                dummy_values = list(range(len(values)))
+                unique_values = sorted(set(values))
 
             if is_categorical:
+                dummy_values = [unique_values.index(x) for x in values]
                 trace["dimensions"].append(
                     {
                         "label": label,
@@ -69,12 +70,13 @@ class ParallelCoordinatesRenderer(Renderer):
                 trace["line"] = {
                     "color": dummy_values if is_categorical else float_values,
                     "showscale": True,
+                    "colorbar": {
+                        "title": self.color_by
+                    }
                 }
                 if is_categorical:
-                    trace["line"]["colorbar"] = {
-                        "tickmode": "array",
-                        "tickvals": dummy_values,
-                        "ticktext": values,
-                    }
+                    trace["line"]["colorbar"]["tickmode"] = "array"
+                    trace["line"]["colorbar"]["tickvals"] = dummy_values
+                    trace["line"]["colorbar"]["ticktext"] = values
 
         return json.dumps({"data": [trace], "layout": {}})

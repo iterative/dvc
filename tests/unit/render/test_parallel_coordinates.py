@@ -37,7 +37,7 @@ def test_scalar_columns():
 
 def test_categorical_columns():
     td = TabularData(["col-1"])
-    td.extend([["foo"], ["bar"]])
+    td.extend([["foo"], ["bar"], ["foo"]])
     renderer = ParallelCoordinatesRenderer(td)
 
     result = json.loads(renderer.as_json())
@@ -46,9 +46,9 @@ def test_categorical_columns():
 
     assert result["data"][0]["dimensions"][0] == {
         "label": "col-1",
-        "values": [0, 1],
-        "tickvals": [0, 1],
-        "ticktext": ["foo", "bar"],
+        "values": [1, 0, 1],
+        "tickvals": [1, 0, 1],
+        "ticktext": ["foo", "bar", "foo"],
     }
 
 
@@ -63,8 +63,8 @@ def test_mixed_columns():
 
     assert result["data"][0]["dimensions"][0] == {
         "label": "categorical",
-        "values": [0, 1],
-        "tickvals": [0, 1],
+        "values": [1, 0],
+        "tickvals": [1, 0],
         "ticktext": ["foo", "bar"],
     }
     assert result["data"][0]["dimensions"][1] == {
@@ -84,6 +84,9 @@ def test_color_by_scalar():
     assert result["data"][0]["line"] == {
         "color": [0.1, 2.0],
         "showscale": True,
+        "colorbar": {
+            "title": "scalar"
+        }
     }
 
 
@@ -96,11 +99,12 @@ def test_color_by_categorical():
 
     assert expected_format(result)
     assert result["data"][0]["line"] == {
-        "color": [0, 1],
+        "color": [1, 0],
         "showscale": True,
         "colorbar": {
+            "title": "categorical",
             "tickmode": "array",
-            "tickvals": [0, 1],
+            "tickvals": [1, 0],
             "ticktext": ["foo", "bar"],
         },
     }
