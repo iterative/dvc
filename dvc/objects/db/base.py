@@ -31,7 +31,6 @@ class ObjectDB:
         self.state = config.get("state", StateNoop())
         self.verify = config.get("verify", self.DEFAULT_VERIFY)
         self.cache_types = config.get("type") or copy(self.DEFAULT_CACHE_TYPES)
-        self.cache_type_confirmed = False
         self.slow_link_warning = config.get("slow_link_warning", True)
         self.tmp_dir = config.get("tmp_dir")
         self.read_only = config.get("read_only", False)

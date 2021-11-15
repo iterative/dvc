@@ -1,18 +1,16 @@
-import errno
 import itertools
 import os
 import pathlib
 import platform
-import uuid
 
 import psutil
 
 from dvc import __version__
 from dvc.exceptions import NotDvcRepoError
 from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
+from dvc.fs.utils import test_links
 from dvc.repo import Repo
 from dvc.scm.base import SCMError
-from dvc.system import System
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 
@@ -83,37 +81,17 @@ def _get_remotes(config):
 
 
 def _get_linktype_support_info(repo):
+    odb = repo.odb.local
 
-    links = {
-        "reflink": (System.reflink, None),
-        "hardlink": (System.hardlink, System.is_hardlink),
-        "symlink": (System.symlink, System.is_symlink),
-    }
+    links = test_links(
+        ["reflink", "hardlink", "symlink"],
+        odb.fs,
+        odb.fs_path,
+        repo.fs,
+        repo.root_dir,
+    )
 
-    fname = "." + str(uuid.uuid4())
-    src = os.path.join(repo.odb.local.cache_dir, fname)
-    open(src, "w", encoding="utf-8").close()
-    dst = os.path.join(repo.root_dir, fname)
-
-    cache = []
-
-    for name, (link, is_link) in links.items():
-        try:
-            link(src, dst)
-            status = "supported"
-            if is_link and not is_link(dst):
-                status = "broken"
-            os.unlink(dst)
-        except OSError as exc:
-            if exc.errno != errno.ENOTSUP:
-                raise
-            status = "not supported"
-
-        if status == "supported":
-            cache.append(name)
-    os.remove(src)
-
-    return ", ".join(cache)
+    return ", ".join(links)
 
 
 def _get_supported_remotes():
