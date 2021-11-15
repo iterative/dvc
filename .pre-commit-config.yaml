@@ -23,7 +23,7 @@ repos:
       - id: isort
         language_version: python3
     repo: https://github.com/timothycrosley/isort
-    rev: 5.9.3
+    rev: 5.10.1
   - hooks:
       - id: flake8
         language_version: python3
