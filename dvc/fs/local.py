@@ -153,8 +153,9 @@ class LocalFileSystem(BaseFileSystem):
     def put_file(
         self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        makedirs(self.path.parent(to_info), exist_ok=True)
-        tmp_file = tmp_fname(to_info)
+        parent = self.path.parent(to_info)
+        makedirs(parent, exist_ok=True)
+        tmp_file = self.path.join(parent, tmp_fname())
         copyfile(from_file, tmp_file, callback=callback)
         os.replace(tmp_file, to_info)
 

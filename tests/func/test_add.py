@@ -861,7 +861,7 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     m = mocker.spy(LocalFileSystem, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
-    assert m.call_count == 1
+    assert m.call_count == 4
     assert m.call_args != call(tmp_dir / "foo")
     assert m.call_args != call(tmp_dir / "bar")
 
@@ -958,8 +958,8 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
     mocker.patch(
-        "dvc.objects.checkout._do_link",
-        side_effect=OSError(errno.ENOTSUP, "link failed"),
+        "dvc.objects.checkout.test_links",
+        return_value=[],
     )
     dvc.add("foo")
     err = capsys.readouterr()[1]

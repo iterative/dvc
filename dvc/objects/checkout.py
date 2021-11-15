@@ -1,16 +1,9 @@
-import errno
 import logging
 from itertools import chain
 
-from shortuuid import uuid
-
 from dvc import prompt
-from dvc.exceptions import (
-    CacheLinkError,
-    CheckoutError,
-    ConfirmRemoveError,
-    DvcException,
-)
+from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
+from dvc.fs.utils import test_links, transfer
 from dvc.ignore import DvcIgnoreFilter
 from dvc.objects.db.slow_link_detection import (  # type: ignore[attr-defined]
     slow_link_guard,
@@ -43,88 +36,9 @@ def _remove(fs_path, fs, in_cache, force=False):
     fs.remove(fs_path)
 
 
-def _verify_link(cache, fs_path, link_type):
-    if link_type == "hardlink" and cache.fs.getsize(fs_path) == 0:
-        return
-
-    if cache.cache_type_confirmed:
-        return
-
-    is_link = getattr(cache.fs, f"is_{link_type}", None)
-    if is_link and not is_link(fs_path):
-        cache.fs.remove(fs_path)
-        raise DvcException(f"failed to verify {link_type}")
-
-    cache.cache_type_confirmed = True
-
-
-def _do_link(cache, from_info, to_info, link_method):
-    if cache.fs.exists(to_info):
-        cache.fs.remove(to_info)  # broken symlink
-
-    link_method(from_info, to_info)
-
-    logger.debug(
-        "Created '%s': %s -> %s", cache.cache_types[0], from_info, to_info
-    )
-
-
-@slow_link_guard
-def _try_links(cache, from_info, to_info, link_types):
-    while link_types:
-        link_method = getattr(cache.fs, link_types[0])
-        try:
-            _do_link(cache, from_info, to_info, link_method)
-            _verify_link(cache, to_info, link_types[0])
-            return
-
-        except OSError as exc:
-            if exc.errno not in [errno.EXDEV, errno.ENOTSUP, errno.ENOSYS]:
-                raise
-            logger.debug(
-                "Cache type '%s' is not supported: %s", link_types[0], exc
-            )
-            del link_types[0]
-
-    raise CacheLinkError([to_info])
-
-
-def _link(cache, from_info, to_info):
-    cache.makedirs(cache.fs.path.parent(to_info))
-    try:
-        _try_links(cache, from_info, to_info, cache.cache_types)
-    except FileNotFoundError as exc:
-        raise CheckoutError([str(to_info)]) from exc
-
-
-def _confirm_cache_type(cache, fs_path):
-    """Checks whether cache uses copies."""
-    if cache.cache_type_confirmed:
-        return
-
-    if set(cache.cache_types) <= {"copy"}:
-        return
-
-    workspace_file = cache.fs.path.with_name(fs_path, "." + uuid())
-    test_cache_file = cache.fs.path.join(
-        cache.fs_path, ".cache_type_test_file"
-    )
-    if not cache.fs.exists(test_cache_file):
-        cache.makedirs(cache.fs.path.parent(test_cache_file))
-        with cache.fs.open(test_cache_file, "wb") as fobj:
-            fobj.write(bytes(1))
-    try:
-        _link(cache, test_cache_file, workspace_file)
-    finally:
-        cache.fs.remove(workspace_file)
-        cache.fs.remove(test_cache_file)
-
-    cache.cache_type_confirmed = True
-
-
-def _relink(cache, cache_info, fs, path, in_cache, force):
+def _relink(link, cache, cache_info, fs, path, in_cache, force):
     _remove(path, fs, in_cache, force=force)
-    _link(cache, cache_info, path)
+    link(cache, cache_info, fs, path)
     # NOTE: Depending on a file system (e.g. on NTFS), `_remove` might reset
     # read-only permissions in order to delete a hardlink to protected object,
     # which will also reset it for the object itself, making it unprotected,
@@ -133,6 +47,7 @@ def _relink(cache, cache_info, fs, path, in_cache, force):
 
 
 def _checkout_file(
+    link,
     fs_path,
     fs,
     change,
@@ -144,7 +59,6 @@ def _checkout_file(
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
-    _confirm_cache_type(cache, fs_path)
 
     cache_fs_path = cache.hash_to_path(change.new.oid.value)
     if change.old.oid:
@@ -153,6 +67,7 @@ def _checkout_file(
                 cache.unprotect(fs_path)
             else:
                 _relink(
+                    link,
                     cache,
                     cache_fs_path,
                     fs,
@@ -163,6 +78,7 @@ def _checkout_file(
         else:
             modified = True
             _relink(
+                link,
                 cache,
                 cache_fs_path,
                 fs,
@@ -171,7 +87,7 @@ def _checkout_file(
                 force=force,
             )
     else:
-        _link(cache, cache_fs_path, fs_path)
+        link(cache, cache_fs_path, fs, fs_path)
         modified = True
 
     if state:
@@ -212,6 +128,24 @@ def _diff(
     return diff
 
 
+class Link:
+    def __init__(self, links):
+        self._links = links
+
+    @slow_link_guard
+    def __call__(self, cache, from_path, to_fs, to_path):
+        if to_fs.exists(to_path):
+            to_fs.remove(to_path)  # broken symlink
+
+        cache.makedirs(cache.fs.path.parent(to_path))
+        try:
+            transfer(cache.fs, from_path, to_fs, to_path, links=self._links)
+        except FileNotFoundError as exc:
+            raise CheckoutError([to_path]) from exc
+        except OSError as exc:
+            raise CacheLinkError([to_path]) from exc
+
+
 def _checkout(
     diff,
     fs_path,
@@ -224,6 +158,11 @@ def _checkout(
 ):
     if not diff:
         return
+
+    links = test_links(cache.cache_types, cache.fs, cache.fs_path, fs, fs_path)
+    if not links:
+        raise CacheLinkError([fs_path])
+    link = Link(links)
 
     for change in diff.deleted:
         entry_path = (
@@ -246,6 +185,7 @@ def _checkout(
 
         try:
             _checkout_file(
+                link,
                 entry_path,
                 fs,
                 change,

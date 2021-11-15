@@ -24,8 +24,8 @@ def make_remote(mocker):
 
 def test_show_warning_once(caplog, make_remote):
     remote = make_remote()
-    slow_link_guard(lambda x: None)(remote)
-    slow_link_guard(lambda x: None)(remote)
+    slow_link_guard(lambda x, y: None)(None, remote)
+    slow_link_guard(lambda x, y: None)(None, remote)
 
     slow_link_detection = dvc.objects.db.slow_link_detection
     message = slow_link_detection.message  # noqa, pylint: disable=no-member
@@ -35,13 +35,13 @@ def test_show_warning_once(caplog, make_remote):
 
 def test_dont_warn_when_cache_type_is_set(caplog, make_remote):
     remote = make_remote(cache_type="copy")
-    slow_link_guard(lambda x: None)(remote)
+    slow_link_guard(lambda x, y: None)(None, remote)
 
     assert len(caplog.records) == 0
 
 
 def test_dont_warn_when_warning_is_disabled(caplog, make_remote):
     remote = make_remote(should_warn=False)
-    slow_link_guard(lambda x: None)(remote)
+    slow_link_guard(lambda x, y: None)(None, remote)
 
     assert len(caplog.records) == 0
