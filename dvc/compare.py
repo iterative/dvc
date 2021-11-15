@@ -153,6 +153,16 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             writer.writerow(row)
         return buff.getvalue()
 
+    def to_parallel_coordinates(self, output_path, color_by):
+        from dvc.render.html import write
+        from dvc.render.plotly import ParallelCoordinatesRenderer
+
+        index_path = write(
+            output_path,
+            renderers=[ParallelCoordinatesRenderer(self, color_by)],
+        )
+        return index_path.as_uri()
+
     def add_column(self, name: str) -> None:
         self._columns[name] = Column([self._fill_value] * len(self))
         self._keys.append(name)
@@ -173,6 +183,14 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         if kwargs.pop("csv", False):
             ui.write(self.to_csv(), end="")
+
+        elif kwargs.pop("html", False):
+            ui.write(
+                self.to_parallel_coordinates(
+                    kwargs["output_path"], kwargs.get("color_by")
+                )
+            )
+
         else:
             ui.table(self, headers=self.keys(), **kwargs)
 
