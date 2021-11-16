@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import contextmanager
+from functools import partial
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -8,19 +9,18 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Optional,
+    Tuple,
+    Union,
     cast,
 )
 
 from funcy import compact, lremove
-from rich.prompt import Confirm, Prompt
 from rich.rule import Rule
 from rich.syntax import Syntax
 
 from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_pipeline_file
-from dvc.types import OptStr
 from dvc.utils.serialize import dumps_yaml
 
 if TYPE_CHECKING:
@@ -42,113 +42,25 @@ PROMPTS = {
 }
 
 
-class RetryPrompt(Exception):
-    """Used for signalling whether prompts should be retried again."""
-
-
-class RichInputMixin:
-    """Prevents exc message from printing in the same line on Ctrl + D/C."""
-
-    @classmethod
-    def get_input(cls, *args, **kwargs) -> str:
-        try:
-            return super().get_input(*args, **kwargs)  # type: ignore[misc]
-        except (KeyboardInterrupt, EOFError):
-            ui.error_write()
-            raise
-
-
-class ConfirmationPrompt(RichInputMixin, Confirm):
-    def make_prompt(self, default):
-        prompt = self.prompt.copy()
-        prompt.end = ""
-
-        prompt.append(" [")
-        yes, no = self.choices
-        for idx, (val, choice) in enumerate(((True, yes), (False, no))):
-            if idx:
-                prompt.append("/")
-            if val == default:
-                prompt.append(choice.upper(), "green")
-            else:
-                prompt.append(choice)
-        prompt.append("] ")
-        return prompt
-
-
-class RequiredPrompt(RichInputMixin, Prompt):
-    def process_response(self, value: str):
-        from rich.prompt import InvalidResponse
-
-        ret = super().process_response(value)
-        if not ret:
-            raise InvalidResponse(
-                "[prompt.invalid]Response required. Please try again."
-            )
-        return ret
-
-    def render_default(self, default):
-        from rich.text import Text
-
-        return Text(f"{default!s}", "green")
-
-
-class SkippablePrompt(RequiredPrompt):
-    skip_value: str = "n"
-
-    def process_response(self, value: str):
-        ret = super().process_response(value)
-        return None if ret == self.skip_value else ret
-
-    def make_prompt(self, default):
-        prompt = self.prompt.copy()
-        prompt.end = ""
-
-        prompt.append(" [")
-        if (
-            default is not ...
-            and self.show_default
-            and isinstance(default, (str, self.response_type))
-        ):
-            _default = self.render_default(default)
-            prompt.append(_default)
-            prompt.append(", ")
-
-        prompt.append(f"{self.skip_value} to omit", style="italic")
-        prompt.append("]")
-        prompt.append(self.prompt_suffix)
-        return prompt
-
-
-def _prompt(
-    key: str,
-    validator: Optional[Callable[[str, Any], None]] = None,
-    default: OptStr = None,
-) -> str:
-    prompt_cls = RequiredPrompt if key == "cmd" else SkippablePrompt
-    kwargs = {"default": default} if default is not None else {}
-    while True:
-        value = prompt_cls.ask(  # type: ignore[call-overload]
-            PROMPTS[key], console=ui.error_console, **kwargs
-        )
-        if validator:
-            try:
-                validator(key, value)
-            except RetryPrompt as exc:
-                ui.error_write(f"[red]{exc}[/]", styled=True)
-                continue
-        return value
-
-
 def _prompts(
     keys: Iterable[str],
     defaults: Dict[str, str],
-    validator: Callable[[str, Any], None] = None,
+    validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
 ) -> Dict[str, str]:
-    return {
-        key: _prompt(key, default=defaults.get(key), validator=validator)
-        for key in keys
-    }
+    from dvc.ui.prompt import Prompt
+
+    ret: Dict[str, str] = {}
+    for key in keys:
+        value = Prompt.prompt_(
+            PROMPTS[key],
+            console=ui.error_console,
+            default=defaults.get(key),
+            validator=partial(validator, key) if validator else None,
+            allow_omission=key != "cmd",
+        )
+        if value:
+            ret[key] = value
+    return ret
 
 
 @contextmanager
@@ -172,7 +84,7 @@ def init_interactive(
     name: str,
     defaults: Dict[str, str],
     provided: Dict[str, str],
-    validator: Callable[[str, Any], None] = None,
+    validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
     show_tree: bool = False,
     live: bool = False,
 ) -> Dict[str, str]:
@@ -225,7 +137,7 @@ def init_interactive(
     ui.error_write()
     ret.update(_prompts(primary, defaults, validator=validator))
     ret.update(_prompts(secondary, defaults, validator=validator))
-    return compact(ret)
+    return ret
 
 
 def _check_stage_exists(
@@ -268,9 +180,10 @@ def init(
 
     with_live = type == "live"
 
-    def validate_prompts_input(key: str, value: Any) -> None:
-        if value is None:
-            return
+    def validate_prompts_input(
+        key: str, value: str
+    ) -> Union[Any, Tuple[Any, str]]:
+        from dvc.ui.prompt import InvalidResponse
 
         if key == "params":
             assert isinstance(value, str)
@@ -280,17 +193,17 @@ def init(
                 reason = "does not exist"
                 if isinstance(exc, IsADirectoryError):
                     reason = "is a directory"
-                raise RetryPrompt(
-                    f"'{value}' {reason}. "
+                raise InvalidResponse(
+                    f"[prompt.invalid]'{value}' {reason}. "
                     "Please retry with an existing parameters file."
                 )
         elif key in ("code", "data"):
             if not os.path.exists(value):
-                ui.error_write(
+                return value, (
                     f"[yellow]'{value}' does not exist in the workspace. "
-                    '"exp run" may fail.[/]',
-                    styled=True,
+                    '"exp run" may fail.[/]'
                 )
+        return value
 
     if interactive:
         defaults = init_interactive(
@@ -339,7 +252,9 @@ def init(
         syn = Syntax(_yaml, "yaml", theme="ansi_dark")
         ui.error_write(syn, styled=True)
 
-    if not interactive or ConfirmationPrompt.ask(
+    from dvc.ui.prompt import Confirm
+
+    if not interactive or Confirm.ask(
         "Do you want to add the above contents to dvc.yaml?",
         console=ui.error_console,
         default=True,
