@@ -41,11 +41,17 @@ class AsyncSSHWrapper(BaseAsyncObject):
 
     read = sync_wrapper(_read)
 
-    def write(self, data: bytes):
+    async def _write(self, data: bytes):
         self.proc.stdin.write(data)
+        await self.proc.stdin.drain()
 
-    def close(self):
+    write = sync_wrapper(_write)
+
+    async def _close(self):
         self.conn.close()
+        await self.conn.wait_closed()
+
+    close = sync_wrapper(_close)
 
 
 # NOTE: Github's SSH server does not strictly comply with the SSH protocol.
