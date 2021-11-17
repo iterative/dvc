@@ -172,7 +172,7 @@ def test_plots_diff_open_WSL(tmp_dir, dvc, mocker, plots_data):
     mocker.patch("dvc.command.plots.render", return_value=index_path)
 
     assert cmd.run() == 0
-    mocked_open.assert_called_once_with(Path("dvc_plots") / "index.html")
+    mocked_open.assert_called_once_with(str(Path("dvc_plots") / "index.html"))
 
 
 def test_plots_diff_open_failed(tmp_dir, dvc, mocker, capsys, plots_data):
@@ -189,7 +189,10 @@ def test_plots_diff_open_failed(tmp_dir, dvc, mocker, capsys, plots_data):
     expected_url = tmp_dir / "dvc_plots" / "index.html"
     mocked_open.assert_called_once_with(expected_url.as_uri())
 
-    error_message = "Failed to open. Please try opening it manually."
+    error_message = (
+        f"Failed to open {expected_url.as_uri()}. "
+        "Please try opening it manually."
+    )
 
     out, err = capsys.readouterr()
     assert expected_url.as_uri() in out
