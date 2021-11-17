@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from rich.text import Text as RichText
 
     from dvc.progress import Tqdm
+    from dvc.types import StrPath
     from dvc.ui.table import Headers, Styles, TableData
 
 
@@ -259,6 +260,28 @@ class Console:
         import sys
 
         return sys.stdout.isatty()
+
+    def open_browser(self, file: "StrPath") -> int:
+        import webbrowser
+        from pathlib import Path
+        from platform import uname
+
+        from dvc.utils import relpath
+
+        path = Path(file).resolve()
+        url = (
+            relpath(path) if "Microsoft" in uname().release else path.as_uri()
+        )
+
+        opened = webbrowser.open(url)
+
+        if not opened:
+            ui.error_write(
+                f"Failed to open {url}. " "Please try opening it manually."
+            )
+            return 1
+
+        return 0
 
 
 ui = Console()

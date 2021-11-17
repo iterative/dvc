@@ -62,23 +62,11 @@ class CmdPlots(CmdBase):
                 html_template_path=self.args.html_template,
             )
 
-            assert index_path.is_absolute()
-            url = index_path.as_uri()
-            ui.write(url)
+            ui.write(index_path.as_uri())
 
             if self.args.open:
-                import webbrowser
-                from platform import uname
+                return ui.open_browser(index_path)
 
-                if "Microsoft" in uname().release:
-                    url = Path(rel) / "index.html"
-
-                opened = webbrowser.open(url)
-                if not opened:
-                    ui.error_write(
-                        "Failed to open. Please try opening it manually."
-                    )
-                    return 1
             return 0
 
         except DvcException:
