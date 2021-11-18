@@ -7,8 +7,6 @@ from funcy import first
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.render.utils import match_renderers, render
-from dvc.render.vega import VegaRenderer
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -40,6 +38,9 @@ class CmdPlots(CmdBase):
 
     def run(self):
         from pathlib import Path
+
+        from dvc.render.utils import match_renderers, render
+        from dvc.render.vega import VegaRenderer
 
         if self.args.show_vega:
             if not self.args.targets:
