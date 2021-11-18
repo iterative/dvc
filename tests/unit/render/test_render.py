@@ -69,7 +69,9 @@ def test_render(tmp_dir, dvc):
 
     def get_vega_string(data, filename):
         file_data = dpath.util.search(data, ["*", "*", filename])
-        return VegaRenderer(file_data, dvc.plots.templates).partial_html()
+        return VegaRenderer(
+            file_data, dvc.plots.templates.load()
+        ).partial_html()
 
     index_content = index_path.read_text()
     assert clean(get_vega_string(data, "file.json")) in clean(index_content)

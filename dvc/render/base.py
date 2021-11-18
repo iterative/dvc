@@ -19,9 +19,8 @@ class Renderer(abc.ABC):
     REVISIONS_KEY = "revisions"
     TYPE_KEY = "type"
 
-    def __init__(self, data: Dict, templates=None):
+    def __init__(self, data: Dict, **kwargs):
         self.data = data
-        self.templates = templates
 
         from dvc.render.utils import get_files
 
