@@ -21,12 +21,14 @@ from rich.syntax import Syntax
 from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_pipeline_file
+from dvc.types import OptStr
 from dvc.utils.serialize import dumps_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.dvcfile import DVCFile
     from dvc.stage import Stage
+    from rich.tree import Tree
 
 from dvc.ui import ui
 
@@ -44,23 +46,23 @@ PROMPTS = {
 
 def _prompts(
     keys: Iterable[str],
-    defaults: Dict[str, str],
+    defaults: Dict[str, str] = None,
     validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
-) -> Dict[str, str]:
+    allow_omission: bool = True,
+) -> Dict[str, OptStr]:
     from dvc.ui.prompt import Prompt
 
-    ret: Dict[str, str] = {}
-    for key in keys:
-        value = Prompt.prompt_(
+    defaults = defaults or {}
+    return {
+        key: Prompt.prompt_(
             PROMPTS[key],
             console=ui.error_console,
             default=defaults.get(key),
             validator=partial(validator, key) if validator else None,
-            allow_omission=key != "cmd",
+            allow_omission=allow_omission,
         )
-        if value:
-            ret[key] = value
-    return ret
+        for key in keys
+    }
 
 
 @contextmanager
@@ -73,6 +75,18 @@ def _disable_logging(highest_level=logging.CRITICAL):
         yield
     finally:
         logging.disable(previous_level)
+
+
+def build_workspace_tree(workspace: Dict[str, str]) -> "Tree":
+    from rich.tree import Tree
+
+    tree = Tree(
+        "DVC assumes the following workspace structure:",
+        highlight=True,
+    )
+    for value in sorted(workspace.values()):
+        tree.add(f"[green]{value}[/green]")
+    return tree
 
 
 PIPELINE_FILE_LINK = (
@@ -93,50 +107,42 @@ def init_interactive(
     secondary = lremove(
         provided.keys(), ["live"] if live else ["metrics", "plots"]
     )
+    prompts = primary + secondary
+
+    workspace = {**defaults, **provided}
+    if not live and "live" not in provided:
+        workspace.pop("live", None)
+    for key in ("plots", "metrics"):
+        if live and key not in provided:
+            workspace.pop(key, None)
 
     ret: Dict[str, str] = {}
-    if not (command or primary or secondary):
+    if command:
+        ret["cmd"] = command
+
+    if not prompts and command:
         return ret
 
-    message = ui.rich_text.assemble(
-        "This command will guide you to set up a ",
-        (name, "bright_blue"),
-        " stage in ",
-        ("dvc.yaml", "green"),
-        ".",
+    ui.error_write(
+        f"This command will guide you to set up a [bright_blue]{name}[/]",
+        "stage in [green]dvc.yaml[/].",
+        f"\nSee [repr.url]{PIPELINE_FILE_LINK}[/].\n",
+        styled=True,
     )
-    doc_link = ui.rich_text.assemble(
-        "See ", (PIPELINE_FILE_LINK, "repr.url"), "."
-    )
-    ui.error_write(message, doc_link, "", sep="\n", styled=True)
 
     if not command:
-        ret.update(_prompts(["cmd"], defaults))
-        ui.write()
-    else:
-        ret.update({"cmd": command})
+        ret.update(compact(_prompts(["cmd"], allow_omission=False)))
+        if prompts:
+            ui.error_write()
+
+    if not prompts:
+        return ret
 
     ui.write("Enter the paths for dependencies and outputs of the command.")
-    workspace = {**defaults, **provided}
     if show_tree and workspace:
-        from rich.tree import Tree
-
-        tree = Tree(
-            "DVC assumes the following workspace structure:",
-            highlight=True,
-        )
-        if not live and "live" not in provided:
-            workspace.pop("live", None)
-        for key in ("plots", "metrics"):
-            if live and key not in provided:
-                workspace.pop(key, None)
-        for value in sorted(workspace.values()):
-            tree.add(f"[green]{value}[/green]")
-        ui.error_write(tree, styled=True)
-
+        ui.error_write(build_workspace_tree(workspace), styled=True)
     ui.error_write()
-    ret.update(_prompts(primary, defaults, validator=validator))
-    ret.update(_prompts(secondary, defaults, validator=validator))
+    ret.update(compact(_prompts(prompts, defaults, validator=validator)))
     return ret
 
 
@@ -157,6 +163,30 @@ def loadd_params(path: str) -> Dict[str, List[str]]:
 
     _, ext = os.path.splitext(path)
     return {path: list(LOADERS[ext](path))}
+
+
+def validate_prompts(key: str, value: str) -> Union[Any, Tuple[Any, str]]:
+    from dvc.ui.prompt import InvalidResponse
+
+    if key == "params":
+        assert isinstance(value, str)
+        try:
+            loadd_params(value)
+        except (FileNotFoundError, IsADirectoryError) as exc:
+            reason = "does not exist"
+            if isinstance(exc, IsADirectoryError):
+                reason = "is a directory"
+            raise InvalidResponse(
+                f"[prompt.invalid]'{value}' {reason}. "
+                "Please retry with an existing parameters file."
+            )
+    elif key in ("code", "data"):
+        if not os.path.exists(value):
+            return value, (
+                f"[yellow]'{value}' does not exist in the workspace. "
+                '"exp run" may fail.[/]'
+            )
+    return value
 
 
 def init(
@@ -180,35 +210,10 @@ def init(
 
     with_live = type == "live"
 
-    def validate_prompts_input(
-        key: str, value: str
-    ) -> Union[Any, Tuple[Any, str]]:
-        from dvc.ui.prompt import InvalidResponse
-
-        if key == "params":
-            assert isinstance(value, str)
-            try:
-                loadd_params(value)
-            except (FileNotFoundError, IsADirectoryError) as exc:
-                reason = "does not exist"
-                if isinstance(exc, IsADirectoryError):
-                    reason = "is a directory"
-                raise InvalidResponse(
-                    f"[prompt.invalid]'{value}' {reason}. "
-                    "Please retry with an existing parameters file."
-                )
-        elif key in ("code", "data"):
-            if not os.path.exists(value):
-                return value, (
-                    f"[yellow]'{value}' does not exist in the workspace. "
-                    '"exp run" may fail.[/]'
-                )
-        return value
-
     if interactive:
         defaults = init_interactive(
             name,
-            validator=validate_prompts_input,
+            validator=validate_prompts,
             defaults=defaults,
             live=with_live,
             provided=overrides,
