@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 from funcy import lfilter, wrap_with
 
 from ..progress import DEFAULT_CALLBACK
-from .base import BaseFileSystem
+from .base import FileSystem
 from .dvc import DvcFileSystem
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
 
 
-class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
+class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
     """DVC + git-tracked files fs.
 
     Args:
@@ -193,9 +193,7 @@ class RepoFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
         repo_path = os.path.join(dir_path, Repo.DVC_DIR)
         return self._main_repo.fs.isdir(repo_path)
 
-    def _get_fs_pair(
-        self, path
-    ) -> Tuple[BaseFileSystem, Optional[DvcFileSystem]]:
+    def _get_fs_pair(self, path) -> Tuple[FileSystem, Optional[DvcFileSystem]]:
         """
         Returns a pair of fss based on repo the path falls in, using prefix.
         """

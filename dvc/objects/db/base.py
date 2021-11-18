@@ -10,7 +10,7 @@ from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import AnyPath
 
@@ -23,7 +23,7 @@ class ObjectDB:
     DEFAULT_CACHE_TYPES = ["copy"]
     CACHE_MODE: Optional[int] = None
 
-    def __init__(self, fs: "BaseFileSystem", path: str, **config):
+    def __init__(self, fs: "FileSystem", path: str, **config):
         from dvc.state import StateNoop
 
         self.fs = fs
@@ -75,7 +75,7 @@ class ObjectDB:
 
     def _add_file(
         self,
-        from_fs: "BaseFileSystem",
+        from_fs: "FileSystem",
         from_info: "AnyPath",
         to_info: "AnyPath",
         _hash_info: "HashInfo",
@@ -95,7 +95,7 @@ class ObjectDB:
     def add(
         self,
         fs_path: "AnyPath",
-        fs: "BaseFileSystem",
+        fs: "FileSystem",
         hash_info: "HashInfo",
         hardlink: bool = False,
         verify: Optional[bool] = None,

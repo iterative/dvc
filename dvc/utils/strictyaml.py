@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from ruamel.yaml import StreamMark
     from voluptuous import MultipleInvalid
 
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.ui import RichText
 
 
@@ -266,7 +266,7 @@ def validate(
 def load(
     path: str,
     schema: Callable[[_T], _T] = None,
-    fs: "BaseFileSystem" = None,
+    fs: "FileSystem" = None,
     encoding: str = "utf-8",
     round_trip: bool = False,
 ) -> Any:

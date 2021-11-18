@@ -8,7 +8,7 @@ from .errors import ObjectFormatError
 from .file import HashFile
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import AnyPath
 
@@ -26,7 +26,7 @@ class ReferenceHashFile(HashFile):
     def __init__(
         self,
         fs_path: "AnyPath",
-        fs: "BaseFileSystem",
+        fs: "FileSystem",
         hash_info: "HashInfo",
         checksum: Optional[str] = None,
         **kwargs,
@@ -109,7 +109,7 @@ class ReferenceHashFile(HashFile):
         )
 
     @staticmethod
-    def config_tuple(fs: "BaseFileSystem"):
+    def config_tuple(fs: "FileSystem"):
         return (
             fs.scheme,
             tuple(

@@ -15,7 +15,7 @@ from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.objects.file import HashFile
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
@@ -307,11 +307,11 @@ class Repo:
         return None
 
     @property
-    def fs(self) -> "BaseFileSystem":
+    def fs(self) -> "FileSystem":
         return self._fs
 
     @fs.setter
-    def fs(self, fs: "BaseFileSystem"):
+    def fs(self, fs: "FileSystem"):
         self._fs = fs
         # Our graph cache is no longer valid, as it was based on the previous
         # fs.

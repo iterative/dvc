@@ -7,12 +7,12 @@ from dvc.utils import is_exec, tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from ..progress import DEFAULT_CALLBACK
-from .base import BaseFileSystem
+from .base import FileSystem
 
 logger = logging.getLogger(__name__)
 
 
-class LocalFileSystem(BaseFileSystem):
+class LocalFileSystem(FileSystem):
     sep = os.sep
 
     scheme = Schemes.LOCAL

@@ -7,7 +7,7 @@ from itertools import groupby, takewhile
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 
-from dvc.fs.base import BaseFileSystem
+from dvc.fs.base import FileSystem
 from dvc.fs.local import localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.scheme import Schemes
@@ -267,7 +267,7 @@ class DvcIgnoreFilter:
             dirs, files = ignore_pattern(abs_root, dirs, files)
         return dirs, files
 
-    def walk(self, fs: BaseFileSystem, path: AnyPath, **kwargs):
+    def walk(self, fs: FileSystem, path: AnyPath, **kwargs):
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
         if fs.scheme == Schemes.LOCAL:
             for root, dirs, files in fs.walk(path, **kwargs):
@@ -278,7 +278,7 @@ class DvcIgnoreFilter:
         else:
             yield from fs.walk(path, **kwargs)
 
-    def find(self, fs: BaseFileSystem, path: AnyPath, **kwargs):
+    def find(self, fs: FileSystem, path: AnyPath, **kwargs):
         if fs.scheme == Schemes.LOCAL:
             for root, _, files in self.walk(fs, path, **kwargs):
                 for file in files:
@@ -371,7 +371,7 @@ class DvcIgnoreFilter:
         return _no_match(target)
 
     def is_ignored(
-        self, fs: BaseFileSystem, path: str, ignore_subrepos: bool = True
+        self, fs: FileSystem, path: str, ignore_subrepos: bool = True
     ) -> bool:
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555

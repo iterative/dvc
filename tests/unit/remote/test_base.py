@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from dvc.fs.base import BaseFileSystem, RemoteCmdError
+from dvc.fs.base import FileSystem, RemoteCmdError
 from dvc.objects.db.base import ObjectDB
 
 
@@ -26,18 +26,18 @@ def test_cmd_error(dvc):
     err = "sed: expression #1, char 2: extra characters after command"
 
     with mock.patch.object(
-        BaseFileSystem,
+        FileSystem,
         "remove",
         side_effect=RemoteCmdError("base", cmd, ret, err),
     ):
         with pytest.raises(RemoteCmdError):
-            BaseFileSystem(**config).remove("file")
+            FileSystem(**config).remove("file")
 
 
 @mock.patch.object(ObjectDB, "list_hashes_traverse")
 @mock.patch.object(ObjectDB, "list_hashes_exists")
 def test_hashes_exist(object_exists, traverse, dvc):
-    odb = ObjectDB(BaseFileSystem(), None)
+    odb = ObjectDB(FileSystem(), None)
 
     # remote does not support traverse
     odb.fs.CAN_TRAVERSE = False
@@ -86,7 +86,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
 @mock.patch.object(ObjectDB, "list_hashes", return_value=[])
 @mock.patch.object(ObjectDB, "_path_to_hash", side_effect=lambda x: x)
 def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
-    odb = ObjectDB(BaseFileSystem(), None)
+    odb = ObjectDB(FileSystem(), None)
     odb.fs_path = "foo"
 
     # parallel traverse
@@ -111,7 +111,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
 
 
 def test_list_hashes(dvc):
-    odb = ObjectDB(BaseFileSystem(), None)
+    odb = ObjectDB(FileSystem(), None)
     odb.fs_path = "foo"
 
     with mock.patch.object(
@@ -123,7 +123,7 @@ def test_list_hashes(dvc):
 
 def test_list_paths(dvc):
     path = "foo"
-    odb = ObjectDB(BaseFileSystem(), path)
+    odb = ObjectDB(FileSystem(), path)
 
     with mock.patch.object(odb.fs, "find", return_value=[]) as walk_mock:
         for _ in odb._list_paths():
@@ -142,4 +142,4 @@ def test_list_paths(dvc):
     [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
 )
 def test_is_dir_hash(hash_, result):
-    assert BaseFileSystem.is_dir_hash(hash_) == result
+    assert FileSystem.is_dir_hash(hash_) == result

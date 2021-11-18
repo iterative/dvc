@@ -7,7 +7,7 @@ from dvc.utils import relpath
 
 from ..progress import DEFAULT_CALLBACK
 from ._metadata import Metadata
-from .base import BaseFileSystem
+from .base import FileSystem
 
 if typing.TYPE_CHECKING:
     from dvc.output import Output
@@ -16,7 +16,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class DvcFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
+class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
     """DVC repo fs.
 
     Args:

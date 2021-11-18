@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pygtrie import Trie
 
     from dvc.dependency import Dependency, ParamsDependency
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.objects import HashInfo, ObjectDB
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
@@ -35,7 +35,7 @@ class Index:
     def __init__(
         self,
         repo: "Repo",  # pylint: disable=redefined-outer-name
-        fs: "BaseFileSystem" = None,
+        fs: "FileSystem" = None,
         stages: List["Stage"] = None,
     ) -> None:
         """Index is an immutable collection of stages.
@@ -58,7 +58,7 @@ class Index:
         """
 
         self.repo: "Repo" = repo
-        self.fs: "BaseFileSystem" = fs or repo.fs
+        self.fs: "FileSystem" = fs or repo.fs
         self.stage_collector: "StageLoad" = repo.stage
         if stages is not None:
             self.stages: List["Stage"] = stages

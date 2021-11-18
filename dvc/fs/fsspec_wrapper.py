@@ -7,7 +7,7 @@ from tqdm.utils import CallbackIOWrapper
 
 from dvc.progress import DEFAULT_CALLBACK
 
-from .base import BaseFileSystem
+from .base import FileSystem
 
 FSPath = str
 AnyFSPath = str
@@ -22,7 +22,7 @@ Entry = Dict[str, Any]
 
 
 # pylint: disable=no-member
-class FSSpecWrapper(BaseFileSystem):
+class FSSpecWrapper(FileSystem):
     TRAVERSE_PREFIX_LEN = 2
 
     def __init__(self, **kwargs):

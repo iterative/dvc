@@ -16,7 +16,7 @@ from .file import HashFile
 from .meta import Meta
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.types import AnyPath
 
     from .db.base import ObjectDB
@@ -210,7 +210,7 @@ _url_cache: Dict[str, str] = {}
 
 
 def _make_staging_url(
-    fs: "BaseFileSystem", odb: "ObjectDB", fs_path: Optional[str]
+    fs: "FileSystem", odb: "ObjectDB", fs_path: Optional[str]
 ):
     from dvc.scheme import Schemes
 
@@ -288,7 +288,7 @@ def _stage_external_tree_info(odb, tree, name):
 def stage(
     odb: "ObjectDB",
     fs_path: "AnyPath",
-    fs: "BaseFileSystem",
+    fs: "FileSystem",
     name: str,
     upload: bool = False,
     dry_run: bool = False,

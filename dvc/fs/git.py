@@ -6,10 +6,10 @@ from tqdm.utils import CallbackIOWrapper
 from dvc.utils import is_exec, relpath
 
 from ..progress import DEFAULT_CALLBACK
-from .base import BaseFileSystem
+from .base import FileSystem
 
 
-class GitFileSystem(BaseFileSystem):  # pylint:disable=abstract-method
+class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
     sep = os.sep
