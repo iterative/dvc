@@ -7,7 +7,7 @@ from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
-    from .base import BaseFileSystem
+    from .base import FileSystem
     from .types import AnyPath
 
 logger = logging.getLogger(__name__)
@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 def _link(
     link: "AnyPath",
-    from_fs: "BaseFileSystem",
+    from_fs: "FileSystem",
     from_path: "AnyPath",
-    to_fs: "BaseFileSystem",
+    to_fs: "FileSystem",
     to_path: "AnyPath",
 ) -> None:
     if not isinstance(from_fs, type(to_fs)):
@@ -35,9 +35,9 @@ def _link(
 
 
 def _copy(
-    from_fs: "BaseFileSystem",
+    from_fs: "FileSystem",
     from_path: "AnyPath",
-    to_fs: "BaseFileSystem",
+    to_fs: "FileSystem",
     to_path: "AnyPath",
 ) -> None:
     if isinstance(from_fs, LocalFileSystem):
@@ -53,9 +53,9 @@ def _copy(
 
 def _try_links(
     links: List["AnyPath"],
-    from_fs: "BaseFileSystem",
+    from_fs: "FileSystem",
     from_path: "AnyPath",
-    to_fs: "BaseFileSystem",
+    to_fs: "FileSystem",
     to_path: "AnyPath",
 ) -> None:
     error = None
@@ -80,9 +80,9 @@ def _try_links(
 
 
 def transfer(
-    from_fs: "BaseFileSystem",
+    from_fs: "FileSystem",
     from_path: "AnyPath",
-    to_fs: "BaseFileSystem",
+    to_fs: "FileSystem",
     to_path: "AnyPath",
     hardlink: bool = False,
     links: Optional[List["AnyPath"]] = None,
@@ -115,9 +115,9 @@ def transfer(
 
 def _test_link(
     link: "AnyPath",
-    from_fs: "BaseFileSystem",
+    from_fs: "FileSystem",
     from_file: "AnyPath",
-    to_fs: "BaseFileSystem",
+    to_fs: "FileSystem",
     to_file: "AnyPath",
 ) -> bool:
     try:
@@ -137,9 +137,9 @@ def _test_link(
 
 def test_links(
     links: List["AnyPath"],
-    from_fs: "BaseFileSystem",
+    from_fs: "FileSystem",
     from_path: "AnyPath",
-    to_fs: "BaseFileSystem",
+    to_fs: "FileSystem",
     to_path: "AnyPath",
 ) -> List["AnyPath"]:
     from dvc.utils import tmp_fname

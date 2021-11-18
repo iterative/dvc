@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.fs.base import BaseFileSystem, RemoteMissingDepsError
+from dvc.fs.base import FileSystem, RemoteMissingDepsError
 
 
 @pytest.mark.parametrize(
@@ -13,7 +13,7 @@ from dvc.fs.base import BaseFileSystem, RemoteMissingDepsError
 )
 def test_missing_deps(pkg, msg, mocker):
     requires = {"missing": "missing"}
-    mocker.patch.object(BaseFileSystem, "REQUIRES", requires)
+    mocker.patch.object(FileSystem, "REQUIRES", requires)
     mocker.patch("dvc.utils.pkg.PKG", pkg)
     with pytest.raises(RemoteMissingDepsError, match=msg):
-        BaseFileSystem()
+        FileSystem()

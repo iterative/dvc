@@ -9,26 +9,26 @@ from typing_extensions import Protocol
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.types import AnyPath
 
 
 class DumperFn(Protocol):
     def __call__(
-        self, path: "AnyPath", data: Any, fs: "BaseFileSystem" = None
+        self, path: "AnyPath", data: Any, fs: "FileSystem" = None
     ) -> Any:
         ...
 
 
 class ModifierFn(Protocol):
     def __call__(
-        self, path: "AnyPath", fs: "BaseFileSystem" = None
+        self, path: "AnyPath", fs: "FileSystem" = None
     ) -> ContextManager[Dict]:
         ...
 
 
 class LoaderFn(Protocol):
-    def __call__(self, path: "AnyPath", fs: "BaseFileSystem" = None) -> Any:
+    def __call__(self, path: "AnyPath", fs: "FileSystem" = None) -> Any:
         ...
 
 
@@ -55,7 +55,7 @@ class EncodingError(ParseError):
         super().__init__(path, f"is not valid {encoding}")
 
 
-def _load_data(path: "AnyPath", parser: ParserFn, fs: "BaseFileSystem" = None):
+def _load_data(path: "AnyPath", parser: ParserFn, fs: "FileSystem" = None):
     open_fn = fs.open if fs else open
     encoding = "utf-8"
     with open_fn(path, encoding=encoding) as fd:  # type: ignore
@@ -67,7 +67,7 @@ def _dump_data(
     path,
     data: Any,
     dumper: DumperFn,
-    fs: "BaseFileSystem" = None,
+    fs: "FileSystem" = None,
     **dumper_args,
 ):
     open_fn = fs.open if fs else open
@@ -80,7 +80,7 @@ def _modify_data(
     path: "AnyPath",
     parser: ParserFn,
     dumper: DumperFn,
-    fs: "BaseFileSystem" = None,
+    fs: "FileSystem" = None,
 ):
     exists_fn = fs.exists if fs else os.path.exists
     file_exists = exists_fn(path)  # type: ignore

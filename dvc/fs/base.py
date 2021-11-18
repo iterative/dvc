@@ -36,7 +36,7 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
-class BaseFileSystem:
+class FileSystem:
     sep = "/"
 
     scheme = "base"

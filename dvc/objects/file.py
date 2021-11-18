@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 from .errors import ObjectFormatError
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import AnyPath
 
@@ -19,7 +19,7 @@ class HashFile:
     def __init__(
         self,
         fs_path: Optional["AnyPath"],
-        fs: Optional["BaseFileSystem"],
+        fs: Optional["FileSystem"],
         hash_info: "HashInfo",
         name: Optional[str] = None,
     ):

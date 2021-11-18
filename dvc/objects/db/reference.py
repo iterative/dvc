@@ -10,7 +10,7 @@ from ..reference import ReferenceHashFile
 from .base import ObjectDB
 
 if TYPE_CHECKING:
-    from dvc.fs.base import BaseFileSystem
+    from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import AnyPath
 
@@ -26,7 +26,7 @@ class ReferenceObjectDB(ObjectDB):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._fs_cache: Dict[tuple, "BaseFileSystem"] = {}
+        self._fs_cache: Dict[tuple, "FileSystem"] = {}
         self._obj_cache: Dict["HashInfo", "ReferenceHashFile"] = {}
 
     def get(self, hash_info: "HashInfo"):
@@ -54,7 +54,7 @@ class ReferenceObjectDB(ObjectDB):
 
     def _add_file(
         self,
-        from_fs: "BaseFileSystem",
+        from_fs: "FileSystem",
         from_info: "AnyPath",
         to_info: "AnyPath",
         hash_info: "HashInfo",
