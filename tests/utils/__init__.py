@@ -69,3 +69,14 @@ def console_width(console, width):
     finally:
         console_options.max_width = original
         console._width = con_width
+
+
+class ANY:
+    def __init__(self, expected_type):
+        self.expected_type = expected_type
+
+    def __repr__(self):
+        return "Any" + self.expected_type.__name__.capitalize()
+
+    def __eq__(self, other):
+        return isinstance(other, self.expected_type)
