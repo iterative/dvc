@@ -9,6 +9,8 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Optional,
+    TextIO,
     Tuple,
     Union,
     cast,
@@ -49,6 +51,7 @@ def _prompts(
     defaults: Dict[str, str] = None,
     validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
     allow_omission: bool = True,
+    stream: Optional[TextIO] = None,
 ) -> Dict[str, OptStr]:
     from dvc.ui.prompt import Prompt
 
@@ -60,6 +63,7 @@ def _prompts(
             default=defaults.get(key),
             validator=partial(validator, key) if validator else None,
             allow_omission=allow_omission,
+            stream=stream,
         )
         for key in keys
     }
@@ -99,8 +103,8 @@ def init_interactive(
     defaults: Dict[str, str],
     provided: Dict[str, str],
     validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
-    show_tree: bool = False,
     live: bool = False,
+    stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
     command = provided.pop("cmd", None)
     primary = lremove(provided.keys(), ["code", "data", "models", "params"])
@@ -131,18 +135,27 @@ def init_interactive(
     )
 
     if not command:
-        ret.update(compact(_prompts(["cmd"], allow_omission=False)))
+        ret.update(
+            compact(_prompts(["cmd"], allow_omission=False, stream=stream))
+        )
         if prompts:
-            ui.error_write()
+            ui.error_write(styled=True)
 
     if not prompts:
         return ret
 
-    ui.write("Enter the paths for dependencies and outputs of the command.")
-    if show_tree and workspace:
+    ui.error_write(
+        "Enter the paths for dependencies and outputs of the command.",
+        styled=True,
+    )
+    if workspace:
         ui.error_write(build_workspace_tree(workspace), styled=True)
-    ui.error_write()
-    ret.update(compact(_prompts(prompts, defaults, validator=validator)))
+    ui.error_write(styled=True)
+    ret.update(
+        compact(
+            _prompts(prompts, defaults, validator=validator, stream=stream)
+        )
+    )
     return ret
 
 
@@ -170,16 +183,14 @@ def validate_prompts(key: str, value: str) -> Union[Any, Tuple[Any, str]]:
 
     if key == "params":
         assert isinstance(value, str)
-        try:
-            loadd_params(value)
-        except (FileNotFoundError, IsADirectoryError) as exc:
-            reason = "does not exist"
-            if isinstance(exc, IsADirectoryError):
-                reason = "is a directory"
-            raise InvalidResponse(
-                f"[prompt.invalid]'{value}' {reason}. "
-                "Please retry with an existing parameters file."
-            )
+        msg_format = (
+            "[prompt.invalid]'{0}' {1}. "
+            "Please retry with an existing parameters file."
+        )
+        if not os.path.exists(value):
+            raise InvalidResponse(msg_format.format(value, "does not exist"))
+        if os.path.isdir(value):
+            raise InvalidResponse(msg_format.format(value, "is a directory"))
     elif key in ("code", "data"):
         if not os.path.exists(value):
             return value, (
@@ -197,6 +208,7 @@ def init(
     overrides: Dict[str, str] = None,
     interactive: bool = False,
     force: bool = False,
+    stream: Optional[TextIO] = None,
 ) -> "Stage":
     from dvc.dvcfile import make_dvcfile
 
@@ -205,8 +217,8 @@ def init(
 
     _check_stage_exists(dvcfile, name, force=force)
 
-    defaults = defaults or {}
-    overrides = overrides or {}
+    defaults = defaults.copy() if defaults else {}
+    overrides = overrides.copy() if overrides else {}
 
     with_live = type == "live"
 
@@ -217,7 +229,7 @@ def init(
             defaults=defaults,
             live=with_live,
             provided=overrides,
-            show_tree=True,
+            stream=stream,
         )
     else:
         if with_live:
@@ -252,7 +264,7 @@ def init(
     )
 
     if interactive:
-        ui.write(Rule(style="green"), styled=True)
+        ui.error_write(Rule(style="green"), styled=True)
         _yaml = dumps_yaml(to_pipeline_file(cast(PipelineStage, stage)))
         syn = Syntax(_yaml, "yaml", theme="ansi_dark")
         ui.error_write(syn, styled=True)
@@ -263,8 +275,9 @@ def init(
         "Do you want to add the above contents to dvc.yaml?",
         console=ui.error_console,
         default=True,
+        stream=stream,
     ):
-        with repo.scm_context(autostage=True, quiet=True), _disable_logging():
+        with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
             stage.dump(update_lock=False)
             stage.ignore_outs()
             if params:

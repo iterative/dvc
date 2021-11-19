@@ -6,6 +6,7 @@ import pytest
 from dvc.analytics import _scm_in_use, collect_and_send_report
 from dvc.main import main
 from dvc.repo import Repo
+from tests.utils import ANY
 
 
 def test_daemon_analytics(mocker, tmp_path):
@@ -32,17 +33,6 @@ def mock_daemon(mocker):
 
     m = mocker.patch("dvc.daemon.daemon", mocker.MagicMock(side_effect=func))
     yield m
-
-
-class ANY:
-    def __init__(self, expected_type):
-        self.expected_type = expected_type
-
-    def __repr__(self):
-        return "Any" + self.expected_type.__name__.capitalize()
-
-    def __eq__(self, other):
-        return isinstance(other, self.expected_type)
 
 
 def test_collect_and_send_report(mocker, dvc, mock_daemon):
