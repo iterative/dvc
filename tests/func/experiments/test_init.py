@@ -9,6 +9,9 @@ from dvc.main import main
 from dvc.repo.experiments.init import init
 from dvc.stage.exceptions import DuplicateStageName
 
+# the tests may hang on prompts on failure
+pytestmark = pytest.mark.timeout(1)
+
 
 def test_init_simple(tmp_dir, scm, dvc, capsys):
     tmp_dir.gen(
