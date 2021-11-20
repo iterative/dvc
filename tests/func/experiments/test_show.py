@@ -348,6 +348,38 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
     assert set(results.keys()) == expected
 
 
+def test_show_tags(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("file", "1", "commit")
+    scm.tag("light")
+    rev = scm.get_rev()
+
+    show = dvc.experiments.show(all_tags=True)
+    assert show[rev]["baseline"]["data"]["name"] == "light"
+
+    tmp_dir.scm_gen("file", "2", "commit")
+    scm.tag(["-a", "annot", "-m", ""])
+    rev = scm.get_rev()
+
+    show = dvc.experiments.show(all_tags=True)
+    assert show[rev]["baseline"]["data"]["name"] == "annot"
+
+    tmp_dir.scm_gen("file", "3", "commit")
+    scm.tag(["-a", "annotated", "-m", ""])
+    scm.tag(["-a", "pointer", "-m", "", "annotated"])
+    rev = scm.get_rev()
+
+    show = dvc.experiments.show(all_tags=True)
+    assert show[rev]["baseline"]["data"]["name"] == "pointer"
+
+    tmp_dir.scm_gen("file", "3", "commit")
+    scm.tag(["-a", "foo", "-m", ""])
+    scm.tag(["-a", "stacked", "-m", ""])
+    rev = scm.get_rev()
+
+    show = dvc.experiments.show(all_tags=True)
+    assert show[rev]["baseline"]["data"]["name"] == "foo"
+
+
 def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
     with caplog.at_level(logging.ERROR):
         assert main(["exp", "show", "--no-pager", "--sort-by=bar"]) != 0
