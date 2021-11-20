@@ -29,8 +29,8 @@ jobs:
         python-version: 3.8
     - name: Install requirements
       run: |
-        pip install wheel
-        pip install ".[all,tests,terraform]" pre-commit
+        pip install --upgrade pip setuptools wheel
+        pip install ".[dev]" pre-commit
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
@@ -46,10 +46,6 @@ jobs:
       matrix:
         os: [ubuntu-20.04, windows-latest, macos-latest]
         pyv: ["3.7", "3.8", "3.9.7", "3.10"]
-        exclude:
-          # no wheels for pygit2 yet
-          - os: windows-latest
-            pyv: "3.10"
     steps:
     - uses: actions/checkout@v2.4.0
       with:
@@ -74,7 +70,7 @@ jobs:
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
         pip install --upgrade pip setuptools wheel
-        pip install -e ".[all,tests,terraform]"
+        pip install -e ".[dev]"
     - name: install temporary dependencies
       run: |
         pip install git+https://github.com/isidentical/gdrivefs@service-account
