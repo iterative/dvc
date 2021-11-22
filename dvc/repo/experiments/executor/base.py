@@ -183,9 +183,11 @@ class BaseExecutor(ABC):
             on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
                 to be called when an experiment ref has diverged.
         """
+        from ..utils import iter_remote_refs
+
         refs = []
         has_checkpoint = False
-        for ref in dest_scm.iter_remote_refs(url, base=EXPS_NAMESPACE):
+        for ref in iter_remote_refs(dest_scm, url, base=EXPS_NAMESPACE):
             if ref == EXEC_CHECKPOINT:
                 has_checkpoint = True
             elif not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
@@ -222,6 +224,8 @@ class BaseExecutor(ABC):
 
     @classmethod
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
+        from dvc.scm.base import InvalidRemoteSCMRepo
+        from dvc.scm.exceptions import InvalidRemote
 
         if git_remote == dvc.root_dir:
             logger.warning(
@@ -230,7 +234,10 @@ class BaseExecutor(ABC):
                 "will automatically be pushed to the default DVC remote "
                 "(if any) on each experiment commit."
             )
-        dvc.scm.validate_git_remote(git_remote)
+        try:
+            dvc.scm.validate_git_remote(git_remote)
+        except InvalidRemote as exc:
+            raise InvalidRemoteSCMRepo(str(exc))
         dvc.cloud.get_remote_odb()
 
     @classmethod

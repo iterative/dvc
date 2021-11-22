@@ -16,3 +16,15 @@ class FileNotInRepoError(SCMError):
 
 class MergeConflictError(SCMError):
     pass
+
+
+class InvalidRemote(SCMError):
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(f"'{url}' is not a valid Git remote or URL")
+
+
+class AuthError(SCMError):
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(f"HTTP Git authentication is not supported: '{url}'")

@@ -19,7 +19,8 @@ from typing import (
 from funcy import cached_property
 
 from dvc.progress import Tqdm
-from dvc.scm.base import GitAuthError, InvalidRemoteSCMRepo, SCMError
+from dvc.scm.base import SCMError
+from dvc.scm.exceptions import AuthError, InvalidRemote
 from dvc.utils import relpath
 
 from ...objects import GitObject
@@ -370,7 +371,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             _remote, location = get_remote_repo(self.repo, url)
             client, path = get_transport_and_path(location, **kwargs)
         except Exception as exc:
-            raise InvalidRemoteSCMRepo(url) from exc
+            raise InvalidRemote(url) from exc
 
         try:
             if base:
@@ -382,9 +383,9 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             else:
                 yield from (os.fsdecode(ref) for ref in client.get_refs(path))
         except NotGitRepository as exc:
-            raise InvalidRemoteSCMRepo(url) from exc
+            raise InvalidRemote(url) from exc
         except HTTPUnauthorized:
-            raise GitAuthError(url)
+            raise AuthError(url)
 
     def get_refs_containing(self, rev: str, pattern: Optional[str] = None):
         raise NotImplementedError
@@ -458,7 +459,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         except (NotGitRepository, SendPackError) as exc:
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
         except HTTPUnauthorized:
-            raise GitAuthError(url)
+            raise AuthError(url)
 
     def _push_dest_refs(
         self, src: Optional[str], dest: str
@@ -676,11 +677,11 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             _, location = get_remote_repo(self.repo, url)
             client, path = get_transport_and_path(location, **kwargs)
         except Exception as exc:
-            raise InvalidRemoteSCMRepo(url) from exc
+            raise InvalidRemote(url) from exc
         if isinstance(client, LocalGitClient) and not os.path.exists(
             os.path.join("", path)
         ):
-            raise InvalidRemoteSCMRepo(url)
+            raise InvalidRemote(url)
 
     def check_ref_format(self, refname: str):
         from dulwich.refs import check_ref_format

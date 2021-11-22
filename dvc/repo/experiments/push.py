@@ -4,7 +4,7 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 
-from .utils import exp_commits, resolve_exp_ref
+from .utils import exp_commits, push_refspec, resolve_exp_ref
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,13 @@ def push(
 
     refname = str(exp_ref)
     logger.debug("git push experiment '%s' -> '%s'", exp_ref, git_remote)
-    repo.scm.push_refspec(
-        git_remote, refname, refname, force=force, on_diverged=on_diverged
+    push_refspec(
+        repo.scm,
+        git_remote,
+        refname,
+        refname,
+        force=force,
+        on_diverged=on_diverged,
     )
 
     if push_cache:

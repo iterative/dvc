@@ -29,18 +29,13 @@ class NoSCMError(SCMError):
 
 
 class InvalidRemoteSCMRepo(SCMError):
-    def __init__(self, url: str):
-        msg = f"'{url}' is not a valid Git remote or URL"
-        super().__init__(msg)
+    pass
 
 
 class GitAuthError(SCMError):
-    def __init__(self, url: str):
-        super().__init__(
-            f"HTTP Git authentication is not supported: '{url}'"
-            "\nSee https://dvc.org/doc//user-guide/"
-            "troubleshooting#git-auth"
-        )
+    def __init__(self, reason: str) -> None:
+        doc = "See https://dvc.org/doc//user-guide/troubleshooting#git-auth"
+        super().__init__(f"{reason}\n{doc}")
 
 
 class Base:
