@@ -28,3 +28,10 @@ class AuthError(SCMError):
     def __init__(self, url: str) -> None:
         self.url = url
         super().__init__(f"HTTP Git authentication is not supported: '{url}'")
+
+
+class CloneError(SCMError):
+    def __init__(self, url: str, path: str) -> None:
+        self.url = url
+        self.path = path
+        super().__init__(f"Failed to clone repo '{url}' to '{path}'")

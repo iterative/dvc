@@ -31,3 +31,13 @@ def SCM(
         return NoSCM(root_dir)
 
     return Git(root_dir, search_parent_directories=search_parent_directories)
+
+
+def clone(url: str, to_path: str, **kwargs):
+    from .exceptions import CloneError as InternalCloneError
+    from .base import CloneError
+
+    try:
+        return Git.clone(url, to_path, **kwargs)
+    except InternalCloneError as exc:
+        raise CloneError(str(exc))
