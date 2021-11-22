@@ -368,7 +368,8 @@ class Repo:
         if path_isin(self.odb.local.cache_dir, self.root_dir):
             flist += [self.odb.local.cache_dir]
 
-        self.scm.ignore_list(flist)
+        for file in flist:
+            self.scm_context.ignore(file)
 
     def brancher(self, *args, **kwargs):
         from dvc.repo.brancher import brancher

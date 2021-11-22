@@ -99,10 +99,6 @@ class Base:
     def ignore_file(self):
         """Filename for a file that contains ignored paths for this SCM."""
 
-    def ignore_list(self, p_list):
-        """Makes SCM ignore all paths specified in a list."""
-        return [self.ignore(path) for path in p_list]
-
     def add(self, paths):
         """Makes SCM track every path from a specified list of paths."""
 

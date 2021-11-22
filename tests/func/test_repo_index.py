@@ -200,7 +200,7 @@ def test_dumpd(dvc):
 
 
 def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
-    dvc.config["core"]["autostage"] = True
+    dvc.scm_context.autostage = True
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar", name="copy-foo-bar")
 
