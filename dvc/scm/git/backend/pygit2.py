@@ -17,7 +17,8 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.scm.base import MergeConflictError, RevError, SCMError
+from dvc.scm.base import RevError, SCMError
+from dvc.scm.exceptions import MergeConflictError
 from dvc.utils import relpath
 
 from ..objects import GitCommit, GitObject

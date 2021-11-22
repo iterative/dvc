@@ -344,7 +344,7 @@ def test_commit_no_verify(tmp_dir, scm, git, hook):
 
 @pytest.mark.parametrize("squash", [True, False])
 def test_merge(tmp_dir, scm, git, squash):
-    from dvc.scm.base import MergeConflictError
+    from dvc.scm.exceptions import MergeConflictError
 
     if git.test_backend == "dulwich":
         pytest.skip()
@@ -399,7 +399,7 @@ def test_checkout_index(tmp_dir, scm, git):
     "strategy, expected", [("ours", "baz"), ("theirs", "bar")]
 )
 def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
-    from dvc.scm.base import MergeConflictError
+    from dvc.scm.exceptions import MergeConflictError
 
     if git.test_backend == "dulwich":
         pytest.skip()
