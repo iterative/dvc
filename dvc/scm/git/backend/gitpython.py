@@ -17,8 +17,8 @@ from typing import (
 from funcy import ignore
 
 from dvc.progress import Tqdm
-from dvc.scm.base import CloneError, RevError, SCMError
-from dvc.scm.exceptions import MergeConflictError
+from dvc.scm.base import RevError, SCMError
+from dvc.scm.exceptions import MergeConflictError, CloneError
 from dvc.utils import fix_env, is_binary, relpath
 
 from ..objects import GitCommit, GitObject

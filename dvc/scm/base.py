@@ -10,8 +10,7 @@ class SCMError(DvcException):
 
 
 class CloneError(SCMError):
-    def __init__(self, url, path):
-        super().__init__(f"Failed to clone repo '{url}' to '{path}'")
+    pass
 
 
 class RevError(SCMError):

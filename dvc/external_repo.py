@@ -198,6 +198,8 @@ def _clone_default_branch(url, rev, for_write=False):
                     logger.debug("erepo: git pull '%s'", url)
                     git.pull()
         else:
+            from dvc.scm import clone
+
             logger.debug("erepo: git clone '%s' to a temporary dir", url)
             clone_path = tempfile.mkdtemp("dvc-clone")
             if not for_write and rev and not Git.is_sha(rev):
@@ -205,7 +207,7 @@ def _clone_default_branch(url, rev, for_write=False):
                 from dvc.scm.base import CloneError
 
                 try:
-                    git = Git.clone(url, clone_path, shallow_branch=rev)
+                    git = clone(url, clone_path, shallow_branch=rev)
                     shallow = True
                     logger.debug(
                         "erepo: using shallow clone for branch '%s'", rev
@@ -213,7 +215,7 @@ def _clone_default_branch(url, rev, for_write=False):
                 except CloneError:
                     pass
             if not git:
-                git = Git.clone(url, clone_path)
+                git = clone(url, clone_path)
                 shallow = False
             CLONES[url] = (clone_path, shallow)
     finally:
