@@ -3,7 +3,6 @@ from collections import defaultdict
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
-from dvc.scm.base import RevError
 
 from .utils import (
     exp_refs,
@@ -18,11 +17,13 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def ls(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
+    from dvc.scm import resolve_rev
+    from dvc.scm.base import RevError
     from dvc.scm.git import Git
 
     if rev:
         try:
-            rev = repo.scm.resolve_rev(rev)
+            rev = resolve_rev(repo.scm, rev)
         except RevError:
             if not (git_remote and Git.is_sha(rev)):
                 # This could be a remote rev that has not been fetched yet

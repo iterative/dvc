@@ -3,7 +3,6 @@ import os
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
-from dvc.scm.base import RevError
 from dvc.utils.fs import remove
 
 from .base import (
@@ -21,13 +20,14 @@ logger = logging.getLogger(__name__)
 @scm_context
 def apply(repo, rev, force=True, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
-    from dvc.scm.base import SCMError
+    from dvc.scm import resolve_rev
+    from dvc.scm.base import RevError, SCMError
     from dvc.scm.exceptions import MergeConflictError
 
     exps = repo.experiments
 
     try:
-        exp_rev = repo.scm.resolve_rev(rev)
+        exp_rev = resolve_rev(repo.scm, rev)
         exps.check_baseline(exp_rev)
     except (RevError, BaselineMismatchError) as exc:
         raise InvalidExpRevError(rev) from exc

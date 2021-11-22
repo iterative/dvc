@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def branch(repo, exp_rev, branch_name, *args, **kwargs):
+    from dvc.scm import resolve_rev
+
     try:
-        rev = repo.scm.resolve_rev(exp_rev)
+        rev = resolve_rev(repo.scm, exp_rev)
     except RevError:
         raise InvalidArgumentError(exp_rev)
     ref_info = None

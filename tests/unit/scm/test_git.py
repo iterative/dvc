@@ -422,7 +422,7 @@ def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
 
 
 def test_resolve_rev(tmp_dir, scm, make_tmp_dir, git):
-    from dvc.scm.base import RevError
+    from dvc.scm.exceptions import RevError
 
     if git.test_backend == "dulwich":
         pytest.skip()

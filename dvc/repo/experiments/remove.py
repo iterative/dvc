@@ -52,8 +52,11 @@ def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     for _, ref_info in stash_revs.items():
         if ref_info.name == ref_or_rev:
             return ref_info.index
+
+    from dvc.scm import resolve_rev
+
     try:
-        rev = repo.scm.resolve_rev(ref_or_rev)
+        rev = resolve_rev(repo.scm, ref_or_rev)
         if rev in stash_revs:
             return stash_revs.get(rev).index
     except RevError:

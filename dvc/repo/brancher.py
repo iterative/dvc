@@ -1,3 +1,5 @@
+from functools import partial
+
 from funcy import group_by
 
 
@@ -58,7 +60,10 @@ def brancher(  # noqa: E302
 
     try:
         if revs:
-            for sha, names in group_by(scm.resolve_rev, revs).items():
+            from dvc.scm import resolve_rev
+
+            rev_resolver = partial(resolve_rev, scm)
+            for sha, names in group_by(rev_resolver, revs).items():
                 self.fs = scm.get_fs(sha)
                 # ignore revs that don't contain repo root
                 # (i.e. revs from before a subdir=True repo was init'ed)

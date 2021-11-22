@@ -9,13 +9,14 @@ logger = logging.getLogger(__name__)
 
 def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
     from dvc.repo.experiments.show import _collect_experiment_commit
+    from dvc.scm import resolve_rev
 
     if repo.scm.no_commits:
         return {}
 
     if a_rev:
         a_rev = fix_exp_head(repo.scm, a_rev)
-        rev = repo.scm.resolve_rev(a_rev)
+        rev = resolve_rev(repo.scm, a_rev)
         old = _collect_experiment_commit(repo, rev, param_deps=param_deps)
     else:
         old = _collect_experiment_commit(
@@ -24,7 +25,7 @@ def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
 
     if b_rev:
         b_rev = fix_exp_head(repo.scm, b_rev)
-        rev = repo.scm.resolve_rev(b_rev)
+        rev = resolve_rev(repo.scm, b_rev)
         new = _collect_experiment_commit(repo, rev, param_deps=param_deps)
     else:
         new = _collect_experiment_commit(
