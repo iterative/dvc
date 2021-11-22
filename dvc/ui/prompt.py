@@ -152,10 +152,12 @@ class Prompt(RichInputMixin, rich.prompt.Prompt):
             _default = self.render_default(default)
             parts.append(_default)
 
-        if self.allow_omission and parts:
+        if self.allow_omission:
             from rich.text import Text
 
-            parts.append(Text(f", {self.omit_value} to omit", style="italic"))
+            if parts:
+                parts.append(", ")
+            parts.append(Text(f"{self.omit_value} to omit", style="italic"))
 
         if parts:
             parts = [" [", *parts, "]"]

@@ -51,7 +51,11 @@ def test_prompt_disallows_empty_response(mocker):
     assert console.file.getvalue() == expected
 
 
-def test_prompt_with_conditional_skip(mocker):
+@pytest.mark.parametrize("default, brack", [
+    ("default", "[default, n to omit]"),
+    (None, "[n to omit]"),
+])
+def test_prompt_with_conditional_skip(mocker, default, brack):
     console = RichConsole(file=io.StringIO())
     mocked_validator = mocker.MagicMock(return_value="something")
     assert (
@@ -60,13 +64,13 @@ def test_prompt_with_conditional_skip(mocker):
             console=console,
             allow_omission=True,
             stream=io.StringIO("n\n"),
-            default="default",
+            default=default,
             validator=mocked_validator,
         )
         is None
     )
     assert (
-        console.file.getvalue() == "What is your name? [default, n to omit]: "
+        console.file.getvalue() == f"What is your name? {brack}: "
     )
     mocked_validator.assert_not_called()
 
