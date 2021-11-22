@@ -10,7 +10,7 @@ from typing import (
     Union,
 )
 
-from dvc.scm.base import SCMError
+from dvc.scm.exceptions import SCMError
 
 from ..objects import GitObject
 

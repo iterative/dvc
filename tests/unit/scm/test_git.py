@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.scm.base import SCMError
+from dvc.scm.exceptions import SCMError
 
 
 # Behaves the same as SCM but will test against all supported Git backends.

@@ -46,7 +46,12 @@ def apply(repo, rev, force=True, **kwargs):
     else:
         workspace = None
 
-    repo.scm.merge(exp_rev, commit=False)
+    from dvc.scm.exceptions import SCMError as _SCMError
+
+    try:
+        repo.scm.merge(exp_rev, commit=False)
+    except _SCMError as exc:
+        raise SCMError(str(exc))
 
     if workspace:
         try:
@@ -61,7 +66,7 @@ def apply(repo, rev, force=True, **kwargs):
                 repo.scm.reset(hard=True)
                 repo.scm.stash.pop()
                 raise ApplyConflictError(rev) from exc
-        except SCMError as exc:
+        except _SCMError as exc:
             raise ApplyConflictError(rev) from exc
         repo.scm.stash.drop()
     repo.scm.reset()

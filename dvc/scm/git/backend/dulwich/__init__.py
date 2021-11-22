@@ -19,8 +19,7 @@ from typing import (
 from funcy import cached_property
 
 from dvc.progress import Tqdm
-from dvc.scm.base import SCMError
-from dvc.scm.exceptions import AuthError, InvalidRemote
+from dvc.scm.exceptions import AuthError, InvalidRemote, SCMError
 from dvc.utils import relpath
 
 from ...objects import GitObject
