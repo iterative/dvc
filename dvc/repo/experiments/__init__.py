@@ -409,7 +409,9 @@ class Experiments:
                 self.scm.reset()
 
         if checkpoint_resume:
-            resume_rev = self.scm.resolve_rev(checkpoint_resume)
+            from dvc.scm import resolve_rev
+
+            resume_rev = resolve_rev(self.scm, checkpoint_resume)
             try:
                 self.check_baseline(resume_rev)
                 checkpoint_resume = resume_rev
@@ -879,7 +881,9 @@ class Experiments:
         return self._get_baseline(rev)
 
     def _get_baseline(self, rev):
-        rev = self.scm.resolve_rev(rev)
+        from dvc.scm import resolve_rev
+
+        rev = resolve_rev(self.scm, rev)
 
         if rev in self.stash_revs:
             entry = self.stash_revs.get(rev)

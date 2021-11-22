@@ -35,3 +35,7 @@ class CloneError(SCMError):
         self.url = url
         self.path = path
         super().__init__(f"Failed to clone repo '{url}' to '{path}'")
+
+
+class RevError(SCMError):
+    pass

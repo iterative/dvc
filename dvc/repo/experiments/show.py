@@ -10,7 +10,6 @@ from dvc.repo.experiments.executor.base import ExecutorInfo
 from dvc.repo.experiments.utils import fix_exp_head
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
-from dvc.scm.base import SCMError
 from dvc.utils import error_handler, onerror_collect
 
 logger = logging.getLogger(__name__)
@@ -121,12 +120,16 @@ def show(
         raise InvalidArgumentError(f"Invalid number of commits '{num}'")
 
     if revs is None:
+        from dvc.scm import resolve_rev
+        from dvc.scm.base import RevError
+
         revs = []
         for n in range(num):
             try:
                 head = fix_exp_head(repo.scm, f"HEAD~{n}")
-                revs.append(repo.scm.resolve_rev(head))
-            except SCMError:
+                assert head
+                revs.append(resolve_rev(repo.scm, head))
+            except RevError:
                 break
 
     revs = OrderedDict(

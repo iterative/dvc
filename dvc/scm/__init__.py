@@ -34,10 +34,20 @@ def SCM(
 
 
 def clone(url: str, to_path: str, **kwargs):
-    from .exceptions import CloneError as InternalCloneError
     from .base import CloneError
+    from .exceptions import CloneError as InternalCloneError
 
     try:
         return Git.clone(url, to_path, **kwargs)
     except InternalCloneError as exc:
         raise CloneError(str(exc))
+
+
+def resolve_rev(scm: "Git", rev: str) -> str:
+    from .base import RevError
+    from .exceptions import RevError as InternalRevError
+
+    try:
+        return scm.resolve_rev(rev)
+    except InternalRevError as exc:
+        raise RevError(str(exc))
