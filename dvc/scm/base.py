@@ -9,12 +9,6 @@ class SCMError(DvcException):
     """Base class for source control management errors."""
 
 
-class FileNotInRepoError(SCMError):
-    """Thrown when trying to find .gitignore for a file that is not in a scm
-    repository.
-    """
-
-
 class CloneError(SCMError):
     def __init__(self, url, path):
         super().__init__(f"Failed to clone repo '{url}' to '{path}'")
@@ -32,10 +26,6 @@ class NoSCMError(SCMError):
             "configuration with `dvc config core.no_scm false`."
         )
         super().__init__(msg)
-
-
-class MergeConflictError(SCMError):
-    pass
 
 
 class InvalidRemoteSCMRepo(SCMError):

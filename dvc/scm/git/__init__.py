@@ -11,7 +11,8 @@ from typing import Dict, Iterable, Optional, Tuple, Type
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
 
-from dvc.scm.base import Base, FileNotInRepoError, RevError
+from dvc.scm.base import Base, RevError
+from dvc.scm.exceptions import FileNotInRepoError
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 

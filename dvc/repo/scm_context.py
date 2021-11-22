@@ -37,15 +37,29 @@ class SCMContext:
         return self.scm.add(self.files_to_track)
 
     def ignore(self, path: str) -> None:
+        from dvc.scm.base import SCMError
+        from dvc.scm.exceptions import FileNotInRepoError
+
         logger.debug("Adding '%s' to gitignore file.", path)
-        gitignore_file = self.scm.ignore(path)
+        try:
+            gitignore_file = self.scm.ignore(path)
+        except FileNotInRepoError as exc:
+            raise SCMError(str(exc))
+
         if gitignore_file:
             self.track_file(gitignore_file)
             return self.ignored_paths.append(path)
 
     def ignore_remove(self, path: str) -> None:
+        from dvc.scm.base import SCMError
+        from dvc.scm.exceptions import FileNotInRepoError
+
         logger.debug("Removing '%s' from gitignore file.", path)
-        gitignore_file = self.scm.ignore_remove(path)
+        try:
+            gitignore_file = self.scm.ignore_remove(path)
+        except FileNotInRepoError as exc:
+            raise SCMError(str(exc))
+
         if gitignore_file:
             return self.track_file(gitignore_file)
 
