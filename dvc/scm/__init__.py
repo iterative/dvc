@@ -26,11 +26,17 @@ def SCM(
     Returns:
         dvc.scm.base.Base: SCM instance.
     """
+    from dvc.scm.base import SCMError
+    from dvc.scm.exceptions import SCMError as InternalSCMError
 
-    if no_scm:
-        return NoSCM(root_dir)
-
-    return Git(root_dir, search_parent_directories=search_parent_directories)
+    try:
+        if no_scm:
+            return NoSCM(root_dir)
+        return Git(
+            root_dir, search_parent_directories=search_parent_directories
+        )
+    except InternalSCMError as exc:
+        raise SCMError(str(exc))
 
 
 def clone(url: str, to_path: str, **kwargs):
