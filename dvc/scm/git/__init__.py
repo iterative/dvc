@@ -12,11 +12,14 @@ from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.scm.base import Base
-from dvc.scm.exceptions import FileNotInRepoError, RevError
+from dvc.scm.exceptions import (
+    FileNotInRepoError,
+    GitHookAlreadyExists,
+    RevError,
+)
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
-from ..exceptions import GitHookAlreadyExists
 from .backend.base import BaseGitBackend, NoGitBackendError
 from .backend.dulwich import DulwichBackend
 from .backend.gitpython import GitPythonBackend

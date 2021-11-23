@@ -16,12 +16,14 @@ from dvc.exceptions import (
     PathMissingError,
 )
 from dvc.repo import Repo
+from dvc.scm import map_scm_exception
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
 
 @contextmanager
+@map_scm_exception()
 def external_repo(
     url, rev=None, for_write=False, cache_dir=None, cache_types=None, **kwargs
 ):
