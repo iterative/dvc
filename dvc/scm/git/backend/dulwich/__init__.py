@@ -18,7 +18,6 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.progress import Tqdm
 from dvc.scm.exceptions import AuthError, InvalidRemote, SCMError
 from dvc.utils import relpath
 
@@ -26,9 +25,11 @@ from ...objects import GitObject
 from ..base import BaseGitBackend
 
 if TYPE_CHECKING:
+    from dvc.scm.progress import GitProgressEvent
     from dvc.types import StrPath
 
     from ...objects import GitCommit
+
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         to_path: str,
         rev: Optional[str] = None,
         shallow_branch: Optional[str] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
     ):
         raise NotImplementedError
 
@@ -396,6 +398,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
         **kwargs,
     ):
         from dulwich.client import HTTPUnauthorized, get_transport_and_path
@@ -439,22 +442,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
             return new_refs
 
         try:
-            with Tqdm(
-                desc="Pushing git refs", bar_format=self.BAR_FMT_NOTOTAL
-            ) as pbar:
+            from dvc.scm.progress import GitProgressReporter
 
-                def progress(msg_b):
-                    msg = msg_b.decode("ascii").strip()
-                    pbar.update_msg(msg)
-                    pbar.refresh()
-                    logger.trace(msg)
-
-                client.send_pack(
-                    path,
-                    update_refs,
-                    self.repo.object_store.generate_pack_data,
-                    progress=progress,
-                )
+            client.send_pack(
+                path,
+                update_refs,
+                self.repo.object_store.generate_pack_data,
+                progress=GitProgressReporter(progress) if progress else None,
+            )
         except (NotGitRepository, SendPackError) as exc:
             raise SCMError("Git failed to push '{src}' to '{url}'") from exc
         except HTTPUnauthorized:
@@ -484,6 +479,7 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
         **kwargs,
     ):
         from dulwich.client import get_transport_and_path
@@ -519,22 +515,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 f"'{url}' is not a valid Git remote or URL"
             ) from exc
 
-        with Tqdm(
-            desc="Fetching git refs", bar_format=self.BAR_FMT_NOTOTAL
-        ) as pbar:
+        from dvc.scm.progress import GitProgressReporter
 
-            def progress(msg_b):
-                msg = msg_b.decode("ascii").strip()
-                pbar.update_msg(msg)
-                pbar.refresh()
-                logger.trace(msg)
-
-            fetch_result = client.fetch(
-                path,
-                self.repo,
-                progress=progress,
-                determine_wants=determine_wants,
-            )
+        fetch_result = client.fetch(
+            path,
+            self.repo,
+            progress=GitProgressReporter(progress) if progress else None,
+            determine_wants=determine_wants,
+        )
         for (lh, rh, _) in fetch_refs:
             try:
                 if rh in self.repo.refs:

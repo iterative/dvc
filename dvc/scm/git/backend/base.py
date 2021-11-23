@@ -15,6 +15,8 @@ from dvc.scm.exceptions import SCMError
 from ..objects import GitObject
 
 if TYPE_CHECKING:
+    from dvc.scm.progress import GitProgressEvent
+
     from ..objects import GitCommit
 
 
@@ -49,6 +51,7 @@ class BaseGitBackend(ABC):
         to_path: str,
         rev: Optional[str] = None,
         shallow_branch: Optional[str] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
     ):
         pass
 
@@ -197,6 +200,7 @@ class BaseGitBackend(ABC):
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
         **kwargs,
     ):
         """Push refspec to a remote Git repo.
@@ -223,6 +227,7 @@ class BaseGitBackend(ABC):
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
         **kwargs,
     ):
         """Fetch refspecs from a remote Git repo.

@@ -104,6 +104,8 @@ class SSHExecutor(BaseExecutor):
         return kwargs
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
+        from ..utils import push_refspec
+
         with self.sshfs() as fs:
             fs.makedirs(self.root_dir)
             self._ssh_cmd(fs, "git init .")
@@ -120,9 +122,9 @@ class SSHExecutor(BaseExecutor):
             # (see https://github.com/iterative/dvc/issues/6508)
             kwargs.update(self._git_client_args(fs))
             refspec = f"{EXEC_NAMESPACE}/"
-            scm.push_refspec(self.git_url, refspec, refspec, **kwargs)
+            push_refspec(scm, self.git_url, refspec, refspec, **kwargs)
             if branch:
-                scm.push_refspec(self.git_url, branch, branch, **kwargs)
+                push_refspec(scm, self.git_url, branch, branch, **kwargs)
                 self._ssh_cmd(fs, f"git symbolic-ref {EXEC_BRANCH} {branch}")
             else:
                 self._ssh_cmd(

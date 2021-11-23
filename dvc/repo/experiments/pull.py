@@ -31,9 +31,17 @@ def pull(
 
     refspec = f"{exp_ref}:{exp_ref}"
     logger.debug("git pull experiment '%s' -> '%s'", git_remote, refspec)
-    repo.scm.fetch_refspecs(
-        git_remote, [refspec], force=force, on_diverged=on_diverged
-    )
+
+    from dvc.scm import TqdmGit
+
+    with TqdmGit(desc="Fetching git refs") as pbar:
+        repo.scm.fetch_refspecs(
+            git_remote,
+            [refspec],
+            force=force,
+            on_diverged=on_diverged,
+            progress=pbar.update_git,
+        )
 
     if pull_cache:
         _pull_cache(repo, exp_ref, **kwargs)
