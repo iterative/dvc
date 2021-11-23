@@ -24,6 +24,7 @@ def push(
     revs=None,
     glob=False,
     odb: Optional["ObjectDB"] = None,
+    include_imports=False,
 ):
     used_run_cache = (
         self.stage_cache.push(remote, odb=odb) if run_cache else []
@@ -49,13 +50,24 @@ def push(
     )
 
     pushed = len(used_run_cache)
-    for dest_odb, obj_ids in used.items():
-        if dest_odb and dest_odb.read_only:
-            continue
+    if odb:
+        all_ids = set()
+        for dest_odb, obj_ids in used.items():
+            if not include_imports and dest_odb and dest_odb.read_only:
+                continue
+            all_ids.update(obj_ids)
         try:
-            pushed += self.cloud.push(
-                obj_ids, jobs, remote=remote, odb=odb or dest_odb
-            )
+            pushed += self.cloud.push(all_ids, jobs, remote=remote, odb=odb)
         except FileTransferError as exc:
             raise UploadError(exc.amount)
+    else:
+        for dest_odb, obj_ids in used.items():
+            if dest_odb and dest_odb.read_only:
+                continue
+            try:
+                pushed += self.cloud.push(
+                    obj_ids, jobs, remote=remote, odb=odb or dest_odb
+                )
+            except FileTransferError as exc:
+                raise UploadError(exc.amount)
     return pushed
