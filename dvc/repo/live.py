@@ -1,10 +1,5 @@
 import logging
-import webbrowser
-from pathlib import Path
-from platform import uname
 from typing import TYPE_CHECKING, List, Optional
-
-from funcy import once_per_args
 
 from dvc.render.utils import render
 
@@ -14,27 +9,15 @@ if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
 
-webbrowser_open = once_per_args(webbrowser.open)
-
 
 def create_summary(out):
-
     assert out.live and out.live["html"]
 
     metrics, plots = out.repo.live.show(out.fs_path)
 
     html_path = out.fs_path + "_dvc_plots"
 
-    index_path = render(
-        out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5
-    )
-
-    url = index_path.as_uri()
-
-    if "Microsoft" in uname().release:
-        url = Path(index_path) / "index.html"
-
-    webbrowser_open(url)
+    render(out.repo, plots, metrics=metrics, path=html_path, refresh_seconds=5)
 
 
 def summary_fs_path(out: "Output") -> Optional[str]:
