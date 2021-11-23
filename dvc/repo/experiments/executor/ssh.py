@@ -1,7 +1,8 @@
 import logging
 import posixpath
+import sys
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import first
 
@@ -14,9 +15,11 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
 )
 
-from .base import BaseExecutor
+from .base import BaseExecutor, ExecutorResult
 
 if TYPE_CHECKING:
+    from multiprocessing import Queue
+
     from dvc.machine import MachineManager
     from dvc.repo import Repo
     from dvc.scm.git import Git
@@ -166,7 +169,99 @@ class SSHExecutor(BaseExecutor):
             Repo.DVC_DIR,
             ODBManager.CACHE_DIR,
         )
-
+        logger.debug("Init remote DVC cache '%s'", cache_path)
         with self.sshfs() as fs:
             odb = get_odb(fs, cache_path, **fs.config)
-            push(dvc, revs=[rev], run_cache=run_cache, odb=odb)
+            push(
+                dvc,
+                revs=[rev],
+                run_cache=run_cache,
+                odb=odb,
+                include_imports=True,
+            )
+
+    def collect_exps(self, dest_scm: "Git", **kwargs) -> Iterable[str]:
+        # TODO: pull DVC cache
+        logger.debug("Collect remote Git exps from '%s'", self.git_url)
+        with self.sshfs() as fs:
+            kwargs.update(self._git_client_args(fs))
+            return super().collect_exps(dest_scm, **kwargs)
+
+    @property
+    def worker_kwargs(self):
+        return {
+            "fs_factory": self._fs_factory,
+            "repo_path": self._repo_abspath,
+        }
+
+    @classmethod
+    def reproduce(
+        cls,
+        dvc_dir: Optional[str],
+        rev: str,
+        queue: Optional["Queue"] = None,
+        rel_cwd: Optional[str] = None,
+        name: Optional[str] = None,
+        log_errors: bool = True,
+        log_level: Optional[int] = None,
+        **kwargs,
+    ) -> "ExecutorResult":
+        from asyncssh import ProcessError
+
+        fs_factory: Optional[Callable] = kwargs.pop("fs_factory", None)
+        repo_path: str = kwargs.pop("repo_path")
+
+        if log_errors and log_level is not None:
+            cls._set_log_level(log_level)
+
+        with _sshfs(fs_factory) as fs:
+            logger.info(
+                "Reproducing experiment on '%s'", fs.fs_args.get("host")
+            )
+            args_url = posixpath.join(
+                repo_path, ".dvc", "tmp", cls.PACKED_ARGS_FILE
+            )
+            if fs.exists(args_url):
+                _args, kwargs = cls.unpack_repro_args(args_url, fs=fs)
+                fs.fs.execute(
+                    (
+                        f"cd {repo_path};"
+                        "git rm .dvc/tmp/{cls.PACKED_ARGS_FILE}"
+                    ),
+                    check=False,
+                )
+            else:
+                # args = []
+                kwargs = {}
+
+            logger.debug("Configuring remote venv...")
+            result = fs.fs.execute(
+                f"cd {repo_path};python3 -m venv .env",
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+            )
+            result = fs.fs.execute(
+                f"cd {repo_path};"
+                ".env/bin/python -m pip install -r src/requirements.txt",
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+            )
+
+            # TODO: handle args/kwargs
+            logger.debug("Calling 'dvc exp run'...")
+            # TODO: nohup (?) output and allow detach/attach
+            try:
+                result = fs.fs.execute(
+                    f"cd {repo_path};source .env/bin/activate;dvc exp run",
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                )
+            except ProcessError:
+                return ExecutorResult(None, None, False)
+
+            result = fs.fs.execute(
+                f"cd {repo_path};git symbolic-ref {EXEC_BRANCH}"
+            )
+            exp_ref = result.stdout.strip()
+            # TODO: return valid exp hash
+            return ExecutorResult("TODO", exp_ref, kwargs.get("force", False))

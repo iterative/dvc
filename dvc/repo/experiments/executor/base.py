@@ -141,6 +141,10 @@ class BaseExecutor(ABC):
     def cleanup(self):
         pass
 
+    @property
+    def worker_kwargs(self):
+        return {}
+
     # TODO: come up with better way to stash repro arguments
     @staticmethod
     def pack_repro_args(path, *args, fs=None, extra=None, **kwargs):
@@ -161,8 +165,9 @@ class BaseExecutor(ABC):
             pickle.dump(data, fobj)
 
     @staticmethod
-    def unpack_repro_args(path):
-        with open(path, "rb") as fobj:
+    def unpack_repro_args(path, fs=None):
+        open_func = fs.open if fs else open
+        with open_func(path, "rb") as fobj:
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
 
