@@ -216,18 +216,6 @@ class DvcIgnoreInCollectedDirError(DvcException):
         )
 
 
-class GitHookAlreadyExistsError(DvcException):
-    def __init__(self, hook_name):
-        from dvc.utils import format_link
-
-        super().__init__(
-            "Hook '{}' already exists. Please refer to {} for more "
-            "info.".format(
-                hook_name, format_link("https://man.dvc.org/install")
-            )
-        )
-
-
 class FileTransferError(DvcException):
     _METHOD = "transfer"
 

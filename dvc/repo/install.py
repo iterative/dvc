@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from dvc.exceptions import DvcException
+
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm.git import Git
@@ -41,9 +43,17 @@ def pre_commit_install(scm: "Git") -> None:
 
 
 def install_hooks(scm: "Git") -> None:
+    from dvc.scm.exceptions import GitHookAlreadyExists
+    from dvc.utils import format_link
+
     hooks = ["post-checkout", "pre-commit", "pre-push"]
     for hook in hooks:
-        scm.verify_hook(hook)
+        try:
+            scm.verify_hook(hook)
+        except GitHookAlreadyExists as exc:
+            link = format_link("https://man.dvc.org/install")
+            raise DvcException(f"{exc}. Please refer to {link} for more info.")
+
     for hook in hooks:
         scm.install_hook(hook, f"exec dvc git-hook {hook} $@")
 
