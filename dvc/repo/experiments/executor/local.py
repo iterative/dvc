@@ -85,12 +85,14 @@ class TempDirExecutor(BaseLocalExecutor):
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
         from dulwich.repo import Repo as DulwichRepo
 
+        from ..utils import push_refspec
+
         DulwichRepo.init(os.fspath(self.root_dir))
 
         refspec = f"{EXEC_NAMESPACE}/"
-        scm.push_refspec(self.git_url, refspec, refspec, **kwargs)
+        push_refspec(scm, self.git_url, refspec, refspec, **kwargs)
         if branch:
-            scm.push_refspec(self.git_url, branch, branch, **kwargs)
+            push_refspec(scm, self.git_url, branch, branch, **kwargs)
             self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         elif self.scm.get_ref(EXEC_BRANCH):
             self.scm.remove_ref(EXEC_BRANCH)

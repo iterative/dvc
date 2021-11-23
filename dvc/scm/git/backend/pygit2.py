@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
+    from dvc.scm.progress import GitProgressEvent
     from dvc.types import StrPath
-
 
 # NOTE: constant from libgit2 git2/checkout.h
 # This can be removed after next pygit2 release:
@@ -153,6 +153,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         to_path: str,
         rev: Optional[str] = None,
         shallow_branch: Optional[str] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
     ):
         raise NotImplementedError
 
@@ -374,6 +375,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         dest: str,
         force: bool = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
         **kwargs,
     ):
         raise NotImplementedError
@@ -384,6 +386,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         refspecs: Iterable[str],
         force: Optional[bool] = False,
         on_diverged: Optional[Callable[[str, str], bool]] = None,
+        progress: Callable[["GitProgressEvent"], None] = None,
         **kwargs,
     ):
         raise NotImplementedError

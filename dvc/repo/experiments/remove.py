@@ -80,8 +80,17 @@ def _remove_commited_exps(
         if not remote:
             remove_exp_refs(repo.scm, remove_list)
         else:
+            from dvc.scm import TqdmGit
+
             for ref_info in remove_list:
-                push_refspec(repo.scm, remote, None, str(ref_info))
+                with TqdmGit(desc="Pushing git refs") as pbar:
+                    push_refspec(
+                        repo.scm,
+                        remote,
+                        None,
+                        str(ref_info),
+                        progress=pbar.update_git,
+                    )
     return remain_list
 
 

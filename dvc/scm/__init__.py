@@ -1,9 +1,13 @@
 """Manages source control systems (e.g. Git)."""
 from contextlib import contextmanager
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
+from dvc.progress import Tqdm
 from dvc.scm.base import Base, NoSCMError
 from dvc.scm.git import Git
+
+if TYPE_CHECKING:
+    from dvc.scm.progress import GitProgressEvent
 
 
 # Syntactic sugar to signal that this is an actual implementation for a DVC
@@ -50,14 +54,30 @@ def SCM(
         )
 
 
+class TqdmGit(Tqdm):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("unit", "obj")
+        super().__init__(*args, **kwargs)
+
+    def update_git(self, event: "GitProgressEvent") -> None:
+        phase, completed, total, message, *_ = event
+        if phase:
+            message = (phase + " | " + message) if message else phase
+        if message:
+            self.postfix["info"] = f" {message} | "
+        if completed:
+            self.update_to(completed, total)
+
+
 def clone(url: str, to_path: str, **kwargs):
     from .base import CloneError
     from .exceptions import CloneError as InternalCloneError
 
-    try:
-        return Git.clone(url, to_path, **kwargs)
-    except InternalCloneError as exc:
-        raise CloneError(str(exc))
+    with TqdmGit(desc="Cloning") as pbar:
+        try:
+            return Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
+        except InternalCloneError as exc:
+            raise CloneError(str(exc))
 
 
 def resolve_rev(scm: "Git", rev: str) -> str:

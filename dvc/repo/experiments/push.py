@@ -37,14 +37,19 @@ def push(
 
     refname = str(exp_ref)
     logger.debug("git push experiment '%s' -> '%s'", exp_ref, git_remote)
-    push_refspec(
-        repo.scm,
-        git_remote,
-        refname,
-        refname,
-        force=force,
-        on_diverged=on_diverged,
-    )
+
+    from dvc.scm import TqdmGit
+
+    with TqdmGit(desc="Pushing git refs") as pbar:
+        push_refspec(
+            repo.scm,
+            git_remote,
+            refname,
+            refname,
+            force=force,
+            on_diverged=on_diverged,
+            progress=pbar.update_git,
+        )
 
     if push_cache:
         _push_cache(repo, exp_ref, **kwargs)

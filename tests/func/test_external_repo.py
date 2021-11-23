@@ -140,7 +140,9 @@ def test_shallow_clone_branch(erepo_dir):
             with repo.open_by_relpath("file") as fd:
                 assert fd.read() == "branch"
 
-        mock_clone.assert_called_with(url, ANY, shallow_branch="branch")
+        mock_clone.assert_called_with(
+            url, ANY, shallow_branch="branch", progress=ANY
+        )
         _, shallow = CLONES[url]
         assert shallow
 
@@ -166,7 +168,9 @@ def test_shallow_clone_tag(erepo_dir):
             with repo.open_by_relpath("file") as fd:
                 assert fd.read() == "foo"
 
-        mock_clone.assert_called_with(url, ANY, shallow_branch="v1")
+        mock_clone.assert_called_with(
+            url, ANY, shallow_branch="v1", progress=ANY
+        )
         _, shallow = CLONES[url]
         assert shallow
 
