@@ -1,9 +1,13 @@
 import logging
+from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import DownloadError, FileTransferError
 from dvc.scheme import Schemes
 
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc.objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,7 @@ def fetch(
     all_commits=False,
     run_cache=False,
     revs=None,
+    odb: Optional["ObjectDB"] = None,
 ):
     """Download data items from a cloud and imported repositories
 
@@ -59,20 +64,34 @@ def fetch(
     except DownloadError as exc:
         failed += exc.amount
 
-    for odb, obj_ids in sorted(
-        used.items(),
-        key=lambda item: item[0] is not None
-        and item[0].fs.scheme == Schemes.MEMORY,
-    ):
+    if odb:
+        all_ids = set()
+        for _odb, obj_ids in used.items():
+            all_ids.update(obj_ids)
         d, f = _fetch(
             self,
-            obj_ids,
+            all_ids,
             jobs=jobs,
             remote=remote,
             odb=odb,
         )
         downloaded += d
         failed += f
+    else:
+        for src_odb, obj_ids in sorted(
+            used.items(),
+            key=lambda item: item[0] is not None
+            and item[0].fs.scheme == Schemes.MEMORY,
+        ):
+            d, f = _fetch(
+                self,
+                obj_ids,
+                jobs=jobs,
+                remote=remote,
+                odb=src_odb,
+            )
+            downloaded += d
+            failed += f
 
     if failed:
         raise DownloadError(failed)
