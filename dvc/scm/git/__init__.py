@@ -11,11 +11,11 @@ from typing import Dict, Iterable, Optional, Tuple, Type
 from funcy import cached_property, first
 from pathspec.patterns import GitWildMatchPattern
 
-from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.scm.base import Base, FileNotInRepoError, RevError
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
 
+from ..exceptions import GitHookAlreadyExists
 from .backend.base import BaseGitBackend, NoGitBackendError
 from .backend.dulwich import DulwichBackend
 from .backend.gitpython import GitPythonBackend
@@ -204,7 +204,7 @@ class Git(Base):
 
     def verify_hook(self, name):
         if (self.hooks_dir / name).exists():
-            raise GitHookAlreadyExistsError(name)
+            raise GitHookAlreadyExists(name)
 
     def install_hook(
         self, name: str, script: str, interpreter: str = "sh"

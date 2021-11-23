@@ -5,8 +5,9 @@ import sys
 import pytest
 from git import GitCommandError
 
-from dvc.exceptions import GitHookAlreadyExistsError
+from dvc.exceptions import DvcException
 from dvc.utils import file_md5
+from tests.func.parsing.test_errors import escape_ansi
 
 
 @pytest.mark.skipif(
@@ -39,8 +40,13 @@ class TestInstall:
     def test_fail_if_hook_exists(self, scm, dvc):
         self._hook("post-checkout").write_text("hook content")
 
-        with pytest.raises(GitHookAlreadyExistsError):
+        with pytest.raises(DvcException) as exc_info:
             dvc.install()
+
+        assert escape_ansi(str(exc_info.value)) == (
+            "Hook 'post-checkout' already exists. "
+            "Please refer to <https://man.dvc.org/install> for more info."
+        )
 
     def test_pre_commit_hook(self, tmp_dir, scm, dvc, caplog):
         tmp_dir.dvc_gen("file", "file content", commit="create foo")
