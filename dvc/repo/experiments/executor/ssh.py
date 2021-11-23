@@ -95,6 +95,18 @@ class SSHExecutor(BaseExecutor):
         port = f":{self.port}" if self.port is not None else ""
         return f"ssh://{user}{self.host}{port}{self._repo_abspath}"
 
+    def cleanup(self):
+        pass
+
+    @contextmanager
+    def remote_odb(self):
+        from dvc.objects.db import get_odb
+
+        with self.sshfs() as fs:
+            url = self.abs_url / ".dvc" / "cache"
+            fs.makedirs(url)
+            yield get_odb(fs, url)
+
     @staticmethod
     def _git_client_args(fs):
         kwargs = {
@@ -104,6 +116,7 @@ class SSHExecutor(BaseExecutor):
         return kwargs
 
     def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
+        logger.debug("Init remote git repo '%s'", self.git_url)
         with self.sshfs() as fs:
             fs.makedirs(self.root_dir)
             self._ssh_cmd(fs, "git init .")

@@ -173,6 +173,7 @@ class BaseExecutor(ABC):
         url: str,
         force: bool = False,
         on_diverged: Callable[[str, bool], None] = None,
+        **kwargs,
     ) -> Iterable[str]:
         """Fetch reproduced experiments into the specified SCM.
 
@@ -185,7 +186,9 @@ class BaseExecutor(ABC):
         """
         refs = []
         has_checkpoint = False
-        for ref in dest_scm.iter_remote_refs(url, base=EXPS_NAMESPACE):
+        for ref in dest_scm.iter_remote_refs(
+            url, base=EXPS_NAMESPACE, **kwargs
+        ):
             if ref == EXEC_CHECKPOINT:
                 has_checkpoint = True
             elif not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
@@ -210,6 +213,7 @@ class BaseExecutor(ABC):
             [f"{ref}:{ref}" for ref in refs],
             on_diverged=on_diverged_ref,
             force=force,
+            **kwargs,
         )
         # update last run checkpoint (if it exists)
         if has_checkpoint:
@@ -217,8 +221,12 @@ class BaseExecutor(ABC):
                 url,
                 [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
                 force=True,
+                **kwargs,
             )
         return refs
+
+    def collect_exps(self, dest_scm: "Git", **kwargs) -> Iterable[str]:
+        return self.fetch_exps(dest_scm, self.git_url, **kwargs)
 
     @classmethod
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
@@ -561,3 +569,7 @@ class BaseExecutor(ABC):
         disable_other_loggers()
         if level is not None:
             dvc_logger.setLevel(level)
+
+    @contextmanager
+    def remote_odb(self):
+        yield None

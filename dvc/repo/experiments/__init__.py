@@ -777,9 +777,8 @@ class Experiments:
                 raise CheckpointExistsError(ref_info.name)
             raise ExperimentExistsError(ref_info.name)
 
-        for ref in executor.fetch_exps(
+        for ref in executor.collect_exps(
             self.scm,
-            executor.git_url,
             force=exec_result.force,
             on_diverged=on_diverged,
         ):
