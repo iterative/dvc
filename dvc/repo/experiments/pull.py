@@ -48,7 +48,16 @@ def pull(
         _pull_cache(repo, exp_ref, **kwargs)
 
 
-def _pull_cache(repo, exp_ref, dvc_remote=None, jobs=None, run_cache=False):
+def _pull_cache(
+    repo,
+    exp_ref,
+    dvc_remote=None,
+    jobs=None,
+    run_cache=False,
+    odb=None,
+):
     revs = list(exp_commits(repo.scm, [exp_ref]))
     logger.debug("dvc fetch experiment '%s'", exp_ref)
-    repo.fetch(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)
+    repo.fetch(
+        jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, odb=odb
+    )
