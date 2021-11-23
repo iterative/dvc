@@ -7,7 +7,7 @@ from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
 from dvc.repo.live import summary_fs_path
-from dvc.scm.base import SCMError
+from dvc.scm.base import NoSCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.serialize import load_yaml
 
@@ -121,9 +121,9 @@ def show(
     # Hide workspace metrics if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except (TypeError, SCMError):
+    except (TypeError, NoSCMError):
         # TypeError - detached head
-        # SCMError - no repo case
+        # NoSCMError - no repo case
         pass
     else:
         if res.get("workspace") == res.get(active_branch):
