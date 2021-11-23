@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 from dvc.dependency.param import ParamsDependency
 from dvc.repo import locked
 from dvc.repo.collect import collect
-from dvc.scm.base import SCMError
+from dvc.scm.base import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
 from dvc.utils import error_handler, errored_revisions, onerror_collect
@@ -113,9 +113,9 @@ def show(repo, revs=None, targets=None, deps=False, onerror: Callable = None):
     # Hide workspace params if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except (TypeError, SCMError):
+    except (TypeError, NoSCMError):
         # TypeError - detached head
-        # SCMError - no repo case
+        # NoSCMError - no repo case
         pass
     else:
         if res.get("workspace") == res.get(active_branch):
