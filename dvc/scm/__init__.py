@@ -1,4 +1,6 @@
 """Manages source control systems (e.g. Git)."""
+from contextlib import contextmanager
+from typing import Iterator
 
 from dvc.scm.base import Base, NoSCMError
 from dvc.scm.git import Git
@@ -9,6 +11,20 @@ from dvc.scm.git import Git
 class NoSCM(Base):
     def __getattr__(self, name):
         raise NoSCMError
+
+
+@contextmanager
+def map_scm_exception(with_cause: bool = False) -> Iterator[None]:
+    from dvc.scm.base import SCMError
+    from dvc.scm.exceptions import SCMError as InternalSCMError
+
+    try:
+        yield
+    except InternalSCMError as exc:
+        into = SCMError(str(exc))
+        if with_cause:
+            raise into from exc
+        raise into
 
 
 def SCM(
@@ -26,17 +42,12 @@ def SCM(
     Returns:
         dvc.scm.base.Base: SCM instance.
     """
-    from dvc.scm.base import SCMError
-    from dvc.scm.exceptions import SCMError as InternalSCMError
-
-    try:
+    with map_scm_exception():
         if no_scm:
             return NoSCM(root_dir)
         return Git(
             root_dir, search_parent_directories=search_parent_directories
         )
-    except InternalSCMError as exc:
-        raise SCMError(str(exc))
 
 
 def clone(url: str, to_path: str, **kwargs):

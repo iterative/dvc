@@ -286,7 +286,10 @@ class Repo:
 
         assert self.scm
         if isinstance(self.fs, LocalFileSystem):
-            return self.scm.get_rev()
+            from dvc.scm import map_scm_exception
+
+            with map_scm_exception():
+                return self.scm.get_rev()
         return self.fs.rev
 
     @cached_property

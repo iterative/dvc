@@ -42,7 +42,9 @@ def scm_locked(f):
     # different sequences of git operations at once
     @wraps(f)
     def wrapper(exp, *args, **kwargs):
-        with exp.scm_lock:
+        from dvc.scm import map_scm_exception
+
+        with map_scm_exception(), exp.scm_lock:
             return f(exp, *args, **kwargs)
 
     return wrapper
