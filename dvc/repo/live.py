@@ -1,5 +1,4 @@
 import logging
-import webbrowser
 from pathlib import Path
 from platform import uname
 from typing import TYPE_CHECKING, List, Optional
@@ -14,7 +13,12 @@ if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
 
-webbrowser_open = once_per_args(webbrowser.open)
+
+@once_per_args
+def webbrowser_open(url: str) -> int:
+    import webbrowser
+
+    return webbrowser.open(url)
 
 
 def create_summary(out):

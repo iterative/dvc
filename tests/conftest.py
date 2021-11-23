@@ -180,7 +180,6 @@ def custom_template(tmp_dir, dvc):
 scriptify_fixture = pytest.fixture(lambda: scriptify, name="scriptify")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def webbrowser_open(session_mocker):
-    session_mocker.patch("dvc.repo.live.webbrowser_open")
-    session_mocker.patch("webbrowser.open")
+@pytest.fixture(autouse=True)
+def mocked_webbrowser_open(mocker):
+    mocker.patch("webbrowser.open")
