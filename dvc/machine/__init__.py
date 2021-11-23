@@ -29,7 +29,7 @@ RESERVED_NAMES = {"local", "localhost"}
 
 DEFAULT_STARTUP_SCRIPT = """#!/bin/bash
 sudo apt-get update
-sudo apt-get install --yes python3 python3-pip
+sudo apt-get install --yes python3 python3-pip python3-venv
 python3 -m pip install --upgrade pip
 
 pushd /etc/apt/sources.list.d

@@ -389,6 +389,7 @@ class Experiments:
         tmp_dir: bool = False,
         checkpoint_resume: Optional[str] = None,
         reset: bool = False,
+        machine: Optional[str] = None,
         **kwargs,
     ):
         """Reproduce and checkout a single experiment."""
@@ -398,7 +399,7 @@ class Experiments:
         if reset:
             self.reset_checkpoints()
 
-        if not (queue or tmp_dir):
+        if not (queue or tmp_dir or machine):
             staged, _, _ = self.scm.status()
             if staged:
                 logger.warning(
@@ -428,8 +429,12 @@ class Experiments:
                 "Queued experiment '%s' for future execution.", stash_rev[:7]
             )
             return [stash_rev]
-        if tmp_dir or queue:
-            results = self._reproduce_revs(revs=[stash_rev], keep_stash=False)
+        if tmp_dir or queue or machine:
+            results = self._reproduce_revs(
+                revs=[stash_rev],
+                keep_stash=False,
+                machine=machine,
+            )
         else:
             results = self._workspace_repro()
         exp_rev = first(results)
@@ -585,6 +590,7 @@ class Experiments:
         self,
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
+        machine: Optional[str] = None,
         **kwargs,
     ) -> Mapping[str, str]:
         """Reproduce the specified experiments.
@@ -621,7 +627,7 @@ class Experiments:
             ", ".join(rev[:7] for rev in to_run),
         )
 
-        executors = self._init_executors(to_run)
+        executors = self._init_executors(to_run, machine=machine)
         try:
             exec_results = {}
             exec_results.update(self._executors_repro(executors, **kwargs))
@@ -643,7 +649,28 @@ class Experiments:
             result.update(exp_result)
         return result
 
-    def _init_executors(self, to_run):
+    def _init_executors(self, to_run, machine: Optional[str] = None):
+        from dvc.utils.fs import makedirs
+
+        pid_dir = os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
+        if not os.path.exists(pid_dir):
+            makedirs(pid_dir)
+
+        # Executor will be initialized with an empty git repo that
+        # we populate by pushing:
+        #   EXEC_HEAD - the base commit for this experiment
+        #   EXEC_MERGE - the unmerged changes (from our stash)
+        #       to be reproduced
+        #   EXEC_BASELINE - the baseline commit for this experiment
+        if machine:
+            executors = self._make_ssh_executors(to_run, machine)
+        else:
+            executors = self._make_tmp_dir_executors(to_run)
+        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            self.scm.remove_ref(ref)
+        return executors
+
+    def _make_tmp_dir_executors(self, to_run):
         from dvc.utils.fs import makedirs
 
         from .executor.local import TempDirExecutor
@@ -652,20 +679,10 @@ class Experiments:
         base_tmp_dir = os.path.join(self.repo.tmp_dir, self.EXEC_TMP_DIR)
         if not os.path.exists(base_tmp_dir):
             makedirs(base_tmp_dir)
-        pid_dir = os.path.join(self.repo.tmp_dir, self.EXEC_PID_DIR)
-        if not os.path.exists(pid_dir):
-            makedirs(pid_dir)
         for stash_rev, item in to_run.items():
             self.scm.set_ref(EXEC_HEAD, item.rev)
             self.scm.set_ref(EXEC_MERGE, stash_rev)
             self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
-
-            # Executor will be initialized with an empty git repo that
-            # we populate by pushing:
-            #   EXEC_HEAD - the base commit for this experiment
-            #   EXEC_MERGE - the unmerged changes (from our stash)
-            #       to be reproduced
-            #   EXEC_BASELINE - the baseline commit for this experiment
             executor = TempDirExecutor(
                 self.scm,
                 self.dvc_dir,
@@ -675,10 +692,28 @@ class Experiments:
             )
             executor.init_cache(self.repo, stash_rev)
             executors[stash_rev] = executor
+        return executors
 
-        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
-            self.scm.remove_ref(ref)
+    def _make_ssh_executors(self, to_run, machine):
+        from .executor.ssh import SSHExecutor
 
+        executors = {}
+        for stash_rev, item in to_run.items():
+            self.scm.set_ref(EXEC_HEAD, item.rev)
+            self.scm.set_ref(EXEC_MERGE, stash_rev)
+            self.scm.set_ref(EXEC_BASELINE, item.baseline_rev)
+            executor = SSHExecutor.from_machine(
+                self.repo.machine,
+                machine,
+                self.scm,
+                self.dvc_dir,
+                root_dir=self.repo.root_dir,
+                name=item.name,
+                branch=item.branch,
+            )
+            # TODO: support granular targets for push
+            executor.init_cache(self.repo, stash_rev)
+            executors[stash_rev] = executor
         return executors
 
     @unlocked_repo
@@ -715,6 +750,7 @@ class Experiments:
                     log_level=logger.getEffectiveLevel(),
                     pidfile=pidfile,
                     git_url=executor.git_url,
+                    **executor.worker_kwargs,
                 )
                 futures[future] = (rev, executor)
 
@@ -748,7 +784,9 @@ class Experiments:
                         )
                     elif not isinstance(exc, CheckpointKilledError):
                         logger.error(
-                            "Failed to reproduce experiment '%s'", rev[:7]
+                            "Failed to reproduce experiment '%s'",
+                            rev[:7],
+                            exc_info=exc,
                         )
                 except CancelledError:
                     logger.error(

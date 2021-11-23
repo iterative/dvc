@@ -623,6 +623,7 @@ class CmdExperimentsRun(CmdRepro):
             checkpoint_resume=self.args.checkpoint_resume,
             reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
+            machine=self.args.machine,
             **self._repro_kwargs,
         )
 
@@ -1550,4 +1551,13 @@ def _add_run_common(parser):
             "Run this experiment in a separate temporary directory instead of "
             "your workspace."
         ),
+    )
+    parser.add_argument(
+        "--machine",
+        default=None,
+        help=argparse.SUPPRESS,
+        # help=(
+        #     "Run this experiment on the specified 'dvc machine' instance."
+        # ),
+        # metavar="<name>",
     )
