@@ -32,7 +32,7 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
 
     new_mock.assert_called_once()
     fs = scm.get_fs(exp)
-    with fs.open(tmp_dir / "metrics.yaml") as fobj:
+    with fs.open(tmp_dir / "metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -74,7 +74,7 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
     exp = first(results)
 
     fs = scm.get_fs(exp)
-    with fs.open(tmp_dir / "metrics.yaml") as fobj:
+    with fs.open(tmp_dir / "metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 3"
 
 
@@ -144,7 +144,7 @@ def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
 
     new_mock.assert_called_once()
     fs = scm.get_fs(exp)
-    with fs.open(tmp_dir / "metrics.yaml") as fobj:
+    with fs.open(tmp_dir / "metrics.yaml", mode="r") as fobj:
         assert fobj.read().strip() == expected
 
 
@@ -262,9 +262,9 @@ def test_update_py_params(tmp_dir, scm, dvc):
     exp_a = first(results)
 
     fs = scm.get_fs(exp_a)
-    with fs.open(tmp_dir / "params.py") as fobj:
+    with fs.open(tmp_dir / "params.py", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "INT = 2"
-    with fs.open(tmp_dir / "metrics.py") as fobj:
+    with fs.open(tmp_dir / "metrics.py", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "INT = 2"
 
     tmp_dir.gen(
@@ -308,9 +308,9 @@ def test_update_py_params(tmp_dir, scm, dvc):
         return text.replace("\r\n", "\n")
 
     fs = scm.get_fs(exp_a)
-    with fs.open(tmp_dir / "params.py") as fobj:
+    with fs.open(tmp_dir / "params.py", mode="r", encoding="utf-8") as fobj:
         assert _dos2unix(fobj.read().strip()) == result
-    with fs.open(tmp_dir / "metrics.py") as fobj:
+    with fs.open(tmp_dir / "metrics.py", mode="r", encoding="utf-8") as fobj:
         assert _dos2unix(fobj.read().strip()) == result
 
     tmp_dir.gen("params.py", "INT = 1\n")
@@ -437,7 +437,7 @@ def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
     assert fs.exists("dvc.yaml")
     assert fs.exists("dvc.lock")
     assert fs.exists("copy.py")
-    with fs.open(tmp_dir / "metrics.yaml") as fobj:
+    with fs.open(tmp_dir / "metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
 
@@ -515,7 +515,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     fs = scm.get_fs(exp)
     for fname in ["metrics.yaml", "dvc.lock"]:
         assert fs.exists(subdir / fname)
-    with fs.open(subdir / "metrics.yaml") as fobj:
+    with fs.open(subdir / "metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     assert dvc.experiments.get_exact_name(exp) == ref_info.name
@@ -560,7 +560,7 @@ def test_subrepo(tmp_dir, scm, workspace):
     fs = scm.get_fs(exp)
     for fname in ["metrics.yaml", "dvc.lock"]:
         assert fs.exists(subrepo / fname)
-    with fs.open(subrepo / "metrics.yaml") as fobj:
+    with fs.open(subrepo / "metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
     assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
@@ -581,7 +581,9 @@ def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
     metrics = set()
     for exp in results:
         fs = scm.get_fs(exp)
-        with fs.open(tmp_dir / "metrics.yaml") as fobj:
+        with fs.open(
+            tmp_dir / "metrics.yaml", mode="r", encoding="utf-8"
+        ) as fobj:
             metrics.add(fobj.read().strip())
     assert expected == metrics
 

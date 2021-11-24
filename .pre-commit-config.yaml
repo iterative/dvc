@@ -16,7 +16,7 @@ repos:
       - id: codespell
         args: 
           - --ignore-words-list
-          - ba,datas,fo,uptodate
+          - ba,datas,fo,uptodate,cachable
     repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
   - hooks:

@@ -18,6 +18,7 @@ from typing import (
 from funcy import cached_property
 
 from dvc.scm.exceptions import MergeConflictError, RevError, SCMError
+from dvc.scm.utils import relpath
 
 from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
@@ -282,7 +283,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def is_ignored(self, path: "Union[str, os.PathLike[str]]") -> bool:
-        rel = os.path.relpath(path, self.root_dir)
+        rel = relpath(path, self.root_dir)
         if os.name == "nt":
             rel.replace("\\", "/")
         return self.repo.path_is_ignored(rel)
@@ -471,7 +472,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if paths is not None:
             tree = self.repo.revparse_single("HEAD").tree
             for path in paths:
-                rel = os.path.relpath(path, self.root_dir)
+                rel = relpath(path, self.root_dir)
                 if os.name == "nt":
                     rel = rel.replace("\\", "/")
                 obj = tree[rel]
@@ -510,7 +511,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         index = self.repo.index
         if paths:
             path_list: Optional[List[str]] = [
-                os.path.relpath(path, self.root_dir) for path in paths
+                relpath(path, self.root_dir) for path in paths
             ]
             if os.name == "nt":
                 path_list = [
