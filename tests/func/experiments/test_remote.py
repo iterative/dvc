@@ -255,7 +255,7 @@ def test_push_pull_cache(
 
 
 def test_auth_error_list(tmp_dir, scm, dvc, http_auth_patch):
-    from dvc.scm.base import GitAuthError
+    from dvc.scm import GitAuthError
 
     with pytest.raises(
         GitAuthError,
@@ -265,7 +265,7 @@ def test_auth_error_list(tmp_dir, scm, dvc, http_auth_patch):
 
 
 def test_auth_error_pull(tmp_dir, scm, dvc, http_auth_patch):
-    from dvc.scm.base import GitAuthError
+    from dvc.scm import GitAuthError
 
     with pytest.raises(
         GitAuthError,
@@ -275,7 +275,7 @@ def test_auth_error_pull(tmp_dir, scm, dvc, http_auth_patch):
 
 
 def test_auth_error_push(tmp_dir, scm, dvc, exp_stage, http_auth_patch):
-    from dvc.scm.base import GitAuthError
+    from dvc.scm import GitAuthError
 
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp = first(results)

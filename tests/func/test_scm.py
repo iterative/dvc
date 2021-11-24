@@ -4,8 +4,7 @@ import sys
 import pytest
 from git import Repo
 
-from dvc.scm import SCM, Git, NoSCM
-from dvc.scm.base import SCMError
+from dvc.scm import SCM, Git, NoSCM, SCMError
 from dvc.system import System
 from tests.basic_env import TestGitSubmodule
 from tests.utils import get_gitignore_content

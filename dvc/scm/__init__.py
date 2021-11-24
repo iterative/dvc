@@ -2,24 +2,50 @@
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator
 
+from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
-from dvc.scm.base import Base, NoSCMError
+from dvc.scm.base import Base  # noqa: F401
 from dvc.scm.git import Git
+from dvc.scm.noscm import NoSCM
 
 if TYPE_CHECKING:
     from dvc.scm.progress import GitProgressEvent
 
 
-# Syntactic sugar to signal that this is an actual implementation for a DVC
-# project under no SCM control.
-class NoSCM(Base):
-    def __getattr__(self, name):
-        raise NoSCMError
+class SCMError(DvcException):
+    """Base class for source control management errors."""
+
+
+class CloneError(SCMError):
+    pass
+
+
+class RevError(SCMError):
+    pass
+
+
+class NoSCMError(SCMError):
+    def __init__(self):
+        msg = (
+            "Only supported for Git repositories. If you're "
+            "seeing this error in a Git repo, try updating the DVC "
+            "configuration with `dvc config core.no_scm false`."
+        )
+        super().__init__(msg)
+
+
+class InvalidRemoteSCMRepo(SCMError):
+    pass
+
+
+class GitAuthError(SCMError):
+    def __init__(self, reason: str) -> None:
+        doc = "See https://dvc.org/doc//user-guide/troubleshooting#git-auth"
+        super().__init__(f"{reason}\n{doc}")
 
 
 @contextmanager
 def map_scm_exception(with_cause: bool = False) -> Iterator[None]:
-    from dvc.scm.base import SCMError
     from dvc.scm.exceptions import SCMError as InternalSCMError
 
     try:
@@ -48,7 +74,7 @@ def SCM(
     """
     with map_scm_exception():
         if no_scm:
-            return NoSCM(root_dir)
+            return NoSCM(root_dir, _raise_not_implemented_as=NoSCMError)
         return Git(
             root_dir, search_parent_directories=search_parent_directories
         )
@@ -70,8 +96,7 @@ class TqdmGit(Tqdm):
 
 
 def clone(url: str, to_path: str, **kwargs):
-    from .base import CloneError
-    from .exceptions import CloneError as InternalCloneError
+    from dvc.scm.exceptions import CloneError as InternalCloneError
 
     with TqdmGit(desc="Cloning") as pbar:
         try:
@@ -81,8 +106,7 @@ def clone(url: str, to_path: str, **kwargs):
 
 
 def resolve_rev(scm: "Git", rev: str) -> str:
-    from .base import RevError
-    from .exceptions import RevError as InternalRevError
+    from dvc.scm.exceptions import RevError as InternalRevError
 
     try:
         return scm.resolve_rev(rev)

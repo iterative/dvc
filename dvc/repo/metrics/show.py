@@ -7,7 +7,7 @@ from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
 from dvc.repo.live import summary_fs_path
-from dvc.scm.base import NoSCMError
+from dvc.scm import NoSCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.serialize import load_yaml
 

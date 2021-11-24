@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 @scm_context
 def apply(repo, rev, force=True, **kwargs):
     from dvc.repo.checkout import checkout as dvc_checkout
-    from dvc.scm import resolve_rev
-    from dvc.scm.base import RevError, SCMError
+    from dvc.scm import RevError, SCMError, resolve_rev
     from dvc.scm.exceptions import MergeConflictError
 
     exps = repo.experiments

@@ -52,7 +52,7 @@ def exp_refs_by_baseline(
 def iter_remote_refs(
     scm: "Git", url: str, base: Optional[str] = None, **kwargs
 ):
-    from dvc.scm.base import GitAuthError, InvalidRemoteSCMRepo
+    from dvc.scm import GitAuthError, InvalidRemoteSCMRepo
     from dvc.scm.exceptions import AuthError, InvalidRemote
 
     try:
@@ -72,8 +72,9 @@ def push_refspec(
     on_diverged: Optional[Callable[[str, str], bool]] = None,
     **kwargs,
 ):
-    from dvc.scm.base import GitAuthError
     from dvc.scm.exceptions import AuthError
+
+    from ...scm import GitAuthError
 
     try:
         return scm.push_refspec(

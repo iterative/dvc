@@ -224,7 +224,7 @@ class BaseExecutor(ABC):
 
     @classmethod
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
-        from dvc.scm.base import InvalidRemoteSCMRepo
+        from dvc.scm import InvalidRemoteSCMRepo
         from dvc.scm.exceptions import InvalidRemote
 
         if git_remote == dvc.root_dir:

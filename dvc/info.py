@@ -10,7 +10,7 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
 from dvc.fs.utils import test_links
 from dvc.repo import Repo
-from dvc.scm.base import SCMError
+from dvc.scm import SCMError
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 

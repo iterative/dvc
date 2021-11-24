@@ -37,7 +37,7 @@ class SCMContext:
         return self.scm.add(self.files_to_track)
 
     def ignore(self, path: str) -> None:
-        from dvc.scm.base import SCMError
+        from dvc.scm import SCMError
         from dvc.scm.exceptions import FileNotInRepoError
 
         logger.debug("Adding '%s' to gitignore file.", path)
@@ -51,7 +51,7 @@ class SCMContext:
             return self.ignored_paths.append(path)
 
     def ignore_remove(self, path: str) -> None:
-        from dvc.scm.base import SCMError
+        from dvc.scm import SCMError
         from dvc.scm.exceptions import FileNotInRepoError
 
         logger.debug("Removing '%s' from gitignore file.", path)
@@ -67,8 +67,6 @@ class SCMContext:
     def __call__(
         self, autostage: bool = None, quiet: bool = None
     ) -> Iterator["SCMContext"]:
-        from dvc.scm import NoSCM
-
         try:
             yield self
         except Exception:
@@ -85,6 +83,8 @@ class SCMContext:
             autostage = self.autostage
         if quiet is None:
             quiet = self.quiet
+
+        from dvc.scm import NoSCM
 
         if autostage:
             self.track_changed_files()

@@ -16,7 +16,7 @@ from dvc.exceptions import (
     PathMissingError,
 )
 from dvc.repo import Repo
-from dvc.scm import map_scm_exception
+from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -206,7 +206,6 @@ def _clone_default_branch(url, rev, for_write=False):
             clone_path = tempfile.mkdtemp("dvc-clone")
             if not for_write and rev and not Git.is_sha(rev):
                 # If rev is a tag or branch name try shallow clone first
-                from dvc.scm.base import CloneError
 
                 try:
                     git = clone(url, clone_path, shallow_branch=rev)

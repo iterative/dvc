@@ -13,7 +13,7 @@ def digest(text):
 
 
 def test_no_scm(tmp_dir, dvc):
-    from dvc.scm.base import NoSCMError
+    from dvc.scm import NoSCMError
 
     tmp_dir.dvc_gen("file", "text")
 

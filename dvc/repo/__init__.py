@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -91,9 +90,7 @@ class Repo:
     ):
         assert bool(scm) == bool(rev)
 
-        from dvc.scm import SCM
-        from dvc.scm.base import SCMError
-        from dvc.scm.git import Git
+        from dvc.scm import SCM, Base, Git, SCMError
         from dvc.utils.fs import makedirs
 
         dvc_dir = None
@@ -112,8 +109,6 @@ class Repo:
                 scm = SCM(root_dir or os.curdir)
             except SCMError:
                 scm = SCM(os.curdir, no_scm=True)
-
-            from dvc.scm import Base
 
             assert isinstance(scm, Base)
             root_dir = scm.root_dir
@@ -254,8 +249,7 @@ class Repo:
 
     @cached_property
     def scm(self):
-        from dvc.scm import SCM
-        from dvc.scm.base import SCMError
+        from dvc.scm import SCM, SCMError
 
         if self._scm:
             return self._scm

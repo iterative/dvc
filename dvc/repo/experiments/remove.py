@@ -4,7 +4,7 @@ from typing import List, Optional
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
-from dvc.scm.base import RevError
+from dvc.scm import RevError
 
 from .utils import exp_refs, push_refspec, remove_exp_refs, resolve_exp_ref
 
