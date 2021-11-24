@@ -60,7 +60,7 @@ jobs:
         echo "::set-output name=dir::$(pip cache dir)"
     - name: set pip cache
       id: pip-cache
-      uses: actions/cache@v2.1.6
+      uses: actions/cache@v2.1.7
       with:
         path: ${{ steps.pip-cache-dir.outputs.dir }}
         key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
