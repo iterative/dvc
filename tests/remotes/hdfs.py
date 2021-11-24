@@ -10,19 +10,23 @@ from urllib.parse import urlparse
 
 import pytest
 
-from .base import Base
-from .path_info import URLInfo
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import URLInfo
 
 _hdfs_root = TemporaryDirectory()
 
 
-class HDFS(Base, URLInfo):  # pylint: disable=abstract-method
+class HDFS(Cloud, URLInfo):  # pylint: disable=abstract-method
     @contextmanager
     def _hdfs(self):
         import pyarrow.fs
 
         conn = pyarrow.fs.HadoopFileSystem(self.host, self.port)
         yield conn
+
+    @property
+    def config(self):
+        return {"url": self.url}
 
     def is_file(self):
         with self._hdfs() as _hdfs:
@@ -280,7 +284,7 @@ class FakeHadoopFileSystem:
 
 
 @pytest.fixture
-def hdfs(test_config, mocker):
+def make_hdfs(test_config, mocker):
     # Windows might not have Visual C++ Redistributable for Visual Studio
     # 2015 installed, which will result in the following error:
     # "The pyarrow installation is not built with support for
@@ -295,5 +299,13 @@ def hdfs(test_config, mocker):
 
     mocker.patch("dvc.fs.hdfs.HDFSFileSystem._checksum", hadoop_fs_checksum)
 
-    url = f"hdfs://example.com:12345/{uuid.uuid4()}"
-    yield HDFS(url)
+    def _make_hdfs():
+        url = f"hdfs://example.com:12345/{uuid.uuid4()}"
+        return HDFS(url)
+
+    return _make_hdfs
+
+
+@pytest.fixture
+def hdfs(make_hdfs):
+    return make_hdfs()

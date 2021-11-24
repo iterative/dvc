@@ -4,11 +4,11 @@ from contextlib import contextmanager
 
 import pytest
 
-from .base import Base
-from .path_info import CloudURLInfo
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import CloudURLInfo
 
 
-class WebHDFS(Base, CloudURLInfo):  # pylint: disable=abstract-method
+class WebHDFS(Cloud, CloudURLInfo):  # pylint: disable=abstract-method
     @contextmanager
     def _webhdfs(self):
         from hdfs import InsecureClient
@@ -55,12 +55,24 @@ class WebHDFS(Base, CloudURLInfo):  # pylint: disable=abstract-method
         return self.read_bytes().decode(encoding)
 
     @property
+    def config(self):
+        return {"url": self.url}
+
+    @property
     def fs_path(self):
         return "/" + self.path.lstrip("/")
 
 
 @pytest.fixture
-def webhdfs(hdfs_server):
-    port = hdfs_server["webhdfs"]
-    url = f"webhdfs://127.0.0.1:{port}/{uuid.uuid4()}"
-    yield WebHDFS(url)
+def make_webhdfs(hdfs_server):
+    def _make_webhdfs():
+        port = hdfs_server["webhdfs"]
+        url = f"webhdfs://127.0.0.1:{port}/{uuid.uuid4()}"
+        yield WebHDFS(url)
+
+    return _make_webhdfs
+
+
+@pytest.fixture
+def webhdfs(make_webhdfs):
+    return make_webhdfs()

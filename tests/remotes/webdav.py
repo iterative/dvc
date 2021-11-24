@@ -6,18 +6,23 @@ import pytest
 from funcy import cached_property, first
 from wsgidav.wsgidav_app import WsgiDAVApp
 
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import WebDAVURLInfo
 from tests.utils.httpd import run_server_on_thread
-
-from .base import Base
-from .path_info import WebDAVURLInfo
 
 AUTH = {"user1": {"password": "password1"}}
 
 
-class Webdav(Base, WebDAVURLInfo):
+class Webdav(Cloud, WebDAVURLInfo):
     @staticmethod
     def get_url(port):  # pylint: disable=arguments-differ
         return f"webdav://localhost:{port}"
+
+    @property
+    def config(self):
+        user, secrets = first(AUTH.items())
+        url = f"webdav://{self.netloc}{self._spath}"
+        return {"url": url, "user": user, **secrets}
 
     @cached_property
     def client(self):
@@ -45,6 +50,18 @@ class Webdav(Base, WebDAVURLInfo):
     def fs_path(self):
         return self.path.lstrip("/")
 
+    def exists(self):
+        raise NotImplementedError
+
+    def is_dir(self):
+        raise NotImplementedError
+
+    def is_file(self):
+        raise NotImplementedError
+
+    def read_bytes(self):
+        raise NotImplementedError
+
 
 @pytest.fixture
 def webdav_server(test_config, tmp_path_factory):
@@ -68,9 +85,14 @@ def webdav_server(test_config, tmp_path_factory):
 
 
 @pytest.fixture
-def webdav(webdav_server):
-    url = Webdav.get_url(webdav_server.server_port)
-    ret = Webdav(url)
-    user, secrets = first(AUTH.items())
-    ret.config = {"url": url, "user": user, **secrets}
-    yield ret
+def make_webdav(webdav_server):
+    def _make_webdav():
+        url = Webdav.get_url(webdav_server.server_port)
+        return Webdav(url)
+
+    return _make_webdav
+
+
+@pytest.fixture
+def webdav(make_webdav):
+    return make_webdav()

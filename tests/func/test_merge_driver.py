@@ -114,9 +114,7 @@ def test_merge_conflict(tmp_dir, dvc, ancestor, our, their, error, caplog):
     assert error in caplog.text
 
 
-@pytest.mark.parametrize(
-    "workspace", [pytest.lazy_fixture("ssh")], indirect=True
-)
+@pytest.mark.parametrize("workspace", ["ssh"], indirect=True)
 def test_merge_different_output_types(tmp_dir, dvc, caplog, workspace):
     (tmp_dir / "ancestor").touch()
 

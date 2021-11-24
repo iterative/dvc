@@ -5,11 +5,11 @@ import uuid
 import pytest
 import requests
 
-from .base import Base
-from .path_info import HTTPURLInfo
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import HTTPURLInfo
 
 
-class HTTP(Base, HTTPURLInfo):
+class HTTP(Cloud, HTTPURLInfo):
     @staticmethod
     def get_url(port):  # pylint: disable=arguments-differ
         dname = str(uuid.uuid4())
@@ -25,8 +25,24 @@ class HTTP(Base, HTTPURLInfo):
         assert response.status_code == 200
 
     @property
+    def config(self):
+        return {"url": self.url}
+
+    @property
     def fs_path(self):
         return self.url
+
+    def exists(self):
+        raise NotImplementedError
+
+    def is_dir(self):
+        raise NotImplementedError
+
+    def is_file(self):
+        raise NotImplementedError
+
+    def read_bytes(self):
+        raise NotImplementedError
 
 
 @pytest.fixture(scope="session")
@@ -40,5 +56,13 @@ def http_server(test_config, tmp_path_factory):
 
 
 @pytest.fixture
-def http(http_server):
-    yield HTTP(HTTP.get_url(http_server.server_port))
+def make_http(http_server):
+    def _make_http():
+        return HTTP(HTTP.get_url(http_server.server_port))
+
+    return _make_http
+
+
+@pytest.fixture
+def http(make_http):
+    return make_http()

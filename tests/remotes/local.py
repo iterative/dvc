@@ -1,12 +1,11 @@
 # pylint: disable=cyclic-import,disable=abstract-method
 import pytest
 
+from dvc.testing.cloud import Cloud
 from tests.basic_env import TestDvc
 
-from .base import Base
 
-
-class Local(Base):
+class Local(Cloud):
     @staticmethod
     def get_storagepath():
         return TestDvc.mkdtemp()
@@ -19,10 +18,7 @@ class Local(Base):
 @pytest.fixture
 def make_local(make_tmp_dir):
     def _make_local():
-        ret = make_tmp_dir("local-cloud")
-        ret.url = str(ret)
-        ret.config = {"url": ret.url}
-        return ret
+        return make_tmp_dir("local-cloud")
 
     return _make_local
 

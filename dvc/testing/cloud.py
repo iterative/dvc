@@ -1,26 +1,26 @@
 import locale
 import pathlib
-
-from funcy import cached_property
-
-from .path_info import URLInfo
+from abc import ABC, abstractmethod
 
 
-class Base(URLInfo):
-
+class Cloud(ABC):
     IS_OBJECT_STORAGE = False
 
+    @abstractmethod
     def is_file(self):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def is_dir(self):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def exists(self):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
-        raise NotImplementedError
+        pass
 
     def write_text(self, contents, encoding=None, errors=None):
         if not encoding:
@@ -28,14 +28,19 @@ class Base(URLInfo):
         assert errors is None
         self.write_bytes(contents.encode(encoding))
 
+    @abstractmethod
     def write_bytes(self, contents):
         raise NotImplementedError
 
     def read_text(self, encoding=None, errors=None):
-        raise NotImplementedError
+        if not encoding:
+            encoding = locale.getpreferredencoding(False)
+        assert errors is None
+        return self.read_bytes().decode(encoding)
 
+    @abstractmethod
     def read_bytes(self):
-        raise NotImplementedError
+        pass
 
     def _gen(self, struct, prefix=None):
         for name, contents in struct.items():
@@ -71,6 +76,7 @@ class Base(URLInfo):
     def get_url():
         raise NotImplementedError
 
-    @cached_property
+    @property
+    @abstractmethod
     def config(self):
-        return {"url": self.url}
+        pass

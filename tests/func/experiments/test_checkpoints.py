@@ -219,7 +219,7 @@ def test_auto_push_during_iterations(
 ):
     # set up remote repo
     remote = git_upstream.url if use_url else git_upstream.remote
-    git_upstream.scm.fetch_refspecs(str(tmp_dir), ["master:master"])
+    git_upstream.tmp_dir.scm.fetch_refspecs(str(tmp_dir), ["master:master"])
     monkeypatch.setenv(DVC_EXP_GIT_REMOTE, remote)
     auto_push_spy = mocker.spy(BaseExecutor, "_auto_push")
 
@@ -233,7 +233,7 @@ def test_auto_push_during_iterations(
     assert (tmp_dir / "foo").read_text() == "4"
     exp = first(results)
     ref_info = first(exp_refs_by_rev(scm, exp))
-    assert git_upstream.scm.get_ref(str(ref_info)) == exp
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info)) == exp
 
     assert auto_push_spy.call_count == 2
     assert auto_push_spy.call_args[0][2] == remote

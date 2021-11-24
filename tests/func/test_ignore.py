@@ -9,9 +9,9 @@ from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
+from dvc.testing.tmp_dir import TmpDir
 from dvc.types import List
 from dvc.utils.fs import get_mtime_and_size
-from tests.dir_helpers import TmpDir
 
 
 def _to_pattern_info_list(str_list: List):

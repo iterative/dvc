@@ -354,13 +354,13 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
     "workspace, hash_name, foo_hash, bar_hash",
     [
         (
-            pytest.lazy_fixture("local_cloud"),
+            "local",
             "md5",
             "acbd18db4cc2f85cedef654fccc4a4d8",
             "37b51d194a7513e45b56f6524f2d51f2",
         ),
         pytest.param(
-            pytest.lazy_fixture("ssh"),
+            "ssh",
             "md5",
             "acbd18db4cc2f85cedef654fccc4a4d8",
             "37b51d194a7513e45b56f6524f2d51f2",
@@ -369,13 +369,13 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
             ),
         ),
         (
-            pytest.lazy_fixture("s3"),
+            "s3",
             "etag",
             "acbd18db4cc2f85cedef654fccc4a4d8",
             "37b51d194a7513e45b56f6524f2d51f2",
         ),
         (
-            pytest.lazy_fixture("hdfs"),
+            "hdfs",
             "checksum",
             "0000020000000000000000003dba826b9be9c6a8e2f8310a770555c4",
             "00000200000000000000000075433c81259d3c38e364b348af52e84d",
