@@ -17,8 +17,6 @@ from dvc.scm.exceptions import (
     GitHookAlreadyExists,
     RevError,
 )
-from dvc.utils import relpath
-from dvc.utils.fs import path_isin
 
 from .backend.base import BaseGitBackend, NoGitBackendError
 from .backend.dulwich import DulwichBackend
@@ -148,14 +146,14 @@ class Git(Base):
         assert os.path.isabs(path)
         assert os.path.isabs(ignore_file_dir)
 
-        entry = relpath(path, ignore_file_dir).replace(os.sep, "/")
+        entry = os.path.relpath(path, ignore_file_dir).replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
         if len(entry) > 0 and entry[0] != "/":
             entry = "/" + entry
 
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
-        if not path_isin(os.path.realpath(gitignore), self.root_dir):
+        if not os.path.realpath(gitignore).startswith(self.root_dir + os.sep):
             raise FileNotInRepoError(
                 f"'{path}' is outside of git repository '{self.root_dir}'"
             )
@@ -168,7 +166,7 @@ class Git(Base):
             return None
 
         self._add_entry_to_gitignore(entry, gitignore)
-        return relpath(gitignore)
+        return gitignore
 
     def _add_entry_to_gitignore(self, entry, gitignore):
         entry = GitWildMatchPattern.escape(entry)
@@ -204,7 +202,7 @@ class Git(Base):
 
         with open(gitignore, "w", encoding="utf-8") as fobj:
             fobj.writelines(filtered)
-        return relpath(gitignore)
+        return gitignore
 
     def verify_hook(self, name):
         if (self.hooks_dir / name).exists():

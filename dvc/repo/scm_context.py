@@ -4,6 +4,8 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Set
 
+from dvc.utils import relpath
+
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm.base import Base
@@ -47,7 +49,7 @@ class SCMContext:
             raise SCMError(str(exc))
 
         if gitignore_file:
-            self.track_file(gitignore_file)
+            self.track_file(relpath(gitignore_file))
             return self.ignored_paths.append(path)
 
     def ignore_remove(self, path: str) -> None:
@@ -61,7 +63,7 @@ class SCMContext:
             raise SCMError(str(exc))
 
         if gitignore_file:
-            return self.track_file(gitignore_file)
+            return self.track_file(relpath(gitignore_file))
 
     @contextmanager
     def __call__(

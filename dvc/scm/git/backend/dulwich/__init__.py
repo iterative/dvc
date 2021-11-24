@@ -19,14 +19,12 @@ from typing import (
 from funcy import cached_property
 
 from dvc.scm.exceptions import AuthError, InvalidRemote, SCMError
-from dvc.utils import relpath
 
 from ...objects import GitObject
 from ..base import BaseGitBackend
 
 if TYPE_CHECKING:
     from dvc.scm.progress import GitProgressEvent
-    from dvc.types import StrPath
 
     from ...objects import GitCommit
 
@@ -145,8 +143,6 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return self.repo.commondir()
 
     def add(self, paths: Union[str, Iterable[str]], update=False):
-        from dvc.utils.fs import walk_files
-
         assert paths or update
 
         if isinstance(paths, str):
@@ -164,21 +160,26 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 # parent git repo root). We append path to root_dir here so
                 # that the result of relpath(path, root_dir) is actually the
                 # path relative to the submodule root.
-                fs_path = relpath(path, self.root_dir)
+                fs_path = os.path.relpath(path, self.root_dir)
                 for sm_path in self._submodules.values():
                     if fs_path.startswith(sm_path):
                         path = os.path.join(
                             self.root_dir,
-                            relpath(fs_path, sm_path),
+                            os.path.relpath(fs_path, sm_path),
                         )
                         break
             if os.path.isdir(path):
                 files.extend(
-                    os.fsencode(relpath(fpath, self.root_dir))
-                    for fpath in walk_files(path)
+                    os.fsencode(
+                        os.path.relpath(
+                            os.path.join(root, fpath), self.root_dir
+                        )
+                    )
+                    for root, _, fs in os.walk(path)
+                    for fpath in fs
                 )
             else:
-                files.append(os.fsencode(relpath(path, self.root_dir)))
+                files.append(os.fsencode(os.path.relpath(path, self.root_dir)))
 
         # NOTE: this doesn't check gitignore, same as GitPythonBackend.add
         if update:
@@ -243,10 +244,14 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
         return untracked
 
     def is_tracked(self, path: str) -> bool:
-        rel = relpath(path, self.root_dir).replace(os.path.sep, "/").encode()
+        rel = (
+            os.path.relpath(path, self.root_dir)
+            .replace(os.path.sep, "/")
+            .encode()
+        )
         rel_dir = rel + b"/"
-        for path in self.repo.open_index():
-            if path == rel or path.startswith(rel_dir):
+        for p in self.repo.open_index():
+            if p == rel or p.startswith(rel_dir):
                 return True
         return False
 
@@ -297,10 +302,10 @@ class DulwichBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         return IgnoreFilterManager.from_repo(self.repo)
 
-    def is_ignored(self, path: "StrPath") -> bool:
+    def is_ignored(self, path: "Union[str, os.PathLike[str]]") -> bool:
         # `is_ignored` returns `false` if excluded in `.gitignore` and
         # `None` if it's not mentioned at all. `True` if it is ignored.
-        relative_path = relpath(path, self.root_dir)
+        relative_path = os.path.relpath(path, self.root_dir)
         # if checking a directory, a trailing slash must be included
         if str(path)[-1] == os.sep:
             relative_path += os.sep
