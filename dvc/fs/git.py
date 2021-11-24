@@ -1,52 +1,90 @@
 import errno
 import os
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    Optional,
+    Tuple,
+)
 
-from tqdm.utils import CallbackIOWrapper
+from fsspec.spec import AbstractFileSystem
 
-from dvc.utils import is_exec, relpath
+if TYPE_CHECKING:
+    from io import BytesIO
 
-from ..progress import DEFAULT_CALLBACK
-from .base import FileSystem
+    from dvc.scm.git import Git
+    from dvc.scm.git.objects import GitTrie
 
 
-class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
-    """Proxies the repo file access methods to Git objects"""
+def bytesio_len(obj: "BytesIO") -> Optional[int]:
+    try:
+        offset = obj.tell()
+        length = obj.seek(0, os.SEEK_END)
+        obj.seek(offset)
+    except (AttributeError, OSError):
+        return None
+    return length
 
+
+class GitFileSystem(AbstractFileSystem):
+    # pylint: disable=abstract-method
     sep = os.sep
+    cachable = False
 
-    scheme = "local"
+    def __init__(
+        self,
+        path: str = None,
+        rev: str = None,
+        scm: "Git" = None,
+        trie: "GitTrie" = None,
+        rev_resolver: Callable[["Git", str], str] = None,
+        **kwargs,
+    ):
+        from dvc.scm.git import Git
+        from dvc.scm.git.objects import GitTrie
 
-    def __init__(self, root_dir, trie):
-        super().__init__()
-        self._root = root_dir
-        self.trie = trie
-
-    @property
-    def rev(self):
-        return self.trie.rev
-
-    def _get_key(self, path):
-        if isinstance(path, str):
-            if not os.path.isabs(path):
-                relparts = path.split(os.sep)
-            else:
-                relparts = relpath(path, self._root).split(os.sep)
+        super().__init__(**kwargs)
+        if not trie:
+            scm = scm or Git(path)
+            resolver = rev_resolver or Git.resolve_rev
+            resolved = resolver(scm, rev or "HEAD")
+            tree_obj = scm.pygit2.get_tree_obj(rev=resolved)
+            trie = GitTrie(tree_obj, resolved)
+            path = scm.root_dir
         else:
-            relparts = path.relative_to(self._root).parts
+            assert path
+
+        self.trie = trie
+        self.root_dir = path
+        self.rev = self.trie.rev
+
+    def _get_key(self, path: str) -> Tuple[str, ...]:
+        from dvc.scm.utils import relpath
+
+        if os.path.isabs(path):
+            path = relpath(path, self.root_dir)
+        relparts = path.split(os.sep)
         if relparts == ["."]:
             return ()
         return tuple(relparts)
 
-    def open(
-        self, path, mode="r", encoding=None, **kwargs
-    ):  # pylint: disable=arguments-renamed
-        # NOTE: this is incorrect, we need to use locale to determine default
-        # encoding.
-        encoding = encoding or "utf-8"
-
+    def _open(
+        self,
+        path: str,
+        mode: str = "rb",
+        block_size: int = None,
+        autocommit: bool = True,
+        cache_options: Dict = None,
+        **kwargs: Any,
+    ) -> BinaryIO:
         key = self._get_key(path)
         try:
-            return self.trie.open(key, mode=mode, encoding=encoding)
+            obj = self.trie.open(key, mode=mode)
+            obj.size = bytesio_len(obj)
+            return obj
         except KeyError as exc:
             msg = os.strerror(errno.ENOENT) + f"in branch '{self.rev}'"
             raise FileNotFoundError(errno.ENOENT, msg, path) from exc
@@ -55,28 +93,44 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
                 errno.EISDIR, os.strerror(errno.EISDIR), path
             ) from exc
 
-    def exists(self, path) -> bool:
+    def info(self, path: str, **kwargs: Any) -> Dict[str, Any]:
+        key = self._get_key(path)
+        try:
+            return {
+                **self.trie.info(key),
+                "name": os.path.join(self.root_dir, self.sep.join(key)),
+            }
+        except KeyError:
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
+
+    def exists(self, path: str, **kwargs: Any) -> bool:
         key = self._get_key(path)
         return self.trie.exists(key)
 
-    def isdir(self, path) -> bool:
-        key = self._get_key(path)
-        return self.trie.isdir(key)
+    def checksum(self, path: str) -> str:
+        return self.info(path)["sha"]
 
-    def isfile(self, path) -> bool:
-        key = self._get_key(path)
-        return self.trie.isfile(key)
-
-    def walk(self, top, topdown=True, onerror=None, **kwargs):
+    def walk(  # pylint: disable=arguments-differ
+        self,
+        top: str,
+        topdown: bool = True,
+        onerror: Callable[[OSError], None] = None,
+        maxdepth: int = None,
+        detail: bool = False,
+        **kwargs: Any,
+    ):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
         """
+        assert maxdepth is None  # not supported yet.
         if not self.isdir(top):
             if onerror:
                 if self.exists(top):
-                    exc = NotADirectoryError(
+                    exc: OSError = NotADirectoryError(
                         errno.ENOTDIR, os.strerror(errno.ENOTDIR), top
                     )
                 else:
@@ -88,49 +142,21 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         key = self._get_key(top)
         for prefix, dirs, files in self.trie.walk(key, topdown=topdown):
+            root = self.root_dir
+
             if prefix:
-                root = os.path.join(self._root, os.sep.join(prefix))
-            else:
-                root = self._root
-            yield root, dirs, files
-
-    def isexec(self, path):
-        if not self.exists(path):
-            return False
-
-        mode = self.info(path)["mode"]
-        return is_exec(mode)
-
-    def info(self, path):
-        key = self._get_key(path)
-        try:
-            return self.trie.info(key)
-        except KeyError:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), path
-            )
-
-    def checksum(self, path):
-        return self.info(path)["sha"]
-
-    def find(self, path, prefix=None):
-        for root, _, files in self.walk(path):
-            for file in files:
-                # NOTE: os.path.join is ~5.5 times slower
-                yield f"{root}{os.sep}{file}"
-
-    def get_file(
-        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        import shutil
-
-        total = self.getsize(from_info)
-        if total:
-            callback.set_size(total)
-
-        with self.open(from_info, "rb", **kwargs) as from_fobj:
-            with open(to_file, "wb+") as to_fobj:
-                wrapped = CallbackIOWrapper(
-                    callback.relative_update, from_fobj
+                root = os.path.join(root, os.sep.join(prefix))
+            if detail:
+                yield (
+                    root,
+                    {d: self.info(os.path.join(root, d)) for d in dirs},
+                    {f: self.info(os.path.join(root, f)) for f in files},
                 )
-                shutil.copyfileobj(wrapped, to_fobj)
+            else:
+                yield root, dirs, files
+
+    def ls(self, path, detail=True, **kwargs):
+        for _, dirs, files in self.walk(path, detail=detail, **kwargs):
+            merge = files.update if detail else files.extend
+            merge(dirs)
+            return files

@@ -90,13 +90,18 @@ class Repo:
     ):
         assert bool(scm) == bool(rev)
 
+        from dvc.fs.scm import GitFileSystem
         from dvc.scm import SCM, Base, Git, SCMError
         from dvc.utils.fs import makedirs
 
         dvc_dir = None
         tmp_dir = None
         try:
-            fs = scm.get_fs(rev) if isinstance(scm, Git) and rev else None
+            fs = (
+                GitFileSystem(scm=scm, rev=rev)
+                if isinstance(scm, Git) and rev
+                else None
+            )
             root_dir = self.find_root(root_dir, fs)
             dvc_dir = os.path.join(root_dir, self.DVC_DIR)
             tmp_dir = os.path.join(dvc_dir, "tmp")
@@ -157,6 +162,7 @@ class Repo:
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs.local import LocalFileSystem
+        from dvc.fs.scm import GitFileSystem
         from dvc.lock import LockNoop, make_lock
         from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
@@ -164,7 +170,7 @@ class Repo:
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
         from dvc.repo.stage import StageLoad
-        from dvc.scm import SCM
+        from dvc.scm import SCM, Git
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
 
@@ -179,7 +185,8 @@ class Repo:
         )
 
         if scm:
-            self._fs = scm.get_fs(rev)
+            assert isinstance(scm, Git)
+            self._fs = GitFileSystem(scm=scm, rev=rev)
         else:
             self._fs = LocalFileSystem(url=self.root_dir)
 

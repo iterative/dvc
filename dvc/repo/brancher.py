@@ -60,11 +60,12 @@ def brancher(  # noqa: E302
 
     try:
         if revs:
+            from dvc.fs.scm import GitFileSystem
             from dvc.scm import resolve_rev
 
             rev_resolver = partial(resolve_rev, scm)
             for sha, names in group_by(rev_resolver, revs).items():
-                self.fs = scm.get_fs(sha)
+                self.fs = GitFileSystem(scm=scm, rev=sha)
                 # ignore revs that don't contain repo root
                 # (i.e. revs from before a subdir=True repo was init'ed)
                 if self.fs.exists(self.root_dir):

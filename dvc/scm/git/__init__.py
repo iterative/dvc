@@ -17,6 +17,7 @@ from dvc.scm.exceptions import (
     GitHookAlreadyExists,
     RevError,
 )
+from dvc.scm.utils import relpath
 
 from .backend.base import BaseGitBackend, NoGitBackendError
 from .backend.dulwich import DulwichBackend
@@ -146,7 +147,7 @@ class Git(Base):
         assert os.path.isabs(path)
         assert os.path.isabs(ignore_file_dir)
 
-        entry = os.path.relpath(path, ignore_file_dir).replace(os.sep, "/")
+        entry = relpath(path, ignore_file_dir).replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
         if len(entry) > 0 and entry[0] != "/":
             entry = "/" + entry
@@ -257,12 +258,7 @@ class Git(Base):
     def get_fs(self, rev: str):
         from dvc.fs.git import GitFileSystem
 
-        from .objects import GitTrie
-
-        resolved = self.resolve_rev(rev)
-        tree_obj = self.pygit2.get_tree_obj(rev=resolved)
-        trie = GitTrie(tree_obj, resolved)
-        return GitFileSystem(self.root_dir, trie)
+        return GitFileSystem(scm=self, rev=rev)
 
     is_ignored = partialmethod(_backend_func, "is_ignored")
     add = partialmethod(_backend_func, "add")

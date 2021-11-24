@@ -24,6 +24,7 @@ from dvc.scm.exceptions import (
     RevError,
     SCMError,
 )
+from dvc.scm.utils import relpath
 
 from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
@@ -557,7 +558,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         if paths:
             paths_list: Optional[List[str]] = [
-                os.path.relpath(path, self.root_dir) for path in paths
+                relpath(path, self.root_dir) for path in paths
             ]
             if os.name == "nt":
                 paths_list = [
@@ -590,7 +591,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         else:
             if paths:
                 paths_list: Optional[List[str]] = [
-                    os.path.relpath(path, self.root_dir) for path in paths
+                    relpath(path, self.root_dir) for path in paths
                 ]
                 if os.name == "nt":
                     paths_list = [

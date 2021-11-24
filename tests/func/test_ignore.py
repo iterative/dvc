@@ -123,6 +123,8 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 
 
 def test_ignore_on_branch(tmp_dir, scm, dvc):
+    from dvc.fs.scm import GitFileSystem
+
     tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="add files")
 
     with tmp_dir.branch("branch", new=True):
@@ -137,7 +139,7 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
         (tmp_dir / DvcIgnore.DVCIGNORE_FILE).fs_path,
     }
 
-    dvc.fs = scm.get_fs("branch")
+    dvc.fs = GitFileSystem(scm=scm, rev="branch")
     assert dvc.dvcignore.is_ignored_file(tmp_dir / "foo")
 
 

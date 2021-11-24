@@ -47,9 +47,9 @@ class GitFileSystemTests:
         self.scm.commit("add")
 
         fs = self.scm.get_fs("master")
-        with fs.open(self.FOO) as fd:
+        with fs.open(self.FOO, mode="r", encoding="utf-8") as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        with fs.open(self.UNICODE) as fd:
+        with fs.open(self.UNICODE, mode="r", encoding="utf-8") as fd:
             self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
         with self.assertRaises(IOError):
             fs.open("not-existing-file")
@@ -474,13 +474,15 @@ def test_download_dir_callback(tmp_dir, dvc, cloud):
 
 @pytest.mark.parametrize("fs_type", ["git", "dvc"])
 def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
+    from dvc.fs.scm import GitFileSystem
+
     gen = tmp_dir.scm_gen if fs_type == "git" else tmp_dir.dvc_gen
     gen({"dir": {"foo": "foo", "bar": "bar"}, "file": "file"}, commit="gen")
 
-    fs = dvc.dvcfs if fs_type == "dvc" else scm.get_fs("HEAD")
+    fs = dvc.dvcfs if fs_type == "dvc" else GitFileSystem(scm=scm, rev="HEAD")
 
     callback = fsspec.Callback()
-    fs.download(
+    fs.download_file(
         (tmp_dir / "file").fs_path,
         (tmp_dir / "file2").fs_path,
         callback=callback,
@@ -490,9 +492,6 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
     assert (tmp_dir / "file2").read_text() == "file"
     assert callback.size == size
     assert callback.value == size
-
-    if fs_type == "git":
-        pytest.skip("gitfs does not support download_dir")
 
     callback = fsspec.Callback()
     fs.download(
