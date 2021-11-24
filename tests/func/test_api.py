@@ -5,10 +5,11 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import FileMissingError, OutputNotFoundError
+from dvc.testing.test_api import TestAPI as _TestAPI
 from dvc.utils.fs import remove
 from tests.unit.fs.test_repo import make_subrepo
 
-cloud_names = [
+clouds = [
     "s3",
     "gs",
     "azure",
@@ -20,23 +21,19 @@ cloud_names = [
     "webdav",
     "webhdfs",
 ]
-clouds = [pytest.lazy_fixture(cloud) for cloud in cloud_names]
-all_clouds = [pytest.lazy_fixture("local_cloud")] + clouds
+all_clouds = ["local"] + clouds
 
 # `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
 
 
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("remote", clouds, indirect=True)
-def test_get_url(tmp_dir, dvc, remote):
-    tmp_dir.dvc_gen("foo", "foo")
-
-    expected_url = (remote / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
-    assert api.get_url("foo") == expected_url
+class TestAPI(_TestAPI):
+    pass
 
 
 @pytest.mark.needs_internet
-@pytest.mark.parametrize("cloud", clouds)
+@pytest.mark.parametrize("cloud", clouds, indirect=True)
 def test_get_url_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
     with erepo_dir.chdir():
@@ -59,35 +56,20 @@ def test_get_url_requires_dvc(tmp_dir, scm):
 
 
 @pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", all_clouds, indirect=True)
-def test_open(tmp_dir, dvc, remote):
-    tmp_dir.dvc_gen("foo", "foo-text")
-    dvc.push()
-
-    # Remove cache to force download
-    remove(dvc.odb.local.cache_dir)
-
-    with api.open("foo") as fd:
-        assert fd.read() == "foo-text"
-
-
-@pytest.mark.needs_internet
 @pytest.mark.parametrize(
     "cloud",
     [
-        pytest.lazy_fixture(cloud)
-        for cloud in [
-            "s3",
-            "gs",
-            "azure",
-            "gdrive",
-            "oss",
-            "http",
-            "hdfs",
-            "ssh",
-            "webdav",
-        ]
+        "s3",
+        "gs",
+        "azure",
+        "gdrive",
+        "oss",
+        "http",
+        "hdfs",
+        "ssh",
+        "webdav",
     ],
+    indirect=True,
 )
 def test_open_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
@@ -129,18 +111,15 @@ def test_open_granular(tmp_dir, dvc, remote):
 @pytest.mark.parametrize(
     "remote",
     [
-        pytest.lazy_fixture(cloud)
-        for cloud in [
-            "s3",
-            "gs",
-            "azure",
-            "gdrive",
-            "oss",
-            "ssh",
-            "http",
-            "hdfs",
-            "webdav",
-        ]
+        "s3",
+        "gs",
+        "azure",
+        "gdrive",
+        "oss",
+        "ssh",
+        "http",
+        "hdfs",
+        "webdav",
     ],
     indirect=True,
 )
@@ -195,7 +174,7 @@ def test_open_rev(tmp_dir, scm, dvc):
 
 
 @pytest.mark.parametrize("as_external", [True, False])
-@pytest.mark.parametrize("remote", [pytest.lazy_fixture("ssh")], indirect=True)
+@pytest.mark.parametrize("remote", ["ssh"], indirect=True)
 @pytest.mark.parametrize(
     "files, to_read",
     [

@@ -5,21 +5,20 @@ import uuid
 import pytest
 from funcy import cached_property
 
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import CloudURLInfo
 from dvc.utils import env2bool
-
-from .base import Base
-from .path_info import CloudURLInfo
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-temp")
 TEST_AWS_ENDPOINT_URL = "http://127.0.0.1:{port}/"
 
 
-class S3(Base, CloudURLInfo):
+class S3(Cloud, CloudURLInfo):
 
     IS_OBJECT_STORAGE = True
     TEST_AWS_ENDPOINT_URL = None
 
-    @cached_property
+    @property
     def config(self):
         return {"url": self.url, "endpointurl": self.TEST_AWS_ENDPOINT_URL}
 
@@ -151,11 +150,20 @@ def s3_server(test_config, docker_compose, docker_services):
 
 
 @pytest.fixture
-def s3(test_config, s3_server, s3_fake_creds_file):
+def make_s3(test_config, s3_server, s3_fake_creds_file):
     test_config.requires("s3")
-    workspace = S3(S3.get_url())
-    workspace._s3.create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
-    yield workspace
+
+    def _make_s3():
+        cloud = S3(S3.get_url())
+        cloud._s3.create_bucket(Bucket=TEST_AWS_REPO_BUCKET)
+        return cloud
+
+    return _make_s3
+
+
+@pytest.fixture
+def s3(make_s3):
+    return make_s3()
 
 
 @pytest.fixture

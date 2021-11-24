@@ -34,6 +34,7 @@ from dvc.stage.exceptions import (
     StagePathNotFoundError,
 )
 from dvc.system import System
+from dvc.testing.test_workspace import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
@@ -291,59 +292,72 @@ def test_add_filtered_files_in_dir(
         assert stage.outs[0].def_path in expected_def_paths
 
 
-@pytest.mark.parametrize(
-    "workspace, hash_name, hash_value",
-    [
-        (
-            pytest.lazy_fixture("local_cloud"),
-            "md5",
-            "8c7dd922ad47494fc02c388e12c00eac",
-        ),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
-            "md5",
-            "8c7dd922ad47494fc02c388e12c00eac",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
+class TestAddExternal(TestAdd):
+    @pytest.mark.parametrize(
+        "workspace, hash_name, hash_value",
+        [
+            (
+                "local",
+                "md5",
+                "8c7dd922ad47494fc02c388e12c00eac",
             ),
-        ),
-        (
-            pytest.lazy_fixture("s3"),
-            "etag",
-            "8c7dd922ad47494fc02c388e12c00eac",
-        ),
-        (
-            pytest.lazy_fixture("hdfs"),
-            "checksum",
-            "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
-        ),
-        (
-            pytest.lazy_fixture("webhdfs"),
-            "checksum",
-            "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e00000000",
-        ),
-    ],
-    indirect=["workspace"],
-)
-def test_add_external_file(tmp_dir, dvc, workspace, hash_name, hash_value):
-    workspace.gen("file", "file")
-
-    with pytest.raises(StageExternalOutputsError):
-        dvc.add(workspace.url)
-
-    dvc.add("remote://workspace/file")
-    assert (tmp_dir / "file.dvc").read_text() == (
-        "outs:\n"
-        f"- {hash_name}: {hash_value}\n"
-        "  size: 4\n"
-        "  path: remote://workspace/file\n"
+            pytest.param(
+                "ssh",
+                "md5",
+                "8c7dd922ad47494fc02c388e12c00eac",
+                marks=pytest.mark.skipif(
+                    os.name == "nt", reason="disabled on windows"
+                ),
+            ),
+            (
+                "s3",
+                "etag",
+                "8c7dd922ad47494fc02c388e12c00eac",
+            ),
+            (
+                "hdfs",
+                "checksum",
+                "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
+            ),
+            (
+                "webhdfs",
+                "checksum",
+                "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e00000000",  # noqa: E501
+            ),
+        ],
+        indirect=["workspace"],
     )
-    assert (workspace / "file").read_text() == "file"
-    assert (
-        workspace / "cache" / hash_value[:2] / hash_value[2:]
-    ).read_text() == "file"
+    def test_add(self, tmp_dir, dvc, workspace, hash_name, hash_value):
+        super().test_add(tmp_dir, dvc, workspace, hash_name, hash_value)
 
-    assert dvc.status() == {}
+    @pytest.mark.parametrize(
+        "workspace, hash_name, dir_hash_value",
+        [
+            (
+                "local",
+                "md5",
+                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+            ),
+            pytest.param(
+                "ssh",
+                "md5",
+                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+                marks=pytest.mark.skipif(
+                    os.name == "nt", reason="disabled on windows"
+                ),
+            ),
+            (
+                "s3",
+                "etag",
+                "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
+            ),
+        ],
+        indirect=["workspace"],
+    )
+    def test_add_dir(self, tmp_dir, dvc, workspace, hash_name, dir_hash_value):
+        super().test_add_dir(
+            tmp_dir, dvc, workspace, hash_name, dir_hash_value
+        )
 
 
 def test_add_external_relpath(tmp_dir, dvc, local_cloud):
@@ -362,44 +376,6 @@ def test_add_external_relpath(tmp_dir, dvc, local_cloud):
     )
     assert fpath.read_text() == "file"
     assert dvc.status() == {}
-
-
-@pytest.mark.parametrize(
-    "workspace, hash_name, hash_value",
-    [
-        (
-            pytest.lazy_fixture("local_cloud"),
-            "md5",
-            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-        ),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
-            "md5",
-            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-        (
-            pytest.lazy_fixture("s3"),
-            "etag",
-            "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
-        ),
-    ],
-    indirect=["workspace"],
-)
-def test_add_external_dir(tmp_dir, dvc, workspace, hash_name, hash_value):
-    workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
-
-    dvc.add("remote://workspace/dir")
-    assert (tmp_dir / "dir.dvc").read_text() == (
-        "outs:\n"
-        f"- {hash_name}: {hash_value}\n"
-        "  size: 11\n"
-        "  nfiles: 2\n"
-        "  path: remote://workspace/dir\n"
-    )
-    assert (workspace / "cache" / hash_value[:2] / hash_value[2:]).is_file()
 
 
 class TestAddLocalRemoteFile(TestDvc):
@@ -1159,19 +1135,17 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
+        "local",
+        "s3",
+        pytest.param("gs", marks=pytest.mark.needs_internet),
+        "hdfs",
         pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
+            "ssh",
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),
         ),
-        pytest.lazy_fixture("http"),
+        "http",
     ],
     indirect=True,
 )

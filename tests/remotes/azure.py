@@ -6,8 +6,8 @@ import uuid
 import pytest
 from funcy import cached_property
 
-from .base import Base
-from .path_info import CloudURLInfo
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import CloudURLInfo
 
 TEST_AZURE_CONTAINER = "tests"
 TEST_AZURE_CONNECTION_STRING = (
@@ -19,10 +19,14 @@ TEST_AZURE_CONNECTION_STRING = (
 )
 
 
-class Azure(Base, CloudURLInfo):
+class Azure(Cloud, CloudURLInfo):
 
     IS_OBJECT_STORAGE = True
     CONNECTION_STRING = None
+
+    def __init__(self, url, **kwargs):
+        super().__init__(url)
+        self.opts = kwargs
 
     @cached_property
     def service_client(self):
@@ -62,6 +66,19 @@ class Azure(Base, CloudURLInfo):
         path = self.path.lstrip("/")
         return f"{bucket}/{path}"
 
+    def is_file(self):
+        raise NotImplementedError
+
+    def is_dir(self):
+        raise NotImplementedError
+
+    def exists(self):
+        raise NotImplementedError
+
+    @property
+    def config(self):
+        return {"url": self.url, **self.opts}
+
 
 @pytest.fixture(scope="session")
 def azure_server(test_config, docker_compose, docker_services):
@@ -95,17 +112,26 @@ def azure_server(test_config, docker_compose, docker_services):
 
 
 @pytest.fixture
-def azure(azure_server):
-    from azure.core.exceptions import ResourceNotFoundError
+def make_azure(azure_server):
+    def _make_azure():
+        from azure.core.exceptions import ResourceNotFoundError
 
-    url = f"azure://{TEST_AZURE_CONTAINER}/{uuid.uuid4()}"
-    ret = Azure(url)
-    ret.config = {"url": url, "connection_string": azure_server}
+        url = f"azure://{TEST_AZURE_CONTAINER}/{uuid.uuid4()}"
+        ret = Azure(url, connection_string=azure_server)
 
-    container = ret.service_client.get_container_client(TEST_AZURE_CONTAINER)
-    try:  # verify that container exists
-        container.get_container_properties()
-    except ResourceNotFoundError:
-        container.create_container()
+        container = ret.service_client.get_container_client(
+            TEST_AZURE_CONTAINER
+        )
+        try:  # verify that container exists
+            container.get_container_properties()
+        except ResourceNotFoundError:
+            container.create_container()
 
-    return ret
+        return ret
+
+    return _make_azure
+
+
+@pytest.fixture
+def azure(make_azure):
+    return make_azure()

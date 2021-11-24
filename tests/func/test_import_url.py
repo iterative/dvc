@@ -8,8 +8,8 @@ import pytest
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
-from dvc.objects.db import ODBManager
 from dvc.stage import Stage
+from dvc.testing.test_workspace import TestImport as _TestImport
 from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
 
@@ -118,102 +118,108 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
     assert not dst.exists()
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("azure"),
-        pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("webhdfs"),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
+class TestImport(_TestImport):
+    @pytest.mark.parametrize(
+        "workspace",
+        [
+            "local",
+            "s3",
+            "azure",
+            pytest.param("gs", marks=pytest.mark.needs_internet),
+            "hdfs",
+            "webhdfs",
+            pytest.param(
+                "ssh",
+                marks=pytest.mark.skipif(
+                    os.name == "nt", reason="disabled on windows"
+                ),
             ),
-        ),
-        pytest.lazy_fixture("http"),
-    ],
-    indirect=True,
-)
-def test_import_url(tmp_dir, dvc, workspace):
-    workspace.gen("file", "file")
-    assert not (tmp_dir / "file").exists()  # sanity check
-    dvc.imp_url("remote://workspace/file")
-    assert (tmp_dir / "file").read_text() == "file"
+            "http",
+        ],
+        indirect=True,
+    )
+    def test_import(self, tmp_dir, dvc, workspace):
+        super().test_import(tmp_dir, dvc, workspace)
 
-    assert dvc.status() == {}
-
-
-@pytest.mark.parametrize(
-    "workspace, stage_md5, dir_md5",
-    [
-        (
-            pytest.lazy_fixture("local_cloud"),
-            "dc24e1271084ee317ac3c2656fb8812b",
-            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-        ),
-        (
-            pytest.lazy_fixture("s3"),
-            "2aa17f8daa26996b3f7a4cf8888ac9ac",
-            "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
-        ),
-        (
-            pytest.lazy_fixture("azure"),
-            None,  # ETags for azure are not consistent with the actual
-            None,  # content of the object, so they will change every time
-            # we create new objects. We'll skip stage content check for Azure.
-        ),
-        (
-            pytest.lazy_fixture("hdfs"),
-            "ec0943f83357f702033c98e70b853c8c",
-            "e6dcd267966dc628d732874f94ef4280.dir",
-        ),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
-            "dc24e1271084ee317ac3c2656fb8812b",
-            "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
+    @pytest.mark.parametrize(
+        "workspace, stage_md5, dir_md5",
+        [
+            (
+                "local",
+                "dc24e1271084ee317ac3c2656fb8812b",
+                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
             ),
-        ),
-    ],
-    indirect=["workspace"],
-)
-def test_import_url_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5):
-    workspace.gen({"dir": {"file": "file", "subdir": {"subfile": "subfile"}}})
+            (
+                "s3",
+                "2aa17f8daa26996b3f7a4cf8888ac9ac",
+                "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
+            ),
+            (
+                "azure",
+                None,  # ETags for azure are not consistent with the actual
+                None,  # content of the object, so they will change every time
+                # we create new objects. We'll skip stage content
+                # check for Azure.
+            ),
+            (
+                "hdfs",
+                "ec0943f83357f702033c98e70b853c8c",
+                "e6dcd267966dc628d732874f94ef4280.dir",
+            ),
+            pytest.param(
+                "ssh",
+                "dc24e1271084ee317ac3c2656fb8812b",
+                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
+                marks=pytest.mark.skipif(
+                    os.name == "nt", reason="disabled on windows"
+                ),
+            ),
+        ],
+        indirect=["workspace"],
+    )
+    def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
+        super().test_import_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5)
 
-    # remove external cache to make sure that we don't need it to import dirs
-    with dvc.config.edit() as conf:
-        del conf["cache"]
-    dvc.odb = ODBManager(dvc)
-
-    assert not (tmp_dir / "dir").exists()  # sanity check
-    dvc.imp_url("remote://workspace/dir")
-    assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
-    assert (tmp_dir / "dir" / "file").read_text() == "file"
-    assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
-    assert (tmp_dir / "dir" / "subdir" / "subfile").read_text() == "subfile"
-
-    assert dvc.status() == {}
-
-    if stage_md5 is not None and dir_md5 is not None:
-        assert (tmp_dir / "dir.dvc").read_text() == (
-            f"md5: {stage_md5}\n"
-            "frozen: true\n"
-            "deps:\n"
-            f"- md5: {dir_md5}\n"
-            "  size: 11\n"
-            "  nfiles: 2\n"
-            "  path: remote://workspace/dir\n"
-            "outs:\n"
-            "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
-            "  size: 11\n"
-            "  nfiles: 2\n"
-            "  path: dir\n"
+    @pytest.mark.parametrize(
+        "workspace, is_object_storage",
+        [
+            ("hdfs", False),
+            pytest.param(
+                "s3",
+                True,
+                marks=pytest.mark.xfail(
+                    reason="https://github.com/iterative/dvc/issues/5521",
+                ),
+            ),
+            pytest.param(
+                "gs",
+                True,
+                marks=pytest.mark.xfail(
+                    reason="https://github.com/iterative/dvc/issues/5521",
+                ),
+            ),
+            pytest.param(
+                "azure",
+                True,
+                marks=pytest.mark.xfail(
+                    reason="https://github.com/iterative/dvc/issues/5521",
+                ),
+            ),
+            pytest.param(
+                "ssh",
+                False,
+                marks=pytest.mark.skipif(
+                    os.name == "nt", reason="disabled on windows"
+                ),
+            ),
+        ],
+        indirect=["workspace"],
+    )
+    def test_import_empty_dir(
+        self, tmp_dir, dvc, workspace, is_object_storage
+    ):
+        super().test_import_empty_dir(
+            tmp_dir, dvc, workspace, is_object_storage
         )
 
 
@@ -257,19 +263,17 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
+        "local",
+        "s3",
+        pytest.param("gs", marks=pytest.mark.needs_internet),
+        "hdfs",
         pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
+            "ssh",
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),
         ),
-        pytest.lazy_fixture("http"),
+        "http",
     ],
     indirect=True,
 )
@@ -300,14 +304,12 @@ def test_import_url_to_remote_single_file(
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
+        "local",
+        "s3",
+        pytest.param("gs", marks=pytest.mark.needs_internet),
+        "hdfs",
         pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
+            "ssh",
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),
@@ -379,40 +381,6 @@ def test_import_url_to_remote_invalid_combinations(dvc):
 empty_xfail = pytest.mark.xfail(
     reason="https://github.com/iterative/dvc/issues/5521"
 )
-
-
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        pytest.lazy_fixture("hdfs"),
-        pytest.param(pytest.lazy_fixture("s3"), marks=empty_xfail),
-        pytest.param(pytest.lazy_fixture("gs"), marks=empty_xfail),
-        pytest.param(pytest.lazy_fixture("azure"), marks=empty_xfail),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-    ],
-    indirect=True,
-)
-def test_import_url_empty_directory(tmp_dir, dvc, workspace):
-    # prefix based storage services (e.g s3) doesn't have the real concept
-    # of directories. So instead we create an empty file that ends with a
-    # trailing slash in order to actually support this operation
-    if workspace.IS_OBJECT_STORAGE:
-        contents = ""
-    else:
-        contents = {}
-
-    workspace.gen({"empty_dir/": contents})
-
-    dvc.imp_url("remote://workspace/empty_dir/")
-
-    empty_dir = tmp_dir / "empty_dir"
-    assert empty_dir.is_dir()
-    assert tuple(empty_dir.iterdir()) == ()
 
 
 def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):

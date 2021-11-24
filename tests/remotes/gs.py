@@ -3,12 +3,10 @@ import os
 import uuid
 
 import pytest
-from funcy import cached_property
 
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import CloudURLInfo
 from dvc.utils import env2bool
-
-from .base import Base
-from .path_info import CloudURLInfo
 
 TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
 
@@ -22,7 +20,7 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 
-class GCP(Base, CloudURLInfo):
+class GCP(Cloud, CloudURLInfo):
 
     IS_OBJECT_STORAGE = True
 
@@ -37,7 +35,7 @@ class GCP(Base, CloudURLInfo):
 
         return True
 
-    @cached_property
+    @property
     def config(self):
         return {"url": self.url, "credentialpath": TEST_GCP_CREDS_FILE}
 
@@ -95,8 +93,13 @@ class GCP(Base, CloudURLInfo):
 
 
 @pytest.fixture
-def gs(test_config):
+def make_gs(test_config):
     test_config.requires("gs")
     if not GCP.should_test():
         pytest.skip("no gs")
     yield GCP(GCP.get_url())
+
+
+@pytest.fixture
+def gs(make_gs):
+    return make_gs()
