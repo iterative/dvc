@@ -5,8 +5,7 @@ from dvc.config import Config
 from dvc.exceptions import InitError, InvalidArgumentError
 from dvc.ignore import init as init_dvcignore
 from dvc.repo import Repo
-from dvc.scm import SCM
-from dvc.scm.base import SCMError
+from dvc.scm import SCM, SCMError
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 

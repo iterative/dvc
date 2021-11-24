@@ -122,8 +122,7 @@ def show(
         raise InvalidArgumentError(f"Invalid number of commits '{num}'")
 
     if revs is None:
-        from dvc.scm import resolve_rev
-        from dvc.scm.base import RevError
+        from dvc.scm import RevError, resolve_rev
 
         revs = []
         for n in range(num):

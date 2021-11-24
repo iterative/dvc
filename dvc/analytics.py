@@ -84,8 +84,9 @@ def send(path):
 def _scm_in_use():
     from dvc.exceptions import NotDvcRepoError
     from dvc.repo import Repo
-    from dvc.scm import SCM, NoSCM
-    from dvc.scm.base import SCMError
+    from dvc.scm.noscm import NoSCM
+
+    from .scm import SCM, SCMError
 
     try:
         scm = SCM(root_dir=Repo.find_root())

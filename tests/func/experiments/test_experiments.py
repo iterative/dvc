@@ -387,7 +387,7 @@ def test_branch(tmp_dir, scm, dvc, exp_stage):
 
 def test_no_scm(tmp_dir):
     from dvc.repo import Repo as DvcRepo
-    from dvc.scm.base import NoSCMError
+    from dvc.scm import NoSCMError
 
     dvc = DvcRepo.init(no_scm=True)
 

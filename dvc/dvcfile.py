@@ -60,7 +60,7 @@ def is_lock_file(path):
 
 def is_git_ignored(repo, path):
     from dvc.fs.local import LocalFileSystem
-    from dvc.scm.base import NoSCMError
+    from dvc.scm import NoSCMError
 
     try:
         return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(

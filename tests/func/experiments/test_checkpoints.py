@@ -10,7 +10,7 @@ from dvc.repo.experiments import MultipleBranchError
 from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.executor.base import BaseExecutor
 from dvc.repo.experiments.utils import exp_refs_by_rev
-from dvc.scm.base import InvalidRemoteSCMRepo
+from dvc.scm import InvalidRemoteSCMRepo
 
 
 @pytest.mark.parametrize("workspace", [True, False])

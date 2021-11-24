@@ -7,7 +7,7 @@ import pytest
 
 from dvc.exceptions import PathMissingError
 from dvc.repo import Repo
-from dvc.scm.base import CloneError
+from dvc.scm import CloneError
 
 FS_STRUCTURE = {
     "README.md": "content",

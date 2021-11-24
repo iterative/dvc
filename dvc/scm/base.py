@@ -1,47 +1,13 @@
 """Manages source control systems (e.g. Git) in DVC."""
 
-import os
-
-from dvc.exceptions import DvcException
-
-
-class SCMError(DvcException):
-    """Base class for source control management errors."""
-
-
-class CloneError(SCMError):
-    pass
-
-
-class RevError(SCMError):
-    pass
-
-
-class NoSCMError(SCMError):
-    def __init__(self):
-        msg = (
-            "Only supported for Git repositories. If you're "
-            "seeing this error in a Git repo, try updating the DVC "
-            "configuration with `dvc config core.no_scm false`."
-        )
-        super().__init__(msg)
-
-
-class InvalidRemoteSCMRepo(SCMError):
-    pass
-
-
-class GitAuthError(SCMError):
-    def __init__(self, reason: str) -> None:
-        doc = "See https://dvc.org/doc//user-guide/troubleshooting#git-auth"
-        super().__init__(f"{reason}\n{doc}")
-
 
 class Base:
     """Base class for source control management driver implementations."""
 
-    def __init__(self, root_dir=os.curdir):
-        self._root_dir = os.path.realpath(root_dir)
+    def __init__(self, root_dir=None):
+        import os
+
+        self._root_dir = os.path.realpath(root_dir or os.curdir)
 
     @property
     def root_dir(self) -> str:

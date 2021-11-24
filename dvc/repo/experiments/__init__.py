@@ -91,7 +91,7 @@ class Experiments:
 
     def __init__(self, repo):
         from dvc.lock import make_lock
-        from dvc.scm.base import NoSCMError
+        from dvc.scm import NoSCMError
 
         if repo.config["core"].get("no_scm", False):
             raise NoSCMError

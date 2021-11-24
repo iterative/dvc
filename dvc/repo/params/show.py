@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 from dvc.dependency.param import ParamsDependency
 from dvc.repo import locked
 from dvc.repo.collect import collect
-from dvc.scm.base import NoSCMError
+from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
 from dvc.utils import error_handler, errored_revisions, onerror_collect
