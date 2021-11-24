@@ -9,6 +9,7 @@ from funcy import first
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import DvcException
 from dvc.repo.experiments.utils import exp_refs_by_rev
+from dvc.scm import resolve_rev
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
@@ -39,7 +40,7 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
 
     exp_name = name if name else ref_info.name
     assert dvc.experiments.get_exact_name(exp) == exp_name
-    assert scm.resolve_rev(exp_name) == exp
+    assert resolve_rev(scm, exp_name) == exp
 
 
 @pytest.mark.parametrize("workspace", [True, False])
@@ -518,7 +519,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
         assert fobj.read().strip() == "foo: 2"
 
     assert dvc.experiments.get_exact_name(exp) == ref_info.name
-    assert scm.resolve_rev(ref_info.name) == exp
+    assert resolve_rev(scm, ref_info.name) == exp
 
 
 @pytest.mark.parametrize("workspace", [True, False])
@@ -563,7 +564,7 @@ def test_subrepo(tmp_dir, scm, workspace):
         assert fobj.read().strip() == "foo: 2"
 
     assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
-    assert scm.resolve_rev(ref_info.name) == exp
+    assert resolve_rev(scm, ref_info.name) == exp
 
 
 def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
