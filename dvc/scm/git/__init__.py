@@ -282,7 +282,7 @@ class Git(Base):
     list_tags = partialmethod(_backend_func, "list_tags")
     list_all_commits = partialmethod(_backend_func, "list_all_commits")
     get_rev = partialmethod(_backend_func, "get_rev")
-    _resolve_rev = partialmethod(_backend_func, "resolve_rev")
+    resolve_rev = partialmethod(_backend_func, "resolve_rev")
     resolve_commit = partialmethod(_backend_func, "resolve_commit")
 
     set_ref = partialmethod(_backend_func, "set_ref")
@@ -305,22 +305,6 @@ class Git(Base):
     merge = partialmethod(_backend_func, "merge")
     validate_git_remote = partialmethod(_backend_func, "validate_git_remote")
     check_ref_format = partialmethod(_backend_func, "check_ref_format")
-
-    def resolve_rev(self, rev: str) -> str:
-        from dvc.repo.experiments.utils import exp_refs_by_name
-
-        try:
-            return self._resolve_rev(rev)
-        except RevError:
-            # backends will only resolve git branch and tag names,
-            # if rev is not a sha it may be an abbreviated experiment name
-            if not self.is_sha(rev) and not rev.startswith("refs/"):
-                ref_infos = list(exp_refs_by_name(self, rev))
-                if len(ref_infos) == 1:
-                    return self.get_ref(str(ref_infos[0]))
-                if len(ref_infos) > 1:
-                    raise RevError(f"ambiguous Git revision '{rev}'")
-            raise
 
     def branch_revs(
         self, branch: str, end_rev: Optional[str] = None

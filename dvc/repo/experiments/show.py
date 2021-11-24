@@ -71,7 +71,9 @@ def _collect_experiment_commit(
 def _collect_experiment_branch(
     res, repo, branch, baseline, onerror: Optional[Callable] = None, **kwargs
 ):
-    exp_rev = repo.scm.resolve_rev(branch)
+    from dvc.scm import resolve_rev
+
+    exp_rev = resolve_rev(repo.scm, branch)
     prev = None
     revs = list(repo.scm.branch_revs(exp_rev, baseline))
     for rev in revs:

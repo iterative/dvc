@@ -87,4 +87,14 @@ def resolve_rev(scm: "Git", rev: str) -> str:
     try:
         return scm.resolve_rev(rev)
     except InternalRevError as exc:
+        # `scm` will only resolve git branch and tag names,
+        # if rev is not a sha it may be an abbreviated experiment name
+        if not scm.is_sha(rev) and not rev.startswith("refs/"):
+            from dvc.repo.experiments.utils import exp_refs_by_name
+
+            ref_infos = list(exp_refs_by_name(scm, rev))
+            if len(ref_infos) == 1:
+                return scm.get_ref(str(ref_infos[0]))
+            if len(ref_infos) > 1:
+                raise RevError(f"ambiguous Git revision '{rev}'")
         raise RevError(str(exc))
