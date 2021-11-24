@@ -18,7 +18,6 @@ from typing import (
 from funcy import cached_property
 
 from dvc.scm.exceptions import MergeConflictError, RevError, SCMError
-from dvc.utils import relpath
 
 from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
@@ -28,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from dvc.scm.progress import GitProgressEvent
-    from dvc.types import StrPath
 
 # NOTE: constant from libgit2 git2/checkout.h
 # This can be removed after next pygit2 release:
@@ -283,8 +281,8 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
     def _get_stash(self, ref: str):
         raise NotImplementedError
 
-    def is_ignored(self, path: "StrPath") -> bool:
-        rel = relpath(path, self.root_dir)
+    def is_ignored(self, path: "Union[str, os.PathLike[str]]") -> bool:
+        rel = os.path.relpath(path, self.root_dir)
         if os.name == "nt":
             rel.replace("\\", "/")
         return self.repo.path_is_ignored(rel)
@@ -473,7 +471,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         if paths is not None:
             tree = self.repo.revparse_single("HEAD").tree
             for path in paths:
-                rel = relpath(path, self.root_dir)
+                rel = os.path.relpath(path, self.root_dir)
                 if os.name == "nt":
                     rel = rel.replace("\\", "/")
                 obj = tree[rel]
@@ -512,7 +510,7 @@ class Pygit2Backend(BaseGitBackend):  # pylint:disable=abstract-method
         index = self.repo.index
         if paths:
             path_list: Optional[List[str]] = [
-                relpath(path, self.root_dir) for path in paths
+                os.path.relpath(path, self.root_dir) for path in paths
             ]
             if os.name == "nt":
                 path_list = [

@@ -2,10 +2,12 @@ import io
 import locale
 import logging
 import os
+import sys
 from functools import partial
 from typing import (
     TYPE_CHECKING,
     Callable,
+    Dict,
     Iterable,
     List,
     Mapping,
@@ -22,16 +24,37 @@ from dvc.scm.exceptions import (
     RevError,
     SCMError,
 )
-from dvc.utils import fix_env, is_binary, relpath
 
 from ..objects import GitCommit, GitObject
 from .base import BaseGitBackend
 
 if TYPE_CHECKING:
     from dvc.scm.progress import GitProgressEvent
-    from dvc.types import StrPath
+
 
 logger = logging.getLogger(__name__)
+
+
+# NOTE: Check if we are in a bundle
+# https://pythonhosted.org/PyInstaller/runtime-information.html
+def is_binary() -> bool:
+    return getattr(sys, "frozen", False)
+
+
+def fix_env(env: Dict[str, str] = None) -> Dict[str, str]:
+    if env is None:
+        environ = os.environ.copy()
+    else:
+        environ = env.copy()
+
+    if is_binary():
+        lp_key = "LD_LIBRARY_PATH"
+        lp_orig = environ.get(lp_key + "_ORIG", None)
+        if lp_orig is not None:
+            environ[lp_key] = lp_orig
+        else:
+            environ.pop(lp_key, None)
+    return environ
 
 
 class GitPythonObject(GitObject):
@@ -93,7 +116,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
-        env = fix_env(None)
+        env = fix_env()
         libpath = env.get("LD_LIBRARY_PATH", None)
         self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
 
@@ -104,7 +127,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def git(self):
         return self.repo.git
 
-    def is_ignored(self, path: "StrPath") -> bool:
+    def is_ignored(self, path: "Union[str, os.PathLike[str]]") -> bool:
         from git.exc import GitCommandError
 
         func = ignore(GitCommandError)(self.repo.git.check_ignore)
@@ -127,7 +150,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
 
         ld_key = "LD_LIBRARY_PATH"
 
-        env = fix_env(None)
+        env = fix_env()
         if is_binary() and ld_key not in env.keys():
             # In fix_env, we delete LD_LIBRARY_PATH key if it was empty before
             # PyInstaller modified it. GitPython, in git.Repo.clone_from, uses
@@ -534,7 +557,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
     def reset(self, hard: bool = False, paths: Iterable[str] = None):
         if paths:
             paths_list: Optional[List[str]] = [
-                relpath(path, self.root_dir) for path in paths
+                os.path.relpath(path, self.root_dir) for path in paths
             ]
             if os.name == "nt":
                 paths_list = [
@@ -567,7 +590,7 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
         else:
             if paths:
                 paths_list: Optional[List[str]] = [
-                    relpath(path, self.root_dir) for path in paths
+                    os.path.relpath(path, self.root_dir) for path in paths
                 ]
                 if os.name == "nt":
                     paths_list = [
