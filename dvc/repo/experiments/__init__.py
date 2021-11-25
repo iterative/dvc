@@ -165,7 +165,7 @@ class Experiments:
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
         """
-        with self.scm.detach_head() as orig_head:
+        with self.scm.detach_head(client="dvc") as orig_head:
             stash_head = orig_head
             if baseline_rev is None:
                 baseline_rev = orig_head
@@ -810,7 +810,7 @@ class Experiments:
         # `checkout --force` here will not lose any data (popping stash commit
         # will result in conflict between workspace params and stashed CLI
         # params, but we always want the stashed version).
-        with self.scm.detach_head(entry.rev, force=True):
+        with self.scm.detach_head(entry.rev, force=True, client="dvc"):
             rev = self.stash.pop()
             self.scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
             if entry.branch:
