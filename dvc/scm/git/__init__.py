@@ -317,7 +317,12 @@ class Git(Base):
             commit = self.resolve_commit(parent)
 
     @contextmanager
-    def detach_head(self, rev: Optional[str] = None, force: bool = False):
+    def detach_head(
+        self,
+        rev: Optional[str] = None,
+        force: bool = False,
+        client: str = "scm",
+    ):
         """Context manager for performing detached HEAD SCM operations.
 
         Detaches and restores HEAD similar to interactive git rebase.
@@ -346,7 +351,7 @@ class Git(Base):
                 "HEAD",
                 orig_head,
                 symbolic=symbolic,
-                message=f"dvc: Restore HEAD to '{name}'",
+                message=f"{client}: Restore HEAD to '{name}'",
             )
             logger.debug("Restore HEAD to '%s'", name)
             self.reset()
