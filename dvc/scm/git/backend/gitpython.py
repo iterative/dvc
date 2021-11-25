@@ -23,6 +23,7 @@ from dvc.scm.exceptions import (
     MergeConflictError,
     RevError,
     SCMError,
+    UnsupportedIndexFormat,
 )
 from dvc.scm.utils import relpath
 
@@ -221,15 +222,8 @@ class GitPythonBackend(BaseGitBackend):  # pylint:disable=abstract-method
                 self.git.add(*paths, update=True)
             else:
                 self.repo.index.add(paths)
-        except AssertionError:
-            msg = (
-                "failed to add '{}' to git. You can add those files "
-                "manually using `git add`. See "
-                "https://github.com/iterative/dvc/issues/610 for more "
-                "details.".format(str(paths))
-            )
-
-            logger.exception(msg)
+        except AssertionError as exc:
+            raise UnsupportedIndexFormat from exc
 
     def commit(self, msg: str, no_verify: bool = False):
         from git.exc import HookExecutionError
