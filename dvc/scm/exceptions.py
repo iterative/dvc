@@ -39,3 +39,7 @@ class CloneError(SCMError):
 
 class RevError(SCMError):
     pass
+
+
+class UnsupportedIndexFormat(SCMError):
+    pass

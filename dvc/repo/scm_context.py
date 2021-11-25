@@ -2,9 +2,19 @@ import logging
 import shlex
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Set
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Set,
+    Union,
+)
 
 from dvc.utils import relpath
+from dvc.utils.collections import ensure_list
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -26,17 +36,38 @@ class SCMContext:
         self.files_to_track: Set[str] = set()
         self.quiet: bool = False
 
-    def track_file(self, path: str) -> None:
+    def track_file(
+        self, paths: Union[str, Iterable[str], None] = None
+    ) -> None:
         """Track file to remind user to track new files or autostage later."""
-        return self.files_to_track.add(path)
+        return self.files_to_track.update(ensure_list(paths))
+
+    @staticmethod
+    def _make_git_add_cmd(paths: Union[str, Iterable[str]]) -> str:
+        files = " ".join(map(shlex.quote, ensure_list(paths)))
+        return f"\tgit add {files}".expandtabs(4)
+
+    def add(self, paths: Union[str, Iterable[str]]) -> None:
+        from dvc.scm.exceptions import UnsupportedIndexFormat
+
+        try:
+            return self.scm.add(paths)
+        except UnsupportedIndexFormat:
+            link = "https://github.com/iterative/dvc/issues/610"
+            add_cmd = self._make_git_add_cmd([relpath(path) for path in paths])
+            logger.info("")
+            msg = (
+                f"failed to add, add manually using:\n\n{add_cmd}\n"
+                f"\nSee {link} for more details.\n"
+            )
+            logger.warning(msg)
 
     def track_changed_files(self) -> None:
         """Stage files that have changed."""
         if not self.files_to_track:
             return
-
         logger.debug("Staging files: %s", self.files_to_track)
-        return self.scm.add(self.files_to_track)
+        return self.add(self.files_to_track)
 
     def ignore(self, path: str) -> None:
         from dvc.scm import SCMError
@@ -91,11 +122,9 @@ class SCMContext:
         if autostage:
             self.track_changed_files()
         elif not quiet and not isinstance(self.scm, NoSCM):
-            files = " ".join(map(shlex.quote, self.files_to_track))
-
+            add_cmd = self._make_git_add_cmd(self.files_to_track)
             logger.info(
-                "\nTo track the changes with git, run:\n\n"
-                f"\tgit add {files}"
+                f"\nTo track the changes with git, run:\n" f"\n{add_cmd}"
             )
             logger.info(
                 "\nTo enable auto staging, run:\n\n"
