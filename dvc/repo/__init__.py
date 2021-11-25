@@ -90,7 +90,7 @@ class Repo:
     ):
         assert bool(scm) == bool(rev)
 
-        from dvc.fs.scm import GitFileSystem
+        from dvc.fs.git import GitFileSystem
         from dvc.scm import SCM, Base, Git, SCMError
         from dvc.utils.fs import makedirs
 
@@ -161,8 +161,8 @@ class Repo:
     ):
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
+        from dvc.fs.git import GitFileSystem
         from dvc.fs.local import LocalFileSystem
-        from dvc.fs.scm import GitFileSystem
         from dvc.lock import LockNoop, make_lock
         from dvc.objects.db import ODBManager
         from dvc.repo.live import Live

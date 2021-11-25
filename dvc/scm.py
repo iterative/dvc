@@ -2,14 +2,15 @@
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator
 
+from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
+from scmrepo.git import Git
+from scmrepo.noscm import NoSCM
+
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
-from dvc.scm.base import Base  # noqa: F401
-from dvc.scm.git import Git
-from dvc.scm.noscm import NoSCM
 
 if TYPE_CHECKING:
-    from dvc.scm.progress import GitProgressEvent
+    from scmrepo.progress import GitProgressEvent
 
 
 class SCMError(DvcException):
@@ -46,7 +47,7 @@ class GitAuthError(SCMError):
 
 @contextmanager
 def map_scm_exception(with_cause: bool = False) -> Iterator[None]:
-    from dvc.scm.exceptions import SCMError as InternalSCMError
+    from scmrepo.exceptions import SCMError as InternalSCMError
 
     try:
         yield
@@ -96,7 +97,7 @@ class TqdmGit(Tqdm):
 
 
 def clone(url: str, to_path: str, **kwargs):
-    from dvc.scm.exceptions import CloneError as InternalCloneError
+    from scmrepo.exceptions import CloneError as InternalCloneError
 
     with TqdmGit(desc="Cloning") as pbar:
         try:
@@ -106,7 +107,7 @@ def clone(url: str, to_path: str, **kwargs):
 
 
 def resolve_rev(scm: "Git", rev: str) -> str:
-    from dvc.scm.exceptions import RevError as InternalRevError
+    from scmrepo.exceptions import RevError as InternalRevError
 
     try:
         return scm.resolve_rev(rev)

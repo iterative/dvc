@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
 def external_repo(
     url, rev=None, for_write=False, cache_dir=None, cache_types=None, **kwargs
 ):
+    from scmrepo.git import Git
+
     from dvc.config import NoRemoteError
-    from dvc.scm.git import Git
 
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
@@ -175,7 +176,7 @@ def _clone_default_branch(url, rev, for_write=False):
 
     The cloned is reactualized with git pull unless rev is a known sha.
     """
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
 
     clone_path, shallow = CLONES.get(url, (None, False))
 
@@ -240,7 +241,7 @@ def _unshallow(git):
 
 
 def _git_checkout(repo_path, rev):
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
 
     logger.debug("erepo: git checkout %s@%s", repo_path, rev)
     git = Git(repo_path)

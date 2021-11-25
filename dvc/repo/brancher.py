@@ -60,7 +60,7 @@ def brancher(  # noqa: E302
 
     try:
         if revs:
-            from dvc.fs.scm import GitFileSystem
+            from dvc.fs.git import GitFileSystem
             from dvc.scm import resolve_rev
 
             rev_resolver = partial(resolve_rev, scm)

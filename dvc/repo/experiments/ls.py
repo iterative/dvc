@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def ls(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
+    from scmrepo.git import Git
+
     from dvc.scm import RevError, resolve_rev
-    from dvc.scm.git import Git
 
     if rev:
         try:

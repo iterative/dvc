@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def apply(repo, rev, force=True, **kwargs):
+    from scmrepo.exceptions import MergeConflictError
+
     from dvc.repo.checkout import checkout as dvc_checkout
     from dvc.scm import RevError, SCMError, resolve_rev
-    from dvc.scm.exceptions import MergeConflictError
 
     exps = repo.experiments
 
@@ -45,7 +46,7 @@ def apply(repo, rev, force=True, **kwargs):
     else:
         workspace = None
 
-    from dvc.scm.exceptions import SCMError as _SCMError
+    from scmrepo.exceptions import SCMError as _SCMError
 
     try:
         repo.scm.merge(exp_rev, commit=False)

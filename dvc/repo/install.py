@@ -3,8 +3,9 @@ from typing import TYPE_CHECKING
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
+    from scmrepo.git import Git
+
     from dvc.repo import Repo
-    from dvc.scm.git import Git
 
 
 def pre_commit_install(scm: "Git") -> None:
@@ -43,7 +44,8 @@ def pre_commit_install(scm: "Git") -> None:
 
 
 def install_hooks(scm: "Git") -> None:
-    from dvc.scm.exceptions import GitHookAlreadyExists
+    from scmrepo.exceptions import GitHookAlreadyExists
+
     from dvc.utils import format_link
 
     hooks = ["post-checkout", "pre-commit", "pre-push"]
@@ -64,7 +66,7 @@ def install(self: "Repo", use_pre_commit_tool: bool = False) -> None:
     If use_pre_commit_tool is set and pre-commit is installed it will be used
     to install the hooks.
     """
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
 
     scm = self.scm
     if not isinstance(scm, Git):

@@ -474,7 +474,7 @@ def test_download_dir_callback(tmp_dir, dvc, cloud):
 
 @pytest.mark.parametrize("fs_type", ["git", "dvc"])
 def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
-    from dvc.fs.scm import GitFileSystem
+    from dvc.fs.git import GitFileSystem
 
     gen = tmp_dir.scm_gen if fs_type == "git" else tmp_dir.dvc_gen
     gen({"dir": {"foo": "foo", "bar": "bar"}, "file": "file"}, commit="gen")

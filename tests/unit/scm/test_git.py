@@ -1,15 +1,14 @@
 import os
 
 import pytest
-
-from dvc.scm.exceptions import SCMError
+from scmrepo.exceptions import SCMError
 
 
 # Behaves the same as SCM but will test against all supported Git backends.
 # tmp_dir.scm will still contain a default SCM instance.
 @pytest.fixture(params=["gitpython", "dulwich", "pygit2"])
 def git(tmp_dir, scm, request):
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
 
     git_ = Git(os.fspath(tmp_dir), backends=[request.param])
     git_.test_backend = request.param
@@ -109,7 +108,8 @@ def test_is_tracked_unicode(tmp_dir, scm):
 
 
 def test_no_commits(tmp_dir):
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
+
     from tests.dir_helpers import git_init
 
     git_init(".")
@@ -344,7 +344,7 @@ def test_commit_no_verify(tmp_dir, scm, git, hook):
 
 @pytest.mark.parametrize("squash", [True, False])
 def test_merge(tmp_dir, scm, git, squash):
-    from dvc.scm.exceptions import MergeConflictError
+    from scmrepo.exceptions import MergeConflictError
 
     if git.test_backend == "dulwich":
         pytest.skip()
@@ -399,7 +399,7 @@ def test_checkout_index(tmp_dir, scm, git):
     "strategy, expected", [("ours", "baz"), ("theirs", "bar")]
 )
 def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
-    from dvc.scm.exceptions import MergeConflictError
+    from scmrepo.exceptions import MergeConflictError
 
     if git.test_backend == "dulwich":
         pytest.skip()
@@ -422,7 +422,7 @@ def test_checkout_index_conflicts(tmp_dir, scm, git, strategy, expected):
 
 
 def test_resolve_rev(tmp_dir, scm, make_tmp_dir, git):
-    from dvc.scm.exceptions import RevError
+    from scmrepo.exceptions import RevError
 
     if git.test_backend == "dulwich":
         pytest.skip()
@@ -595,8 +595,7 @@ def test_pygit_checkout_subdir(tmp_dir, scm, git):
 )
 def test_dulwich_github_compat(mocker, algorithm):
     from asyncssh.misc import ProtocolError
-
-    from dvc.scm.git.backend.dulwich.asyncssh_vendor import (
+    from scmrepo.git.backend.dulwich.asyncssh_vendor import (
         _process_public_key_ok_gh,
     )
 

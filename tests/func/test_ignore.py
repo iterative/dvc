@@ -123,7 +123,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 
 
 def test_ignore_on_branch(tmp_dir, scm, dvc):
-    from dvc.fs.scm import GitFileSystem
+    from dvc.fs.git import GitFileSystem
 
     tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="add files")
 
