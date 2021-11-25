@@ -230,7 +230,7 @@ def test_git_stash_workspace(tmp_dir, scm):
     ],
 )
 def test_git_stash_push(tmp_dir, scm, ref, include_untracked):
-    from dvc.scm.git import Stash
+    from scmrepo.git import Stash
 
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     tmp_dir.gen({"file": "1", "untracked": "0"})
@@ -255,7 +255,7 @@ def test_git_stash_push(tmp_dir, scm, ref, include_untracked):
 
 @pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
 def test_git_stash_drop(tmp_dir, scm, ref):
-    from dvc.scm.git import Stash
+    from scmrepo.git import Stash
 
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     tmp_dir.gen("file", "1")
@@ -288,7 +288,7 @@ reason = """libgit2 stash_save() is flaky on linux when run inside pytest
     ],
 )
 def test_git_stash_pop(tmp_dir, scm, ref):
-    from dvc.scm.git import Stash
+    from scmrepo.git import Stash
 
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     tmp_dir.gen("file", "1")
@@ -307,7 +307,7 @@ def test_git_stash_pop(tmp_dir, scm, ref):
 
 @pytest.mark.parametrize("ref", [None, "refs/foo/stash"])
 def test_git_stash_clear(tmp_dir, scm, ref):
-    from dvc.scm.git import Stash
+    from scmrepo.git import Stash
 
     tmp_dir.scm_gen({"file": "0"}, commit="init")
     tmp_dir.gen("file", "1")

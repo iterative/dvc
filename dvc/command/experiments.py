@@ -142,7 +142,7 @@ def _collect_rows(
     fill_value=FILL_VALUE,
     iso=False,
 ):
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
 
     if sort_by:
         sort_path, sort_name, sort_type = _sort_column(

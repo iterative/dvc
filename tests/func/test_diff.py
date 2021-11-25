@@ -268,8 +268,9 @@ def test_no_changes(tmp_dir, scm, dvc):
 
 
 def test_no_commits(tmp_dir):
+    from scmrepo.git import Git
+
     from dvc.repo import Repo
-    from dvc.scm.git import Git
     from tests.dir_helpers import git_init
 
     git_init(".")

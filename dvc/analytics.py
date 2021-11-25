@@ -82,9 +82,10 @@ def send(path):
 
 
 def _scm_in_use():
+    from scmrepo.noscm import NoSCM
+
     from dvc.exceptions import NotDvcRepoError
     from dvc.repo import Repo
-    from dvc.scm.noscm import NoSCM
 
     from .scm import SCM, SCMError
 

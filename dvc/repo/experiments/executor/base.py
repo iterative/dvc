@@ -38,7 +38,7 @@ from dvc.utils.fs import remove
 if TYPE_CHECKING:
     from multiprocessing import Queue
 
-    from dvc.scm.git import Git
+    from scmrepo.git import Git
 
 logger = logging.getLogger(__name__)
 
@@ -224,8 +224,9 @@ class BaseExecutor(ABC):
 
     @classmethod
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
+        from scmrepo.exceptions import InvalidRemote
+
         from dvc.scm import InvalidRemoteSCMRepo
-        from dvc.scm.exceptions import InvalidRemote
 
         if git_remote == dvc.root_dir:
             logger.warning(

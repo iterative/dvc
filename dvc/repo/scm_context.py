@@ -17,8 +17,9 @@ from dvc.utils import relpath
 from dvc.utils.collections import ensure_list
 
 if TYPE_CHECKING:
+    from scmrepo.base import Base
+
     from dvc.repo import Repo
-    from dvc.scm.base import Base
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class SCMContext:
         return f"\tgit add {files}".expandtabs(4)
 
     def add(self, paths: Union[str, Iterable[str]]) -> None:
-        from dvc.scm.exceptions import UnsupportedIndexFormat
+        from scmrepo.exceptions import UnsupportedIndexFormat
 
         try:
             return self.scm.add(paths)
@@ -70,8 +71,9 @@ class SCMContext:
         return self.add(self.files_to_track)
 
     def ignore(self, path: str) -> None:
+        from scmrepo.exceptions import FileNotInRepoError
+
         from dvc.scm import SCMError
-        from dvc.scm.exceptions import FileNotInRepoError
 
         logger.debug("Adding '%s' to gitignore file.", path)
         try:
@@ -84,8 +86,9 @@ class SCMContext:
             return self.ignored_paths.append(path)
 
     def ignore_remove(self, path: str) -> None:
+        from scmrepo.exceptions import FileNotInRepoError
+
         from dvc.scm import SCMError
-        from dvc.scm.exceptions import FileNotInRepoError
 
         logger.debug("Removing '%s' from gitignore file.", path)
         try:

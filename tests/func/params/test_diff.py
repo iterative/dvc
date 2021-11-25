@@ -126,8 +126,9 @@ def test_pipeline_tracked_params(tmp_dir, scm, dvc, run_copy):
 
 
 def test_no_commits(tmp_dir):
+    from scmrepo.git import Git
+
     from dvc.repo import Repo
-    from dvc.scm.git import Git
     from tests.dir_helpers import git_init
 
     git_init(".")

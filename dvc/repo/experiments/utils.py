@@ -1,7 +1,8 @@
 from typing import Callable, Generator, Iterable, Optional, Set
 
+from scmrepo.git import Git
+
 from dvc.exceptions import InvalidArgumentError
-from dvc.scm.git import Git
 
 from .base import (
     EXEC_BASELINE,
@@ -52,8 +53,9 @@ def exp_refs_by_baseline(
 def iter_remote_refs(
     scm: "Git", url: str, base: Optional[str] = None, **kwargs
 ):
+    from scmrepo.exceptions import AuthError, InvalidRemote
+
     from dvc.scm import GitAuthError, InvalidRemoteSCMRepo
-    from dvc.scm.exceptions import AuthError, InvalidRemote
 
     try:
         yield from scm.iter_remote_refs(url, base=base, **kwargs)
@@ -72,7 +74,7 @@ def push_refspec(
     on_diverged: Optional[Callable[[str, str], bool]] = None,
     **kwargs,
 ):
-    from dvc.scm.exceptions import AuthError
+    from scmrepo.exceptions import AuthError
 
     from ...scm import GitAuthError
 

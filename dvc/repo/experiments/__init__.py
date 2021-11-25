@@ -119,7 +119,7 @@ class Experiments:
 
     @cached_property
     def stash(self):
-        from dvc.scm.git import Stash
+        from scmrepo.git import Stash
 
         return Stash(self.scm, EXPS_STASH)
 

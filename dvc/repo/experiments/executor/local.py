@@ -17,8 +17,9 @@ from dvc.scm import SCM
 from .base import BaseExecutor
 
 if TYPE_CHECKING:
+    from scmrepo.git import Git
+
     from dvc.repo import Repo
-    from dvc.scm.git import Git
 
 logger = logging.getLogger(__name__)
 
