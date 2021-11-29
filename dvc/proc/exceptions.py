@@ -18,3 +18,8 @@ class TimeoutExpired(DvcException):
         )
         self.cmd = cmd
         self.timeout = timeout
+
+
+class UnsupportedSignalError(DvcException):
+    def __init__(self, sig):
+        super().__init__(f"Unsupported signal: {sig}")
