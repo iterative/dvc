@@ -226,30 +226,56 @@ def test_dropna(axis, how, data, expected):
         (
             "rows",
             [
-                ["foo", "", ""],
-                ["foo", "foo", ""],
+                ["foo", "-", "-"],
+                ["foo", "foo", "-"],
                 ["foo", "bar", "foobar"],
             ],
         ),
-        ("cols", [[""], ["foo"], ["foo"], ["bar"]]),
+        ("cols", [["-"], ["foo"], ["foo"], ["bar"]]),
     ],
 )
 def test_drop_duplicates(axis, expected):
-    td = TabularData(["col-1", "col-2", "col-3"])
+    td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
     td.extend(
         [["foo"], ["foo", "foo"], ["foo", "foo"], ["foo", "bar", "foobar"]]
     )
 
     assert list(td) == [
-        ["foo", "", ""],
-        ["foo", "foo", ""],
-        ["foo", "foo", ""],
+        ["foo", "-", "-"],
+        ["foo", "foo", "-"],
+        ["foo", "foo", "-"],
         ["foo", "bar", "foobar"],
     ]
 
     td.drop_duplicates(axis)
 
     assert list(td) == expected
+
+
+def test_drop_duplicates_rich_text():
+    from dvc.ui import ui
+
+    td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
+
+    td.extend(
+        [
+            ["foo", None, ui.rich_text("-")],
+            ["foo", "foo"],
+            ["foo", "foo"],
+            ["foo", "bar", "foobar"],
+        ]
+    )
+
+    assert list(td) == [
+        ["foo", "-", ui.rich_text("-")],
+        ["foo", "foo", "-"],
+        ["foo", "foo", "-"],
+        ["foo", "bar", "foobar"],
+    ]
+
+    td.drop_duplicates("cols")
+
+    assert list(td) == [["-"], ["foo"], ["foo"], ["bar"]]
 
 
 def test_dropna_invalid_axis():
