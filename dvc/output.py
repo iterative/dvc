@@ -129,7 +129,7 @@ def loads_from(
             isexec=isexec,
             live=live,
             remote=remote,
-            append_only=append_only
+            append_only=append_only,
         )
         for s in s_list
     ]
@@ -193,7 +193,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
-                Output.PARAM_APPEND_ONLY
+                Output.PARAM_APPEND_ONLY,
             ],
         )
 
@@ -685,7 +685,7 @@ class Output:
 
         if self.live:
             ret[self.PARAM_LIVE] = self.live
-        
+
         if self.append_only:
             ret[self.PARAM_APPEND_ONLY] = self.append_only
 
