@@ -159,7 +159,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         index_path = write(
             output_path,
-            renderers=[ParallelCoordinatesRenderer(self, color_by)],
+            renderers=[
+                ParallelCoordinatesRenderer(self, color_by, self._fill_value)
+            ],
         )
         return index_path.as_uri()
 
