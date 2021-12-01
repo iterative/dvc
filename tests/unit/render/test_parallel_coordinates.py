@@ -17,8 +17,8 @@ def expected_format(result):
 
 
 def test_scalar_columns():
-    td = TabularData(["col-1", "col-2"])
-    td.extend([["0.1", "1"], ["2", "0.2"]])
+    td = TabularData(["col-1", "col-2", "col-3"])
+    td.extend([["0.1", "1", ""], ["2", "0.2", "0"]])
     renderer = ParallelCoordinatesRenderer(td)
 
     result = json.loads(renderer.as_json())
@@ -33,11 +33,15 @@ def test_scalar_columns():
         "label": "col-2",
         "values": [1.0, 0.2],
     }
+    assert result["data"][0]["dimensions"][2] == {
+        "label": "col-3",
+        "values": [None, 0],
+    }
 
 
 def test_categorical_columns():
-    td = TabularData(["col-1"])
-    td.extend([["foo"], ["bar"], ["foo"]])
+    td = TabularData(["col-1", "col-2"])
+    td.extend([["foo", ""], ["bar", "foobar"], ["foo", ""]])
     renderer = ParallelCoordinatesRenderer(td)
 
     result = json.loads(renderer.as_json())
@@ -49,6 +53,12 @@ def test_categorical_columns():
         "values": [1, 0, 1],
         "tickvals": [1, 0, 1],
         "ticktext": ["foo", "bar", "foo"],
+    }
+    assert result["data"][0]["dimensions"][1] == {
+        "label": "col-2",
+        "values": [1, 0, 1],
+        "tickvals": [1, 0, 1],
+        "ticktext": ["Missing", "foobar", "Missing"],
     }
 
 
@@ -84,9 +94,7 @@ def test_color_by_scalar():
     assert result["data"][0]["line"] == {
         "color": [0.1, 2.0],
         "showscale": True,
-        "colorbar": {
-            "title": "scalar"
-        }
+        "colorbar": {"title": "scalar"},
     }
 
 
@@ -125,3 +133,24 @@ def test_write_parallel_coordinates(tmp_dir):
         id="plot_experiments", partial=renderer.as_json()
     )
     assert div in html_text
+
+
+def test_fill_value():
+    td = TabularData(["categorical", "scalar"])
+    td.extend([["foo", "-"], ["-", "2"]])
+    renderer = ParallelCoordinatesRenderer(td, fill_value="-")
+
+    result = json.loads(renderer.as_json())
+
+    assert expected_format(result)
+
+    assert result["data"][0]["dimensions"][0] == {
+        "label": "categorical",
+        "values": [0, 1],
+        "tickvals": [0, 1],
+        "ticktext": ["foo", "Missing"],
+    }
+    assert result["data"][0]["dimensions"][1] == {
+        "label": "scalar",
+        "values": [None, 2.0],
+    }
