@@ -8,12 +8,31 @@ from funcy import first, get_in
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
-from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo
+from dvc.repo.experiments.executor.base import (
+    EXEC_PID_DIR,
+    EXEC_TMP_DIR,
+    BaseExecutor,
+    ExecutorInfo,
+)
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 from tests.utils import console_width
+
+
+def make_executor_info(**kwargs):
+    # set default values for required info fields
+    for key in (
+        "git_url",
+        "baseline_rev",
+        "location",
+        "root_dir",
+        "dvc_dir",
+    ):
+        if key not in kwargs:
+            kwargs[key] = ""
+    return ExecutorInfo(**kwargs)
 
 
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
@@ -367,11 +386,11 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
-    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
+    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
-    (tmp_dir / pidfile).dump(info.to_dict())
+    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.INFOFILE_EXT}")
+    (tmp_dir / pidfile).dump_json(info.asdict())
 
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
@@ -398,11 +417,11 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
-    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
+    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
-    (tmp_dir / pidfile).dump(info.to_dict())
+    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.INFOFILE_EXT}")
+    (tmp_dir / pidfile).dump_json(info.asdict())
 
     results = dvc.experiments.show()
     exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
@@ -430,17 +449,21 @@ def test_show_running_checkpoint(
     checkpoint_rev = first(run_results)
     exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
 
-    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
+    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     makedirs(pid_dir, True)
     executor = (
         BaseExecutor.DEFAULT_LOCATION
         if workspace
         else TempDirExecutor.DEFAULT_LOCATION
     )
-    info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
+    info = make_executor_info(
+        git_url="foo.git",
+        baseline_rev=baseline_rev,
+        location=executor,
+    )
     rev = "workspace" if workspace else stash_rev
-    pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
-    (tmp_dir / pidfile).dump(info.to_dict())
+    pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.INFOFILE_EXT}")
+    (tmp_dir / pidfile).dump_json(info.asdict())
 
     mocker.patch.object(
         BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]
@@ -559,7 +582,6 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
     assert main(["exp", "show"]) == 0
     cap = capsys.readouterr()
 
-    print(cap)
     assert "bar" in cap.out
 
     capsys.readouterr()

@@ -42,7 +42,7 @@ def gc(
     delete_stashes = []
     for _, entry in repo.experiments.stash_revs.items():
         if not queued or entry.baseline_rev not in keep_revs:
-            delete_stashes.append(entry.index)
+            delete_stashes.append(entry.stash_index)
     for index in sorted(delete_stashes, reverse=True):
         repo.experiments.stash.drop(index)
     removed += len(delete_stashes)

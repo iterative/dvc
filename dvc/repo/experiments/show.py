@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, Optional
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.repo.experiments.base import ExpRefInfo
-from dvc.repo.experiments.executor.base import ExecutorInfo
 from dvc.repo.experiments.utils import fix_exp_head
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
@@ -44,7 +43,7 @@ def _collect_experiment_commit(
         res["queued"] = stash
         if running is not None and exp_rev in running:
             res["running"] = True
-            res["executor"] = running[exp_rev].get(ExecutorInfo.PARAM_LOCATION)
+            res["executor"] = running[exp_rev].get("location")
         else:
             res["running"] = False
             res["executor"] = None
