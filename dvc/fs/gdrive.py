@@ -95,8 +95,7 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
         return infer_storage_options(path)["path"].lstrip("/")
 
-    @staticmethod
-    def unstrip_protocol(path):
+    def unstrip_protocol(self, path):
         return f"gdrive://{self._bucket}/{path}"
 
     @staticmethod
