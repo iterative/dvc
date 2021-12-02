@@ -49,16 +49,16 @@ def _clear_all(repo):
 
 def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
     stash_revs = repo.experiments.stash_revs
-    for _, ref_info in stash_revs.items():
-        if ref_info.name == ref_or_rev:
-            return ref_info.index
+    for _, entry in stash_revs.items():
+        if entry.name == ref_or_rev:
+            return entry.stash_index
 
     from dvc.scm import resolve_rev
 
     try:
         rev = resolve_rev(repo.scm, ref_or_rev)
         if rev in stash_revs:
-            return stash_revs.get(rev).index
+            return stash_revs.get(rev).stash_index
     except RevError:
         pass
     return None

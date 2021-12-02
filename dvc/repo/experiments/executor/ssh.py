@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from dvc.machine import MachineManager
     from dvc.repo import Repo
 
+    from ..base import ExpStashEntry
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,13 +53,12 @@ class SSHExecutor(BaseExecutor):
     ):
         assert host
 
+        super().__init__(*args, **kwargs)
         self.host: str = host
         self.port = port
         self.username = username
         self._fs_factory = fs_factory
-
-        super().__init__(*args, **kwargs)
-        logger.debug("Init SSH executor for host '%s'", self.host)
+        self._repo_abspath = ""
 
     @classmethod
     def gen_dirname(cls, name: Optional[str] = None):
@@ -66,16 +67,24 @@ class SSHExecutor(BaseExecutor):
         return "-".join([name or "dvc-exp", "executor", uuid()])
 
     @classmethod
-    def from_machine(
+    def from_stash_entry(
         cls,
-        manager: "MachineManager",
-        machine_name: Optional[str],
-        *args,
+        repo: "Repo",
+        stash_rev: str,
+        entry: "ExpStashEntry",
         **kwargs,
     ):
-        kwargs["root_dir"] = cls.gen_dirname(kwargs.get("name"))
-        kwargs.update(manager.get_executor_kwargs(machine_name))
-        return cls(*args, **kwargs)
+        manager: "MachineManager" = kwargs.pop("manager")
+        machine_name: Optional[str] = kwargs.pop("machine_name", None)
+        executor = cls._from_stash_entry(
+            repo,
+            stash_rev,
+            entry,
+            cls.gen_dirname(entry.name),
+            **manager.get_executor_kwargs(machine_name),
+        )
+        logger.debug("Init SSH executor for host '%s'", executor.host)
+        return executor
 
     def sshfs(self):
         return _sshfs(self._fs_factory, host=self.host, port=self.port)
@@ -104,7 +113,7 @@ class SSHExecutor(BaseExecutor):
         }
         return kwargs
 
-    def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
+    def init_git(self, scm: "Git", branch: Optional[str] = None):
         from ..utils import push_refspec
 
         with self.sshfs() as fs:
@@ -121,7 +130,7 @@ class SSHExecutor(BaseExecutor):
 
             # TODO: support multiple client key retries in git backends
             # (see https://github.com/iterative/dvc/issues/6508)
-            kwargs.update(self._git_client_args(fs))
+            kwargs = self._git_client_args(fs)
             refspec = f"{EXEC_NAMESPACE}/"
             push_refspec(scm, self.git_url, refspec, refspec, **kwargs)
             if branch:
