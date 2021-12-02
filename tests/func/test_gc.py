@@ -346,12 +346,12 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("webhdfs"),
+        "local",
+        "s3",
+        "hdfs",
+        "webhdfs",
         pytest.param(
-            pytest.lazy_fixture("ssh"),
+            "ssh",
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),

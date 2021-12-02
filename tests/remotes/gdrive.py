@@ -9,10 +9,9 @@ import pytest
 from funcy import cached_property, retry
 
 from dvc.fs.gdrive import GDriveFileSystem
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import CloudURLInfo
 from dvc.utils import tmp_fname
-
-from .base import Base
-from .path_info import CloudURLInfo
 
 TEST_GDRIVE_REPO_BUCKET = "root"
 
@@ -62,12 +61,12 @@ def _gdrive_retry(func):
     )(func)
 
 
-class GDrive(Base, GDriveURLInfo):
+class GDrive(Cloud, GDriveURLInfo):
     @staticmethod
     def should_test():
         return bool(os.getenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA))
 
-    @cached_property
+    @property
     def config(self):
         tmp_path = tmp_fname()
         with open(tmp_path, "w", encoding="utf-8") as stream:
@@ -110,6 +109,15 @@ class GDrive(Base, GDriveURLInfo):
             service_account=self.config["gdrive_use_service_account"],
         )
 
+    def is_file(self):
+        raise NotImplementedError
+
+    def is_dir(self):
+        raise NotImplementedError
+
+    def exists(self):
+        raise NotImplementedError
+
     @_gdrive_retry
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         try:
@@ -135,17 +143,26 @@ class GDrive(Base, GDriveURLInfo):
 
 
 @pytest.fixture
-def gdrive(test_config, make_tmp_dir):
+def make_gdrive(test_config, make_tmp_dir):
     test_config.requires("gdrive")
+
     if not GDrive.should_test():
         pytest.skip("no gdrive")
 
-    # NOTE: temporary workaround
-    tmp_dir = make_tmp_dir("gdrive", dvc=True)
+    def _make_gdrive():
+        # NOTE: temporary workaround
+        tmp_dir = make_tmp_dir("gdrive", dvc=True)
 
-    ret = GDrive(GDrive.get_url())
-    fs = GDriveFileSystem(
-        gdrive_credentials_tmp_dir=tmp_dir.dvc.tmp_dir, **ret.config
-    )
-    fs.fs._gdrive_create_dir("root", fs.url)
-    yield ret
+        ret = GDrive(GDrive.get_url())
+        fs = GDriveFileSystem(
+            gdrive_credentials_tmp_dir=tmp_dir.dvc.tmp_dir, **ret.config
+        )
+        fs.fs._gdrive_create_dir("root", fs.url)
+        yield ret
+
+    return _make_gdrive
+
+
+@pytest.fixture
+def gdrive(make_gdrive):
+    return make_gdrive()

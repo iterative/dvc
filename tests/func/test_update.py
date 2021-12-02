@@ -159,15 +159,13 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
+        "local",
+        "s3",
+        pytest.param("gs", marks=pytest.mark.needs_internet),
+        "hdfs",
+        "webhdfs",
         pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("webhdfs"),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
+            "ssh",
             marks=pytest.mark.skipif(
                 os.name == "nt", reason="disabled on windows"
             ),
@@ -326,12 +324,10 @@ def test_update_import_to_remote(tmp_dir, dvc, erepo_dir, local_remote):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
-        pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
+        "local",
+        "s3",
+        pytest.param("gs", marks=pytest.mark.needs_internet),
+        "hdfs",
     ],
     indirect=True,
 )
@@ -349,11 +345,9 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
 @pytest.mark.parametrize(
     "workspace",
     [
-        pytest.lazy_fixture("s3"),
-        pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
+        "s3",
+        pytest.param("gs", marks=pytest.mark.needs_internet),
+        "hdfs",
     ],
     indirect=True,
 )
@@ -378,7 +372,7 @@ def test_update_import_url_to_remote_directory(
     )
 
     download_file_mock = mocker.spy(
-        type(dvc.cloud.get_remote_odb("cache").fs), "download_file"
+        type(dvc.cloud.get_remote_odb("workspace-cache").fs), "download_file"
     )
     stage = dvc.update(stage.path, to_remote=True)
 

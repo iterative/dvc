@@ -5,8 +5,8 @@ import uuid
 import pytest
 from funcy import cached_property
 
-from .base import Base
-from .path_info import URLInfo
+from dvc.testing.cloud import Cloud
+from dvc.testing.path_info import URLInfo
 
 TEST_SSH_USER = "user"
 TEST_SSH_KEY_PATH = os.path.join(
@@ -14,12 +14,12 @@ TEST_SSH_KEY_PATH = os.path.join(
 )
 
 
-class SSH(Base, URLInfo):
+class SSH(Cloud, URLInfo):
     @staticmethod
     def get_url(host, port):  # pylint: disable=arguments-differ
         return f"ssh://{host}:{port}/tmp/data/{uuid.uuid4()}"
 
-    @cached_property
+    @property
     def config(self):
         return {
             "url": self.url,
@@ -116,12 +116,20 @@ def ssh_connection(ssh_server):
 
 
 @pytest.fixture
-def ssh(ssh_server, monkeypatch):
-    from dvc.fs.ssh import SSHFileSystem
+def make_ssh(ssh_server, monkeypatch):
+    def _make_ssh():
+        from dvc.fs.ssh import SSHFileSystem
 
-    # NOTE: see http://github.com/iterative/dvc/pull/3501
-    monkeypatch.setattr(SSHFileSystem, "CAN_TRAVERSE", False)
+        # NOTE: see http://github.com/iterative/dvc/pull/3501
+        monkeypatch.setattr(SSHFileSystem, "CAN_TRAVERSE", False)
 
-    url = SSH(SSH.get_url(**ssh_server))
-    url.mkdir(exist_ok=True, parents=True)
-    return url
+        url = SSH(SSH.get_url(**ssh_server))
+        url.mkdir(exist_ok=True, parents=True)
+        return url
+
+    return _make_ssh
+
+
+@pytest.fixture
+def ssh(make_ssh):
+    return make_ssh()

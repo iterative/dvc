@@ -29,6 +29,9 @@ class ProcessInfo:
     def from_dict(cls, d):
         return cls(**d)
 
+    def asdict(self):
+        return asdict(self)
+
 
 class ManagedProcess(AbstractContextManager):
     """Run the specified command with redirected output.
@@ -105,7 +108,7 @@ class ManagedProcess(AbstractContextManager):
     def _dump(self):
         self._make_wdir()
         with open(self.info_path, "w", encoding="utf-8") as fobj:
-            json.dump(asdict(self.info), fobj)
+            json.dump(self.info.asdict(), fobj)
         with open(self.pidfile_path, "w", encoding="utf-8") as fobj:
             fobj.write(str(self.pid))
 

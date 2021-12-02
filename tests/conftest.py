@@ -3,6 +3,8 @@ from contextlib import suppress
 
 import pytest
 
+from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
+
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
 from .remotes import *  # noqa, pylint: disable=wildcard-import
 from .utils.scriptify import scriptify
