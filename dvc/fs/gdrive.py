@@ -97,7 +97,7 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
     @staticmethod
     def unstrip_protocol(path):
-        return "gdrive://{path}"
+        return f"gdrive://{path}"
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):
