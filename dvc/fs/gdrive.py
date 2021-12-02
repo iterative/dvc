@@ -93,10 +93,12 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     def _strip_protocol(cls, path):
         from fsspec.utils import infer_storage_options
 
-        return infer_storage_options(path)["path"].lstrip("/")
+        opts = infer_storage_options(path)
+
+        return "{host}{path}".format(**opts)
 
     def unstrip_protocol(self, path):
-        return f"gdrive://{self._bucket}/{path}"
+        return f"gdrive://{path}"
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):
@@ -247,7 +249,7 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
                 os.remove(temporary_save_path)
 
         return _GDriveFileSystem(
-            self.url,
+            f"{self._bucket}/{self._path}",
             gauth,
             trash_only=self._trash_only,
         )
