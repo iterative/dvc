@@ -9,11 +9,15 @@ __all__ = [
     "scm",
     "dvc",
     "make_cloud",
+    "make_local",
     "cloud",
+    "local_cloud",
     "make_remote",
     "remote",
+    "local_remote",
     "workspace",
     "make_workspace",
+    "local_workspace",
     "docker",
     "docker_compose",
     "docker_compose_project_name",
@@ -95,6 +99,14 @@ def dvc(tmp_dir):
 
 
 @pytest.fixture
+def make_local(make_tmp_dir):
+    def _make_local():
+        return make_tmp_dir("local-cloud")
+
+    return _make_local
+
+
+@pytest.fixture
 def make_cloud(request):
     def _make_cloud(typ):
         return request.getfixturevalue(f"make_{typ}")()
@@ -104,9 +116,13 @@ def make_cloud(request):
 
 @pytest.fixture
 def cloud(make_cloud, request):
-    if not hasattr(request, "param"):
-        pytest.skip("no cloud specified")
-    return make_cloud(request.param)
+    typ = getattr(request, "param", "local")
+    return make_cloud(typ)
+
+
+@pytest.fixture
+def local_cloud(make_cloud):
+    return make_cloud("local")
 
 
 @pytest.fixture
@@ -121,9 +137,13 @@ def make_remote(tmp_dir, dvc, make_cloud):
 
 @pytest.fixture
 def remote(make_remote, request):
-    if not hasattr(request, "param"):
-        pytest.skip("no remote specified")
-    return make_remote("upstream", typ=request.param)
+    typ = getattr(request, "param", "local")
+    return make_remote("upstream", typ=typ)
+
+
+@pytest.fixture
+def local_remote(make_remote):
+    return make_remote("upstream", typ="local")
 
 
 @pytest.fixture
@@ -152,10 +172,13 @@ def make_workspace(tmp_dir, dvc, make_cloud):
 
 @pytest.fixture
 def workspace(make_workspace, request):
-    if not hasattr(request, "param"):
-        pytest.skip("no workspace specified")
+    typ = getattr(request, "param", "local")
+    return make_workspace("workspace", typ=typ)
 
-    return make_workspace("workspace", typ=request.param)
+
+@pytest.fixture
+def local_workspace(make_workspace):
+    return make_workspace("workspace", typ="local")
 
 
 @pytest.fixture(scope="session")

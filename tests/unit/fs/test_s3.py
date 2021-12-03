@@ -1,7 +1,4 @@
-import importlib
 import os
-import sys
-import textwrap
 
 import pytest
 
@@ -139,80 +136,3 @@ def test_key_id_and_secret(dvc):
     assert fs.fs_args["key"] == key_id
     assert fs.fs_args["secret"] == key_secret
     assert fs.fs_args["token"] == session_token
-
-
-KB = 1024
-MB = KB ** 2
-GB = KB ** 3
-
-
-def test_s3_aws_config(tmp_dir, dvc, s3, monkeypatch):
-    config_directory = tmp_dir / ".aws"
-    config_directory.mkdir()
-    (config_directory / "config").write_text(
-        textwrap.dedent(
-            """\
-    [default]
-    s3 =
-      max_concurrent_requests = 20000
-      max_queue_size = 1000
-      multipart_threshold = 1000KiB
-      multipart_chunksize = 64MB
-      use_accelerate_endpoint = true
-      addressing_style = path
-    """
-        )
-    )
-
-    if sys.platform == "win32":
-        var = "USERPROFILE"
-    else:
-        var = "HOME"
-
-    with monkeypatch.context() as m:
-        m.setenv(var, str(tmp_dir))
-        # Fresh import to see the effects of changing HOME variable
-        s3_mod = importlib.reload(sys.modules[S3FileSystem.__module__])
-        fs = s3_mod.S3FileSystem(**s3.config)
-
-    importlib.reload(sys.modules[S3FileSystem.__module__])
-
-    s3_config = fs.fs_args["config_kwargs"]["s3"]
-    assert s3_config["use_accelerate_endpoint"]
-    assert s3_config["addressing_style"] == "path"
-
-    transfer_config = fs._transfer_config
-    assert transfer_config.max_io_queue_size == 1000
-    assert transfer_config.multipart_chunksize == 64 * MB
-    assert transfer_config.multipart_threshold == 1000 * KB
-    assert transfer_config.max_request_concurrency == 20000
-
-
-def test_s3_aws_config_different_profile(tmp_dir, dvc, s3, monkeypatch):
-    config_file = tmp_dir / "aws_config.ini"
-    config_file.write_text(
-        textwrap.dedent(
-            """\
-    [default]
-    extra = keys
-    s3 =
-      addressing_style = auto
-      use_accelerate_endpoint = true
-      multipart_threshold = ThisIsNotGoingToBeCasted!
-    [profile dev]
-    some_extra = keys
-    s3 =
-      addressing_style = virtual
-      multipart_threshold = 2GiB
-    """
-        )
-    )
-    monkeypatch.setenv("AWS_CONFIG_FILE", config_file)
-
-    fs = S3FileSystem(profile="dev", **s3.config)
-
-    s3_config = fs.fs_args["config_kwargs"]["s3"]
-    assert s3_config["addressing_style"] == "virtual"
-
-    transfer_config = fs._transfer_config
-    assert transfer_config.multipart_threshold == 2 * GB

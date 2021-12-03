@@ -119,108 +119,17 @@ def test_import_url_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 class TestImport(_TestImport):
-    @pytest.mark.parametrize(
-        "workspace",
-        [
-            "local",
-            "s3",
-            "azure",
-            pytest.param("gs", marks=pytest.mark.needs_internet),
-            "hdfs",
-            "webhdfs",
-            pytest.param(
-                "ssh",
-                marks=pytest.mark.skipif(
-                    os.name == "nt", reason="disabled on windows"
-                ),
-            ),
-            "http",
-        ],
-        indirect=True,
-    )
-    def test_import(self, tmp_dir, dvc, workspace):
-        super().test_import(tmp_dir, dvc, workspace)
+    @pytest.fixture
+    def stage_md5(self):
+        return "dc24e1271084ee317ac3c2656fb8812b"
 
-    @pytest.mark.parametrize(
-        "workspace, stage_md5, dir_md5",
-        [
-            (
-                "local",
-                "dc24e1271084ee317ac3c2656fb8812b",
-                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-            ),
-            (
-                "s3",
-                "2aa17f8daa26996b3f7a4cf8888ac9ac",
-                "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
-            ),
-            (
-                "azure",
-                None,  # ETags for azure are not consistent with the actual
-                None,  # content of the object, so they will change every time
-                # we create new objects. We'll skip stage content
-                # check for Azure.
-            ),
-            (
-                "hdfs",
-                "ec0943f83357f702033c98e70b853c8c",
-                "e6dcd267966dc628d732874f94ef4280.dir",
-            ),
-            pytest.param(
-                "ssh",
-                "dc24e1271084ee317ac3c2656fb8812b",
-                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-                marks=pytest.mark.skipif(
-                    os.name == "nt", reason="disabled on windows"
-                ),
-            ),
-        ],
-        indirect=["workspace"],
-    )
-    def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
-        super().test_import_dir(tmp_dir, dvc, workspace, stage_md5, dir_md5)
+    @pytest.fixture
+    def dir_md5(self):
+        return "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir"
 
-    @pytest.mark.parametrize(
-        "workspace, is_object_storage",
-        [
-            ("hdfs", False),
-            pytest.param(
-                "s3",
-                True,
-                marks=pytest.mark.xfail(
-                    reason="https://github.com/iterative/dvc/issues/5521",
-                ),
-            ),
-            pytest.param(
-                "gs",
-                True,
-                marks=pytest.mark.xfail(
-                    reason="https://github.com/iterative/dvc/issues/5521",
-                ),
-            ),
-            pytest.param(
-                "azure",
-                True,
-                marks=pytest.mark.xfail(
-                    reason="https://github.com/iterative/dvc/issues/5521",
-                ),
-            ),
-            pytest.param(
-                "ssh",
-                False,
-                marks=pytest.mark.skipif(
-                    os.name == "nt", reason="disabled on windows"
-                ),
-            ),
-        ],
-        indirect=["workspace"],
-    )
-    def test_import_empty_dir(
-        self, tmp_dir, dvc, workspace, is_object_storage
-    ):
-        super().test_import_empty_dir(
-            tmp_dir, dvc, workspace, is_object_storage
-        )
+    @pytest.fixture
+    def is_object_storage(self):
+        return False
 
 
 def test_import_url_preserve_meta(tmp_dir, dvc):
@@ -260,23 +169,6 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
     )
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "local",
-        "s3",
-        pytest.param("gs", marks=pytest.mark.needs_internet),
-        "hdfs",
-        pytest.param(
-            "ssh",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-        "http",
-    ],
-    indirect=True,
-)
 def test_import_url_to_remote_single_file(
     tmp_dir, dvc, workspace, local_remote
 ):
@@ -301,22 +193,6 @@ def test_import_url_to_remote_single_file(
     assert stage.outs[0].meta.size == len("foo")
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "local",
-        "s3",
-        pytest.param("gs", marks=pytest.mark.needs_internet),
-        "hdfs",
-        pytest.param(
-            "ssh",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-    ],
-    indirect=True,
-)
 def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
     workspace.gen(
         {
