@@ -13,7 +13,6 @@ from funcy import cached_property, first
 from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
-from dvc.stage.monitor import CheckpointKilledError
 from dvc.utils import relpath
 
 from .base import (
@@ -696,6 +695,8 @@ class Experiments:
             dict mapping stash revs to the successfully executed experiments
             for each stash rev.
         """
+        from dvc.stage.monitor import CheckpointKilledError
+
         result: Dict[str, Dict[str, str]] = defaultdict(dict)
 
         manager = Manager()
@@ -798,6 +799,7 @@ class Experiments:
     @unlocked_repo
     def _workspace_repro(self) -> Mapping[str, str]:
         """Run the most recently stashed experiment in the workspace."""
+        from dvc.stage.monitor import CheckpointKilledError
         from dvc.utils.fs import makedirs
 
         from .executor.base import BaseExecutor

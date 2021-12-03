@@ -1,18 +1,8 @@
 import ssl
 
-import pytest
 from mock import patch
 
 from dvc.fs.http import HTTPFileSystem
-
-
-def test_download_fails_on_error_code(tmp_dir, http):
-    fs = HTTPFileSystem(**http.config)
-
-    with pytest.raises(FileNotFoundError):
-        fs.download_file(
-            (http / "missing.txt").fs_path, (tmp_dir / "missing.txt").fs_path
-        )
 
 
 def test_public_auth_method(dvc):

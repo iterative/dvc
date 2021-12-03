@@ -156,23 +156,6 @@ def test_update_before_and_after_dvc_init(tmp_dir, dvc, git_dir):
     assert dvc.status([stage.path]) == {}
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "local",
-        "s3",
-        pytest.param("gs", marks=pytest.mark.needs_internet),
-        "hdfs",
-        "webhdfs",
-        pytest.param(
-            "ssh",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-    ],
-    indirect=True,
-)
 def test_update_import_url(tmp_dir, dvc, workspace):
     workspace.gen("file", "file content")
 
@@ -321,16 +304,6 @@ def test_update_import_to_remote(tmp_dir, dvc, erepo_dir, local_remote):
         dvc.update(stage.path, to_remote=True)
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "local",
-        "s3",
-        pytest.param("gs", marks=pytest.mark.needs_internet),
-        "hdfs",
-    ],
-    indirect=True,
-)
 def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
     workspace.gen("foo", "foo")
     stage = dvc.imp_url("remote://workspace/foo", to_remote=True)
@@ -342,15 +315,6 @@ def test_update_import_url_to_remote(tmp_dir, dvc, workspace, local_remote):
     assert (tmp_dir / "foo").read_text() == "bar"
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "s3",
-        pytest.param("gs", marks=pytest.mark.needs_internet),
-        "hdfs",
-    ],
-    indirect=True,
-)
 def test_update_import_url_to_remote_directory(
     mocker, tmp_dir, dvc, workspace, local_remote
 ):
@@ -371,15 +335,7 @@ def test_update_import_url_to_remote_directory(
         }
     )
 
-    download_file_mock = mocker.spy(
-        type(dvc.cloud.get_remote_odb("workspace-cache").fs), "download_file"
-    )
     stage = dvc.update(stage.path, to_remote=True)
-
-    # 2 new hashes (foo2, baz2)
-    assert download_file_mock.mock.call_count == 2
-    # The new .dir hash will be transferred through MemFs, so
-    # we will not account the download_file() for it.
 
     dvc.pull("data")
     assert (tmp_dir / "data").read_text() == {
@@ -395,12 +351,12 @@ def test_update_import_url_to_remote_directory(
 
 
 def test_update_import_url_to_remote_directory_changed_contents(
-    tmp_dir, dvc, local_cloud, local_remote
+    tmp_dir, dvc, local_workspace, local_remote
 ):
-    local_cloud.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
-    stage = dvc.imp_url("remote://upstream/data", to_remote=True)
+    local_workspace.gen({"data": {"foo": "foo", "bar": {"baz": "baz"}}})
+    stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
-    local_cloud.gen(
+    local_workspace.gen(
         {"data": {"foo": "not_foo", "foo2": "foo", "bar": {"baz2": "baz2"}}}
     )
     stage = dvc.update(stage.path, to_remote=True)
@@ -414,14 +370,14 @@ def test_update_import_url_to_remote_directory_changed_contents(
 
 
 def test_update_import_url_to_remote_directory_same_hash(
-    tmp_dir, dvc, local_cloud, local_remote
+    tmp_dir, dvc, local_workspace, local_remote
 ):
-    local_cloud.gen(
+    local_workspace.gen(
         {"data": {"foo": "foo", "bar": {"baz": "baz"}, "same": "same"}}
     )
-    stage = dvc.imp_url("remote://upstream/data", to_remote=True)
+    stage = dvc.imp_url("remote://workspace/data", to_remote=True)
 
-    local_cloud.gen(
+    local_workspace.gen(
         {"data": {"foo": "baz", "bar": {"baz": "foo"}, "same": "same"}}
     )
     stage = dvc.update(stage.path, to_remote=True)

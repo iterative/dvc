@@ -336,10 +336,10 @@ def test_git_stash_clear(tmp_dir, scm, ref):
 @pytest.mark.parametrize("server", [pytest.lazy_fixture("git_ssh")])
 def test_git_ssh(tmp_dir, scm, server):
     from dulwich.repo import Repo as DulwichRepo
+    from dvc_ssh.tests.cloud import TEST_SSH_KEY_PATH, TEST_SSH_USER
     from sshfs import SSHFileSystem
 
     from dvc.utils.fs import remove
-    from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
     fs = SSHFileSystem(
         host=server.host,

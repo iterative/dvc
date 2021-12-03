@@ -350,43 +350,16 @@ def test_run_overwrite_preserves_meta_and_comment(tmp_dir, dvc, run_copy):
     )
 
 
-@pytest.mark.parametrize(
-    "workspace, hash_name, foo_hash, bar_hash",
-    [
-        (
-            "local",
-            "md5",
-            "acbd18db4cc2f85cedef654fccc4a4d8",
-            "37b51d194a7513e45b56f6524f2d51f2",
-        ),
-        pytest.param(
-            "ssh",
-            "md5",
-            "acbd18db4cc2f85cedef654fccc4a4d8",
-            "37b51d194a7513e45b56f6524f2d51f2",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-        (
-            "s3",
-            "etag",
-            "acbd18db4cc2f85cedef654fccc4a4d8",
-            "37b51d194a7513e45b56f6524f2d51f2",
-        ),
-        (
-            "hdfs",
-            "checksum",
-            "0000020000000000000000003dba826b9be9c6a8e2f8310a770555c4",
-            "00000200000000000000000075433c81259d3c38e364b348af52e84d",
-        ),
-    ],
-    indirect=["workspace"],
-)
 def test_run_external_outputs(
-    tmp_dir, dvc, workspace, hash_name, foo_hash, bar_hash
+    tmp_dir,
+    dvc,
+    local_workspace,
 ):
-    workspace.gen("foo", "foo")
+    hash_name = "md5"
+    foo_hash = "acbd18db4cc2f85cedef654fccc4a4d8"
+    bar_hash = "37b51d194a7513e45b56f6524f2d51f2"
+
+    local_workspace.gen("foo", "foo")
     dvc.run(
         name="mystage",
         cmd="mycmd",
@@ -408,7 +381,7 @@ def test_run_external_outputs(
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
     assert not (tmp_dir / "dvc.lock").exists()
 
-    workspace.gen("bar", "bar")
+    local_workspace.gen("bar", "bar")
     dvc.commit("dvc.yaml", force=True)
 
     assert (tmp_dir / "dvc.yaml").read_text() == dvc_yaml
@@ -427,8 +400,8 @@ def test_run_external_outputs(
         "      size: 3\n"
     )
 
-    assert (workspace / "foo").read_text() == "foo"
-    assert (workspace / "bar").read_text() == "bar"
+    assert (local_workspace / "foo").read_text() == "foo"
+    assert (local_workspace / "bar").read_text() == "bar"
     assert (
-        workspace / "cache" / bar_hash[:2] / bar_hash[2:]
+        local_workspace / "cache" / bar_hash[:2] / bar_hash[2:]
     ).read_text() == "bar"

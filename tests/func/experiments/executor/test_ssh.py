@@ -3,12 +3,12 @@ from contextlib import contextmanager
 from functools import partial
 
 import pytest
+from dvc_ssh.tests.cloud import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 from dvc.fs.ssh import SSHFileSystem
 from dvc.repo.experiments.base import EXEC_HEAD, EXEC_MERGE
 from dvc.repo.experiments.executor.ssh import SSHExecutor
 from tests.func.machine.conftest import *  # noqa, pylint: disable=wildcard-import
-from tests.remotes.ssh import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 
 @contextmanager

@@ -1,6 +1,5 @@
 import pytest
-
-from .ssh import SSH, TEST_SSH_KEY_PATH, TEST_SSH_USER
+from dvc_ssh.tests.cloud import SSH, TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 
 class GitSSH(SSH):
