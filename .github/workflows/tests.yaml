@@ -31,10 +31,6 @@ jobs:
       run: |
         pip install --upgrade pip setuptools wheel
         pip install ".[dev]" pre-commit
-    - name: install temporary dependencies
-      run: |
-        pip install git+https://github.com/isidentical/gdrivefs@service-account
-        pip install git+https://github.com/isidentical/pydata-google-auth@service-account
     - name: Check README
       run: python setup.py checkdocs
     - uses: pre-commit/action@v2.0.3
@@ -71,41 +67,16 @@ jobs:
       run: |
         pip install --upgrade pip setuptools wheel
         pip install -e ".[dev]"
-    - name: install temporary dependencies
-      run: |
-        pip install git+https://github.com/isidentical/gdrivefs@service-account
-        pip install git+https://github.com/isidentical/pydata-google-auth@service-account
     - name: setup git
       run: |
         git config --global user.email "dvctester@example.com"
         git config --global user.name "DVC Tester"
-    - name: setup gs creds
-      shell: bash
-      env:
-        GS_CREDS_JSON: ${{ secrets.GS_CREDS_JSON }}
-      if: env.GS_CREDS_JSON != ''
-      run: |
-        mkdir -p scripts/ci
-        echo "$GS_CREDS_JSON" > scripts/ci/gcp-creds.json
-    - name: disable gdrive tests
-      if: >-
-        github.event_name != 'schedule' &&
-        (matrix.pyv != '3.8' || matrix.os != 'ubuntu-18.04')
-      run: |
-        echo "extra_test_args=--disable-gdrive" >> $GITHUB_ENV
     - name: run tests
       timeout-minutes: 40
-      env:
-        GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID}}
-        OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET}}
-        OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT}}
       run: >-
         python -m tests -n=auto
         --cov-report=xml --cov-report=term
-        --enable-ssh ${{ env.extra_test_args }}
+        ${{ env.extra_test_args }}
     - name: upload coverage report
       uses: codecov/codecov-action@v2.1.0
       with:
