@@ -39,14 +39,17 @@ def _update_names(names, items):
 def _collect_names(all_experiments, **kwargs):
     metric_names = defaultdict(dict)
     param_names = defaultdict(dict)
+    deps_names = set()
 
     for _, experiments in all_experiments.items():
         for exp_data in experiments.values():
             exp = exp_data.get("data", {})
             _update_names(metric_names, exp.get("metrics", {}).items())
             _update_names(param_names, exp.get("params", {}).items())
+            for dep_name in exp.get("deps", {}):
+                deps_names.add(dep_name)
 
-    return metric_names, param_names
+    return metric_names, param_names, deps_names
 
 
 experiment_types = {
@@ -64,6 +67,7 @@ def _collect_rows(
     experiments,
     metric_names,
     param_names,
+    deps_names,
     precision=DEFAULT_PRECISION,
     sort_by=None,
     sort_order=None,
@@ -150,7 +154,11 @@ def _collect_rows(
             precision,
             fill_value=fill_value,
         )
-
+        for dep in deps_names:
+            hash_info = exp.get("deps", {}).get(dep, {}).get("hash")
+            if hash_info is not None:
+                hash_info = hash_info[:7]
+            row.append(hash_info or fill_value)
         yield row
 
 
@@ -245,6 +253,7 @@ def experiments_table(
     metric_names,
     param_headers,
     param_names,
+    deps_names,
     sort_by=None,
     sort_order=None,
     precision=DEFAULT_PRECISION,
@@ -256,7 +265,8 @@ def experiments_table(
     from dvc.compare import TabularData
 
     td = TabularData(
-        lconcat(headers, metric_headers, param_headers), fill_value=fill_value
+        lconcat(headers, metric_headers, param_headers, deps_names),
+        fill_value=fill_value,
     )
     for base_rev, experiments in all_experiments.items():
         rows = _collect_rows(
@@ -264,6 +274,7 @@ def experiments_table(
             experiments,
             metric_names,
             param_names,
+            deps_names,
             sort_by=sort_by,
             sort_order=sort_order,
             precision=precision,
@@ -310,7 +321,7 @@ def show_experiments(
 ):
     from funcy.seqs import flatten as flatten_list
 
-    metric_names, param_names = _collect_names(all_experiments)
+    metric_names, param_names, deps_names = _collect_names(all_experiments)
 
     headers = [
         "Experiment",
@@ -335,6 +346,7 @@ def show_experiments(
         metric_names,
         param_headers,
         param_names,
+        deps_names,
         kwargs.get("sort_by"),
         kwargs.get("sort_order"),
         kwargs.get("precision"),
@@ -359,14 +371,22 @@ def show_experiments(
         )
         td.drop(*merge_headers[1:])
 
-    headers = {"metrics": metric_headers, "params": param_headers}
+    headers = {
+        "metrics": metric_headers,
+        "params": param_headers,
+        "deps": deps_names,
+    }
     styles = {
         "Experiment": {"no_wrap": True, "header_style": "black on grey93"},
         "Created": {"header_style": "black on grey93"},
         "State": {"header_style": "black on grey93"},
         "Executor": {"header_style": "black on grey93"},
     }
-    header_bg_colors = {"metrics": "cornsilk1", "params": "light_cyan1"}
+    header_bg_colors = {
+        "metrics": "cornsilk1",
+        "params": "light_cyan1",
+        "deps": "plum2",
+    }
     styles.update(
         {
             header: {
