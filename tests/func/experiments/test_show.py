@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+from unittest.mock import ANY
 
 import pytest
 from funcy import first, get_in
@@ -35,9 +36,17 @@ def make_executor_info(**kwargs):
 
 
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
+    print(dvc.experiments.show()["workspace"])
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
             "data": {
+                "deps": {
+                    "copy.py": {
+                        "hash": ANY,
+                        "size": ANY,
+                        "nfiles": None,
+                    }
+                },
                 "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
                 "params": {"params.yaml": {"data": {"foo": 1}}},
                 "queued": False,
@@ -63,6 +72,13 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
 
     expected_baseline = {
         "data": {
+            "deps": {
+                "copy.py": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                }
+            },
             "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
             "params": {"params.yaml": {"data": {"foo": 1}}},
             "queued": False,
@@ -318,6 +334,13 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
             "data": {
+                "deps": {
+                    "copy.py": {
+                        "hash": ANY,
+                        "size": ANY,
+                        "nfiles": None,
+                    }
+                },
                 "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
                 "params": {"params.yaml": {"data": {"foo": 1}}},
                 "queued": False,
@@ -329,7 +352,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     }
 
     capsys.readouterr()
-    assert main(["exp", "show", "--no-pager"]) == 0
+    assert main(["exp", "show", "--csv"]) == 0
     cap = capsys.readouterr()
     assert "Running" in cap.out
     assert info.location in cap.out
@@ -450,26 +473,26 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     capsys.readouterr()
     assert main(["exp", "show", "--csv"]) == 0
     cap = capsys.readouterr()
+    data_dep = first(x for x in dvc.index.deps if "copy.py" in x.fspath)
+    data_hash = data_dep.hash_info.value[:7]
+    assert "Experiment,rev,typ,Created,parent" in cap.out
+    assert "metrics.yaml:foo,params.yaml:foo,copy.py" in cap.out
+    assert f",workspace,baseline,,,3,3,{data_hash}" in cap.out
     assert (
-        "Experiment,rev,typ,Created,parent,metrics.yaml:foo,params.yaml:foo"
-        in cap.out
-    )
-    assert ",workspace,baseline,,,3,3" in cap.out
-    assert (
-        "master,{},baseline,{},,1,1".format(
-            baseline_rev[:7], _get_rev_isotimestamp(baseline_rev)
+        "master,{},baseline,{},,1,1,{}".format(
+            baseline_rev[:7], _get_rev_isotimestamp(baseline_rev), data_hash
         )
         in cap.out
     )
     assert (
-        "{},{},branch_base,{},,2,2".format(
-            ref_info1.name, rev1[:7], _get_rev_isotimestamp(rev1)
+        "{},{},branch_base,{},,2,2,{}".format(
+            ref_info1.name, rev1[:7], _get_rev_isotimestamp(rev1), data_hash
         )
         in cap.out
     )
     assert (
-        "{},{},branch_commit,{},,3,3".format(
-            ref_info2.name, rev2[:7], _get_rev_isotimestamp(rev2)
+        "{},{},branch_commit,{},,3,3,{}".format(
+            ref_info2.name, rev2[:7], _get_rev_isotimestamp(rev2), data_hash
         )
         in cap.out
     )

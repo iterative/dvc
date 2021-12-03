@@ -39,6 +39,16 @@ def _collect_experiment_commit(
         if params:
             res["params"] = params
 
+        res["deps"] = {
+            dep.def_path: {
+                "hash": dep.hash_info.value,
+                "size": dep.meta.size,
+                "nfiles": dep.meta.nfiles,
+            }
+            for dep in repo.index.deps
+            if type(dep).__name__ != "ParamsDependency" and dep.is_in_repo
+        }
+
         res["queued"] = stash
         if running is not None and exp_rev in running:
             res["running"] = True
