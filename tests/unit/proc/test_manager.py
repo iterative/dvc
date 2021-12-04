@@ -43,7 +43,7 @@ def test_send_signal(tmp_dir, mocker, finished_process, running_process):
     process_manager.send_signal(running_process, signal.SIGTERM)
     m.assert_called_once_with(PID_RUNNING, signal.SIGTERM)
 
-    m = mocker.patch("os.kill")
+    m.reset_mock()
     process_manager.send_signal(finished_process, signal.SIGTERM)
     m.assert_not_called()
 
@@ -54,6 +54,16 @@ def test_send_signal(tmp_dir, mocker, finished_process, running_process):
 
 def test_dead_process(tmp_dir, mocker, running_process):
     process_manager = ProcessManager(tmp_dir)
+
+    def side_effect(*args):
+        if sys.platform == "win32":
+            err = OSError()
+            err.winerror = 87
+            raise err
+        else:
+            raise ProcessLookupError()
+
+    mocker.patch("os.kill", side_effect=side_effect)
     with pytest.raises(ProcessLookupError):
         process_manager.send_signal(running_process, signal.SIGTERM)
     assert process_manager[running_process].returncode == -1
@@ -68,7 +78,7 @@ def test_kill(tmp_dir, mocker, finished_process, running_process):
     else:
         m.assert_called_once_with(PID_RUNNING, signal.SIGKILL)
 
-    m = mocker.patch("os.kill")
+    m.reset_mock()
     process_manager.kill(finished_process)
     m.assert_not_called()
 
