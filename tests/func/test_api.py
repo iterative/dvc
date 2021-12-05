@@ -5,35 +5,11 @@ from funcy import first, get_in
 
 from dvc import api
 from dvc.exceptions import FileMissingError, OutputNotFoundError
-from dvc.testing.test_api import TestAPI as _TestAPI
+from dvc.testing.test_api import TestAPI  # noqa, pylint: disable=unused-import
 from dvc.utils.fs import remove
 from tests.unit.fs.test_repo import make_subrepo
 
-clouds = [
-    "s3",
-    "gs",
-    "azure",
-    "gdrive",
-    "oss",
-    "ssh",
-    "http",
-    "hdfs",
-    "webdav",
-    "webhdfs",
-]
-all_clouds = ["local"] + clouds
 
-# `lazy_fixture` is confusing pylint, pylint: disable=unused-argument
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", clouds, indirect=True)
-class TestAPI(_TestAPI):
-    pass
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("cloud", clouds, indirect=True)
 def test_get_url_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
     with erepo_dir.chdir():
@@ -55,22 +31,6 @@ def test_get_url_requires_dvc(tmp_dir, scm):
         api.get_url("foo", repo=f"file://{tmp_dir}")
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        "s3",
-        "gs",
-        "azure",
-        "gdrive",
-        "oss",
-        "http",
-        "hdfs",
-        "ssh",
-        "webdav",
-    ],
-    indirect=True,
-)
 def test_open_external(tmp_dir, erepo_dir, cloud):
     erepo_dir.add_remote(config=cloud.config)
 
@@ -94,8 +54,6 @@ def test_open_external(tmp_dir, erepo_dir, cloud):
     assert api.read("version", repo=repo_url, rev="branch") == "branchver"
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("remote", all_clouds, indirect=True)
 def test_open_granular(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen({"dir": {"foo": "foo-text"}})
     dvc.push()
@@ -107,22 +65,6 @@ def test_open_granular(tmp_dir, dvc, remote):
         assert fd.read() == "foo-text"
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "remote",
-    [
-        "s3",
-        "gs",
-        "azure",
-        "gdrive",
-        "oss",
-        "ssh",
-        "http",
-        "hdfs",
-        "webdav",
-    ],
-    indirect=True,
-)
 def test_missing(tmp_dir, dvc, remote):
     tmp_dir.dvc_gen("foo", "foo")
 
@@ -174,7 +116,6 @@ def test_open_rev(tmp_dir, scm, dvc):
 
 
 @pytest.mark.parametrize("as_external", [True, False])
-@pytest.mark.parametrize("remote", ["ssh"], indirect=True)
 @pytest.mark.parametrize(
     "files, to_read",
     [
@@ -227,22 +168,22 @@ def test_read_with_subrepos(tmp_dir, scm, local_cloud, local_repo):
     )
 
 
-def test_get_url_granular(tmp_dir, dvc, s3):
-    tmp_dir.add_remote(config=s3.config)
+def test_get_url_granular(tmp_dir, dvc, cloud):
+    tmp_dir.add_remote(config=cloud.config)
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "nested": {"file": "file"}}}
     )
 
-    expected_url = (s3 / "5f/c28ea78987408341668eba6525ebd1.dir").url
+    expected_url = (cloud / "5f" / "c28ea78987408341668eba6525ebd1.dir").url
     assert api.get_url("dir") == expected_url
 
-    expected_url = (s3 / "ac/bd18db4cc2f85cedef654fccc4a4d8").url
+    expected_url = (cloud / "ac" / "bd18db4cc2f85cedef654fccc4a4d8").url
     assert api.get_url("dir/foo") == expected_url
 
-    expected_url = (s3 / "37/b51d194a7513e45b56f6524f2d51f2").url
+    expected_url = (cloud / "37" / "b51d194a7513e45b56f6524f2d51f2").url
     assert api.get_url("dir/bar") == expected_url
 
-    expected_url = (s3 / "8c/7dd922ad47494fc02c388e12c00eac").url
+    expected_url = (cloud / "8c" / "7dd922ad47494fc02c388e12c00eac").url
     assert api.get_url(os.path.join("dir", "nested", "file")) == expected_url
 
 

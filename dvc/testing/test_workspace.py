@@ -11,6 +11,14 @@ class TestImport:
         assert (tmp_dir / "file").read_text() == "file"
         assert dvc.status() == {}
 
+    @pytest.fixture
+    def stage_md5(self):
+        pytest.skip()
+
+    @pytest.fixture
+    def dir_md5(self):
+        pytest.skip()
+
     def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
         from dvc.objects.db import ODBManager
 
@@ -51,6 +59,10 @@ class TestImport:
                 "  path: dir\n"
             )
 
+    @pytest.fixture
+    def is_object_storage(self):
+        pytest.skip()
+
     def test_import_empty_dir(
         self, tmp_dir, dvc, workspace, is_object_storage
     ):
@@ -72,6 +84,18 @@ class TestImport:
 
 
 class TestAdd:
+    @pytest.fixture
+    def hash_name(self):
+        pytest.skip()
+
+    @pytest.fixture
+    def hash_value(self):
+        pytest.skip()
+
+    @pytest.fixture
+    def dir_hash_value(self):
+        pytest.skip()
+
     def test_add(self, tmp_dir, dvc, workspace, hash_name, hash_value):
         from dvc.stage.exceptions import StageExternalOutputsError
 

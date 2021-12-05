@@ -13,7 +13,8 @@ class ImageRenderer(Renderer):
     DIV = """
         <div
             id="{id}"
-            style="border: 1px solid;">
+            style="border:1px solid black;text-align:center;
+            white-space: nowrap;overflow-y:hidden;">
             {partial}
         </div>"""
 
@@ -35,7 +36,9 @@ class ImageRenderer(Renderer):
         with open(img_path, "wb") as fd:
             fd.write(image_data)
         return """
-        <div>
+        <div
+            style="border:1px dotted black;margin:2px;display: inline-block;
+            overflow:hidden;margin-left:8px;">
             <p>{title}</p>
             <img src="{src}">
         </div>""".format(

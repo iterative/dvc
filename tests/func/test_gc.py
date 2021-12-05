@@ -343,22 +343,6 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
     assert _count_files(dvc.odb.local.cache_dir) == 0
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "local",
-        "s3",
-        "hdfs",
-        "webhdfs",
-        pytest.param(
-            "ssh",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-    ],
-    indirect=True,
-)
 def test_gc_external_output(tmp_dir, dvc, workspace):
     workspace.gen({"foo": "foo", "bar": "bar"})
 

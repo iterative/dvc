@@ -11,7 +11,6 @@ from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.main import main
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
-from tests.remotes import Local
 
 
 class TestRemote(TestDvc):
@@ -127,19 +126,16 @@ def test_show_default(dvc, capsys):
     assert out == "foo\n"
 
 
-class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
-    upper_case_remote_name = "UPPERCASEREMOTE"
+def test_upper_case_remote(tmp_dir, dvc, local_cloud):
+    remote_name = "UPPERCASEREMOTE"
 
-    def test(self):
-        remote_url = Local.get_storagepath()
-        ret = main(["remote", "add", self.upper_case_remote_name, remote_url])
-        self.assertEqual(ret, 0)
+    tmp_dir.gen("foo", "foo")
 
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+    ret = main(["remote", "add", remote_name, local_cloud.url])
+    assert ret == 0
 
-        ret = main(["push", "-r", self.upper_case_remote_name])
-        self.assertEqual(ret, 0)
+    ret = main(["push", "-r", remote_name])
+    assert ret == 0
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):

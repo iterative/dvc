@@ -293,71 +293,17 @@ def test_add_filtered_files_in_dir(
 
 
 class TestAddExternal(TestAdd):
-    @pytest.mark.parametrize(
-        "workspace, hash_name, hash_value",
-        [
-            (
-                "local",
-                "md5",
-                "8c7dd922ad47494fc02c388e12c00eac",
-            ),
-            pytest.param(
-                "ssh",
-                "md5",
-                "8c7dd922ad47494fc02c388e12c00eac",
-                marks=pytest.mark.skipif(
-                    os.name == "nt", reason="disabled on windows"
-                ),
-            ),
-            (
-                "s3",
-                "etag",
-                "8c7dd922ad47494fc02c388e12c00eac",
-            ),
-            (
-                "hdfs",
-                "checksum",
-                "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e",
-            ),
-            (
-                "webhdfs",
-                "checksum",
-                "000002000000000000000000a86fe4d846edc1bf4c355cb6112f141e00000000",  # noqa: E501
-            ),
-        ],
-        indirect=["workspace"],
-    )
-    def test_add(self, tmp_dir, dvc, workspace, hash_name, hash_value):
-        super().test_add(tmp_dir, dvc, workspace, hash_name, hash_value)
+    @pytest.fixture
+    def hash_name(self):
+        return "md5"
 
-    @pytest.mark.parametrize(
-        "workspace, hash_name, dir_hash_value",
-        [
-            (
-                "local",
-                "md5",
-                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-            ),
-            pytest.param(
-                "ssh",
-                "md5",
-                "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir",
-                marks=pytest.mark.skipif(
-                    os.name == "nt", reason="disabled on windows"
-                ),
-            ),
-            (
-                "s3",
-                "etag",
-                "ec602a6ba97b2dd07bd6d2cd89674a60.dir",
-            ),
-        ],
-        indirect=["workspace"],
-    )
-    def test_add_dir(self, tmp_dir, dvc, workspace, hash_name, dir_hash_value):
-        super().test_add_dir(
-            tmp_dir, dvc, workspace, hash_name, dir_hash_value
-        )
+    @pytest.fixture
+    def hash_value(self):
+        return "8c7dd922ad47494fc02c388e12c00eac"
+
+    @pytest.fixture
+    def dir_hash_value(self):
+        return "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir"
 
 
 def test_add_external_relpath(tmp_dir, dvc, local_cloud):
@@ -994,10 +940,10 @@ def test_add_long_fname(tmp_dir, dvc):
     assert (tmp_dir / "data").read_text() == {name: "foo"}
 
 
-def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
-    local_cloud.gen("foo", "foo")
+def test_add_to_remote(tmp_dir, dvc, remote, workspace):
+    workspace.gen("foo", "foo")
 
-    url = "remote://upstream/foo"
+    url = "remote://workspace/foo"
     [stage] = dvc.add(url, to_remote=True)
 
     assert not (tmp_dir / "foo").exists()
@@ -1009,14 +955,14 @@ def test_add_to_remote(tmp_dir, dvc, local_cloud, local_remote):
     hash_info = stage.outs[0].hash_info
     meta = stage.outs[0].meta
     with open(
-        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
+        remote.hash_to_path(hash_info.value), encoding="utf-8"
     ) as stream:
         assert stream.read() == "foo"
 
     assert meta.size == len("foo")
 
 
-def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, local_remote):
+def test_add_to_remote_absolute(tmp_dir, make_tmp_dir, dvc, remote):
     tmp_abs_dir = make_tmp_dir("abs")
     tmp_foo = tmp_abs_dir / "foo"
     tmp_foo.write_text("foo")
@@ -1132,23 +1078,6 @@ def test_add_to_cache_invalid_combinations(dvc, invalid_opt, kwargs):
         dvc.add(out="bar", **kwargs)
 
 
-@pytest.mark.parametrize(
-    "workspace",
-    [
-        "local",
-        "s3",
-        pytest.param("gs", marks=pytest.mark.needs_internet),
-        "hdfs",
-        pytest.param(
-            "ssh",
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="disabled on windows"
-            ),
-        ),
-        "http",
-    ],
-    indirect=True,
-)
 def test_add_to_cache_from_remote(tmp_dir, dvc, workspace):
     workspace.gen("foo", "foo")
 

@@ -231,18 +231,6 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     assert set(get_dirs(next(scm_fs.walk(path)))) == {".dvc", "subdir"}
 
 
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
-        pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("http"),
-    ],
-)
 def test_fs_getsize(dvc, cloud):
     cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
     cls, config, path = get_cloud_fs(dvc, **cloud.config)
@@ -252,21 +240,6 @@ def test_fs_getsize(dvc, cloud):
     assert fs.getsize(fs.path.join(path, "data", "foo")) == 3
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("azure"),
-        pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("gdrive"),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("oss"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("ssh"),
-        pytest.lazy_fixture("webhdfs"),
-    ],
-)
 def test_fs_upload_fobj(dvc, tmp_dir, cloud):
     tmp_dir.gen("foo", "foo")
     cls, config, path = get_cloud_fs(dvc, **cloud.config)
@@ -283,75 +256,6 @@ def test_fs_upload_fobj(dvc, tmp_dir, cloud):
         assert stream.read() == b"foo"
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize("cloud", [pytest.lazy_fixture("gdrive")])
-def test_fs_ls(dvc, cloud):
-    cloud.gen(
-        {
-            "directory": {
-                "foo": "foo",
-                "bar": "bar",
-                "baz": {"quux": "quux", "egg": {"foo": "foo"}},
-                "empty": {},
-            }
-        }
-    )
-    cls, config, path = get_cloud_fs(dvc, **cloud.config)
-    fs = cls(**config)
-    path = os.path.join(path, "directory")
-
-    assert {
-        os.path.basename(file_key.rstrip("/")) for file_key in fs.ls(path)
-    } == {
-        "foo",
-        "bar",
-        "baz",
-        "empty",
-    }
-    assert set(fs.ls(fs.path.join(path, "empty"))) == set()
-    assert {
-        (detail["type"], os.path.basename(detail["name"].rstrip("/")))
-        for detail in fs.ls(fs.path.join(path, "baz"), detail=True)
-    } == {("file", "quux"), ("directory", "egg")}
-
-
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("azure"),
-        pytest.param(
-            pytest.lazy_fixture("gs"), marks=pytest.mark.needs_internet
-        ),
-    ],
-)
-def test_fs_fsspec_path_management(dvc, cloud):
-    cloud.gen({"foo": "foo", "data": {"bar": "bar", "baz": {"foo": "foo"}}})
-    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
-    fs = cls(**config)
-
-    root = cloud.parents[len(cloud.parents) - 1]
-    bucket_details = fs.info(root.fs_path)
-
-    # special conditions: name always points to the bucket name
-    assert bucket_details["name"] == root.bucket
-    assert bucket_details["type"] == "directory"
-
-    data = cloud / "data"
-    data_details = fs.info(data.fs_path)
-    assert data_details["name"].rstrip("/") == data.fs_path
-    assert data_details["type"] == "directory"
-
-
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("azure"),
-        pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("webdav"),
-    ],
-)
 def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
@@ -362,28 +266,12 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     assert fs.isdir((cloud / "dir").fs_path)
     assert fs.exists((cloud / "dir" / "foo").fs_path)
 
+    fs.makedirs((cloud / "dir2").fs_path)
     fs.copy((cloud / "dir" / "foo").fs_path, (cloud / "dir2" / "foo").fs_path)
     assert fs.isdir((cloud / "dir2").fs_path)
     assert fs.exists((cloud / "dir2" / "foo").fs_path)
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("azure"),
-        pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("gdrive"),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("oss"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("ssh"),
-        pytest.lazy_fixture("webhdfs"),
-        pytest.lazy_fixture("webdav"),
-        pytest.lazy_fixture("http"),
-    ],
-)
 def test_upload_callback(tmp_dir, dvc, cloud):
     tmp_dir.gen("foo", "foo")
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
@@ -401,23 +289,6 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     assert callback.value == expected_size
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("azure"),
-        pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("gdrive"),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("oss"),
-        pytest.lazy_fixture("s3"),
-        pytest.lazy_fixture("ssh"),
-        pytest.lazy_fixture("webhdfs"),
-        pytest.lazy_fixture("webdav"),
-        pytest.lazy_fixture("http"),
-    ],
-)
 def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
@@ -438,25 +309,6 @@ def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
     assert (tmp_dir / "foo").read_text() == "foo"
 
 
-@pytest.mark.needs_internet
-@pytest.mark.parametrize(
-    "cloud",
-    [
-        pytest.lazy_fixture("azure"),
-        pytest.lazy_fixture("gs"),
-        pytest.lazy_fixture("hdfs"),
-        pytest.lazy_fixture("local_cloud"),
-        pytest.lazy_fixture("s3"),
-        pytest.param(
-            pytest.lazy_fixture("ssh"),
-            marks=pytest.mark.skipif(
-                os.name == "nt", reason="unsupported on Windows."
-            ),
-        ),
-        pytest.lazy_fixture("gdrive"),
-        pytest.lazy_fixture("webdav"),
-    ],
-)
 def test_download_dir_callback(tmp_dir, dvc, cloud):
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
