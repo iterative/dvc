@@ -628,7 +628,7 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
         interactive=False,
         force=False,
     )
-    expected = "Created default stage in dvc.yaml."
+    expected = "Created train stage in dvc.yaml."
     if not extra_args:
         expected += (
             ' To run, use "dvc exp run".\n'

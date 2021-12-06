@@ -851,7 +851,7 @@ class CmdExperimentsInit(CmdBase):
             force=self.args.force,
         )
 
-        name = self.args.name or self.args.type
+        name = self.args.name or "train"
 
         text = ui.rich_text.assemble(
             "\n" if self.args.interactive else "",

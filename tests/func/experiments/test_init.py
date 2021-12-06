@@ -30,10 +30,10 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
     assert main(["exp", "init", script]) == 0
     out, err = capsys.readouterr()
     assert not err
-    assert "Created default stage in dvc.yaml" in out
+    assert "Created train stage in dvc.yaml" in out
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": script,
                 "deps": ["data", "src"],
                 "metrics": [{"metrics.json": {"cache": False}}],
@@ -46,38 +46,32 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
 
 
 @pytest.mark.parametrize("interactive", [True, False])
-@pytest.mark.parametrize("typ", ["default", "live"])
-def test_when_stage_already_exists_with_same_name(
-    tmp_dir, dvc, interactive, typ
-):
-    (tmp_dir / "dvc.yaml").dump({"stages": {typ: {"cmd": "test"}}})
+def test_when_stage_already_exists_with_same_name(tmp_dir, dvc, interactive):
+    (tmp_dir / "dvc.yaml").dump({"stages": {"train": {"cmd": "test"}}})
     with pytest.raises(DuplicateStageName) as exc:
         init(
             dvc,
             interactive=interactive,
-            type=typ,
             overrides={"cmd": "true"},
             defaults=CmdExperimentsInit.DEFAULTS,
         )
     assert (
-        str(exc.value) == f"Stage '{typ}' already exists in 'dvc.yaml'. "
+        str(exc.value) == "Stage 'train' already exists in 'dvc.yaml'. "
         "Use '--force' to overwrite."
     )
 
 
-@pytest.mark.parametrize("typ", ["default", "live"])
-def test_when_stage_force_if_already_exists(tmp_dir, dvc, typ):
+def test_when_stage_force_if_already_exists(tmp_dir, dvc):
     (tmp_dir / "params.yaml").dump({"foo": 1})
-    (tmp_dir / "dvc.yaml").dump({"stages": {typ: {"cmd": "test"}}})
+    (tmp_dir / "dvc.yaml").dump({"stages": {"train": {"cmd": "test"}}})
     init(
         dvc,
-        type=typ,
         force=True,
         overrides={"cmd": "true"},
         defaults=CmdExperimentsInit.DEFAULTS,
     )
     d = (tmp_dir / "dvc.yaml").parse()
-    assert d["stages"][typ]["cmd"] == "true"
+    assert d["stages"]["train"]["cmd"] == "true"
 
 
 def test_with_a_custom_name(tmp_dir, dvc):
@@ -91,7 +85,7 @@ def test_init_with_no_defaults_non_interactive(tmp_dir, scm, dvc):
     init(dvc, defaults={}, overrides={"cmd": "python script.py"})
 
     assert (tmp_dir / "dvc.yaml").parse() == {
-        "stages": {"default": {"cmd": "python script.py"}}
+        "stages": {"train": {"cmd": "python script.py"}}
     }
     scm._reset()
     assert not (tmp_dir / "dvc.lock").exists()
@@ -134,7 +128,7 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "live": {"dvclive": {"html": True, "summary": True}},
@@ -159,7 +153,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
 
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
@@ -189,7 +183,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
 
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
@@ -232,7 +226,7 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": "python script.py",
                 "deps": ["python script.py", "script.py"],
                 "metrics": [{"metric": {"cache": False}}],
@@ -278,7 +272,7 @@ def test_init_interactive_default(
 
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
@@ -359,7 +353,7 @@ def test_init_interactive_live(
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "dl": {
+            "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
                 "live": {"dvclive": {"html": True, "summary": True}},
@@ -403,7 +397,7 @@ def test_init_with_type_live_and_models_plots_provided(
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "dl": {
+            "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "live": {"dvclive": {"html": True, "summary": True}},
@@ -436,7 +430,7 @@ def test_init_with_type_default_and_live_provided(
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "default": {
+            "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "live": {"live": {"html": True, "summary": True}},
