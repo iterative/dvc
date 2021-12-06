@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import ExitStack
 from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Optional
 
@@ -9,6 +10,8 @@ from dvc.scm import SCM
 from dvc.utils.fs import remove
 
 from ..base import (
+    EXEC_APPLY,
+    EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
@@ -116,4 +119,48 @@ class TempDirExecutor(BaseLocalExecutor):
 
 
 class WorkspaceExecutor(BaseLocalExecutor):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._detach_stack = ExitStack()
+        self._orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
+
+    @classmethod
+    def from_stash_entry(
+        cls,
+        repo: "Repo",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        **kwargs,
+    ):
+        root_dir = repo.scm.root_dir
+        executor = cls._from_stash_entry(repo, stash_rev, entry, root_dir)
+        logger.debug("Init workspace executor in '%s'", root_dir)
+        return executor
+
+    def init_git(self, scm: "Git", branch: Optional[str] = None):
+        self._detach_stack.enter_context(
+            self.scm.detach_head(
+                self.scm.get_ref(EXEC_HEAD),
+                force=True,
+                client="dvc",
+            )
+        )
+        merge_rev = self.scm.get_ref(EXEC_MERGE)
+        self.scm.merge(merge_rev, squash=True, commit=False)
+        if branch:
+            self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+        elif scm.get_ref(EXEC_BRANCH):
+            self.scm.remove_ref(EXEC_BRANCH)
+
+    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
+        pass
+
+    def cleanup(self):
+        with self._detach_stack:
+            self.scm.remove_ref(EXEC_BASELINE)
+            if self.scm.get_ref(EXEC_BRANCH):
+                self.scm.remove_ref(EXEC_BRANCH)
+            checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
+            if checkpoint and checkpoint != self._orig_checkpoint:
+                self.scm.set_ref(EXEC_APPLY, checkpoint)
+        super().cleanup()
