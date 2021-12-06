@@ -1493,7 +1493,7 @@ def add_parser(subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--type",
-        choices=["default", "live"],
+        choices=["default", "dl"],
         default="default",
         help="Select type of stage to create (default: %(default)s)",
     )

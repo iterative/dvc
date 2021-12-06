@@ -711,11 +711,11 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
     "extra_args, expected_kw",
     [
         (["--type", "default"], {"type": "default"}),
-        (["--type", "live"], {"type": "live"}),
+        (["--type", "dl"], {"type": "dl"}),
         (["--force"], {"force": True}),
         (
-            ["--name", "name", "--type", "live"],
-            {"name": "name", "type": "live"},
+            ["--name", "name", "--type", "dl"],
+            {"name": "name", "type": "dl"},
         ),
         (
             [

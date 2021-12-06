@@ -220,7 +220,7 @@ def init(
     defaults = defaults.copy() if defaults else {}
     overrides = overrides.copy() if overrides else {}
 
-    with_live = type == "live"
+    with_live = type == "dl"
 
     if interactive:
         defaults = init_interactive(
