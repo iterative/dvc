@@ -213,7 +213,7 @@ def init(
     from dvc.dvcfile import make_dvcfile
 
     dvcfile = make_dvcfile(repo, "dvc.yaml")
-    name = name or type
+    name = name or "train"
 
     _check_stage_exists(dvcfile, name, force=force)
 
