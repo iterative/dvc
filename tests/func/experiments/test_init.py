@@ -351,7 +351,7 @@ def test_init_interactive_live(
 
     init(
         dvc,
-        type="live",
+        type="dl",
         interactive=interactive,
         defaults=CmdExperimentsInit.DEFAULTS,
         overrides=overrides,
@@ -359,7 +359,7 @@ def test_init_interactive_live(
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "live": {
+            "dl": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
                 "live": {"dvclive": {"html": True, "summary": True}},
@@ -395,7 +395,7 @@ def test_init_with_type_live_and_models_plots_provided(
     (tmp_dir / "params.yaml").dump({"foo": 1})
     init(
         dvc,
-        type="live",
+        type="dl",
         interactive=interactive,
         stream=inp,
         defaults=CmdExperimentsInit.DEFAULTS,
@@ -403,7 +403,7 @@ def test_init_with_type_live_and_models_plots_provided(
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
-            "live": {
+            "dl": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "live": {"dvclive": {"html": True, "summary": True}},
