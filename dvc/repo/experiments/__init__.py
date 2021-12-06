@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from functools import wraps
-from typing import Dict, Iterable, List, Mapping, Optional
+from typing import Dict, Iterable, List, Mapping, Optional, Type
 
 from funcy import cached_property, first
 
@@ -13,7 +13,6 @@ from dvc.utils import relpath
 
 from .base import (
     EXEC_APPLY,
-    EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
@@ -31,7 +30,11 @@ from .executor.base import (
     BaseExecutor,
     ExecutorInfo,
 )
-from .executor.manager import BaseExecutorManager, LocalExecutorManager
+from .executor.manager import (
+    BaseExecutorManager,
+    TempDirExecutorManager,
+    WorkspaceExecutorManager,
+)
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
@@ -424,9 +427,14 @@ class Experiments:
             )
             return [stash_rev]
         if tmp_dir or queue:
-            results = self._reproduce_revs(revs=[stash_rev], keep_stash=False)
+            manager_cls: Type = TempDirExecutorManager
         else:
-            results = self._workspace_repro()
+            manager_cls = WorkspaceExecutorManager
+        results = self._reproduce_revs(
+            revs=[stash_rev],
+            keep_stash=False,
+            manager_cls=manager_cls,
+        )
         exp_rev = first(results)
         if exp_rev is not None:
             self._log_reproduced(results, tmp_dir=tmp_dir)
@@ -580,6 +588,7 @@ class Experiments:
         self,
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
+        manager_cls: Type = TempDirExecutorManager,
         **kwargs,
     ) -> Mapping[str, str]:
         """Reproduce the specified experiments.
@@ -616,7 +625,7 @@ class Experiments:
             ", ".join(rev[:7] for rev in to_run),
         )
 
-        manager = LocalExecutorManager.from_stash_entries(
+        manager = manager_cls.from_stash_entries(
             self.scm,
             os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR),
             self.repo,
@@ -656,83 +665,6 @@ class Experiments:
             for each stash rev.
         """
         return manager.exec_queue(**kwargs)
-
-    @unlocked_repo
-    def _workspace_repro(self) -> Mapping[str, str]:
-        """Run the most recently stashed experiment in the workspace."""
-        from dvc.stage.monitor import CheckpointKilledError
-        from dvc.utils.fs import makedirs
-
-        entry = first(self.stash_revs.values())
-        assert entry.stash_index == 0
-
-        # NOTE: the stash commit to be popped already contains all the current
-        # workspace changes plus CLI modified --params changes.
-        # `checkout --force` here will not lose any data (popping stash commit
-        # will result in conflict between workspace params and stashed CLI
-        # params, but we always want the stashed version).
-        with self.scm.detach_head(entry.head_rev, force=True, client="dvc"):
-            rev = self.stash.pop()
-            self.scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
-            if entry.branch:
-                self.scm.set_ref(EXEC_BRANCH, entry.branch, symbolic=True)
-            elif self.scm.get_ref(EXEC_BRANCH):
-                self.scm.remove_ref(EXEC_BRANCH)
-            try:
-                orig_checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
-                pid_dir = os.path.join(
-                    self.repo.tmp_dir,
-                    EXEC_TMP_DIR,
-                    EXEC_PID_DIR,
-                )
-                if not os.path.exists(pid_dir):
-                    makedirs(pid_dir)
-                infofile = os.path.join(
-                    pid_dir, f"workspace{BaseExecutor.INFOFILE_EXT}"
-                )
-                info = ExecutorInfo(
-                    git_url=self.scm.root_dir,
-                    baseline_rev=entry.baseline_rev,
-                    location="workspace",
-                    root_dir=self.scm.root_dir,
-                    dvc_dir=self.dvc_dir,
-                    name=entry.name,
-                    wdir=os.getcwd(),
-                )
-                exec_result = BaseExecutor.reproduce(
-                    info=info,
-                    rev=rev,
-                    infofile=infofile,
-                    log_errors=False,
-                )
-
-                if not exec_result.exp_hash:
-                    raise DvcException(
-                        f"Failed to reproduce experiment '{rev[:7]}'"
-                    )
-                if not exec_result.ref_info:
-                    # repro succeeded but result matches baseline
-                    # (no experiment generated or applied)
-                    return {}
-                exp_rev = self.scm.get_ref(str(exec_result.ref_info))
-                self.scm.set_ref(EXEC_APPLY, exp_rev)
-                return {exp_rev: exec_result.exp_hash}
-            except CheckpointKilledError:
-                # Checkpoint errors have already been logged
-                return {}
-            except DvcException:
-                raise
-            except Exception as exc:
-                raise DvcException(
-                    f"Failed to reproduce experiment '{rev[:7]}'"
-                ) from exc
-            finally:
-                self.scm.remove_ref(EXEC_BASELINE)
-                if entry.branch:
-                    self.scm.remove_ref(EXEC_BRANCH)
-                checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
-                if checkpoint and checkpoint != orig_checkpoint:
-                    self.scm.set_ref(EXEC_APPLY, checkpoint)
 
     def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
