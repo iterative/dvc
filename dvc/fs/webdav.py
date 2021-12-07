@@ -41,7 +41,7 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         return infer_storage_options(path)["path"].lstrip("/")
 
     def unstrip_protocol(self, path: str) -> str:
-        return self.fs_args["base_url"] + path
+        return self.fs_args["base_url"] + "/" + path
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):
