@@ -810,10 +810,7 @@ class CmdExperimentsInit(CmdBase):
         "plots": PLOTS,
         "live": DVCLIVE,
     }
-    EXP_LINK = (
-        "https://dvc.org/doc"
-        "/user-guide/experiment-management/running-experiments"
-    )
+    EXP_LINK = "https://s.dvc.org/g/exp/run"
 
     def run(self):
         from dvc.command.stage import parse_cmd

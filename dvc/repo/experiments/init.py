@@ -92,9 +92,7 @@ def build_workspace_tree(workspace: Dict[str, str]) -> "Tree":
     return tree
 
 
-PIPELINE_FILE_LINK = (
-    "https://dvc.org/doc/user-guide/project-structure/pipelines-files"
-)
+PIPELINE_FILE_LINK = "https://s.dvc.org/g/pipelines-files"
 
 
 def init_interactive(
