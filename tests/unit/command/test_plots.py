@@ -4,9 +4,10 @@ import posixpath
 from pathlib import Path
 
 import pytest
+from funcy import pluck_attr
 
 from dvc.cli import parse_args
-from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow
+from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow, CmdPlotsTemplates
 
 
 @pytest.fixture
@@ -342,3 +343,38 @@ def test_show_json_requires_out(dvc, mocker, capsys):
     )
     cmd = cli_args.func(cli_args)
     assert cmd.run() == 0
+
+
+@pytest.mark.parametrize("target", (("t1"), (None)))
+def test_plots_templates(tmp_dir, dvc, mocker, capsys, target):
+    assert not os.path.exists(dvc.plots.templates.templates_dir)
+    mocker.patch(
+        "dvc.commands.plots.CmdPlotsTemplates.TEMPLATES_CHOICES",
+        ["t1", "t2"],
+    )
+
+    arguments = ["plots", "templates", "--out", "output"]
+    if target:
+        arguments += [target]
+
+    cli_args = parse_args(arguments)
+    assert cli_args.func == CmdPlotsTemplates
+
+    init_mock = mocker.patch("dvc.repo.plots.template.PlotTemplates.init")
+    cmd = cli_args.func(cli_args)
+
+    assert cmd.run() == 0
+    out, _ = capsys.readouterr()
+
+    init_mock.assert_called_once_with(
+        output=os.path.abspath("output"), targets=[target] if target else None
+    )
+    assert "Templates have been written into 'output'." in out
+
+
+def test_plots_templates_choices(tmp_dir, dvc):
+    from dvc.repo.plots.template import PlotTemplates
+
+    assert CmdPlotsTemplates.TEMPLATES_CHOICES == list(
+        pluck_attr("DEFAULT_NAME", PlotTemplates.TEMPLATES)
+    )

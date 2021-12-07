@@ -2,7 +2,13 @@ import os
 
 import pytest
 
-from dvc.repo.plots.template import TemplateNotFoundError
+from dvc.repo.plots.template import (
+    LinearTemplate,
+    PlotTemplates,
+    ScatterTemplate,
+    TemplateContentDoesNotMatch,
+    TemplateNotFoundError,
+)
 
 
 def test_raise_on_no_template(tmp_dir, dvc):
@@ -35,11 +41,33 @@ def test_load_template(tmp_dir, dvc, template_path, target_name):
 
 
 def test_load_default_template(tmp_dir, dvc):
-    with open(
-        os.path.join(dvc.plots.templates.templates_dir, "linear.json"),
-        "r",
-        encoding="utf-8",
-    ) as fd:
-        content = fd.read()
+    assert dvc.plots.templates.load(None).content == LinearTemplate().content
 
-    assert dvc.plots.templates.load(None).content == content
+
+@pytest.mark.parametrize("output", ("output", None))
+@pytest.mark.parametrize(
+    "targets,expected_templates",
+    (
+        ([None, PlotTemplates.TEMPLATES]),
+        (["linear", "scatter"], [ScatterTemplate, LinearTemplate]),
+    ),
+)
+def test_init(tmp_dir, dvc, output, targets, expected_templates):
+    output = output or dvc.plots.templates.templates_dir
+    dvc.plots.templates.init(output, targets)
+
+    assert set(os.listdir(output)) == {
+        cls.DEFAULT_NAME + ".json" for cls in expected_templates
+    }
+
+
+def test_raise_on_init_modified(tmp_dir, dvc):
+    dvc.plots.templates.init(output=None, targets=["linear"])
+
+    with open(
+        tmp_dir / ".dvc" / "plots" / "linear.json", "a", encoding="utf-8"
+    ) as fd:
+        fd.write("modification")
+
+    with pytest.raises(TemplateContentDoesNotMatch):
+        dvc.plots.templates.init(output=None, targets=["linear"])

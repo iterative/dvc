@@ -140,6 +140,37 @@ class CmdPlotsModify(CmdPlots):
         return 0
 
 
+class CmdPlotsTemplates(CmdBase):
+    TEMPLATES_CHOICES = [
+        "simple",
+        "linear",
+        "confusion",
+        "confusion_normalized",
+        "scatter",
+        "smooth",
+    ]
+
+    def run(self):
+        import os
+
+        try:
+            out = (
+                os.path.join(os.getcwd(), self.args.out)
+                if self.args.out
+                else self.repo.plots.templates.templates_dir
+            )
+
+            targets = [self.args.target] if self.args.target else None
+            self.repo.plots.templates.init(output=out, targets=targets)
+            templates_path = os.path.relpath(out, os.getcwd())
+            ui.write(f"Templates have been written into '{templates_path}'.")
+
+            return 0
+        except DvcException:
+            logger.exception("")
+            return 1
+
+
 def add_parser(subparsers, parent_parser):
     PLOTS_HELP = (
         "Commands to visualize and compare plot metrics in structured files "
@@ -176,7 +207,8 @@ def add_parser(subparsers, parent_parser):
         "Shows all plots by default.",
     ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
-    _add_output_arguments(plots_show_parser)
+    _add_output_argument(plots_show_parser)
+    _add_ui_arguments(plots_show_parser)
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
@@ -211,7 +243,8 @@ def add_parser(subparsers, parent_parser):
         "revisions", nargs="*", default=None, help="Git commits to plot from"
     )
     _add_props_arguments(plots_diff_parser)
-    _add_output_arguments(plots_diff_parser)
+    _add_output_argument(plots_diff_parser)
+    _add_ui_arguments(plots_diff_parser)
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
     PLOTS_MODIFY_HELP = (
@@ -236,6 +269,27 @@ def add_parser(subparsers, parent_parser):
         help="Unset one or more display properties.",
     )
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
+
+    TEMPLATES_HELP = (
+        "Write built-in plots templates to a directory "
+        "(.dvc/plots by default)."
+    )
+    plots_templates_parser = plots_subparsers.add_parser(
+        "templates",
+        parents=[parent_parser],
+        description=append_doc_link(TEMPLATES_HELP, "plots/templates"),
+        help=TEMPLATES_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    plots_templates_parser.add_argument(
+        "target",
+        default=None,
+        nargs="?",
+        choices=CmdPlotsTemplates.TEMPLATES_CHOICES,
+        help="Template to write. Writes all templates by default.",
+    )
+    _add_output_argument(plots_templates_parser, typ="templates")
+    plots_templates_parser.set_defaults(func=CmdPlotsTemplates)
 
 
 def _add_props_arguments(parser):
@@ -276,14 +330,17 @@ def _add_props_arguments(parser):
     )
 
 
-def _add_output_arguments(parser):
+def _add_output_argument(parser, typ="plots"):
     parser.add_argument(
         "-o",
         "--out",
         default=None,
-        help="Destination path to save plots to",
+        help=f"Directory to save {typ} to.",
         metavar="<path>",
     ).complete = completion.DIR
+
+
+def _add_ui_arguments(parser):
     parser.add_argument(
         "--show-vega",
         action="store_true",
