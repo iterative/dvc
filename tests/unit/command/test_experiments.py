@@ -613,7 +613,7 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
     assert cmd.run() == 0
     m.assert_called_once_with(
         ANY(Repo),
-        name=None,
+        name="train",
         type="default",
         defaults={
             "code": "src",
@@ -653,7 +653,7 @@ def test_experiments_init_config(dvc, scm, mocker):
     assert cmd.run() == 0
     m.assert_called_once_with(
         ANY(Repo),
-        name=None,
+        name="train",
         type="default",
         defaults={
             "code": "new_src",
@@ -678,7 +678,7 @@ def test_experiments_init_explicit(dvc, mocker):
     assert cmd.run() == 0
     m.assert_called_once_with(
         ANY(Repo),
-        name=None,
+        name="train",
         type="default",
         defaults={},
         overrides={"cmd": "cmd"},
@@ -710,9 +710,9 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
 @pytest.mark.parametrize(
     "extra_args, expected_kw",
     [
-        (["--type", "default"], {"type": "default"}),
-        (["--type", "dl"], {"type": "dl"}),
-        (["--force"], {"force": True}),
+        (["--type", "default"], {"type": "default", "name": "train"}),
+        (["--type", "dl"], {"type": "dl", "name": "train"}),
+        (["--force"], {"force": True, "name": "train"}),
         (
             ["--name", "name", "--type", "dl"],
             {"name": "name", "type": "dl"},
@@ -735,6 +735,7 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
                 "live",
             ],
             {
+                "name": "train",
                 "overrides": {
                     "plots": "p",
                     "models": "m",
@@ -744,7 +745,7 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
                     "data": "d",
                     "live": "live",
                     "cmd": "cmd",
-                }
+                },
             },
         ),
     ],
