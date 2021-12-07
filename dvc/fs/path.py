@@ -1,34 +1,44 @@
+import ntpath
 import posixpath
 
 
 class Path:
-    """
-    Class for operations on simple string paths.
-
-    This is meant to be very efficient and so doesn't use os.path,
-    doesn't have any notion of cwd and assumes that we are always
-    operating on absolute paths.
-    """
-
-    def __init__(self, sep: str):
-        self.sep = sep
+    def __init__(self, sep):
+        if sep == posixpath.sep:
+            self.flavour = posixpath
+        elif sep == ntpath.sep:
+            self.flavour = ntpath
+        else:
+            raise ValueError(f"unsupported separator '{sep}'")
 
     def join(self, *parts):
-        if len(parts) == 0:
-            return None
-        if len(parts) == 1:
-            return parts[0]
-
-        return self.sep.join(parts)
+        return self.flavour.join(*parts)
 
     def parts(self, path):
-        return tuple(path.split(self.sep))
+        drive, path = self.flavour.splitdrive(path)
+
+        ret = []
+        while True:
+            path, part = self.flavour.split(path)
+
+            if part:
+                ret.append(part)
+                continue
+
+            if path:
+                ret.append(path)
+
+            break
+
+        ret.reverse()
+
+        if drive:
+            ret = [drive] + ret
+
+        return tuple(ret)
 
     def parent(self, path):
-        parts = path.rsplit(self.sep, 1)
-        if len(parts) == 1:
-            return ""
-        return parts[0]
+        return self.flavour.dirname(path)
 
     def parents(self, path):
         parts = self.parts(path)
@@ -73,12 +83,12 @@ class Path:
     def relpath(self, path, base):
         assert len(path) > len(base)
         assert path.startswith(base)
-        normpath = path.rstrip(self.sep)
-        normbase = base.rstrip(self.sep)
+        normpath = path.rstrip(self.flavour.sep)
+        normbase = base.rstrip(self.flavour.sep)
         return normpath[len(normbase) + 1 :]
 
     def relparts(self, path, base):
         return self.parts(self.relpath(path, base))
 
     def as_posix(self, path):
-        return path.replace(self.sep, posixpath.sep)
+        return path.replace(self.flavour.sep, posixpath.sep)
