@@ -29,7 +29,6 @@ from dvc.utils.serialize import dumps_yaml
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.dvcfile import DVCFile
-    from dvc.stage import Stage
     from rich.tree import Tree
 
 from dvc.ui import ui
@@ -202,19 +201,17 @@ def validate_prompts(key: str, value: str) -> Union[Any, Tuple[Any, str]]:
 
 def init(
     repo: "Repo",
-    name: str = None,
+    name: str = "train",
     type: str = "default",  # pylint: disable=redefined-builtin
     defaults: Dict[str, str] = None,
     overrides: Dict[str, str] = None,
     interactive: bool = False,
     force: bool = False,
     stream: Optional[TextIO] = None,
-) -> "Stage":
+) -> PipelineStage:
     from dvc.dvcfile import make_dvcfile
 
     dvcfile = make_dvcfile(repo, "dvc.yaml")
-    name = name or "train"
-
     _check_stage_exists(dvcfile, name, force=force)
 
     defaults = defaults.copy() if defaults else {}
@@ -284,4 +281,6 @@ def init(
                 repo.scm_context.track_file(params)
     else:
         raise DvcException("Aborting ...")
+
+    assert isinstance(stage, PipelineStage)
     return stage

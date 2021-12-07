@@ -793,6 +793,7 @@ class CmdExperimentsRemove(CmdBase):
 
 
 class CmdExperimentsInit(CmdBase):
+    DEFAULT_NAME = "train"
     CODE = "src"
     DATA = "data"
     MODELS = "models"
@@ -851,12 +852,10 @@ class CmdExperimentsInit(CmdBase):
             force=self.args.force,
         )
 
-        name = self.args.name or "train"
-
         text = ui.rich_text.assemble(
             "\n" if self.args.interactive else "",
             "Created ",
-            (name, "bright_blue"),
+            (self.args.name, "bright_blue"),
             " stage in ",
             ("dvc.yaml", "green"),
             ".",
@@ -1452,7 +1451,11 @@ def add_parser(subparsers, parent_parser):
         help="Only use the path values explicitly provided",
     )
     experiments_init_parser.add_argument(
-        "--name", "-n", help="Name of the stage to create"
+        "--name",
+        "-n",
+        help="Name of the stage to create "
+        f"(default: {CmdExperimentsInit.DEFAULT_NAME})",
+        default=CmdExperimentsInit.DEFAULT_NAME,
     )
     experiments_init_parser.add_argument(
         "--code",
