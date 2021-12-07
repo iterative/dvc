@@ -632,8 +632,7 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
     if not extra_args:
         expected += (
             ' To run, use "dvc exp run".\n'
-            "See https://dvc.org/doc/user-guide/experiment-management"
-            "/running-experiments."
+            "See https://s.dvc.org/g/exp/run."
         )
     assert capsys.readouterr() == (expected + "\n", "")
     if extra_args:
