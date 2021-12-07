@@ -631,8 +631,7 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
     expected = "Created train stage in dvc.yaml."
     if not extra_args:
         expected += (
-            ' To run, use "dvc exp run".\n'
-            "See https://s.dvc.org/g/exp/run."
+            ' To run, use "dvc exp run".\n' "See https://s.dvc.org/g/exp/run."
         )
     assert capsys.readouterr() == (expected + "\n", "")
     if extra_args:
