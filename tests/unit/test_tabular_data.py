@@ -221,7 +221,7 @@ def test_dropna(axis, how, data, expected):
 
 
 @pytest.mark.parametrize(
-    "axis,expected",
+    "axis,expected,ignore_empty",
     [
         (
             "rows",
@@ -230,11 +230,22 @@ def test_dropna(axis, how, data, expected):
                 ["foo", "foo", "-"],
                 ["foo", "bar", "foobar"],
             ],
+            True,
         ),
-        ("cols", [["-"], ["foo"], ["foo"], ["bar"]]),
+        ("cols", [["-"], ["foo"], ["foo"], ["bar"]], True),
+        (
+            "cols",
+            [
+                ["-", "-"],
+                ["foo", "-"],
+                ["foo", "-"],
+                ["bar", "foobar"],
+            ],
+            False,
+        ),
     ],
 )
-def test_drop_duplicates(axis, expected):
+def test_drop_duplicates(axis, expected, ignore_empty):
     td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
     td.extend(
         [["foo"], ["foo", "foo"], ["foo", "foo"], ["foo", "bar", "foobar"]]
@@ -247,9 +258,32 @@ def test_drop_duplicates(axis, expected):
         ["foo", "bar", "foobar"],
     ]
 
-    td.drop_duplicates(axis)
+    td.drop_duplicates(axis, ignore_empty=ignore_empty)
 
     assert list(td) == expected
+
+
+def test_drop_duplicates_ignore_empty():
+    td = TabularData(["col-1", "col-2", "col-3"], fill_value="-")
+    td.extend(
+        [["foo"], ["foo", "foo"], ["foo", "foo"], ["foo", "bar", "foobar"]]
+    )
+
+    assert list(td) == [
+        ["foo", "-", "-"],
+        ["foo", "foo", "-"],
+        ["foo", "foo", "-"],
+        ["foo", "bar", "foobar"],
+    ]
+
+    td.drop_duplicates("cols", ignore_empty=False)
+
+    assert list(td) == [
+        ["-", "-"],
+        ["foo", "-"],
+        ["foo", "-"],
+        ["bar", "foobar"],
+    ]
 
 
 def test_drop_duplicates_rich_text():

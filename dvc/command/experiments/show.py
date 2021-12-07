@@ -473,7 +473,7 @@ def show_experiments(
     )
 
     if kwargs.get("only_changed", False) or html:
-        td.drop_duplicates("cols")
+        td.drop_duplicates("cols", ignore_empty=False)
 
     html_args = {}
     if html:
