@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from funcy import cached_property
 
@@ -16,6 +16,15 @@ class NoFieldInDataError(DvcException):
     def __init__(self, field_name):
         super().__init__(
             f"Field '{field_name}' does not exist in provided data."
+        )
+
+
+class TemplateContentDoesNotMatch(DvcException):
+    def __init__(self, template_name: str, path: str):
+        super().__init__(
+            f"Template '{path}' already exists "
+            f"and its content is different than '{template_name}' content. "
+            "Remove it manually if you want to recreate it."
         )
 
 
@@ -533,17 +542,40 @@ class PlotTemplates:
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
 
-    def init(self):
+    def init(
+        self, output: Optional[str] = None, targets: Optional[List] = None
+    ):
         from dvc.utils.fs import makedirs
 
-        makedirs(self.templates_dir, exist_ok=True)
-        for t in self.TEMPLATES:
-            self._dump(t())
+        output = output or self.templates_dir
 
-    def _dump(self, template):
-        path = os.path.join(self.templates_dir, template.filename)
-        with open(path, "w", encoding="utf-8") as fd:
-            fd.write(template.content)
+        makedirs(output, exist_ok=True)
+
+        if targets:
+            templates = [
+                template
+                for template in self.TEMPLATES
+                if template.DEFAULT_NAME in targets
+            ]
+        else:
+            templates = self.TEMPLATES
+
+        for template in templates:
+            self._dump(template(), output)
+
+    def _dump(self, template: Template, output: str):
+        path = os.path.join(output, template.filename)
+
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fd:
+                content = fd.read()
+            if content != template.content:
+                raise TemplateContentDoesNotMatch(
+                    template.DEFAULT_NAME or "", path
+                )
+        else:
+            with open(path, "w", encoding="utf-8") as fd:
+                fd.write(template.content)
 
     def load(self, template_name=None):
         if not template_name:
