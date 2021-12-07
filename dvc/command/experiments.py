@@ -1419,6 +1419,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(EXPERIMENTS_INIT_HELP, "exp/init"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        help=EXPERIMENTS_INIT_HELP,
     )
     experiments_init_parser.add_argument(
         "command",
@@ -1453,8 +1454,7 @@ def add_parser(subparsers, parent_parser):
     experiments_init_parser.add_argument(
         "--name",
         "-n",
-        help="Name of the stage to create "
-        f"(default: {CmdExperimentsInit.DEFAULT_NAME})",
+        help="Name of the stage to create (default: %(default)s)",
         default=CmdExperimentsInit.DEFAULT_NAME,
     )
     experiments_init_parser.add_argument(
