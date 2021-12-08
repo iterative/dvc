@@ -183,8 +183,8 @@ Fedora / CentOS (rpm)
 Comparison to related technologies
 ==================================
 
-#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`,
-   `Luigi <https://github.com/spotify/luigi>`, and others - in DVC data,
+#. Data Engineering tools such as `Airflow <https://airflow.apache.org/>`_,
+   `Luigi <https://github.com/spotify/luigi>`_, and others - in DVC data,
    model and ML pipelines represent a single ML project focused on data
    scientists' experience.  Data engineering tools orchestrate multiple data
    projects and focus on efficient execution. A DVC project can be used from
