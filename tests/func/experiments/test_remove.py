@@ -106,7 +106,7 @@ def test_remove_remote(tmp_dir, scm, dvc, exp_stage, git_upstream, use_url):
         exp_list.append(exp)
         ref_info = first(exp_refs_by_rev(scm, exp))
         ref_info_list.append(ref_info)
-        dvc.experiments.push(remote, ref_info.name)
+        dvc.experiments.push(remote, [ref_info.name])
         assert git_upstream.tmp_dir.scm.get_ref(str(ref_info)) == exp
 
     dvc.experiments.remove(

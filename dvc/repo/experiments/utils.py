@@ -21,23 +21,8 @@ from .base import (
     EXPS_STASH,
     ExpRefInfo,
 )
+from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
 
-
-class AmbiguousExpRefInfo(InvalidArgumentError):
-    def __init__(
-        self,
-        exp_name: str,
-        exp_ref_list: Iterable[ExpRefInfo],
-    ):
-        msg = [
-            (
-                f"Ambiguous name '{exp_name}' refers to multiple experiments."
-                " Use one of the following full refnames instead:"
-            ),
-            "",
-        ]
-        msg.extend([f"\t{info}" for info in exp_ref_list])
-        super().__init__("\n".join(msg))
 
 
 def exp_refs(scm: "Git") -> Generator["ExpRefInfo", None, None]:
