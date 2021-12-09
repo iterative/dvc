@@ -220,7 +220,8 @@ def test_experiments_push(dvc, scm, mocker):
             "experiments",
             "push",
             "origin",
-            "experiment",
+            "experiment1",
+            "experiment2",
             "--force",
             "--no-cache",
             "--remote",
@@ -240,7 +241,7 @@ def test_experiments_push(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo,
         "origin",
-        "experiment",
+        ["experiment1", "experiment2"],
         force=True,
         push_cache=False,
         dvc_remote="my-remote",

@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Iterable, Optional, Set
+from typing import Callable, Generator, Iterable, List, Optional, Set, Tuple
 
 from scmrepo.git import Git
 
@@ -203,3 +203,20 @@ def check_ref_format(scm: "Git", ref: ExpRefInfo):
             f"Invalid exp name {ref.name}, the exp name must follow rules in "
             "https://git-scm.com/docs/git-check-ref-format"
         )
+
+
+def name2exp_ref(
+    scm: "Git",
+    exp_names: List[str],
+    git_remote: Optional[str] = None,
+    **kwargs,
+) -> Tuple[List[ExpRefInfo], List[str]]:
+    exp_ref_list: List[ExpRefInfo] = []
+    remain_list: List[str] = []
+    for exp_name in exp_names:
+        exp_ref = resolve_exp_ref(scm, exp_name, git_remote)
+        if not exp_ref:
+            remain_list.append(exp_name)
+        else:
+            exp_ref_list.append(exp_ref)
+    return exp_ref_list, remain_list

@@ -1322,7 +1322,10 @@ def add_parser(subparsers, parent_parser):
         metavar="<git_remote>",
     )
     experiments_push_parser.add_argument(
-        "experiment", help="Experiment to push.", metavar="<experiment>"
+        "experiment",
+        help="Experiments to push.",
+        metavar="<experiments>",
+        nargs="+",
     ).complete = completion.EXPERIMENT
     experiments_push_parser.set_defaults(func=CmdExperimentsPush)
 
