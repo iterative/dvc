@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Union
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -10,3 +10,4 @@ OptStr = Optional[str]
 TargetType = Union[List[str], str]
 DictStrAny = Dict[str, Any]
 DictAny = Dict[Any, Any]
+IterableStr = Iterable[str]
