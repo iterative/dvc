@@ -18,7 +18,6 @@ class BaseS3FileSystem(ObjectFSWrapper):
     scheme = Schemes.S3
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
-    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     _GRANTS = {
         "grant_full_control": "GrantFullControl",
