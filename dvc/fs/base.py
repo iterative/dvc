@@ -4,7 +4,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partialmethod
 from multiprocessing import cpu_count
-from typing import ClassVar, Dict, FrozenSet, Optional
+from typing import ClassVar, Dict, Optional
 
 from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
@@ -54,7 +54,6 @@ class FileSystem:
     CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
-    DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
     def __init__(self, **kwargs):
         self._check_requires(**kwargs)

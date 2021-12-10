@@ -17,7 +17,6 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     TRAVERSE_PREFIX_LEN = 2
     REQUIRES = {"webdav4": "webdav4"}
     PARAM_CHECKSUM = "etag"
-    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def __init__(self, **config):
         super().__init__(**config)
