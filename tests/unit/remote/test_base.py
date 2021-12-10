@@ -135,11 +135,3 @@ def test_list_paths(dvc):
         walk_mock.assert_called_with(
             posixpath.join(path, "00", "0"), prefix=True
         )
-
-
-@pytest.mark.parametrize(
-    "hash_, result",
-    [(None, False), ("", False), ("3456.dir", True), ("3456", False)],
-)
-def test_is_dir_hash(hash_, result):
-    assert FileSystem.is_dir_hash(hash_) == result

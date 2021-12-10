@@ -1,7 +1,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Iterable, Optional, Set
+from typing import TYPE_CHECKING, Iterable, Set
 
 from ..errors import ObjectDBError
 
@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 class ObjectDBIndexBase(ABC):
     @abstractmethod
     def __init__(
-        self, tmp_dir: "StrPath", name: str, dir_suffix: Optional[str] = None
+        self,
+        tmp_dir: "StrPath",
+        name: str,
     ):
         pass
 
@@ -50,7 +52,9 @@ class ObjectDBIndexNoop(ObjectDBIndexBase):
     """No-op class for ODBs which are not indexed."""
 
     def __init__(
-        self, tmp_dir: "StrPath", name: str, dir_suffix: Optional[str] = None
+        self,
+        tmp_dir: "StrPath",
+        name: str,
     ):  # pylint: disable=super-init-not-called
         pass
 
@@ -80,7 +84,9 @@ class ObjectDBIndex(ObjectDBIndexBase):
     INDEX_DIR = "index"
 
     def __init__(
-        self, tmp_dir: "StrPath", name: str, dir_suffix: Optional[str] = None
+        self,
+        tmp_dir: "StrPath",
+        name: str,
     ):  # pylint: disable=super-init-not-called
         from diskcache import Index
 
@@ -92,10 +98,6 @@ class ObjectDBIndex(ObjectDBIndexBase):
         self.fs = LocalFileSystem()
         self.index = Index(self.index_dir)
 
-        if not dir_suffix:
-            dir_suffix = self.fs.CHECKSUM_DIR_SUFFIX
-        self.dir_suffix = dir_suffix
-
     def __iter__(self):
         return iter(self.index)
 
@@ -105,9 +107,6 @@ class ObjectDBIndex(ObjectDBIndexBase):
     def dir_hashes(self):
         """Iterate over .dir hashes stored in the index."""
         yield from (hash_ for hash_, is_dir in self.index.items() if is_dir)
-
-    def is_dir_hash(self, hash_: str):
-        return hash_.endswith(self.dir_suffix)
 
     def clear(self):
         """Clear this index (to force re-indexing later)."""

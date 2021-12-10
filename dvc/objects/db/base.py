@@ -372,17 +372,22 @@ class ObjectDB:
                     entry_obj.hash_info.value for _, entry_obj in tree
                 )
 
+        def _is_dir_hash(_hash):
+            from dvc.hash_info import HASH_DIR_SUFFIX
+
+            return _hash.endswith(HASH_DIR_SUFFIX)
+
         removed = False
         # hashes must be sorted to ensure we always remove .dir files first
         for hash_ in sorted(
             self.all(jobs, self.fs_path),
-            key=self.fs.is_dir_hash,
+            key=_is_dir_hash,
             reverse=True,
         ):
             if hash_ in used_hashes:
                 continue
             fs_path = self.hash_to_path(hash_)
-            if self.fs.is_dir_hash(hash_):
+            if _is_dir_hash(hash_):
                 # backward compatibility
                 # pylint: disable=protected-access
                 self._remove_unpacked_dir(hash_)
