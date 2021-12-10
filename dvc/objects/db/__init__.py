@@ -46,7 +46,6 @@ def get_index(odb) -> "ObjectDBIndexBase":
         hashlib.sha256(
             odb.fs.unstrip_protocol(odb.fs_path).encode("utf-8")
         ).hexdigest(),
-        odb.fs.CHECKSUM_DIR_SUFFIX,
     )
 
 

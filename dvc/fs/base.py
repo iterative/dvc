@@ -43,7 +43,6 @@ class FileSystem:
     REQUIRES: ClassVar[Dict[str, str]] = {}
     _JOBS = 4 * cpu_count()
 
-    CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 5
@@ -217,12 +216,6 @@ class FileSystem:
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
     # pylint: enable=unused-argument
-
-    @classmethod
-    def is_dir_hash(cls, hash_):
-        if not hash_:
-            return False
-        return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def upload(
         self,

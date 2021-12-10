@@ -16,11 +16,6 @@ def test_init(dvc, index):
     assert str(index.index_dir) == os.path.join(dvc.tmp_dir, "index", "foo")
 
 
-def test_is_dir_hash(dvc, index):
-    assert index.is_dir_hash("foo.dir")
-    assert not index.is_dir_hash("foo")
-
-
 def test_roundtrip(dvc, index):
     expected_dir = {"1234.dir"}
     expected_file = {"5678"}
