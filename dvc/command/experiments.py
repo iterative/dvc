@@ -727,10 +727,16 @@ class CmdExperimentsList(CmdBase):
 
 class CmdExperimentsPush(CmdBase):
     def run(self):
+        if self.args.experiment and (self.args.rev or self.args.all):
+            raise InvalidArgumentError(
+                "--all or --rev and experiment name are mutually exclusive."
+            )
 
         self.repo.experiments.push(
             self.args.git_remote,
             self.args.experiment,
+            all_=self.args.all,
+            rev=self.args.rev,
             force=self.args.force,
             push_cache=self.args.push_cache,
             dvc_remote=self.args.dvc_remote,
@@ -754,10 +760,16 @@ class CmdExperimentsPush(CmdBase):
 
 class CmdExperimentsPull(CmdBase):
     def run(self):
+        if self.args.experiment and (self.args.rev or self.args.all):
+            raise InvalidArgumentError(
+                "--all or --rev and experiment name are mutually exclusive."
+            )
 
         self.repo.experiments.pull(
             self.args.git_remote,
             self.args.experiment,
+            all_=self.args.all,
+            rev=self.args.rev,
             force=self.args.force,
             pull_cache=self.args.pull_cache,
             dvc_remote=self.args.dvc_remote,
@@ -879,6 +891,20 @@ class CmdExperimentsInit(CmdBase):
             )
 
         return 0
+
+
+parent_list_parser = argparse.ArgumentParser(add_help=False)
+filter_group = parent_list_parser.add_mutually_exclusive_group()
+filter_group.add_argument(
+    "--rev",
+    type=str,
+    default=None,
+    help=("experiments derived from the specified revision."),
+    metavar="<rev>",
+)
+filter_group.add_argument(
+    "--all", default=False, action="store_true", help="Affect all experiments."
+)
 
 
 def add_parser(subparsers, parent_parser):
@@ -1234,23 +1260,10 @@ def add_parser(subparsers, parent_parser):
     EXPERIMENTS_LIST_HELP = "List local and remote experiments."
     experiments_list_parser = experiments_subparsers.add_parser(
         "list",
-        parents=[parent_parser],
+        parents=[parent_list_parser, parent_parser],
         description=append_doc_link(EXPERIMENTS_LIST_HELP, "exp/list"),
         help=EXPERIMENTS_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    experiments_list_parser.add_argument(
-        "--rev",
-        type=str,
-        default=None,
-        help=(
-            "List experiments derived from the specified revision. "
-            "Defaults to HEAD if neither `--rev` nor `--all` are specified."
-        ),
-        metavar="<rev>",
-    )
-    experiments_list_parser.add_argument(
-        "--all", action="store_true", help="List all experiments."
     )
     experiments_list_parser.add_argument(
         "--names-only",
@@ -1273,7 +1286,7 @@ def add_parser(subparsers, parent_parser):
     EXPERIMENTS_PUSH_HELP = "Push a local experiment to a Git remote."
     experiments_push_parser = experiments_subparsers.add_parser(
         "push",
-        parents=[parent_parser],
+        parents=[parent_list_parser, parent_parser],
         description=append_doc_link(EXPERIMENTS_PUSH_HELP, "exp/push"),
         help=EXPERIMENTS_PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1325,14 +1338,14 @@ def add_parser(subparsers, parent_parser):
         "experiment",
         help="Experiments to push.",
         metavar="<experiments>",
-        nargs="+",
+        nargs="*",
     ).complete = completion.EXPERIMENT
     experiments_push_parser.set_defaults(func=CmdExperimentsPush)
 
     EXPERIMENTS_PULL_HELP = "Pull an experiment from a Git remote."
     experiments_pull_parser = experiments_subparsers.add_parser(
         "pull",
-        parents=[parent_parser],
+        parents=[parent_list_parser, parent_parser],
         description=append_doc_link(EXPERIMENTS_PULL_HELP, "exp/pull"),
         help=EXPERIMENTS_PULL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1384,7 +1397,7 @@ def add_parser(subparsers, parent_parser):
         "experiment",
         help="Experiments to pull.",
         metavar="<experiments>",
-        nargs="+",
+        nargs="*",
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)
 

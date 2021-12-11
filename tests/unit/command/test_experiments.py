@@ -196,8 +196,6 @@ def test_experiments_list(dvc, scm, mocker):
             "experiments",
             "list",
             "origin",
-            "--rev",
-            "foo",
             "--all",
             "--names-only",
         ]
@@ -210,7 +208,7 @@ def test_experiments_list(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, git_remote="origin", rev="foo", all_=True
+        cmd.repo, git_remote="origin", rev=None, all_=True
     )
 
 
@@ -243,11 +241,25 @@ def test_experiments_push(dvc, scm, mocker):
         "origin",
         ["experiment1", "experiment2"],
         force=True,
+        all_=False,
+        rev=None,
         push_cache=False,
         dvc_remote="my-remote",
         jobs=1,
         run_cache=True,
     )
+
+    cli_args = parse_args(
+        [
+            "experiments",
+            "push",
+            "origin",
+            "experiment1",
+            "--all",
+        ]
+    )
+    with pytest.raises(InvalidArgumentError):
+        cli_args.func(cli_args).run()
 
 
 def test_experiments_pull(dvc, scm, mocker):
@@ -256,7 +268,8 @@ def test_experiments_pull(dvc, scm, mocker):
             "experiments",
             "pull",
             "origin",
-            "experiment",
+            "--rev",
+            "bar",
             "--force",
             "--no-cache",
             "--remote",
@@ -276,7 +289,9 @@ def test_experiments_pull(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo,
         "origin",
-        ["experiment"],
+        [],
+        all_=False,
+        rev="bar",
         force=True,
         pull_cache=False,
         dvc_remote="my-remote",

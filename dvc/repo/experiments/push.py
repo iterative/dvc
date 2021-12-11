@@ -4,11 +4,16 @@ from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit
-from dvc.types import List, Union
+from dvc.types import List, Optional, Union
 
 from .base import ExpRefInfo
 from .exceptions import UnresolvedExpNamesError
-from .utils import exp_commits, name2exp_ref, push_refspec
+from .utils import (
+    exp_commits,
+    get_exp_ref_from_variables,
+    name2exp_ref,
+    push_refspec,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +25,17 @@ def push(
     git_remote: str,
     exp_names: Union[List[str], str],
     *args,
+    all_: bool = False,
+    rev: Optional[str] = None,
     force: bool = False,
     push_cache: bool = False,
     **kwargs,
 ):
+    if not exp_names:
+        exp_names = []
+        for info in get_exp_ref_from_variables(repo.scm, rev, all_, None):
+            exp_names.append(info.name)
+
     if isinstance(exp_names, str):
         exp_names = [exp_names]
     exp_ref_list, unresolved_exp_names = name2exp_ref(
