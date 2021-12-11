@@ -220,3 +220,30 @@ def name2exp_ref(
         else:
             exp_ref_list.append(exp_ref)
     return exp_ref_list, remain_list
+
+
+def get_exp_ref_from_variables(
+    scm: "Git", rev: Optional[str], all_: bool, git_remote: Optional[str]
+) -> Generator["ExpRefInfo", None, None]:
+    from dvc.scm import RevError, resolve_rev
+
+    if rev:
+        try:
+            rev = resolve_rev(scm, rev)
+        except RevError:
+            if not (git_remote and Git.is_sha(rev)):
+                # This could be a remote rev that has not been fetched yet
+                raise
+    elif not all_:
+        rev = scm.get_rev()
+
+    if rev:
+        if git_remote:
+            yield from remote_exp_refs_by_baseline(scm, git_remote, rev)
+        else:
+            yield from exp_refs_by_baseline(scm, rev)
+    elif all_:
+        if git_remote:
+            yield from remote_exp_refs(scm, git_remote)
+        else:
+            yield from exp_refs(scm)
