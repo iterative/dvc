@@ -703,16 +703,21 @@ class CmdExperimentsBranch(CmdBase):
 
 class CmdExperimentsList(CmdBase):
     def run(self):
+        from dvc.repo.experiments.base import BRANCH_NAMESPACE
+
         names_only = self.args.names_only
         exps = self.repo.experiments.ls(
             rev=self.args.rev,
             git_remote=self.args.git_remote,
             all_=self.args.all,
+            branch=self.args.branch,
         )
         for baseline in exps:
             tag = self.repo.scm.describe(baseline)
             if not tag:
-                branch = self.repo.scm.describe(baseline, base="refs/heads")
+                branch = self.repo.scm.describe(
+                    baseline, base=BRANCH_NAMESPACE
+                )
                 if branch:
                     tag = branch.split("/")[-1]
             name = tag if tag else baseline[:7]
@@ -727,9 +732,11 @@ class CmdExperimentsList(CmdBase):
 
 class CmdExperimentsPush(CmdBase):
     def run(self):
-        if self.args.experiment and (self.args.rev or self.args.all):
+        if self.args.experiment and any(
+            [self.args.rev, self.args.all, self.args.branch]
+        ):
             raise InvalidArgumentError(
-                "--all or --rev and experiment name are mutually exclusive."
+                "--all/rev/branch and experiment name are mutually exclusive."
             )
 
         self.repo.experiments.push(
@@ -737,6 +744,7 @@ class CmdExperimentsPush(CmdBase):
             self.args.experiment,
             all_=self.args.all,
             rev=self.args.rev,
+            branch=self.args.branch,
             force=self.args.force,
             push_cache=self.args.push_cache,
             dvc_remote=self.args.dvc_remote,
@@ -760,9 +768,11 @@ class CmdExperimentsPush(CmdBase):
 
 class CmdExperimentsPull(CmdBase):
     def run(self):
-        if self.args.experiment and (self.args.rev or self.args.all):
+        if self.args.experiment and any(
+            [self.args.rev, self.args.all, self.args.branch]
+        ):
             raise InvalidArgumentError(
-                "--all or --rev and experiment name are mutually exclusive."
+                "--all/rev/branch and experiment name are mutually exclusive."
             )
 
         self.repo.experiments.pull(
@@ -770,6 +780,7 @@ class CmdExperimentsPull(CmdBase):
             self.args.experiment,
             all_=self.args.all,
             rev=self.args.rev,
+            branch=self.args.branch,
             force=self.args.force,
             pull_cache=self.args.pull_cache,
             dvc_remote=self.args.dvc_remote,
@@ -895,6 +906,13 @@ class CmdExperimentsInit(CmdBase):
 
 parent_list_parser = argparse.ArgumentParser(add_help=False)
 filter_group = parent_list_parser.add_mutually_exclusive_group()
+filter_group.add_argument(
+    "--branch",
+    type=str,
+    default=None,
+    help=("experiments derived from the specified branch."),
+    metavar="<branch>",
+)
 filter_group.add_argument(
     "--rev",
     type=str,

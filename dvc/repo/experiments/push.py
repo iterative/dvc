@@ -27,13 +27,16 @@ def push(
     *args,
     all_: bool = False,
     rev: Optional[str] = None,
+    branch: Optional[str] = None,
     force: bool = False,
     push_cache: bool = False,
     **kwargs,
 ):
     if not exp_names:
         exp_names = []
-        for info in get_exp_ref_from_variables(repo.scm, rev, all_, None):
+        for info in get_exp_ref_from_variables(
+            repo.scm, rev, all_, branch, None
+        ):
             exp_names.append(info.name)
 
     if isinstance(exp_names, str):

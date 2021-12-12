@@ -223,9 +223,15 @@ def name2exp_ref(
 
 
 def get_exp_ref_from_variables(
-    scm: "Git", rev: Optional[str], all_: bool, git_remote: Optional[str]
+    scm: "Git",
+    rev: Optional[str],
+    all_: bool,
+    branch: Optional[str],
+    git_remote: Optional[str],
 ) -> Generator["ExpRefInfo", None, None]:
     from dvc.scm import RevError, resolve_rev
+
+    rev = branch or rev
 
     if rev:
         try:

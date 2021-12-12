@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
-from dvc.repo.experiments.base import ExpRefInfo
+from dvc.repo.experiments.base import BRANCH_NAMESPACE, ExpRefInfo
 from dvc.repo.experiments.executor.base import ExecutorInfo
 from dvc.repo.experiments.utils import fix_exp_head
 from dvc.repo.metrics.show import _gather_metrics
@@ -55,7 +55,7 @@ def _collect_experiment_commit(
             res["metrics"] = vals
 
         if not sha_only and rev != "workspace":
-            for refspec in ["refs/tags", "refs/heads"]:
+            for refspec in ["refs/tags", BRANCH_NAMESPACE]:
                 name = repo.scm.describe(rev, base=refspec)
                 if name:
                     break

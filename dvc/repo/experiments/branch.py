@@ -5,7 +5,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import RevError
 
-from .base import InvalidExpRevError
+from .base import BRANCH_NAMESPACE, InvalidExpRevError
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ def branch(repo, exp_rev, branch_name, *args, **kwargs):
     if not ref_info:
         raise InvalidExpRevError(exp_rev)
 
-    branch_ref = f"refs/heads/{branch_name}"
+    branch_ref = f"{BRANCH_NAMESPACE}/{branch_name}"
     if repo.scm.get_ref(branch_ref):
         raise InvalidArgumentError(
             f"Git branch '{branch_name}' already exists."

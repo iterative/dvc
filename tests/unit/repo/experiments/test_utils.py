@@ -7,6 +7,7 @@ from dvc.repo.experiments.utils import (
     get_exp_ref_from_variables,
     resolve_exp_ref,
 )
+from dvc.scm import RevError
 
 
 def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
@@ -51,10 +52,11 @@ def test_run_check_ref_format(scm, name, result):
 
 @pytest.mark.parametrize("git_remote", [True, None])
 @pytest.mark.parametrize(
-    "all_,rev,result",
+    "all_,rev,branch,result",
     [
-        (True, None, {"exp1", "exp2", "exp3", "exp4"}),
-        (None, True, {"exp1", "exp2"}),
+        (True, None, None, {"exp1", "exp2", "exp3", "exp4"}),
+        (None, True, None, {"exp1", "exp2"}),
+        (None, None, True, {"exp4"}),
     ],
 )
 def test_get_exp_ref_from_variables(
@@ -64,6 +66,7 @@ def test_get_exp_ref_from_variables(
     git_remote,
     all_,
     rev,
+    branch,
     result,
 ):
     tmp_dir.scm_gen("foo", "init", commit="init")
@@ -74,9 +77,10 @@ def test_get_exp_ref_from_variables(
     ref, _ = commit_exp_ref(tmp_dir, scm, contents="2", name="exp2")
     ref_list.append(ref)
     tmp_dir.scm_gen("foo", "init2", commit="init")
-    _ = scm.get_rev()
     ref, _ = commit_exp_ref(tmp_dir, scm, contents="3", name="exp3")
     ref_list.append(ref)
+    tmp_dir.scm_gen("foo", "branch_new", commit="branch_new")
+    scm.branch("new")
     ref, _ = commit_exp_ref(tmp_dir, scm, contents="4", name="exp4")
     ref_list.append(ref)
 
@@ -86,7 +90,14 @@ def test_get_exp_ref_from_variables(
         git_remote = git_upstream.url
         for ref in ref_list:
             scm.push_refspec(git_upstream.url, ref, ref)
+    if branch:
+        branch = "new"
 
-    gen = get_exp_ref_from_variables(scm, rev, all_, git_remote)
-
+    gen = get_exp_ref_from_variables(scm, rev, all_, branch, git_remote)
     assert {exp_ref.name for exp_ref in gen} == result
+
+    if branch:
+        with pytest.raises(RevError):
+            list(
+                get_exp_ref_from_variables(scm, rev, all_, "other", git_remote)
+            )

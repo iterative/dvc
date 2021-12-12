@@ -4,6 +4,7 @@ from dvc.exceptions import DvcException, InvalidArgumentError
 
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>
+BRANCH_NAMESPACE = "refs/heads"
 EXPS_NAMESPACE = "refs/exps"
 EXPS_STASH = f"{EXPS_NAMESPACE}/stash"
 EXEC_NAMESPACE = f"{EXPS_NAMESPACE}/exec"
