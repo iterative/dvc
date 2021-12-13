@@ -5,20 +5,17 @@ from datetime import datetime
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.experiments import (
-    CmdExperimentsApply,
-    CmdExperimentsBranch,
-    CmdExperimentsDiff,
-    CmdExperimentsGC,
-    CmdExperimentsInit,
-    CmdExperimentsList,
-    CmdExperimentsPull,
-    CmdExperimentsPush,
-    CmdExperimentsRemove,
-    CmdExperimentsRun,
-    CmdExperimentsShow,
-    show_experiments,
-)
+from dvc.command.experiments.apply import CmdExperimentsApply
+from dvc.command.experiments.branch import CmdExperimentsBranch
+from dvc.command.experiments.diff import CmdExperimentsDiff
+from dvc.command.experiments.gc import CmdExperimentsGC
+from dvc.command.experiments.init import CmdExperimentsInit
+from dvc.command.experiments.ls import CmdExperimentsList
+from dvc.command.experiments.pull import CmdExperimentsPull
+from dvc.command.experiments.push import CmdExperimentsPush
+from dvc.command.experiments.remove import CmdExperimentsRemove
+from dvc.command.experiments.run import CmdExperimentsRun
+from dvc.command.experiments.show import CmdExperimentsShow, show_experiments
 from dvc.exceptions import DvcParserError, InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage import PipelineStage
