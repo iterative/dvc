@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from dvc.command.experiments import CmdExperimentsInit
+from dvc.command.experiments.init import CmdExperimentsInit
 from dvc.exceptions import DvcException
 from dvc.main import main
 from dvc.repo.experiments.init import init
