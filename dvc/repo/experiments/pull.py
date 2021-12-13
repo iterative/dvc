@@ -23,6 +23,7 @@ def pull(
     all_: bool = False,
     rev: Optional[str] = None,
     branch: Optional[str] = None,
+    max_count: int = 1,
     force: bool = False,
     pull_cache: bool = False,
     **kwargs,
@@ -30,7 +31,7 @@ def pull(
     if not exp_names:
         exp_names = []
         for info in get_exp_ref_from_variables(
-            repo.scm, rev, all_, branch, git_remote
+            repo.scm, rev, all_, branch, max_count, git_remote
         ):
             exp_names.append(info.name)
 

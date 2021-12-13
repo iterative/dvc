@@ -711,6 +711,7 @@ class CmdExperimentsList(CmdBase):
             git_remote=self.args.git_remote,
             all_=self.args.all,
             branch=self.args.branch,
+            max_count=self.args.max_count,
         )
         for baseline in exps:
             tag = self.repo.scm.describe(baseline)
@@ -745,6 +746,7 @@ class CmdExperimentsPush(CmdBase):
             all_=self.args.all,
             rev=self.args.rev,
             branch=self.args.branch,
+            max_count=self.args.max_count,
             force=self.args.force,
             push_cache=self.args.push_cache,
             dvc_remote=self.args.dvc_remote,
@@ -781,6 +783,7 @@ class CmdExperimentsPull(CmdBase):
             all_=self.args.all,
             rev=self.args.rev,
             branch=self.args.branch,
+            max_count=self.args.max_count,
             force=self.args.force,
             pull_cache=self.args.pull_cache,
             dvc_remote=self.args.dvc_remote,
@@ -922,6 +925,15 @@ filter_group.add_argument(
 )
 filter_group.add_argument(
     "--all", default=False, action="store_true", help="Affect all experiments."
+)
+parent_list_parser.add_argument(
+    "--max-count",
+    type=int,
+    default=1,
+    dest="max_count",
+    metavar="<max_count>",
+    help="Show the last `num` commits from `rev` or `branch` or HEAD. Set `-1`"
+    "to show the full history",
 )
 
 

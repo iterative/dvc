@@ -28,6 +28,7 @@ def push(
     all_: bool = False,
     rev: Optional[str] = None,
     branch: Optional[str] = None,
+    max_count: int = 1,
     force: bool = False,
     push_cache: bool = False,
     **kwargs,
@@ -35,7 +36,7 @@ def push(
     if not exp_names:
         exp_names = []
         for info in get_exp_ref_from_variables(
-            repo.scm, rev, all_, branch, None
+            repo.scm, rev, all_, branch, max_count, None
         ):
             exp_names.append(info.name)
 

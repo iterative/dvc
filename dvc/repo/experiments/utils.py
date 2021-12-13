@@ -227,6 +227,7 @@ def get_exp_ref_from_variables(
     rev: Optional[str],
     all_: bool,
     branch: Optional[str],
+    max_count: int,
     git_remote: Optional[str],
 ) -> Generator["ExpRefInfo", None, None]:
     from dvc.scm import RevError, resolve_rev
@@ -244,10 +245,15 @@ def get_exp_ref_from_variables(
         rev = scm.get_rev()
 
     if rev:
+        rev_list = scm.last_n_commits(rev, max_count=max_count)
         if git_remote:
-            yield from remote_exp_refs_by_baseline(scm, git_remote, rev)
+            for revision in rev_list:
+                yield from remote_exp_refs_by_baseline(
+                    scm, git_remote, revision
+                )
         else:
-            yield from exp_refs_by_baseline(scm, rev)
+            for revision in rev_list:
+                yield from exp_refs_by_baseline(scm, revision)
     elif all_:
         if git_remote:
             yield from remote_exp_refs(scm, git_remote)

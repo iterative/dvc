@@ -208,7 +208,12 @@ def test_experiments_list(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, git_remote="origin", rev=None, all_=True, branch=None
+        cmd.repo,
+        git_remote="origin",
+        rev=None,
+        all_=True,
+        branch=None,
+        max_count=1,
     )
 
 
@@ -244,6 +249,7 @@ def test_experiments_push(dvc, scm, mocker):
         all_=False,
         rev=None,
         branch=None,
+        max_count=1,
         push_cache=False,
         dvc_remote="my-remote",
         jobs=1,
@@ -277,6 +283,8 @@ def test_experiments_pull(dvc, scm, mocker):
             "my-remote",
             "--jobs",
             "1",
+            "--max-count",
+            "4",
             "--run-cache",
         ]
     )
@@ -295,6 +303,7 @@ def test_experiments_pull(dvc, scm, mocker):
         rev="bar",
         branch=None,
         force=True,
+        max_count=4,
         pull_cache=False,
         dvc_remote="my-remote",
         jobs=1,

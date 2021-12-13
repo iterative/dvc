@@ -52,11 +52,13 @@ def test_run_check_ref_format(scm, name, result):
 
 @pytest.mark.parametrize("git_remote", [True, None])
 @pytest.mark.parametrize(
-    "all_,rev,branch,result",
+    "all_,rev,branch,max_count,result",
     [
-        (True, None, None, {"exp1", "exp2", "exp3", "exp4"}),
-        (None, True, None, {"exp1", "exp2"}),
-        (None, None, True, {"exp4"}),
+        (True, None, None, 1, {"exp1", "exp2", "exp3", "exp4"}),
+        (None, True, None, 1, {"exp1", "exp2"}),
+        (None, None, True, 1, {"exp4"}),
+        (None, None, True, 2, {"exp3", "exp4"}),
+        (None, None, True, -1, {"exp1", "exp2", "exp3", "exp4"}),
     ],
 )
 def test_get_exp_ref_from_variables(
@@ -67,6 +69,7 @@ def test_get_exp_ref_from_variables(
     all_,
     rev,
     branch,
+    max_count,
     result,
 ):
     tmp_dir.scm_gen("foo", "init", commit="init")
@@ -93,11 +96,15 @@ def test_get_exp_ref_from_variables(
     if branch:
         branch = "new"
 
-    gen = get_exp_ref_from_variables(scm, rev, all_, branch, git_remote)
+    gen = get_exp_ref_from_variables(
+        scm, rev, all_, branch, max_count, git_remote
+    )
     assert {exp_ref.name for exp_ref in gen} == result
 
     if branch:
         with pytest.raises(RevError):
             list(
-                get_exp_ref_from_variables(scm, rev, all_, "other", git_remote)
+                get_exp_ref_from_variables(
+                    scm, rev, all_, "other", max_count, git_remote
+                )
             )

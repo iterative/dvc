@@ -19,11 +19,12 @@ def ls(
     git_remote: Optional[str] = None,
     all_: bool = False,
     branch: Optional[str] = None,
+    max_count: int = 1,
     **kwargs
 ):
     results = defaultdict(list)
     for info in get_exp_ref_from_variables(
-        repo.scm, rev, all_, branch, git_remote
+        repo.scm, rev, all_, branch, max_count, git_remote
     ):
         results[info.baseline_sha].append(info.name)
 
