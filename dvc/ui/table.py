@@ -91,6 +91,7 @@ def rich_table(
         False: None,
         "simple": box.SIMPLE,
         "minimal": box.MINIMAL,
+        "horizontals": box.HORIZONTALS,
     }
 
     table = Table(box=border_style[borders])

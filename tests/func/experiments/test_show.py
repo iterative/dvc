@@ -274,7 +274,6 @@ def test_show_filter(
     from dvc.ui import ui
 
     capsys.readouterr()
-    div = "│" if os.name == "nt" else "┃"
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     params_file = tmp_dir / "params.yaml"
@@ -321,11 +320,11 @@ def test_show_filter(
     cap = capsys.readouterr()
 
     for i in included:
-        assert f"{div} params.yaml:{i} {div}" in cap.out
-        assert f"{div} metrics.yaml:{i} {div}" in cap.out
+        assert f"params.yaml:{i}" in cap.out
+        assert f"metrics.yaml:{i}" in cap.out
     for e in excluded:
-        assert f"{div} params.yaml:{e} {div}" not in cap.out
-        assert f"{div} metrics.yaml:{e} {div}" not in cap.out
+        assert f"params.yaml:{e}" not in cap.out
+        assert f"metrics.yaml:{e}" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
