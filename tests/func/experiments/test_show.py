@@ -387,9 +387,13 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-    makedirs(pid_dir, True)
     info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.INFOFILE_EXT}")
+    pidfile = os.path.join(
+        pid_dir,
+        "workspace",
+        f"workspace{BaseExecutor.INFOFILE_EXT}",
+    )
+    makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
     assert dvc.experiments.show()["workspace"] == {
@@ -418,9 +422,13 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-    makedirs(pid_dir, True)
     info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.INFOFILE_EXT}")
+    pidfile = os.path.join(
+        pid_dir,
+        exp_rev,
+        f"{exp_rev}{BaseExecutor.INFOFILE_EXT}",
+    )
+    makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
     results = dvc.experiments.show()
@@ -450,7 +458,6 @@ def test_show_running_checkpoint(
     exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
 
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-    makedirs(pid_dir, True)
     executor = (
         BaseExecutor.DEFAULT_LOCATION
         if workspace
@@ -463,6 +470,7 @@ def test_show_running_checkpoint(
     )
     rev = "workspace" if workspace else stash_rev
     pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.INFOFILE_EXT}")
+    makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
     mocker.patch.object(
