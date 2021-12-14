@@ -479,6 +479,9 @@ class BaseExecutor(ABC):
                             "\t%s",
                             ", ".join(untracked),
                         )
+            info.result_hash = exp_hash
+            info.result_ref = ref
+            info.result_force = repro_force
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
@@ -528,7 +531,8 @@ class BaseExecutor(ABC):
             raise
         finally:
             if infofile is not None:
-                remove(infofile)
+                with modify_json(infofile) as d:
+                    d.update(info.asdict())
             dvc.close()
             os.chdir(old_cwd)
 

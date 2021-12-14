@@ -2,7 +2,8 @@ import logging
 import os
 from abc import ABC
 from collections import defaultdict, deque
-from typing import TYPE_CHECKING, Deque, Dict, Optional, Tuple, Type
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Deque, Dict, Generator, Optional, Tuple, Type
 
 from dvc.proc.manager import ProcessManager
 
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class BaseExecutorManager(ABC):
+class BaseExecutorManager(ABC, Mapping):
     """Manages executors for a collection of experiments to be run."""
 
     EXECUTOR_CLS: Type = BaseExecutor
@@ -42,49 +43,68 @@ class BaseExecutorManager(ABC):
         self.scm = scm
         makedirs(wdir, exist_ok=True)
         self.wdir = wdir
-        self.executors = self._load_infos()
-        self._queue: Deque[Tuple[str, "BaseExecutor"]] = deque()
         self.proc = ProcessManager(self.pid_dir)
+        self._attached: Dict[str, "BaseExecutor"] = {}
+        self._detached: Dict[str, "BaseExecutor"] = dict(self._load_infos())
+        self._queue: Deque[Tuple[str, "BaseExecutor"]] = deque()
+
+    def __getitem__(self, key: str) -> "BaseExecutor":
+        try:
+            return self._attached[key]
+        except KeyError:
+            pass
+        return self._detached[key]
+
+    def __iter__(self):
+        yield from self._attached
+        yield from self._detached
+
+    def __len__(self):
+        return len(self._attached) + len(self._detached)
 
     @property
     def pid_dir(self) -> str:
         return os.path.join(self.wdir, EXEC_PID_DIR)
 
     def enqueue(self, rev: str, executor: "BaseExecutor"):
+        assert rev not in self
         self._queue.append((rev, executor))
 
-    def _load_infos(self) -> Dict[str, "BaseExecutor"]:
-        # TODO: pending process manager changes
-        # import json
-        # from urllib.parse import urlparse
-        # from .base import ExecutorInfo
-        # from .ssh import SSHExecutor
+    def _load_infos(self) -> Generator[Tuple[str, "BaseExecutor"], None, None]:
+        import json
+        from urllib.parse import urlparse
 
-        # def make_executor(info: "ExecutorInfo"):
-        #     if info.git_url:
-        #         scheme = urlparse(info.git_url)
-        #         if scheme == "file":
-        #             cls = TempDirExecutor
-        #         elif scheme == "ssh":
-        #             cls = SSHExecutor
-        #         else:
-        #             raise NotImplementedError
-        #     else:
-        #         cls = WorkspaceExecutor
-        #     return cls.from_info(info)
+        from .base import ExecutorInfo
+        from .ssh import SSHExecutor
 
-        infos: Dict[str, "BaseExecutor"] = {}
-        # for name in self.proc.processes():
-        #     infofile = os.path.join(
-        #         name, f"{name}{BaseExecutor.INFOFILE_EXT}"
-        #     )
-        #     try:
-        #         with open(infofile, encoding="utf-8") as fobj:
-        #             info = ExecutorInfo.from_dict(json.load(fobj))
-        #         infos[name] = make_executor(info)
-        #     except OSError:
-        #         continue
-        return infos
+        def make_executor(info: "ExecutorInfo"):
+            if info.git_url:
+                scheme = urlparse(info.git_url).scheme
+                if scheme == "file":
+                    cls: Type = TempDirExecutor
+                elif scheme == "ssh":
+                    cls = SSHExecutor
+                else:
+                    raise NotImplementedError
+            else:
+                cls = WorkspaceExecutor
+            return cls.from_info(info)
+
+        for name in self.proc:
+            infofile = self.get_infofile_path(name)
+            try:
+                with open(infofile, encoding="utf-8") as fobj:
+                    info = ExecutorInfo.from_dict(json.load(fobj))
+                yield name, make_executor(info)
+            except OSError:
+                continue
+
+    def get_infofile_path(self, name: str) -> str:
+        return os.path.join(
+            self.pid_dir,
+            name,
+            f"{name}{BaseExecutor.INFOFILE_EXT}",
+        )
 
     @classmethod
     def from_stash_entries(
@@ -120,8 +140,14 @@ class BaseExecutorManager(ABC):
                 scm.remove_ref(ref)
         return manager
 
-    def exec_queue(self, jobs: Optional[int] = 1):
+    def exec_queue(self, jobs: Optional[int] = 1, detach: bool = False):
         """Run dvc repro for queued executors in parallel."""
+        if detach:
+            raise NotImplementedError
+            # TODO use ProcessManager.spawn() to support detached runs
+        return self._exec_attached(jobs=jobs)
+
+    def _exec_attached(self, jobs: Optional[int] = 1):
         import signal
         from concurrent.futures import (
             CancelledError,
@@ -141,10 +167,7 @@ class BaseExecutorManager(ABC):
             futures = {}
             while self._queue:
                 rev, executor = self._queue.popleft()
-                infofile = os.path.join(
-                    self.pid_dir,
-                    f"{rev}{executor.INFOFILE_EXT}",
-                )
+                infofile = self.get_infofile_path(rev)
                 future = workers.submit(
                     executor.reproduce,
                     info=executor.info,
@@ -154,6 +177,7 @@ class BaseExecutorManager(ABC):
                     log_level=logger.getEffectiveLevel(),
                 )
                 futures[future] = (rev, executor)
+                self._attached[rev] = executor
 
             try:
                 wait(futures)
@@ -194,7 +218,7 @@ class BaseExecutorManager(ABC):
                         rev[:7],
                     )
                 finally:
-                    executor.cleanup()
+                    self.cleanup_executor(rev, executor)
 
         return result
 
@@ -226,6 +250,16 @@ class BaseExecutorManager(ABC):
                 results[exp_rev] = exec_result.exp_hash
 
         return results
+
+    def cleanup_executor(self, rev: str, executor: "BaseExecutor"):
+        from dvc.utils.fs import remove
+
+        executor.cleanup()
+        try:
+            self.proc.remove(rev)
+        except KeyError:
+            pass
+        remove(os.path.join(self.pid_dir, rev))
 
 
 class TempDirExecutorManager(BaseExecutorManager):
@@ -272,7 +306,7 @@ class WorkspaceExecutorManager(BaseExecutorManager):
             results[exp_rev] = exec_result.exp_hash
         return results
 
-    def exec_queue(self, jobs: Optional[int] = 1):
+    def exec_queue(self, jobs: Optional[int] = 1, detach: bool = False):
         """Run a single WorkspaceExecutor.
 
         Workspace execution is done within the main DVC process
@@ -282,12 +316,12 @@ class WorkspaceExecutorManager(BaseExecutorManager):
         from dvc.stage.monitor import CheckpointKilledError
 
         assert len(self._queue) == 1
+        assert not detach
         result: Dict[str, Dict[str, str]] = defaultdict(dict)
         rev, executor = self._queue.popleft()
-        infofile = os.path.join(
-            self.pid_dir,
-            f"{rev}{executor.INFOFILE_EXT}",
-        )
+
+        exec_name = "workspace"
+        infofile = self.get_infofile_path(exec_name)
         try:
             exec_result = executor.reproduce(
                 info=executor.info,
@@ -313,5 +347,5 @@ class WorkspaceExecutorManager(BaseExecutorManager):
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
         finally:
-            executor.cleanup()
+            self.cleanup_executor(exec_name, executor)
         return result
