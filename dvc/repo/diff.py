@@ -170,13 +170,20 @@ def _output_paths(repo, targets):
 
 
 def _dir_output_paths(fs, fs_path, obj, targets=None):
+    if fs.scheme == "local":
+        # NOTE: workaround for filesystems that are based on full local paths
+        # (e.g. gitfs, dvcfs, repofs). Proper solution is to use upcoming
+        # fsspec's prefixfs to use relpaths as fs_paths.
+        base = fs.path.relpath(fs_path, os.getcwd())
+    else:
+        base = fs_path
     for key, _, oid in obj:
         fname = fs.path.join(fs_path, *key)
         if targets is None or any(
             fs.path.isin_or_eq(fname, target) for target in targets
         ):
             # pylint: disable=no-member
-            yield fs.path.join(fs.path.name(fs_path), *key), oid.value
+            yield fs.path.join(base, *key), oid.value
 
 
 def _filter_missing(repo_fs, paths):
