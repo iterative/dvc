@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 import threading
@@ -475,7 +476,9 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             info_result = fs.info(fs_path)
 
         if not info_result and not dvc_meta:
-            raise FileNotFoundError
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), fs_path
+            )
 
         from ._metadata import Metadata
 
