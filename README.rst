@@ -103,7 +103,7 @@ Snap (Snapcraft/Linux)
 
 This corresponds to the latest tagged release.
 Add ``--beta`` for the latest tagged release candidate,
-or ``--edge`` for the latest ``master`` version.
+or ``--edge`` for the latest ``main`` version.
 
 Choco (Chocolatey/Windows)
 --------------------------
@@ -254,7 +254,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://dvc.org
    :alt: DVC logo
 
-.. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=master
+.. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=main
    :target: https://github.com/iterative/dvc/actions
    :alt: GHA Tests
 
@@ -262,7 +262,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://codeclimate.com/github/iterative/dvc
    :alt: Code Climate
 
-.. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
+.. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc
    :alt: Codecov
 
