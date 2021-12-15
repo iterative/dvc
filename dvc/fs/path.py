@@ -80,12 +80,9 @@ class Path:
         # pylint: disable=arguments-out-of-order
         return self.isin_or_eq(left, right) or self.isin(right, left)
 
-    def relpath(self, path, base):
-        assert len(path) > len(base)
-        assert path.startswith(base)
-        normpath = path.rstrip(self.flavour.sep)
-        normbase = base.rstrip(self.flavour.sep)
-        return normpath[len(normbase) + 1 :]
+    def relpath(self, path, start):
+        assert start
+        return self.flavour.relpath(path, start=start)
 
     def relparts(self, path, base):
         return self.parts(self.relpath(path, base))
