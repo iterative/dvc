@@ -141,7 +141,9 @@ class FSSpecWrapper(FileSystem):
         self.makedirs(self.path.parent(to_info))
         with self.open(to_info, "wb") as fdest:
             shutil.copyfileobj(
-                fobj, fdest, length=getattr(fdest, "blocksize", None)
+                fobj,
+                fdest,
+                length=getattr(fdest, "blocksize", None),  # type: ignore
             )
 
 
