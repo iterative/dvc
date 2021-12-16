@@ -175,7 +175,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
         name="copy_double",
     )
     props = {"title": "TITLE"}
-    dvc.plots.modify("subdir", {"title": "TITLE"})
+    dvc.plots.modify("subdir", props)
 
     result = dvc.plots.show()
     assert set(result["workspace"]["data"]) == {p1, p2}
@@ -254,3 +254,45 @@ def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template):
     result = dvc.plots.show(revs=["v1", "workspace"])
     assert result["v1"]["data"]["plot.jpg"]["data"] == b"content"
     assert result["workspace"]["data"]["plot.jpg"]["data"] == b"content2"
+
+
+def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    subdir_metric = [{"y": 101, "x": 3}, {"y": 202, "x": 4}]
+
+    pname = "source.json"
+    (tmp_dir / pname).dump_json(metric, sort_keys=True)
+
+    sname = "subdir_source.json"
+    (tmp_dir / sname).dump_json(subdir_metric, sort_keys=True)
+
+    p1 = os.path.join("subdir", "p1.json")
+    p2 = os.path.join("subdir", "p2.json")
+    subdir_stage = tmp_dir.dvc.run(
+        cmd=(
+            f"mkdir subdir && python copy.py {sname} {p1} && "
+            f"python copy.py {sname} {p2}"
+        ),
+        deps=[sname],
+        single_stage=False,
+        plots=["subdir"],
+        name="copy_double",
+    )
+
+    run_copy_metrics(
+        pname,
+        "plot.json",
+        plots=["plot.json"],
+        commit="there is metric",
+    )
+
+    remove(subdir_stage.outs[0].cache_path)
+    remove(subdir_stage.outs[0].fs_path)
+
+    result = dvc.plots.show()
+    assert "error" in result["workspace"]["data"]["subdir"]
+    # make sure others gets loaded
+    assert result["workspace"]["data"]["plot.json"]["data"] == metric
