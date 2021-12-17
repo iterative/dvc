@@ -256,7 +256,10 @@ SCHEMA = {
         # enabled by default. It's of no use, kept for backward compatibility.
         Optional("parametrization", default=True): Bool,
     },
-    "plots": {"html_template": str},
+    "plots": {
+        "html_template": str,
+        Optional("auto_open", default=False): Bool,
+    },
     "exp": {
         "code": str,
         "data": str,

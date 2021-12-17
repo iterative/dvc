@@ -94,8 +94,8 @@ class CmdPlots(CmdBase):
             )
 
             ui.write(index_path.as_uri())
-
-            if self.args.open:
+            auto_open = self.repo.config["plots"].get("auto_open", False)
+            if self.args.open or auto_open:
                 return ui.open_browser(index_path)
 
             return 0
