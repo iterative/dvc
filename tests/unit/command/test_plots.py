@@ -138,11 +138,19 @@ def test_plots_diff_vega(dvc, mocker, capsys, plots_data):
     render_mock.assert_not_called()
 
 
-def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data):
+@pytest.mark.parametrize("auto_open", [True, False])
+def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data, auto_open):
     mocked_open = mocker.patch("webbrowser.open", return_value=True)
-    cli_args = parse_args(
-        ["plots", "diff", "--targets", "plots.csv", "--open"]
-    )
+
+    args = ["plots", "diff", "--targets", "plots.csv"]
+
+    if auto_open:
+        with dvc.config.edit() as conf:
+            conf["plots"]["auto_open"] = True
+    else:
+        args.append("--open")
+
+    cli_args = parse_args(args)
     cmd = cli_args.func(cli_args)
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
 

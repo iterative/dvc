@@ -241,7 +241,14 @@ def test_live_checkpoints_resume(
     assert checkpoints_metric(results, "logs.json", "metric2") == [8, 6, 4, 2]
 
 
-def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
+@pytest.mark.parametrize("auto_open", [False, True])
+def test_dvc_generates_html_during_run(
+    tmp_dir, dvc, mocker, live_stage, auto_open
+):
+    if auto_open:
+        with dvc.config.edit() as conf:
+            conf["plots"]["auto_open"] = True
+
     show_spy = mocker.spy(dvc.live, "show")
     webbrowser_open = mocker.patch("dvc.repo.live.webbrowser_open")
 
@@ -265,7 +272,7 @@ def test_dvc_generates_html_during_run(tmp_dir, dvc, mocker, live_stage):
     live_stage(summary=True, live="logs", code=script)
 
     assert show_spy.call_count == 2
-    assert webbrowser_open.call_count == 2
+    assert webbrowser_open.call_count == (2 if auto_open else 0)
 
 
 def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):
