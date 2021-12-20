@@ -1,10 +1,15 @@
 import argparse
 
-from dvc.command.base import append_doc_link, fix_subparsers
+from dvc.command.base import (
+    append_doc_link,
+    fix_plumbing_subparsers,
+    fix_subparsers,
+)
 from dvc.command.experiments import (
     apply,
     branch,
     diff,
+    exec_run,
     gc,
     init,
     ls,
@@ -19,6 +24,7 @@ SUB_COMMANDS = [
     apply,
     branch,
     diff,
+    exec_run,
     gc,
     init,
     ls,
@@ -51,3 +57,4 @@ def add_parser(subparsers, parent_parser):
     fix_subparsers(experiments_subparsers)
     for cmd in SUB_COMMANDS:
         cmd.add_parser(experiments_subparsers, parent_parser)
+    fix_plumbing_subparsers(experiments_subparsers)

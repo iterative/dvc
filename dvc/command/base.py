@@ -57,3 +57,13 @@ class CmdBaseNoRepo(CmdBase):
 
     def do_run(self):
         return self.run()
+
+
+def fix_plumbing_subparsers(subparsers):
+    # metavar needs to be explicitly set in order to hide plumbing subcommands
+    # from the 'positional arguments' choices list
+    # see: https://bugs.python.org/issue22848
+    cmds = [
+        cmd for cmd, parser in subparsers.choices.items() if parser.add_help
+    ]
+    subparsers.metavar = "{{{}}}".format(",".join(cmds))
