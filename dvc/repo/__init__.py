@@ -76,8 +76,10 @@ class Repo:
     from dvc.repo.run import run
     from dvc.repo.status import status
     from dvc.repo.update import update
+    from dvc.repo.du import du as _du
 
     ls = staticmethod(_ls)
+    du = staticmethod(_du)
     get = staticmethod(_get)
     get_url = staticmethod(_get_url)
 
