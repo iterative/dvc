@@ -86,6 +86,13 @@ class StageLoader(Mapping):
         stage.meta = stage_data.get(Stage.PARAM_META)
 
         deps = project(stage_data, [stage.PARAM_DEPS, stage.PARAM_PARAMS])
+        if isinstance(deps.get(stage.PARAM_DEPS), dict):
+            deps[stage.PARAM_DEPS] = list(deps[stage.PARAM_DEPS].values())
+        # remove empty deps (we use them if some deps should be erased in some case)
+        if deps.get(stage.PARAM_DEPS) is not None:
+            deps[stage.PARAM_DEPS] = list(
+                filter(lambda x: x, deps[stage.PARAM_DEPS])
+            )
         fill_stage_dependencies(stage, **deps)
 
         outs = project(
@@ -97,6 +104,8 @@ class StageLoader(Mapping):
                 stage.PARAM_LIVE,
             ],
         )
+        if isinstance(outs.get(stage.PARAM_OUTS), dict):
+            outs[stage.PARAM_OUTS] = list(outs[stage.PARAM_OUTS].values())
         stage.outs = lcat(
             output.load_from_pipeline(stage, data, typ=key)
             for key, data in outs.items()

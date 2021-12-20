@@ -81,14 +81,17 @@ VARS_SCHEMA = [str, dict]
 STAGE_DEFINITION = {
     Required(StageParams.PARAM_CMD): Any(str, list),
     Optional(StageParams.PARAM_WDIR): str,
-    Optional(StageParams.PARAM_DEPS): [str],
+    Optional(StageParams.PARAM_DEPS): Any({str: str}, [str]),
     Optional(StageParams.PARAM_PARAMS): [Any(str, dict)],
     Optional(VARS_KWD): VARS_SCHEMA,
     Optional(StageParams.PARAM_FROZEN): bool,
     Optional(StageParams.PARAM_META): object,
     Optional(StageParams.PARAM_DESC): str,
     Optional(StageParams.PARAM_ALWAYS_CHANGED): bool,
-    Optional(StageParams.PARAM_OUTS): [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
+    Optional(StageParams.PARAM_OUTS): Any(
+        {str: Any(str, OUT_PSTAGE_DETAILED_SCHEMA)},
+        [Any(str, OUT_PSTAGE_DETAILED_SCHEMA)],
+    ),
     Optional(StageParams.PARAM_METRICS): [
         Any(str, OUT_PSTAGE_DETAILED_SCHEMA)
     ],

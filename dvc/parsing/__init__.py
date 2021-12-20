@@ -248,6 +248,32 @@ class EntryDefinition:
             format_and_raise(exc, f"stage '{self.name}'", self.relpath)
 
     def resolve_stage(self, skip_checks: bool = False) -> DictStr:
+        # quick-n-dirty hacked outs and deps to can be used in the cmd
+
+        def extract_path(outs_entry):
+            if isinstance(outs_entry, str):
+                return outs_entry
+            elif isinstance(outs_entry, Dict):
+                return list(outs_entry.keys())[0]
+
+        extra_vars = dict()
+
+        for field in ["outs", "metrics", "plots"]:
+            outs = self.context.resolve(self.definition.get(field, []))
+            if isinstance(outs, Dict):
+                outs = {k: extract_path(v) for k, v in outs.items()}
+            elif isinstance(outs, Sequence):
+                outs = [extract_path(v) for v in outs]
+            extra_vars[field] = outs
+
+        extra_vars["deps"] = self.context.resolve(
+            self.definition.get("deps", [])
+        )
+
+        with self.context.set_temporarily(extra_vars):
+            return self._resolve_stage()
+
+    def _resolve_stage(self, skip_checks: bool = False) -> DictStr:
         context = self.context
         name = self.name
         if not skip_checks:
