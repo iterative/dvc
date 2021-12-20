@@ -21,6 +21,7 @@ class CmdExecutorRun(CmdBaseNoRepo):
             rev="",
             queue=None,
             log_level=logger.getEffectiveLevel(),
+            infofile=self.args.infofile,
         )
         return 0
 
