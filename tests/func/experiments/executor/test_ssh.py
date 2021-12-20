@@ -40,8 +40,8 @@ def test_init_from_stash(tmp_dir, scm, dvc, machine_instance, mocker):
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("git_ssh")])
 def test_init_git(tmp_dir, scm, cloud):
     tmp_dir.scm_gen({"foo": "foo", "dir": {"bar": "bar"}}, commit="init")
-    rev = scm.get_rev()
-    scm.set_ref(EXEC_HEAD, rev)
+    baseline_rev = scm.get_rev()
+    scm.set_ref(EXEC_HEAD, baseline_rev)
     tmp_dir.gen("foo", "stashed")
     scm.gitpython.git.stash()
     rev = scm.resolve_rev("stash@{0}")
@@ -50,14 +50,15 @@ def test_init_git(tmp_dir, scm, cloud):
     root_url = cloud / SSHExecutor.gen_dirname()
 
     executor = SSHExecutor(
-        scm,
-        ".",
         root_dir=root_url.path,
+        dvc_dir=".dvc",
+        baseline_rev=baseline_rev,
         host=root_url.host,
         port=root_url.port,
         username=TEST_SSH_USER,
         fs_factory=partial(_ssh_factory, cloud),
     )
+    executor.init_git(scm)
     assert root_url.path == executor._repo_abspath
 
     fs = cloud._ssh
@@ -76,9 +77,9 @@ def test_init_cache(tmp_dir, dvc, scm, cloud):
     root_url = cloud / SSHExecutor.gen_dirname()
 
     executor = SSHExecutor(
-        scm,
-        ".",
         root_dir=root_url.path,
+        dvc_dir=".dvc",
+        baseline_rev=rev,
         host=root_url.host,
         port=root_url.port,
         username=TEST_SSH_USER,
