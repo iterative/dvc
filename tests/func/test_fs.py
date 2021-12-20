@@ -9,187 +9,157 @@ import pytest
 from dvc.fs import get_cloud_fs
 from dvc.fs.local import LocalFileSystem
 from dvc.repo import Repo
-from dvc.scm import SCM
-from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
-class TestLocalFileSystem(TestDir):
-    def setUp(self):
-        super().setUp()
-        self.fs = LocalFileSystem()
+def test_local_fs_open(tmp_dir):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "тест": "проверка",
+            "code.py": "import sys\nimport shutil\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2])",
+            "data_dir": {
+                "data": "data",
+                "data_sub_dir": {"data_sub": "data_sub"},
+            },
+        }
+    )
+    fs = LocalFileSystem()
 
-    def test_open(self):
-        with self.fs.open(self.FOO) as fd:
-            self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        with self.fs.open(self.UNICODE, encoding="utf-8") as fd:
-            self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
-
-    def test_exists(self):
-        self.assertTrue(self.fs.exists(self.FOO))
-        self.assertTrue(self.fs.exists(self.UNICODE))
-        self.assertFalse(self.fs.exists("not-existing-file"))
-
-    def test_isdir(self):
-        self.assertTrue(self.fs.isdir(self.DATA_DIR))
-        self.assertFalse(self.fs.isdir(self.FOO))
-        self.assertFalse(self.fs.isdir("not-existing-file"))
-
-    def test_isfile(self):
-        self.assertTrue(self.fs.isfile(self.FOO))
-        self.assertFalse(self.fs.isfile(self.DATA_DIR))
-        self.assertFalse(self.fs.isfile("not-existing-file"))
+    with fs.open("foo", encoding="utf-8") as fobj:
+        assert fobj.read() == "foo"
+    with fs.open("тест", encoding="utf-8") as fobj:
+        assert fobj.read() == "проверка"
 
 
-class GitFileSystemTests:
-    # pylint: disable=no-member
-    def test_open(self):
-        self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
-        self.scm.commit("add")
+def test_local_fs_exists(tmp_dir):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "тест": "проверка",
+            "code.py": "import sys\nimport shutil\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2])",
+            "data_dir": {
+                "data": "data",
+                "data_sub_dir": {"data_sub": "data_sub"},
+            },
+        }
+    )
+    fs = LocalFileSystem()
 
-        fs = self.scm.get_fs("master")
-        with fs.open(self.FOO, mode="r", encoding="utf-8") as fd:
-            self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        with fs.open(self.UNICODE, mode="r", encoding="utf-8") as fd:
-            self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
-        with self.assertRaises(IOError):
-            fs.open("not-existing-file")
-        with self.assertRaises(IOError):
-            fs.open(self.DATA_DIR)
-
-    def test_exists(self):
-        fs = self.scm.get_fs("master")
-        self.assertFalse(fs.exists(self.FOO))
-        self.assertFalse(fs.exists(self.UNICODE))
-        self.assertFalse(fs.exists(self.DATA_DIR))
-        self.scm.add([self.FOO, self.UNICODE, self.DATA])
-        self.scm.commit("add")
-
-        fs = self.scm.get_fs("master")
-        self.assertTrue(fs.exists(self.FOO))
-        self.assertTrue(fs.exists(self.UNICODE))
-        self.assertTrue(fs.exists(self.DATA_DIR))
-        self.assertFalse(fs.exists("non-existing-file"))
-
-    def test_isdir(self):
-        self.scm.add([self.FOO, self.DATA_DIR])
-        self.scm.commit("add")
-
-        fs = self.scm.get_fs("master")
-        self.assertTrue(fs.isdir(self.DATA_DIR))
-        self.assertFalse(fs.isdir(self.FOO))
-        self.assertFalse(fs.isdir("non-existing-file"))
-
-    def test_isfile(self):
-        self.scm.add([self.FOO, self.DATA_DIR])
-        self.scm.commit("add")
-
-        fs = self.scm.get_fs("master")
-        self.assertTrue(fs.isfile(self.FOO))
-        self.assertFalse(fs.isfile(self.DATA_DIR))
-        self.assertFalse(fs.isfile("not-existing-file"))
+    assert fs.exists("foo")
+    assert fs.exists("тест")
+    assert not fs.exists("not-existing-file")
 
 
-class TestGitFileSystem(TestGit, GitFileSystemTests):
-    def setUp(self):
-        super().setUp()
-        self.scm = SCM(self._root_dir)
+def test_local_fs_isdir(tmp_dir):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "тест": "проверка",
+            "code.py": "import sys\nimport shutil\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2])",
+            "data_dir": {
+                "data": "data",
+                "data_sub_dir": {"data_sub": "data_sub"},
+            },
+        }
+    )
+    fs = LocalFileSystem()
+
+    assert fs.isdir("data_dir")
+    assert not fs.isdir("foo")
+    assert not fs.isdir("not-existing-file")
 
 
-class TestGitSubmoduleFileSystem(TestGitSubmodule, GitFileSystemTests):
-    def setUp(self):
-        super().setUp()
-        self.scm = SCM(self._root_dir)
-        self._pushd(self._root_dir)
+def test_local_fs_isfile(tmp_dir):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "тест": "проверка",
+            "code.py": "import sys\nimport shutil\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2])",
+            "data_dir": {
+                "data": "data",
+                "data_sub_dir": {"data_sub": "data_sub"},
+            },
+        }
+    )
+    fs = LocalFileSystem()
+
+    assert fs.isfile("foo")
+    assert not fs.isfile("data_dir")
+    assert not fs.isfile("not-existing-file")
 
 
-class AssertWalkEqualMixin:
-    def assertWalkEqual(self, actual, expected, msg=None):
-        def convert_to_sets(walk_results):
-            return [
-                (root, set(dirs), set(nondirs))
-                for root, dirs, nondirs in walk_results
-            ]
-
-        self.assertEqual(
-            convert_to_sets(actual), convert_to_sets(expected), msg=msg
-        )
+def convert_to_sets(walk_results):
+    return [
+        (root, set(dirs), set(nondirs)) for root, dirs, nondirs in walk_results
+    ]
 
 
-class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
-    def test(self):
-        fs = LocalFileSystem()
-        self.assertWalkEqual(
-            fs.walk(self._root_dir),
-            [
-                (
-                    self._root_dir,
-                    ["data_dir"],
-                    ["code.py", "bar", "тест", "foo"],
-                ),
-                (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                ),
-            ],
-        )
+def test_walk_no_scm(tmp_dir):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "тест": "проверка",
+            "code.py": "import sys\nimport shutil\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2])",
+            "data_dir": {
+                "data": "data",
+                "data_sub_dir": {"data_sub": "data_sub"},
+            },
+        }
+    )
+    fs = LocalFileSystem()
+    walk_results = fs.walk(str(tmp_dir))
+    assert convert_to_sets(walk_results) == [
+        (str(tmp_dir), {"data_dir"}, {"code.py", "bar", "тест", "foo"}),
+        (str(tmp_dir / "data_dir"), {"data_sub_dir"}, {"data"}),
+        (str(tmp_dir / "data_dir" / "data_sub_dir"), set(), {"data_sub"}),
+    ]
 
-    def test_subdir(self):
-        fs = LocalFileSystem()
-        self.assertWalkEqual(
-            fs.walk(join("data_dir", "data_sub_dir")),
-            [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
-        )
+    walk_results = fs.walk(join("data_dir", "data_sub_dir"))
+    assert convert_to_sets(walk_results) == [
+        (join("data_dir", "data_sub_dir"), set(), {"data_sub"}),
+    ]
 
 
-class TestWalkInGit(AssertWalkEqualMixin, TestGit):
-    def test_nobranch(self):
-        fs = LocalFileSystem(url=self._root_dir)
-        walk_result = []
-        for root, dirs, files in fs.walk("."):
-            dirs[:] = [i for i in dirs if i != ".git"]
-            walk_result.append((root, dirs, files))
-        self.assertWalkEqual(
-            walk_result,
-            [
-                (".", ["data_dir"], ["bar", "тест", "code.py", "foo"]),
-                (join("data_dir"), ["data_sub_dir"], ["data"]),
-                (join("data_dir", "data_sub_dir"), [], ["data_sub"]),
-            ],
-        )
-        self.assertWalkEqual(
-            fs.walk(join("data_dir", "data_sub_dir")),
-            [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
-        )
+def test_walk_fs_with_git(tmp_dir, scm):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "тест": "проверка",
+            "code.py": "import sys\nimport shutil\n"
+            "shutil.copyfile(sys.argv[1], sys.argv[2])",
+            "data_dir": {
+                "data": "data",
+                "data_sub_dir": {"data_sub": "data_sub"},
+            },
+        }
+    )
+    fs = LocalFileSystem(url=str(tmp_dir))
+    walk_result = []
+    for root, dirs, files in fs.walk("."):
+        dirs[:] = [i for i in dirs if i != ".git"]
+        walk_result.append((root, dirs, files))
 
-    def test_branch(self):
-        scm = SCM(self._root_dir)
-        scm.add([self.DATA_SUB_DIR])
-        scm.commit("add data_dir/data_sub_dir/data_sub")
-        fs = scm.get_fs("master")
-        self.assertWalkEqual(
-            fs.walk("."),
-            [
-                (self._root_dir, ["data_dir"], ["code.py"]),
-                (join(self._root_dir, "data_dir"), ["data_sub_dir"], []),
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                ),
-            ],
-        )
-        self.assertWalkEqual(
-            fs.walk(join("data_dir", "data_sub_dir")),
-            [
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                )
-            ],
-        )
+    assert convert_to_sets(walk_result) == [
+        (".", {"data_dir"}, {"bar", "тест", "code.py", "foo"}),
+        (join("data_dir"), {"data_sub_dir"}, {"data"}),
+        (join("data_dir", "data_sub_dir"), set(), {"data_sub"}),
+    ]
+
+    walk_result = fs.walk(join("data_dir", "data_sub_dir"))
+    assert convert_to_sets(walk_result) == [
+        (join("data_dir", "data_sub_dir"), set(), {"data_sub"})
+    ]
 
 
 def test_cleanfs_subrepo(tmp_dir, dvc, scm, monkeypatch):

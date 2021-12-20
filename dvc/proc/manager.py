@@ -5,12 +5,12 @@ import logging
 import os
 import signal
 import sys
-from typing import Generator, List, Optional, Union
+from typing import Generator, List, Optional, Tuple, Union
 
 from funcy.flow import reraise
 from shortuuid import uuid
 
-from .exceptions import UnsupportedSignalError
+from .exceptions import ProcessNotTerminatedError, UnsupportedSignalError
 from .process import ManagedProcess, ProcessInfo
 
 logger = logging.getLogger(__name__)
@@ -27,8 +27,11 @@ class ProcessManager:
     def __init__(self, wdir: Optional[str] = None):
         self.wdir = wdir or "."
 
-    def __iter__(self):
-        return self.processes()
+    def __iter__(self) -> Generator[str, None, None]:
+        if not os.path.exists(self.wdir):
+            return
+        for name in os.listdir(self.wdir):
+            yield name
 
     def __getitem__(self, key: str) -> "ProcessInfo":
         info_path = os.path.join(self.wdir, key, f"{key}.json")
@@ -44,18 +47,23 @@ class ProcessManager:
         with open(info_path, "w", encoding="utf-8") as fobj:
             return json.dump(value.asdict(), fobj)
 
+    def __delitem__(self, key: str) -> None:
+        from dvc.utils.fs import remove
+
+        path = os.path.join(self.wdir, key)
+        if os.path.exists(path):
+            remove(path)
+
     def get(self, key: str, default=None):
         try:
             return self[key]
         except KeyError:
             return default
 
-    def processes(self) -> Generator["ProcessInfo", None, None]:
-        if not os.path.exists(self.wdir):
-            return
-        for name in os.listdir(self.wdir):
+    def processes(self) -> Generator[Tuple[str, "ProcessInfo"], None, None]:
+        for name in self:
             try:
-                yield self[name]
+                yield name, self[name]
             except KeyError:
                 continue
 
@@ -125,8 +133,22 @@ class ProcessManager:
             ProcessNotTerminatedError if the specified process is still
             running and was not forcefully killed.
         """
-        raise NotImplementedError
+        try:
+            process_info = self[name]
+        except KeyError:
+            return
+        if process_info.returncode is None and not force:
+            raise ProcessNotTerminatedError(name)
+        try:
+            self.kill(name)
+        except ProcessLookupError:
+            pass
+        del self[name]
 
-    def cleanup(self):
+    def cleanup(self, force: bool = False):
         """Remove stale (terminated) processes from this manager."""
-        raise NotImplementedError
+        for name in self:
+            try:
+                self.remove(name, force)
+            except ProcessNotTerminatedError:
+                continue

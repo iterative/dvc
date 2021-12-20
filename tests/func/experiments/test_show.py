@@ -8,12 +8,31 @@ from funcy import first, get_in
 from dvc.exceptions import InvalidArgumentError
 from dvc.main import main
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
-from dvc.repo.experiments.executor.base import BaseExecutor, ExecutorInfo
+from dvc.repo.experiments.executor.base import (
+    EXEC_PID_DIR,
+    EXEC_TMP_DIR,
+    BaseExecutor,
+    ExecutorInfo,
+)
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 from tests.utils import console_width
+
+
+def make_executor_info(**kwargs):
+    # set default values for required info fields
+    for key in (
+        "git_url",
+        "baseline_rev",
+        "location",
+        "root_dir",
+        "dvc_dir",
+    ):
+        if key not in kwargs:
+            kwargs[key] = ""
+    return ExecutorInfo(**kwargs)
 
 
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
@@ -274,7 +293,6 @@ def test_show_filter(
     from dvc.ui import ui
 
     capsys.readouterr()
-    div = "│" if os.name == "nt" else "┃"
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     params_file = tmp_dir / "params.yaml"
@@ -321,11 +339,11 @@ def test_show_filter(
     cap = capsys.readouterr()
 
     for i in included:
-        assert f"{div} params.yaml:{i} {div}" in cap.out
-        assert f"{div} metrics.yaml:{i} {div}" in cap.out
+        assert f"params.yaml:{i}" in cap.out
+        assert f"metrics.yaml:{i}" in cap.out
     for e in excluded:
-        assert f"{div} params.yaml:{e} {div}" not in cap.out
-        assert f"{div} metrics.yaml:{e} {div}" not in cap.out
+        assert f"params.yaml:{e}" not in cap.out
+        assert f"metrics.yaml:{e}" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
@@ -367,11 +385,15 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
-    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
-    makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(pid_dir, f"workspace{BaseExecutor.PIDFILE_EXT}")
-    (tmp_dir / pidfile).dump(info.to_dict())
+    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
+    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    pidfile = os.path.join(
+        pid_dir,
+        "workspace",
+        f"workspace{BaseExecutor.INFOFILE_EXT}",
+    )
+    makedirs(os.path.dirname(pidfile), True)
+    (tmp_dir / pidfile).dump_json(info.asdict())
 
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
@@ -398,11 +420,15 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
 
-    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
-    makedirs(pid_dir, True)
-    info = ExecutorInfo(None, None, None, BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(pid_dir, f"{exp_rev}{BaseExecutor.PIDFILE_EXT}")
-    (tmp_dir / pidfile).dump(info.to_dict())
+    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
+    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    pidfile = os.path.join(
+        pid_dir,
+        exp_rev,
+        f"{exp_rev}{BaseExecutor.INFOFILE_EXT}",
+    )
+    makedirs(os.path.dirname(pidfile), True)
+    (tmp_dir / pidfile).dump_json(info.asdict())
 
     results = dvc.experiments.show()
     exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
@@ -430,17 +456,21 @@ def test_show_running_checkpoint(
     checkpoint_rev = first(run_results)
     exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
 
-    pid_dir = os.path.join(dvc.tmp_dir, dvc.experiments.EXEC_PID_DIR)
-    makedirs(pid_dir, True)
+    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     executor = (
         BaseExecutor.DEFAULT_LOCATION
         if workspace
         else TempDirExecutor.DEFAULT_LOCATION
     )
-    info = ExecutorInfo(123, "foo.git", baseline_rev, executor)
+    info = make_executor_info(
+        git_url="foo.git",
+        baseline_rev=baseline_rev,
+        location=executor,
+    )
     rev = "workspace" if workspace else stash_rev
-    pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.PIDFILE_EXT}")
-    (tmp_dir / pidfile).dump(info.to_dict())
+    pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.INFOFILE_EXT}")
+    makedirs(os.path.dirname(pidfile), True)
+    (tmp_dir / pidfile).dump_json(info.asdict())
 
     mocker.patch.object(
         BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]
@@ -559,7 +589,6 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
     assert main(["exp", "show"]) == 0
     cap = capsys.readouterr()
 
-    print(cap)
     assert "bar" in cap.out
 
     capsys.readouterr()
@@ -567,3 +596,78 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
     cap = capsys.readouterr()
 
     assert "bar" not in cap.out
+
+
+def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
+    from dvc.command.experiments import show
+
+    webbroser_open = mocker.patch("webbrowser.open")
+    show_experiments = mocker.spy(show, "show_experiments")
+
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    params_file = tmp_dir / "params.yaml"
+    params_data = {
+        "foo": 1,
+        "bar": 1,
+    }
+    (tmp_dir / params_file).dump(params_data)
+
+    dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo", "bar"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
+    dvc.experiments.run(params=["foo=2"])
+
+    assert main(["exp", "show", "--html"]) == 0
+    kwargs = show_experiments.call_args[1]
+
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+    assert all(rev in html_text for rev in ["workspace", "master", "[exp-"])
+
+    assert (
+        '{"label": "metrics.yaml:foo", "values": [2.0, 1.0, 2.0]}' in html_text
+    )
+    assert (
+        '{"label": "params.yaml:foo", "values": [2.0, 1.0, 2.0]}' in html_text
+    )
+    assert '"line": {"color": [2, 1, 0]' in html_text
+    assert '"label": "metrics.yaml:bar"' not in html_text
+
+    assert (
+        main(["exp", "show", "--html", "--sort-by", "metrics.yaml:foo"]) == 0
+    )
+    kwargs = show_experiments.call_args[1]
+
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+    assert '"line": {"color": [2.0, 1.0, 2.0]' in html_text
+
+    assert main(["exp", "show", "--html", "--out", "experiments"]) == 0
+    kwargs = show_experiments.call_args[1]
+
+    assert kwargs["out"] == "experiments"
+    assert (tmp_dir / "experiments" / "index.html").exists()
+
+    assert main(["exp", "show", "--html", "--open"]) == 0
+
+    webbroser_open.assert_called()
+
+    params_data = {"foo": 1, "bar": 1, "foobar": 2}
+    (tmp_dir / params_file).dump(params_data)
+    assert main(["exp", "show", "--html"]) == 0
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+    assert '{"label": "foobar", "values": [2.0, null, null]}' in html_text

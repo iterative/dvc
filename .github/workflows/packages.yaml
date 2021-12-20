@@ -2,7 +2,7 @@ name: Build packages
 on:
   push:
     branches:
-    - master
+    - main
   release:
     types: [released, prereleased]
   workflow_dispatch:

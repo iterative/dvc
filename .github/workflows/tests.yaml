@@ -83,7 +83,7 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: false
   notify:
-    if: github.ref == 'refs/heads/master' && failure()
+    if: github.ref == 'refs/heads/main' && failure()
     needs:
       - lint
       - tests
@@ -94,6 +94,6 @@ jobs:
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         SLACK_COLOR: ${{ job.status }}
-        SLACK_MESSAGE: 'CI Failed on master :boom:'
+        SLACK_MESSAGE: 'CI Failed on main :boom:'
         SLACK_TITLE: CI Status
         SLACK_USERNAME: DVC-CI

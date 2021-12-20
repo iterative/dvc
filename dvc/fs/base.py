@@ -4,7 +4,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partialmethod
 from multiprocessing import cpu_count
-from typing import ClassVar, Dict, FrozenSet, Optional
+from typing import ClassVar, Dict, Optional
 
 from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
@@ -43,7 +43,6 @@ class FileSystem:
     REQUIRES: ClassVar[Dict[str, str]] = {}
     _JOBS = 4 * cpu_count()
 
-    CHECKSUM_DIR_SUFFIX = ".dir"
     HASH_JOBS = max(1, min(4, cpu_count() // 2))
     LIST_OBJECT_PAGE_SIZE = 1000
     TRAVERSE_WEIGHT_MULTIPLIER = 5
@@ -55,7 +54,6 @@ class FileSystem:
     CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
 
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
-    DETAIL_FIELDS: FrozenSet[str] = frozenset()
 
     def __init__(self, **kwargs):
         self._check_requires(**kwargs)
@@ -217,12 +215,6 @@ class FileSystem:
         raise RemoteActionNotImplemented("reflink", self.scheme)
 
     # pylint: enable=unused-argument
-
-    @classmethod
-    def is_dir_hash(cls, hash_):
-        if not hash_:
-            return False
-        return hash_.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def upload(
         self,

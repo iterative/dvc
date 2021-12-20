@@ -140,15 +140,6 @@ class TestGitFixture(TestDirFixture):
         super().tearDown()
 
 
-class TestGitSubmoduleFixture(TestGitFixture):
-    def setUp(self):
-        super().setUp()
-        subrepo = Repo.init()
-        subrepo_path = "subrepo"
-        self.git.create_submodule(subrepo_path, subrepo_path, subrepo.git_dir)
-        self._pushd(subrepo_path)
-
-
 class TestDvcFixture(TestDirFixture):
     def setUp(self):
         super().setUp()
@@ -182,12 +173,6 @@ class TestDir(TestDirFixture, TestCase):
 class TestGit(TestGitFixture, TestCase):
     def __init__(self, methodName):
         TestGitFixture.__init__(self)
-        TestCase.__init__(self, methodName)
-
-
-class TestGitSubmodule(TestGitSubmoduleFixture, TestCase):
-    def __init__(self, methodName):
-        TestGitSubmoduleFixture.__init__(self)
         TestCase.__init__(self, methodName)
 
 

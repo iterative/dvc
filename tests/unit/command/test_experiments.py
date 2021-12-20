@@ -5,20 +5,17 @@ from datetime import datetime
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.experiments import (
-    CmdExperimentsApply,
-    CmdExperimentsBranch,
-    CmdExperimentsDiff,
-    CmdExperimentsGC,
-    CmdExperimentsInit,
-    CmdExperimentsList,
-    CmdExperimentsPull,
-    CmdExperimentsPush,
-    CmdExperimentsRemove,
-    CmdExperimentsRun,
-    CmdExperimentsShow,
-    show_experiments,
-)
+from dvc.command.experiments.apply import CmdExperimentsApply
+from dvc.command.experiments.branch import CmdExperimentsBranch
+from dvc.command.experiments.diff import CmdExperimentsDiff
+from dvc.command.experiments.gc import CmdExperimentsGC
+from dvc.command.experiments.init import CmdExperimentsInit
+from dvc.command.experiments.ls import CmdExperimentsList
+from dvc.command.experiments.pull import CmdExperimentsPull
+from dvc.command.experiments.push import CmdExperimentsPush
+from dvc.command.experiments.remove import CmdExperimentsRemove
+from dvc.command.experiments.run import CmdExperimentsRun
+from dvc.command.experiments.show import CmdExperimentsShow, show_experiments
 from dvc.exceptions import DvcParserError, InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage import PipelineStage
@@ -613,7 +610,7 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
     assert cmd.run() == 0
     m.assert_called_once_with(
         ANY(Repo),
-        name=None,
+        name="train",
         type="default",
         defaults={
             "code": "src",
@@ -628,12 +625,10 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
         interactive=False,
         force=False,
     )
-    expected = "Created default stage in dvc.yaml."
+    expected = "Created train stage in dvc.yaml."
     if not extra_args:
         expected += (
-            ' To run, use "dvc exp run".\n'
-            "See https://dvc.org/doc/user-guide/experiment-management"
-            "/running-experiments."
+            ' To run, use "dvc exp run".\n' "See https://s.dvc.org/g/exp/run."
         )
     assert capsys.readouterr() == (expected + "\n", "")
     if extra_args:
@@ -651,9 +646,10 @@ def test_experiments_init_config(dvc, scm, mocker):
 
     assert isinstance(cmd, CmdExperimentsInit)
     assert cmd.run() == 0
+
     m.assert_called_once_with(
         ANY(Repo),
-        name=None,
+        name="train",
         type="default",
         defaults={
             "code": "new_src",
@@ -678,7 +674,7 @@ def test_experiments_init_explicit(dvc, mocker):
     assert cmd.run() == 0
     m.assert_called_once_with(
         ANY(Repo),
-        name=None,
+        name="train",
         type="default",
         defaults={},
         overrides={"cmd": "cmd"},
@@ -710,12 +706,12 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
 @pytest.mark.parametrize(
     "extra_args, expected_kw",
     [
-        (["--type", "default"], {"type": "default"}),
-        (["--type", "live"], {"type": "live"}),
-        (["--force"], {"force": True}),
+        (["--type", "default"], {"type": "default", "name": "train"}),
+        (["--type", "dl"], {"type": "dl", "name": "train"}),
+        (["--force"], {"force": True, "name": "train"}),
         (
-            ["--name", "name", "--type", "live"],
-            {"name": "name", "type": "live"},
+            ["--name", "name", "--type", "dl"],
+            {"name": "name", "type": "dl"},
         ),
         (
             [
@@ -735,6 +731,7 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
                 "live",
             ],
             {
+                "name": "train",
                 "overrides": {
                     "plots": "p",
                     "models": "m",
@@ -744,7 +741,7 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
                     "data": "d",
                     "live": "live",
                     "cmd": "cmd",
-                }
+                },
             },
         ),
     ],
@@ -762,3 +759,37 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
 def test_experiments_init_type_invalid_choice():
     with pytest.raises(DvcParserError):
         parse_args(["exp", "init", "--type=invalid", "cmd"])
+
+
+def test_show_experiments_html(tmp_dir, mocker):
+    all_experiments = {
+        "workspace": {
+            "baseline": {
+                "data": {
+                    "timestamp": None,
+                    "params": {"params.yaml": {"data": {"foo": 1}}},
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {
+                        "scores.json": {"data": {"bar": 0.9544670443829399}}
+                    },
+                }
+            }
+        },
+    }
+    experiments_table = mocker.patch(
+        "dvc.command.experiments.show.experiments_table"
+    )
+    td = experiments_table.return_value
+
+    show_experiments(all_experiments, html=True)
+
+    td.dropna.assert_called_with("rows", how="all")
+
+    render_kwargs = td.render.call_args[1]
+
+    for arg in ["html", "output_path", "color_by"]:
+        assert arg in render_kwargs
+    assert render_kwargs["output_path"] == tmp_dir / "dvc_plots"
+    assert render_kwargs["color_by"] == "Experiment"

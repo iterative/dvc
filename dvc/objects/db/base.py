@@ -206,7 +206,7 @@ class ObjectDB:
 
         return "".join(parts)
 
-    def list_hashes(self, prefix=None, progress_callback=None):
+    def _list_hashes(self, prefix=None, progress_callback=None):
         """Iterate over hashes in this fs.
 
         If `prefix` is specified, only hashes which begin with `prefix`
@@ -222,12 +222,12 @@ class ObjectDB:
 
     def _hashes_with_limit(self, limit, prefix=None, progress_callback=None):
         count = 0
-        for hash_ in self.list_hashes(prefix, progress_callback):
+        for hash_ in self._list_hashes(prefix, progress_callback):
             yield hash_
             count += 1
             if count > limit:
                 logger.debug(
-                    "`list_hashes()` returned max '{}' hashes, "
+                    "`_list_hashes()` returned max '{}' hashes, "
                     "skipping remaining results".format(limit)
                 )
                 return
@@ -266,7 +266,7 @@ class ObjectDB:
                     max_hashes / total_prefixes, prefix, update
                 )
             else:
-                hashes = self.list_hashes(prefix, update)
+                hashes = self._list_hashes(prefix, update)
 
             remote_hashes = set(hashes)
             if remote_hashes:
@@ -276,7 +276,7 @@ class ObjectDB:
             logger.debug(f"Estimated remote size: {remote_size} files")
         return remote_size, remote_hashes
 
-    def list_hashes_traverse(
+    def _list_hashes_traverse(
         self, remote_size, remote_hashes, jobs=None, name=None
     ):
         """Iterate over all hashes found in this fs.
@@ -322,7 +322,7 @@ class ObjectDB:
 
             def list_with_update(prefix):
                 return list(
-                    self.list_hashes(
+                    self._list_hashes(
                         prefix=prefix, progress_callback=pbar.update
                     )
                 )
@@ -346,10 +346,10 @@ class ObjectDB:
         )
 
         if not self.fs.CAN_TRAVERSE:
-            return self.list_hashes()
+            return self._list_hashes()
 
         remote_size, remote_hashes = self._estimate_remote_size(name=name)
-        return self.list_hashes_traverse(
+        return self._list_hashes_traverse(
             remote_size, remote_hashes, jobs, name
         )
 
@@ -372,17 +372,22 @@ class ObjectDB:
                     entry_obj.hash_info.value for _, entry_obj in tree
                 )
 
+        def _is_dir_hash(_hash):
+            from dvc.hash_info import HASH_DIR_SUFFIX
+
+            return _hash.endswith(HASH_DIR_SUFFIX)
+
         removed = False
         # hashes must be sorted to ensure we always remove .dir files first
         for hash_ in sorted(
             self.all(jobs, self.fs_path),
-            key=self.fs.is_dir_hash,
+            key=_is_dir_hash,
             reverse=True,
         ):
             if hash_ in used_hashes:
                 continue
             fs_path = self.hash_to_path(hash_)
-            if self.fs.is_dir_hash(hash_):
+            if _is_dir_hash(hash_):
                 # backward compatibility
                 # pylint: disable=protected-access
                 self._remove_unpacked_dir(hash_)
@@ -455,7 +460,7 @@ class ObjectDB:
 
         # During the tests, for ensuring that the traverse behavior
         # is working we turn on this option. It will ensure the
-        # list_hashes_traverse() is called.
+        # _list_hashes_traverse() is called.
         always_traverse = getattr(self.fs, "_ALWAYS_TRAVERSE", False)
 
         hashes = set(hashes)
@@ -492,6 +497,6 @@ class ObjectDB:
 
         logger.debug(f"Querying '{len(hashes)}' hashes via traverse")
         remote_hashes = set(
-            self.list_hashes_traverse(remote_size, remote_hashes, jobs, name)
+            self._list_hashes_traverse(remote_size, remote_hashes, jobs, name)
         )
         return list(hashes & set(remote_hashes))

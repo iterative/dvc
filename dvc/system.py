@@ -17,7 +17,6 @@ if os.name == "nt" and sys.version_info < (3, 8):
     def realpath(path):
         return _realpath(os.fspath(path))
 
-
 else:
     realpath = os.path.realpath
 

@@ -3,21 +3,28 @@ import os
 import pickle
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import partial
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
+    Dict,
     Iterable,
     NamedTuple,
     Optional,
+    Type,
+    TypeVar,
     Union,
 )
 
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
-from dvc.repo import Repo
-from dvc.repo.experiments.base import (
+from dvc.stage.serialize import to_lockfile
+from dvc.utils import dict_sha256, env2bool, relpath
+from dvc.utils.fs import remove
+
+from ..base import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
@@ -29,18 +36,22 @@ from dvc.repo.experiments.base import (
     ExpRefInfo,
     UnchangedExperimentError,
 )
-from dvc.stage import PipelineStage
-from dvc.stage.monitor import CheckpointKilledError
-from dvc.stage.serialize import to_lockfile
-from dvc.utils import dict_sha256, env2bool
-from dvc.utils.fs import remove
 
 if TYPE_CHECKING:
     from multiprocessing import Queue
 
     from scmrepo.git import Git
 
+    from dvc.repo import Repo
+    from dvc.stage import PipelineStage
+
+    from ..base import ExpStashEntry
+
 logger = logging.getLogger(__name__)
+
+
+EXEC_TMP_DIR = "exps"
+EXEC_PID_DIR = "run"
 
 
 class ExecutorResult(NamedTuple):
@@ -51,68 +62,77 @@ class ExecutorResult(NamedTuple):
 
 @dataclass
 class ExecutorInfo:
-    PARAM_PID = "pid"
-    PARAM_GIT_URL = "git"
-    PARAM_BASELINE_REV = "baseline"
-    PARAM_LOCATION = "location"
-
-    pid: Optional[int]
-    git_url: Optional[str]
-    baseline_rev: Optional[str]
-    location: Optional[str]
+    git_url: str
+    baseline_rev: str
+    location: str
+    root_dir: str
+    dvc_dir: str
+    name: Optional[str] = None
+    wdir: Optional[str] = None
+    result_hash: Optional[str] = None
+    result_ref: Optional[str] = None
+    result_force: bool = False
 
     @classmethod
     def from_dict(cls, d):
-        return cls(
-            d.get(cls.PARAM_PID),
-            d.get(cls.PARAM_GIT_URL),
-            d.get(cls.PARAM_BASELINE_REV),
-            d.get(cls.PARAM_LOCATION),
+        return cls(**d)
+
+    def asdict(self):
+        return asdict(self)
+
+    @property
+    def result(self) -> Optional["ExecutorResult"]:
+        if self.result_hash is None:
+            return None
+        return ExecutorResult(
+            self.result_hash,
+            ExpRefInfo.from_ref(self.result_ref) if self.result_ref else None,
+            self.result_force,
         )
 
-    def to_dict(self):
-        return {
-            self.PARAM_PID: self.pid,
-            self.PARAM_GIT_URL: self.git_url,
-            self.PARAM_BASELINE_REV: self.baseline_rev,
-            self.PARAM_LOCATION: self.location,
-        }
+
+_T = TypeVar("_T", bound="BaseExecutor")
 
 
 class BaseExecutor(ABC):
     """Base class for executing experiments in parallel.
 
-    Args:
-        src: source Git SCM instance.
-        dvc_dir: relpath to DVC root from SCM root.
-
-    Optional keyword args:
-        branch: Existing git branch for this experiment.
+    Parameters:
+        root_dir: Path to SCM root.
+        dvc_dir: Path to .dvc dir relative to SCM root.
+        baseline_rev: Experiment baseline revision.
+        wdir: Path to exec working directory relative to SCM root.
+        name: Executor (experiment) name.
+        result: Completed executor result.
     """
 
     PACKED_ARGS_FILE = "repro.dat"
     WARN_UNTRACKED = False
     QUIET = False
-    PIDFILE_EXT = ".run"
-    DEFAULT_LOCATION: Optional[str] = "workspace"
+    INFOFILE_EXT = ".run"
+    DEFAULT_LOCATION: str = "workspace"
 
     def __init__(
         self,
-        src: "Git",
+        root_dir: str,
         dvc_dir: str,
-        root_dir: Optional[str] = None,
-        branch: Optional[str] = None,
+        baseline_rev: str,
+        wdir: Optional[str] = None,
         name: Optional[str] = None,
+        location: Optional[str] = None,
+        result: Optional["ExecutorResult"] = None,
         **kwargs,
     ):
-        assert root_dir is not None
         self._dvc_dir = dvc_dir
         self.root_dir = root_dir
-        self._init_git(src, branch)
+        self.wdir = wdir
         self.name = name
+        self.baseline_rev = baseline_rev
+        self.location: str = location or self.DEFAULT_LOCATION
+        self.result = result
 
     @abstractmethod
-    def _init_git(self, scm: "Git", branch: Optional[str] = None, **kwargs):
+    def init_git(self, scm: "Git", branch: Optional[str] = None):
         """Init git repo and populate it using exp refs from the specified
         SCM instance.
         """
@@ -127,11 +147,91 @@ class BaseExecutor(ABC):
         """Initialize DVC (cache)."""
 
     @property
+    def info(self) -> "ExecutorInfo":
+        if self.result is not None:
+            result_dict: Dict[str, Any] = {
+                "result_hash": self.result.exp_hash,
+                "result_ref": (
+                    str(self.result.ref_info) if self.result.ref_info else None
+                ),
+                "result_force": self.result.force,
+            }
+        else:
+            result_dict = {}
+        return ExecutorInfo(
+            git_url=self.git_url,
+            baseline_rev=self.baseline_rev,
+            location=self.location,
+            root_dir=self.root_dir,
+            dvc_dir=self.dvc_dir,
+            name=self.name,
+            wdir=self.wdir,
+            **result_dict,
+        )
+
+    @classmethod
+    def from_info(cls: Type[_T], info: "ExecutorInfo") -> _T:
+        if info.result_hash:
+            result: Optional["ExecutorResult"] = ExecutorResult(
+                info.result_hash,
+                (
+                    ExpRefInfo.from_ref(info.result_ref)
+                    if info.result_ref
+                    else None
+                ),
+                info.result_force,
+            )
+        else:
+            result = None
+        return cls(
+            root_dir=info.root_dir,
+            dvc_dir=info.dvc_dir,
+            baseline_rev=info.baseline_rev,
+            name=info.name,
+            wdir=info.wdir,
+            result=result,
+        )
+
+    @classmethod
+    @abstractmethod
+    def from_stash_entry(
+        cls: Type[_T],
+        repo: "Repo",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        **kwargs,
+    ) -> _T:
+        pass
+
+    @classmethod
+    def _from_stash_entry(
+        cls: Type[_T],
+        repo: "Repo",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        root_dir: str,
+        **kwargs,
+    ) -> _T:
+        executor = cls(
+            root_dir=root_dir,
+            dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
+            baseline_rev=entry.baseline_rev,
+            name=entry.name,
+            wdir=relpath(os.getcwd(), repo.scm.root_dir),
+            **kwargs,
+        )
+        executor.init_git(repo.scm, branch=entry.branch)
+        executor.init_cache(repo, stash_rev)
+        return executor
+
+    @property
     def dvc_dir(self) -> str:
         return os.path.join(self.root_dir, self._dvc_dir)
 
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:
+        from dvc.stage import PipelineStage
+
         exp_data = {}
         for stage in stages:
             if isinstance(stage, PipelineStage):
@@ -244,11 +344,10 @@ class BaseExecutor(ABC):
     @classmethod
     def reproduce(
         cls,
-        dvc_dir: Optional[str],
+        info: "ExecutorInfo",
         rev: str,
         queue: Optional["Queue"] = None,
-        rel_cwd: Optional[str] = None,
-        name: Optional[str] = None,
+        infofile: Optional[str] = None,
         log_errors: bool = True,
         log_level: Optional[int] = None,
         **kwargs,
@@ -262,6 +361,7 @@ class BaseExecutor(ABC):
         """
         from dvc.repo.checkout import checkout as dvc_checkout
         from dvc.repo.reproduce import reproduce as dvc_reproduce
+        from dvc.stage import PipelineStage
 
         auto_push = env2bool(DVC_EXP_AUTO_PUSH)
         git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
@@ -283,9 +383,9 @@ class BaseExecutor(ABC):
         repro_force: bool = False
 
         with cls._repro_dvc(
-            dvc_dir,
-            rel_cwd,
-            log_errors,
+            info,
+            log_errors=log_errors,
+            infofile=infofile,
             **kwargs,
         ) as dvc:
             if auto_push:
@@ -333,7 +433,7 @@ class BaseExecutor(ABC):
                 cls.checkpoint_callback,
                 dvc,
                 dvc.scm,
-                name,
+                info.name,
                 repro_force or checkpoint_reset,
             )
             stages = dvc_reproduce(
@@ -358,7 +458,7 @@ class BaseExecutor(ABC):
                     cls.commit(
                         dvc.scm,
                         exp_hash,
-                        exp_name=name,
+                        exp_name=info.name,
                         force=repro_force,
                         checkpoint=is_checkpoint,
                     )
@@ -379,6 +479,9 @@ class BaseExecutor(ABC):
                             "\t%s",
                             ", ".join(untracked),
                         )
+            info.result_hash = exp_hash
+            info.result_ref = ref
+            info.result_force = repro_force
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
@@ -389,38 +492,32 @@ class BaseExecutor(ABC):
     @contextmanager
     def _repro_dvc(
         cls,
-        dvc_dir: Optional[str],
-        rel_cwd: Optional[str],
-        log_errors: bool,
-        pidfile: Optional[str] = None,
-        git_url: Optional[str] = None,
+        info: "ExecutorInfo",
+        log_errors: bool = True,
+        infofile: Optional[str] = None,
         **kwargs,
     ):
-        from dvc.utils.serialize import modify_yaml
+        from dvc.repo import Repo
+        from dvc.stage.monitor import CheckpointKilledError
+        from dvc.utils.fs import makedirs
+        from dvc.utils.serialize import modify_json
 
-        dvc = Repo(dvc_dir)
+        dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
         if cls.QUIET:
             dvc.scm_context.quiet = cls.QUIET
-        if dvc_dir is not None:
-            old_cwd: Optional[str] = os.getcwd()
-            if rel_cwd:
-                os.chdir(os.path.join(dvc.root_dir, rel_cwd))
-            else:
-                os.chdir(dvc.root_dir)
+        old_cwd = os.getcwd()
+        if info.wdir:
+            os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
         else:
-            old_cwd = None
-        if pidfile is not None:
-            info = ExecutorInfo(
-                os.getpid(),
-                git_url,
-                dvc.scm.get_rev(),
-                cls.DEFAULT_LOCATION,
-            )
-            with modify_yaml(pidfile) as d:
-                d.update(info.to_dict())
-        logger.debug("Running repro in '%s'", os.getcwd())
+            os.chdir(dvc.root_dir)
+
+        if infofile is not None:
+            makedirs(os.path.dirname(infofile), exist_ok=True)
+            with modify_json(infofile) as d:
+                d.update(info.asdict())
 
         try:
+            logger.debug("Running repro in '%s'", os.getcwd())
             yield dvc
         except CheckpointKilledError:
             raise
@@ -433,11 +530,11 @@ class BaseExecutor(ABC):
                 logger.exception("unexpected error")
             raise
         finally:
-            if pidfile is not None:
-                remove(pidfile)
+            if infofile is not None:
+                with modify_json(infofile) as d:
+                    d.update(info.asdict())
             dvc.close()
-            if old_cwd:
-                os.chdir(old_cwd)
+            os.chdir(old_cwd)
 
     @classmethod
     def _repro_args(cls, dvc):

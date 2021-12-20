@@ -21,10 +21,19 @@ def _ssh_factory(cloud):
     )
 
 
-def test_from_machine(tmp_dir, scm, dvc, machine_instance, mocker):
-    mocker.patch.object(SSHExecutor, "_init_git")
-    executor = SSHExecutor.from_machine(dvc.machine, "foo", scm, "")
-    assert executor.host == machine_instance["instance_ip"]
+def test_init_from_stash(tmp_dir, scm, dvc, machine_instance, mocker):
+    mock = mocker.patch.object(SSHExecutor, "_from_stash_entry")
+    mock_entry = mocker.Mock()
+    mock_entry.name = ""
+    SSHExecutor.from_stash_entry(
+        None,
+        "",
+        mock_entry,
+        manager=dvc.machine,
+        machine_name="foo",
+    )
+    _args, kwargs = mock.call_args
+    assert kwargs["host"] == machine_instance["instance_ip"]
 
 
 @pytest.mark.needs_internet

@@ -41,7 +41,6 @@ def _az_config():
 class AzureFileSystem(CallbackMixin, ObjectFSWrapper):
     scheme = Schemes.AZURE
     PARAM_CHECKSUM = "etag"
-    DETAIL_FIELDS = frozenset(("etag", "size"))
     REQUIRES = {
         "adlfs": "adlfs",
         "knack": "knack",

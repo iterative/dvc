@@ -17,7 +17,6 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     TRAVERSE_PREFIX_LEN = 2
     REQUIRES = {"webdav4": "webdav4"}
     PARAM_CHECKSUM = "etag"
-    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def __init__(self, **config):
         super().__init__(**config)
@@ -41,7 +40,7 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         return infer_storage_options(path)["path"].lstrip("/")
 
     def unstrip_protocol(self, path: str) -> str:
-        return self.fs_args["base_url"] + path
+        return self.fs_args["base_url"] + "/" + path
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):

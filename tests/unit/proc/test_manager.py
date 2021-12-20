@@ -5,7 +5,10 @@ import sys
 
 import pytest
 
-from dvc.proc.exceptions import UnsupportedSignalError
+from dvc.proc.exceptions import (
+    ProcessNotTerminatedError,
+    UnsupportedSignalError,
+)
 from dvc.proc.manager import ProcessManager
 from dvc.proc.process import ProcessInfo
 
@@ -92,3 +95,24 @@ def test_terminate(tmp_dir, mocker, running_process, finished_process):
     m.reset_mock()
     process_manager.terminate(finished_process)
     m.assert_not_called()
+
+
+def test_remove(mocker, tmp_dir, running_process, finished_process):
+    mocker.patch("os.kill", return_value=None)
+    process_manager = ProcessManager(tmp_dir)
+    process_manager.remove(finished_process)
+    assert not (tmp_dir / finished_process).exists()
+    with pytest.raises(ProcessNotTerminatedError):
+        process_manager.remove(running_process)
+    assert (tmp_dir / running_process).exists()
+    process_manager.remove(running_process, True)
+    assert not (tmp_dir / running_process).exists()
+
+
+@pytest.mark.parametrize("force", [True, False])
+def test_cleanup(mocker, tmp_dir, running_process, finished_process, force):
+    mocker.patch("os.kill", return_value=None)
+    process_manager = ProcessManager(tmp_dir)
+    process_manager.cleanup(force)
+    assert (tmp_dir / running_process).exists() != force
+    assert not (tmp_dir / finished_process).exists()

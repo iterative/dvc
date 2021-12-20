@@ -18,7 +18,6 @@ class OSSFileSystem(ObjectFSWrapper):
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
-    DETAIL_FIELDS = frozenset(("etag", "size"))
 
     def _prepare_credentials(self, **config):
         login_info = {}
