@@ -1,7 +1,7 @@
 import logging
 import posixpath
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import first
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from dvc.machine import MachineManager
     from dvc.repo import Repo
 
-    from ..base import ExpStashEntry
+    from ..base import ExpRefInfo, ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -155,10 +155,31 @@ class SSHExecutor(BaseExecutor):
         working_dir = chdir or self.root_dir
         return sshfs.fs.execute(f"cd {working_dir};{cmd}", **kwargs)
 
-    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
+    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
+        from dvc.repo.push import push
+
+        with self.get_odb() as odb:
+            push(
+                repo,
+                revs=[rev],
+                run_cache=run_cache,
+                odb=odb,
+                include_imports=True,
+            )
+
+    def collect_cache(
+        self, repo: "Repo", exp_ref: "ExpRefInfo", run_cache: bool = True
+    ):
+        """Collect DVC cache."""
+        from dvc.repo.experiments.pull import _pull_cache
+
+        with self.get_odb() as odb:
+            _pull_cache(repo, exp_ref, run_cache=run_cache, odb=odb)
+
+    @contextmanager
+    def get_odb(self):
         from dvc.data.db import ODBManager, get_odb
         from dvc.repo import Repo
-        from dvc.repo.push import push
 
         cache_path = posixpath.join(
             self._repo_abspath,
@@ -167,5 +188,9 @@ class SSHExecutor(BaseExecutor):
         )
 
         with self.sshfs() as fs:
-            odb = get_odb(fs, cache_path, **fs.config)
-            push(dvc, revs=[rev], run_cache=run_cache, odb=odb)
+            yield get_odb(fs, cache_path, **fs.config)
+
+    def fetch_exps(self, *args, **kwargs) -> Iterable[str]:
+        with self.sshfs() as fs:
+            kwargs.update(self._git_client_args(fs))
+            return super().fetch_exps(*args, **kwargs)

@@ -149,14 +149,16 @@ class BaseExecutorManager(ABC, Mapping):
             for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
                 scm.remove_ref(ref)
 
-    def exec_queue(self, jobs: Optional[int] = 1, detach: bool = False):
+    def exec_queue(
+        self, repo: "Repo", jobs: Optional[int] = 1, detach: bool = False
+    ):
         """Run dvc repro for queued executors in parallel."""
         if detach:
             raise NotImplementedError
             # TODO use ProcessManager.spawn() to support detached runs
-        return self._exec_attached(jobs=jobs)
+        return self._exec_attached(repo, jobs=jobs)
 
-    def _exec_attached(self, jobs: Optional[int] = 1):
+    def _exec_attached(self, repo: "Repo", jobs: Optional[int] = 1):
         import signal
         from concurrent.futures import (
             CancelledError,
@@ -214,7 +216,7 @@ class BaseExecutorManager(ABC, Mapping):
                     if exc is None:
                         exec_result = future.result()
                         result[rev].update(
-                            self._collect_executor(executor, exec_result)
+                            self._collect_executor(repo, executor, exec_result)
                         )
                     elif not isinstance(exc, CheckpointKilledError):
                         logger.error(
@@ -231,7 +233,7 @@ class BaseExecutorManager(ABC, Mapping):
 
         return result
 
-    def _collect_executor(self, executor, exec_result) -> Dict[str, str]:
+    def _collect_executor(self, repo, executor, exec_result) -> Dict[str, str]:
         # NOTE: GitPython Repo instances cannot be re-used
         # after process has received SIGINT or SIGTERM, so we
         # need this hack to re-instantiate git instances after
@@ -249,7 +251,6 @@ class BaseExecutorManager(ABC, Mapping):
 
         for ref in executor.fetch_exps(
             self.scm,
-            executor.git_url,
             force=exec_result.force,
             on_diverged=on_diverged,
         ):
@@ -257,6 +258,9 @@ class BaseExecutorManager(ABC, Mapping):
             if exp_rev:
                 logger.debug("Collected experiment '%s'.", exp_rev[:7])
                 results[exp_rev] = exec_result.exp_hash
+
+        if exec_result.ref_info is not None:
+            executor.collect_cache(repo, exec_result.ref_info)
 
         return results
 

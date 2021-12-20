@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
 
-    from ..base import ExpStashEntry
+    from ..base import ExpRefInfo, ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,11 @@ class BaseLocalExecutor(BaseExecutor):
         super().cleanup()
         self.scm.close()
         del self.scm
+
+    def collect_cache(
+        self, repo: "Repo", exp_ref: "ExpRefInfo", run_cache: bool = True
+    ):
+        """Collect DVC cache."""
 
 
 class TempDirExecutor(BaseLocalExecutor):
@@ -91,9 +96,9 @@ class TempDirExecutor(BaseLocalExecutor):
         with open(local_config, "w", encoding="utf-8") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
 
-    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
-        """Initialize DVC (cache)."""
-        self._config(dvc.odb.local.cache_dir)
+    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
+        """Initialize DVC cache."""
+        self._config(repo.odb.local.cache_dir)
 
     def cleanup(self):
         super().cleanup()
@@ -152,7 +157,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
         elif scm.get_ref(EXEC_BRANCH):
             self.scm.remove_ref(EXEC_BRANCH)
 
-    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
+    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         pass
 
     def cleanup(self):

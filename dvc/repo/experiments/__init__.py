@@ -672,7 +672,7 @@ class Experiments:
             dict mapping stash revs to the successfully executed experiments
             for each stash rev.
         """
-        return manager.exec_queue(**kwargs)
+        return manager.exec_queue(self.repo, **kwargs)
 
     def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
@@ -747,6 +747,8 @@ class Experiments:
         from dvc.scm import InvalidRemoteSCMRepo
         from dvc.utils.serialize import load_json
 
+        from .executor.local import TempDirExecutor
+
         result = {}
         pid_dir = os.path.join(
             self.repo.tmp_dir,
@@ -777,10 +779,10 @@ class Experiments:
                         def on_diverged(_ref: str, _checkpoint: bool):
                             return False
 
+                        executor = TempDirExecutor.from_info(info)
                         try:
-                            for ref in BaseExecutor.fetch_exps(
+                            for ref in executor.fetch_exps(
                                 self.scm,
-                                info.git_url,
                                 on_diverged=on_diverged,
                             ):
                                 logger.debug(
