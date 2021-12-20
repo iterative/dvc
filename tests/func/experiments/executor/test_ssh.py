@@ -7,6 +7,7 @@ from dvc_ssh.tests.cloud import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 from dvc.fs.ssh import SSHFileSystem
 from dvc.repo.experiments.base import EXEC_HEAD, EXEC_MERGE
+from dvc.repo.experiments.executor.base import ExecutorInfo
 from dvc.repo.experiments.executor.ssh import SSHExecutor
 from tests.func.machine.conftest import *  # noqa, pylint: disable=wildcard-import
 
@@ -26,10 +27,9 @@ def test_init_from_stash(tmp_dir, scm, dvc, machine_instance, mocker):
     mock_entry = mocker.Mock()
     mock_entry.name = ""
     SSHExecutor.from_stash_entry(
-        None,
-        "",
+        dvc,
+        "abc123",
         mock_entry,
-        manager=dvc.machine,
         machine_name="foo",
     )
     _args, kwargs = mock.call_args
@@ -94,3 +94,31 @@ def test_init_cache(tmp_dir, dvc, scm, cloud):
             executor._repo_abspath, ".dvc", "cache", foo_hash[:2], foo_hash[2:]
         )
     )
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize("cloud", [pytest.lazy_fixture("git_ssh")])
+def test_reproduce(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
+    from sshfs import SSHFileSystem as _sshfs
+
+    rev = scm.get_rev()
+    root_url = cloud / SSHExecutor.gen_dirname()
+    mocker.patch.object(SSHFileSystem, "exists", return_value=True)
+    mock_execute = mocker.patch.object(_sshfs, "execute")
+    info = ExecutorInfo(
+        str(root_url),
+        rev,
+        "machine-foo",
+        str(root_url.path),
+        ".dvc",
+    )
+    infofile = str((root_url / "foo.run").path)
+    SSHExecutor.reproduce(
+        info,
+        rev,
+        infofile=infofile,
+        fs_factory=partial(_ssh_factory, cloud),
+    )
+    assert mock_execute.called_once()
+    _name, args, _kwargs = mock_execute.mock_calls[0]
+    assert f"dvc exp exec-run --infofile {infofile}" in args[0]

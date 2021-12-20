@@ -91,7 +91,11 @@ class TempDirExecutor(BaseLocalExecutor):
         self.scm.merge(merge_rev, squash=True, commit=False)
 
     def _config(self, cache_dir):
-        local_config = os.path.join(self.dvc_dir, "config.local")
+        local_config = os.path.join(
+            self.root_dir,
+            self.dvc_dir,
+            "config.local",
+        )
         logger.debug("Writing experiments local config '%s'", local_config)
         with open(local_config, "w", encoding="utf-8") as fobj:
             fobj.write(f"[cache]\n    dir = {cache_dir}")
