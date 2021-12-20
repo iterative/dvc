@@ -56,7 +56,7 @@ class WorkspaceExecutorManager(BaseExecutorManager):
                 scm.remove_ref(ref)
         return manager
 
-    def _collect_executor(self, executor, exec_result) -> Dict[str, str]:
+    def _collect_executor(self, repo, executor, exec_result) -> Dict[str, str]:
         results = {}
         exp_rev = self.scm.get_ref(EXEC_BRANCH)
         if exp_rev:
@@ -64,7 +64,9 @@ class WorkspaceExecutorManager(BaseExecutorManager):
             results[exp_rev] = exec_result.exp_hash
         return results
 
-    def exec_queue(self, jobs: Optional[int] = 1, detach: bool = False):
+    def exec_queue(
+        self, repo: "Repo", jobs: Optional[int] = 1, detach: bool = False
+    ):
         """Run a single WorkspaceExecutor.
 
         Workspace execution is done within the main DVC process
@@ -93,7 +95,7 @@ class WorkspaceExecutorManager(BaseExecutorManager):
                 )
             if exec_result.ref_info:
                 result[rev].update(
-                    self._collect_executor(executor, exec_result)
+                    self._collect_executor(repo, executor, exec_result)
                 )
         except CheckpointKilledError:
             # Checkpoint errors have already been logged

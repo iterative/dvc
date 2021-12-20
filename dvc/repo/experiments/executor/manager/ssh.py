@@ -62,7 +62,7 @@ class SSHExecutorManager(BaseExecutorManager):
     def get_infofile_path(self, name: str) -> str:
         return f"{name}{BaseExecutor.INFOFILE_EXT}"
 
-    def _exec_attached(self, jobs: Optional[int] = 1):
+    def _exec_attached(self, repo: "Repo", jobs: Optional[int] = 1):
         from dvc.exceptions import DvcException
         from dvc.stage.monitor import CheckpointKilledError
 
@@ -90,7 +90,7 @@ class SSHExecutorManager(BaseExecutorManager):
                 )
             if exec_result.ref_info:
                 result[rev].update(
-                    self._collect_executor(executor, exec_result)
+                    self._collect_executor(repo, executor, exec_result)
                 )
         except CheckpointKilledError:
             # Checkpoint errors have already been logged
