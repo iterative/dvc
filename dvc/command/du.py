@@ -1,29 +1,38 @@
 import argparse
 import logging
 
-from dvc.command.base import CmdBaseNoRepo, append_doc_link
-from dvc.ui import ui
-from dvc.exceptions import DvcException
 from dvc.command import completion
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.exceptions import DvcException
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
+
 def _human_readable_size(size):
-    for unit in ['B', 'K', 'M', 'G']:
-        if size < 1024.0 or unit == 'G':
+    for unit in ["B", "K", "M", "G"]:
+        if size < 1024.0 or unit == "G":
             break
         size /= 1024.0
     return "{0} {1}".format(round(size, 2), unit)
 
+
 def _stringify(entries, human_readable=False):
-    return ["{0} \t {1}".format(
-        _human_readable_size(entry["size"]) if human_readable else entry["size"],
-        entry["path"])
-        for entry in entries]
+    return [
+        "{0} \t {1}".format(
+            _human_readable_size(entry["size"])
+            if human_readable
+            else entry["size"],
+            entry["path"],
+        )
+        for entry in entries
+    ]
+
 
 class CmdDU(CmdBaseNoRepo):
     def run(self):
         from dvc.repo import Repo
+
         try:
             entries, total_size = Repo.du(
                 self.args.url,
@@ -31,12 +40,14 @@ class CmdDU(CmdBaseNoRepo):
                 rev=self.args.rev,
                 summarize=self.args.summarize,
                 max_depth=self.args.max_depth,
-                include_files=self.args.all
+                include_files=self.args.all,
             )
             if self.args.json:
                 ui.write_json(entries)
             elif entries:
-                entries_str = _stringify(entries, human_readable=self.args.human_readable)
+                entries_str = _stringify(
+                    entries, human_readable=self.args.human_readable
+                )
                 ui.write("\n".join(entries_str))
                 if self.args.total:
                     if self.args.human_readable:
@@ -47,6 +58,7 @@ class CmdDU(CmdBaseNoRepo):
         except DvcException:
             logger.exception(f"failed to summarize '{self.args.url}'")
             return 1
+
 
 def add_parser(subparsers, parent_parser):
     DU_HELP = (

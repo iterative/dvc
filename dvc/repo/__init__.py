@@ -59,6 +59,7 @@ class Repo:
     from dvc.repo.commit import commit
     from dvc.repo.destroy import destroy
     from dvc.repo.diff import diff
+    from dvc.repo.du import du as _du
     from dvc.repo.fetch import fetch
     from dvc.repo.freeze import freeze, unfreeze
     from dvc.repo.gc import gc
@@ -76,7 +77,6 @@ class Repo:
     from dvc.repo.run import run
     from dvc.repo.status import status
     from dvc.repo.update import update
-    from dvc.repo.du import du as _du
 
     ls = staticmethod(_ls)
     du = staticmethod(_du)
