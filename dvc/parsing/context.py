@@ -343,6 +343,27 @@ class Context(CtxDict):
                     Defaults to False. Note that the default is different from
                     `resolve`.
         """
+        if "?" in key:
+            cond, _, then = key.partition("?")
+            if_true, _, if_false = then.partition(":")
+            cond_str = self.select(cond.strip(), unwrap=True)
+            then = if_true if cond_str else if_false
+            then = then.strip()
+
+            def maybe_wrap(s: str):
+                return s if unwrap else Value(s, Meta())
+
+            if (then.startswith("'") and then.endswith("'")) or (
+                then.startswith('"') and then.endswith('"')
+            ):
+                res_str = then[1:-1]  # TODO: some escaping?
+                return maybe_wrap(res_str)
+            if not then:
+                res_str = ""
+                return maybe_wrap(res_str)
+
+            return self.select(then, unwrap=unwrap)
+
         normalized = normalize_key(key)
         try:
             node = super().select(normalized)

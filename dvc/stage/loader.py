@@ -91,7 +91,7 @@ class StageLoader(Mapping):
         # remove empty deps (we use them if some deps should be erased in some case)
         if deps.get(stage.PARAM_DEPS) is not None:
             deps[stage.PARAM_DEPS] = list(
-                filter(lambda x: x, deps[stage.PARAM_DEPS])
+                filter(lambda x: bool(x), deps[stage.PARAM_DEPS])
             )
         fill_stage_dependencies(stage, **deps)
 
