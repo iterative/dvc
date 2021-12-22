@@ -186,7 +186,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         if kwargs.pop("csv", False):
             ui.write(self.to_csv(), end="")
 
-        elif kwargs.pop("html", False):
+        elif kwargs.pop("pcp", False):
             ui.write(
                 self.to_parallel_coordinates(
                     kwargs["output_path"], kwargs.get("color_by")
