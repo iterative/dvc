@@ -629,7 +629,8 @@ def test_fix_exp_head(tmp_dir, scm, tail):
     head = "HEAD" + tail
     assert head == fix_exp_head(scm, head)
 
-    scm.set_ref(EXEC_BASELINE, "refs/heads/master")
+    rev = "1" * 40
+    scm.set_ref(EXEC_BASELINE, rev)
     assert EXEC_BASELINE + tail == fix_exp_head(scm, head)
     assert "foo" + tail == fix_exp_head(scm, "foo" + tail)
 
