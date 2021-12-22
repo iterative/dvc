@@ -761,7 +761,7 @@ def test_experiments_init_type_invalid_choice():
         parse_args(["exp", "init", "--type=invalid", "cmd"])
 
 
-def test_show_experiments_html(tmp_dir, mocker):
+def test_show_experiments_pcp(tmp_dir, mocker):
     all_experiments = {
         "workspace": {
             "baseline": {
@@ -783,13 +783,13 @@ def test_show_experiments_html(tmp_dir, mocker):
     )
     td = experiments_table.return_value
 
-    show_experiments(all_experiments, html=True)
+    show_experiments(all_experiments, pcp=True)
 
     td.dropna.assert_called_with("rows", how="all")
 
     render_kwargs = td.render.call_args[1]
 
-    for arg in ["html", "output_path", "color_by"]:
+    for arg in ["pcp", "output_path", "color_by"]:
         assert arg in render_kwargs
     assert render_kwargs["output_path"] == tmp_dir / "dvc_plots"
     assert render_kwargs["color_by"] == "Experiment"
