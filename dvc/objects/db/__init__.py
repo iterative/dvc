@@ -8,18 +8,10 @@ if TYPE_CHECKING:
 
 def get_odb(fs, fs_path, **config):
     from .base import ObjectDB
-    from .gdrive import GDriveObjectDB
     from .local import LocalObjectDB
-    from .oss import OSSObjectDB
 
     if fs.scheme == Schemes.LOCAL:
         return LocalObjectDB(fs, fs_path, **config)
-
-    if fs.scheme == Schemes.GDRIVE:
-        return GDriveObjectDB(fs, fs_path, **config)
-
-    if fs.scheme == Schemes.OSS:
-        return OSSObjectDB(fs, fs_path, **config)
 
     return ObjectDB(fs, fs_path, **config)
 

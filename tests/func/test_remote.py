@@ -239,6 +239,7 @@ def test_remote_modify_local_on_repo_config(tmp_dir, dvc):
     assert dvc.config["remote"]["myremote"] == {
         "url": "http://example.com/path",
         "user": "xxx",
+        "verify": False,
     }
 
 
