@@ -23,6 +23,8 @@ def _collect_experiment_commit(
     running=None,
     onerror: Optional[Callable] = None,
 ):
+    from dvc.dependency import ParamsDependency, RepoDependency
+
     res: Dict[str, Optional[Any]] = defaultdict(dict)
     for rev in repo.brancher(revs=[exp_rev]):
         if rev == "workspace":
@@ -46,7 +48,17 @@ def _collect_experiment_commit(
                 "nfiles": dep.meta.nfiles,
             }
             for dep in repo.index.deps
-            if type(dep).__name__ != "ParamsDependency" and dep.is_in_repo
+            if not isinstance(dep, (ParamsDependency, RepoDependency))
+        }
+
+        res["outs"] = {
+            out.def_path: {
+                "hash": out.hash_info.value,
+                "size": out.meta.size,
+                "nfiles": out.meta.nfiles,
+            }
+            for out in repo.index.outs
+            if not (out.is_metric or out.is_plot)
         }
 
         res["queued"] = stash
@@ -121,6 +133,7 @@ def show(
     param_deps=False,
     onerror: Optional[Callable] = None,
 ):
+
     if onerror is None:
         onerror = onerror_collect
 
