@@ -1,4 +1,14 @@
-from typing import Callable, Generator, Iterable, Optional, Set
+from collections import defaultdict
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Union,
+)
 
 from scmrepo.git import Git
 
@@ -11,6 +21,23 @@ from .base import (
     EXPS_STASH,
     ExpRefInfo,
 )
+
+
+class AmbiguousExpRefInfo(InvalidArgumentError):
+    def __init__(
+        self,
+        exp_name: str,
+        exp_ref_list: Iterable[ExpRefInfo],
+    ):
+        msg = [
+            (
+                f"Ambiguous name '{exp_name}' refers to multiple experiments."
+                " Use one of the following full refnames instead:"
+            ),
+            "",
+        ]
+        msg.extend([f"\t{info}" for info in exp_ref_list])
+        super().__init__("\n".join(msg))
 
 
 def exp_refs(scm: "Git") -> Generator["ExpRefInfo", None, None]:
@@ -28,15 +55,6 @@ def exp_refs_by_rev(
     for ref in scm.get_refs_containing(rev, EXPS_NAMESPACE):
         if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH):
             yield ExpRefInfo.from_ref(ref)
-
-
-def exp_refs_by_name(
-    scm: "Git", name: str
-) -> Generator["ExpRefInfo", None, None]:
-    """Iterate over all experiment refs matching the specified name."""
-    for ref_info in exp_refs(scm):
-        if ref_info.name == name:
-            yield ref_info
 
 
 def exp_refs_by_baseline(
@@ -96,13 +114,17 @@ def remote_exp_refs(
         yield ExpRefInfo.from_ref(ref)
 
 
-def remote_exp_refs_by_name(
-    scm: "Git", url: str, name: str
-) -> Generator["ExpRefInfo", None, None]:
-    """Iterate over all remote experiment refs matching the specified name."""
-    for ref_info in remote_exp_refs(scm, url):
-        if ref_info.name == name:
-            yield ref_info
+def exp_refs_by_names(
+    scm: "Git", names: Set[str], url: Optional[str] = None
+) -> Dict[str, List[ExpRefInfo]]:
+    """Iterate over all experiment refs matching the specified names."""
+    resolve_results = defaultdict(list)
+    ref_info_gen = remote_exp_refs(scm, url) if url else exp_refs(scm)
+    for ref_info in ref_info_gen:
+        if ref_info.name in names:
+            resolve_results[ref_info.name].append(ref_info)
+
+    return resolve_results
 
 
 def remote_exp_refs_by_baseline(
@@ -155,45 +177,39 @@ def fix_exp_head(scm: "Git", ref: Optional[str]) -> Optional[str]:
     return ref
 
 
-def resolve_exp_ref(
-    scm, exp_name: str, git_remote: Optional[str] = None
-) -> Optional[ExpRefInfo]:
-    if exp_name.startswith("refs/"):
-        return ExpRefInfo.from_ref(exp_name)
+def resolve_name(
+    scm: "Git",
+    exp_names: Union[Iterable[str], str],
+    git_remote: Optional[str] = None,
+) -> Dict[str, Optional[ExpRefInfo]]:
+    """find the ref_info of specified names."""
+    if isinstance(exp_names, str):
+        exp_names = [exp_names]
 
-    if git_remote:
-        exp_ref_list = list(remote_exp_refs_by_name(scm, git_remote, exp_name))
-    else:
-        exp_ref_list = list(exp_refs_by_name(scm, exp_name))
-
-    if not exp_ref_list:
-        return None
-    if len(exp_ref_list) > 1:
-        cur_rev = scm.get_rev()
-        for info in exp_ref_list:
-            if info.baseline_sha == cur_rev:
-                return info
-        if git_remote:
-            msg = [
-                (
-                    f"Ambiguous name '{exp_name}' refers to multiple "
-                    "experiments. Use full refname to push one of the "
-                    "following:"
-                ),
-                "",
-            ]
+    result = {}
+    unresolved = set()
+    for exp_name in exp_names:
+        if exp_name.startswith("refs/"):
+            result[exp_name] = ExpRefInfo.from_ref(exp_name)
         else:
-            msg = [
-                (
-                    f"Ambiguous name '{exp_name}' refers to multiple "
-                    f"experiments in '{git_remote}'. Use full refname to pull "
-                    "one of the following:"
-                ),
-                "",
-            ]
-        msg.extend([f"\t{info}" for info in exp_ref_list])
-        raise InvalidArgumentError("\n".join(msg))
-    return exp_ref_list[0]
+            unresolved.add(exp_name)
+
+    unresolved_result = exp_refs_by_names(scm, unresolved, git_remote)
+    cur_rev = scm.get_rev()
+    for name in unresolved:
+        ref_info_list = unresolved_result[name]
+        if not ref_info_list:
+            result[name] = None
+        elif len(ref_info_list) == 1:
+            result[name] = ref_info_list[0]
+        else:
+            for ref_info in ref_info_list:
+                if ref_info.baseline_sha == cur_rev:
+                    result[name] = ref_info
+                    break
+            else:
+                raise AmbiguousExpRefInfo(name, ref_info_list)
+    return result
 
 
 def check_ref_format(scm: "Git", ref: ExpRefInfo):

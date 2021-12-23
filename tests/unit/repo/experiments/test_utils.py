@@ -2,7 +2,7 @@ import pytest
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.base import EXPS_NAMESPACE, ExpRefInfo
-from dvc.repo.experiments.utils import check_ref_format, resolve_exp_ref
+from dvc.repo.experiments.utils import check_ref_format, resolve_name
 
 
 def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
@@ -17,13 +17,16 @@ def commit_exp_ref(tmp_dir, scm, file="foo", contents="foo", name="foo"):
 @pytest.mark.parametrize("name_only", [True, False])
 def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
     ref, _ = commit_exp_ref(tmp_dir, scm)
-    ref_info = resolve_exp_ref(scm, "foo" if name_only else ref)
-    assert isinstance(ref_info, ExpRefInfo)
-    assert str(ref_info) == ref
+    name = "foo" if name_only else ref
+    result = resolve_name(scm, [name, "notexist"])
+    assert isinstance(result[name], ExpRefInfo)
+    assert str(result[name]) == ref
+    assert result["notexist"] is None
 
     scm.push_refspec(git_upstream.url, ref, ref)
     remote = git_upstream.url if use_url else git_upstream.remote
-    remote_ref_info = resolve_exp_ref(scm, "foo" if name_only else ref, remote)
+    name = "foo" if name_only else ref
+    remote_ref_info = resolve_name(scm, [name], remote)[name]
     assert isinstance(remote_ref_info, ExpRefInfo)
     assert str(remote_ref_info) == ref
 
