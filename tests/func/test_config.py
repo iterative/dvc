@@ -239,6 +239,7 @@ def test_merging_two_levels(dvc):
     assert dvc.config["remote"]["test"] == {
         "url": "ssh://example.com",
         "password": "1",
+        "verify": False,
     }
 
 
