@@ -18,14 +18,6 @@ from dvc.utils.fs import makedirs, move
 logger = logging.getLogger(__name__)
 
 
-class RemoteCmdError(DvcException):
-    def __init__(self, remote, cmd, ret, err):
-        super().__init__(
-            "{remote} command '{cmd}' finished with non-zero return code"
-            " {ret}': {err}".format(remote=remote, cmd=cmd, ret=ret, err=err)
-        )
-
-
 class RemoteActionNotImplemented(DvcException):
     def __init__(self, action, scheme):
         m = f"{action} is not supported for {scheme} remotes"
