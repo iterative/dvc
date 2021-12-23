@@ -27,9 +27,9 @@ class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
 
     def unstrip_protocol(self, path: str) -> str:
         host = self.fs_args["host"]
-        port = self.fs_args["port"]
-        path = path.lstrip("/")
-        return f"hdfs://{host}:{port}/{path}"
+        port = self.fs_args.get("port")
+        netloc = host + (f":{port}" if port else "")
+        return "hdfs://" + netloc + "/" + path.lstrip("/")
 
     @staticmethod
     def _get_kwargs_from_urls(urlpath):

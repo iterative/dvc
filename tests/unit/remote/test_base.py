@@ -2,9 +2,7 @@ import math
 import posixpath
 from unittest import mock
 
-import pytest
-
-from dvc.fs.base import FileSystem, RemoteCmdError
+from dvc.fs.base import FileSystem
 from dvc.objects.db.base import ObjectDB
 
 
@@ -16,22 +14,6 @@ class _CallableOrNone:
 
 
 CallableOrNone = _CallableOrNone()
-
-
-def test_cmd_error(dvc):
-    config = {}
-
-    cmd = "sed 'hello'"
-    ret = "1"
-    err = "sed: expression #1, char 2: extra characters after command"
-
-    with mock.patch.object(
-        FileSystem,
-        "remove",
-        side_effect=RemoteCmdError("base", cmd, ret, err),
-    ):
-        with pytest.raises(RemoteCmdError):
-            FileSystem(**config).remove("file")
 
 
 @mock.patch.object(ObjectDB, "_list_hashes_traverse")
