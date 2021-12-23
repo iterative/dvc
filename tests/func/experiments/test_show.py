@@ -36,7 +36,6 @@ def make_executor_info(**kwargs):
 
 
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
-    print(dvc.experiments.show()["workspace"])
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
             "data": {
@@ -48,6 +47,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
                     }
                 },
                 "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
+                "outs": {},
                 "params": {"params.yaml": {"data": {"foo": 1}}},
                 "queued": False,
                 "running": False,
@@ -80,6 +80,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
                 }
             },
             "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
+            "outs": {},
             "params": {"params.yaml": {"data": {"foo": 1}}},
             "queued": False,
             "running": False,
@@ -343,6 +344,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
                 },
                 "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
                 "params": {"params.yaml": {"data": {"foo": 1}}},
+                "outs": {},
                 "queued": False,
                 "running": True,
                 "executor": info.location,
@@ -619,3 +621,42 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys):
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
     assert '"label": "Created"' not in html_text
     assert '"label": "foobar"' not in html_text
+
+
+def test_show_outs(tmp_dir, dvc, scm):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    params_file = tmp_dir / "params.yaml"
+    params_data = {
+        "foo": 1,
+        "bar": 1,
+    }
+    (tmp_dir / params_file).dump(params_data)
+
+    dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml && echo out > out",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo", "bar"],
+        name="copy-file",
+        deps=["copy.py"],
+        outs=["out"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+
+    outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
+    assert outs == {
+        "out": {
+            "hash": ANY,
+            "size": ANY,
+            "nfiles": None,
+        }
+    }
