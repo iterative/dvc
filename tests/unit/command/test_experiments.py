@@ -277,7 +277,7 @@ def test_experiments_pull(dvc, scm, mocker):
     m.assert_called_once_with(
         cmd.repo,
         "origin",
-        "experiment",
+        ["experiment"],
         force=True,
         pull_cache=False,
         dvc_remote="my-remote",

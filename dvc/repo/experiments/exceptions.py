@@ -1,5 +1,6 @@
+from typing import Iterable, List
+
 from dvc.exceptions import InvalidArgumentError
-from dvc.types import Iterable, List, Optional
 
 from .base import ExpRefInfo
 
@@ -19,6 +20,7 @@ class AmbiguousExpRefInfo(InvalidArgumentError):
         ]
         msg.extend([f"\t{info}" for info in exp_ref_list])
         super().__init__("\n".join(msg))
+
 
 class UnresolvedExpNamesError(InvalidArgumentError):
     def __init__(

@@ -1,10 +1,10 @@
 import logging
+from typing import Iterable, Union
 
 from dvc.exceptions import DvcException
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit
-from dvc.types import IterableStr, Union
 
 from .exceptions import UnresolvedExpNamesError
 from .utils import exp_commits, push_refspec, resolve_name
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def push(
     repo,
     git_remote: str,
-    exp_names: Union[IterableStr, str],
+    exp_names: Union[Iterable[str], str],
     *args,
     force: bool = False,
     push_cache: bool = False,
