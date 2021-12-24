@@ -77,7 +77,9 @@ def test_locked(mocker):
 
 def test_skip_graph_checks(tmp_dir, dvc, mocker, run_copy):
     # See https://github.com/iterative/dvc/issues/2671 for more info
-    mock_build_graph = mocker.patch("dvc.repo.index.Index.build_graph")
+    from dvc.repo.index import Index
+
+    mock_build_graph = mocker.spy(Index.graph, "fget")
 
     # sanity check
     tmp_dir.gen("foo", "foo text")

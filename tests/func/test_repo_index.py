@@ -24,7 +24,6 @@ def test_index(tmp_dir, scm, dvc, run_copy):
 
     assert index.outs_graph
     assert index.graph
-    assert index.build_graph()
     assert isinstance(index.outs_trie, Trie)
     assert index.identifier
     index.check_graph()
@@ -229,7 +228,7 @@ def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
 
 def test_skip_graph_checks(dvc, mocker):
     # See https://github.com/iterative/dvc/issues/2671 for more info
-    mock_build_graph = mocker.spy(Index, "build_graph")
+    mock_build_graph = mocker.spy(Index.graph, "fget")
 
     # sanity check
     Index(dvc).check_graph()
