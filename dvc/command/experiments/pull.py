@@ -87,6 +87,9 @@ def add_parser(experiments_subparsers, parent_parser):
         metavar="<git_remote>",
     )
     experiments_pull_parser.add_argument(
-        "experiment", help="Experiment to pull.", metavar="<experiment>"
+        "experiment",
+        nargs="+",
+        help="Experiments to pull.",
+        metavar="<experiment>",
     )
     experiments_pull_parser.set_defaults(func=CmdExperimentsPull)

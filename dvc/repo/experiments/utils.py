@@ -13,6 +13,7 @@ from typing import (
 from scmrepo.git import Git
 
 from dvc.exceptions import InvalidArgumentError
+from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
 
 from .base import (
     EXEC_BASELINE,
@@ -21,8 +22,6 @@ from .base import (
     EXPS_STASH,
     ExpRefInfo,
 )
-from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
-
 
 
 def exp_refs(scm: "Git") -> Generator["ExpRefInfo", None, None]:
