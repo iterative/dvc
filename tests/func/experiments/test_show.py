@@ -351,8 +351,9 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
     tmp_dir.scm_gen("file", "file", "commit")
     next_rev = scm.get_rev()
 
+    dvc.experiments.show(num=-1)
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.show(num=-1)
+        dvc.experiments.show(num=-2)
 
     expected = {"workspace", init_rev, next_rev}
     results = dvc.experiments.show(num=2)

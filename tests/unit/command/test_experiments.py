@@ -99,6 +99,8 @@ def test_experiments_show(dvc, scm, mocker):
             "--param-deps",
             "-n",
             "1",
+            "--rev",
+            "foo",
         ]
     )
     assert cli_args.func == CmdExperimentsShow
@@ -113,8 +115,9 @@ def test_experiments_show(dvc, scm, mocker):
         all_tags=True,
         all_branches=True,
         all_commits=True,
-        sha_only=True,
         num=1,
+        revs="foo",
+        sha_only=True,
         param_deps=True,
     )
 

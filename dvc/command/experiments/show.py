@@ -522,8 +522,9 @@ class CmdExperimentsShow(CmdBase):
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
-                sha_only=self.args.sha,
+                revs=self.args.rev,
                 num=self.args.num,
+                sha_only=self.args.sha,
                 param_deps=self.args.param_deps,
             )
         except DvcException:
@@ -595,13 +596,23 @@ def add_parser(experiments_subparsers, parent_parser):
         help="Show experiments derived from all Git commits.",
     )
     experiments_show_parser.add_argument(
+        "--rev",
+        type=str,
+        default=None,
+        help=(
+            "Show experiments derived from the specified revision. "
+            "Defaults to HEAD if none of `--rev`,`-a`,`-A`,`-T` is specified."
+        ),
+        metavar="<rev>",
+    )
+    experiments_show_parser.add_argument(
         "-n",
         "--num",
         type=int,
         default=1,
         dest="num",
         metavar="<num>",
-        help="Show the last `num` commits from HEAD.",
+        help="Show the last `num` commits from <rev>.",
     )
     experiments_show_parser.add_argument(
         "--no-pager",
