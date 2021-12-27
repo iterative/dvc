@@ -257,6 +257,7 @@ SCHEMA = {
             "instance_gpu": Lower,
             "ssh_private": str,
             "startup_script": str,
+            "setup_script": str,
         },
     },
     # section for experimental features
