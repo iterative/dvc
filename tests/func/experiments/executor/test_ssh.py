@@ -1,13 +1,14 @@
 import posixpath
 from contextlib import contextmanager
 from functools import partial
+from urllib.parse import urlparse
 
 import pytest
 from dvc_ssh.tests.cloud import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
 from dvc.fs.ssh import SSHFileSystem
 from dvc.repo.experiments.base import EXEC_HEAD, EXEC_MERGE
-from dvc.repo.experiments.executor.base import ExecutorInfo
+from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
 from dvc.repo.experiments.executor.ssh import SSHExecutor
 from tests.func.machine.conftest import *  # noqa, pylint: disable=wildcard-import
 
@@ -122,3 +123,39 @@ def test_reproduce(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
     assert mock_execute.called_once()
     _name, args, _kwargs = mock_execute.mock_calls[0]
     assert f"dvc exp exec-run --infofile {infofile}" in args[0]
+
+
+@pytest.mark.needs_internet
+@pytest.mark.parametrize("cloud", [pytest.lazy_fixture("git_ssh")])
+def test_run_machine(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
+    baseline = scm.get_rev()
+    factory = partial(_ssh_factory, cloud)
+    mocker.patch.object(
+        dvc.machine,
+        "get_executor_kwargs",
+        return_value={
+            "host": cloud.host,
+            "port": cloud.port,
+            "username": TEST_SSH_USER,
+            "fs_factory": factory,
+        },
+    )
+    mocker.patch.object(dvc.machine, "get_setup_script", return_value=None)
+    mock_repro = mocker.patch.object(
+        SSHExecutor,
+        "reproduce",
+        return_value=ExecutorResult("abc123", None, False),
+    )
+
+    tmp_dir.gen("params.yaml", "foo: 2")
+    dvc.experiments.run(exp_stage.addressing, machine="foo")
+    assert mock_repro.called_once()
+    _name, _args, kwargs = mock_repro.mock_calls[0]
+    info = kwargs["info"]
+    url = urlparse(info.git_url)
+    assert url.scheme == "ssh"
+    assert url.hostname == cloud.host
+    assert url.port == cloud.port
+    assert info.baseline_rev == baseline
+    assert kwargs["infofile"] is not None
+    assert kwargs["fs_factory"] is not None
