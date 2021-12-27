@@ -671,3 +671,34 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
     assert main(["exp", "show", "--html"]) == 0
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
     assert '{"label": "foobar", "values": [2.0, null, null]}' in html_text
+
+
+def test_show_theme(tmp_dir, scm, dvc, exp_stage, mocker):
+    from dvc.command.experiments import show
+    from dvc.ui import table
+    from dvc.utils.table import Table
+
+    show_experiments = mocker.spy(show, "show_experiments")
+    rich_table = mocker.spy(table, "rich_table")
+    add_row = mocker.spy(Table, "add_row")
+
+    assert main(["exp", "show"]) == 0
+    assert not show_experiments.call_args[1]["theme"]
+    assert add_row.call_args[1]["style"] == "bold"
+    assert rich_table.call_args[1]["borders"]
+
+    with dvc.config.edit() as conf:
+        conf["ui"]["theme"] = "light"
+
+    assert main(["exp", "show"]) == 0
+    assert show_experiments.call_args[1]["theme"]
+    assert add_row.call_args[1]["style"] == "bold on grey85"
+    assert rich_table.call_args[1]["borders"] == "horizontals"
+
+    with dvc.config.edit() as conf:
+        conf["ui"]["theme"] = "dark"
+
+    assert main(["exp", "show"]) == 0
+    assert show_experiments.call_args[1]["theme"]
+    assert add_row.call_args[1]["style"] == "bold on grey23"
+    assert rich_table.call_args[1]["borders"] == "horizontals"

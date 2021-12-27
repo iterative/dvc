@@ -385,6 +385,7 @@ def show_experiments(
     csv=False,
     markdown=False,
     html=False,
+    theme=None,
     **kwargs,
 ):
     from funcy.seqs import flatten as flatten_list
@@ -440,9 +441,11 @@ def show_experiments(
             td.drop(col)
 
     row_styles = lmap(baseline_styler, td.column("typ"))
-    for n, row_style in enumerate(row_styles):
-        if n % 2 != 0:
-            row_style["style"] += " on grey23"
+    if theme:
+        for n, row_style in enumerate(row_styles):
+            if n % 2 != 0:
+                color = "grey85" if theme == "light" else "grey23"
+                row_style["style"] += f" on {color}"
 
     if not csv:
         merge_headers = ["Experiment", "rev", "typ", "parent"]
@@ -489,7 +492,7 @@ def show_experiments(
 
     td.render(
         pager=pager,
-        borders="horizontals",
+        borders="horizontals" if theme else True,
         rich_table=True,
         header_styles=styles,
         row_styles=row_styles,
@@ -570,6 +573,7 @@ class CmdExperimentsShow(CmdBase):
                 html=self.args.html,
                 out=self.args.out,
                 open=self.args.open,
+                theme=self.repo.config.get("ui", {}).get("theme", None),
             )
         return 0
 
