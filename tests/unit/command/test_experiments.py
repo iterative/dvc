@@ -129,6 +129,7 @@ def test_experiments_run(dvc, scm, mocker):
         "tmp_dir": False,
         "checkpoint_resume": None,
         "reset": False,
+        "machine": None,
     }
     default_arguments.update(repro_arguments)
 
