@@ -337,7 +337,7 @@ def test_to_parallel_coordinates(tmp_dir, mocker):
     )
     renderer = renderer_class.return_value
 
-    td.render(pcp=True, output_path="foo")
+    td.to_parallel_coordinates(output_path="foo")
 
     renderer_class.assert_called_with(td, None, td._fill_value)
 
