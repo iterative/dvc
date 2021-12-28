@@ -21,6 +21,7 @@ from typing import (
 from funcy import reraise
 
 if TYPE_CHECKING:
+    from dvc.types import StrPath
     from dvc.ui.table import CellT
 
 
@@ -153,7 +154,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             writer.writerow(row)
         return buff.getvalue()
 
-    def to_parallel_coordinates(self, output_path, color_by):
+    def to_parallel_coordinates(
+        self, output_path: "StrPath", color_by: str = None
+    ) -> str:
         from dvc.render.html import write
         from dvc.render.plotly import ParallelCoordinatesRenderer
 
@@ -185,14 +188,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         if kwargs.pop("csv", False):
             ui.write(self.to_csv(), end="")
-
-        elif kwargs.pop("pcp", False):
-            ui.write(
-                self.to_parallel_coordinates(
-                    kwargs["output_path"], kwargs.get("color_by")
-                )
-            )
-
         else:
             ui.table(self, headers=self.keys(), **kwargs)
 

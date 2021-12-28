@@ -787,9 +787,7 @@ def test_show_experiments_pcp(tmp_dir, mocker):
 
     td.dropna.assert_called_with("rows", how="all")
 
-    render_kwargs = td.render.call_args[1]
+    kwargs = td.to_parallel_coordinates.call_args[1]
 
-    for arg in ["pcp", "output_path", "color_by"]:
-        assert arg in render_kwargs
-    assert render_kwargs["output_path"] == tmp_dir / "dvc_plots"
-    assert render_kwargs["color_by"] == "Experiment"
+    assert kwargs["output_path"] == str(tmp_dir / "dvc_plots")
+    assert kwargs["color_by"] == "Experiment"

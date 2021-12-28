@@ -1,9 +1,9 @@
 import argparse
 import logging
+import os
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
-from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import lmap
@@ -475,7 +475,6 @@ def show_experiments(
     if kwargs.get("only_changed", False) or pcp:
         td.drop_duplicates("cols", ignore_empty=False)
 
-    pcp_args = {}
     if pcp:
         td.dropna("rows", how="all")
         td.column("Experiment")[:] = [
@@ -484,23 +483,25 @@ def show_experiments(
             for x in td.column("Experiment")
         ]
         out = kwargs.get("out") or "dvc_plots"
-        pcp_args["output_path"] = (Path.cwd() / out).resolve()
-        pcp_args["color_by"] = kwargs.get("sort_by") or "Experiment"
+        ui.write(
+            td.to_parallel_coordinates(
+                output_path=os.path.abspath(out),
+                color_by=kwargs.get("sort_by") or "Experiment",
+            )
+        )
+        if kwargs.get("open"):
+            return ui.open_browser(os.path.join(out, "index.html"))
 
-    td.render(
-        pager=pager,
-        borders="horizontals",
-        rich_table=True,
-        header_styles=styles,
-        row_styles=row_styles,
-        csv=csv,
-        markdown=markdown,
-        pcp=pcp,
-        **pcp_args,
-    )
-
-    if pcp and kwargs.get("open"):
-        return ui.open_browser(Path(out) / "index.html")
+    else:
+        td.render(
+            pager=pager,
+            borders="horizontals",
+            rich_table=True,
+            header_styles=styles,
+            row_styles=row_styles,
+            csv=csv,
+            markdown=markdown,
+        )
 
 
 def _normalize_headers(names, count):
