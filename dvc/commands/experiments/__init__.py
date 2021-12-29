@@ -58,3 +58,43 @@ def add_parser(subparsers, parent_parser):
     for cmd in SUB_COMMANDS:
         cmd.add_parser(experiments_subparsers, parent_parser)
     fix_plumbing_subparsers(experiments_subparsers)
+
+
+def add_rev_selection_flags(
+    experiments_subcmd_parser, command: str, default: bool = True
+):
+    experiments_subcmd_parser.add_argument(
+        "-A",
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help=(
+            f"{command} all experiments in the repository "
+            "(overrides `--rev` and `--num`)."
+        ),
+    )
+    default_msg = " (HEAD by default)" if default else ""
+    msg = (
+        f"{command} experiments derived from the specified `<commit>` as "
+        f"baseline{default_msg}."
+    )
+    experiments_subcmd_parser.add_argument(
+        "--rev",
+        type=str,
+        default=None,
+        help=msg,
+        metavar="<commit>",
+    )
+    experiments_subcmd_parser.add_argument(
+        "-n",
+        "--num",
+        type=int,
+        default=1,
+        dest="num",
+        metavar="<num>",
+        help=(
+            f"{command} experiments from the `--rev` baseline and from `num` "
+            "commits before it (first parents). Give a negative value to "
+            "include all first-parent commits."
+        ),
+    )

@@ -8,7 +8,7 @@ from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
 from scmrepo.git import Git
 from scmrepo.noscm import NoSCM
 
-from dvc.exceptions import DvcException, InvalidArgumentError
+from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
@@ -136,7 +136,7 @@ def resolve_rev(scm: "Git", rev: str) -> str:
 
 def iter_revs(
     scm: "Git",
-    head_revs: Optional[List[str]] = None,
+    revs: Optional[List[str]] = None,
     num: int = 1,
     all_branches: bool = False,
     all_tags: bool = False,
@@ -144,42 +144,39 @@ def iter_revs(
     all_experiments: bool = False,
 ) -> Mapping[str, List[str]]:
 
-    if num < 1 and num != -1:
-        raise InvalidArgumentError(f"Invalid number of commits '{num}'")
-
-    if not any(
-        [head_revs, all_branches, all_tags, all_commits, all_experiments]
-    ):
+    if not any([revs, all_branches, all_tags, all_commits, all_experiments]):
         return {}
 
-    head_revs = head_revs or []
-    revs = []
-    for rev in head_revs:
-        revs.append(rev)
+    revs = revs or []
+    results = []
+    for rev in revs:
+        if num == 0:
+            continue
+        results.append(rev)
         n = 1
         while True:
             if num == n:
                 break
             try:
                 head = f"{rev}~{n}"
-                revs.append(resolve_rev(scm, head))
+                results.append(resolve_rev(scm, head))
             except RevError:
                 break
             n += 1
 
     if all_commits:
-        revs.extend(scm.list_all_commits())
+        results.extend(scm.list_all_commits())
     else:
         if all_branches:
-            revs.extend(scm.list_branches())
+            results.extend(scm.list_branches())
 
         if all_tags:
-            revs.extend(scm.list_tags())
+            results.extend(scm.list_tags())
 
     if all_experiments:
         from dvc.repo.experiments.utils import exp_commits
 
-        revs.extend(exp_commits(scm))
+        results.extend(exp_commits(scm))
 
     rev_resolver = partial(resolve_rev, scm)
-    return group_by(rev_resolver, revs)
+    return group_by(rev_resolver, results)

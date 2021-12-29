@@ -11,9 +11,10 @@ class CmdExperimentsList(CmdBase):
     def run(self):
         names_only = self.args.names_only
         exps = self.repo.experiments.ls(
+            all_commits=self.args.all_commits,
             rev=self.args.rev,
+            num=self.args.num,
             git_remote=self.args.git_remote,
-            all_=self.args.all,
         )
         for baseline in exps:
             tag = self.repo.scm.describe(baseline)
@@ -32,6 +33,7 @@ class CmdExperimentsList(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
+    from . import add_rev_selection_flags
 
     EXPERIMENTS_LIST_HELP = "List local and remote experiments."
     experiments_list_parser = experiments_subparsers.add_parser(
@@ -41,19 +43,7 @@ def add_parser(experiments_subparsers, parent_parser):
         help=EXPERIMENTS_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    experiments_list_parser.add_argument(
-        "--rev",
-        type=str,
-        default=None,
-        help=(
-            "List experiments derived from the specified revision. "
-            "Defaults to HEAD if neither `--rev` nor `--all` are specified."
-        ),
-        metavar="<rev>",
-    )
-    experiments_list_parser.add_argument(
-        "--all", action="store_true", help="List all experiments."
-    )
+    add_rev_selection_flags(experiments_list_parser, "List")
     experiments_list_parser.add_argument(
         "--names-only",
         action="store_true",

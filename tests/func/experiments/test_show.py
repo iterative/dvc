@@ -7,7 +7,6 @@ import pytest
 from funcy import first, get_in
 
 from dvc.cli import main
-from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import (
     EXEC_PID_DIR,
@@ -287,9 +286,7 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
     tmp_dir.scm_gen("file", "file", "commit")
     next_rev = scm.get_rev()
 
-    dvc.experiments.show(num=-1)
-    with pytest.raises(InvalidArgumentError):
-        dvc.experiments.show(num=-2)
+    dvc.experiments.show(num=-2)
 
     expected = {"workspace", init_rev, next_rev}
     results = dvc.experiments.show(num=2)

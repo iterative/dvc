@@ -132,12 +132,13 @@ def test_list_remote(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
     downstream_exp = git_downstream.tmp_dir.dvc.experiments
     assert downstream_exp.ls(git_remote=remote) == {}
 
+    git_downstream.tmp_dir.scm.fetch_refspecs(remote, ["master:master"])
     exp_list = downstream_exp.ls(rev=baseline_a, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {ref_info_a.name, ref_info_b.name}
     }
 
-    exp_list = downstream_exp.ls(all_=True, git_remote=remote)
+    exp_list = downstream_exp.ls(all_commits=True, git_remote=remote)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {ref_info_a.name, ref_info_b.name},
         baseline_c: {ref_info_c.name},

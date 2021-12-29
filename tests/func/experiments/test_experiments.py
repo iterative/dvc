@@ -479,7 +479,7 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
         baseline_a: {ref_info_a.name, ref_info_b.name}
     }
 
-    exp_list = dvc.experiments.ls(all_=True)
+    exp_list = dvc.experiments.ls(all_commits=True)
     assert {key: set(val) for key, val in exp_list.items()} == {
         baseline_a: {ref_info_a.name, ref_info_b.name},
         baseline_c: {ref_info_c.name},
