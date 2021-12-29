@@ -5,6 +5,7 @@ from typing import (
     Generator,
     Iterable,
     List,
+    Mapping,
     Optional,
     Set,
     Union,
@@ -24,9 +25,16 @@ from .base import (
 )
 
 
-def exp_refs(scm: "Git") -> Generator["ExpRefInfo", None, None]:
+def exp_refs(
+    scm: "Git", url: Optional[str] = None
+) -> Generator["ExpRefInfo", None, None]:
     """Iterate over all experiment refs."""
-    for ref in scm.iter_refs(base=EXPS_NAMESPACE):
+    ref_gen = (
+        iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
+        if url
+        else scm.iter_refs(base=EXPS_NAMESPACE)
+    )
+    for ref in ref_gen:
         if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
             continue
         yield ExpRefInfo.from_ref(ref)
@@ -42,14 +50,15 @@ def exp_refs_by_rev(
 
 
 def exp_refs_by_baseline(
-    scm: "Git", rev: str
-) -> Generator["ExpRefInfo", None, None]:
+    scm: "Git", revs: Set[str], url: Optional[str] = None
+) -> Mapping[str, List[ExpRefInfo]]:
     """Iterate over all experiment refs with the specified baseline."""
-    ref_info = ExpRefInfo(baseline_sha=rev)
-    for ref in scm.iter_refs(base=str(ref_info)):
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
-            continue
-        yield ExpRefInfo.from_ref(ref)
+    all_exp_refs = exp_refs(scm, url)
+    result = defaultdict(list)
+    for ref in all_exp_refs:
+        if ref.baseline_sha in revs:
+            result[ref.baseline_sha].append(ref)
+    return result
 
 
 def iter_remote_refs(
@@ -88,38 +97,17 @@ def push_refspec(
         raise GitAuthError(str(exc))
 
 
-def remote_exp_refs(
-    scm: "Git", url: str
-) -> Generator["ExpRefInfo", None, None]:
-    """Iterate over all remote experiment refs."""
-    for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE):
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
-            continue
-        yield ExpRefInfo.from_ref(ref)
-
-
 def exp_refs_by_names(
     scm: "Git", names: Set[str], url: Optional[str] = None
 ) -> Dict[str, List[ExpRefInfo]]:
     """Iterate over all experiment refs matching the specified names."""
     resolve_results = defaultdict(list)
-    ref_info_gen = remote_exp_refs(scm, url) if url else exp_refs(scm)
+    ref_info_gen = exp_refs(scm, url)
     for ref_info in ref_info_gen:
         if ref_info.name in names:
             resolve_results[ref_info.name].append(ref_info)
 
     return resolve_results
-
-
-def remote_exp_refs_by_baseline(
-    scm: "Git", url: str, rev: str
-) -> Generator["ExpRefInfo", None, None]:
-    """Iterate over all remote experiment refs with the specified baseline."""
-    ref_info = ExpRefInfo(baseline_sha=rev)
-    for ref in iter_remote_refs(scm, url, base=str(ref_info)):
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
-            continue
-        yield ExpRefInfo.from_ref(ref)
 
 
 def exp_commits(

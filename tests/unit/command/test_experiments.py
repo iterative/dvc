@@ -197,9 +197,11 @@ def test_experiments_list(dvc, scm, mocker):
             "experiments",
             "list",
             "origin",
+            "--all-commits",
+            "-n",
+            "-1",
             "--rev",
             "foo",
-            "--all",
             "--names-only",
         ]
     )
@@ -211,7 +213,11 @@ def test_experiments_list(dvc, scm, mocker):
     assert cmd.run() == 0
 
     m.assert_called_once_with(
-        cmd.repo, git_remote="origin", rev="foo", all_=True
+        cmd.repo,
+        git_remote="origin",
+        rev="foo",
+        all_commits=True,
+        num=-1,
     )
 
 

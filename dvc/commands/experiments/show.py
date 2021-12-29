@@ -515,6 +515,8 @@ class CmdExperimentsShow(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
+    from . import add_rev_selection_flags
+
     EXPERIMENTS_SHOW_HELP = "Print experiments."
     experiments_show_parser = experiments_subparsers.add_parser(
         "show",
@@ -523,6 +525,7 @@ def add_parser(experiments_subparsers, parent_parser):
         help=EXPERIMENTS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_rev_selection_flags(experiments_show_parser, "Show")
     experiments_show_parser.add_argument(
         "-a",
         "--all-branches",
@@ -536,32 +539,6 @@ def add_parser(experiments_subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show experiments derived from all Git tags.",
-    )
-    experiments_show_parser.add_argument(
-        "-A",
-        "--all-commits",
-        action="store_true",
-        default=False,
-        help="Show experiments derived from all Git commits.",
-    )
-    experiments_show_parser.add_argument(
-        "--rev",
-        type=str,
-        default=None,
-        help=(
-            "Show experiments derived from the specified revision. "
-            "Defaults to HEAD if none of `--rev`,`-a`,`-A`,`-T` is specified."
-        ),
-        metavar="<rev>",
-    )
-    experiments_show_parser.add_argument(
-        "-n",
-        "--num",
-        type=int,
-        default=1,
-        dest="num",
-        metavar="<num>",
-        help="Show the last `num` commits from <rev>.",
     )
     experiments_show_parser.add_argument(
         "--no-pager",

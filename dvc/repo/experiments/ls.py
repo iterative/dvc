@@ -3,49 +3,36 @@ from collections import defaultdict
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
+from dvc.scm import iter_revs
+from dvc.types import Optional
 
-from .utils import (
-    exp_refs,
-    exp_refs_by_baseline,
-    remote_exp_refs,
-    remote_exp_refs_by_baseline,
-)
+from .utils import exp_refs, exp_refs_by_baseline
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
-def ls(repo, *args, rev=None, git_remote=None, all_=False, **kwargs):
-    from scmrepo.git import Git
-
-    from dvc.scm import RevError, resolve_rev
-
-    if rev:
-        try:
-            rev = resolve_rev(repo.scm, rev)
-        except RevError:
-            if not (git_remote and Git.is_sha(rev)):
-                # This could be a remote rev that has not been fetched yet
-                raise
-    elif not all_:
-        rev = repo.scm.get_rev()
-
+def ls(
+    repo,
+    rev: Optional[str] = None,
+    all_commits: bool = False,
+    num: int = 1,
+    git_remote: Optional[str] = None,
+):
     results = defaultdict(list)
-
-    if rev:
-        if git_remote:
-            gen = remote_exp_refs_by_baseline(repo.scm, git_remote, rev)
-        else:
-            gen = exp_refs_by_baseline(repo.scm, rev)
-        for info in gen:
-            results[rev].append(info.name)
-    elif all_:
-        if git_remote:
-            gen = remote_exp_refs(repo.scm, git_remote)
-        else:
-            gen = exp_refs(repo.scm)
+    if all_commits:
+        gen = exp_refs(repo.scm, git_remote)
         for info in gen:
             results[info.baseline_sha].append(info.name)
+        return results
+
+    rev = rev or "HEAD"
+
+    revs = iter_revs(repo.scm, [rev], num)
+    rev_set = set(revs.keys())
+    ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
+    for rev, ref_info_list in ref_info_dict.items():
+        results[rev] = [ref_info.name for ref_info in ref_info_list]
 
     return results
