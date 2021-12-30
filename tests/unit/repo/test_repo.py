@@ -120,9 +120,9 @@ def test_branch_config(tmp_dir, scm):
     scm.checkout("master")
 
     with pytest.raises(NotDvcRepoError):
-        Repo(scm=scm, rev="master").close()
+        Repo(rev="master").close()
 
-    dvc = Repo(scm=scm, rev="branch")
+    dvc = Repo(rev="branch")
     try:
         assert dvc.config["remote"]["branch"]["url"] == "/some/path"
     finally:

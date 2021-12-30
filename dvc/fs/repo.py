@@ -177,8 +177,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             if self._is_dvc_repo(d):
                 repo = self.repo_factory(
                     d,
-                    scm=self._main_repo.scm,
-                    rev=self._main_repo.get_rev(),
+                    fs=self._main_repo.fs,
                     repo_factory=self.repo_factory,
                 )
                 self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
