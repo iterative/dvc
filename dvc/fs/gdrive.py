@@ -109,11 +109,14 @@ class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         if (
             self._use_service_account
             and not self._service_account_json_file_path
+            and "GDRIVE_CREDENTIALS_DATA" not in os.environ
         ):
             raise DvcException(
                 "To use service account, set "
                 "`gdrive_service_account_json_file_path`, and optionally"
                 "`gdrive_service_account_user_email` in DVC config\n"
+                "You can also provide these using the GDRIVE_CREDENTIALS_DATA"
+                "environment variable.\n"
                 "Learn more at {}".format(
                     format_link("https://man.dvc.org/remote/modify")
                 )
