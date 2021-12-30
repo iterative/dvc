@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from dvc.fs.base import FileSystem
     from dvc.objects.file import HashFile
     from dvc.repo.scm_context import SCMContext
-    from dvc.scm import Base
 
 logger = logging.getLogger(__name__)
 
@@ -84,24 +83,15 @@ class Repo:
     def _get_repo_dirs(
         self,
         root_dir: str = None,
-        scm: "Base" = None,
-        rev: str = None,
+        fs: "FileSystem" = None,
         uninitialized: bool = False,
     ):
-        assert bool(scm) == bool(rev)
-
-        from dvc.fs.git import GitFileSystem
-        from dvc.scm import SCM, Base, Git, SCMError
+        from dvc.scm import SCM, Base, SCMError
         from dvc.utils.fs import makedirs
 
         dvc_dir = None
         tmp_dir = None
         try:
-            fs = (
-                GitFileSystem(scm=scm, rev=rev)
-                if isinstance(scm, Git) and rev
-                else None
-            )
             root_dir = self.find_root(root_dir, fs)
             dvc_dir = os.path.join(root_dir, self.DVC_DIR)
             tmp_dir = os.path.join(dvc_dir, "tmp")
@@ -151,7 +141,7 @@ class Repo:
     def __init__(
         self,
         root_dir=None,
-        scm=None,
+        fs=None,
         rev=None,
         subrepos=False,
         uninitialized=False,
@@ -162,7 +152,7 @@ class Repo:
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
         from dvc.fs.git import GitFileSystem
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs.local import localfs
         from dvc.lock import LockNoop, make_lock
         from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
@@ -170,29 +160,25 @@ class Repo:
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
         from dvc.repo.stage import StageLoad
-        from dvc.scm import SCM, Git
+        from dvc.scm import SCM
         from dvc.stage.cache import StageCache
         from dvc.state import State, StateNoop
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}
+        self._fs = fs or localfs
+        self._scm = None
 
-        if rev and not scm:
-            scm = SCM(root_dir or os.curdir)
+        if rev and not fs:
+            self._scm = SCM(root_dir or os.curdir)
+            self._fs = GitFileSystem(scm=self._scm, rev=rev)
 
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
-            root_dir=root_dir, scm=scm, rev=rev, uninitialized=uninitialized
+            root_dir=root_dir, fs=self.fs, uninitialized=uninitialized
         )
-
-        if scm:
-            assert isinstance(scm, Git)
-            self._fs = GitFileSystem(scm=scm, rev=rev)
-        else:
-            self._fs = LocalFileSystem(url=self.root_dir)
 
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
-        self._scm = scm
 
         # used by RepoFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
@@ -200,7 +186,7 @@ class Repo:
         self.cloud = DataCloud(self)
         self.stage = StageLoad(self)
 
-        if scm or not self.dvc_dir:
+        if isinstance(self.fs, GitFileSystem) or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
             self.odb = ODBManager(self)
@@ -326,29 +312,34 @@ class Repo:
 
     @classmethod
     def find_root(cls, root=None, fs=None) -> str:
+        from dvc.fs.local import LocalFileSystem, localfs
+
         root_dir = os.path.realpath(root or os.curdir)
+        _fs = fs
+        fs = fs or localfs
 
-        if fs:
-            if fs.isdir(os.path.join(root_dir, cls.DVC_DIR)):
-                return root_dir
-            raise NotDvcRepoError(f"'{root}' does not contain DVC directory")
-
-        if not os.path.isdir(root_dir):
+        if not fs.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")
 
         while True:
-            dvc_dir = os.path.join(root_dir, cls.DVC_DIR)
-            if os.path.isdir(dvc_dir):
+            dvc_dir = fs.path.join(root_dir, cls.DVC_DIR)
+            if fs.isdir(dvc_dir):
                 return root_dir
-            if os.path.ismount(root_dir):
+            if isinstance(fs, LocalFileSystem) and os.path.ismount(root_dir):
                 break
-            root_dir = os.path.dirname(root_dir)
+            parent = fs.path.parent(root_dir)
+            if parent == root_dir:
+                break
+            root_dir = parent
 
-        message = (
-            "you are not inside of a DVC repository "
-            "(checked up to mount point '{}')"
-        ).format(root_dir)
-        raise NotDvcRepoError(message)
+        if _fs:
+            msg = f"'{root}' does not contain DVC directory"
+        else:
+            msg = (
+                "you are not inside of a DVC repository "
+                f"(checked up to mount point '{root_dir}')"
+            )
+        raise NotDvcRepoError(msg)
 
     @classmethod
     def find_dvc_dir(cls, root=None):
