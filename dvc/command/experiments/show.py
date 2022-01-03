@@ -375,7 +375,7 @@ def prepare_exp_id(kwargs) -> "RichText":
 
 
 def baseline_styler(typ):
-    return {"style": "bold"} if typ == "baseline" else {"style": "default"}
+    return {"style": "bold"} if typ == "baseline" else {}
 
 
 def show_experiments(
