@@ -22,6 +22,7 @@ from .base import (
     ExperimentExistsError,
     ExpRefInfo,
     ExpStashEntry,
+    InvalidExpRefError,
     MultipleBranchError,
 )
 from .executor.base import (
@@ -724,9 +725,12 @@ class Experiments:
         exclude = f"{EXEC_NAMESPACE}/*"
         ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
         if ref:
-            name = ExpRefInfo.from_ref(ref).name
-            if name:
-                return name
+            try:
+                name = ExpRefInfo.from_ref(ref).name
+                if name:
+                    return name
+            except InvalidExpRefError:
+                pass
         if rev in self.stash_revs:
             return self.stash_revs[rev].name
         return None
