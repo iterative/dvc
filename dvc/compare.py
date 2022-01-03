@@ -11,6 +11,7 @@ from typing import (
     List,
     Mapping,
     MutableSequence,
+    Optional,
     Sequence,
     Set,
     Tuple,
@@ -38,10 +39,20 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         self._columns: Dict[str, Column] = {name: Column() for name in columns}
         self._keys: List[str] = list(columns)
         self._fill_value = fill_value
+        self._protected: Set[str] = set()
 
     @property
     def columns(self) -> List[Column]:
         return list(map(self.column, self.keys()))
+
+    def is_protected(self, col_name) -> bool:
+        return col_name in self._protected
+
+    def protect(self, *col_names: str):
+        self._protected.update(col_names)
+
+    def unprotect(self, *col_names: str):
+        self._protected = self._protected.difference(col_names)
 
     def column(self, name: str) -> Column:
         return self._columns[name]
@@ -126,9 +137,13 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         return len(self.columns), len(self)
 
     def drop(self, *col_names: str) -> None:
-        for col_name in col_names:
-            self._keys.remove(col_name)
-            self._columns.pop(col_name)
+        to_remove = set()
+        for col in col_names:
+            if not self.is_protected(col):
+                to_remove.add(col)
+        for col in to_remove:
+            self._keys.remove(col)
+            self._columns.pop(col)
 
     def rename(self, from_col_name: str, to_col_name: str) -> None:
         self._columns[to_col_name] = self._columns.pop(from_col_name)
@@ -199,7 +214,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             {k: self._columns[k][i] for k in keys} for i in range(len(self))
         ]
 
-    def dropna(self, axis: str = "rows", how="any"):
+    def dropna(
+        self, axis: str = "rows", how="any", subset: Optional[List] = None
+    ):
         if axis not in ["rows", "cols"]:
             raise ValueError(
                 f"Invalid 'axis' value {axis}."
@@ -211,13 +228,15 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             )
 
         match_line: Set = set()
-        match = True
+        match_any = True
         if how == "all":
-            match = False
+            match_any = False
 
         for n_row, row in enumerate(self):
             for n_col, col in enumerate(row):
-                if (col == self._fill_value) is match:
+                if subset and self.keys()[n_col] not in subset:
+                    continue
+                if (col == self._fill_value) is match_any:
                     if axis == "rows":
                         match_line.add(n_row)
                         break
@@ -244,7 +263,12 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         else:
             self.drop(*to_drop)
 
-    def drop_duplicates(self, axis: str = "rows", ignore_empty: bool = True):
+    def drop_duplicates(
+        self,
+        axis: str = "rows",
+        subset: Optional[List] = None,
+        ignore_empty: bool = True,
+    ):
         if axis not in ["rows", "cols"]:
             raise ValueError(
                 f"Invalid 'axis' value {axis}."
@@ -254,6 +278,8 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         if axis == "cols":
             cols_to_drop: List[str] = []
             for n_col, col in enumerate(self.columns):
+                if subset and self.keys()[n_col] not in subset:
+                    continue
                 # Cast to str because Text is not hashable error
                 unique_vals = {str(x) for x in col}
                 if ignore_empty and self._fill_value in unique_vals:
@@ -266,6 +292,13 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             unique_rows = []
             rows_to_drop: List[int] = []
             for n_row, row in enumerate(self):
+                if subset:
+                    row = [
+                        col
+                        for n_col, col in enumerate(row)
+                        if self.keys()[n_col] in subset
+                    ]
+
                 tuple_row = tuple(row)
                 if tuple_row in unique_rows:
                     rows_to_drop.append(n_row)
