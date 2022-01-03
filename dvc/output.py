@@ -874,7 +874,12 @@ class Output:
         return self.obj
 
     def _collect_used_dir_cache(
-        self, remote=None, force=False, jobs=None, filter_info=None
+        self,
+        remote=None,
+        force=False,
+        jobs=None,
+        filter_info=None,
+        allow_no_hash=False,
     ) -> Optional["Tree"]:
         """Fetch dir cache and return used object IDs for this out."""
 
@@ -886,16 +891,17 @@ class Output:
         try:
             objects.check(self.odb, self.odb.get(self.hash_info))
         except FileNotFoundError:
-            msg = (
-                "Missing cache for directory '{}'. "
-                "Cache for files inside will be lost. "
-                "Would you like to continue? Use '-f' to force."
-            )
-            if not force and not prompt.confirm(msg.format(self.fs_path)):
-                raise CollectCacheError(
-                    "unable to fully collect used cache"
-                    " without cache for directory '{}'".format(self)
+            if not allow_no_hash:
+                msg = (
+                    "Missing cache for directory '{}'. "
+                    "Cache for files inside will be lost. "
+                    "Would you like to continue? Use '-f' to force."
                 )
+                if not force and not prompt.confirm(msg.format(self.fs_path)):
+                    raise CollectCacheError(
+                        "unable to fully collect used cache"
+                        " without cache for directory '{}'".format(self)
+                    )
             return None
 
         obj = self.get_obj()
@@ -918,22 +924,23 @@ class Output:
             return self.get_used_external(**kwargs)
 
         if not self.hash_info:
-            msg = (
-                "Output '{}'({}) is missing version info. "
-                "Cache for it will not be collected. "
-                "Use `dvc repro` to get your pipeline up to date.".format(
-                    self, self.stage
-                )
-            )
-            if self.exists:
-                msg += (
-                    "\n"
-                    "You can also use `dvc commit {stage.addressing}` "
-                    "to associate existing '{out}' with {stage}.".format(
-                        out=self, stage=self.stage
+            if not kwargs.get("allow_no_hash", False):
+                msg = (
+                    "Output '{}'({}) is missing version info. "
+                    "Cache for it will not be collected. "
+                    "Use `dvc repro` to get your pipeline up to date.".format(
+                        self, self.stage
                     )
                 )
-            logger.warning(msg)
+                if self.exists:
+                    msg += (
+                        "\n"
+                        "You can also use `dvc commit {stage.addressing}` "
+                        "to associate existing '{out}' with {stage}.".format(
+                            out=self, stage=self.stage
+                        )
+                    )
+                logger.warning(msg)
             return {}
 
         if self.is_dir_checksum:

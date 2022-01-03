@@ -213,6 +213,7 @@ def checkout(
     quiet=False,
     dvcignore: Optional[DvcIgnoreFilter] = None,
     state=None,
+    allow_no_hash=False,
 ):
     # if scheme(fs_path) not in ["local", cache.fs.scheme]:
     #    raise NotImplementedError
@@ -228,12 +229,13 @@ def checkout(
 
     failed = []
     if not obj:
-        if not quiet:
-            logger.warning(
-                "No file hash info found for '%s'. It won't be created.",
-                fs_path,
-            )
-        failed.append(fs_path)
+        if not allow_no_hash:
+            if not quiet:
+                logger.warning(
+                    "No file hash info found for '%s'. It won't be created.",
+                    fs_path,
+                )
+            failed.append(fs_path)
     elif not diff:
         logger.trace("Data '%s' didn't change.", fs_path)  # type: ignore
 
@@ -253,7 +255,7 @@ def checkout(
 
     if diff and state:
         state.save_link(fs_path, fs)
-        if not failed:
+        if not failed and obj is not None:
             state.save(fs_path, fs, obj.hash_info)
 
     if failed or not diff:

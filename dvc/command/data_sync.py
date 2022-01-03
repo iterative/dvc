@@ -39,6 +39,7 @@ class CmdDataPull(CmdDataBase):
                 recursive=self.args.recursive,
                 run_cache=self.args.run_cache,
                 glob=self.args.glob,
+                allow_no_hash=self.args.allow_no_hash,
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
@@ -195,6 +196,12 @@ def add_parser(subparsers, _parent_parser):
         action="store_true",
         default=False,
         help="Pull cache for targets matching shell-style wildcards.",
+    )
+    pull_parser.add_argument(
+        "--allow-no-hash",
+        action="store_true",
+        default=False,
+        help="Ignore files with no hash.",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 

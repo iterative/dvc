@@ -38,6 +38,7 @@ class CmdCheckout(CmdBase):
                 force=self.args.force,
                 relink=self.args.relink,
                 recursive=self.args.recursive,
+                allow_no_hash=self.args.allow_no_hash,
             )
         except CheckoutError as _exc:
             exc = _exc
@@ -107,5 +108,11 @@ def add_parser(subparsers, parent_parser):
             "Limit command scope to these tracked files/directories, "
             ".dvc files, or stage names."
         ),
+    )
+    checkout_parser.add_argument(
+        "--allow-no-hash",
+        action="store_true",
+        default=False,
+        help="Ignore files with no hash.",
     ).complete = completion.DVC_FILE
     checkout_parser.set_defaults(func=CmdCheckout)

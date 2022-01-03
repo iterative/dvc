@@ -20,6 +20,7 @@ def pull(
     all_commits=False,
     run_cache=False,
     glob=False,
+    allow_no_hash=False,
 ):
     if isinstance(targets, str):
         targets = [targets]
@@ -36,12 +37,14 @@ def pull(
         with_deps=with_deps,
         recursive=recursive,
         run_cache=run_cache,
+        allow_no_hash=allow_no_hash,
     )
     stats = self.checkout(
         targets=expanded_targets,
         with_deps=with_deps,
         force=force,
         recursive=recursive,
+        allow_no_hash=allow_no_hash,
     )
 
     stats["fetched"] = processed_files_count
