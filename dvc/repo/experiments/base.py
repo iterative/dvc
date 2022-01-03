@@ -135,7 +135,7 @@ class ExpRefInfo:
                 or len(parts) > 5
                 or "/".join(parts[:2]) != EXPS_NAMESPACE
             ):
-                InvalidExpRefError(ref)
+                raise InvalidExpRefError(ref)
         except ValueError:
             raise InvalidExpRefError(ref)
         baseline_sha = parts[2] + parts[3] if len(parts) >= 4 else None
