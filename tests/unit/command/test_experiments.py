@@ -790,7 +790,9 @@ def test_show_experiments_pcp(tmp_dir, mocker):
 
     show_experiments(all_experiments, pcp=True)
 
-    td.dropna.assert_called_with("rows", how="all")
+    td.drop.assert_called_with("Created")
+    td.dropna.assert_called_with("rows", how="all", subset=[])
+    td.drop_duplicates.assert_called_with("rows", subset=[])
 
     kwargs = td.to_parallel_coordinates.call_args[1]
 
