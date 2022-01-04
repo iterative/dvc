@@ -68,6 +68,7 @@ class Repo:
     from dvc.repo.install import install
     from dvc.repo.ls import ls as _ls
     from dvc.repo.move import move
+    from dvc.repo.note import note
     from dvc.repo.pull import pull
     from dvc.repo.push import push
     from dvc.repo.remove import remove

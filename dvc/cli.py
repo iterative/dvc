@@ -33,6 +33,7 @@ from .command import (
     machine,
     metrics,
     move,
+    note,
     params,
     plots,
     remote,
@@ -89,6 +90,7 @@ COMMANDS = [
     check_ignore,
     live,
     machine,
+    note,
 ]
 
 
