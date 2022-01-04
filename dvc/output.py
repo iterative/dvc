@@ -326,9 +326,6 @@ class Output:
         self.desc = desc
 
         self.fs_path = self._parse_path(self.fs, fs_path)
-        if self.use_cache and self.odb is None:
-            raise RemoteCacheRequiredError(self.fs.scheme, self.fs_path)
-
         self.obj = None
         self.isexec = False if self.IS_DEPENDENCY else isexec
 
@@ -402,7 +399,10 @@ class Output:
 
     @property
     def odb(self):
-        return getattr(self.repo.odb, self.scheme)
+        odb = getattr(self.repo.odb, self.scheme)
+        if self.use_cache and odb is None:
+            raise RemoteCacheRequiredError(self.fs.scheme, self.fs_path)
+        return odb
 
     @property
     def cache_path(self):
