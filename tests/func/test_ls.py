@@ -557,3 +557,24 @@ def test_subrepo(dvc_top_level, erepo):
     assert _list_files(subrepo, ".") == common_outputs
     assert _list_files(subrepo, "scm_dir") == {"ipsum"}
     assert _list_files(subrepo, "dvc_dir") == {"lorem"}
+
+
+def test_broken_symlink(tmp_dir, dvc):
+    from dvc.system import System
+
+    tmp_dir.gen("file", "content")
+    System.symlink("file", "link")
+
+    os.remove("file")
+
+    entries = Repo.ls(os.fspath(tmp_dir))
+
+    assert entries == [
+        {
+            "isout": False,
+            "isdir": False,
+            "isexec": False,
+            "path": ".dvcignore",
+        },
+        {"isout": False, "isdir": False, "isexec": False, "path": "link"},
+    ]
