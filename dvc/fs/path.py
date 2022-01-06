@@ -15,7 +15,7 @@ class Path:
         return self.flavour.join(*parts)
 
     def parts(self, path):
-        drive, path = self.flavour.splitdrive(path)
+        drive, path = self.flavour.splitdrive(path.rstrip(self.flavour.sep))
 
         ret = []
         while True:
