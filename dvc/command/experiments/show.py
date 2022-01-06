@@ -1,9 +1,9 @@
 import argparse
 import logging
+import os
 from collections import Counter, OrderedDict, defaultdict
 from datetime import date, datetime
 from fnmatch import fnmatch
-from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from funcy import lmap
@@ -375,7 +375,7 @@ def prepare_exp_id(kwargs) -> "RichText":
 
 
 def baseline_styler(typ):
-    return {"style": "bold"} if typ == "baseline" else {"style": "default"}
+    return {"style": "bold"} if typ == "baseline" else {}
 
 
 def show_experiments(
@@ -384,7 +384,7 @@ def show_experiments(
     no_timestamp=False,
     csv=False,
     markdown=False,
-    html=False,
+    pcp=False,
     **kwargs,
 ):
     from funcy.seqs import flatten as flatten_list
@@ -432,7 +432,7 @@ def show_experiments(
         kwargs.get("iso"),
     )
 
-    if no_timestamp or html:
+    if no_timestamp or pcp:
         td.drop("Created")
 
     for col in ("State", "Executor"):
@@ -469,11 +469,10 @@ def show_experiments(
         }
     )
 
-    if kwargs.get("only_changed", False) or html:
+    if kwargs.get("only_changed", False) or pcp:
         td.drop_duplicates("cols", ignore_empty=False)
 
-    html_args = {}
-    if html:
+    if pcp:
         td.dropna("rows", how="all")
         td.column("Experiment")[:] = [
             # remove tree characters
@@ -481,23 +480,25 @@ def show_experiments(
             for x in td.column("Experiment")
         ]
         out = kwargs.get("out") or "dvc_plots"
-        html_args["output_path"] = (Path.cwd() / out).resolve()
-        html_args["color_by"] = kwargs.get("sort_by") or "Experiment"
+        ui.write(
+            td.to_parallel_coordinates(
+                output_path=os.path.abspath(out),
+                color_by=kwargs.get("sort_by") or "Experiment",
+            )
+        )
+        if kwargs.get("open"):
+            return ui.open_browser(os.path.join(out, "index.html"))
 
-    td.render(
-        pager=pager,
-        borders="horizontals",
-        rich_table=True,
-        header_styles=styles,
-        row_styles=row_styles,
-        csv=csv,
-        markdown=markdown,
-        html=html,
-        **html_args,
-    )
-
-    if html and kwargs.get("open"):
-        return ui.open_browser(Path(out) / "index.html")
+    else:
+        td.render(
+            pager=pager,
+            borders="horizontals",
+            rich_table=True,
+            header_styles=styles,
+            row_styles=row_styles,
+            csv=csv,
+            markdown=markdown,
+        )
 
 
 def _normalize_headers(names, count):
@@ -556,7 +557,7 @@ class CmdExperimentsShow(CmdBase):
                 csv=self.args.csv,
                 markdown=self.args.markdown,
                 only_changed=self.args.only_changed,
-                html=self.args.html,
+                pcp=self.args.pcp,
                 out=self.args.out,
                 open=self.args.open,
             )
@@ -709,22 +710,24 @@ def add_parser(experiments_subparsers, parent_parser):
         ),
     )
     experiments_show_parser.add_argument(
-        "--html",
+        "--parallel-coordinates-plot",
+        "--pcp",
+        dest="pcp",
         action="store_true",
         default=False,
-        help="Generate a parallel coordinates plot from the tabulated output.",
+        help="Generate a Parallel Coordinates Plot from the tabulated output.",
     )
     experiments_show_parser.add_argument(
         "-o",
         "--out",
         default=None,
-        help="Destination folder to save the HTML to",
+        help="Destination folder to save the Parallel Coordinates Plot to",
         metavar="<path>",
     ).complete = completion.DIR
     experiments_show_parser.add_argument(
         "--open",
         action="store_true",
         default=False,
-        help="Open the HTML directly in the browser.",
+        help="Open the Parallel Coordinates Plot directly in the browser.",
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)

@@ -241,6 +241,7 @@ class CmdMachineStatus(CmdBase):
         "instance_hdd_size",
         "instance_gpu",
     ]
+    FILL_VALUE = "-"
 
     def _add_row(
         self,
@@ -250,7 +251,11 @@ class CmdMachineStatus(CmdBase):
     ):
 
         if not all_status:
-            row = [name, None, "offline"]
+            row = [
+                name,
+                self.FILL_VALUE,
+                "offline",
+            ]  # back to `None` after #7167
             td.append(row)
         for i, status in enumerate(all_status, start=1):
             row = [name, f"num_{i}", "running" if status else "offline"]
@@ -264,7 +269,7 @@ class CmdMachineStatus(CmdBase):
             raise MachineDisabledError
 
         td = TabularData(
-            self.INSTANCE_FIELD + self.SHOWN_FIELD, fill_value="-"
+            self.INSTANCE_FIELD + self.SHOWN_FIELD, fill_value=self.FILL_VALUE
         )
 
         if self.args.name:

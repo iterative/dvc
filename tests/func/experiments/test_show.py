@@ -633,7 +633,7 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
 
     dvc.experiments.run(params=["foo=2"])
 
-    assert main(["exp", "show", "--html"]) == 0
+    assert main(["exp", "show", "--pcp"]) == 0
     kwargs = show_experiments.call_args[1]
 
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
@@ -648,26 +648,24 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
     assert '"line": {"color": [2, 1, 0]' in html_text
     assert '"label": "metrics.yaml:bar"' not in html_text
 
-    assert (
-        main(["exp", "show", "--html", "--sort-by", "metrics.yaml:foo"]) == 0
-    )
+    assert main(["exp", "show", "--pcp", "--sort-by", "metrics.yaml:foo"]) == 0
     kwargs = show_experiments.call_args[1]
 
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
     assert '"line": {"color": [2.0, 1.0, 2.0]' in html_text
 
-    assert main(["exp", "show", "--html", "--out", "experiments"]) == 0
+    assert main(["exp", "show", "--pcp", "--out", "experiments"]) == 0
     kwargs = show_experiments.call_args[1]
 
     assert kwargs["out"] == "experiments"
     assert (tmp_dir / "experiments" / "index.html").exists()
 
-    assert main(["exp", "show", "--html", "--open"]) == 0
+    assert main(["exp", "show", "--pcp", "--open"]) == 0
 
     webbroser_open.assert_called()
 
     params_data = {"foo": 1, "bar": 1, "foobar": 2}
     (tmp_dir / params_file).dump(params_data)
-    assert main(["exp", "show", "--html"]) == 0
+    assert main(["exp", "show", "--pcp"]) == 0
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
     assert '{"label": "foobar", "values": [2.0, null, null]}' in html_text

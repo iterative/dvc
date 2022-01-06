@@ -94,8 +94,14 @@ class CmdPlots(CmdBase):
             )
 
             ui.write(index_path.as_uri())
-
-            if self.args.open:
+            auto_open = self.repo.config["plots"].get("auto_open", False)
+            if self.args.open or auto_open:
+                if not auto_open:
+                    ui.write(
+                        "To enable auto opening, you can run:\n"
+                        "\n"
+                        "\tdvc config plots.auto_open true"
+                    )
                 return ui.open_browser(index_path)
 
             return 0
