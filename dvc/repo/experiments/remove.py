@@ -6,7 +6,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import RevError
 
-from .utils import exp_refs, push_refspec, remove_exp_refs, resolve_exp_ref
+from .utils import exp_refs, push_refspec, remove_exp_refs, resolve_name
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +69,8 @@ def _remove_commited_exps(
 ) -> List[str]:
     remain_list = []
     remove_list = []
-    for exp_name in exp_names:
-        ref_info = resolve_exp_ref(repo.scm, exp_name, remote)
-
+    ref_info_dict = resolve_name(repo.scm, exp_names, remote)
+    for exp_name, ref_info in ref_info_dict.items():
         if ref_info:
             remove_list.append(ref_info)
         else:
