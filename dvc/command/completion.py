@@ -3,7 +3,7 @@ import logging
 
 import shtab
 
-from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.command.base import CmdBaseNoRepo
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
@@ -92,12 +92,20 @@ class CmdCompletion(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
+    from dvc.utils import format_link
+
     COMPLETION_HELP = "Generate shell tab completion."
     COMPLETION_DESCRIPTION = "Prints out shell tab completion scripts."
+    COMPLETION_DOCS_LINK = format_link(
+        "https://dvc.org/doc/install/completion"
+    )
+    description = f"{COMPLETION_DESCRIPTION}"
+    description += f"\nDocumentation: {COMPLETION_DOCS_LINK}"
+
     completion_parser = subparsers.add_parser(
         "completion",
         parents=[parent_parser],
-        description=append_doc_link(COMPLETION_DESCRIPTION, "completion"),
+        description=description,
         help=COMPLETION_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
