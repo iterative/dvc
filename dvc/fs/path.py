@@ -1,5 +1,6 @@
 import ntpath
 import posixpath
+import re
 
 
 class Path:
@@ -10,31 +11,15 @@ class Path:
             self.flavour = ntpath
         else:
             raise ValueError(f"unsupported separator '{sep}'")
+        self.sep_re = re.compile(f"{re.escape(sep)}+")
 
     def join(self, *parts):
         return self.flavour.join(*parts)
 
     def parts(self, path):
-        drive, path = self.flavour.splitdrive(path)
-
-        ret = []
-        while True:
-            path, part = self.flavour.split(path)
-
-            if part:
-                ret.append(part)
-                continue
-
-            if path:
-                ret.append(path)
-
-            break
-
-        ret.reverse()
-
-        if drive:
-            ret = [drive] + ret
-
+        ret = self.sep_re.split(path.strip(self.flavour.sep))
+        if path.startswith(self.flavour.sep):
+            ret = [self.flavour.sep] + ret
         return tuple(ret)
 
     def parent(self, path):
