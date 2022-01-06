@@ -199,6 +199,14 @@ def isolate(tmp_path_factory, monkeypatch) -> None:
         monkeypatch.setenv("USERPROFILE", str(home_dir))
         monkeypatch.setenv("HOMEDRIVE", home_drive)
         monkeypatch.setenv("HOMEPATH", home_path)
+
+        for env_var, sub_path in (
+            ("APPDATA", "Roaming"),
+            ("LOCALAPPDATA", "Local"),
+        ):
+            path = home_dir / "AppData" / sub_path
+            path.mkdir(parents=True)
+            monkeypatch.setenv(env_var, os.fspath(path))
     else:
         monkeypatch.setenv("HOME", str(home_dir))
 
