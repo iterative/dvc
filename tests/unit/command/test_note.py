@@ -1,23 +1,27 @@
-import pytest
 import textwrap
+
+import pytest
 
 from dvc.cli import parse_args
 from dvc.command.note import CmdNote
 
 
-@pytest.mark.parametrize("filenames", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
-def test_note_set(mocker, filenames):
-    cli_args = parse_args(["note", "set", "-K", "color", "-V", "green"] + filenames)
+@pytest.mark.parametrize("paths", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
+def test_note_set(mocker, paths):
+    args = ["note", "set", "-K", "color", "-V", "green"]
+    cli_args = parse_args(args + paths)
     assert cli_args.func == CmdNote
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(cmd.repo, "note", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with(action="set", targets=filenames, key="color", value="green")
+    m.assert_called_once_with(
+        action="set", targets=paths, key="color", value="green"
+    )
 
 
-@pytest.mark.parametrize("filenames", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
-def test_note_find(mocker, filenames):
-    args = ["note", "find", "-K", "color"] + filenames
+@pytest.mark.parametrize("paths", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
+def test_note_find(mocker, paths):
+    args = ["note", "find", "-K", "color"] + paths
     cli_args = parse_args(args)
     assert cli_args.func == CmdNote
 
@@ -25,7 +29,9 @@ def test_note_find(mocker, filenames):
 
     m = mocker.patch.object(cmd.repo, "note", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with(action="find", targets=filenames, key="color", value=None)
+    m.assert_called_once_with(
+        action="find", targets=paths, key="color", value=None
+    )
 
 
 def test_note_find_output_single(mocker, capsys):
@@ -66,15 +72,17 @@ def test_note_find_output_multi(mocker, capsys):
     )
 
 
-@pytest.mark.parametrize("filenames", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
-def test_note_list(mocker, filenames):
-    args = ["note", "list"] + filenames
+@pytest.mark.parametrize("paths", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
+def test_note_list(mocker, paths):
+    args = ["note", "list"] + paths
     cli_args = parse_args(args)
     assert cli_args.func == CmdNote
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(cmd.repo, "note", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with(action="list", targets=filenames, key=None, value=None)
+    m.assert_called_once_with(
+        action="list", targets=paths, key=None, value=None
+    )
 
 
 def test_note_list_output_single(mocker, capsys):
@@ -120,12 +128,14 @@ def test_note_list_output_multi(mocker, capsys):
     )
 
 
-@pytest.mark.parametrize("filenames", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
-def test_note_remove(mocker, filenames):
-    args = ["note", "remove", "-K", "color"] + filenames
+@pytest.mark.parametrize("paths", [["a.txt"], ["a.txt", "b.txt", "c.txt"]])
+def test_note_remove(mocker, paths):
+    args = ["note", "remove", "-K", "color"] + paths
     cli_args = parse_args(args)
     assert cli_args.func == CmdNote
     cmd = cli_args.func(cli_args)
     m = mocker.patch.object(cmd.repo, "note", autospec=True)
     assert cmd.run() == 0
-    m.assert_called_once_with(action="remove", targets=filenames, key="color", value=None)
+    m.assert_called_once_with(
+        action="remove", targets=paths, key="color", value=None
+    )

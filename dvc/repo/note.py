@@ -3,8 +3,7 @@ import os
 
 from dvc.exceptions import DvcException
 from dvc.repo import locked
-from dvc.utils.serialize import load_yaml, dump_yaml
-
+from dvc.utils.serialize import dump_yaml, load_yaml
 
 logger = logging.getLogger(__name__)
 DVC_FILE_SUFFIX = ".dvc"
@@ -13,13 +12,7 @@ NOTES_KEY = "notes"
 
 
 @locked
-def note(
-    self,
-    action=None,
-    targets=[],
-    key=None,
-    value=None
-):
+def note(self, action=None, targets=[], key=None, value=None):
     if not targets:
         raise DvcException("No files specified.")
 
