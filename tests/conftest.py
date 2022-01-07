@@ -57,6 +57,14 @@ def enable_ui():
     ui.enable()
 
 
+@pytest.fixture(autouse=True)
+def clean_repos():
+    # pylint: disable=redefined-outer-name
+    from dvc.external_repo import clean_repos
+
+    clean_repos()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _close_pools():
     from dvc.fs.pool import close_pools
