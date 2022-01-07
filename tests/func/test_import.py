@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from funcy import first
+from scmrepo.git import Git
 
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
@@ -268,9 +269,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
 def test_push_wildcard_from_bare_git_repo(
     tmp_dir, make_tmp_dir, erepo_dir, local_cloud
 ):
-    import git
-
-    git.Repo.init(os.fspath(tmp_dir), bare=True)
+    Git.init(tmp_dir.fs_path, bare=True).close()
 
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
@@ -381,9 +380,7 @@ def test_pull_no_rev_lock(erepo_dir, tmp_dir, dvc):
 def test_import_from_bare_git_repo(
     tmp_dir, make_tmp_dir, erepo_dir, local_cloud
 ):
-    import git
-
-    git.Repo.init(os.fspath(tmp_dir), bare=True)
+    Git.init(tmp_dir.fs_path, bare=True).close()
 
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():

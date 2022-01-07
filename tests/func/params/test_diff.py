@@ -129,10 +129,9 @@ def test_no_commits(tmp_dir):
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-    from tests.dir_helpers import git_init
 
-    git_init(".")
-    assert Git().no_commits
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
 
     assert Repo.init().params.diff() == {}
 

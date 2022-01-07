@@ -122,7 +122,7 @@ def test_ssh_port(mock_file, config, expected_port):
         ),
         (
             {"host": "example.com"},
-            [os.path.expanduser("~/.ssh/not_default.key")],
+            ["~/.ssh/not_default.key"],
         ),
         (
             {
@@ -141,7 +141,12 @@ def test_ssh_port(mock_file, config, expected_port):
 )
 def test_ssh_keyfile(mock_file, config, expected_keyfile):
     fs = SSHFileSystem(**config)
-    assert fs.fs_args.get("client_keys") == expected_keyfile
+    expected_keyfiles = (
+        [os.path.expanduser(path) for path in expected_keyfile]
+        if expected_keyfile
+        else expected_keyfile
+    )
+    assert fs.fs_args.get("client_keys") == expected_keyfiles
 
 
 mock_ssh_multi_key_config = """
