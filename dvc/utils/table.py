@@ -21,7 +21,7 @@ class Column(RichColumn):
 
 
 class Table(RichTable):
-    def add_column(  # pylint: disable=arguments-differ
+    def add_column(  # type: ignore[override] # pylint: disable=arguments-differ,arguments-renamed # noqa: E501
         self,
         header: "RenderableType" = "",
         footer: "RenderableType" = "",
