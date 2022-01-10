@@ -7,9 +7,10 @@ from dvc.scheme import Schemes
 from .tree import Tree
 
 if TYPE_CHECKING:
-    from .db.base import ObjectDB
+    from dvc.objects.db import ObjectDB
+    from dvc.objects.file import HashFile
+
     from .db.index import ObjectDBIndexBase
-    from .file import HashFile
 
 logger = logging.getLogger(__name__)
 

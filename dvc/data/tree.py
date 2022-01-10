@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from funcy import cached_property
 
-from .errors import ObjectFormatError
-from .file import HashFile
+from dvc.objects.errors import ObjectFormatError
+from dvc.objects.file import HashFile
+
 from .stage import get_file_hash
 
 if TYPE_CHECKING:

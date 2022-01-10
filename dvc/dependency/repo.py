@@ -9,7 +9,7 @@ from .base import Dependency
 
 if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
-    from dvc.objects.db.base import ObjectDB
+    from dvc.objects.db import ObjectDB
     from dvc.objects.file import HashFile
 
 
@@ -61,7 +61,7 @@ class RepoDependency(Dependency):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to, jobs=None):
-        from dvc.objects.checkout import checkout
+        from dvc.data.checkout import checkout
 
         for odb, objs in self.get_used_objs().items():
             self.repo.cloud.pull(objs, jobs=jobs, odb=odb)
@@ -98,9 +98,9 @@ class RepoDependency(Dependency):
         self, obj_only=False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "HashFile"]:
         from dvc.config import NoRemoteError
+        from dvc.data.stage import stage
+        from dvc.data.tree import Tree
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
-        from dvc.objects.stage import stage
-        from dvc.objects.tree import Tree
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
@@ -150,10 +150,10 @@ class RepoDependency(Dependency):
             return used_obj_ids, staged_obj
 
     def _check_circular_import(self, odb, obj_ids):
+        from dvc.data.db.reference import ReferenceObjectDB
+        from dvc.data.tree import Tree
         from dvc.exceptions import CircularImportError
         from dvc.fs.repo import RepoFileSystem
-        from dvc.objects.db.reference import ReferenceObjectDB
-        from dvc.objects.tree import Tree
 
         if not isinstance(odb, ReferenceObjectDB):
             return

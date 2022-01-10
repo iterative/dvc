@@ -11,6 +11,7 @@ import colorama
 import pytest
 
 import dvc as dvc_module
+from dvc.data.db import ODBManager
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
@@ -22,7 +23,6 @@ from dvc.exceptions import (
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
 from dvc.main import main
-from dvc.objects.db import ODBManager
 from dvc.output import (
     OutputAlreadyTrackedError,
     OutputDoesNotExistError,
@@ -102,7 +102,7 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
-    from dvc.objects import load
+    from dvc.data import load
 
     (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
@@ -378,7 +378,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_module.objects.stage, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.data.stage, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -409,7 +409,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_module.objects.stage, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.data.stage, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
@@ -456,7 +456,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    counter = mocker.spy(dvc_module.objects.stage, "_stage_tree")
+    counter = mocker.spy(dvc_module.data.stage, "_stage_tree")
     ret = main(["add", "data"])
     assert ret == 0
     assert counter.mock.call_count == 1
@@ -880,7 +880,7 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
     mocker.patch(
-        "dvc.objects.checkout.test_links",
+        "dvc.data.checkout.test_links",
         return_value=[],
     )
     dvc.add("foo")

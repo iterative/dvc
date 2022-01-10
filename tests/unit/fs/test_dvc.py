@@ -4,9 +4,9 @@ import shutil
 import pytest
 
 from dvc.config import NoRemoteError
+from dvc.data.stage import stage
 from dvc.fs.dvc import DvcFileSystem
 from dvc.hash_info import HashInfo
-from dvc.objects.stage import stage
 from dvc.utils.fs import remove
 
 
@@ -227,7 +227,7 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = DvcFileSystem(repo=dvc)
-    get_file_hash_spy = mocker.spy(dvc_module.objects.stage, "get_file_hash")
+    get_file_hash_spy = mocker.spy(dvc_module.data.stage, "get_file_hash")
     assert (
         fs.info((tmp_dir / "dir").fs_path)["md5"]
         == "8761c4e9acad696bee718615e23e22db.dir"

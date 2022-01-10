@@ -1,14 +1,12 @@
 import pytest
 
-import dvc.objects.db.slow_link_detection
-from dvc.objects.db.slow_link_detection import slow_link_guard
+import dvc.data.slow_link_detection
+from dvc.data.slow_link_detection import slow_link_guard
 
 
 @pytest.fixture(autouse=True)
 def timeout_immediately(monkeypatch):
-    monkeypatch.setattr(
-        dvc.objects.db.slow_link_detection, "timeout_seconds", 0.0
-    )
+    monkeypatch.setattr(dvc.data.slow_link_detection, "timeout_seconds", 0.0)
 
 
 @pytest.fixture
@@ -27,7 +25,7 @@ def test_show_warning_once(caplog, make_remote):
     slow_link_guard(lambda x, y: None)(None, remote)
     slow_link_guard(lambda x, y: None)(None, remote)
 
-    slow_link_detection = dvc.objects.db.slow_link_detection
+    slow_link_detection = dvc.data.slow_link_detection
     message = slow_link_detection.message  # noqa, pylint: disable=no-member
     assert len(caplog.records) == 1
     assert caplog.records[0].message == message

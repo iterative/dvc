@@ -1,8 +1,8 @@
 import pytest
 
+from dvc.data.db import get_index
 from dvc.exceptions import DownloadError, UploadError
 from dvc.fs.local import LocalFileSystem
-from dvc.objects.db import get_index
 from dvc.utils.fs import remove
 from tests.utils import clean_staging
 

@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-from dvc import objects, prompt
+from dvc import prompt
 from dvc.exceptions import (
     CheckoutError,
     CollectCacheError,
@@ -15,25 +15,27 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
-from dvc.objects.checkout import checkout
 
+from .data import check as ocheck
+from .data import load as oload
+from .data.checkout import checkout
+from .data.meta import Meta
+from .data.stage import stage as ostage
+from .data.transfer import transfer as otransfer
+from .data.tree import Tree
 from .fs import get_cloud_fs
 from .fs.hdfs import HDFSFileSystem
 from .fs.local import LocalFileSystem
 from .fs.s3 import S3FileSystem
 from .hash_info import HashInfo
 from .istextfile import istextfile
-from .objects import Tree
 from .objects.errors import ObjectFormatError
-from .objects.meta import Meta
-from .objects.stage import stage as ostage
-from .objects.transfer import transfer as otransfer
 from .scheme import Schemes
 from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from .objects.db.base import ObjectDB
+    from .objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -456,7 +458,7 @@ class Output:
             return True
 
         try:
-            objects.check(self.odb, obj)
+            ocheck(self.odb, obj)
             return False
         except (FileNotFoundError, ObjectFormatError):
             return True
@@ -710,7 +712,7 @@ class Output:
             obj = self.obj
         elif self.hash_info:
             try:
-                obj = objects.load(self.odb, self.hash_info)
+                obj = oload(self.odb, self.hash_info)
             except FileNotFoundError:
                 return None
         else:
@@ -857,7 +859,7 @@ class Output:
 
         obj = self.odb.get(self.hash_info)
         try:
-            objects.check(self.odb, obj)
+            ocheck(self.odb, obj)
         except FileNotFoundError:
             if self.remote:
                 kwargs["remote"] = self.remote
@@ -867,7 +869,7 @@ class Output:
             return self.obj
 
         try:
-            self.obj = objects.load(self.odb, self.hash_info)
+            self.obj = oload(self.odb, self.hash_info)
         except (FileNotFoundError, ObjectFormatError):
             self.obj = None
 
@@ -884,7 +886,7 @@ class Output:
             logger.debug(f"failed to pull cache for '{self}'")
 
         try:
-            objects.check(self.odb, self.odb.get(self.hash_info))
+            ocheck(self.odb, self.odb.get(self.hash_info))
         except FileNotFoundError:
             msg = (
                 "Missing cache for directory '{}'. "
@@ -1012,7 +1014,7 @@ class Output:
             )
 
     def merge(self, ancestor, other):
-        from dvc.objects.tree import du, merge
+        from dvc.data.tree import du, merge
 
         assert other
 

@@ -3,8 +3,8 @@ import os
 
 import pytest
 
+from dvc.data.db import ODBManager
 from dvc.main import main
-from dvc.objects.db import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.system import System

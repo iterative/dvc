@@ -6,12 +6,11 @@ from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.hash_info import HashInfo
+from dvc.objects.db import ObjectDB
 from dvc.objects.errors import ObjectFormatError
 from dvc.progress import Tqdm
 from dvc.utils import relpath
 from dvc.utils.fs import copyfile, remove, umask, walk_files
-
-from .base import ObjectDB
 
 logger = logging.getLogger(__name__)
 

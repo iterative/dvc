@@ -5,13 +5,12 @@ from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
 from dvc.fs.utils import test_links, transfer
 from dvc.ignore import DvcIgnoreFilter
-from dvc.objects.db.slow_link_detection import (  # type: ignore[attr-defined]
-    slow_link_guard,
-)
-from dvc.objects.diff import ROOT
-from dvc.objects.diff import diff as odiff
-from dvc.objects.stage import stage
 from dvc.types import Optional
+
+from .diff import ROOT
+from .diff import diff as odiff
+from .slow_link_detection import slow_link_guard  # type: ignore[attr-defined]
+from .stage import stage
 
 logger = logging.getLogger(__name__)
 

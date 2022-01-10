@@ -3,14 +3,12 @@ import logging
 import os
 from typing import TYPE_CHECKING, Optional
 
-from .errors import ObjectFormatError
-
 if TYPE_CHECKING:
     from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import AnyPath
 
-    from .db.base import ObjectDB
+    from .db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +66,8 @@ class HashFile:
         self._check_hash(odb)
 
     def _check_hash(self, odb):
-        from .stage import get_file_hash
+        from dvc.data.stage import get_file_hash
+        from dvc.objects.errors import ObjectFormatError
 
         _, actual = get_file_hash(
             self.fs_path, self.fs, self.hash_info.name, odb.state

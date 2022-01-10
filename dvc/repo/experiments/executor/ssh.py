@@ -156,7 +156,7 @@ class SSHExecutor(BaseExecutor):
         return sshfs.fs.execute(f"cd {working_dir};{cmd}", **kwargs)
 
     def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
-        from dvc.objects.db import ODBManager, get_odb
+        from dvc.data.db import ODBManager, get_odb
         from dvc.repo import Repo
         from dvc.repo.push import push
 

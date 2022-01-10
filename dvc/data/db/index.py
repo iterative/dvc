@@ -3,7 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Iterable, Set
 
-from ..errors import ObjectDBError
+from dvc.objects.errors import ObjectDBError
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
