@@ -10,8 +10,8 @@ from dvc.utils.threadpool import ThreadPoolExecutor
 
 if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
+    from dvc.objects.db import ObjectDB
 
-    from .db.base import ObjectDB
     from .db.index import ObjectDBIndexBase
     from .tree import Tree
 
@@ -40,7 +40,8 @@ def _log_exceptions(func):
 def find_tree_by_obj_id(
     odbs: Iterable[Optional["ObjectDB"]], obj_id: "HashInfo"
 ) -> Optional["Tree"]:
-    from .errors import ObjectFormatError
+    from dvc.objects.errors import ObjectFormatError
+
     from .tree import Tree
 
     for odb in odbs:

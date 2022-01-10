@@ -4,9 +4,9 @@ import stat
 import configobj
 import pytest
 
+from dvc.data.db import ODBManager
 from dvc.hash_info import HashInfo
 from dvc.main import main
-from dvc.objects.db import ODBManager
 from dvc.objects.errors import ObjectFormatError
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc
@@ -47,7 +47,7 @@ class TestCacheLoadBadDirCache(TestDvc):
         self.assertEqual(len(ret), 0)
 
     def test(self):
-        from dvc.objects import load
+        from dvc.data import load
 
         dir_hash = "123.dir"
         fname = os.fspath(self.dvc.odb.local.hash_to_path(dir_hash))

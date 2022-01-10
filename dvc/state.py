@@ -103,7 +103,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             HashInfo or None: hash for the specified path info or None if it
             doesn't exist in the state database.
         """
-        from .objects.meta import Meta
+        from .data.meta import Meta
 
         if not isinstance(fs, LocalFileSystem):
             return None, None

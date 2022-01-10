@@ -45,8 +45,8 @@ def dump_sv(stream, metrics, delimiter=",", header=True):
 
 
 def clean_staging():
+    from dvc.data.stage import _STAGING_MEMFS_PATH
     from dvc.fs.memory import MemoryFileSystem
-    from dvc.objects.stage import _STAGING_MEMFS_PATH
 
     try:
         MemoryFileSystem().fs.rm(

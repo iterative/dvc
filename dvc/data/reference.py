@@ -4,15 +4,14 @@ import os
 import pickle
 from typing import TYPE_CHECKING, Optional
 
-from .errors import ObjectFormatError
-from .file import HashFile
+from dvc.objects.errors import ObjectFormatError
+from dvc.objects.file import HashFile
 
 if TYPE_CHECKING:
     from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
+    from dvc.objects.db import ObjectDB
     from dvc.types import AnyPath
-
-    from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 

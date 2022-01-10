@@ -5,9 +5,8 @@ from .tree import Tree
 
 if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
-
-    from .db.base import ObjectDB
-    from .file import HashFile
+    from dvc.objects.db import ObjectDB
+    from dvc.objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 

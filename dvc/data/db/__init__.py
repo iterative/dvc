@@ -7,7 +7,8 @@ if TYPE_CHECKING:
 
 
 def get_odb(fs, fs_path, **config):
-    from .base import ObjectDB
+    from dvc.objects.db import ObjectDB
+
     from .local import LocalObjectDB
 
     if fs.scheme == Schemes.LOCAL:

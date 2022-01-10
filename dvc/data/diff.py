@@ -3,8 +3,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
-
-    from .file import HashFile
+    from dvc.objects.file import HashFile
 
 ADD = "add"
 MODIFY = "modify"
@@ -96,7 +95,7 @@ def diff(
         return entry_obj.hash_info if entry_obj else None
 
     def _in_cache(oid, cache):
-        from .errors import ObjectFormatError
+        from dvc.objects.errors import ObjectFormatError
 
         if not oid:
             return False

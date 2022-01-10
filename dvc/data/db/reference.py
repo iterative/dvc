@@ -3,11 +3,11 @@ import logging
 import os
 from typing import TYPE_CHECKING, Dict
 
+from dvc.objects.db import ObjectDB
+from dvc.objects.errors import ObjectFormatError
 from dvc.scheme import Schemes
 
-from ..errors import ObjectFormatError
 from ..reference import ReferenceHashFile
-from .base import ObjectDB
 
 if TYPE_CHECKING:
     from dvc.fs.base import FileSystem

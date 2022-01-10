@@ -8,18 +8,17 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
+from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
 from dvc.utils import file_md5
 
 from .db.reference import ReferenceObjectDB
-from .file import HashFile
 from .meta import Meta
 
 if TYPE_CHECKING:
     from dvc.fs.base import FileSystem
+    from dvc.objects.db import ObjectDB
     from dvc.types import AnyPath
-
-    from .db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -245,8 +244,9 @@ def _get_staging(odb: "ObjectDB") -> "ObjectDB":
 
 
 def _load_from_state(odb, staging, fs_path, fs, name):
+    from dvc.objects.errors import ObjectFormatError
+
     from . import check, load
-    from .errors import ObjectFormatError
     from .tree import Tree
 
     state = odb.state

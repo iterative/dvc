@@ -150,11 +150,11 @@ class Repo:
         repo_factory=None,
     ):
         from dvc.config import Config
+        from dvc.data.db import ODBManager
         from dvc.data_cloud import DataCloud
         from dvc.fs.git import GitFileSystem
         from dvc.fs.local import localfs
         from dvc.lock import LockNoop, make_lock
-        from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
@@ -406,7 +406,7 @@ class Repo:
         def _add_suffix(objs: Set["HashFile"], suffix: str) -> None:
             from itertools import chain
 
-            from dvc.objects import iterobjs
+            from dvc.data import iterobjs
 
             for obj in chain.from_iterable(map(iterobjs, objs)):
                 if obj.name is not None:

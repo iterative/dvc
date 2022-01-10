@@ -357,7 +357,7 @@ class ObjectDB:
         pass
 
     def gc(self, used, jobs=None, cache_odb=None, shallow=True):
-        from ..tree import Tree
+        from dvc.data.tree import Tree
 
         if self.read_only:
             raise ObjectDBPermissionError("Cannot gc read-only ODB")
