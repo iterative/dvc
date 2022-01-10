@@ -52,6 +52,11 @@ class PropsNotFoundError(DvcException):
     pass
 
 
+@error_handler
+def _unpack_dir_files(fs, path, **kwargs):
+    return list(fs.find(path))
+
+
 class Plots:
     def __init__(self, repo):
         self.repo = repo
@@ -107,8 +112,16 @@ class Plots:
         for fs_path, rev_props in plots.items():
             if fs.isdir(fs_path):
                 plot_files = []
-                for pi in fs.find(fs_path):
-                    plot_files.append((pi, relpath(pi, self.repo.root_dir)))
+                unpacking_res = _unpack_dir_files(fs, fs_path, onerror=onerror)
+                if "data" in unpacking_res:
+                    for pi in unpacking_res.get(  # pylint: disable=E1101
+                        "data"
+                    ):
+                        plot_files.append(
+                            (pi, relpath(pi, self.repo.root_dir))
+                        )
+                else:
+                    res[relpath(fs_path, self.repo.root_dir)] = unpacking_res
             else:
                 plot_files = [(fs_path, relpath(fs_path, self.repo.root_dir))]
 

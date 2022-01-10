@@ -153,6 +153,7 @@ def test_links(
     from_fs.makedirs(from_fs.path.parent(from_file))
     with from_fs.open(from_file, "wb") as fobj:
         fobj.write(b"test")
+    to_fs.makedirs(to_fs.path.parent(to_file))
 
     ret = []
     try:

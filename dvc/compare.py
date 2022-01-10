@@ -21,6 +21,7 @@ from typing import (
 from funcy import reraise
 
 if TYPE_CHECKING:
+    from dvc.types import StrPath
     from dvc.ui.table import CellT
 
 
@@ -153,7 +154,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             writer.writerow(row)
         return buff.getvalue()
 
-    def to_parallel_coordinates(self, output_path, color_by):
+    def to_parallel_coordinates(
+        self, output_path: "StrPath", color_by: str = None
+    ) -> str:
         from dvc.render.html import write
         from dvc.render.plotly import ParallelCoordinatesRenderer
 
@@ -185,14 +188,6 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
 
         if kwargs.pop("csv", False):
             ui.write(self.to_csv(), end="")
-
-        elif kwargs.pop("html", False):
-            ui.write(
-                self.to_parallel_coordinates(
-                    kwargs["output_path"], kwargs.get("color_by")
-                )
-            )
-
         else:
             ui.table(self, headers=self.keys(), **kwargs)
 
@@ -249,7 +244,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         else:
             self.drop(*to_drop)
 
-    def drop_duplicates(self, axis: str = "rows"):
+    def drop_duplicates(self, axis: str = "rows", ignore_empty: bool = True):
         if axis not in ["rows", "cols"]:
             raise ValueError(
                 f"Invalid 'axis' value {axis}."
@@ -260,7 +255,9 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
             cols_to_drop: List[str] = []
             for n_col, col in enumerate(self.columns):
                 # Cast to str because Text is not hashable error
-                unique_vals = {str(x) for x in col if x != self._fill_value}
+                unique_vals = {str(x) for x in col}
+                if ignore_empty and self._fill_value in unique_vals:
+                    unique_vals -= {self._fill_value}
                 if len(unique_vals) == 1:
                     cols_to_drop.append(self.keys()[n_col])
             self.drop(*cols_to_drop)

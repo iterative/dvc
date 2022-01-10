@@ -94,7 +94,7 @@ class Config(dict):
             try:
                 from dvc.repo import Repo
 
-                self.dvc_dir = os.path.join(Repo.find_dvc_dir())
+                self.dvc_dir = Repo.find_dvc_dir()
             except NotDvcRepoError:
                 self.dvc_dir = None
         else:

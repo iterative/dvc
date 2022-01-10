@@ -7,8 +7,6 @@ from funcy import first
 from dvc.command import completion
 from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.render.utils import match_renderers, render
-from dvc.render.vega import VegaRenderer
 from dvc.ui import ui
 from dvc.utils import format_link
 
@@ -40,6 +38,9 @@ class CmdPlots(CmdBase):
 
     def run(self):
         from pathlib import Path
+
+        from dvc.render.utils import match_renderers, render
+        from dvc.render.vega import VegaRenderer
 
         if self.args.show_vega:
             if not self.args.targets:
@@ -94,8 +95,14 @@ class CmdPlots(CmdBase):
             )
 
             ui.write(index_path.as_uri())
-
-            if self.args.open:
+            auto_open = self.repo.config["plots"].get("auto_open", False)
+            if self.args.open or auto_open:
+                if not auto_open:
+                    ui.write(
+                        "To enable auto opening, you can run:\n"
+                        "\n"
+                        "\tdvc config plots.auto_open true"
+                    )
                 return ui.open_browser(index_path)
 
             return 0

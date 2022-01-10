@@ -11,7 +11,7 @@ from typing import (
     Set,
 )
 
-from funcy import cached_property, memoize, nullcontext
+from funcy import cached_property, nullcontext
 
 from dvc.utils import dict_md5
 
@@ -146,9 +146,11 @@ class Index:
 
         return build_outs_trie(self.stages)
 
-    @property
+    @cached_property
     def graph(self) -> "DiGraph":
-        return self.build_graph()
+        from dvc.repo.graph import build_graph
+
+        return build_graph(self.stages, self.outs_trie)
 
     @cached_property
     def outs_graph(self) -> "DiGraph":
@@ -230,15 +232,9 @@ class Index:
             stages.remove(stage)
         return stages
 
-    @memoize
-    def build_graph(self) -> "DiGraph":
-        from dvc.repo.graph import build_graph
-
-        return build_graph(self.stages, self.outs_trie)
-
     def check_graph(self) -> None:
         if not getattr(self.repo, "_skip_graph_checks", False):
-            self.build_graph()
+            self.graph  # pylint: disable=pointless-statement
 
     def dumpd(self) -> Dict[str, Dict]:
         def dump(stage: "Stage"):
@@ -275,7 +271,7 @@ if __name__ == "__main__":
         # pylint: disable=pointless-statement
         print("no of stages", len(index.stages))
     with log_durations(print, "building graph"):
-        index.build_graph()
+        index.graph  # pylint: disable=pointless-statement
     with log_durations(print, "calculating hash"):
         print(index.identifier)
     with log_durations(print, "updating"):

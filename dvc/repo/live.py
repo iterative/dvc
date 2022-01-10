@@ -20,7 +20,6 @@ def webbrowser_open(url: str) -> int:
 
 
 def create_summary(out):
-
     assert out.live and out.live["html"]
 
     metrics, plots = out.repo.live.show(out.fs_path)
@@ -31,8 +30,8 @@ def create_summary(out):
     index_path = render(
         out.repo, renderers, metrics=metrics, path=html_path, refresh_seconds=5
     )
-
-    webbrowser_open(index_path)
+    if out.repo.config["plots"].get("auto_open", False):
+        webbrowser_open(index_path)
 
 
 def summary_fs_path(out: "Output") -> Optional[str]:

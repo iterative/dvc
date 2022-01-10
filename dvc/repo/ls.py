@@ -33,7 +33,7 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
         if path:
             fs_path = os.path.abspath(repo.fs.path.join(fs_path, path))
 
-        ret = _ls(repo.repo_fs, fs_path, recursive, dvc_only)
+        ret = _ls(repo, fs_path, recursive, dvc_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, dvc_only=dvc_only)
@@ -46,10 +46,13 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
         return ret_list
 
 
-def _ls(fs, fs_path, recursive=None, dvc_only=False):
+def _ls(repo, fs_path, recursive=None, dvc_only=False):
+    from dvc.fs._metadata import Metadata
+
     def onerror(exc):
         raise exc
 
+    fs = repo.repo_fs
     infos = []
     try:
         for root, dirs, files in fs.walk(
@@ -66,7 +69,12 @@ def _ls(fs, fs_path, recursive=None, dvc_only=False):
 
     ret = {}
     for info in infos:
-        metadata = fs.metadata(info)
+        try:
+            metadata = fs.metadata(info)
+        except FileNotFoundError:
+            # broken symlink
+            metadata = Metadata(info, repo)
+
         if metadata.output_exists or not dvc_only:
             path = (
                 fs.path.name(fs_path)
