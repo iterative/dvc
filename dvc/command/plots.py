@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _show_json(renderers, path: None):
-    if any(lambda r: r.needs_output_path for r in renderers) and not path:
+    if any(r.needs_output_path for r in renderers) and not path:
         raise DvcException("Output path ('-o') is required!")
 
     result = {

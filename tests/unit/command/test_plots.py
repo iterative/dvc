@@ -297,3 +297,48 @@ def test_plots_diff_json(dvc, mocker, capsys):
     show_json_mock.assert_called_once_with(renderers, "out")
 
     render_mock.assert_not_called()
+
+
+def test_show_json_requires_out(dvc, mocker, capsys):
+    cli_args = parse_args(
+        [
+            "plots",
+            "diff",
+            "HEAD~10",
+            "HEAD~1",
+            "--json",
+            "--targets",
+            "plot.csv",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+
+    mocker.patch("dvc.repo.plots.diff.diff")
+
+    renderer = mocker.MagicMock()
+    renderer.needs_output_path = False
+    renderer.filename = "foo"
+    renderer.as_json.return_value = "{}"
+    mocker.patch("dvc.render.utils.match_renderers", return_value=[renderer])
+
+    assert cmd.run() == 0
+
+    renderer.needs_output_path = True
+
+    assert cmd.run() == 1
+
+    cli_args = parse_args(
+        [
+            "plots",
+            "diff",
+            "HEAD~10",
+            "HEAD~1",
+            "--json",
+            "--targets",
+            "plot.csv",
+            "-o",
+            "out",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
