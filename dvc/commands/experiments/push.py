@@ -4,17 +4,32 @@ import logging
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.commands import completion
+from dvc.exceptions import InvalidArgumentError
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsPush(CmdBase):
+    def raise_error_if_all_disabled(self):
+        if not any(
+            [self.args.experiment, self.args.all_commits, self.args.rev]
+        ):
+            raise InvalidArgumentError(
+                "Either provide an `experiment` argument, or use the "
+                "`--rev` or `--all-commits` flag."
+            )
+
     def run(self):
 
-        self.repo.experiments.push(
+        self.raise_error_if_all_disabled()
+
+        pushed_exps = self.repo.experiments.push(
             self.args.git_remote,
             self.args.experiment,
+            all_commits=self.args.all_commits,
+            rev=self.args.rev,
+            num=self.args.num,
             force=self.args.force,
             push_cache=self.args.push_cache,
             dvc_remote=self.args.dvc_remote,
@@ -22,10 +37,13 @@ class CmdExperimentsPush(CmdBase):
             run_cache=self.args.run_cache,
         )
 
-        ui.write(
-            f"Pushed experiment '{self.args.experiment}'"
-            f"to Git remote '{self.args.git_remote}'."
-        )
+        if pushed_exps:
+            ui.write(
+                f"Pushed experiment '{pushed_exps}'"
+                f"to Git remote '{self.args.git_remote}'."
+            )
+        else:
+            ui.write("No experiments to pull.")
         if not self.args.push_cache:
             ui.write(
                 "To push cached outputs",
@@ -37,6 +55,8 @@ class CmdExperimentsPush(CmdBase):
 
 
 def add_parser(experiments_subparsers, parent_parser):
+    from . import add_rev_selection_flags
+
     EXPERIMENTS_PUSH_HELP = "Push a local experiment to a Git remote."
     experiments_push_parser = experiments_subparsers.add_parser(
         "push",
@@ -45,6 +65,7 @@ def add_parser(experiments_subparsers, parent_parser):
         help=EXPERIMENTS_PUSH_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    add_rev_selection_flags(experiments_push_parser, "Push", False)
     experiments_push_parser.add_argument(
         "-f",
         "--force",
@@ -90,7 +111,8 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_push_parser.add_argument(
         "experiment",
-        nargs="+",
+        nargs="*",
+        default=None,
         help="Experiments to push.",
         metavar="<experiment>",
     ).complete = completion.EXPERIMENT

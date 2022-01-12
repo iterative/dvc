@@ -39,6 +39,38 @@ def test_push(tmp_dir, scm, dvc, git_upstream, exp_stage, use_url):
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
 
 
+@pytest.mark.parametrize(
+    "all_,rev,result3", [(True, False, True), (False, True, None)]
+)
+def test_push_args(
+    tmp_dir, scm, dvc, git_upstream, exp_stage, all_, rev, result3
+):
+    remote = git_upstream.url
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    exp1 = first(results)
+    ref_info1 = first(exp_refs_by_rev(scm, exp1))
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp2 = first(results)
+    ref_info2 = first(exp_refs_by_rev(scm, exp2))
+
+    scm.commit("new_baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp3 = first(results)
+    ref_info3 = first(exp_refs_by_rev(scm, exp3))
+
+    if rev:
+        rev = baseline
+    dvc.experiments.push(remote, [], all_commits=all_, rev=rev)
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info2)) == exp2
+    if result3:
+        result3 = exp3
+    assert git_upstream.tmp_dir.scm.get_ref(str(ref_info3)) == result3
+
+
 def test_push_diverged(tmp_dir, scm, dvc, git_upstream, exp_stage):
     git_upstream.tmp_dir.scm_gen("foo", "foo", commit="init")
     remote_rev = git_upstream.tmp_dir.scm.get_rev()
@@ -175,6 +207,40 @@ def test_pull(tmp_dir, scm, dvc, git_downstream, exp_stage, use_url):
 
     downstream_exp.pull(remote, [str(ref_info1)])
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+
+
+@pytest.mark.parametrize(
+    "all_,rev,result3", [(True, False, True), (False, True, None)]
+)
+def test_pull_args(
+    tmp_dir, scm, dvc, git_downstream, exp_stage, all_, rev, result3
+):
+    baseline = scm.get_rev()
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
+    exp1 = first(results)
+    ref_info1 = first(exp_refs_by_rev(scm, exp1))
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp2 = first(results)
+    ref_info2 = first(exp_refs_by_rev(scm, exp2))
+
+    scm.commit("new_baseline")
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp3 = first(results)
+    ref_info3 = first(exp_refs_by_rev(scm, exp3))
+
+    if rev:
+        rev = baseline
+
+    downstream_exp = git_downstream.tmp_dir.dvc.experiments
+    git_downstream.tmp_dir.scm.fetch_refspecs(str(tmp_dir), ["master:master"])
+    downstream_exp.pull(git_downstream.remote, [], all_commits=all_, rev=rev)
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info1)) == exp1
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info2)) == exp2
+    if result3:
+        result3 = exp3
+    assert git_downstream.tmp_dir.scm.get_ref(str(ref_info3)) == result3
 
 
 def test_pull_diverged(tmp_dir, scm, dvc, git_downstream, exp_stage):
