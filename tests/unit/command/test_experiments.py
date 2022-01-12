@@ -229,6 +229,11 @@ def test_experiments_push(dvc, scm, mocker):
             "origin",
             "experiment1",
             "experiment2",
+            "--all-commits",
+            "-n",
+            "2",
+            "--rev",
+            "foo",
             "--force",
             "--no-cache",
             "--remote",
@@ -249,11 +254,30 @@ def test_experiments_push(dvc, scm, mocker):
         cmd.repo,
         "origin",
         ["experiment1", "experiment2"],
+        rev="foo",
+        all_commits=True,
+        num=2,
         force=True,
         push_cache=False,
         dvc_remote="my-remote",
         jobs=1,
         run_cache=True,
+    )
+
+    cli_args = parse_args(
+        [
+            "experiments",
+            "push",
+            "origin",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+
+    with pytest.raises(InvalidArgumentError) as exp_info:
+        cmd.run()
+    assert (
+        str(exp_info.value) == "Either provide an `experiment` argument"
+        ", or use the `--rev` or `--all-commits` flag."
     )
 
 
@@ -264,6 +288,9 @@ def test_experiments_pull(dvc, scm, mocker):
             "pull",
             "origin",
             "experiment",
+            "--all-commits",
+            "--rev",
+            "foo",
             "--force",
             "--no-cache",
             "--remote",
@@ -284,11 +311,30 @@ def test_experiments_pull(dvc, scm, mocker):
         cmd.repo,
         "origin",
         ["experiment"],
+        rev="foo",
+        all_commits=True,
+        num=1,
         force=True,
         pull_cache=False,
         dvc_remote="my-remote",
         jobs=1,
         run_cache=True,
+    )
+
+    cli_args = parse_args(
+        [
+            "experiments",
+            "pull",
+            "origin",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+
+    with pytest.raises(InvalidArgumentError) as exp_info:
+        cmd.run()
+    assert (
+        str(exp_info.value) == "Either provide an `experiment` argument"
+        ", or use the `--rev` or `--all-commits` flag."
     )
 
 
