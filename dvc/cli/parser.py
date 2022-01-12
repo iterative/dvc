@@ -18,6 +18,7 @@ from dvc.commands import (
     destroy,
     diff,
     experiments,
+    external,
     freeze,
     gc,
     get,
@@ -106,12 +107,60 @@ def _find_parser(parser, cmd_cls):
             _find_parser(subparser, cmd_cls)
 
 
+class ArgumentErrorWithValue(argparse.ArgumentError):
+    def __init__(self, value, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.value = value
+
+
 class DvcParser(argparse.ArgumentParser):
     """Custom parser class for dvc CLI."""
 
     def error(self, message, cmd_cls=None):  # pylint: disable=arguments-differ
         logger.error(message)
         _find_parser(self, cmd_cls)
+
+    def _check_value(self, action, value) -> None:
+        try:
+            super()._check_value(action, value)
+        except argparse.ArgumentError as exc:
+            # extending to include `value` so that we can access the subcommand
+            # in `_parse_known_args`.
+            raise ArgumentErrorWithValue(value, *exc.args) from exc
+
+    def _parse_external_command(self, cmd, executable, arg_strings, namespace):
+        namespace.cmd = cmd
+        namespace.executable = executable
+        # we pass `args` after the `cmd` to the `executable`
+        # eg: `dvc -v ext hello` will be run as `dvc-ext hello`
+        # i.e `-v` and similar global flags won't be passed down.
+        # If they do support that, it needs to be specified after `cmd`
+        # explicitly, i.e. `dvc -v ext hello -v`.
+        cmd_pos = arg_strings.index(cmd)
+        namespace.args = arg_strings[cmd_pos + 1 :]
+        # emulating how we call `CmdBase` in `main`
+        namespace.func = external.CmdExternal
+        return namespace, []
+
+    def _parse_known_args(self, arg_strings, namespace):
+        try:
+            return super()._parse_known_args(arg_strings, namespace)
+        except ArgumentErrorWithValue as exc:
+            # we only want to run this for subcommand
+            if exc.argument_name != "COMMAND":
+                raise
+
+            import shutil
+
+            executable = shutil.which(f"dvc-{exc.value}")
+            if not executable:
+                raise
+            # NOTE: we still use `namespace` from parent parser, so that
+            # all assumptions on `main()` still work. Below we add information
+            # on how to run this, so that it could be executed later.
+            return self._parse_external_command(
+                exc.value, executable, arg_strings, namespace
+            )
 
     def parse_args(self, args=None, namespace=None):
         # NOTE: overriding to provide a more granular help message.
