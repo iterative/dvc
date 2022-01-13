@@ -65,6 +65,9 @@ experiment_types = {
 def _collect_rows(
     base_rev,
     experiments,
+    all_headers,
+    metric_headers,
+    param_headers,
     metric_names,
     param_names,
     deps_names,
@@ -87,14 +90,18 @@ def _collect_rows(
 
     new_checkpoint = True
     for i, (rev, results) in enumerate(experiments.items()):
+        fill_value = FILL_VALUE_ERRORED if results.get("error") else fill_value
+        row_dict = {k: fill_value for k in all_headers}
+
         exp = results.get("data", {})
+
         if exp.get("running"):
             state = "Running"
         elif exp.get("queued"):
             state = "Queued"
         else:
             state = fill_value
-        executor = exp.get("executor", fill_value)
+
         is_baseline = rev == "baseline"
 
         if is_baseline:
@@ -102,9 +109,7 @@ def _collect_rows(
         else:
             name_rev = rev[:7]
 
-        exp_name = exp.get("name", "")
         tip = exp.get("checkpoint_tip")
-
         parent_rev = exp.get("checkpoint_parent", "")
         parent_exp = experiments.get(parent_rev, {}).get("data", {})
         parent_tip = parent_exp.get("checkpoint_tip")
@@ -130,26 +135,28 @@ def _collect_rows(
         if not is_baseline:
             new_checkpoint = not (tip and tip == parent_tip)
 
-        row = [
-            exp_name,
-            name_rev,
-            typ,
-            _format_time(exp.get("timestamp"), fill_value, iso),
-            parent,
-            state,
-            executor,
-        ]
-        fill_value = FILL_VALUE_ERRORED if results.get("error") else fill_value
+        row_dict["Experiment"] = exp.get("name", "")
+        row_dict["rev"] = name_rev
+        row_dict["typ"] = typ
+        row_dict["Created"] = _format_time(
+            exp.get("timestamp"), fill_value, iso
+        )
+        row_dict["parent"] = parent
+        row_dict["State"] = state
+        row_dict["Executor"] = exp.get("executor", fill_value)
+
         _extend_row(
-            row,
+            row_dict,
             metric_names,
+            metric_headers,
             exp.get("metrics", {}).items(),
             precision,
             fill_value=fill_value,
         )
         _extend_row(
-            row,
+            row_dict,
             param_names,
+            param_headers,
             exp.get("params", {}).items(),
             precision,
             fill_value=fill_value,
@@ -158,8 +165,8 @@ def _collect_rows(
             hash_info = exp.get("deps", {}).get(dep, {}).get("hash")
             if hash_info is not None:
                 hash_info = hash_info[:7]
-            row.append(hash_info or fill_value)
-        yield row
+            row_dict[dep] = hash_info
+        yield list(row_dict.values())
 
 
 def _sort_column(sort_by, metric_names, param_names):
@@ -225,12 +232,8 @@ def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
     return datetime_obj.strftime(fmt)
 
 
-def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
+def _extend_row(row, names, headers, items, precision, fill_value=FILL_VALUE):
     from dvc.compare import _format_field, with_value
-
-    if not items:
-        row.extend(fill_value for keys in names.values() for _ in keys)
-        return
 
     for fname, data in items:
         item = data.get("data", {})
@@ -243,7 +246,11 @@ def _extend_row(row, names, items, precision, fill_value=FILL_VALUE):
             # wrap field data in ui.rich_text, otherwise rich may
             # interpret unescaped braces from list/dict types as rich
             # markup tags
-            row.append(ui.rich_text(str(_format_field(value, precision))))
+            value = ui.rich_text(str(_format_field(value, precision)))
+            if name in headers:
+                row[name] = value
+            else:
+                row[f"{fname}:{name}"] = value
 
 
 def experiments_table(
@@ -264,14 +271,15 @@ def experiments_table(
 
     from dvc.compare import TabularData
 
-    td = TabularData(
-        lconcat(headers, metric_headers, param_headers, deps_names),
-        fill_value=fill_value,
-    )
+    all_headers = lconcat(headers, metric_headers, param_headers, deps_names)
+    td = TabularData(all_headers, fill_value=fill_value)
     for base_rev, experiments in all_experiments.items():
         rows = _collect_rows(
             base_rev,
             experiments,
+            all_headers,
+            metric_headers,
+            param_headers,
             metric_names,
             param_names,
             deps_names,
