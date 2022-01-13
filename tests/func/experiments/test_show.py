@@ -640,16 +640,7 @@ def test_show_outs(tmp_dir, dvc, scm):
         deps=["copy.py"],
         outs=["out"],
     )
-    scm.add(
-        [
-            "dvc.yaml",
-            "dvc.lock",
-            "copy.py",
-            "params.yaml",
-            "metrics.yaml",
-            ".gitignore",
-        ]
-    )
+
     scm.commit("init")
 
     outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
@@ -660,6 +651,76 @@ def test_show_outs(tmp_dir, dvc, scm):
             "nfiles": None,
         }
     }
+
+
+def test_metrics_renaming(tmp_dir, dvc, scm, capsys):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    params_file = tmp_dir / "params.yaml"
+    params_data = {
+        "foo": 1,
+    }
+    (tmp_dir / params_file).dump(params_data)
+
+    dvc.run(
+        cmd="python copy.py params.yaml metrics.yaml",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+
+    scm.commit("metrics.yaml")
+    metrics_rev = scm.get_rev()
+
+    dvc.run(
+        cmd="python copy.py params.yaml scores.yaml",
+        metrics_no_cache=["scores.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "params.yaml",
+            "scores.yaml",
+        ]
+    )
+    scm.commit("scores.yaml")
+    scores_rev = scm.get_rev()
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--csv", "-A"]) == 0
+    cap = capsys.readouterr()
+
+    def _get_rev_isotimestamp(rev):
+        return datetime.fromtimestamp(
+            scm.gitpython.repo.rev_parse(rev).committed_date
+        ).isoformat()
+
+    assert (
+        "master,{},baseline,{},,1,,1".format(
+            scores_rev[:7], _get_rev_isotimestamp(scores_rev)
+        )
+        in cap.out
+    )
+    assert (
+        ",{},baseline,{},,,1,1".format(
+            metrics_rev[:7], _get_rev_isotimestamp(metrics_rev)
+        )
+        in cap.out
+    )
 
 
 def test_show_sorted_deps(tmp_dir, dvc, scm, capsys):
