@@ -98,7 +98,7 @@ class CmdExperimentsInit(CmdBase):
 
 def add_parser(experiments_subparsers, parent_parser):
 
-    EXPERIMENTS_INIT_HELP = "Initialize experiments."
+    EXPERIMENTS_INIT_HELP = "Quickly setup any project to use experiments."
     experiments_init_parser = experiments_subparsers.add_parser(
         "init",
         parents=[parent_parser],
