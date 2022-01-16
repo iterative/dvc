@@ -200,6 +200,13 @@ def get_main_parser():
         type=str,
     )
 
+    parser.add_argument(
+        "--plugins",
+        metavar="<path>",
+        default=None,
+        help="Path to a plugins directory",
+    )
+
     # Sub commands
     subparsers = parser.add_subparsers(
         title="Available Commands",
@@ -215,4 +222,9 @@ def get_main_parser():
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
 
+    from dvc.plugins import plugin_manager
+
+    plugin_manager.hook.register_command(  # pylint: disable=no-member
+        parser=subparsers, parent=parent_parser
+    )
     return parser
