@@ -1,6 +1,5 @@
 from dataclasses import asdict
 from math import pi
-from unittest.mock import mock_open
 
 import pytest
 
@@ -219,7 +218,7 @@ def test_overwrite_with_setitem():
 def test_load_from(mocker):
     d = {"x": {"y": {"z": 5}, "lst": [1, 2, 3]}, "foo": "foo"}
     fs = mocker.Mock(
-        open=mock_open(read_data=dumps_yaml(d)),
+        open=mocker.mock_open(read_data=dumps_yaml(d)),
         **{"exists.return_value": True, "isdir.return_value": False},
     )
     file = "params.yaml"

@@ -155,12 +155,6 @@ class TestDir(TestDirFixture, TestCase):
         TestCase.__init__(self, methodName)
 
 
-class TestGit(TestGitFixture, TestCase):
-    def __init__(self, methodName):
-        TestGitFixture.__init__(self)
-        TestCase.__init__(self, methodName)
-
-
 class TestDvc(TestDvcFixture, TestCase):
     def __init__(self, methodName):
         TestDvcFixture.__init__(self)

@@ -1,7 +1,5 @@
 import filecmp
 import os
-from unittest import TestCase
-from unittest.mock import patch
 
 import pytest
 
@@ -22,74 +20,77 @@ from dvc.utils.fs import (
     remove,
     walk_files,
 )
-from tests.basic_env import TestDir
 
 
-class TestMtimeAndSize(TestDir):
-    def test(self):
-        fs = LocalFileSystem(url=self.root_dir)
-        file_time, file_size = get_mtime_and_size(self.DATA, fs)
-        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, fs)
+def test_mtime_and_size(tmp_dir):
+    tmp_dir.gen({"dir/data": "data", "dir/subdir/subdata": "subdata"})
+    fs = LocalFileSystem(url=tmp_dir)
+    file_time, file_size = get_mtime_and_size("dir/data", fs)
+    dir_time, dir_size = get_mtime_and_size("dir", fs)
 
-        actual_file_size = os.path.getsize(self.DATA)
-        actual_dir_size = os.path.getsize(self.DATA) + os.path.getsize(
-            self.DATA_SUB
-        )
+    actual_file_size = os.path.getsize("dir/data")
+    actual_dir_size = os.path.getsize("dir/data") + os.path.getsize(
+        "dir/subdir/subdata"
+    )
 
-        self.assertIs(type(file_time), str)
-        self.assertIs(type(file_size), int)
-        self.assertEqual(file_size, actual_file_size)
-        self.assertIs(type(dir_time), str)
-        self.assertIs(type(dir_size), int)
-        self.assertEqual(dir_size, actual_dir_size)
+    assert isinstance(file_time, str)
+    assert isinstance(file_size, int)
+    assert file_size == actual_file_size
+    assert isinstance(dir_time, str)
+    assert isinstance(dir_size, int)
+    assert dir_size == actual_dir_size
 
 
-class TestContainsLink(TestCase):
-    def test_should_raise_exception_on_base_path_not_in_path(self):
-        with self.assertRaises(BasePathNotInCheckedPathException):
-            contains_symlink_up_to(os.path.join("foo", "path"), "bar")
+def test_should_raise_exception_on_base_path_not_in_path():
+    with pytest.raises(BasePathNotInCheckedPathException):
+        contains_symlink_up_to(os.path.join("foo", "path"), "bar")
 
-    @patch.object(System, "is_symlink", return_value=True)
-    def test_should_return_true_on_symlink_in_path(self, _):
-        base_path = "foo"
-        path = os.path.join(base_path, "bar")
-        self.assertTrue(contains_symlink_up_to(path, base_path))
 
-    @patch.object(System, "is_symlink", return_value=False)
-    def test_should_return_false_on_path_eq_to_base_path(self, _):
-        path = "path"
-        self.assertFalse(contains_symlink_up_to(path, path))
+def test_should_return_true_on_symlink_in_path(mocker):
+    mocker.patch.object(System, "is_symlink", return_value=True)
+    base_path = "foo"
+    path = os.path.join(base_path, "bar")
+    assert contains_symlink_up_to(path, base_path)
 
-    @patch.object(System, "is_symlink", return_value=False)
-    @patch.object(os.path, "dirname", side_effect=lambda arg: arg)
-    def test_should_return_false_on_no_more_dirs_below_path(
-        self, dirname_patch, _
-    ):
-        self.assertFalse(
-            contains_symlink_up_to(os.path.join("foo", "path"), "foo")
-        )
-        dirname_patch.assert_called_once()
 
-    @patch.object(System, "is_symlink", return_value=True)
-    def test_should_return_false_when_base_path_is_symlink(self, _):
-        base_path = "foo"
-        target_path = os.path.join(base_path, "bar")
+def test_should_return_false_on_path_eq_to_base_path(mocker):
+    mocker.patch.object(System, "is_symlink", return_value=False)
+    path = "path"
+    assert not contains_symlink_up_to(path, path)
 
-        def base_path_is_symlink(path):
-            if path == base_path:
-                return True
-            return False
 
-        with patch.object(
-            System, "is_symlink", side_effect=base_path_is_symlink
-        ):
-            self.assertFalse(contains_symlink_up_to(target_path, base_path))
+def test_should_return_false_on_no_more_dirs_below_path(mocker):
+    mocker.patch.object(System, "is_symlink", return_value=False)
+    dirname_patch = mocker.patch.object(
+        os.path, "dirname", side_effect=lambda arg: arg
+    )
+    assert not contains_symlink_up_to(os.path.join("foo", "path"), "foo")
+    dirname_patch.assert_called_once()
 
-    def test_path_object_and_str_are_valid_arg_types(self):
-        base_path = "foo"
-        target_path = os.path.join(base_path, "bar")
-        self.assertFalse(contains_symlink_up_to(target_path, base_path))
-        self.assertFalse(contains_symlink_up_to(target_path, base_path))
+
+def test_should_return_false_when_base_path_is_symlink(mocker):
+    base_path = "foo"
+    target_path = os.path.join(base_path, "bar")
+
+    def base_path_is_symlink(path):
+        if path == base_path:
+            return True
+        return False
+
+    mocker.patch.object(
+        System,
+        "is_symlink",
+        return_value=True,
+        side_effect=base_path_is_symlink,
+    )
+    assert not contains_symlink_up_to(target_path, base_path)
+
+
+def test_path_object_and_str_are_valid_arg_types():
+    base_path = "foo"
+    target_path = os.path.join(base_path, "bar")
+    assert not contains_symlink_up_to(target_path, base_path)
+    assert not contains_symlink_up_to(target_path, base_path)
 
 
 def test_should_call_recursive_on_no_condition_matched(mocker):
