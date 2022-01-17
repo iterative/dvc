@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 from collections import defaultdict
@@ -18,6 +19,14 @@ class MissingParamsError(DvcException):
     pass
 
 
+class MissingParamsFile(DvcException):
+    pass
+
+
+class ParamsIsADirectoryError(DvcException):
+    pass
+
+
 class BadParamFileError(DvcException):
     pass
 
@@ -27,9 +36,9 @@ class ParamsDependency(Dependency):
     PARAM_SCHEMA = {PARAM_PARAMS: Any(dict, list, None)}
     DEFAULT_PARAMS_FILE = "params.yaml"
 
-    def __init__(self, stage, path, params):
+    def __init__(self, stage, path, params=None, repo=None):
         info = {}
-        self.params = []
+        self.params = params or []
         if params:
             if isinstance(params, list):
                 self.params = params
@@ -43,6 +52,7 @@ class ParamsDependency(Dependency):
             path
             or os.path.join(stage.repo.root_dir, self.DEFAULT_PARAMS_FILE),
             info=info,
+            repo=repo,
         )
 
     def dumpd(self):
@@ -88,18 +98,43 @@ class ParamsDependency(Dependency):
     def status(self):
         return self.workspace_status()
 
-    def _read(self):
+    def validate_filepath(self):
         if not self.exists:
-            return {}
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), str(self)
+            )
+        if self.isdir():
+            raise IsADirectoryError(
+                errno.EISDIR, os.strerror(errno.EISDIR), str(self)
+            )
 
-        suffix = self.repo.fs.path.suffix(self.fs_path).lower()
-        loader = LOADERS[suffix]
+    def read_file(self):
+        _, ext = os.path.splitext(self.fs_path)
+        loader = LOADERS[ext]
+
+        try:
+            self.validate_filepath()
+        except FileNotFoundError as exc:
+            raise MissingParamsFile(
+                f"Parameters file '{self}' does not exist"
+            ) from exc
+        except IsADirectoryError as exc:
+            raise ParamsIsADirectoryError(
+                f"'{self}' is a directory, expected a parameters file"
+            ) from exc
+
         try:
             return loader(self.fs_path, fs=self.repo.fs)
         except ParseError as exc:
             raise BadParamFileError(
                 f"Unable to read parameters from '{self}'"
             ) from exc
+
+    def _read(self):
+        try:
+            return self.read_file()
+        except MissingParamsFile:
+            return {}
 
     def read_params_d(self, **kwargs):
         config = self._read()
