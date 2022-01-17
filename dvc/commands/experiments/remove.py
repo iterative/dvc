@@ -3,24 +3,44 @@ import logging
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
+from dvc.exceptions import InvalidArgumentError
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsRemove(CmdBase):
+    def raise_error_if_all_disabled(self):
+        if not any(
+            [
+                self.args.experiment,
+                self.args.all_commits,
+                self.args.rev,
+                self.args.queue,
+            ]
+        ):
+            raise InvalidArgumentError(
+                "Either provide an `experiment` argument, or use the "
+                "`--rev` or `--all-commits` flag."
+            )
+
     def run(self):
+
+        self.raise_error_if_all_disabled()
 
         self.repo.experiments.remove(
             exp_names=self.args.experiment,
+            all_commits=self.args.all_commits,
+            rev=self.args.rev,
+            num=self.args.num,
             queue=self.args.queue,
-            clear_all=self.args.all,
-            remote=self.args.git_remote,
+            git_remote=self.args.git_remote,
         )
 
         return 0
 
 
 def add_parser(experiments_subparsers, parent_parser):
+    from . import add_rev_selection_flags
 
     EXPERIMENTS_REMOVE_HELP = "Remove experiments."
     experiments_remove_parser = experiments_subparsers.add_parser(
@@ -31,14 +51,9 @@ def add_parser(experiments_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remove_group = experiments_remove_parser.add_mutually_exclusive_group()
+    add_rev_selection_flags(experiments_remove_parser, "Remove", False)
     remove_group.add_argument(
         "--queue", action="store_true", help="Remove all queued experiments."
-    )
-    remove_group.add_argument(
-        "-A",
-        "--all",
-        action="store_true",
-        help="Remove all committed experiments.",
     )
     remove_group.add_argument(
         "-g",
