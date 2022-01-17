@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Collection, Iterable
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -24,7 +24,7 @@ class AmbiguousExpRefInfo(InvalidArgumentError):
 
 class UnresolvedExpNamesError(InvalidArgumentError):
     def __init__(
-        self, unresolved_list: List[str], *args, git_remote: str = None
+        self, unresolved_list: Collection[str], *args, git_remote: str = None
     ):
         unresolved_names = ";".join(unresolved_list)
         if not git_remote:
