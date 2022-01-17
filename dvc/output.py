@@ -291,9 +291,9 @@ class Output:
         desc=None,
         isexec=False,
         remote=None,
+        repo=None,
     ):
-        self.repo = stage.repo if stage else None
-
+        self.repo = stage.repo if not repo and stage else repo
         fs_cls, fs_config, fs_path = get_cloud_fs(self.repo, url=path)
         self.fs = fs_cls(**fs_config)
 

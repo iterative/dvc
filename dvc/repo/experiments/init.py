@@ -8,7 +8,6 @@ from typing import (
     Callable,
     Dict,
     Iterable,
-    List,
     Optional,
     TextIO,
     Tuple,
@@ -168,26 +167,29 @@ def _check_stage_exists(
         )
 
 
-def loadd_params(path: str) -> Dict[str, List[str]]:
-    from dvc.utils.serialize import LOADERS
-
-    _, ext = os.path.splitext(path)
-    return {path: list(LOADERS[ext](path))}
-
-
-def validate_prompts(key: str, value: str) -> Union[Any, Tuple[Any, str]]:
+def validate_prompts(
+    repo: "Repo", key: str, value: str
+) -> Union[Any, Tuple[Any, str]]:
     from dvc.ui.prompt import InvalidResponse
 
     if key == "params":
+        import errno
+
+        from dvc.dependency.param import ParamsDependency
+
         assert isinstance(value, str)
         msg_format = (
             "[prompt.invalid]'{0}' {1}. "
             "Please retry with an existing parameters file."
         )
-        if not os.path.exists(value):
-            raise InvalidResponse(msg_format.format(value, "does not exist"))
-        if os.path.isdir(value):
-            raise InvalidResponse(msg_format.format(value, "is a directory"))
+        try:
+            ParamsDependency(None, value, repo=repo).validate_filepath()
+        except (IsADirectoryError, FileNotFoundError) as e:
+            suffices = {
+                errno.EISDIR: "is a directory",
+                errno.ENOENT: "does not exist",
+            }
+            raise InvalidResponse(msg_format.format(value, suffices[e.errno]))
     elif key in ("code", "data"):
         if not os.path.exists(value):
             return value, (
@@ -220,7 +222,7 @@ def init(
     if interactive:
         defaults = init_interactive(
             name,
-            validator=validate_prompts,
+            validator=partial(validate_prompts, repo),
             defaults=defaults,
             live=with_live,
             provided=overrides,
@@ -242,7 +244,17 @@ def init(
     params_kv = []
     params = context.get("params")
     if params:
-        params_kv.append(loadd_params(params))
+        from dvc.dependency.param import (
+            MissingParamsFile,
+            ParamsDependency,
+            ParamsIsADirectoryError,
+        )
+
+        try:
+            params_d = ParamsDependency(None, params, repo=repo).read_file()
+        except (MissingParamsFile, ParamsIsADirectoryError) as exc:
+            raise DvcException(f"{exc}.")  # swallow cause for display
+        params_kv.append({params: list(params_d.keys())})
 
     checkpoint_out = bool(context.get("live"))
     models = context.get("models")
