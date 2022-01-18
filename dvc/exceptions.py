@@ -157,9 +157,9 @@ class InitError(DvcException):
 
 
 class ReproductionError(DvcException):
-    def __init__(self, dvc_file_name):
-        self.path = dvc_file_name
-        super().__init__(f"failed to reproduce '{dvc_file_name}'")
+    def __init__(self, name):
+        self.name = name
+        super().__init__(f"failed to reproduce '{name}'")
 
 
 class BadMetricError(DvcException):

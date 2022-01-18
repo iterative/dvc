@@ -218,7 +218,7 @@ def _reproduce_stages(
         except CheckpointKilledError:
             raise
         except Exception as exc:
-            raise ReproductionError(stage.relpath) from exc
+            raise ReproductionError(stage.addressing) from exc
 
     if on_unchanged is not None:
         on_unchanged(unchanged)
