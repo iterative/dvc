@@ -97,7 +97,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
 
     mocker.patch(
         "concurrent.futures.Future.exception",
-        return_value=ReproductionError(exp_stage.relpath),
+        return_value=ReproductionError(exp_stage.addressing),
     )
     with caplog.at_level(logging.ERROR):
         dvc.experiments.run(exp_stage.addressing, tmp_dir=True)
