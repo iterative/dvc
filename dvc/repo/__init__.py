@@ -314,8 +314,8 @@ class Repo:
     def find_root(cls, root=None, fs=None) -> str:
         from dvc.fs.local import LocalFileSystem, localfs
 
-        root_dir = os.path.realpath(root or os.curdir)
-        _fs = fs
+        root = root or os.curdir
+        root_dir = os.path.realpath(root)
         fs = fs or localfs
 
         if not fs.isdir(root_dir):
@@ -332,13 +332,11 @@ class Repo:
                 break
             root_dir = parent
 
-        if _fs:
-            msg = f"'{root}' does not contain DVC directory"
-        else:
-            msg = (
-                "you are not inside of a DVC repository "
-                f"(checked up to mount point '{root_dir}')"
-            )
+        msg = "you are not inside of a DVC repository"
+
+        if isinstance(fs, LocalFileSystem):
+            msg = f"{msg} (checked up to mount point '{root_dir}')"
+
         raise NotDvcRepoError(msg)
 
     @classmethod
