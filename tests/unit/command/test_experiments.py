@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 
-from dvc.cli import parse_args
+from dvc.cli import DvcParserError, parse_args
 from dvc.command.experiments.apply import CmdExperimentsApply
 from dvc.command.experiments.branch import CmdExperimentsBranch
 from dvc.command.experiments.diff import CmdExperimentsDiff
@@ -16,7 +16,7 @@ from dvc.command.experiments.push import CmdExperimentsPush
 from dvc.command.experiments.remove import CmdExperimentsRemove
 from dvc.command.experiments.run import CmdExperimentsRun
 from dvc.command.experiments.show import CmdExperimentsShow, show_experiments
-from dvc.exceptions import DvcParserError, InvalidArgumentError
+from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage import PipelineStage
 from tests.utils import ANY

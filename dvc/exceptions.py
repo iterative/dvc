@@ -128,13 +128,6 @@ class NotDvcRepoError(DvcException):
     """Thrown if a directory is not a DVC repo"""
 
 
-class DvcParserError(DvcException):
-    """Base class for CLI parser errors."""
-
-    def __init__(self):
-        super().__init__("parser error")
-
-
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)

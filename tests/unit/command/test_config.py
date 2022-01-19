@@ -1,8 +1,7 @@
 import pytest
 
-from dvc.cli import parse_args
+from dvc.cli import DvcParserError, parse_args
 from dvc.command.config import CmdConfig
-from dvc.exceptions import DvcParserError
 
 
 def test_config_formatter():
