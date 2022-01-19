@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.data_sync import CmdDataFetch, CmdDataPull, CmdDataPush
+from dvc.commands.data_sync import CmdDataFetch, CmdDataPull, CmdDataPush
 
 
 def test_fetch(mocker):

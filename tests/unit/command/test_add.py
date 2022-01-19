@@ -1,7 +1,7 @@
 import logging
 
 from dvc.cli import parse_args
-from dvc.command.add import CmdAdd
+from dvc.commands.add import CmdAdd
 
 
 def test_add(mocker, dvc):

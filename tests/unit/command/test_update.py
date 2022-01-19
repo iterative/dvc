@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.update import CmdUpdate
+from dvc.commands.update import CmdUpdate
 
 
 def test_update(dvc, mocker):

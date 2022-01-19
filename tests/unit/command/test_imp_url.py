@@ -1,7 +1,7 @@
 import logging
 
 from dvc.cli import parse_args
-from dvc.command.imp_url import CmdImportUrl
+from dvc.commands.imp_url import CmdImportUrl
 from dvc.exceptions import DvcException
 
 

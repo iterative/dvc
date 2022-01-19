@@ -2,7 +2,7 @@ import networkx as nx
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.dag import CmdDAG, _build, _show_ascii, _show_dot
+from dvc.commands.dag import CmdDAG, _build, _show_ascii, _show_dot
 
 
 @pytest.mark.parametrize("fmt", [None, "--dot"])
@@ -17,7 +17,7 @@ def test_dag(tmp_dir, dvc, mocker, fmt):
 
     cmd = cli_args.func(cli_args)
 
-    mocker.patch("dvc.command.dag._build", return_value=dvc.index.graph)
+    mocker.patch("dvc.commands.dag._build", return_value=dvc.index.graph)
 
     assert cmd.run() == 0
 

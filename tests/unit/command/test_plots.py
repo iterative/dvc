@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.plots import CmdPlotsDiff, CmdPlotsShow
+from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow
 
 
 @pytest.fixture
@@ -290,7 +290,7 @@ def test_plots_diff_json(dvc, mocker, capsys):
     mocker.patch("dvc.render.utils.match_renderers", return_value=renderers)
     render_mock = mocker.patch("dvc.render.utils.render")
 
-    show_json_mock = mocker.patch("dvc.command.plots._show_json")
+    show_json_mock = mocker.patch("dvc.commands.plots._show_json")
 
     assert cmd.run() == 0
 

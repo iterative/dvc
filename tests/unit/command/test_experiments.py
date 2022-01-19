@@ -5,17 +5,17 @@ from datetime import datetime
 import pytest
 
 from dvc.cli import DvcParserError, parse_args
-from dvc.command.experiments.apply import CmdExperimentsApply
-from dvc.command.experiments.branch import CmdExperimentsBranch
-from dvc.command.experiments.diff import CmdExperimentsDiff
-from dvc.command.experiments.gc import CmdExperimentsGC
-from dvc.command.experiments.init import CmdExperimentsInit
-from dvc.command.experiments.ls import CmdExperimentsList
-from dvc.command.experiments.pull import CmdExperimentsPull
-from dvc.command.experiments.push import CmdExperimentsPush
-from dvc.command.experiments.remove import CmdExperimentsRemove
-from dvc.command.experiments.run import CmdExperimentsRun
-from dvc.command.experiments.show import CmdExperimentsShow, show_experiments
+from dvc.commands.experiments.apply import CmdExperimentsApply
+from dvc.commands.experiments.branch import CmdExperimentsBranch
+from dvc.commands.experiments.diff import CmdExperimentsDiff
+from dvc.commands.experiments.gc import CmdExperimentsGC
+from dvc.commands.experiments.init import CmdExperimentsInit
+from dvc.commands.experiments.ls import CmdExperimentsList
+from dvc.commands.experiments.pull import CmdExperimentsPull
+from dvc.commands.experiments.push import CmdExperimentsPush
+from dvc.commands.experiments.remove import CmdExperimentsRemove
+from dvc.commands.experiments.run import CmdExperimentsRun
+from dvc.commands.experiments.show import CmdExperimentsShow, show_experiments
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
 from dvc.stage import PipelineStage
@@ -784,7 +784,7 @@ def test_show_experiments_pcp(tmp_dir, mocker):
         },
     }
     experiments_table = mocker.patch(
-        "dvc.command.experiments.show.experiments_table"
+        "dvc.commands.experiments.show.experiments_table"
     )
     td = experiments_table.return_value
 

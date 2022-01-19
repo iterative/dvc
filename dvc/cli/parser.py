@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from dvc.command import (
+from dvc.commands import (
     add,
     cache,
     check_ignore,

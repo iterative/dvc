@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.repro import CmdRepro
+from dvc.commands.repro import CmdRepro
 
 default_arguments = {
     "all_pipelines": False,

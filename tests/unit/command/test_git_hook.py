@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.git_hook import CmdPostCheckout, CmdPreCommit, CmdPrePush
+from dvc.commands.git_hook import CmdPostCheckout, CmdPreCommit, CmdPrePush
 
 
 @pytest.mark.parametrize(
