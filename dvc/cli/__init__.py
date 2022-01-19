@@ -9,6 +9,13 @@ import logging
 logger = logging.getLogger("dvc")
 
 
+class DvcParserError(Exception):
+    """Base class for CLI parser errors."""
+
+    def __init__(self):
+        super().__init__("parser error")
+
+
 def parse_args(argv=None):
     """Parses CLI arguments.
 
@@ -16,7 +23,7 @@ def parse_args(argv=None):
         argv: optional list of arguments to parse. sys.argv is used by default.
 
     Raises:
-        dvc.exceptions.DvcParserError: raised for argument parsing errors.
+        DvcParserError: raised for argument parsing errors.
     """
     from .parser import get_main_parser
 
@@ -36,7 +43,7 @@ def main(argv=None):  # noqa: C901
     """
     from dvc._debug import debugtools
     from dvc.config import ConfigError
-    from dvc.exceptions import DvcException, DvcParserError, NotDvcRepoError
+    from dvc.exceptions import DvcException, NotDvcRepoError
     from dvc.logger import FOOTER, disable_other_loggers
 
     args = None
@@ -76,11 +83,11 @@ def main(argv=None):  # noqa: C901
     except NotDvcRepoError:
         logger.exception("")
         ret = 253
-    except DvcParserError:
-        ret = 254
     except DvcException:
         ret = 255
         logger.exception("")
+    except DvcParserError:
+        ret = 254
     except Exception as exc:  # noqa, pylint: disable=broad-except
         # pylint: disable=no-member
         import errno

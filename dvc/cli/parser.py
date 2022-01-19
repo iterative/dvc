@@ -45,6 +45,8 @@ from dvc.command import (
     version,
 )
 
+from . import DvcParserError
+
 logger = logging.getLogger(__name__)
 
 COMMANDS = [
@@ -92,10 +94,8 @@ COMMANDS = [
 def _find_parser(parser, cmd_cls):
     defaults = parser._defaults  # pylint: disable=protected-access
     if not cmd_cls or cmd_cls == defaults.get("func"):
-        from dvc.exceptions import DvcParserError
-
         parser.print_help()
-        raise DvcParserError()
+        raise DvcParserError
 
     actions = parser._actions  # pylint: disable=protected-access
     for action in actions:

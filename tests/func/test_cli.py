@@ -1,6 +1,6 @@
 import os
 
-from dvc.cli import parse_args
+from dvc.cli import DvcParserError, parse_args
 from dvc.command.add import CmdAdd
 from dvc.command.base import CmdBase
 from dvc.command.checkout import CmdCheckout
@@ -12,7 +12,7 @@ from dvc.command.remove import CmdRemove
 from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.command.status import CmdDataStatus
-from dvc.exceptions import DvcException, DvcParserError
+from dvc.exceptions import DvcException
 from tests.basic_env import TestDvc
 
 
