@@ -8,7 +8,7 @@ from dvc import prompt
 from dvc.scheme import Schemes
 from dvc.utils.fs import as_atomic
 
-from ..progress import DEFAULT_CALLBACK
+from ._callback import DEFAULT_CALLBACK
 from .fsspec_wrapper import FSSpecWrapper
 
 _SSH_TIMEOUT = 60 * 30

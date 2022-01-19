@@ -5,9 +5,9 @@ from collections import defaultdict
 
 from funcy import cached_property, wrap_prop
 
-from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
+from ._callback import DEFAULT_CALLBACK
 from .fsspec_wrapper import ObjectFSWrapper
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")

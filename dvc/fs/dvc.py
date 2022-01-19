@@ -5,7 +5,7 @@ import typing
 from dvc.exceptions import OutputNotFoundError
 from dvc.utils import relpath
 
-from ..progress import DEFAULT_CALLBACK
+from ._callback import DEFAULT_CALLBACK
 from ._metadata import Metadata
 from .base import FileSystem
 

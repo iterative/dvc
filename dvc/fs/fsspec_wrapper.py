@@ -5,8 +5,7 @@ from typing import IO, TYPE_CHECKING, Any, Dict, Iterator, Optional, overload
 from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
 
-from dvc.progress import DEFAULT_CALLBACK
-
+from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
 
 FSPath = str
