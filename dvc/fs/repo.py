@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from funcy import lfilter, wrap_with
 
-from ..progress import DEFAULT_CALLBACK
+from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
 from .dvc import DvcFileSystem
 

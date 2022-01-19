@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import fix_subparsers
@@ -16,6 +15,8 @@ class CmdLive(CmdBase):
         metrics, plots = self.repo.live.show(target=target, revs=revs)
 
         if plots:
+            from pathlib import Path
+
             html_path = Path.cwd() / (self.args.target + "_html")
 
             renderers = match_renderers(plots, self.repo.plots.templates)
