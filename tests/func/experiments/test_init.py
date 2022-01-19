@@ -10,9 +10,10 @@ from dvc.repo.experiments.init import init
 from dvc.stage.exceptions import DuplicateStageName
 
 # the tests may hang on prompts on failure
-pytestmark = pytest.mark.timeout(2, func_only=True)
+pytestmark = pytest.mark.timeout(3, func_only=True)
 
 
+@pytest.mark.timeout(5, func_only=True)
 def test_init_simple(tmp_dir, scm, dvc, capsys):
     tmp_dir.gen(
         {
@@ -296,6 +297,7 @@ def test_init_interactive_default(
     assert not out
 
 
+@pytest.mark.timeout(5, func_only=True)
 @pytest.mark.parametrize(
     "interactive, overrides, inp",
     [
