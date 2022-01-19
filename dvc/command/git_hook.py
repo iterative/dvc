@@ -1,7 +1,8 @@
 import logging
 import os
 
-from dvc.command.base import CmdBaseNoRepo, fix_subparsers
+from dvc.cli.command import CmdBaseNoRepo
+from dvc.cli.utils import fix_subparsers
 from dvc.exceptions import NotDvcRepoError
 
 logger = logging.getLogger(__name__)

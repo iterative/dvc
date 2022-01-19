@@ -1,8 +1,8 @@
 import argparse
 import logging
 
+from dvc.cli.utils import append_doc_link
 from dvc.command import completion
-from dvc.command.base import append_doc_link
 from dvc.command.repro import CmdRepro
 from dvc.command.repro import add_arguments as add_repro_arguments
 from dvc.exceptions import InvalidArgumentError

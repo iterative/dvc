@@ -1,6 +1,7 @@
 import argparse
 
-from dvc.command.base import CmdBase, append_doc_link, fix_subparsers
+from dvc.cli.command import CmdBase
+from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.compare import TabularData
 from dvc.config import ConfigError

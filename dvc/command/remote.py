@@ -1,6 +1,6 @@
 import argparse
 
-from dvc.command.base import append_doc_link, fix_subparsers
+from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.ui import ui
 from dvc.utils import format_link

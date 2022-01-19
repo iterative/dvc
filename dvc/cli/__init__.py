@@ -1,3 +1,5 @@
+"""This module provides an entrypoint to the dvc cli and parsing utils."""
+
 import logging
 
 # Workaround for CPython bug. See [1] and [2] for more info.

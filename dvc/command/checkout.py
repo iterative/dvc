@@ -1,8 +1,9 @@
 import argparse
 import operator
 
+from dvc.cli.command import CmdBase
+from dvc.cli.utils import append_doc_link
 from dvc.command import completion
-from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import CheckoutError
 from dvc.ui import ui
 

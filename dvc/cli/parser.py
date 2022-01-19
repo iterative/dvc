@@ -1,4 +1,4 @@
-"""DVC command line interface"""
+"""Main parser for the dvc cli."""
 import argparse
 import logging
 import os
@@ -208,7 +208,7 @@ def get_main_parser():
         help="Use `dvc COMMAND --help` for command-specific help.",
     )
 
-    from dvc.command.base import fix_subparsers
+    from .utils import fix_subparsers
 
     fix_subparsers(subparsers)
 
