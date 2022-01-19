@@ -3,9 +3,9 @@ import os
 
 import pytest
 
+from dvc.cli import main
 from dvc.command.experiments.init import CmdExperimentsInit
 from dvc.exceptions import DvcException
-from dvc.main import main
 from dvc.repo.experiments.init import init
 from dvc.stage.exceptions import DuplicateStageName
 

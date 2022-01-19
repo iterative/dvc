@@ -4,7 +4,7 @@ from unittest.mock import call
 import pytest
 
 from dvc.analytics import _scm_in_use, collect_and_send_report
-from dvc.main import main
+from dvc.cli import main
 from dvc.repo import Repo
 from tests.utils import ANY
 

@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
+from dvc.cli import main
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
-from dvc.main import main
 from dvc.stage import Stage
 from dvc.testing.test_workspace import TestImport as _TestImport
 from dvc.utils.fs import makedirs

@@ -3,8 +3,8 @@ import textwrap
 
 import pytest
 
+from dvc.cli import main
 from dvc.config import Config, ConfigError
-from dvc.main import main
 
 
 def test_config_set(tmp_dir, dvc):

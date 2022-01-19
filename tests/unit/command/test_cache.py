@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-from dvc.main import main
+from dvc.cli import main
 
 
 def test_cache_dir_local(tmp_dir, dvc, capsys, caplog):

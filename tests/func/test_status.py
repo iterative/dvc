@@ -1,6 +1,6 @@
 import os
 
-from dvc.main import main
+from dvc.cli import main
 
 
 def test_quiet(tmp_dir, dvc, capsys):

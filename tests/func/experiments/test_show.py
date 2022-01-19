@@ -5,8 +5,8 @@ from datetime import datetime
 import pytest
 from funcy import first, get_in
 
+from dvc.cli import main
 from dvc.exceptions import InvalidArgumentError
-from dvc.main import main
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import (
     EXEC_PID_DIR,

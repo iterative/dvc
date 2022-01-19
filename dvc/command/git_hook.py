@@ -25,7 +25,7 @@ class CmdHookBase(CmdBaseNoRepo):
 
 class CmdPreCommit(CmdHookBase):
     def _run(self):
-        from dvc.main import main
+        from dvc.cli import main
 
         return main(["status"])
 
@@ -49,14 +49,14 @@ class CmdPostCheckout(CmdHookBase):
         if os.path.isdir(os.path.join(".git", "rebase-merge")):
             return 0
 
-        from dvc.main import main
+        from dvc.cli import main
 
         return main(["checkout"])
 
 
 class CmdPrePush(CmdHookBase):
     def _run(self):
-        from dvc.main import main
+        from dvc.cli import main
 
         return main(["push"])
 

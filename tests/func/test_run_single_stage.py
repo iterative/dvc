@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+from dvc.cli import main
 from dvc.dependency.base import DependencyIsStageFileError
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
@@ -18,7 +19,6 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     StagePathAsOutputError,
 )
-from dvc.main import main
 from dvc.output import Output, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage

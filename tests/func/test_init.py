@@ -3,9 +3,9 @@ import os
 
 import pytest
 
+from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import InitError
-from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 
 

@@ -4,7 +4,7 @@ import textwrap
 import pytest
 import tpi
 
-from dvc.main import main
+from dvc.cli import main
 from dvc.ui import ui
 from tests.utils import console_width
 

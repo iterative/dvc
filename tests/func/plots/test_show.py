@@ -3,9 +3,9 @@ import os
 import pytest
 from funcy import get_in
 
+from dvc.cli import main
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
-from dvc.main import main
 from dvc.repo import Repo
 from dvc.repo.plots import PlotMetricTypeError
 from dvc.utils import onerror_collect

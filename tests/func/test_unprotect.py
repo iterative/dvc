@@ -1,6 +1,6 @@
 import os
 
-from dvc.main import main
+from dvc.cli import main
 from tests.basic_env import TestDvc
 
 

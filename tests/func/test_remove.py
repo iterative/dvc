@@ -2,8 +2,8 @@ import os
 
 import pytest
 
+from dvc.cli import main
 from dvc.exceptions import DvcException
-from dvc.main import main
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils.fs import remove

@@ -1,6 +1,6 @@
 import re
 
-from dvc.main import main
+from dvc.cli import main
 from tests.unit.test_info import (
     DVC_VERSION_REGEX,
     PYTHON_VERSION_REGEX,

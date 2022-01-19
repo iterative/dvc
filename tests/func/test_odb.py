@@ -4,9 +4,9 @@ import stat
 import configobj
 import pytest
 
+from dvc.cli import main
 from dvc.data.db import ODBManager
 from dvc.hash_info import HashInfo
-from dvc.main import main
 from dvc.objects.errors import ObjectFormatError
 from dvc.utils import relpath
 from tests.basic_env import TestDir, TestDvc

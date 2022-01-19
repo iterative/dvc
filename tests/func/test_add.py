@@ -11,6 +11,7 @@ import colorama
 import pytest
 
 import dvc as dvc_module
+from dvc.cli import main
 from dvc.data.db import ODBManager
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
@@ -22,7 +23,6 @@ from dvc.exceptions import (
 )
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
-from dvc.main import main
 from dvc.output import (
     OutputAlreadyTrackedError,
     OutputDoesNotExistError,
