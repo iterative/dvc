@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from dvc.cli import DvcParserError, parse_args, main
+from dvc.cli import DvcParserError, main, parse_args
 from dvc.commands.external import CmdExternal
 from dvc.utils.fs import path_isin
 from dvc.utils.strictyaml import make_relpath
