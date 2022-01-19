@@ -589,7 +589,7 @@ def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
 
 
 def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
-    from dvc.main import main
+    from dvc.cli import main
 
     mocker.patch.object(
         dvc.experiments, "run", return_value={"abc123": "abc123"}

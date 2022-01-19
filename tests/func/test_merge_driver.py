@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.main import main
+from dvc.cli import main
 from dvc.utils.fs import remove
 
 

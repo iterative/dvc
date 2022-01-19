@@ -6,9 +6,9 @@ from unittest.mock import patch
 import configobj
 import pytest
 
+from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
-from dvc.main import main
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 

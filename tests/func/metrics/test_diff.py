@@ -1,6 +1,6 @@
 import json
 
-from dvc.main import main
+from dvc.cli import main
 
 
 def test_metrics_diff_simple(tmp_dir, scm, dvc, run_copy_metrics):

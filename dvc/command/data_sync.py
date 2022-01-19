@@ -97,7 +97,7 @@ class CmdDataFetch(CmdDataBase):
 
 
 def shared_parent_parser():
-    from dvc.cli import get_parent_parser
+    from dvc.cli.parser import get_parent_parser
 
     # Parent parser used in pull/push/status
     parent_parser = argparse.ArgumentParser(

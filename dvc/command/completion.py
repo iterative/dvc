@@ -82,7 +82,7 @@ EXPERIMENT = {"bash": "_dvc_compgen_exps", "zsh": "_dvc_compadd_exps"}
 
 class CmdCompletion(CmdBaseNoRepo):
     def run(self):
-        from dvc.cli import get_main_parser
+        from dvc.cli.parser import get_main_parser
 
         parser = get_main_parser()
         shell = self.args.shell

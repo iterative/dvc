@@ -3,9 +3,9 @@ import tempfile
 
 import pytest
 
+from dvc.cli import main
 from dvc.dvcfile import SingleStageFile
 from dvc.fs.local import LocalFileSystem
-from dvc.main import main
 from dvc.output import Output
 from dvc.repo import Repo, lock_repo
 from dvc.stage import PipelineStage, Stage

@@ -4,8 +4,7 @@ import logging
 import os
 import sys
 
-from ._debug import add_debugging_flags
-from .command import (
+from dvc.command import (
     add,
     cache,
     check_ignore,
@@ -45,8 +44,6 @@ from .command import (
     update,
     version,
 )
-from .command.base import fix_subparsers
-from .exceptions import DvcParserError
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +92,8 @@ COMMANDS = [
 def _find_parser(parser, cmd_cls):
     defaults = parser._defaults  # pylint: disable=protected-access
     if not cmd_cls or cmd_cls == defaults.get("func"):
+        from dvc.exceptions import DvcParserError
+
         parser.print_help()
         raise DvcParserError()
 
@@ -143,6 +142,8 @@ def get_parent_parser():
     When overwriting `-q` or `-v`, you need to instantiate a new object
     in order to prevent some weird behavior.
     """
+    from dvc._debug import add_debugging_flags
+
     parent_parser = argparse.ArgumentParser(add_help=False)
     add_debugging_flags(parent_parser)
     log_level_group = parent_parser.add_mutually_exclusive_group()
@@ -207,23 +208,11 @@ def get_main_parser():
         help="Use `dvc COMMAND --help` for command-specific help.",
     )
 
+    from dvc.command.base import fix_subparsers
+
     fix_subparsers(subparsers)
 
     for cmd in COMMANDS:
         cmd.add_parser(subparsers, parent_parser)
 
     return parser
-
-
-def parse_args(argv=None):
-    """Parses CLI arguments.
-
-    Args:
-        argv: optional list of arguments to parse. sys.argv is used by default.
-
-    Raises:
-        dvc.exceptions.DvcParserError: raised for argument parsing errors.
-    """
-    parser = get_main_parser()
-    args = parser.parse_args(argv)
-    return args

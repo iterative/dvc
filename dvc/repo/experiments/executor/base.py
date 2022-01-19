@@ -695,7 +695,7 @@ class BaseExecutor(ABC):
         from dvc.logger import disable_other_loggers
 
         # When executor.reproduce is run in a multiprocessing child process,
-        # dvc.main will not be called for that child process so we need to
+        # dvc.cli.main will not be called for that child process so we need to
         # setup logging ourselves
         dvc_logger = logging.getLogger("dvc")
         disable_other_loggers()

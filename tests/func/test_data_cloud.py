@@ -6,8 +6,8 @@ import pytest
 from flaky.flaky_decorator import flaky
 
 import dvc as dvc_module
+from dvc.cli import main
 from dvc.external_repo import clean_repos
-from dvc.main import main
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
     TestRemote,
