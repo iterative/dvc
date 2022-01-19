@@ -600,7 +600,7 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
 
 
 def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
-    from dvc.command.experiments import show
+    from dvc.commands.experiments import show
 
     webbroser_open = mocker.patch("webbrowser.open")
     show_experiments = mocker.spy(show, "show_experiments")

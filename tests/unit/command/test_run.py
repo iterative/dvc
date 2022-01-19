@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.run import CmdRun
+from dvc.commands.run import CmdRun
 from tests.utils.asserts import called_once_with_subset
 
 

@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.stage import CmdStageAdd
+from dvc.commands.stage import CmdStageAdd
 from tests.utils.asserts import called_once_with_subset
 
 

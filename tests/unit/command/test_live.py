@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.live import CmdLiveDiff, CmdLiveShow
+from dvc.commands.live import CmdLiveDiff, CmdLiveShow
 
 
 def test_live_diff(dvc, mocker):

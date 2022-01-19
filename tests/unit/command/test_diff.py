@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.diff import _digest, _show_markdown
+from dvc.commands.diff import _digest, _show_markdown
 
 
 @pytest.mark.parametrize(
@@ -197,7 +197,7 @@ def test_diff_show_markdown_and_hash(mocker, show_hash):
 
     diff = {}
     show_hash = show_hash if show_hash else False
-    mock_show_markdown = mocker.patch("dvc.command.diff._show_markdown")
+    mock_show_markdown = mocker.patch("dvc.commands.diff._show_markdown")
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
     assert 0 == cmd.run()

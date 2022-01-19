@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.get_url import CmdGetUrl
+from dvc.commands.get_url import CmdGetUrl
 
 
 def test_get_url(mocker):
