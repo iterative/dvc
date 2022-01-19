@@ -1,5 +1,6 @@
+from dvc.cli.command import CmdBaseNoRepo
+from dvc.cli.utils import fix_subparsers
 from dvc.command import completion
-from dvc.command.base import CmdBaseNoRepo, fix_subparsers
 
 
 class CmdDaemonBase(CmdBaseNoRepo):

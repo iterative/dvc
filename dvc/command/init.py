@@ -4,7 +4,8 @@ import logging
 import colorama
 
 from dvc import analytics
-from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.cli.command import CmdBaseNoRepo
+from dvc.cli.utils import append_doc_link
 from dvc.utils import boxify
 from dvc.utils import format_link as fmt_link
 

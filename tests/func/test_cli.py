@@ -1,8 +1,8 @@
 import os
 
 from dvc.cli import DvcParserError, parse_args
+from dvc.cli.command import CmdBase
 from dvc.command.add import CmdAdd
-from dvc.command.base import CmdBase
 from dvc.command.checkout import CmdCheckout
 from dvc.command.config import CmdConfig
 from dvc.command.data_sync import CmdDataPull, CmdDataPush

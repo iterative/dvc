@@ -1,7 +1,7 @@
 import argparse
 
+from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.command import completion
-from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.ui import ui
 

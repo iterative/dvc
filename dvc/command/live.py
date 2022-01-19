@@ -1,8 +1,9 @@
 import argparse
 from pathlib import Path
 
+from dvc.cli.command import CmdBase
+from dvc.cli.utils import fix_subparsers
 from dvc.command import completion
-from dvc.command.base import CmdBase, fix_subparsers
 from dvc.ui import ui
 
 

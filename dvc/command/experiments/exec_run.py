@@ -1,6 +1,6 @@
 import logging
 
-from dvc.command.base import CmdBaseNoRepo
+from dvc.cli.command import CmdBaseNoRepo
 
 logger = logging.getLogger(__name__)
 

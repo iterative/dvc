@@ -1,6 +1,7 @@
 import argparse
 
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.cli.command import CmdBase
+from dvc.cli.utils import append_doc_link
 from dvc.ui import ui
 
 

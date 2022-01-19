@@ -3,7 +3,8 @@ import logging
 
 import shtab
 
-from dvc.command.base import CmdBaseNoRepo, append_doc_link
+from dvc.cli.command import CmdBaseNoRepo
+from dvc.cli.utils import append_doc_link
 from dvc.ui import ui
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,9 @@
 import argparse
 import logging
 
+from dvc.cli.command import CmdBaseNoRepo
+from dvc.cli.utils import append_doc_link
 from dvc.command import completion
-from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.command.ls.ls_colors import LsColors
 from dvc.exceptions import DvcException
 from dvc.ui import ui
