@@ -391,7 +391,7 @@ def show_experiments(
     td.drop(*cols_to_drop)
 
     if pcp:
-        subset = [x for x in td.keys() if x != "Experiment"]
+        subset = {x for x in td.keys() if x != "Experiment"}
         td.dropna(
             "rows",
             how="all",
