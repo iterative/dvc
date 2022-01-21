@@ -97,7 +97,7 @@ def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
 
     mocker.patch(
         "concurrent.futures.Future.exception",
-        return_value=ReproductionError(exp_stage.relpath),
+        return_value=ReproductionError(exp_stage.addressing),
     )
     with caplog.at_level(logging.ERROR):
         dvc.experiments.run(exp_stage.addressing, tmp_dir=True)
@@ -589,7 +589,7 @@ def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
 
 
 def test_run_metrics(tmp_dir, scm, dvc, exp_stage, mocker):
-    from dvc.main import main
+    from dvc.cli import main
 
     mocker.patch.object(
         dvc.experiments, "run", return_value={"abc123": "abc123"}

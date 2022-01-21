@@ -31,11 +31,12 @@ from .executor.base import (
     BaseExecutor,
     ExecutorInfo,
 )
-from .executor.manager import (
-    BaseExecutorManager,
+from .executor.manager.base import BaseExecutorManager
+from .executor.manager.local import (
     TempDirExecutorManager,
     WorkspaceExecutorManager,
 )
+from .executor.manager.ssh import SSHExecutorManager
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
@@ -386,6 +387,7 @@ class Experiments:
         tmp_dir: bool = False,
         checkpoint_resume: Optional[str] = None,
         reset: bool = False,
+        machine: Optional[str] = None,
         **kwargs,
     ):
         """Reproduce and checkout a single experiment."""
@@ -395,7 +397,7 @@ class Experiments:
         if reset:
             self.reset_checkpoints()
 
-        if not (queue or tmp_dir):
+        if not (queue or tmp_dir or machine):
             staged, _, _ = self.scm.status()
             if staged:
                 logger.warning(
@@ -429,12 +431,15 @@ class Experiments:
             return [stash_rev]
         if tmp_dir or queue:
             manager_cls: Type = TempDirExecutorManager
+        elif machine:
+            manager_cls = SSHExecutorManager
         else:
             manager_cls = WorkspaceExecutorManager
         results = self._reproduce_revs(
             revs=[stash_rev],
             keep_stash=False,
             manager_cls=manager_cls,
+            machine=machine,
         )
         exp_rev = first(results)
         if exp_rev is not None:
@@ -590,6 +595,7 @@ class Experiments:
         revs: Optional[Iterable] = None,
         keep_stash: Optional[bool] = True,
         manager_cls: Type = TempDirExecutorManager,
+        machine: Optional[str] = None,
         **kwargs,
     ) -> Mapping[str, str]:
         """Reproduce the specified experiments.
@@ -631,6 +637,7 @@ class Experiments:
             os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR),
             self.repo,
             to_run,
+            machine_name=machine,
         )
         try:
             exec_results = {}
@@ -665,7 +672,7 @@ class Experiments:
             dict mapping stash revs to the successfully executed experiments
             for each stash rev.
         """
-        return manager.exec_queue(**kwargs)
+        return manager.exec_queue(self.repo, **kwargs)
 
     def check_baseline(self, exp_rev):
         baseline_sha = self.repo.scm.get_rev()
@@ -740,6 +747,8 @@ class Experiments:
         from dvc.scm import InvalidRemoteSCMRepo
         from dvc.utils.serialize import load_json
 
+        from .executor.local import TempDirExecutor
+
         result = {}
         pid_dir = os.path.join(
             self.repo.tmp_dir,
@@ -770,10 +779,10 @@ class Experiments:
                         def on_diverged(_ref: str, _checkpoint: bool):
                             return False
 
+                        executor = TempDirExecutor.from_info(info)
                         try:
-                            for ref in BaseExecutor.fetch_exps(
+                            for ref in executor.fetch_exps(
                                 self.scm,
-                                info.git_url,
                                 on_diverged=on_diverged,
                             ):
                                 logger.debug(

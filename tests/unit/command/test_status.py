@@ -3,7 +3,7 @@ import json
 import pytest
 
 from dvc.cli import parse_args
-from dvc.command.status import CmdDataStatus
+from dvc.commands.status import CmdDataStatus
 
 
 def test_cloud_status(tmp_dir, dvc, mocker):

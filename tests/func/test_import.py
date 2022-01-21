@@ -7,9 +7,9 @@ from funcy import first
 from scmrepo.git import Git
 
 from dvc.config import NoRemoteError
+from dvc.data.db import ODBManager
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
-from dvc.objects.db import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
@@ -529,7 +529,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    import dvc.objects.transfer as otransfer
+    import dvc.data.transfer as otransfer
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(

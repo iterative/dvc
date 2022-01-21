@@ -128,13 +128,6 @@ class NotDvcRepoError(DvcException):
     """Thrown if a directory is not a DVC repo"""
 
 
-class DvcParserError(DvcException):
-    """Base class for CLI parser errors."""
-
-    def __init__(self):
-        super().__init__("parser error")
-
-
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
@@ -157,9 +150,9 @@ class InitError(DvcException):
 
 
 class ReproductionError(DvcException):
-    def __init__(self, dvc_file_name):
-        self.path = dvc_file_name
-        super().__init__(f"failed to reproduce '{dvc_file_name}'")
+    def __init__(self, name):
+        self.name = name
+        super().__init__(f"failed to reproduce '{name}'")
 
 
 class BadMetricError(DvcException):

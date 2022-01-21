@@ -44,7 +44,8 @@ def gc(
 
     from contextlib import ExitStack
 
-    from dvc.objects.db import get_index
+    from dvc.data.db import get_index
+    from dvc.data.gc import gc as ogc
     from dvc.repo import Repo
 
     if not repos:
@@ -73,7 +74,7 @@ def gc(
         if not odb:
             continue
 
-        removed = odb.gc(used_obj_ids, jobs=jobs)
+        removed = ogc(odb, used_obj_ids, jobs=jobs)
         if not removed:
             logger.info(f"No unused '{scheme}' cache to remove.")
 
@@ -81,7 +82,7 @@ def gc(
         return
 
     odb = self.cloud.get_remote_odb(remote, "gc -c")
-    removed = odb.gc(used_obj_ids)
+    removed = ogc(odb, used_obj_ids)
     if removed:
         get_index(odb).clear()
     else:

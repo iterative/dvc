@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.params import CmdParamsDiff
+from dvc.commands.params import CmdParamsDiff
 
 
 def test_params_diff(dvc, mocker):

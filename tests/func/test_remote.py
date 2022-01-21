@@ -6,9 +6,9 @@ from unittest.mock import patch
 import configobj
 import pytest
 
+from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
-from dvc.main import main
 from dvc.utils.fs import remove
 from tests.basic_env import TestDvc
 
@@ -139,8 +139,8 @@ def test_upper_case_remote(tmp_dir, dvc, local_cloud):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
-    from dvc.objects.stage import stage
-    from dvc.objects.tree import Tree
+    from dvc.data.stage import stage
+    from dvc.data.tree import Tree
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
@@ -150,7 +150,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
     tree.digest()
-    with patch("dvc.objects.stage._stage_tree", return_value=(None, tree)):
+    with patch("dvc.data.stage._stage_tree", return_value=(None, tree)):
         _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash1 = obj.hash_info
 
@@ -158,7 +158,7 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
     tree.digest()
-    with patch("dvc.objects.stage._stage_tree", return_value=(None, tree)):
+    with patch("dvc.data.stage._stage_tree", return_value=(None, tree)):
         _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash2 = obj.hash_info
 

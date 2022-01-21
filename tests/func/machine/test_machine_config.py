@@ -4,7 +4,7 @@ import textwrap
 import pytest
 import tpi
 
-from dvc.main import main
+from dvc.cli import main
 from dvc.ui import ui
 from tests.utils import console_width
 
@@ -88,7 +88,7 @@ FULL_CONFIG_TEXT = textwrap.dedent(
 
 
 def test_machine_list(tmp_dir, dvc, capsys):
-    from dvc.command.machine import CmdMachineList
+    from dvc.commands.machine import CmdMachineList
 
     (tmp_dir / ".dvc" / "config").write_text(FULL_CONFIG_TEXT)
 

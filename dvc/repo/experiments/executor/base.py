@@ -13,6 +13,7 @@ from typing import (
     Iterable,
     NamedTuple,
     Optional,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -90,6 +91,14 @@ class ExecutorInfo:
             self.result_force,
         )
 
+    def dump_json(self, filename: str):
+        from dvc.utils.fs import makedirs
+        from dvc.utils.serialize import modify_json
+
+        makedirs(os.path.dirname(filename), exist_ok=True)
+        with modify_json(filename) as d:
+            d.update(self.asdict())
+
 
 _T = TypeVar("_T", bound="BaseExecutor")
 
@@ -123,7 +132,7 @@ class BaseExecutor(ABC):
         result: Optional["ExecutorResult"] = None,
         **kwargs,
     ):
-        self._dvc_dir = dvc_dir
+        self.dvc_dir = dvc_dir
         self.root_dir = root_dir
         self.wdir = wdir
         self.name = name
@@ -143,8 +152,14 @@ class BaseExecutor(ABC):
         pass
 
     @abstractmethod
-    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
-        """Initialize DVC (cache)."""
+    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
+        """Initialize DVC cache."""
+
+    @abstractmethod
+    def collect_cache(
+        self, repo: "Repo", exp_ref: "ExpRefInfo", run_cache: bool = True
+    ):
+        """Collect DVC cache."""
 
     @property
     def info(self) -> "ExecutorInfo":
@@ -224,10 +239,6 @@ class BaseExecutor(ABC):
         executor.init_cache(repo, stash_rev)
         return executor
 
-    @property
-    def dvc_dir(self) -> str:
-        return os.path.join(self.root_dir, self._dvc_dir)
-
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:
         from dvc.stage import PipelineStage
@@ -266,28 +277,33 @@ class BaseExecutor(ABC):
             data = pickle.load(fobj)
         return data["args"], data["kwargs"]
 
-    @classmethod
     def fetch_exps(
-        cls,
+        self,
         dest_scm: "Git",
-        url: str,
         force: bool = False,
         on_diverged: Callable[[str, bool], None] = None,
+        **kwargs,
     ) -> Iterable[str]:
-        """Fetch reproduced experiments into the specified SCM.
+        """Fetch reproduced experiment refs into the specified SCM.
 
         Args:
             dest_scm: Destination Git instance.
-            url: Git remote URL to fetch from.
             force: If True, diverged refs will be overwritten
             on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
                 to be called when an experiment ref has diverged.
+
+        Extra kwargs will be passed into the remote git client.
         """
         from ..utils import iter_remote_refs
 
         refs = []
         has_checkpoint = False
-        for ref in iter_remote_refs(dest_scm, url, base=EXPS_NAMESPACE):
+        for ref in iter_remote_refs(
+            dest_scm,
+            self.git_url,
+            base=EXPS_NAMESPACE,
+            **kwargs,
+        ):
             if ref == EXEC_CHECKPOINT:
                 has_checkpoint = True
             elif not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
@@ -298,7 +314,7 @@ class BaseExecutor(ABC):
                 logger.debug("Replacing existing experiment '%s'", orig_ref)
                 return True
 
-            cls._raise_ref_conflict(
+            self._raise_ref_conflict(
                 dest_scm, orig_ref, new_rev, has_checkpoint
             )
             if on_diverged:
@@ -308,17 +324,19 @@ class BaseExecutor(ABC):
 
         # fetch experiments
         dest_scm.fetch_refspecs(
-            url,
+            self.git_url,
             [f"{ref}:{ref}" for ref in refs],
             on_diverged=on_diverged_ref,
             force=force,
+            **kwargs,
         )
         # update last run checkpoint (if it exists)
         if has_checkpoint:
             dest_scm.fetch_refspecs(
-                url,
+                self.git_url,
                 [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
                 force=True,
+                **kwargs,
             )
         return refs
 
@@ -382,10 +400,12 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
+        if infofile is not None:
+            info.dump_json(infofile)
+
         with cls._repro_dvc(
             info,
             log_errors=log_errors,
-            infofile=infofile,
             **kwargs,
         ) as dvc:
             if auto_push:
@@ -446,42 +466,22 @@ class BaseExecutor(ABC):
 
             exp_hash = cls.hash_exp(stages)
             if not repro_dry:
-                try:
-                    is_checkpoint = any(
-                        stage.is_checkpoint for stage in stages
-                    )
-                    if is_checkpoint and checkpoint_reset:
-                        # For reset checkpoint stages, we need to force
-                        # overwriting existing checkpoint refs even though
-                        # repro may not have actually been run with --force
-                        repro_force = True
-                    cls.commit(
-                        dvc.scm,
-                        exp_hash,
-                        exp_name=info.name,
-                        force=repro_force,
-                        checkpoint=is_checkpoint,
-                    )
-                    if auto_push:
-                        cls._auto_push(dvc, dvc.scm, git_remote)
-                except UnchangedExperimentError:
-                    pass
-                ref = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
-                if ref:
-                    exp_ref = ExpRefInfo.from_ref(ref)
-                if cls.WARN_UNTRACKED:
-                    untracked = dvc.scm.untracked_files()
-                    if untracked:
-                        logger.warning(
-                            "The following untracked files were present in "
-                            "the experiment directory after reproduction but "
-                            "will not be included in experiment commits:\n"
-                            "\t%s",
-                            ", ".join(untracked),
-                        )
+                ref, exp_ref, repro_force = cls._repro_commit(
+                    dvc,
+                    info,
+                    stages,
+                    exp_hash,
+                    checkpoint_reset,
+                    auto_push,
+                    git_remote,
+                    repro_force,
+                )
             info.result_hash = exp_hash
             info.result_ref = ref
             info.result_force = repro_force
+
+        if infofile is not None:
+            info.dump_json(infofile)
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
@@ -489,18 +489,61 @@ class BaseExecutor(ABC):
         return ExecutorResult(exp_hash, exp_ref, repro_force)
 
     @classmethod
+    def _repro_commit(
+        cls,
+        dvc,
+        info,
+        stages,
+        exp_hash,
+        checkpoint_reset,
+        auto_push,
+        git_remote,
+        repro_force,
+    ) -> Tuple[Optional[str], Optional["ExpRefInfo"], bool]:
+        try:
+            is_checkpoint = any(stage.is_checkpoint for stage in stages)
+            if is_checkpoint and checkpoint_reset:
+                # For reset checkpoint stages, we need to force
+                # overwriting existing checkpoint refs even though
+                # repro may not have actually been run with --force
+                repro_force = True
+            cls.commit(
+                dvc.scm,
+                exp_hash,
+                exp_name=info.name,
+                force=repro_force,
+                checkpoint=is_checkpoint,
+            )
+            if auto_push:
+                cls._auto_push(dvc, dvc.scm, git_remote)
+        except UnchangedExperimentError:
+            pass
+        ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+        exp_ref: Optional["ExpRefInfo"] = (
+            ExpRefInfo.from_ref(ref) if ref else None
+        )
+        if cls.WARN_UNTRACKED:
+            untracked = dvc.scm.untracked_files()
+            if untracked:
+                logger.warning(
+                    "The following untracked files were present in "
+                    "the experiment directory after reproduction but "
+                    "will not be included in experiment commits:\n"
+                    "\t%s",
+                    ", ".join(untracked),
+                )
+        return ref, exp_ref, repro_force
+
+    @classmethod
     @contextmanager
     def _repro_dvc(
         cls,
         info: "ExecutorInfo",
         log_errors: bool = True,
-        infofile: Optional[str] = None,
         **kwargs,
     ):
         from dvc.repo import Repo
         from dvc.stage.monitor import CheckpointKilledError
-        from dvc.utils.fs import makedirs
-        from dvc.utils.serialize import modify_json
 
         dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
         if cls.QUIET:
@@ -510,11 +553,6 @@ class BaseExecutor(ABC):
             os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
         else:
             os.chdir(dvc.root_dir)
-
-        if infofile is not None:
-            makedirs(os.path.dirname(infofile), exist_ok=True)
-            with modify_json(infofile) as d:
-                d.update(info.asdict())
 
         try:
             logger.debug("Running repro in '%s'", os.getcwd())
@@ -530,9 +568,6 @@ class BaseExecutor(ABC):
                 logger.exception("unexpected error")
             raise
         finally:
-            if infofile is not None:
-                with modify_json(infofile) as d:
-                    d.update(info.asdict())
             dvc.close()
             os.chdir(old_cwd)
 
@@ -660,7 +695,7 @@ class BaseExecutor(ABC):
         from dvc.logger import disable_other_loggers
 
         # When executor.reproduce is run in a multiprocessing child process,
-        # dvc.main will not be called for that child process so we need to
+        # dvc.cli.main will not be called for that child process so we need to
         # setup logging ourselves
         dvc_logger = logging.getLogger("dvc")
         disable_other_loggers()

@@ -3,9 +3,9 @@ from unittest.mock import ANY, patch
 
 from scmrepo.git import Git
 
+from dvc.data.stage import stage
+from dvc.data.transfer import transfer
 from dvc.external_repo import CLONES, external_repo
-from dvc.objects.stage import stage
-from dvc.objects.transfer import transfer
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
 from tests.unit.fs.test_repo import make_subrepo

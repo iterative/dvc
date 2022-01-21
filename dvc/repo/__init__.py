@@ -150,11 +150,11 @@ class Repo:
         repo_factory=None,
     ):
         from dvc.config import Config
+        from dvc.data.db import ODBManager
         from dvc.data_cloud import DataCloud
         from dvc.fs.git import GitFileSystem
         from dvc.fs.local import localfs
         from dvc.lock import LockNoop, make_lock
-        from dvc.objects.db import ODBManager
         from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
@@ -314,8 +314,8 @@ class Repo:
     def find_root(cls, root=None, fs=None) -> str:
         from dvc.fs.local import LocalFileSystem, localfs
 
-        root_dir = os.path.realpath(root or os.curdir)
-        _fs = fs
+        root = root or os.curdir
+        root_dir = os.path.realpath(root)
         fs = fs or localfs
 
         if not fs.isdir(root_dir):
@@ -332,13 +332,11 @@ class Repo:
                 break
             root_dir = parent
 
-        if _fs:
-            msg = f"'{root}' does not contain DVC directory"
-        else:
-            msg = (
-                "you are not inside of a DVC repository "
-                f"(checked up to mount point '{root_dir}')"
-            )
+        msg = "you are not inside of a DVC repository"
+
+        if isinstance(fs, LocalFileSystem):
+            msg = f"{msg} (checked up to mount point '{root_dir}')"
+
         raise NotDvcRepoError(msg)
 
     @classmethod
@@ -406,7 +404,7 @@ class Repo:
         def _add_suffix(objs: Set["HashFile"], suffix: str) -> None:
             from itertools import chain
 
-            from dvc.objects import iterobjs
+            from dvc.data import iterobjs
 
             for obj in chain.from_iterable(map(iterobjs, objs)):
                 if obj.name is not None:

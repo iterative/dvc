@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.imp import CmdImport
+from dvc.commands.imp import CmdImport
 
 
 def test_import(mocker):

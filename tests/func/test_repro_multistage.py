@@ -5,9 +5,9 @@ from textwrap import dedent
 import pytest
 from funcy import lsplit
 
+from dvc.cli import main
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
 from dvc.exceptions import CyclicGraphError, ReproductionError
-from dvc.main import main
 from dvc.stage import PipelineStage
 from tests.func import test_repro
 from tests.utils.scriptify import scriptify

@@ -3,7 +3,7 @@ import os
 import pytest
 from ruamel.yaml import __with_libyaml__ as ruamel_clib
 
-from dvc.main import main
+from dvc.cli import main
 from dvc.ui import ui
 
 DUPLICATE_KEYS = """\

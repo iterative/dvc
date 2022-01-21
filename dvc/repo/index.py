@@ -21,7 +21,8 @@ if TYPE_CHECKING:
 
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs.base import FileSystem
-    from dvc.objects import HashInfo, ObjectDB
+    from dvc.hash_info import HashInfo
+    from dvc.objects.db import ObjectDB
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage

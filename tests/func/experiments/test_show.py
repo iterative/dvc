@@ -5,8 +5,8 @@ from datetime import datetime
 import pytest
 from funcy import first, get_in
 
+from dvc.cli import main
 from dvc.exceptions import InvalidArgumentError
-from dvc.main import main
 from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import (
     EXEC_PID_DIR,
@@ -18,7 +18,6 @@ from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
-from tests.utils import console_width
 
 
 def make_executor_info(**kwargs):
@@ -193,105 +192,12 @@ def test_show_checkpoint_branch(
     assert f"({branch_rev[:7]})" in cap.out
 
 
-@pytest.mark.parametrize(
-    "i_metrics,i_params,e_metrics,e_params,included,excluded",
-    [
-        (
-            "foo",
-            "foo",
-            None,
-            None,
-            ["foo"],
-            ["bar", "train/foo", "nested.foo"],
-        ),
-        (
-            None,
-            None,
-            "foo",
-            "foo",
-            ["bar", "train/foo", "nested.foo"],
-            ["foo"],
-        ),
-        (
-            "foo,bar",
-            "foo,bar",
-            None,
-            None,
-            ["foo", "bar"],
-            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
-        ),
-        (
-            "metrics.yaml:foo,bar",
-            "params.yaml:foo,bar",
-            None,
-            None,
-            ["foo", "bar"],
-            ["train/foo", "train/bar", "nested.foo", "nested.bar"],
-        ),
-        (
-            "train/*",
-            "train/*",
-            None,
-            None,
-            ["train/foo", "train/bar"],
-            ["foo", "bar", "nested.foo", "nested.bar"],
-        ),
-        (
-            None,
-            None,
-            "train/*",
-            "train/*",
-            ["foo", "bar", "nested.foo", "nested.bar"],
-            ["train/foo", "train/bar"],
-        ),
-        (
-            "train/*",
-            "train/*",
-            "*foo",
-            "*foo",
-            ["train/bar"],
-            ["train/foo", "foo", "bar", "nested.foo", "nested.bar"],
-        ),
-        (
-            "nested.*",
-            "nested.*",
-            None,
-            None,
-            ["nested.foo", "nested.bar"],
-            ["foo", "bar", "train/foo", "train/bar"],
-        ),
-        (
-            None,
-            None,
-            "nested.*",
-            "nested.*",
-            ["foo", "bar", "train/foo", "train/bar"],
-            ["nested.foo", "nested.bar"],
-        ),
-        (
-            "*.*",
-            "*.*",
-            "*.bar",
-            "*.bar",
-            ["nested.foo"],
-            ["foo", "bar", "nested.bar", "train/foo", "train/bar"],
-        ),
-    ],
-)
 def test_show_filter(
     tmp_dir,
     scm,
     dvc,
     capsys,
-    i_metrics,
-    i_params,
-    e_metrics,
-    e_params,
-    included,
-    excluded,
 ):
-    from dvc.ui import ui
-
     capsys.readouterr()
 
     tmp_dir.gen("copy.py", COPY_SCRIPT)
@@ -324,26 +230,39 @@ def test_show_filter(
     )
     scm.commit("init")
 
-    command = ["exp", "show", "--no-pager", "--no-timestamp"]
-    if i_metrics is not None:
-        command.append(f"--include-metrics={i_metrics}")
-    if i_params is not None:
-        command.append(f"--include-params={i_params}")
-    if e_metrics is not None:
-        command.append(f"--exclude-metrics={e_metrics}")
-    if e_params is not None:
-        command.append(f"--exclude-params={e_params}")
-
-    with console_width(ui.rich_console, 255):
-        assert main(command) == 0
+    capsys.readouterr()
+    assert main(["exp", "show", "--drop=.*foo"]) == 0
     cap = capsys.readouterr()
+    for filtered in ["foo", "train/foo", "nested.foo"]:
+        assert f"params.yaml:{filtered}" not in cap.out
+        assert f"metrics.yaml:{filtered}" not in cap.out
 
-    for i in included:
-        assert f"params.yaml:{i}" in cap.out
-        assert f"metrics.yaml:{i}" in cap.out
-    for e in excluded:
-        assert f"params.yaml:{e}" not in cap.out
-        assert f"metrics.yaml:{e}" not in cap.out
+    capsys.readouterr()
+    assert main(["exp", "show", "--drop=.*foo", "--keep=.*train"]) == 0
+    cap = capsys.readouterr()
+    for filtered in ["foo", "nested.foo"]:
+        assert f"params.yaml:{filtered}" not in cap.out
+        assert f"metrics.yaml:{filtered}" not in cap.out
+    assert "params.yaml:train/foo" in cap.out
+    assert "metrics.yaml:train/foo" in cap.out
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--drop=params.yaml:.*foo"]) == 0
+    cap = capsys.readouterr()
+    for filtered in ["foo", "train/foo", "nested.foo"]:
+        assert f"params.yaml:{filtered}" not in cap.out
+        assert f"metrics.yaml:{filtered}" in cap.out
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--drop=Created"]) == 0
+    cap = capsys.readouterr()
+    assert "Created" not in cap.out
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--drop=Created|Experiment"]) == 0
+    cap = capsys.readouterr()
+    assert "Created" not in cap.out
+    assert "Experiment" not in cap.out
 
 
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
@@ -351,8 +270,9 @@ def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
     tmp_dir.scm_gen("file", "file", "commit")
     next_rev = scm.get_rev()
 
+    dvc.experiments.show(num=-1)
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.show(num=-1)
+        dvc.experiments.show(num=-2)
 
     expected = {"workspace", init_rev, next_rev}
     results = dvc.experiments.show(num=2)
@@ -588,18 +508,22 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
     capsys.readouterr()
     assert main(["exp", "show"]) == 0
     cap = capsys.readouterr()
-
     assert "bar" in cap.out
 
     capsys.readouterr()
     assert main(["exp", "show", "--only-changed"]) == 0
     cap = capsys.readouterr()
-
     assert "bar" not in cap.out
 
+    capsys.readouterr()
+    assert main(["exp", "show", "--only-changed", "--keep=.*bar"]) == 0
+    cap = capsys.readouterr()
+    assert "params.yaml:bar" in cap.out
+    assert "metrics.yaml:bar" in cap.out
 
-def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
-    from dvc.command.experiments import show
+
+def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys):
+    from dvc.commands.experiments import show
 
     webbroser_open = mocker.patch("webbrowser.open")
     show_experiments = mocker.spy(show, "show_experiments")
@@ -637,22 +561,20 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
     kwargs = show_experiments.call_args[1]
 
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert all(rev in html_text for rev in ["workspace", "master", "[exp-"])
+    assert all(rev in html_text for rev in ["workspace", "master"])
+    assert "[exp-" not in html_text
 
-    assert (
-        '{"label": "metrics.yaml:foo", "values": [2.0, 1.0, 2.0]}' in html_text
-    )
-    assert (
-        '{"label": "params.yaml:foo", "values": [2.0, 1.0, 2.0]}' in html_text
-    )
-    assert '"line": {"color": [2, 1, 0]' in html_text
+    assert '{"label": "metrics.yaml:foo", "values": [2.0, 1.0]}' in html_text
+    assert '{"label": "params.yaml:foo", "values": [2.0, 1.0]}' in html_text
+    assert '"line": {"color": [1, 0]' in html_text
     assert '"label": "metrics.yaml:bar"' not in html_text
+    assert '"label": "Created"' not in html_text
 
     assert main(["exp", "show", "--pcp", "--sort-by", "metrics.yaml:foo"]) == 0
     kwargs = show_experiments.call_args[1]
 
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
-    assert '"line": {"color": [2.0, 1.0, 2.0]' in html_text
+    assert '"line": {"color": [2.0, 1.0]' in html_text
 
     assert main(["exp", "show", "--pcp", "--out", "experiments"]) == 0
     kwargs = show_experiments.call_args[1]
@@ -669,3 +591,8 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker):
     assert main(["exp", "show", "--pcp"]) == 0
     html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
     assert '{"label": "foobar", "values": [2.0, null, null]}' in html_text
+
+    assert main(["exp", "show", "--pcp", "--drop", "foobar"]) == 0
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+    assert '"label": "Created"' not in html_text
+    assert '"label": "foobar"' not in html_text

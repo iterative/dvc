@@ -42,7 +42,7 @@ def _spawn_windows(cmd, env):
 
 
 def _spawn_posix(cmd, env):
-    from dvc.main import main
+    from dvc.cli import main
 
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws

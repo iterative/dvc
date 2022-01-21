@@ -21,7 +21,7 @@ class RunCacheNotFoundError(DvcException):
 
 
 def _get_cache_hash(cache, key=False):
-    from dvc.objects.meta import Meta
+    from dvc.data.meta import Meta
 
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]
@@ -236,7 +236,7 @@ class StageCache:
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        from dvc.objects.transfer import _log_exceptions
+        from dvc.data.transfer import _log_exceptions
 
         if odb is None:
             odb = self.repo.cloud.get_remote_odb(remote)
@@ -247,7 +247,7 @@ class StageCache:
         )
 
     def pull(self, remote: Optional[str]):
-        from dvc.objects.transfer import _log_exceptions
+        from dvc.data.transfer import _log_exceptions
 
         odb = self.repo.cloud.get_remote_odb(remote)
         return self._transfer(

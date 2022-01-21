@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from dvc.cli import main
 from dvc.dvcfile import DVC_FILE, Dvcfile
 from dvc.exceptions import (
     CyclicGraphError,
@@ -14,7 +15,6 @@ from dvc.exceptions import (
     StagePathAsOutputError,
 )
 from dvc.fs.local import LocalFileSystem
-from dvc.main import main
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError

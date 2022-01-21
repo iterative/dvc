@@ -1,7 +1,9 @@
 import logging
+import os
 import posixpath
+import sys
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import first
 
@@ -14,15 +16,16 @@ from dvc.repo.experiments.base import (
     EXEC_NAMESPACE,
 )
 
-from .base import BaseExecutor
+from .base import BaseExecutor, ExecutorInfo, ExecutorResult
 
 if TYPE_CHECKING:
+    from multiprocessing import Queue
+
     from scmrepo.git import Git
 
-    from dvc.machine import MachineManager
     from dvc.repo import Repo
 
-    from ..base import ExpStashEntry
+    from ..base import ExpRefInfo, ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,7 @@ class SSHExecutor(BaseExecutor):
 
     WARN_UNTRACKED = True
     QUIET = True
+    SETUP_SCRIPT_FILENAME = "exec-setup.sh"
 
     def __init__(
         self,
@@ -49,6 +53,7 @@ class SSHExecutor(BaseExecutor):
         port: Optional[int] = None,
         username: Optional[str] = None,
         fs_factory: Optional[Callable] = None,
+        setup_script: Optional[str] = None,
         **kwargs,
     ):
         assert host
@@ -59,6 +64,7 @@ class SSHExecutor(BaseExecutor):
         self.username = username
         self._fs_factory = fs_factory
         self._repo_abspath = ""
+        self._setup_script = setup_script
 
     @classmethod
     def gen_dirname(cls, name: Optional[str] = None):
@@ -74,14 +80,15 @@ class SSHExecutor(BaseExecutor):
         entry: "ExpStashEntry",
         **kwargs,
     ):
-        manager: "MachineManager" = kwargs.pop("manager")
         machine_name: Optional[str] = kwargs.pop("machine_name", None)
         executor = cls._from_stash_entry(
             repo,
             stash_rev,
             entry,
             cls.gen_dirname(entry.name),
-            **manager.get_executor_kwargs(machine_name),
+            location=machine_name,
+            **repo.machine.get_executor_kwargs(machine_name),
+            setup_script=repo.machine.get_setup_script(machine_name),
         )
         logger.debug("Init SSH executor for host '%s'", executor.host)
         return executor
@@ -151,21 +158,128 @@ class SSHExecutor(BaseExecutor):
             merge_rev = scm.get_ref(EXEC_MERGE)
             self._ssh_cmd(fs, f"git merge --squash --no-commit {merge_rev}")
 
+            if self._setup_script:
+                self._init_setup_script(fs)
+
+    @classmethod
+    def _setup_script_path(cls, dvc_dir: str):
+        return posixpath.join(
+            dvc_dir,
+            "tmp",
+            cls.SETUP_SCRIPT_FILENAME,
+        )
+
+    def _init_setup_script(self, fs: "SSHFileSystem"):
+        assert self._repo_abspath
+        script_path = self._setup_script_path(
+            posixpath.join(self._repo_abspath, self.dvc_dir)
+        )
+        fs.upload(self._setup_script, script_path)
+
     def _ssh_cmd(self, sshfs, cmd, chdir=None, **kwargs):
         working_dir = chdir or self.root_dir
         return sshfs.fs.execute(f"cd {working_dir};{cmd}", **kwargs)
 
-    def init_cache(self, dvc: "Repo", rev: str, run_cache: bool = True):
-        from dvc.objects.db import ODBManager, get_odb
-        from dvc.repo import Repo
+    def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         from dvc.repo.push import push
+
+        with self.get_odb() as odb:
+            push(
+                repo,
+                revs=[rev],
+                run_cache=run_cache,
+                odb=odb,
+                include_imports=True,
+            )
+
+    def collect_cache(
+        self, repo: "Repo", exp_ref: "ExpRefInfo", run_cache: bool = True
+    ):
+        """Collect DVC cache."""
+        from dvc.repo.experiments.pull import _pull_cache
+
+        with self.get_odb() as odb:
+            _pull_cache(repo, exp_ref, run_cache=run_cache, odb=odb)
+
+    @contextmanager
+    def get_odb(self):
+        from dvc.data.db import ODBManager, get_odb
 
         cache_path = posixpath.join(
             self._repo_abspath,
-            Repo.DVC_DIR,
+            self.dvc_dir,
             ODBManager.CACHE_DIR,
         )
 
         with self.sshfs() as fs:
-            odb = get_odb(fs, cache_path, **fs.config)
-            push(dvc, revs=[rev], run_cache=run_cache, odb=odb)
+            yield get_odb(fs, cache_path, **fs.config)
+
+    def fetch_exps(self, *args, **kwargs) -> Iterable[str]:
+        with self.sshfs() as fs:
+            kwargs.update(self._git_client_args(fs))
+            return super().fetch_exps(*args, **kwargs)
+
+    @classmethod
+    def reproduce(
+        cls,
+        info: "ExecutorInfo",
+        rev: str,
+        queue: Optional["Queue"] = None,
+        infofile: Optional[str] = None,
+        log_errors: bool = True,
+        log_level: Optional[int] = None,
+        **kwargs,
+    ) -> "ExecutorResult":
+        """Reproduce an experiment on a remote machine over SSH.
+
+        Internally uses 'dvc exp exec-run' over SSH.
+        """
+        import json
+        import time
+        from tempfile import TemporaryFile
+
+        from asyncssh import ProcessError
+
+        fs_factory: Optional[Callable] = kwargs.pop("fs_factory", None)
+        if log_errors and log_level is not None:
+            cls._set_log_level(log_level)
+
+        with _sshfs(fs_factory) as fs:
+            while not fs.exists("/var/log/dvc-machine-init.log"):
+                logger.info(
+                    "Waiting for dvc-machine startup script to complete..."
+                )
+                time.sleep(5)
+            logger.info(
+                "Reproducing experiment on '%s'", fs.fs_args.get("host")
+            )
+            with TemporaryFile(mode="w+", encoding="utf-8") as fobj:
+                json.dump(info.asdict(), fobj)
+                fobj.seek(0)
+                fs.upload_fobj(fobj, infofile)
+            cmd = ["source ~/.profile"]
+            script_path = cls._setup_script_path(info.dvc_dir)
+            if fs.exists(posixpath.join(info.root_dir, script_path)):
+                cmd.extend(
+                    [f"pushd {info.root_dir}", f"source {script_path}", "popd"]
+                )
+            exec_cmd = f"dvc exp exec-run --infofile {infofile}"
+            if log_level is not None:
+                if log_level <= logging.TRACE:  # type: ignore[attr-defined]
+                    exec_cmd += " -vv"
+                elif log_level <= logging.DEBUG:
+                    exec_cmd += " -v"
+            cmd.append(exec_cmd)
+            try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+                stdout = os.dup(sys.stdout.fileno())
+                stderr = os.dup(sys.stderr.fileno())
+                fs.fs.execute("; ".join(cmd), stdout=stdout, stderr=stderr)
+                with fs.open(infofile) as fobj:
+                    result_info = ExecutorInfo.from_dict(json.load(fobj))
+                if result_info.result_hash:
+                    return result_info.result
+            except ProcessError:
+                pass
+            return ExecutorResult(None, None, False)

@@ -4,9 +4,9 @@ from typing import Any
 from funcy import cached_property, memoize, wrap_with
 
 from dvc import prompt
-from dvc.progress import DEFAULT_CALLBACK
 from dvc.scheme import Schemes
 
+from ._callback import DEFAULT_CALLBACK
 from .fsspec_wrapper import AnyFSPath, FSSpecWrapper, NoDirectoriesMixin
 
 

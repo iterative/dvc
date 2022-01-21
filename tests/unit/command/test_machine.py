@@ -5,7 +5,7 @@ import pytest
 from mock import call
 
 from dvc.cli import parse_args
-from dvc.command.machine import (
+from dvc.commands.machine import (
     CmdMachineAdd,
     CmdMachineCreate,
     CmdMachineDestroy,

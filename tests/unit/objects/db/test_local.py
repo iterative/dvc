@@ -3,9 +3,9 @@ import os
 
 import pytest
 
+from dvc.data.db.local import LocalObjectDB
 from dvc.fs.local import LocalFileSystem
 from dvc.hash_info import HashInfo
-from dvc.objects.db.local import LocalObjectDB
 
 
 def test_status_download_optimization(mocker, dvc):
@@ -13,7 +13,7 @@ def test_status_download_optimization(mocker, dvc):
     And the desired files to fetch are already on the local cache,
     Don't check the existence of the desired files on the remote cache
     """
-    from dvc.objects.status import compare_status
+    from dvc.data.status import compare_status
 
     odb = LocalObjectDB(LocalFileSystem(), os.getcwd())
     obj_ids = {
@@ -85,9 +85,9 @@ def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
 
 
 def test_staging_file(tmp_dir, dvc):
-    from dvc.objects import check
-    from dvc.objects.stage import stage
-    from dvc.objects.transfer import transfer
+    from dvc.data import check
+    from dvc.data.stage import stage
+    from dvc.data.transfer import transfer
 
     tmp_dir.gen("foo", "foo")
     fs = LocalFileSystem()
@@ -113,9 +113,9 @@ def test_staging_file(tmp_dir, dvc):
 
 
 def test_staging_dir(tmp_dir, dvc):
-    from dvc.objects import check
-    from dvc.objects.stage import stage
-    from dvc.objects.transfer import transfer
+    from dvc.data import check
+    from dvc.data.stage import stage
+    from dvc.data.transfer import transfer
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = LocalFileSystem()

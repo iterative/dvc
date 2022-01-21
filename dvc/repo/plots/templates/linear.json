@@ -69,7 +69,7 @@
                 {
                     "mark": {
                         "type": "rule",
-                        "color": "gray"
+                        "stroke": "gray"
                     },
                     "encoding": {
                         "x": {

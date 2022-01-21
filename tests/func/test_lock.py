@@ -1,7 +1,7 @@
 import pytest
 
+from dvc.cli import main
 from dvc.lock import Lock, LockError
-from dvc.main import main
 
 
 def test_with(tmp_dir, dvc, mocker):

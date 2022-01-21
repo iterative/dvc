@@ -1,5 +1,5 @@
 from dvc.cli import parse_args
-from dvc.command.get import CmdGet
+from dvc.commands.get import CmdGet
 
 
 def test_get(mocker):

@@ -1,8 +1,8 @@
 import os
 from unittest.mock import patch
 
+from dvc.data.meta import Meta
 from dvc.hash_info import HashInfo
-from dvc.objects.meta import Meta
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.utils import relpath

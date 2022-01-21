@@ -113,8 +113,8 @@ def _paths_checksums(repo, targets):
 
 
 def _output_paths(repo, targets):
+    from dvc.data.stage import stage as ostage
     from dvc.fs.local import LocalFileSystem
-    from dvc.objects.stage import stage as ostage
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 

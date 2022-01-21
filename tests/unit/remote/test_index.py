@@ -3,7 +3,7 @@ import os
 import pytest
 from funcy import first
 
-from dvc.objects.db.index import ObjectDBIndex
+from dvc.data.db.index import ObjectDBIndex
 
 
 @pytest.fixture

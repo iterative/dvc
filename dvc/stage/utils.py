@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
+from dvc.data.meta import Meta
 from dvc.exceptions import InvalidArgumentError
-from dvc.objects.meta import Meta
 
 from .exceptions import (
     MissingDataSource,

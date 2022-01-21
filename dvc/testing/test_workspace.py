@@ -20,7 +20,7 @@ class TestImport:
         pytest.skip()
 
     def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
-        from dvc.objects.db import ODBManager
+        from dvc.data.db import ODBManager
 
         workspace.gen(
             {"dir": {"file": "file", "subdir": {"subfile": "subfile"}}}

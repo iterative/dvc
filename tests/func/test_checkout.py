@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
+from dvc.cli import main
 from dvc.dvcfile import DVC_FILE_SUFFIX, PIPELINE_FILE, Dvcfile
 from dvc.exceptions import (
     CheckoutError,
@@ -18,7 +19,6 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.fs.local import LocalFileSystem
-from dvc.main import main
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.system import System
@@ -85,7 +85,7 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
-        from dvc.objects import load
+        from dvc.data import load
 
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(["config", "cache.type", "copy"])
