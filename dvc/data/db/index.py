@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Iterable, Set
 
 from dvc.objects.errors import ObjectDBError
+from dvc.utils.decorators import with_diskcache
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
@@ -104,16 +105,20 @@ class ObjectDBIndex(ObjectDBIndexBase):
             )
         )
 
+    @with_diskcache(name="index")
     def __iter__(self):
         return iter(self.index)
 
+    @with_diskcache(name="index")
     def __contains__(self, hash_):
         return hash_ in self.index
 
+    @with_diskcache(name="index")
     def dir_hashes(self):
         """Iterate over .dir hashes stored in the index."""
         yield from (hash_ for hash_, is_dir in self.index.items() if is_dir)
 
+    @with_diskcache(name="index")
     def clear(self):
         """Clear this index (to force re-indexing later)."""
         from diskcache import Timeout
@@ -123,6 +128,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
         except Timeout as exc:
             raise ObjectDBError("Failed to clear ODB index") from exc
 
+    @with_diskcache(name="index")
     def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
         """Update this index, adding the specified hashes."""
         from diskcache import Timeout
@@ -137,6 +143,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
         except Timeout as exc:
             raise ObjectDBError("Failed to update ODB index") from exc
 
+    @with_diskcache(name="index")
     def intersection(self, hashes: Set[str]):
         """Iterate over values from `hashes` which exist in the index."""
         yield from hashes.intersection(self.index.keys())
