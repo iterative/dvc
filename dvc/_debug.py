@@ -1,8 +1,29 @@
 from contextlib import ExitStack, contextmanager
+from datetime import datetime
 from typing import TYPE_CHECKING, Callable, Union
 
 if TYPE_CHECKING:
     from argparse import Namespace
+
+
+@contextmanager
+def viztracer_profile(
+    path: Union[Callable[[], str], str],
+    max_stack_depth: int = -1,
+):
+    try:
+        from viztracer import VizTracer  # pylint: disable=import-error
+    except ImportError:
+        print("Failed to run profiler, viztracer is not installed")
+        yield
+        return
+    tracer = VizTracer(max_stack_depth=max_stack_depth)
+
+    tracer.start()
+    yield
+    tracer.stop()
+
+    tracer.save(path() if callable(path) else path)
 
 
 @contextmanager
@@ -100,11 +121,17 @@ def debugtools(args: "Namespace" = None, **kwargs):
         if kw.get("instrument") or kw.get("instrument_open"):
             stack.enter_context(instrument(kw.get("instrument_open", False)))
         if kw.get("yappi"):
-            from datetime import datetime
-
             output = "callgrind.dvc-{0:%Y%m%d}_{0:%H%M%S}.out"
             stack.enter_context(
                 yappi_profile(path=lambda: output.format(datetime.now()))
+            )
+        if kw.get("viztracer"):
+            output = "viztracer.dvc-{0:%Y%m%d}_{0:%H%M%S}.json"
+            stack.enter_context(
+                viztracer_profile(
+                    path=lambda: output.format(datetime.now()),
+                    max_stack_depth=kw.get("max_stack_depth", -1),
+                )
             )
         yield
 
@@ -118,6 +145,10 @@ def add_debugging_flags(parser):
     parser.add_argument(
         "--yappi", action="store_true", default=False, help=SUPPRESS
     )
+    parser.add_argument(
+        "--viztracer", action="store_true", default=False, help=SUPPRESS
+    )
+    parser.add_argument("--max-stack-depth", default=-1, help=SUPPRESS)
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
         "--pdb", action="store_true", default=False, help=SUPPRESS
