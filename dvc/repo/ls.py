@@ -47,8 +47,6 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
 
 
 def _ls(repo, fs_path, recursive=None, dvc_only=False):
-    from dvc.fs._metadata import Metadata
-
     def onerror(exc):
         raise exc
 
@@ -70,20 +68,20 @@ def _ls(repo, fs_path, recursive=None, dvc_only=False):
     ret = {}
     for info in infos:
         try:
-            metadata = fs.metadata(info)
+            _info = fs.info(info)
         except FileNotFoundError:
             # broken symlink
-            metadata = Metadata(info, repo)
+            _info = {"type": "file", "isexec": False}
 
-        if metadata.output_exists or not dvc_only:
+        if _info.get("outs") or not dvc_only:
             path = (
                 fs.path.name(fs_path)
                 if fs_path == info
                 else fs.path.relpath(info, fs_path)
             )
             ret[path] = {
-                "isout": metadata.is_output,
-                "isdir": metadata.isdir,
-                "isexec": metadata.is_exec,
+                "isout": _info.get("isout", False),
+                "isdir": _info["type"] == "directory",
+                "isexec": _info["isexec"],
             }
     return ret
