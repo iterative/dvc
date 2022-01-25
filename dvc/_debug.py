@@ -12,13 +12,13 @@ def viztracer_profile(
     max_stack_depth: int = -1,
 ):
     try:
-        from viztracer import VizTracer  # pylint: disable=import-error
+        import viztracer  # pylint: disable=import-error
     except ImportError:
         print("Failed to run profiler, viztracer is not installed")
         yield
         return
 
-    tracer = VizTracer(max_stack_depth=max_stack_depth)
+    tracer = viztracer.VizTracer(max_stack_depth=max_stack_depth)
 
     tracer.start()
     yield
@@ -126,12 +126,12 @@ def debugtools(args: "Namespace" = None, **kwargs):
             stack.enter_context(
                 yappi_profile(path=lambda: output.format(datetime.now()))
             )
-        if kw.get("viztracer"):
+        if kw.get("viztracer") or kw.get("viztracer_depth"):
             output = "viztracer.dvc-{0:%Y%m%d}_{0:%H%M%S}.json"
             stack.enter_context(
                 viztracer_profile(
                     path=lambda: output.format(datetime.now()),
-                    max_stack_depth=kw.get("max_stack_depth", -1),
+                    max_stack_depth=kw.get("viztracer_depth") or -1,
                 )
             )
         yield
@@ -149,7 +149,9 @@ def add_debugging_flags(parser):
     parser.add_argument(
         "--viztracer", action="store_true", default=False, help=SUPPRESS
     )
-    parser.add_argument("--max-stack-depth", default=-1, help=SUPPRESS)
+    parser.add_argument(
+        "--viztracer-depth", type=int, default=-1, help=SUPPRESS
+    )
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
         "--pdb", action="store_true", default=False, help=SUPPRESS
