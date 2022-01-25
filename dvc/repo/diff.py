@@ -189,9 +189,9 @@ def _dir_output_paths(fs, fs_path, obj, targets=None):
 def _filter_missing(repo_fs, paths):
     for path in paths:
         try:
-            metadata = repo_fs.metadata(path)
-            if metadata.is_dvc:
-                out = metadata.outs[0]
+            info = repo_fs.info(path)
+            if info["isdvc"]:
+                out = info["outs"][0]
                 if out.status().get(str(out)) == "not in cache":
                     yield path
         except FileNotFoundError:
@@ -204,7 +204,7 @@ def _targets_to_paths(repo_fs, targets):
 
     for target in targets:
         if repo_fs.exists(target):
-            paths.append(repo_fs.metadata(target).fs_path)
+            paths.append(os.path.abspath(target))
         else:
             missing.append(target)
 

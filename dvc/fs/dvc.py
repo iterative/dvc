@@ -6,7 +6,6 @@ from dvc.exceptions import OutputNotFoundError
 from dvc.utils import relpath
 
 from ._callback import DEFAULT_CALLBACK
-from ._metadata import Metadata
 from .base import FileSystem
 
 if typing.TYPE_CHECKING:
@@ -106,38 +105,20 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     def exists(self, path):  # pylint: disable=arguments-renamed
         try:
-            self.metadata(path)
+            self.info(path)
             return True
         except FileNotFoundError:
             return False
 
     def isdir(self, path):  # pylint: disable=arguments-renamed
         try:
-            meta = self.metadata(path)
-            return meta.isdir
+            return self.info(path)["type"] == "directory"
         except FileNotFoundError:
             return False
-
-    def check_isdir(self, path, outs):
-        if len(outs) != 1:
-            return True
-
-        out = outs[0]
-        if not out.is_dir_checksum:
-            return out.fs_path != path
-        if out.fs_path == path:
-            return True
-
-        try:
-            self._get_granular_hash(path, out)
-            return False
-        except FileNotFoundError:
-            return True
 
     def isfile(self, path):  # pylint: disable=arguments-renamed
         try:
-            meta = self.metadata(path)
-            return meta.isfile
+            return self.info(path)["type"] == "file"
         except FileNotFoundError:
             return False
 
@@ -192,19 +173,19 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         assert topdown
         root = os.path.abspath(top)
         try:
-            meta = self.metadata(root)
+            info = self.info(root)
         except FileNotFoundError:
             if onerror is not None:
                 onerror(FileNotFoundError(top))
             return
 
-        if not meta.isdir:
+        if info["type"] != "directory":
             if onerror is not None:
                 onerror(NotADirectoryError(top))
             return
 
         trie = Trie()
-        for out in meta.outs:
+        for out in info["outs"]:
             trie[out.fs.path.parts(out.fs_path)] = out
 
             if out.is_dir_checksum and self.path.isin_or_eq(root, out.fs_path):
@@ -220,40 +201,64 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     def isdvc(self, path, recursive=False, strict=True):
         try:
-            meta = self.metadata(path)
+            info = self.info(path)
         except FileNotFoundError:
             return False
 
         recurse = recursive or not strict
-        return meta.output_exists if recurse else meta.is_output
+        return bool(info.get("outs") if recurse else info.get("isout"))
 
-    def metadata(self, fs_path):
-        abspath = os.path.abspath(fs_path)
+    def info(self, path):
+        abspath = os.path.abspath(path)
 
         try:
             outs = self._find_outs(abspath, strict=False, recursive=True)
         except OutputNotFoundError as exc:
             raise FileNotFoundError from exc
 
-        meta = Metadata(fs_path=abspath, outs=outs, repo=self.repo)
-        meta.isdir = meta.isdir or self.check_isdir(meta.fs_path, meta.outs)
-        return meta
+        ret = {
+            "type": "file",
+            "outs": outs,
+            "size": 0,
+            "isexec": False,
+            "isdvc": False,
+        }
 
-    def info(self, path):
-        meta = self.metadata(path)
-        ret = {"type": "directory" if meta.isdir else "file"}
-        if meta.is_output and len(meta.outs) == 1 and meta.outs[0].hash_info:
-            out = meta.outs[0]
+        if len(outs) > 1:
+            ret["type"] = "directory"
+            return ret
+
+        out = outs[0]
+
+        if not out.hash_info:
+            ret["isexec"] = out.meta.isexec
+            return ret
+
+        if abspath == out.fs_path:
+            if out.hash_info.isdir:
+                ret["type"] = "directory"
             ret["size"] = out.meta.size
+            ret["isexec"] = out.meta.isexec
             ret[out.hash_info.name] = out.hash_info.value
-        elif meta.part_of_output:
-            (out,) = meta.outs
-            key = self.path.parts(self.path.relpath(path, out.fs_path))
-            (obj_meta, oid) = out.obj.trie.get(key) or (None, None)
-            if oid:
-                ret["size"] = obj_meta.size if obj_meta else 0
-                ret[oid.name] = oid.value
+            ret["isdvc"] = True
+            ret["isout"] = True
+            return ret
 
+        if out.fs_path.startswith(abspath + self.sep):
+            ret["type"] = "directory"
+            return ret
+
+        ret["isdvc"] = True
+
+        try:
+            self._get_granular_hash(abspath, out)
+        except FileNotFoundError:
+            ret["type"] = "directory"
+            return ret
+
+        key = self.repo.fs.path.relparts(abspath, out.fs_path)
+        (_, oid) = out.obj.trie.get(key) or (None, None)
+        ret[oid.name] = oid.value
         return ret
 
     def get_file(
