@@ -10,6 +10,7 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import DvcException
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
+from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
@@ -704,3 +705,15 @@ def test_experiment_name_invalid(tmp_dir, scm, dvc, exp_stage, mocker):
             params=["foo=3"],
         )
     new_mock.assert_not_called()
+
+
+def test_experiments_workspace_not_log_exception(caplog, dvc, scm):
+    """Experiments run in workspace should not log exception.
+
+    Instead it should just leave it to be handled in the main entrypoints.
+    """
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(StageFileDoesNotExistError):
+            dvc.experiments.run()
+
+    assert not caplog.text
