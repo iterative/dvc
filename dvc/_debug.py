@@ -149,9 +149,7 @@ def add_debugging_flags(parser):
     parser.add_argument(
         "--viztracer", action="store_true", default=False, help=SUPPRESS
     )
-    parser.add_argument(
-        "--viztracer-depth", type=int, default=-1, help=SUPPRESS
-    )
+    parser.add_argument("--viztracer-depth", type=int, help=SUPPRESS)
     parser.add_argument("--cprofile-dump", help=SUPPRESS)
     parser.add_argument(
         "--pdb", action="store_true", default=False, help=SUPPRESS
