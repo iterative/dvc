@@ -17,6 +17,7 @@ def viztracer_profile(
         print("Failed to run profiler, viztracer is not installed")
         yield
         return
+
     tracer = VizTracer(max_stack_depth=max_stack_depth)
 
     tracer.start()
