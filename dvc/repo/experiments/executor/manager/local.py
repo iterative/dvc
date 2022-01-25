@@ -88,6 +88,7 @@ class WorkspaceExecutorManager(BaseExecutorManager):
                 rev=rev,
                 infofile=infofile,
                 log_level=logger.getEffectiveLevel(),
+                log_errors=not isinstance(executor, WorkspaceExecutor),
             )
             if not exec_result.exp_hash:
                 raise DvcException(
