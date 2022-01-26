@@ -388,8 +388,9 @@ class Output:
         if os.path.isabs(self.def_path):
             return False
 
-        return self.repo and path_isin(
-            os.path.realpath(self.fs_path), self.repo.root_dir
+        return self.repo and (
+            path_isin(os.path.realpath(self.fs_path), self.repo.root_dir)
+            or path_isin(os.path.abspath(self.fs_path), self.repo.root_dir)
         )
 
     @property
