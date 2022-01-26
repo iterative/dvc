@@ -75,13 +75,13 @@ class SCMContext:
 
         from dvc.scm import SCMError
 
-        logger.debug("Adding '%s' to gitignore file.", path)
         try:
             gitignore_file = self.scm.ignore(path)
         except FileNotInRepoError as exc:
             raise SCMError(str(exc))
 
         if gitignore_file:
+            logger.debug("Added '%s' to gitignore file.", path)
             self.track_file(relpath(gitignore_file))
             return self.ignored_paths.append(path)
 
