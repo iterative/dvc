@@ -842,6 +842,22 @@ def test_add_symlink_file(tmp_dir, dvc):
     dvc.add(os.path.join("dir", "foo"))
 
 
+def test_add_symlink_file_pointing_out(make_tmp_dir, tmp_dir, dvc):
+    ext_dir = make_tmp_dir("dir")
+    ext_dir.gen({"foo": "foo"})
+    (tmp_dir / "foo").symlink_to(ext_dir / "foo")
+
+    dvc.add("foo")
+
+    assert (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / ".dvc" / "cache").read_text() == {
+        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
+    }
+    assert not (
+        tmp_dir / ".dvc" / "cache" / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
+    ).is_symlink()
+
+
 @pytest.mark.parametrize("external", [True, False])
 def test_add_symlink_dir(make_tmp_dir, tmp_dir, dvc, external):
     if external:
