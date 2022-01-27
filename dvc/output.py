@@ -80,7 +80,7 @@ def loadd_from(stage, d_list):
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
         checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
-        append_only = d.pop(Output.PARAM_APPEND_ONLY, False)
+        keep_protect = d.pop(Output.PARAM_KEEP_PROTECT, False)
         desc = d.pop(Output.PARAM_DESC, False)
         isexec = d.pop(Output.PARAM_ISEXEC, False)
         live = d.pop(Output.PARAM_LIVE, False)
@@ -95,7 +95,7 @@ def loadd_from(stage, d_list):
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
-                append_only=append_only,
+                keep_protect=keep_protect,
                 desc=desc,
                 isexec=isexec,
                 live=live,
@@ -116,7 +116,7 @@ def loads_from(
     isexec=False,
     live=False,
     remote=None,
-    append_only=False,
+    keep_protect=False,
 ):
     return [
         _get(
@@ -131,7 +131,7 @@ def loads_from(
             isexec=isexec,
             live=live,
             remote=remote,
-            append_only=append_only,
+            keep_protect=keep_protect,
         )
         for s in s_list
     ]
@@ -195,7 +195,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
-                Output.PARAM_APPEND_ONLY,
+                Output.PARAM_KEEP_PROTECT,
             ],
         )
 
@@ -267,7 +267,7 @@ class Output:
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
     PARAM_REMOTE = "remote"
-    PARAM_APPEND_ONLY = "append_only"
+    PARAM_KEEP_PROTECT = "keep_protect"
 
     METRIC_SCHEMA = Any(
         None,
@@ -297,7 +297,7 @@ class Output:
         desc=None,
         isexec=False,
         remote=None,
-        append_only=False,
+        keep_protect=False,
     ):
         self.repo = stage.repo if stage else None
 
@@ -333,7 +333,7 @@ class Output:
         self.checkpoint = checkpoint
         self.live = live
         self.desc = desc
-        self.append_only = append_only
+        self.keep_protect = keep_protect
 
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj = None
@@ -688,8 +688,8 @@ class Output:
         if self.live:
             ret[self.PARAM_LIVE] = self.live
 
-        if self.append_only:
-            ret[self.PARAM_APPEND_ONLY] = self.append_only
+        if self.keep_protect:
+            ret[self.PARAM_KEEP_PROTECT] = self.keep_protect
 
         return ret
 
@@ -1075,7 +1075,7 @@ ARTIFACT_SCHEMA = {
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
     Output.PARAM_ISEXEC: bool,
-    Output.PARAM_APPEND_ONLY: bool,
+    Output.PARAM_KEEP_PROTECT: bool,
 }
 
 SCHEMA = {
