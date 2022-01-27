@@ -302,12 +302,6 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             return False
         return meta.isfile
 
-    def isexec(self, path):
-        fs, dvc_fs = self._get_fs_pair(path)
-        if dvc_fs and dvc_fs.exists(path):
-            return dvc_fs.isexec(path)
-        return fs.isexec(path)
-
     def _dvc_walk(self, walk):
         try:
             root, dirs, files = next(walk)

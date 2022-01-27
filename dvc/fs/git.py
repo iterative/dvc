@@ -51,14 +51,6 @@ class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     def rev(self) -> str:
         return self.fs.rev
 
-    def isexec(self, path: AnyFSPath) -> bool:
-        from dvc.utils import is_exec
-
-        try:
-            return is_exec(self.info(path)["mode"])
-        except FileNotFoundError:
-            return False
-
     def isfile(self, path: AnyFSPath) -> bool:
         return self.fs.isfile(path)
 

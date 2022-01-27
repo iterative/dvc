@@ -28,7 +28,7 @@ DATA_SCHEMA = {
     Required("path"): str,
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
-    Output.PARAM_ISEXEC: bool,
+    Meta.PARAM_ISEXEC: bool,
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): Any(str, list),

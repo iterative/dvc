@@ -227,9 +227,6 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         recurse = recursive or not strict
         return meta.output_exists if recurse else meta.is_output
 
-    def isexec(self, path):  # pylint: disable=unused-argument
-        return False
-
     def metadata(self, fs_path):
         abspath = os.path.abspath(fs_path)
 
