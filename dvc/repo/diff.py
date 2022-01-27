@@ -190,10 +190,12 @@ def _filter_missing(repo_fs, paths):
     for path in paths:
         try:
             info = repo_fs.info(path)
-            if info["isdvc"]:
-                out = info["outs"][0]
-                if out.status().get(str(out)) == "not in cache":
-                    yield path
+            if (
+                info["isdvc"]
+                and info["type"] == "directory"
+                and not info["meta"].obj
+            ):
+                yield path
         except FileNotFoundError:
             pass
 

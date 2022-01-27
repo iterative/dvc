@@ -1,7 +1,7 @@
 import json
 import logging
 import posixpath
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
 from funcy import cached_property
 
@@ -12,10 +12,27 @@ from .stage import get_file_hash
 
 if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
+    from dvc.objects.db import ObjectDB
 
     from .meta import Meta
 
 logger = logging.getLogger(__name__)
+
+
+def _try_load(
+    odbs: Iterable["ObjectDB"],
+    hash_info: "HashInfo",
+) -> Optional["HashFile"]:
+    for odb in odbs:
+        if not odb:
+            continue
+
+        try:
+            return Tree.load(odb, hash_info)
+        except (FileNotFoundError, ObjectFormatError):
+            pass
+
+    return None
 
 
 class Tree(HashFile):
@@ -26,7 +43,7 @@ class Tree(HashFile):
         self._dict: Dict[Tuple[str], Tuple["Meta", "HashInfo"]] = {}
 
     @cached_property
-    def trie(self):
+    def _trie(self):
         from pygtrie import Trie
 
         return Trie(self._dict)
@@ -51,6 +68,30 @@ class Tree(HashFile):
             _, self.hash_info = get_file_hash(fs_path, memfs, "md5")
             assert self.hash_info.value
             self.hash_info.value += ".dir"
+
+    def _load(self, key, meta, hash_info):
+        if hash_info and hash_info.isdir and not meta.obj:
+            meta.obj = _try_load([meta.odb, meta.remote], hash_info)
+            if meta.obj:
+                for ikey, value in meta.obj.iteritems():
+                    self._trie[key + ikey] = value
+                    self._dict[key + ikey] = value
+
+    def iteritems(self, prefix=None):
+        kwargs = {}
+        if prefix:
+            kwargs = {"prefix": prefix}
+            item = self._trie.longest_prefix(prefix)
+            if item:
+                key, (meta, hash_info) = item
+                self._load(key, meta, hash_info)
+
+        for key, (meta, hash_info) in self._trie.iteritems(**kwargs):
+            self._load(key, meta, hash_info)
+            yield key, (meta, hash_info)
+
+    def shortest_prefix(self, *args, **kwargs):
+        return self._trie.shortest_prefix(*args, **kwargs)
 
     def __len__(self):
         return len(self._dict)
@@ -131,7 +172,7 @@ class Tree(HashFile):
         """
         tree = Tree(self.fs_path, self.fs, self.hash_info)
         try:
-            for key, (meta, oid) in self.trie.items(prefix):
+            for key, (meta, oid) in self._trie.items(prefix):
                 tree.add(key, meta, oid)
         except KeyError:
             pass
@@ -149,7 +190,7 @@ class Tree(HashFile):
         tree = Tree(None, None, None)
         depth = len(prefix)
         try:
-            for key, (meta, entry_oid) in self.trie.items(prefix):
+            for key, (meta, entry_oid) in self._trie.items(prefix):
                 tree.add(key[depth:], meta, entry_oid)
         except KeyError:
             return None

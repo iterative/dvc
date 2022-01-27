@@ -2,14 +2,10 @@ import logging
 import os
 import typing
 
-from dvc.exceptions import OutputNotFoundError
-from dvc.utils import relpath
-
 from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
 
 if typing.TYPE_CHECKING:
-    from dvc.output import Output
     from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
@@ -35,67 +31,44 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
     def config(self):
         raise NotImplementedError
 
-    def _find_outs(self, path, *args, **kwargs):
-        outs = self.repo.find_outs_by_path(path, *args, **kwargs)
+    def _get_key(self, path):
+        from . import get_cloud_fs
 
-        def _is_cached(out):
-            return out.use_cache
+        cls, kwargs, fs_path = get_cloud_fs(None, url=path)
 
-        outs = list(filter(_is_cached, outs))
-        if not outs:
-            raise OutputNotFoundError(path, self.repo)
+        if not path.startswith(self.repo.root_dir):
+            fs = cls(**kwargs)
+            return (cls.scheme, *fs.path.parts(fs_path))
 
-        return outs
+        fs_key = "repo"
+        key = self.path.relparts(path, self.repo.root_dir)
+        if key == (".",):
+            key = ()
 
-    def _get_granular_hash(self, path: "AnyPath", out: "Output", remote=None):
-        # NOTE: use string paths here for performance reasons
-        key = tuple(relpath(path, out.fs_path).split(os.sep))
-        out.get_dir_cache(remote=remote)
-        if out.obj is None:
-            raise FileNotFoundError
-        (_, oid) = out.obj.trie.get(key) or (None, None)
-        if oid:
-            return oid
-        raise FileNotFoundError
+        return (fs_key, *key)
 
     def _get_fs_path(self, path: "AnyPath", remote=None):
-        try:
-            outs = self._find_outs(path, strict=False)
-        except OutputNotFoundError as exc:
-            raise FileNotFoundError from exc
+        from dvc.config import NoRemoteError
 
-        if len(outs) != 1 or (
-            outs[0].is_dir_checksum and path == outs[0].fs_path
-        ):
+        info = self.info(path)
+        if info["type"] == "directory":
             raise IsADirectoryError
 
-        out = outs[0]
-
-        if not out.hash_info:
+        value = info.get("md5")
+        if not value:
             raise FileNotFoundError
 
-        if out.changed_cache(filter_info=path):
-            from dvc.config import NoRemoteError
+        cache_path = self.repo.odb.local.hash_to_path(value)
 
-            try:
-                remote_odb = self.repo.cloud.get_remote_odb(remote)
-            except NoRemoteError as exc:
-                raise FileNotFoundError from exc
-            if out.is_dir_checksum:
-                checksum = self._get_granular_hash(path, out).value
-            else:
-                checksum = out.hash_info.value
-            remote_fs_path = remote_odb.hash_to_path(checksum)
-            return remote_odb.fs, remote_fs_path
+        if self.repo.odb.local.fs.exists(cache_path):
+            return self.repo.odb.local.fs, cache_path
 
-        if out.is_dir_checksum:
-            checksum = self._get_granular_hash(path, out).value
-            cache_path = out.odb.fs.unstrip_protocol(
-                out.odb.hash_to_path(checksum)
-            )
-        else:
-            cache_path = out.cache_path
-        return out.odb.fs, cache_path
+        try:
+            remote_odb = self.repo.cloud.get_remote_odb(remote)
+        except NoRemoteError as exc:
+            raise FileNotFoundError from exc
+        remote_fs_path = remote_odb.hash_to_path(value)
+        return remote_odb.fs, remote_fs_path
 
     def open(  # type: ignore
         self, path: str, mode="r", encoding=None, **kwargs
@@ -122,37 +95,27 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-    def _fetch_dir(self, out, **kwargs):
-        # pull dir cache if needed
-        out.get_dir_cache(**kwargs)
-
-        if not out.obj:
-            raise FileNotFoundError
-
-    def _add_dir(self, trie, out, **kwargs):
-        self._fetch_dir(out, **kwargs)
-
-        base = out.fs.path.parts(out.fs_path)
-        for key, _, _ in out.obj:  # noqa: B301
-            trie[base + key] = None
-
-    def _walk(self, root, trie, topdown=True, **kwargs):
+    def _walk(self, root, topdown=True, **kwargs):
         dirs = set()
         files = []
 
-        root_parts = self.path.parts(root)
-        out = trie.get(root_parts)
-        if out and out.is_dir_checksum:
-            self._add_dir(trie, out, **kwargs)
-
+        root_parts = self._get_key(root)
         root_len = len(root_parts)
         try:
-            for key, out in trie.iteritems(prefix=root_parts):  # noqa: B301
+            for key, (meta, hash_info) in self.repo.index.tree.iteritems(
+                prefix=root_parts
+            ):  # noqa: B301
+                if hash_info and hash_info.isdir and meta and not meta.obj:
+                    raise FileNotFoundError
+
                 if key == root_parts:
                     continue
 
+                if hash_info.isdir:
+                    continue
+
                 name = key[root_len]
-                if len(key) > root_len + 1 or (out and out.is_dir_checksum):
+                if len(key) > root_len + 1:
                     dirs.add(name)
                     continue
 
@@ -165,11 +128,9 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         yield root, dirs, files
 
         for dname in dirs:
-            yield from self._walk(self.path.join(root, dname), trie)
+            yield from self._walk(self.path.join(root, dname))
 
     def walk(self, top, topdown=True, onerror=None, **kwargs):
-        from pygtrie import Trie
-
         assert topdown
         root = os.path.abspath(top)
         try:
@@ -184,14 +145,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
-        trie = Trie()
-        for out in info["outs"]:
-            trie[out.fs.path.parts(out.fs_path)] = out
-
-            if out.is_dir_checksum and self.path.isin_or_eq(root, out.fs_path):
-                self._add_dir(trie, out, **kwargs)
-
-        yield from self._walk(root, trie, topdown=topdown, **kwargs)
+        yield from self._walk(root, topdown=topdown, **kwargs)
 
     def find(self, path, prefix=None):
         for root, _, files in self.walk(path):
@@ -209,56 +163,52 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         return bool(info.get("outs") if recurse else info.get("isout"))
 
     def info(self, path):
+        from dvc.data.meta import Meta
+
         abspath = os.path.abspath(path)
 
+        key = self._get_key(abspath)
+
         try:
-            outs = self._find_outs(abspath, strict=False, recursive=True)
-        except OutputNotFoundError as exc:
+            outs = list(self.repo.index.tree.iteritems(key))
+        except KeyError as exc:
             raise FileNotFoundError from exc
 
         ret = {
             "type": "file",
-            "outs": outs,
             "size": 0,
             "isexec": False,
             "isdvc": False,
+            "outs": outs,
         }
 
-        if len(outs) > 1:
+        if len(outs) > 1 and outs[0][0] != key:
+            shortest = self.repo.index.tree.shortest_prefix(key)
+            if shortest:
+                assert shortest[1][1].isdir
+                if len(shortest[0]) <= len(key):
+                    ret["isdvc"] = True
+
             ret["type"] = "directory"
             return ret
 
-        out = outs[0]
+        item_key, (meta, hash_info) = outs[0]
 
-        if not out.hash_info:
-            ret["isexec"] = out.meta.isexec
-            return ret
+        meta = meta or Meta()
 
-        if abspath == out.fs_path:
-            if out.hash_info.isdir:
-                ret["type"] = "directory"
-            ret["size"] = out.meta.size
-            ret["isexec"] = out.meta.isexec
-            ret[out.hash_info.name] = out.hash_info.value
-            ret["isdvc"] = True
-            ret["isout"] = True
-            return ret
-
-        if out.fs_path.startswith(abspath + self.sep):
+        if key != item_key:
+            assert item_key[: len(key)] == key
             ret["type"] = "directory"
             return ret
 
+        ret["size"] = meta.size
+        ret["isexec"] = meta.isexec
+        ret[hash_info.name] = hash_info.value
         ret["isdvc"] = True
-
-        try:
-            self._get_granular_hash(abspath, out)
-        except FileNotFoundError:
+        ret["isout"] = True
+        ret["meta"] = meta
+        if hash_info and hash_info.isdir:
             ret["type"] = "directory"
-            return ret
-
-        key = self.repo.fs.path.relparts(abspath, out.fs_path)
-        (_, oid) = out.obj.trie.get(key) or (None, None)
-        ret[oid.name] = oid.value
         return ret
 
     def get_file(

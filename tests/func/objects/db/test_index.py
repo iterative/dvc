@@ -16,7 +16,7 @@ def index(dvc, local_remote, mocker):
 def test_indexed_on_status(tmp_dir, dvc, index):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz_hash = bar.obj.trie.get(("baz",))[1]
+    baz_hash = bar.obj._trie.get(("baz",))[1]
     clean_staging()
     dvc.push()
     index.clear()
@@ -30,7 +30,7 @@ def test_indexed_on_status(tmp_dir, dvc, index):
 def test_indexed_on_push(tmp_dir, dvc, index):
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": {"baz": "baz content"}})[0].outs[0]
-    baz_hash = bar.obj.trie.get(("baz",))[1]
+    baz_hash = bar.obj._trie.get(("baz",))[1]
     clean_staging()
 
     dvc.push()

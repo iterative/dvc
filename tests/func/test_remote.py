@@ -271,7 +271,7 @@ def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
     # foo .dir file should be uploaded after bar
     odb = dvc.cloud.get_remote_odb("upstream")
     foo_path = odb.hash_to_path(foo.hash_info.value)
-    bar_path = odb.hash_to_path(foo.obj.trie[("bar",)][1].value)
+    bar_path = odb.hash_to_path(foo.obj._trie[("bar",)][1].value)
     paths = [args[3] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 

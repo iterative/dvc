@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
+    from dvc.data.tree import Tree
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
@@ -158,6 +159,35 @@ class Index:
         from dvc.repo.graph import build_outs_graph
 
         return build_outs_graph(self.graph, self.outs_trie)
+
+    @cached_property
+    def tree(self) -> "Tree":
+        from dvc.config import NoRemoteError
+        from dvc.data.tree import Tree
+
+        tree = Tree(None, None, None)
+
+        for out in self.outs:
+            if not out.use_cache:
+                continue
+
+            if out.is_in_repo:
+                fs_key = "repo"
+                key = self.repo.fs.path.relparts(
+                    out.fs_path, self.repo.root_dir
+                )
+            else:
+                fs_key = out.fs.scheme
+                key = out.fs.path.parts(out.fs_path)
+
+            out.meta.odb = out.odb
+            try:
+                out.meta.remote = self.repo.cloud.get_remote_odb(out.remote)
+            except NoRemoteError:
+                out.meta.remote = None
+            tree.add((fs_key,) + key, out.meta, out.hash_info)
+
+        return tree
 
     def used_objs(
         self,

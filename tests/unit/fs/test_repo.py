@@ -321,7 +321,7 @@ def test_isdvc(tmp_dir, dvc):
     assert fs.isdvc("foo")
     assert not fs.isdvc("bar")
     assert fs.isdvc("dir")
-    assert not fs.isdvc(os.path.join("dir", "baz"))
+    assert fs.isdvc(os.path.join("dir", "baz"))
     assert fs.isdvc(os.path.join("dir", "baz"), recursive=True)
 
 
