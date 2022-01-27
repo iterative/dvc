@@ -168,7 +168,7 @@ def _build_tree(fs_path, fs, name, **kwargs):
         assert key
         tree.add(key, meta, obj.hash_info)
 
-        tree_meta.size += meta.size
+        tree_meta.size += meta.size or 0
         tree_meta.nfiles += 1
 
     return tree_meta, tree

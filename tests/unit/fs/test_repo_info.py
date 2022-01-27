@@ -65,38 +65,25 @@ def test_info_git_tracked_file(repo_fs, path):
     assert not info["isdvc"]
     assert info["type"] == "file"
     assert not info["isexec"]
-    assert not info["outs"]
 
 
 @pytest.mark.parametrize(
-    "path, outs",
+    "path",
     [
-        (os.path.join("data", "raw", "raw-1.csv"), ["data"]),
-        (os.path.join("data", "raw", "raw-2.csv"), ["data"]),
-        (
-            os.path.join("data", "processed", "processed-1.csv"),
-            ["data"],
-        ),
-        (
-            os.path.join("data", "processed", "processed-2.csv"),
-            ["data"],
-        ),
-        (
-            os.path.join("models", "transform.pickle"),
-            [os.path.join("models", "transform.pickle")],
-        ),
+        os.path.join("data", "raw", "raw-1.csv"),
+        os.path.join("data", "raw", "raw-2.csv"),
+        os.path.join("data", "processed", "processed-1.csv"),
+        os.path.join("data", "processed", "processed-2.csv"),
+        os.path.join("models", "transform.pickle"),
     ],
 )
-def test_info_dvc_tracked_file(repo_fs, path, outs):
+def test_info_dvc_tracked_file(repo_fs, path):
     info = repo_fs.info(path)
 
     assert info["repo"].root_dir == repo_fs.root_dir
     assert info["isdvc"]
     assert info["type"] == "file"
     assert not info["isexec"]
-    assert {out.fs_path for out in info["outs"]} == {
-        os.path.join(repo_fs.root_dir, out) for out in outs
-    }
 
 
 @pytest.mark.parametrize("path", ["src", os.path.join("src", "utils")])
@@ -106,28 +93,17 @@ def test_info_git_only_dirs(repo_fs, path):
     assert info["repo"].root_dir == repo_fs.root_dir
     assert not info["isdvc"]
     assert info["type"] == "directory"
-    assert info["isexec"]
-    assert not info["outs"]
+    assert not info["isexec"]
 
 
-@pytest.mark.parametrize(
-    "path, expected_outs",
-    [
-        (".", ["data", os.path.join("models", "transform.pickle")]),
-        ("models", [os.path.join("models", "transform.pickle")]),
-    ],
-)
-def test_info_git_dvc_mixed_dirs(repo_fs, path, expected_outs):
+@pytest.mark.parametrize("path", [".", "models"])
+def test_info_git_dvc_mixed_dirs(repo_fs, path):
     info = repo_fs.info(os.path.join(repo_fs.root_dir, path))
 
     assert info["repo"].root_dir == repo_fs.root_dir
     assert not info["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
-
-    assert {out.fs_path for out in info["outs"]} == {
-        os.path.join(repo_fs.root_dir, out) for out in expected_outs
-    }
 
 
 @pytest.mark.parametrize(
@@ -145,9 +121,6 @@ def test_info_dvc_only_dirs(repo_fs, path):
     assert info["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
-    assert {out.fs_path for out in info["outs"]} == {
-        os.path.join(repo_fs.root_dir, "data")
-    }
 
 
 def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):

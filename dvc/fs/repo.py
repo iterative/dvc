@@ -479,14 +479,19 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
             fs_info = fs.info(path)
             fs_info["repo"] = dvc_fs.repo
-            fs_info["outs"] = dvc_info.get("outs", None) if dvc_info else None
             fs_info["isout"] = (
                 dvc_info.get("isout", False) if dvc_info else False
             )
+            fs_info["outs"] = dvc_info["outs"] if dvc_info else None
             fs_info["isdvc"] = dvc_info["isdvc"] if dvc_info else False
-            fs_info["isexec"] = (
-                dvc_info["isexec"] if dvc_info else is_exec(fs_info["mode"])
-            )
+            fs_info["meta"] = dvc_info.get("meta") if dvc_info else None
+
+            isexec = False
+            if dvc_info:
+                isexec = dvc_info["isexec"]
+            elif fs_info["type"] == "file":
+                isexec = is_exec(fs_info["mode"])
+            fs_info["isexec"] = isexec
             return fs_info
 
         except FileNotFoundError:

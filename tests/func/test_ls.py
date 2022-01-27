@@ -473,14 +473,14 @@ def test_ls_granular(erepo_dir):
 
     entries = Repo.ls(os.fspath(erepo_dir), os.path.join("dir", "subdir"))
     assert entries == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "bar"},
-        {"isout": False, "isdir": False, "isexec": False, "path": "foo"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "bar"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "foo"},
     ]
 
     entries = Repo.ls(os.fspath(erepo_dir), "dir")
     assert entries == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "1"},
-        {"isout": False, "isdir": False, "isexec": False, "path": "2"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "1"},
+        {"isout": True, "isdir": False, "isexec": False, "path": "2"},
         {"isout": False, "isdir": True, "isexec": False, "path": "subdir"},
     ]
 
@@ -500,18 +500,20 @@ def test_ls_target(erepo_dir, use_scm):
             commit="create dir",
         )
 
+    isout = not use_scm
+
     def _ls(path):
         return Repo.ls(os.fspath(erepo_dir), path)
 
     assert _ls(os.path.join("dir", "1")) == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "1"}
+        {"isout": isout, "isdir": False, "isexec": False, "path": "1"}
     ]
     assert _ls(os.path.join("dir", "subdir", "foo")) == [
-        {"isout": False, "isdir": False, "isexec": False, "path": "foo"}
+        {"isout": isout, "isdir": False, "isexec": False, "path": "foo"}
     ]
     assert _ls(os.path.join("dir", "subdir")) == [
-        {"isdir": False, "isexec": 0, "isout": False, "path": "bar"},
-        {"isdir": False, "isexec": 0, "isout": False, "path": "foo"},
+        {"isdir": False, "isexec": 0, "isout": isout, "path": "bar"},
+        {"isdir": False, "isexec": 0, "isout": isout, "path": "foo"},
     ]
 
 

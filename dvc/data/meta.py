@@ -1,6 +1,10 @@
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from dvc.objects.db import ObjectDB
+    from dvc.objects.file import HashFile
 
 
 @dataclass
@@ -12,6 +16,10 @@ class Meta:
     size: Optional[int] = field(default=None)
     nfiles: Optional[int] = field(default=None)
     isexec: Optional[bool] = field(default=False)
+
+    obj: Optional["HashFile"] = field(default=None)
+    odb: Optional["ObjectDB"] = field(default=None)
+    remote: Optional[str] = field(default=None)
 
     @classmethod
     def from_dict(cls, d):
