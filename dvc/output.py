@@ -81,7 +81,6 @@ def loadd_from(stage, d_list):
         persist = d.pop(Output.PARAM_PERSIST, False)
         checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
         desc = d.pop(Output.PARAM_DESC, False)
-        isexec = d.pop(Output.PARAM_ISEXEC, False)
         live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         ret.append(
@@ -95,7 +94,6 @@ def loadd_from(stage, d_list):
                 persist=persist,
                 checkpoint=checkpoint,
                 desc=desc,
-                isexec=isexec,
                 live=live,
                 remote=remote,
             )
@@ -111,7 +109,6 @@ def loads_from(
     plot=False,
     persist=False,
     checkpoint=False,
-    isexec=False,
     live=False,
     remote=None,
 ):
@@ -125,7 +122,6 @@ def loads_from(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
-            isexec=isexec,
             live=live,
             remote=remote,
         )
@@ -257,7 +253,6 @@ class Output:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_DESC = "desc"
-    PARAM_ISEXEC = "isexec"
     PARAM_LIVE = "live"
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
@@ -289,7 +284,6 @@ class Output:
         checkpoint=False,
         live=False,
         desc=None,
-        isexec=False,
         remote=None,
         repo=None,
     ):
@@ -329,7 +323,6 @@ class Output:
 
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj = None
-        self.isexec = False if self.IS_DEPENDENCY else isexec
 
         self.remote = remote
 
@@ -566,10 +559,9 @@ class Output:
             dvcignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
-        self.isexec = self.isfile() and self.fs.isexec(self.fs_path)
 
     def set_exec(self):
-        if self.isfile() and self.isexec:
+        if self.isfile() and self.meta.isexec:
             self.odb.set_exec(self.fs_path)
 
     def commit(self, filter_info=None):
@@ -673,9 +665,6 @@ class Output:
 
         if self.checkpoint:
             ret[self.PARAM_CHECKPOINT] = self.checkpoint
-
-        if self.isexec:
-            ret[self.PARAM_ISEXEC] = self.isexec
 
         if self.live:
             ret[self.PARAM_LIVE] = self.live
@@ -1063,7 +1052,7 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_CHECKPOINT: bool,
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
-    Output.PARAM_ISEXEC: bool,
+    Meta.PARAM_ISEXEC: bool,
 }
 
 SCHEMA = {

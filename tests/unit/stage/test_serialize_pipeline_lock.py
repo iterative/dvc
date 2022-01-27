@@ -136,7 +136,7 @@ def test_lock_outs(dvc, typ):
 def test_lock_outs_isexec(dvc, typ):
     stage = create_stage(PipelineStage, dvc, **{typ: ["input"]}, **kwargs)
     stage.outs[0].hash_info = HashInfo("md5", "md-five")
-    stage.outs[0].isexec = True
+    stage.outs[0].meta.isexec = True
     assert to_single_stage_lockfile(stage) == OrderedDict(
         [
             ("cmd", "command"),

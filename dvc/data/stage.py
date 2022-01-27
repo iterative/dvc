@@ -10,7 +10,7 @@ from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
-from dvc.utils import file_md5
+from dvc.utils import file_md5, is_exec
 
 from .db.reference import ReferenceObjectDB
 from .meta import Meta
@@ -72,7 +72,7 @@ def _get_file_hash(fs_path, fs, name):
     else:
         raise NotImplementedError
 
-    meta = Meta(size=info["size"])
+    meta = Meta(size=info["size"], isexec=is_exec(info.get("mode", 0)))
     hash_info = HashInfo(name, hash_value)
     return meta, hash_info
 

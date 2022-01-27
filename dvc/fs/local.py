@@ -3,7 +3,7 @@ import os
 
 from dvc.scheme import Schemes
 from dvc.system import System
-from dvc.utils import is_exec, tmp_fname
+from dvc.utils import tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from ._callback import DEFAULT_CALLBACK
@@ -82,10 +82,6 @@ class LocalFileSystem(FileSystem):
 
     def makedirs(self, path, **kwargs):
         makedirs(path, exist_ok=kwargs.pop("exist_ok", True))
-
-    def isexec(self, path):
-        mode = self.info(path)["mode"]
-        return is_exec(mode)
 
     def move(self, from_info, to_info):
         self.makedirs(self.path.parent(to_info))

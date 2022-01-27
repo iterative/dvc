@@ -42,7 +42,7 @@ def test_fill_from_lock_deps_outs(dvc, lock_data):
 def test_fill_from_lock_outs_isexec(dvc):
     stage = create_stage(PipelineStage, dvc, PIPELINE_FILE, outs=["foo"])
 
-    assert not stage.outs[0].isexec
+    assert not stage.outs[0].meta.isexec
 
     StageLoader.fill_from_lock(
         stage,
@@ -54,7 +54,7 @@ def test_fill_from_lock_outs_isexec(dvc):
 
     assert stage.outs[0].def_path == "foo"
     assert stage.outs[0].hash_info == HashInfo("md5", "foo_checksum")
-    assert stage.outs[0].isexec
+    assert stage.outs[0].meta.isexec
 
 
 def test_fill_from_lock_params(dvc, lock_data):

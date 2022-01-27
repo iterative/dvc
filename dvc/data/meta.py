@@ -7,9 +7,11 @@ from typing import Optional
 class Meta:
     PARAM_SIZE = "size"
     PARAM_NFILES = "nfiles"
+    PARAM_ISEXEC = "isexec"
 
     size: Optional[int] = field(default=None)
     nfiles: Optional[int] = field(default=None)
+    isexec: Optional[bool] = field(default=False)
 
     @classmethod
     def from_dict(cls, d):
@@ -18,7 +20,9 @@ class Meta:
 
         size = d.pop(cls.PARAM_SIZE, None)
         nfiles = d.pop(cls.PARAM_NFILES, None)
-        return cls(size=size, nfiles=nfiles)
+        isexec = d.pop(cls.PARAM_ISEXEC, False)
+
+        return cls(size=size, nfiles=nfiles, isexec=isexec)
 
     def to_dict(self):
         ret = OrderedDict()
@@ -28,5 +32,8 @@ class Meta:
 
         if self.nfiles is not None:
             ret[self.PARAM_NFILES] = self.nfiles
+
+        if self.isexec:
+            ret[self.PARAM_ISEXEC] = self.isexec
 
         return ret

@@ -150,12 +150,6 @@ class FileSystem:
         """
         return True
 
-    def isexec(self, path):
-        """Optional: Overwrite only if the remote has a way to distinguish
-        between executable and non-executable file.
-        """
-        return False
-
     def iscopy(self, path):
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
