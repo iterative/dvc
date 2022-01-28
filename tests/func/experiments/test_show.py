@@ -660,3 +660,21 @@ def test_show_outs(tmp_dir, dvc, scm):
             "nfiles": None,
         }
     }
+
+
+def test_show_sorted_deps(tmp_dir, dvc, scm, capsys):
+    tmp_dir.gen("a", "a")
+    tmp_dir.gen("b", "b")
+    tmp_dir.gen("c", "c")
+    tmp_dir.gen("z", "z")
+
+    dvc.run(
+        cmd="echo foo",
+        name="deps",
+        deps=["a", "b", "z", "c"],
+    )
+
+    capsys.readouterr()
+    assert main(["exp", "show", "--csv"]) == 0
+    cap = capsys.readouterr()
+    assert "a,b,c,z" in cap.out
