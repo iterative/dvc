@@ -49,7 +49,7 @@ def _collect_names(all_experiments, **kwargs):
             for dep_name in exp.get("deps", {}):
                 deps_names.add(dep_name)
 
-    return metric_names, param_names, deps_names
+    return metric_names, param_names, sorted(deps_names)
 
 
 experiment_types = {
