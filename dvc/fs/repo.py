@@ -220,6 +220,8 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         return dvc_fs.open(path, mode=mode, encoding=encoding, **kwargs)
 
     def exists(self, path) -> bool:
+        path = os.path.abspath(path)
+
         fs, dvc_fs = self._get_fs_pair(path)
 
         if not dvc_fs:
@@ -231,18 +233,21 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         if fs.exists(path):
             return True
 
-        try:
-            info = dvc_fs.info(path)
-        except FileNotFoundError:
+        if not dvc_fs.exists(path):
             return False
 
-        for out in info["outs"]:
-            if fs.exists(out.fs_path):
-                return False
+        for p in self.path.parents(path):
+            try:
+                if fs.info(p)["type"] != "directory":
+                    return False
+            except FileNotFoundError:
+                continue
 
         return True
 
     def isdir(self, path):  # pylint: disable=arguments-renamed
+        path = os.path.abspath(path)
+
         fs, dvc_fs = self._get_fs_pair(path)
 
         if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(path):
@@ -263,9 +268,12 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        for out in info["outs"]:
-            if fs.exists(out.fs_path):
-                return False
+        for p in self.path.parents(path):
+            try:
+                if fs.info(p)["type"] != "directory":
+                    return False
+            except FileNotFoundError:
+                continue
 
         return info["type"] == "directory"
 
@@ -274,6 +282,8 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         return dvc_fs is not None and dvc_fs.isdvc(path, **kwargs)
 
     def isfile(self, path):  # pylint: disable=arguments-renamed
+        path = os.path.abspath(path)
+
         fs, dvc_fs = self._get_fs_pair(path)
 
         if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(path):
@@ -294,10 +304,12 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        (out,) = info["outs"]
-        assert len(info["outs"]) == 1
-        if fs.exists(out.fs_path):
-            return False
+        for p in self.path.parents(path):
+            try:
+                if fs.info(p)["type"] != "directory":
+                    return False
+            except FileNotFoundError:
+                continue
 
         return info["type"] == "file"
 
