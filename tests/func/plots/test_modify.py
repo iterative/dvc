@@ -1,10 +1,9 @@
-import os
-
 import pytest
 
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.repo.plots import PropsNotFoundError
 from dvc.utils import relpath
+from tests.utils.plots import get_plot
 
 
 def test_plots_modify_existing_template(
@@ -78,8 +77,8 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     fname = "file.json"
     (tmp_dir / fname).dump_json(metric, sort_keys=True)
 
-    p1 = os.path.join("subdir", "p1.json")
-    p2 = os.path.join("subdir", "p2.json")
+    p1 = "subdir/p1.json"
+    p2 = "subdir/p2.json"
     tmp_dir.dvc.run(
         cmd=(
             f"mkdir subdir && python copy.py {fname} {p1} && "
@@ -93,5 +92,7 @@ def test_dir_plots(tmp_dir, dvc, run_copy_metrics):
     dvc.plots.modify("subdir", {"title": "TITLE"})
 
     result = dvc.plots.show()
-    assert result["workspace"]["data"][p1]["props"]["title"] == "TITLE"
-    assert result["workspace"]["data"][p2]["props"]["title"] == "TITLE"
+    assert get_plot(result, "workspace", typ="definitions", file="") == {
+        p1: {"title": "TITLE"},
+        p2: {"title": "TITLE"},
+    }

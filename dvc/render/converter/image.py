@@ -1,17 +1,16 @@
 import base64
 import os
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from dvc.render import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
+
+from . import Converter
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
 
 
-class ImageConverter:
-    def __init__(self, plot_properties: Optional[Dict] = None):
-        self.plot_properties = plot_properties or {}
-
+class ImageConverter(Converter):
     @staticmethod
     def _write_image(
         path: "StrPath",
@@ -36,7 +35,7 @@ class ImageConverter:
         return f"data:image;base64,{base64_str}"
 
     def convert(
-        self, data: bytes, revision, filename
+        self, data, revision: str, filename: str, **kwargs
     ) -> Tuple[List[Dict], Dict]:
         """
         Convert the DVC Plots content to DVC Render datapoints.

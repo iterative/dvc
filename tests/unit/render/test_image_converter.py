@@ -1,5 +1,5 @@
 from dvc.render import REVISION_FIELD, SRC_FIELD
-from dvc.render.image_converter import ImageConverter
+from dvc.render.converter.image import ImageConverter
 
 
 def test_image_converter_no_out():

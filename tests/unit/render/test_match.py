@@ -1,183 +1,120 @@
+from dvc.render import VERSION_FIELD
 from dvc.render.match import (
-    group_by_filename,
-    match_renderers,
-    squash_plots_properties,
+    PlotsData,
+    _squash_plots_properties,
+    match_defs_renderers,
 )
 
 
-def test_group_by_filename():
+def test_group_definitions():
     error = FileNotFoundError()
     data = {
-        "v2": {
-            "data": {
-                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
-                "other_file.jpg": {"data": "content"},
+        "v1": {
+            "definitions": {
+                "data": {
+                    "config_file_1": {
+                        "data": {"plot_id_1": {}, "plot_id_2": {}}
+                    },
+                    "config_file_2": {"data": {"plot_id_3": {}}},
+                }
             }
         },
-        "v1": {
-            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
-        },
-        "workspace": {
-            "data": {
-                "file.json": {"error": error, "props": {}},
-                "other_file.jpg": {"data": "content2"},
+        "v2": {
+            "definitions": {
+                "data": {
+                    "config_file_1": {"error": error},
+                    "config_file_2": {"data": {"plot_id_3": {}}},
+                }
             }
         },
     }
 
-    results = group_by_filename(data)
-    assert results["file.json"] == {
-        "v2": {
-            "data": {
-                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
-            }
-        },
+    grouped = PlotsData(data).group_definitions()
+
+    assert grouped == {
+        "config_file_1::plot_id_1": [("v1", "plot_id_1", {})],
+        "config_file_1::plot_id_2": [("v1", "plot_id_2", {})],
+        "config_file_2::plot_id_3": [
+            ("v1", "plot_id_3", {}),
+            ("v2", "plot_id_3", {}),
+        ],
+    }
+
+
+def test_match_renderers(mocker):
+    data = {
         "v1": {
-            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
+            "definitions": {
+                "data": {
+                    "config_file_1": {
+                        "data": {
+                            "plot_id_1": {
+                                "x": "x",
+                                "y": {"file.json": "y"},
+                            }
+                        }
+                    }
+                },
+            },
+            "sources": {
+                "data": {
+                    "file.json": {"data": [{"x": 1, "y": 1}, {"x": 2, "y": 2}]}
+                }
+            },
         },
-        "workspace": {
-            "data": {
-                "file.json": {"error": error, "props": {}},
-            }
+        "errored_revision": {
+            "definitions": {
+                "data": {"config_file_1": {"error": FileNotFoundError()}},
+            },
+            "sources": {},
+        },
+        "revision_with_no_data": {
+            "definitions": {
+                "data": {
+                    "config_file_1": {
+                        "data": {
+                            "plot_id_1": {
+                                "x": "x",
+                                "y": {"file.json": "y"},
+                            }
+                        }
+                    }
+                },
+            },
+            "sources": {"data": {"file.json": {"error": FileNotFoundError()}}},
         },
     }
-    assert results["other_file.jpg"] == {
-        "v2": {
-            "data": {
-                "other_file.jpg": {"data": "content"},
-            }
+
+    renderers = match_defs_renderers(data)
+    assert len(renderers) == 1
+    assert renderers[0].datapoints == [
+        {
+            VERSION_FIELD: {"revision": "v1", "filename": "file.json"},
+            "rev": "v1",
+            "x": 1,
+            "y": 1,
         },
-        "workspace": {
-            "data": {
-                "other_file.jpg": {"data": "content2"},
-            }
+        {
+            VERSION_FIELD: {"revision": "v1", "filename": "file.json"},
+            "rev": "v1",
+            "x": 2,
+            "y": 2,
         },
+    ]
+    assert renderers[0].properties == {
+        "title": "config_file_1::plot_id_1",
+        "x": "x",
+        "y": "y",
     }
 
 
 def test_squash_plots_properties():
-    error = FileNotFoundError()
-    group = {
-        "v2": {
-            "data": {
-                "file.json": {
-                    "data": [{"y": 2}, {"y": 3}],
-                    "props": {"foo": 1},
-                },
-            }
-        },
-        "v1": {
-            "data": {
-                "file.json": {
-                    "data": [{"y": 4}, {"y": 5}],
-                    "props": {"bar": 1},
-                }
-            }
-        },
-        "workspace": {
-            "data": {
-                "file.json": {"error": error, "props": {}},
-            }
-        },
-    }
+    group = [
+        ("v3", "config_file", "plot_id", {"foo": 1}),
+        ("v2", "config_file", "plot_id", {"foo": 2, "bar": 2}),
+        ("v1", "config_file", "plot_id", {"baz": 3}),
+    ]
 
-    plot_properties = squash_plots_properties(group)
+    plot_properties = _squash_plots_properties(group)
 
-    assert plot_properties == {"foo": 1, "bar": 1}
-
-
-def test_match_renderers_no_out(mocker):
-    from dvc import render
-
-    vega_convert = mocker.spy(render.vega_converter.VegaConverter, "convert")
-    image_convert = mocker.spy(
-        render.image_converter.ImageConverter, "convert"
-    )
-    image_encode = mocker.spy(
-        render.image_converter.ImageConverter, "_encode_image"
-    )
-    image_write = mocker.spy(
-        render.image_converter.ImageConverter, "_write_image"
-    )
-
-    error = FileNotFoundError()
-    data = {
-        "v2": {
-            "data": {
-                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
-                "other_file.jpg": {"data": b"content"},
-            }
-        },
-        "v1": {
-            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
-        },
-        "workspace": {
-            "data": {
-                "file.json": {"error": error, "props": {}},
-                "other_file.jpg": {"data": b"content2"},
-            }
-        },
-    }
-
-    renderers = match_renderers(data)
-
-    assert {r.TYPE for r in renderers} == {"vega", "image"}
-    vega_convert.assert_called()
-    image_convert.assert_called()
-    image_encode.assert_called()
-    image_write.assert_not_called()
-
-
-def test_match_renderers_with_out(tmp_dir, mocker):
-    from dvc import render
-
-    image_encode = mocker.spy(
-        render.image_converter.ImageConverter, "_encode_image"
-    )
-    image_write = mocker.spy(
-        render.image_converter.ImageConverter, "_write_image"
-    )
-
-    error = FileNotFoundError()
-    data = {
-        "v2": {
-            "data": {
-                "file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}},
-                "other_file.jpg": {"data": b"content"},
-            }
-        },
-        "v1": {
-            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
-        },
-        "workspace": {
-            "data": {
-                "file.json": {"error": error, "props": {}},
-                "other_file.jpg": {"data": b"content2"},
-            }
-        },
-    }
-
-    match_renderers(data, out=tmp_dir / "foo")
-
-    image_encode.assert_not_called()
-    image_write.assert_called()
-
-    assert (tmp_dir / "foo" / "v2_other_file.jpg").read_bytes() == b"content"
-    assert (
-        tmp_dir / "foo" / "workspace_other_file.jpg"
-    ).read_bytes() == b"content2"
-
-
-def test_match_renderers_template_dir(mocker):
-    from dvc_render import vega
-
-    vega_render = mocker.spy(vega.VegaRenderer, "__init__")
-    data = {
-        "v1": {
-            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
-        },
-    }
-
-    match_renderers(data, templates_dir="foo")
-
-    assert vega_render.call_args[1]["template_dir"] == "foo"
+    assert plot_properties == {"foo": 1, "bar": 2, "baz": 3}

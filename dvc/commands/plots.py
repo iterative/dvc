@@ -24,6 +24,60 @@ def _show_json(renderers, split=False):
     ui.write_json(result)
 
 
+def _adjust_vega_renderers(renderers):
+    from dvc.render import VERSION_FIELD
+    from dvc_render import VegaRenderer
+
+    for r in renderers:
+        if isinstance(r, VegaRenderer):
+            if _data_versions_count(r) > 1:
+                summary = _summarize_version_infos(r)
+                for dp in r.datapoints:
+                    vi = dp.pop(VERSION_FIELD, {})
+                    keys = list(vi.keys())
+                    for key in keys:
+                        if not (len(summary.get(key, set())) > 1):
+                            vi.pop(key)
+                    if vi:
+                        dp["rev"] = "::".join(vi.values())
+            else:
+                for dp in r.datapoints:
+                    dp.pop(VERSION_FIELD, {})
+
+
+def _summarize_version_infos(renderer):
+    from collections import defaultdict
+
+    from dvc.render import VERSION_FIELD
+
+    result = defaultdict(set)
+
+    for dp in renderer.datapoints:
+        for key, value in dp.get(VERSION_FIELD, {}).items():
+            result[key].add(value)
+    return dict(result)
+
+
+def _data_versions_count(renderer):
+    from itertools import product
+
+    summary = _summarize_version_infos(renderer)
+    x = product(summary.get("filename", {None}), summary.get("field", {None}))
+    return len(set(x))
+
+
+def _filter_unhandled_renderers(renderers):
+    # filtering out renderers currently unhandled by vscode extension
+    from dvc_render import VegaRenderer
+
+    def _is_json_viable(r):
+        return not (
+            isinstance(r, VegaRenderer) and _data_versions_count(r) > 1
+        )
+
+    return list(filter(_is_json_viable, renderers))
+
+
 class CmdPlots(CmdBase):
     def _func(self, *args, **kwargs):
         raise NotImplementedError
@@ -35,10 +89,28 @@ class CmdPlots(CmdBase):
         props = {p: getattr(self.args, p) for p in PLOT_PROPS}
         return {k: v for k, v in props.items() if v is not None}
 
+    def _config_files(self):
+        config_files = None
+        if self.args.from_config:
+            config_files = {self.args.from_config}
+        return config_files
+
+    def _html_template_path(self):
+        html_template_path = self.args.html_template
+        if not html_template_path:
+            html_template_path = self.repo.config.get("plots", {}).get(
+                "html_template", None
+            )
+            if html_template_path and not os.path.isabs(html_template_path):
+                html_template_path = os.path.join(
+                    self.repo.dvc_dir, html_template_path
+                )
+        return html_template_path
+
     def run(self):
         from pathlib import Path
 
-        from dvc.render.match import match_renderers
+        from dvc.render.match import match_defs_renderers
         from dvc_render import render_html
 
         if self.args.show_vega:
@@ -58,9 +130,10 @@ class CmdPlots(CmdBase):
                 return 1
 
         try:
-
             plots_data = self._func(
-                targets=self.args.targets, props=self._props()
+                targets=self.args.targets,
+                props=self._props(),
+                config_files=self._config_files(),
             )
 
             if not plots_data:
@@ -76,51 +149,43 @@ class CmdPlots(CmdBase):
             renderers_out = (
                 out if self.args.json else os.path.join(out, "static")
             )
-            renderers = match_renderers(
-                plots_data=plots_data,
+
+            renderers = match_defs_renderers(
+                data=plots_data,
                 out=renderers_out,
                 templates_dir=self.repo.plots.templates_dir,
             )
-
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
                     ui.write_json(json.loads(renderer.get_filled_template()))
                 return 0
             if self.args.json:
+                renderers = _filter_unhandled_renderers(renderers)
                 _show_json(renderers, self.args.split)
                 return 0
 
-            html_template_path = self.args.html_template
-            if not html_template_path:
-                html_template_path = self.repo.config.get("plots", {}).get(
-                    "html_template", None
-                )
-                if html_template_path and not os.path.isabs(
-                    html_template_path
-                ):
-                    html_template_path = os.path.join(
-                        self.repo.dvc_dir, html_template_path
-                    )
+            _adjust_vega_renderers(renderers)
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
 
-            render_html(
-                renderers=renderers,
-                output_file=output_file,
-                template_path=html_template_path,
-            )
+            if renderers:
+                render_html(
+                    renderers=renderers,
+                    output_file=output_file,
+                    template_path=self._html_template_path(),
+                )
 
-            ui.write(output_file.as_uri())
-            auto_open = self.repo.config["plots"].get("auto_open", False)
-            if self.args.open or auto_open:
-                if not auto_open:
-                    ui.write(
-                        "To enable auto opening, you can run:\n"
-                        "\n"
-                        "\tdvc config plots.auto_open true"
-                    )
-                return ui.open_browser(output_file)
+                ui.write(output_file.as_uri())
+                auto_open = self.repo.config["plots"].get("auto_open", False)
+                if self.args.open or auto_open:
+                    if not auto_open:
+                        ui.write(
+                            "To enable auto opening, you can run:\n"
+                            "\n"
+                            "\tdvc config plots.auto_open true"
+                        )
+                    return ui.open_browser(output_file)
 
             return 0
 
@@ -188,10 +253,7 @@ class CmdPlotsTemplates(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    PLOTS_HELP = (
-        "Commands to visualize and compare plot metrics in structured files "
-        "(JSON, YAML, CSV, TSV)."
-    )
+    PLOTS_HELP = "Commands to visualize and compare plot data."
 
     plots_parser = subparsers.add_parser(
         "plots",
@@ -207,7 +269,10 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(plots_subparsers)
 
-    SHOW_HELP = "Generate plots from metrics files."
+    SHOW_HELP = (
+        "Generate plots from target files or plots definitions from "
+        "`dvc.yaml` file."
+    )
     plots_show_parser = plots_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -218,8 +283,8 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Files to visualize (supports any file, "
-        "even when not found as `plots` in `dvc.yaml`). "
+        help="Plots to visualize. Supports any file path, or plot name "
+        "defined in `dvc.yaml`. "
         "Shows all plots by default.",
     ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
@@ -228,7 +293,7 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
-        "Show multiple versions of plot metrics "
+        "Show multiple versions of plot data "
         "by plotting them in a single image."
     )
     plots_diff_parser = plots_subparsers.add_parser(
@@ -242,8 +307,8 @@ def add_parser(subparsers, parent_parser):
         "--targets",
         nargs="*",
         help=(
-            "Specific plots file(s) to visualize "
-            "(even if not found as `plots` in `dvc.yaml`). "
+            "Specific plots to visualize. "
+            "Accepts any file path or plot name from `dvc.yaml` file. "
             "Shows all tracked plots by default."
         ),
         metavar="<paths>",
@@ -264,7 +329,7 @@ def add_parser(subparsers, parent_parser):
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
     PLOTS_MODIFY_HELP = (
-        "Modify display properties of data-series plots "
+        "Modify display properties of data-series plot outputs "
         "(has no effect on image-type plots)."
     )
     plots_modify_parser = plots_subparsers.add_parser(
@@ -275,7 +340,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Metric file to set properties to"
+        "target", help="Plot output to set properties to"
     ).complete = completion.FILE
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
@@ -384,4 +449,10 @@ def _add_ui_arguments(parser):
         default=None,
         help="Custom HTML template for VEGA visualization.",
         metavar="<path>",
+    )
+    parser.add_argument(
+        "--from-config",
+        default=None,
+        metavar="<path>",
+        help=argparse.SUPPRESS,
     )

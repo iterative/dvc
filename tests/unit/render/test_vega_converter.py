@@ -2,7 +2,8 @@ from collections import OrderedDict
 
 import pytest
 
-from dvc.render.vega_converter import (
+from dvc.render import VERSION_FIELD
+from dvc.render.converter.vega import (
     FieldsNotFoundError,
     PlotDataStructureError,
     VegaConverter,
@@ -61,8 +62,18 @@ def test_finding_lists(dictionary, expected_result):
             {"metric": [{"v": 1}, {"v": 2}]},
             {},
             [
-                {"v": 1, "step": 0, "filename": "f", "rev": "r"},
-                {"v": 2, "step": 1, "filename": "f", "rev": "r"},
+                {
+                    "v": 1,
+                    "step": 0,
+                    VERSION_FIELD: {"revision": "r", "filename": "f"},
+                    "rev": "r",
+                },
+                {
+                    "v": 2,
+                    "step": 1,
+                    VERSION_FIELD: {"revision": "r", "filename": "f"},
+                    "rev": "r",
+                },
             ],
             {"x": "step", "y": "v"},
         ),
@@ -71,8 +82,18 @@ def test_finding_lists(dictionary, expected_result):
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"fields": {"v"}},
             [
-                {"v": 1, "step": 0, "filename": "f", "rev": "r"},
-                {"v": 2, "step": 1, "filename": "f", "rev": "r"},
+                {
+                    "v": 1,
+                    "step": 0,
+                    VERSION_FIELD: {"revision": "r", "filename": "f"},
+                    "rev": "r",
+                },
+                {
+                    "v": 2,
+                    "step": 1,
+                    VERSION_FIELD: {"revision": "r", "filename": "f"},
+                    "rev": "r",
+                },
             ],
             {
                 "x": "step",
@@ -85,8 +106,26 @@ def test_finding_lists(dictionary, expected_result):
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"x": "v", "y": "v2"},
             [
-                {"v": 1, "v2": 0.1, "filename": "f", "rev": "r"},
-                {"v": 2, "v2": 0.2, "filename": "f", "rev": "r"},
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "rev": "r",
+                },
+                {
+                    "v": 2,
+                    "v2": 0.2,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "rev": "r",
+                },
             ],
             {"x": "v", "y": "v2"},
         ),
@@ -100,8 +139,28 @@ def test_finding_lists(dictionary, expected_result):
             },
             {"x": "v3", "y": "v4", "fields": {"v"}},
             [
-                {"v": 1, "v3": 0.01, "v4": 0.001, "filename": "f", "rev": "r"},
-                {"v": 2, "v3": 0.02, "v4": 0.002, "filename": "f", "rev": "r"},
+                {
+                    "v": 1,
+                    "v3": 0.01,
+                    "v4": 0.001,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v4",
+                    },
+                    "rev": "r",
+                },
+                {
+                    "v": 2,
+                    "v3": 0.02,
+                    "v4": 0.002,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v4",
+                    },
+                    "rev": "r",
+                },
             ],
             {"x": "v3", "y": "v4", "fields": {"v", "v3", "v4"}},
         ),
@@ -117,10 +176,84 @@ def test_finding_lists(dictionary, expected_result):
             },
             {"x": "v", "y": "v2"},
             [
-                {"v": 1, "v2": 0.1, "filename": "f", "rev": "r"},
-                {"v": 2, "v2": 0.2, "filename": "f", "rev": "r"},
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "rev": "r",
+                },
+                {
+                    "v": 2,
+                    "v2": 0.2,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "rev": "r",
+                },
             ],
             {"x": "v", "y": "v2"},
+        ),
+        (
+            # provide list of fields in y def
+            {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
+            {"y": {"f": ["v", "v2"]}},
+            [
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                    "rev": "r",
+                    "dvc_inferred_y_value": 1,
+                    "step": 0,
+                },
+                {
+                    "v": 1,
+                    "v2": 0.1,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "rev": "r",
+                    "dvc_inferred_y_value": 0.1,
+                    "step": 0,
+                },
+                {
+                    "v": 2,
+                    "v2": 0.2,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
+                    "rev": "r",
+                    "dvc_inferred_y_value": 2,
+                    "step": 1,
+                },
+                {
+                    "v": 2,
+                    "v2": 0.2,
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v2",
+                    },
+                    "rev": "r",
+                    "dvc_inferred_y_value": 0.2,
+                    "step": 1,
+                },
+            ],
+            {"x": "step", "y": "dvc_inferred_y_value", "y_label": "y"},
         ),
     ],
 )
@@ -150,7 +283,15 @@ def test_convert_skip_step():
     )
 
     assert datapoints == [
-        {"v": 1, "filename": "f", "rev": "r"},
-        {"v": 2, "filename": "f", "rev": "r"},
+        {
+            "v": 1,
+            "rev": "r",
+            VERSION_FIELD: {"revision": "r", "filename": "f"},
+        },
+        {
+            "v": 2,
+            "rev": "r",
+            VERSION_FIELD: {"revision": "r", "filename": "f"},
+        },
     ]
     assert resolved_properties == {"x": "step", "y": "v"}

@@ -1,6 +1,7 @@
 INDEX_FIELD = "step"
 REVISION_FIELD = "rev"
 FILENAME_FIELD = "filename"
+VERSION_FIELD = "dvc_data_version_info"
 REVISIONS_KEY = "revisions"
 TYPE_KEY = "type"
 SRC_FIELD = "src"
