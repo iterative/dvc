@@ -43,7 +43,7 @@ class InvalidRemoteSCMRepo(SCMError):
 
 class GitAuthError(SCMError):
     def __init__(self, reason: str) -> None:
-        doc = "See https://dvc.org/doc//user-guide/troubleshooting#git-auth"
+        doc = "See https://dvc.org/doc/user-guide/troubleshooting#git-auth"
         super().__init__(f"{reason}\n{doc}")
 
 
