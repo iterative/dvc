@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
+LOCAL_CHUNK_SIZE = 2**20  # 1 MB
 
 umask = os.umask(0)
 os.umask(umask)

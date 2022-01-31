@@ -3,9 +3,9 @@ import pytest
 from dvc.utils.conversions import human_readable_to_bytes
 
 KB = 1024
-MB = KB ** 2
-GB = KB ** 3
-TB = KB ** 4
+MB = KB**2
+GB = KB**3
+TB = KB**4
 
 
 @pytest.mark.parametrize(

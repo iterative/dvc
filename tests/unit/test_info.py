@@ -51,7 +51,7 @@ def test_info_in_repo(scm_init, tmp_dir):
 
     dvc_info = get_dvc_info()
 
-    assert re.search(fr"DVC version: {DVC_VERSION_REGEX}", dvc_info)
+    assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", dvc_info)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", dvc_info)
     assert find_supported_remotes(dvc_info)
     assert re.search(r"Cache types: .*", dvc_info)
@@ -126,7 +126,7 @@ def test_fs_info_in_repo(tmp_dir, dvc, caplog):
 def test_info_outside_of_repo(tmp_dir, caplog):
     dvc_info = get_dvc_info()
 
-    assert re.search(fr"DVC version: {DVC_VERSION_REGEX}", dvc_info)
+    assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", dvc_info)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", dvc_info)
     assert find_supported_remotes(dvc_info)
     assert not re.search(r"Cache types: .*", dvc_info)
@@ -135,7 +135,7 @@ def test_info_outside_of_repo(tmp_dir, caplog):
 
 def test_fs_info_outside_of_repo(tmp_dir, caplog):
     dvc_info = get_dvc_info()
-    assert re.search(fr"DVC version: {DVC_VERSION_REGEX}", dvc_info)
+    assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", dvc_info)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", dvc_info)
     assert find_supported_remotes(dvc_info)
 
