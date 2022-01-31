@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 from textwrap import dedent
 
@@ -121,11 +120,11 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
     assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
-    files = list(plots_data["workspace"]["data"])
-    assert os.path.join("logs", "scalars", "accuracy.tsv") in files
-    assert os.path.join("logs", "scalars", "loss.tsv") in files
-    assert os.path.join("logs", "images", "0", "image.jpg") in files
-    assert os.path.join("logs", "images", "1", "image.jpg") in files
+    files = list(plots_data["workspace"]["sources"]["data"])
+    assert "logs/scalars/accuracy.tsv" in files
+    assert "logs/scalars/loss.tsv" in files
+    assert "logs/images/0/image.jpg" in files
+    assert "logs/images/1/image.jpg" in files
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))

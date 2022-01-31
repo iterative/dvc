@@ -3,8 +3,8 @@ from collections import defaultdict
 from typing import Dict, List, Union
 
 from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
-from dvc.render.image_converter import ImageConverter
-from dvc.render.vega_converter import VegaConverter
+from dvc.render.converter.image import ImageConverter
+from dvc.render.converter.vega import VegaConverter
 
 
 def _get_converter(
@@ -18,20 +18,6 @@ def _get_converter(
         return ImageConverter(props)
 
     raise ValueError(f"Invalid renderer class {renderer_class}")
-
-
-def to_datapoints(renderer_class, data: Dict, props: Dict):
-    converter = _get_converter(renderer_class, props)
-    datapoints: List[Dict] = []
-    final_props: Dict = {}
-    for revision, rev_data in data.items():
-        for filename, file_data in rev_data.get("data", {}).items():
-            if "data" in file_data:
-                processed, final_props = converter.convert(
-                    file_data.get("data"), revision, filename
-                )
-                datapoints.extend(processed)
-    return datapoints, final_props
 
 
 def _group_by_rev(datapoints):

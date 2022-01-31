@@ -1086,7 +1086,7 @@ class Output:
 
     @property
     def is_plot(self) -> bool:
-        return bool(self.plot)
+        return bool(self.plot) or bool(self.live)
 
 
 ARTIFACT_SCHEMA = {
