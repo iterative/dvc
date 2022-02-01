@@ -8,6 +8,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    List,
     Optional,
     TextIO,
     Tuple,
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.dvcfile import DVCFile
     from rich.tree import Tree
+    from dvc.dependency import Dependency
 
 from dvc.ui import ui
 
@@ -79,16 +81,24 @@ def _disable_logging(highest_level=logging.CRITICAL):
         logging.disable(previous_level)
 
 
-def build_workspace_tree(workspace: Dict[str, str]) -> "Tree":
+def build_workspace_tree(workspace: Dict[str, str], label: str) -> "Tree":
     from rich.tree import Tree
 
-    tree = Tree(
-        "DVC assumes the following workspace structure:",
-        highlight=True,
-    )
+    tree = Tree(label, highlight=True)
     for value in sorted(workspace.values()):
         tree.add(f"[green]{value}[/green]")
     return tree
+
+
+def display_workspace_tree(
+    workspace: Dict[str, str], label: str, stderr: bool = False
+) -> None:
+    d = workspace.copy()
+    d.pop("cmd", None)
+
+    if d:
+        ui.write(build_workspace_tree(d, label), styled=True, stderr=stderr)
+    ui.write(styled=True, stderr=stderr)
 
 
 PIPELINE_FILE_LINK = "https://s.dvc.org/g/pipeline-files"
@@ -144,9 +154,9 @@ def init_interactive(
         "Enter the paths for dependencies and outputs of the command.",
         styled=True,
     )
-    if workspace:
-        ui.error_write(build_workspace_tree(workspace), styled=True)
-    ui.error_write(styled=True)
+
+    tree_label = "DVC assumes the following workspace structure:"
+    display_workspace_tree(workspace, tree_label, stderr=True)
     ret.update(
         compact(
             _prompts(prompts, defaults, validator=validator, stream=stream)
@@ -192,11 +202,40 @@ def validate_prompts(
             raise InvalidResponse(msg_format.format(value, suffices[e.errno]))
     elif key in ("code", "data"):
         if not os.path.exists(value):
-            return value, (
-                f"[yellow]'{value}' does not exist in the workspace. "
-                '"exp run" may fail.[/]'
+            typ = "file" if is_file(value) else "directory"
+            return (
+                value,
+                f"[yellow]'{value}' does not exist, "
+                f"the {typ} will be created. ",
             )
     return value
+
+
+def is_file(path: str) -> bool:
+    _, ext = os.path.splitext(path)
+    return bool(ext)
+
+
+def init_deps(deps: Iterable["Dependency"]) -> List[str]:
+    from dvc.dependency import ParamsDependency
+    from dvc.fs.local import localfs
+
+    new_deps = [
+        dep
+        for dep in deps
+        if not isinstance(dep, ParamsDependency) and not dep.exists
+    ]
+    for dep in new_deps:
+        fs_path = dep.fs_path
+        if not is_file(fs_path):
+            localfs.makedirs(fs_path)
+            continue
+
+        localfs.makedirs(localfs.path.parent(fs_path), exist_ok=True)
+        with localfs.open(fs_path, "w", encoding="utf-8"):
+            pass
+
+    return [dep.def_path for dep in new_deps]
 
 
 def init(
@@ -287,6 +326,10 @@ def init(
         with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
             stage.dump(update_lock=False)
             stage.ignore_outs()
+            if not interactive:
+                label = "Creating experiment project structure:"
+                display_workspace_tree(context, label)
+            init_deps(stage.deps)
             if params:
                 repo.scm_context.track_file(params)
     else:
