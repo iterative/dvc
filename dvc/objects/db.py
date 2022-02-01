@@ -350,7 +350,7 @@ class ObjectDB:
 
         remote_size, remote_hashes = self._estimate_remote_size(name=name)
         return self._list_hashes_traverse(
-            remote_size, remote_hashes, jobs, name
+            remote_size, remote_hashes, jobs=jobs, name=name
         )
 
     def _remove_unpacked_dir(self, hash_):
@@ -457,6 +457,8 @@ class ObjectDB:
 
         logger.debug(f"Querying '{len(hashes)}' hashes via traverse")
         remote_hashes = set(
-            self._list_hashes_traverse(remote_size, remote_hashes, jobs, name)
+            self._list_hashes_traverse(
+                remote_size, remote_hashes, jobs=jobs, name=name
+            )
         )
         return list(hashes & set(remote_hashes))

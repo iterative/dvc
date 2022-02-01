@@ -151,7 +151,9 @@ def transfer(
     if src == dest:
         return 0
 
-    status = compare_status(src, dest, obj_ids, check_deleted=False, **kwargs)
+    status = compare_status(
+        src, dest, obj_ids, check_deleted=False, jobs=jobs, **kwargs
+    )
     if not status.new:
         return 0
 
