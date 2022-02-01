@@ -27,14 +27,14 @@ class CompareStatusResult(NamedTuple):
     deleted: Set["HashInfo"]
 
 
-def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb):
+def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
     # Validate our index by verifying all indexed .dir hashes
     # still exist on the remote
     dir_hashes = set(dir_objs.keys())
     indexed_dirs = set(index.dir_hashes())
     indexed_dir_exists = set()
     if indexed_dirs:
-        indexed_dir_exists.update(odb.list_hashes_exists(indexed_dirs))
+        indexed_dir_exists.update(odb.list_hashes_exists(indexed_dirs, jobs))
         missing_dirs = indexed_dirs.difference(indexed_dir_exists)
         if missing_dirs:
             logger.debug(
@@ -46,7 +46,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb):
 
     # Check if non-indexed (new) dir hashes exist on remote
     dir_exists = dir_hashes.intersection(indexed_dir_exists)
-    dir_exists.update(odb.list_hashes_exists(dir_hashes - dir_exists))
+    dir_exists.update(odb.list_hashes_exists(dir_hashes - dir_exists, jobs))
 
     # If .dir hash exists in the ODB, assume directory contents
     # also exists
@@ -76,6 +76,7 @@ def status(
     index: Optional["ObjectDBIndexBase"] = None,
     cache_odb: Optional["ObjectDB"] = None,
     shallow: bool = True,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> "StatusResult":
     """Return status of whether or not the specified objects exist odb.
@@ -121,7 +122,9 @@ def status(
     if index and hashes:
         if dir_objs:
             exists = hashes.intersection(
-                _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb)
+                _indexed_dir_hashes(
+                    odb, index, dir_objs, name, cache_odb, jobs=jobs
+                )
             )
             hashes.difference_update(exists)
         if hashes:
@@ -129,7 +132,9 @@ def status(
             hashes.difference_update(exists)
 
     if hashes:
-        exists.update(odb.hashes_exist(hashes, name=odb.fs_path, **kwargs))
+        exists.update(
+            odb.hashes_exist(hashes, name=odb.fs_path, jobs=jobs, **kwargs)
+        )
     return StatusResult(
         {hash_infos[hash_] for hash_ in exists},
         {hash_infos[hash_] for hash_ in (hashes - exists)},
@@ -144,6 +149,7 @@ def compare_status(
     check_deleted: bool = True,
     src_index: Optional["ObjectDBIndexBase"] = None,
     dest_index: Optional["ObjectDBIndexBase"] = None,
+    jobs: Optional[int] = None,
     **kwargs,
 ) -> "CompareStatusResult":
     """Compare status for the specified objects between two ODBs.
@@ -157,13 +163,13 @@ def compare_status(
     if "cache_odb" not in kwargs:
         kwargs["cache_odb"] = src
     dest_exists, dest_missing = status(
-        dest, obj_ids, index=dest_index, **kwargs
+        dest, obj_ids, index=dest_index, jobs=jobs, **kwargs
     )
     # for transfer operations we can skip src status check when all objects
     # already exist in dest
     if dest_missing or check_deleted:
         src_exists, src_missing = status(
-            src, obj_ids, index=src_index, **kwargs
+            src, obj_ids, index=src_index, jobs=jobs, **kwargs
         )
     else:
         src_exists = dest_exists

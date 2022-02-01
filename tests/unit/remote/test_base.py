@@ -60,8 +60,8 @@ def test_hashes_exist(object_exists, traverse, dvc):
         traverse.assert_called_with(
             256 * pow(16, odb.fs.TRAVERSE_PREFIX_LEN),
             set(range(256)),
-            None,
-            None,
+            jobs=None,
+            name=None,
         )
 
 

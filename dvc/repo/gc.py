@@ -82,7 +82,7 @@ def gc(
         return
 
     odb = self.cloud.get_remote_odb(remote, "gc -c")
-    removed = ogc(odb, used_obj_ids)
+    removed = ogc(odb, used_obj_ids, jobs=jobs)
     if removed:
         get_index(odb).clear()
     else:
