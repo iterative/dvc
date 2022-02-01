@@ -20,7 +20,7 @@ While constructing a mapping, in line 3, column 5
   3 │   cmd: python train.py
 
 Found duplicate key "cmd" with value "python train.py" (original value:\
- "python \ntrain.py"), in line 4, column 5
+ "python\ntrain.py"), in line 4, column 5
   4 │   cmd: python train.py"""
 
 
@@ -161,8 +161,8 @@ stages:
 NULL_VALUE_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 6,\
- column\n9
+expected str, in stages -> stage1 -> outs -> 0 -> logs -> remote, line 6, \
+column\n9
   5 │   - logs:
   6 │   │   cache: false
   7 │   │   persist: true"""
@@ -180,7 +180,7 @@ stages:
 ADDITIONAL_KEY_ON_OUTS_OUTPUT = """\
 './dvc.yaml' validation failed.
 
-extra keys not allowed, in stages -> stage1 -> outs -> 0 -> logs -> \n\
+extra keys not allowed, in stages -> stage1 -> outs -> 0 -> logs ->
 not_existing_key, line 6, column 9
   5 │   - logs:
   6 │   │   cache: false
@@ -351,7 +351,13 @@ def test_exceptions(tmp_dir, dvc, capsys, text, expected, mocker):
     out, err = capsys.readouterr()
 
     assert not out
-    assert expected in err
+
+    # strip whitespace on the right: output is always left-justified
+    # by rich.syntax.Syntax:
+    for expected_line, err_line in zip(
+        expected.splitlines(), err.splitlines()
+    ):
+        assert expected_line == err_line.rstrip(" ")
 
 
 def test_make_relpath(tmp_dir, monkeypatch):
