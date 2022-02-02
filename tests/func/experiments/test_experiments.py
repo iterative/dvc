@@ -8,6 +8,7 @@ from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import DvcException
+from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
@@ -55,7 +56,7 @@ def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
         tmp_dir=not workspace,
     )
 
-    new_mock = mocker.spy(dvc.experiments, "_stash_exp")
+    new_mock = mocker.spy(BaseStashQueue, "_stash_exp")
     with pytest.raises(ExperimentExistsError):
         dvc.experiments.run(
             exp_stage.addressing,
@@ -695,7 +696,7 @@ def test_exp_run_recursive(tmp_dir, scm, dvc, run_copy_metrics):
 def test_experiment_name_invalid(tmp_dir, scm, dvc, exp_stage, mocker):
     from dvc.exceptions import InvalidArgumentError
 
-    new_mock = mocker.spy(dvc.experiments, "_stash_exp")
+    new_mock = mocker.spy(BaseStashQueue, "_stash_exp")
     with pytest.raises(InvalidArgumentError):
         dvc.experiments.run(
             exp_stage.addressing,

@@ -2,13 +2,8 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Optional
 
-from ...base import (
-    EXEC_BASELINE,
-    EXEC_BRANCH,
-    EXEC_HEAD,
-    EXEC_MERGE,
-    ExpStashEntry,
-)
+from ...base import EXEC_BASELINE, EXEC_BRANCH, EXEC_HEAD, EXEC_MERGE
+from ...stash import ExpStashEntry
 from ..local import TempDirExecutor, WorkspaceExecutor
 from .base import BaseExecutorManager
 
