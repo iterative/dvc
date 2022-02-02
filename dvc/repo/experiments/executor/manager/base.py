@@ -14,8 +14,8 @@ from ...base import (
     CheckpointExistsError,
     ExperimentExistsError,
     ExpRefInfo,
-    ExpStashEntry,
 )
+from ...stash import ExpStashEntry
 from ..base import EXEC_PID_DIR, BaseExecutor
 from ..local import TempDirExecutor, WorkspaceExecutor
 
