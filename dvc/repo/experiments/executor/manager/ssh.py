@@ -3,7 +3,7 @@ import posixpath
 from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Dict, Generator, Optional, Tuple
 
-from ...base import ExpStashEntry
+from ...stash import ExpStashEntry
 from ..base import BaseExecutor
 from ..ssh import SSHExecutor, _sshfs
 from .base import BaseExecutorManager
