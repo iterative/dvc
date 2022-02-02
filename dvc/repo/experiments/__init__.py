@@ -21,7 +21,6 @@ from .base import (
     BaselineMismatchError,
     ExperimentExistsError,
     ExpRefInfo,
-    ExpStashEntry,
     InvalidExpRefError,
     MultipleBranchError,
 )
@@ -37,6 +36,7 @@ from .executor.manager.local import (
     WorkspaceExecutorManager,
 )
 from .executor.manager.ssh import SSHExecutorManager
+from .stash import ExpStash, ExpStashEntry
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)
@@ -76,13 +76,6 @@ class Experiments:
         repo (dvc.repo.Repo): repo instance that these experiments belong to.
     """
 
-    STASH_EXPERIMENT_FORMAT = "dvc-exp:{rev}:{baseline_rev}:{name}"
-    STASH_EXPERIMENT_RE = re.compile(
-        r"(?:commit: )"
-        r"dvc-exp:(?P<rev>[0-9a-f]+):(?P<baseline_rev>[0-9a-f]+)"
-        r":(?P<name>[^~^:\\?\[\]*]*)"
-        r"(:(?P<branch>.+))?$"
-    )
     BRANCH_RE = re.compile(
         r"^(?P<baseline_rev>[a-f0-9]{7})-(?P<exp_sha>[a-f0-9]+)"
         r"(?P<checkpoint>-checkpoint)?$"
@@ -115,26 +108,12 @@ class Experiments:
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @cached_property
-    def stash(self):
-        from scmrepo.git import Stash
-
-        return Stash(self.scm, EXPS_STASH)
+    def stash(self) -> ExpStash:
+        return ExpStash(self.scm, EXPS_STASH)
 
     @property
     def stash_revs(self) -> Dict[str, ExpStashEntry]:
-        revs = {}
-        for i, entry in enumerate(self.stash):
-            msg = entry.message.decode("utf-8").strip()
-            m = self.STASH_EXPERIMENT_RE.match(msg)
-            if m:
-                revs[entry.new_sha.decode("utf-8")] = ExpStashEntry(
-                    i,
-                    m.group("rev"),
-                    m.group("baseline_rev"),
-                    m.group("branch"),
-                    m.group("name"),
-                )
-        return revs
+        return self.stash.stash_revs
 
     def _stash_exp(
         self,
@@ -312,9 +291,7 @@ class Experiments:
     ):
         if not baseline_rev:
             baseline_rev = rev
-        msg = self.STASH_EXPERIMENT_FORMAT.format(
-            rev=rev, baseline_rev=baseline_rev, name=name if name else ""
-        )
+        msg = ExpStash.format_message(rev, baseline_rev, name)
         if branch:
             return f"{msg}:{branch}"
         return msg
