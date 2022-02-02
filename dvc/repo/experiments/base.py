@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional
+from typing import Optional
 
 from dvc.exceptions import DvcException, InvalidArgumentError
 
@@ -142,20 +142,3 @@ class ExpRefInfo:
         baseline_sha = parts[2] + parts[3] if len(parts) >= 4 else None
         name = parts[4] if len(parts) == 5 else None
         return cls(baseline_sha, name)
-
-
-class ExpStashEntry(NamedTuple):
-    """Experiment stash entry.
-
-    stash_index: EXPS_STASH index for this entry. Can be None if this commit
-        is not pushed onto the stash ref.
-    head_rev: HEAD Git commit to be checked out for this experiment.
-    baseline_rev: Experiment baseline commit.
-    branch: Optional exp (checkpoint) branch name for this experiment.
-    """
-
-    stash_index: Optional[int]
-    head_rev: str
-    baseline_rev: str
-    branch: Optional[str]
-    name: Optional[str]
