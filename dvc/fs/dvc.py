@@ -83,7 +83,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
             except NoRemoteError as exc:
                 raise FileNotFoundError from exc
             if out.is_dir_checksum:
-                checksum = self._get_granular_hash(path, out).value
+                checksum = self._get_granular_hash(path, out, remote).value
             else:
                 checksum = out.hash_info.value
             remote_fs_path = remote_odb.hash_to_path(checksum)
