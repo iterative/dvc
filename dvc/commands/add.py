@@ -106,7 +106,6 @@ def add_parser(subparsers, parent_parser):
             "Number of jobs to run simultaneously "
             "when pushing data to remote."
             "The default value is 4 * cpu_count(). "
-            "For SSH remotes, the default is 4. "
         ),
         metavar="<number>",
     )
