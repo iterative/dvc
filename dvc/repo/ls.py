@@ -50,7 +50,7 @@ def _ls(repo, fs_path, recursive=None, dvc_only=False):
     def onerror(exc):
         raise exc
 
-    fs = repo.dvcfs if dvc_only else repo.repo_fs
+    fs = repo.repo_fs
     infos = []
     try:
         for root, dirs, files in fs.walk(
@@ -73,14 +73,15 @@ def _ls(repo, fs_path, recursive=None, dvc_only=False):
             # broken symlink
             _info = {"type": "file", "isexec": False}
 
-        path = (
-            fs.path.name(fs_path)
-            if fs_path == info
-            else fs.path.relpath(info, fs_path)
-        )
-        ret[path] = {
-            "isout": _info.get("isout", False),
-            "isdir": _info["type"] == "directory",
-            "isexec": _info["isexec"],
-        }
+        if _info.get("outs") or not dvc_only:
+            path = (
+                fs.path.name(fs_path)
+                if fs_path == info
+                else fs.path.relpath(info, fs_path)
+            )
+            ret[path] = {
+                "isout": _info.get("isout", False),
+                "isdir": _info["type"] == "directory",
+                "isexec": _info["isexec"],
+            }
     return ret
