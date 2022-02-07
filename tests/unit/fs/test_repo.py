@@ -491,7 +491,7 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
     ]
 
     actual = []
-    for root, dirs, files in fs.walk(tmp_dir, dvcfiles=True):
+    for root, dirs, files in fs.walk(tmp_dir.fs_path, dvcfiles=True):
         for entry in dirs + files:
             actual.append(os.path.normpath(os.path.join(root, entry)))
 

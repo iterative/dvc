@@ -32,16 +32,18 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         raise NotImplementedError
 
     def _get_key(self, path):
+        from dvc.fs.local import LocalFileSystem
+
         from . import get_cloud_fs
 
         cls, kwargs, fs_path = get_cloud_fs(None, url=path)
 
-        if not path.startswith(self.repo.root_dir):
+        if cls != LocalFileSystem or os.path.isabs(path):
             fs = cls(**kwargs)
             return (cls.scheme, *fs.path.parts(fs_path))
 
         fs_key = "repo"
-        key = self.path.relparts(path, self.repo.root_dir)
+        key = self.path.parts(path)
         if key == (".",):
             key = ()
 
@@ -132,9 +134,8 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     def walk(self, top, topdown=True, onerror=None, **kwargs):
         assert topdown
-        root = os.path.abspath(top)
         try:
-            info = self.info(root)
+            info = self.info(top)
         except FileNotFoundError:
             if onerror is not None:
                 onerror(FileNotFoundError(top))
@@ -145,7 +146,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
                 onerror(NotADirectoryError(top))
             return
 
-        yield from self._walk(root, topdown=topdown, **kwargs)
+        yield from self._walk(top, topdown=topdown, **kwargs)
 
     def find(self, path, prefix=None):
         for root, _, files in self.walk(path):
@@ -165,9 +166,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
     def info(self, path):
         from dvc.data.meta import Meta
 
-        abspath = os.path.abspath(path)
-
-        key = self._get_key(abspath)
+        key = self._get_key(path)
 
         try:
             outs = list(self.repo.index.tree.iteritems(key))
