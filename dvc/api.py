@@ -27,7 +27,8 @@ def get_url(path, repo=None, rev=None, remote=None):
             raise OutputNotFoundError(path, repo)
 
         cloud = info["repo"].cloud
-        md5 = info["repo"].dvcfs.info(fs_path)["md5"]
+        dvc_path = _repo.fs.path.relpath(fs_path, info["repo"].root_dir)
+        md5 = info["repo"].dvcfs.info(dvc_path)["md5"]
         return cloud.get_url_for(remote, checksum=md5)
 
 

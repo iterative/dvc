@@ -305,7 +305,7 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
 
     callback = fsspec.Callback()
     fs.download_file(
-        (tmp_dir / "file").fs_path,
+        "file",
         (tmp_dir / "file2").fs_path,
         callback=callback,
     )
@@ -317,7 +317,7 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
 
     callback = fsspec.Callback()
     fs.download(
-        (tmp_dir / "dir").fs_path,
+        "dir",
         (tmp_dir / "dir2").fs_path,
         callback=callback,
     )
