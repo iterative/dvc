@@ -5,13 +5,13 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.utils.fs import remove
 
-from .base import (
-    EXEC_APPLY,
+from .exceptions import (
     ApplyConflictError,
     BaselineMismatchError,
     InvalidExpRevError,
 )
 from .executor.base import BaseExecutor
+from .refs import EXEC_APPLY
 
 logger = logging.getLogger(__name__)
 

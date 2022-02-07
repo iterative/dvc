@@ -3,11 +3,12 @@ from collections import OrderedDict, defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
 from dvc.utils import error_handler, onerror_collect, relpath
+
+from .refs import ExpRefInfo
 
 if TYPE_CHECKING:
     from dvc.repo import Repo

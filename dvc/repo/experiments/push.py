@@ -9,8 +9,8 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
 from dvc.ui import ui
 
-from .base import ExpRefInfo
 from .exceptions import UnresolvedExpNamesError
+from .refs import ExpRefInfo
 from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
 logger = logging.getLogger(__name__)
