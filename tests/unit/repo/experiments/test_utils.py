@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.repo.experiments.base import EXPS_NAMESPACE, ExpRefInfo
+from dvc.repo.experiments.refs import EXPS_NAMESPACE, ExpRefInfo
 from dvc.repo.experiments.utils import check_ref_format, resolve_name
 
 

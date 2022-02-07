@@ -11,16 +11,9 @@ from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.utils import relpath
 
-from .base import (
-    EXEC_APPLY,
-    EXEC_BRANCH,
-    EXEC_CHECKPOINT,
-    EXEC_NAMESPACE,
-    EXPS_NAMESPACE,
-    EXPS_STASH,
+from .exceptions import (
     BaselineMismatchError,
     ExperimentExistsError,
-    ExpRefInfo,
     InvalidExpRefError,
     MultipleBranchError,
 )
@@ -36,6 +29,15 @@ from .executor.manager.local import (
     WorkspaceExecutorManager,
 )
 from .executor.manager.ssh import SSHExecutorManager
+from .refs import (
+    EXEC_APPLY,
+    EXEC_BRANCH,
+    EXEC_CHECKPOINT,
+    EXEC_NAMESPACE,
+    EXPS_NAMESPACE,
+    EXPS_STASH,
+    ExpRefInfo,
+)
 from .stash import ExpStash, ExpStashEntry
 from .utils import exp_refs_by_rev
 
