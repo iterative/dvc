@@ -4,11 +4,12 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from dvc.repo import Repo, locked  # pylint: disable=unused-import
-from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
 from dvc.utils import error_handler, onerror_collect
+
+from .refs import ExpRefInfo
 
 logger = logging.getLogger(__name__)
 
