@@ -6,6 +6,8 @@ from .exceptions import InvalidExpRefError
 #   refs/exps/01/234abcd.../<exp_name>
 EXPS_NAMESPACE = "refs/exps"
 EXPS_STASH = f"{EXPS_NAMESPACE}/stash"
+WORKSPACE_STASH = EXPS_STASH
+CELERY_STASH = f"{EXPS_NAMESPACE}/celery/stash"
 EXEC_NAMESPACE = f"{EXPS_NAMESPACE}/exec"
 EXEC_APPLY = f"{EXEC_NAMESPACE}/EXEC_APPLY"
 EXEC_CHECKPOINT = f"{EXEC_NAMESPACE}/EXEC_CHECKPOINT"
