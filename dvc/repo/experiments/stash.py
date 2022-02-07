@@ -7,7 +7,7 @@ from scmrepo.git import Stash
 class ExpStashEntry(NamedTuple):
     """Experiment stash entry.
 
-    stash_index: EXPS_STASH index for this entry. Can be None if this commit
+    stash_index: Stash index for this entry. Can be None if this commit
         is not pushed onto the stash ref.
     head_rev: HEAD Git commit to be checked out for this experiment.
     baseline_rev: Experiment baseline commit.
