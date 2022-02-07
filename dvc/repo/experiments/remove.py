@@ -6,6 +6,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
 from .exceptions import UnresolvedExpNamesError
+from .queue.base import QueueEntry
 from .refs import ExpRefInfo
 from .utils import (
     exp_refs,
@@ -39,16 +40,16 @@ def remove(
         return removed
 
     if queue:
-        removed.extend(_clear_stash(repo))
+        removed.extend(_clear_queue(repo))
     if all_commits:
         removed.extend(_clear_all_commits(repo, git_remote))
         return removed
 
     commit_ref_dict: Dict[ExpRefInfo, str] = {}
-    queued_ref_dict: Dict[int, str] = {}
+    queue_entry_dict: Dict[str, QueueEntry] = {}
     if exp_names:
         _resolve_exp_by_name(
-            repo, exp_names, commit_ref_dict, queued_ref_dict, git_remote
+            repo, exp_names, commit_ref_dict, queue_entry_dict, git_remote
         )
 
     if rev:
@@ -59,8 +60,8 @@ def remove(
             _remove_commited_exps(repo.scm, commit_ref_dict, git_remote)
         )
 
-    if queued_ref_dict:
-        removed.extend(_remove_queued_exps(repo, queued_ref_dict))
+    if queue_entry_dict:
+        removed.extend(_remove_queued_exps(repo, queue_entry_dict))
 
     return removed
 
@@ -68,8 +69,8 @@ def remove(
 def _resolve_exp_by_name(
     repo: "Repo",
     exp_names: Union[str, List[str]],
-    commit_ref_dict: Dict[ExpRefInfo, str],
-    queued_ref_dict: Dict[int, str],
+    commit_ref_dict: Dict["ExpRefInfo", str],
+    queue_entry_dict: Dict[str, QueueEntry],
     git_remote: Optional[str],
 ):
     remained = set()
@@ -84,10 +85,10 @@ def _resolve_exp_by_name(
             commit_ref_dict[exp_ref] = exp_name
 
     if not git_remote:
-        stash_index_dict = _get_queued_index_by_names(repo, remained)
-        for exp_name, stash_index in stash_index_dict.items():
-            if stash_index is not None:
-                queued_ref_dict[stash_index] = exp_name
+        _named_entries = _get_queue_entry_by_names(repo, remained)
+        for exp_name, entry in _named_entries.items():
+            if entry is not None:
+                queue_entry_dict[exp_name] = entry
                 remained.remove(exp_name)
 
     if remained:
@@ -111,15 +112,11 @@ def _resolve_exp_by_baseline(
                 commit_ref_dict[ref_info] = ref_info.name
 
 
-def _clear_stash(repo: "Repo") -> List[str]:
+def _clear_queue(repo: "Repo") -> List[str]:
     removed_name_list = []
-    for entry in repo.experiments.stash.list():
-        new_sha = entry.new_sha.decode("utf8")
-        name = repo.experiments.get_exact_name(new_sha)
-        if not name:
-            name = new_sha[:7]
-        removed_name_list.append(name)
-    repo.experiments.stash.clear()
+    for entry in repo.experiments.celery_queue.iter_queued():
+        removed_name_list.append(entry.name or entry.stash_rev[:7])
+    repo.experiments.celery_queue.clear()
     return removed_name_list
 
 
@@ -130,25 +127,25 @@ def _clear_all_commits(repo, git_remote) -> List:
     return _remove_commited_exps(repo.scm, ref_infos, git_remote)
 
 
-def _get_queued_index_by_names(
-    repo,
+def _get_queue_entry_by_names(
+    repo: "Repo",
     exp_name_set: Set[str],
-) -> Mapping[str, Optional[int]]:
+) -> Dict[str, Optional[QueueEntry]]:
     from scmrepo.exceptions import RevError as InternalRevError
 
     result = {}
-    stash_revs = repo.experiments.stash_revs
-    for _, entry in stash_revs.items():
+    rev_entries = {}
+    for entry in repo.experiments.celery_queue.iter_queued():
         if entry.name in exp_name_set:
-            result[entry.name] = entry.stash_index
+            result[entry.name] = entry
+        else:
+            rev_entries[entry.stash_rev] = entry
 
-    for exp_name in exp_name_set:
-        if exp_name in result:
-            continue
+    for exp_name in exp_name_set.difference(result.keys()):
         try:
             rev = repo.scm.resolve_rev(exp_name)
-            if rev in stash_revs:
-                result[exp_name] = stash_revs.get(rev).stash_index
+            if rev in rev_entries:
+                result[exp_name] = rev_entries[rev]
         except InternalRevError:
             result[exp_name] = None
     return result
@@ -174,9 +171,9 @@ def _remove_commited_exps(
     return list(exp_ref_dict.values())
 
 
-def _remove_queued_exps(repo, indexes: Mapping[int, str]) -> List[str]:
-    index_list = list(indexes.keys())
-    index_list.sort(reverse=True)
-    for index in index_list:
-        repo.experiments.stash.drop(index)
-    return list(indexes.values())
+def _remove_queued_exps(
+    repo: "Repo", named_entries: Mapping[str, QueueEntry]
+) -> List[str]:
+    for entry in named_entries.values():
+        repo.experiments.celery_queue.remove(entry.stash_rev)
+    return list(named_entries.keys())

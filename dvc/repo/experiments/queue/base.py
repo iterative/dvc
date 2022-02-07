@@ -165,7 +165,7 @@ class BaseStashQueue(ABC):
                             branch_name = ExpRefInfo.from_ref(branch).name
                         else:
                             branch_name = f"{resume_rev[:7]}"
-                        if self.scm.is_dirty():
+                        if self.scm.is_dirty(untracked_files=False):
                             logger.info(
                                 "Modified checkpoint experiment based on "
                                 "'%s' will be created",
