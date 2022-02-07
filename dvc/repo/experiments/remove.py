@@ -36,8 +36,8 @@ def remove(
 
 
 def _clear_stash(repo):
-    removed = len(repo.experiments.stash)
-    repo.experiments.stash.clear()
+    removed = len(repo.experiments.workspace_queue.stash)
+    repo.experiments.workspace_queue.stash.clear()
     return removed
 
 
@@ -48,7 +48,7 @@ def _clear_all(repo):
 
 
 def _get_exp_stash_index(repo, ref_or_rev: str) -> Optional[int]:
-    stash_revs = repo.experiments.stash_revs
+    stash_revs = repo.experiments.workspace_queue.stash.stash_revs
     for _, entry in stash_revs.items():
         if entry.name == ref_or_rev:
             return entry.stash_index
@@ -100,7 +100,7 @@ def _remove_queued_exps(repo, refs_or_revs: List[str]) -> List[str]:
         if stash_index is None:
             remain_list.append(ref_or_rev)
         else:
-            repo.experiments.stash.drop(stash_index)
+            repo.experiments.workspace_queue.stash.drop(stash_index)
     return remain_list
 
 
