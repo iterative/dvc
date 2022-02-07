@@ -175,6 +175,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def cleanup(self):
         with self._detach_stack:
             self.scm.remove_ref(EXEC_BASELINE)
+            self.scm.remove_ref(EXEC_MERGE)
             if self.scm.get_ref(EXEC_BRANCH):
                 self.scm.remove_ref(EXEC_BRANCH)
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
