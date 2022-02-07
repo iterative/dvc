@@ -1,7 +1,16 @@
 import logging
 import os
+from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Type,
+)
 
 from funcy import cached_property
 
@@ -9,15 +18,17 @@ from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 
-from ..base import ExpRefInfo
-from ..executor.base import BaseExecutor
-from ..stash import ExpStash
-from ..utils import exp_refs_by_rev
+from ..executor.base import EXEC_PID_DIR, EXEC_TMP_DIR, BaseExecutor
+from ..executor.local import WorkspaceExecutor
+from ..refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpRefInfo
+from ..stash import ExpStash, ExpStashEntry
+from ..utils import exp_refs_by_rev, scm_locked
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
+    from dvc.repo.experiments import Experiments
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +60,12 @@ class QueueEntry:
         return cls(**d)
 
 
-class StashQueue:
+class QueueGetResult(NamedTuple):
+    entry: QueueEntry
+    executor: BaseExecutor
+
+
+class BaseStashQueue(ABC):
     """Naive Git-stash based experiment queue.
 
     Maps queued experiments to (Git) stash reflog entries.
@@ -74,14 +90,19 @@ class StashQueue:
         return ExpStash(self.scm, self.ref)
 
     @cached_property
+    def pid_dir(self) -> str:
+        return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
+
+    @cached_property
     def args_file(self):
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
+    @abstractmethod
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
-        return self._stash_exp(*args, **kwargs)
 
-    def get(self) -> QueueEntry:
+    @abstractmethod
+    def get(self) -> QueueGetResult:
         """Pop and return the first item in the queue."""
 
     def _stash_exp(
@@ -334,3 +355,43 @@ class StashQueue:
         # ignored when we `git stash` them since mtime is used to determine
         # whether the file is dirty
         self.scm.add(list(params.keys()))
+
+    @staticmethod
+    @scm_locked
+    def setup_executor(
+        exp: "Experiments",
+        queue_entry: QueueEntry,
+        executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
+    ) -> BaseExecutor:
+        scm = exp.scm
+        stash = ExpStash(scm, queue_entry.stash_ref)
+        stash_rev = queue_entry.stash_rev
+        stash_entry = stash.stash_revs.get(
+            stash_rev,
+            ExpStashEntry(None, stash_rev, stash_rev, None, None),
+        )
+        if stash_entry.stash_index is not None:
+            stash.drop(stash_entry.stash_index)
+
+        scm.set_ref(EXEC_HEAD, stash_entry.head_rev)
+        scm.set_ref(EXEC_MERGE, stash_rev)
+        scm.set_ref(EXEC_BASELINE, stash_entry.baseline_rev)
+
+        # Executor will be initialized with an empty git repo that
+        # we populate by pushing:
+        #   EXEC_HEAD - the base commit for this experiment
+        #   EXEC_MERGE - the unmerged changes (from our stash)
+        #       to be reproduced
+        #   EXEC_BASELINE - the baseline commit for this experiment
+        return executor_cls.from_stash_entry(exp.repo, stash_rev, stash_entry)
+
+    def get_infofile_path(self, name: str) -> str:
+        return os.path.join(
+            self.pid_dir,
+            name,
+            f"{name}{BaseExecutor.INFOFILE_EXT}",
+        )
+
+    @abstractmethod
+    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
+        """Reproduce queued experiments sequentially."""
