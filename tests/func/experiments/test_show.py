@@ -7,13 +7,13 @@ import pytest
 from funcy import first, get_in
 
 from dvc.cli import main
-from dvc.repo.experiments.base import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.executor.base import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
     BaseExecutor,
     ExecutorInfo,
 )
+from dvc.repo.experiments.refs import EXPS_STASH, ExpRefInfo
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
@@ -392,8 +392,8 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
 def test_show_running_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, workspace, mocker
 ):
-    from dvc.repo.experiments.base import EXEC_BASELINE, EXEC_BRANCH
     from dvc.repo.experiments.executor.local import TempDirExecutor
+    from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH
 
     baseline_rev = scm.get_rev()
     dvc.experiments.run(

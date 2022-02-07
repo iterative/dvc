@@ -6,6 +6,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
 from .exceptions import UnresolvedExpNamesError
+from .refs import ExpRefInfo
 from .utils import (
     exp_refs,
     exp_refs_by_baseline,
@@ -17,8 +18,6 @@ from .utils import (
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.scm import Git
-
-    from .base import ExpRefInfo
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ def remove(
         removed.extend(_clear_all_commits(repo, git_remote))
         return removed
 
-    commit_ref_dict: Dict["ExpRefInfo", str] = {}
+    commit_ref_dict: Dict[ExpRefInfo, str] = {}
     queued_ref_dict: Dict[int, str] = {}
     if exp_names:
         _resolve_exp_by_name(
@@ -69,7 +68,7 @@ def remove(
 def _resolve_exp_by_name(
     repo: "Repo",
     exp_names: Union[str, List[str]],
-    commit_ref_dict: Dict["ExpRefInfo", str],
+    commit_ref_dict: Dict[ExpRefInfo, str],
     queued_ref_dict: Dict[int, str],
     git_remote: Optional[str],
 ):
@@ -99,7 +98,7 @@ def _resolve_exp_by_baseline(
     repo,
     rev: str,
     num: int,
-    commit_ref_dict: Dict["ExpRefInfo", str],
+    commit_ref_dict: Dict[ExpRefInfo, str],
     git_remote: Optional[str] = None,
 ):
     rev_dict = iter_revs(repo.scm, [rev], num)
@@ -156,7 +155,7 @@ def _get_queued_index_by_names(
 
 
 def _remove_commited_exps(
-    scm: "Git", exp_ref_dict: Mapping["ExpRefInfo", str], remote: Optional[str]
+    scm: "Git", exp_ref_dict: Mapping[ExpRefInfo, str], remote: Optional[str]
 ) -> List[str]:
     if remote:
         from dvc.scm import TqdmGit
