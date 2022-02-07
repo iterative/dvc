@@ -6,9 +6,9 @@ from funcy import first
 from dvc.config import NoRemoteError
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
-from dvc.repo.experiments import MultipleBranchError
-from dvc.repo.experiments.base import EXEC_APPLY, EXEC_CHECKPOINT
+from dvc.repo.experiments.exceptions import MultipleBranchError
 from dvc.repo.experiments.executor.base import BaseExecutor
+from dvc.repo.experiments.refs import EXEC_APPLY, EXEC_CHECKPOINT
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import InvalidRemoteSCMRepo
 

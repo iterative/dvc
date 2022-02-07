@@ -7,14 +7,8 @@ from typing import TYPE_CHECKING, Deque, Dict, Generator, Optional, Tuple, Type
 
 from dvc.proc.manager import ProcessManager
 
-from ...base import (
-    EXEC_BASELINE,
-    EXEC_HEAD,
-    EXEC_MERGE,
-    CheckpointExistsError,
-    ExperimentExistsError,
-    ExpRefInfo,
-)
+from ...exceptions import CheckpointExistsError, ExperimentExistsError
+from ...refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpRefInfo
 from ...stash import ExpStashEntry
 from ..base import EXEC_PID_DIR, BaseExecutor
 from ..local import TempDirExecutor, WorkspaceExecutor
