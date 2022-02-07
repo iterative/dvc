@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import wraps
 from typing import (
     Callable,
     Dict,
@@ -26,6 +27,33 @@ from .refs import (
     EXPS_STASH,
     ExpRefInfo,
 )
+
+
+def scm_locked(f):
+    # Lock the experiments workspace so that we don't try to perform two
+    # different sequences of git operations at once
+    @wraps(f)
+    def wrapper(exp, *args, **kwargs):
+        from dvc.scm import map_scm_exception
+
+        with map_scm_exception(), exp.scm_lock:
+            return f(exp, *args, **kwargs)
+
+    return wrapper
+
+
+def unlocked_repo(f):
+    @wraps(f)
+    def wrapper(exp, *args, **kwargs):
+        exp.repo.lock.unlock()
+        exp.repo._reset()  # pylint: disable=protected-access
+        try:
+            ret = f(exp, *args, **kwargs)
+        finally:
+            exp.repo.lock.lock()
+        return ret
+
+    return wrapper
 
 
 def exp_refs(
