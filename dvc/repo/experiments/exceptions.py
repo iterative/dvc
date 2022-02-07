@@ -123,3 +123,7 @@ class UnresolvedExpNamesError(InvalidArgumentError):
                 f"Experiment '{unresolved_names}' does not exist "
                 f"in '{git_remote}'"
             )
+
+
+class ExpQueueEmptyError(DvcException):
+    pass
