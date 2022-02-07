@@ -373,7 +373,7 @@ def test_gc_external_output(tmp_dir, dvc, workspace):
 
 
 def test_gc_all_experiments(tmp_dir, scm, dvc):
-    from dvc.repo.experiments.base import ExpRefInfo
+    from dvc.repo.experiments.refs import ExpRefInfo
 
     (foo,) = tmp_dir.dvc_gen("foo", "foo", commit="foo")
     foo_hash = foo.outs[0].hash_info.value

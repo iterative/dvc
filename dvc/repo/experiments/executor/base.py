@@ -25,17 +25,19 @@ from dvc.stage.serialize import to_lockfile
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 
-from ..base import (
+from ..exceptions import (
+    CheckpointExistsError,
+    ExperimentExistsError,
+    UnchangedExperimentError,
+)
+from ..refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
-    CheckpointExistsError,
-    ExperimentExistsError,
     ExpRefInfo,
-    UnchangedExperimentError,
 )
 
 if TYPE_CHECKING:

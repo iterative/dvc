@@ -5,7 +5,7 @@ from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import RevError
 
-from .base import InvalidExpRevError
+from .exceptions import InvalidExpRevError
 from .utils import exp_refs_by_rev
 
 logger = logging.getLogger(__name__)

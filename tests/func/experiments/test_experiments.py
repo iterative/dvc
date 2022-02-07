@@ -47,7 +47,7 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
 
 @pytest.mark.parametrize("workspace", [True, False])
 def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
-    from dvc.repo.experiments.base import ExperimentExistsError
+    from dvc.repo.experiments.exceptions import ExperimentExistsError
 
     dvc.experiments.run(
         exp_stage.addressing,
@@ -175,7 +175,7 @@ def test_add_params(tmp_dir, scm, dvc, changes):
 @pytest.mark.parametrize("queue", [True, False])
 def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     from dvc.exceptions import InvalidArgumentError
-    from dvc.repo.experiments.base import ApplyConflictError
+    from dvc.repo.experiments.exceptions import ApplyConflictError
 
     metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
     results = dvc.experiments.run(
@@ -219,7 +219,7 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
 
 
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
-    from dvc.repo.experiments.base import EXPS_STASH
+    from dvc.repo.experiments.refs import EXPS_STASH
 
     init_rev = scm.get_rev()
     assert dvc.experiments.get_baseline(init_rev) is None
@@ -623,7 +623,7 @@ def test_checkout_targets_deps(tmp_dir, scm, dvc, exp_stage):
 
 @pytest.mark.parametrize("tail", ["", "~1", "^"])
 def test_fix_exp_head(tmp_dir, scm, tail):
-    from dvc.repo.experiments.base import EXEC_BASELINE
+    from dvc.repo.experiments.refs import EXEC_BASELINE
     from dvc.repo.experiments.utils import fix_exp_head
 
     head = "HEAD" + tail
