@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional
 from funcy import first
 
 from dvc.fs import SSHFileSystem
-from dvc.repo.experiments.base import (
+
+from ..refs import (
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
-
 from .base import BaseExecutor, ExecutorInfo, ExecutorResult
 
 if TYPE_CHECKING:

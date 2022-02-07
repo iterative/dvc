@@ -10,7 +10,7 @@ from scmrepo.exceptions import SCMError as _SCMError
 from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import remove
 
-from ..base import (
+from ..refs import (
     EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -26,7 +26,8 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
 
-    from ..base import ExpRefInfo, ExpStashEntry
+    from ..refs import ExpRefInfo
+    from ..stash import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
