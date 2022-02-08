@@ -205,3 +205,17 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
         local_cloud / "37" / "b51d194a7513e45b56f6524f2d51f2"
     )
     assert api.get_url("subrepo/bar") == expected_url
+
+
+@pytest.mark.xfail(reason="https://github.com/iterative/dvc/issues/7341")
+def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
+    erepo_dir.add_remote(config=cloud.config, name="other")
+    erepo_dir.add_remote(config=local_cloud.config, default=True)
+    erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create file")
+    erepo_dir.dvc.push(remote="other")
+    remove(erepo_dir.dvc.odb.local.cache_dir)
+
+    with api.open(
+        os.path.join("dir", "foo"), repo=erepo_dir.as_uri(), remote="other"
+    ) as fd:
+        assert fd.read() == "foo content"
