@@ -1033,6 +1033,13 @@ def test_add_to_cache_file(tmp_dir, dvc, local_cloud):
     assert foo.read_text() == "foo"
 
 
+def test_add_with_out(tmp_dir, scm, dvc):
+    tmp_dir.gen({"foo": "foo"})
+    dvc.add("foo", out="out_foo")
+    gitignore_content = get_gitignore_content()
+    assert "/out_foo" in gitignore_content
+
+
 def test_add_to_cache_different_name(tmp_dir, dvc, local_cloud):
     local_cloud.gen({"data": {"foo": "foo", "bar": "bar"}})
 

@@ -404,6 +404,7 @@ class Stage(params.StageParams):
         out.transfer(source, odb=odb, jobs=kwargs.get("jobs"))
         if not to_remote:
             out.checkout()
+            out.ignore()
 
     @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
