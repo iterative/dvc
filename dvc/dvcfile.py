@@ -3,6 +3,8 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
 
+from ruamel.yaml import CommentedMap
+
 from dvc.exceptions import DvcException
 from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
 from dvc.stage import serialize
@@ -342,6 +344,25 @@ def lockfile_schema(data: _T) -> _T:
     return schema(data)
 
 
+# https://stackoverflow.com/questions/40226610/ruamel-yaml-equivalent-of-sort-keys
+def rec_sort(d):
+    try:
+        if isinstance(d, CommentedMap):
+            return d.sort()
+    except AttributeError:
+        pass
+    if isinstance(d, dict):
+        # could use dict in newer python versions
+        res = CommentedMap()
+        for k in sorted(d.keys()):
+            res[k] = rec_sort(d[k])
+        return res
+    if isinstance(d, list):
+        for idx, elem in enumerate(d):
+            d[idx] = rec_sort(elem)
+    return d
+
+
 class Lockfile(FileMixin):
     SCHEMA = staticmethod(lockfile_schema)  # type: ignore[assignment]
 
@@ -386,6 +407,7 @@ class Lockfile(FileMixin):
                 logger.info("Updating lock file '%s'", self.relpath)
 
             data["stages"].update(stage_data)
+            data["stages"] = rec_sort(data["stages"])
 
         if modified:
             self.repo.scm_context.track_file(self.relpath)

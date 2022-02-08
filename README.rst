@@ -19,6 +19,7 @@ Warning! This fork contains several modifications:
  * Ternary operator in variables substitution, e.g.: ``${cond?var1:"some string"}``
  * ``--allow-no-hash`` option for ``pull`` and ``checkout``: Don't treat missing hash as error. Simply don't checkout
    these files. It makes perfect sense for non-source files (outputs of some stages).
+ * ``stages`` in ``dvc.lock`` are sorted to simplify changes detection
 
 |
 
