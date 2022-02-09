@@ -8,7 +8,6 @@ from typing import (
     Callable,
     Dict,
     Iterable,
-    List,
     Optional,
     TextIO,
     Tuple,
@@ -16,7 +15,7 @@ from typing import (
     cast,
 )
 
-from funcy import compact, lremove
+from funcy import compact, lremove, lsplit
 from rich.rule import Rule
 from rich.syntax import Syntax
 
@@ -24,13 +23,13 @@ from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
 from dvc.stage.serialize import to_pipeline_file
 from dvc.types import OptStr
+from dvc.utils import humanize
 from dvc.utils.serialize import dumps_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.dvcfile import DVCFile
     from rich.tree import Tree
-    from dvc.dependency import Dependency
 
 from dvc.ui import ui
 
@@ -155,7 +154,7 @@ def init_interactive(
         styled=True,
     )
 
-    tree_label = "DVC assumes the following workspace structure:"
+    tree_label = "Experiment project structure:"
     display_workspace_tree(workspace, tree_label, stderr=True)
     ret.update(
         compact(
@@ -216,26 +215,29 @@ def is_file(path: str) -> bool:
     return bool(ext)
 
 
-def init_deps(deps: Iterable["Dependency"]) -> List[str]:
+def init_deps(stage: PipelineStage, log: bool = False) -> None:
+    from funcy import rpartial
+
     from dvc.dependency import ParamsDependency
     from dvc.fs.local import localfs
 
-    new_deps = [
-        dep
-        for dep in deps
-        if not isinstance(dep, ParamsDependency) and not dep.exists
-    ]
-    for dep in new_deps:
-        fs_path = dep.fs_path
-        if not is_file(fs_path):
-            localfs.makedirs(fs_path)
-            continue
+    new_deps = [dep for dep in stage.deps if not dep.exists]
+    params, deps = lsplit(rpartial(isinstance, ParamsDependency), new_deps)
 
-        localfs.makedirs(localfs.path.parent(fs_path), exist_ok=True)
-        with localfs.open(fs_path, "w", encoding="utf-8"):
+    if log:
+        paths = map("[green]{0}[/]".format, new_deps)
+        ui.write(f"Creating {humanize.join(paths)}", styled=True)
+
+    # always create a file for params, detect file/folder based on extension
+    # for other dependencies
+    dirs = [dep.fs_path for dep in deps if not is_file(dep.fs_path)]
+    files = [dep.fs_path for dep in deps + params if is_file(dep.fs_path)]
+    for path in dirs:
+        localfs.makedirs(path)
+    for path in files:
+        localfs.makedirs(localfs.path.parent(path), exist_ok=True)
+        with localfs.open(path, "w", encoding="utf-8"):
             pass
-
-    return [dep.def_path for dep in new_deps]
 
 
 def init(
@@ -327,9 +329,9 @@ def init(
             stage.dump(update_lock=False)
             stage.ignore_outs()
             if not interactive:
-                label = "Creating experiment project structure:"
+                label = "Experiment project structure:"
                 display_workspace_tree(context, label)
-            init_deps(stage.deps)
+            init_deps(stage, log=not interactive)
             if params:
                 repo.scm_context.track_file(params)
     else:

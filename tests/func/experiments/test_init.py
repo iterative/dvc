@@ -298,7 +298,8 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
         assert "'data' does not exist, the directory will be created." in err
         assert not out
         return
-    assert "Creating experiment project structure: " in out
+    assert "Experiment project structure: " in out
+    assert "Creating script.py and data" in out
 
 
 @pytest.mark.timeout(5, func_only=True)
@@ -384,7 +385,8 @@ def test_init_interactive_live(
         assert "'data' does not exist, the directory will be created." in err
         assert not out
         return
-    assert "Creating experiment project structure: " in out
+    assert "Experiment project structure: " in out
+    assert "Creating script.py and data" in out
 
 
 @pytest.mark.parametrize(
