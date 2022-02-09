@@ -1,3 +1,4 @@
+from dvc.ignore import destroy as destroy_dvcignore
 from dvc.utils.fs import remove
 
 from . import locked
@@ -15,4 +16,5 @@ def _destroy_stages(repo):
 def destroy(repo):
     _destroy_stages(repo)
     repo.close()
+    destroy_dvcignore(repo.root_dir)
     remove(repo.dvc_dir)

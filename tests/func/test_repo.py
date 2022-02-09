@@ -19,6 +19,7 @@ def test_destroy(tmp_dir, dvc, run_copy):
     # Remove all the files related to DVC
     for path in [
         ".dvc",
+        ".dvcignore",
         "file.dvc",
         "file2.dvc",
         "dir.dvc",
