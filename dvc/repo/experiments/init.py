@@ -154,7 +154,7 @@ def init_interactive(
         styled=True,
     )
 
-    tree_label = "Experiment project structure:"
+    tree_label = "Using experiment project structure:"
     display_workspace_tree(workspace, tree_label, stderr=True)
     ret.update(
         compact(
@@ -329,7 +329,7 @@ def init(
             stage.dump(update_lock=False)
             stage.ignore_outs()
             if not interactive:
-                label = "Experiment project structure:"
+                label = "Using experiment project structure:"
                 display_workspace_tree(context, label)
             init_deps(stage, log=not interactive)
             if params:
