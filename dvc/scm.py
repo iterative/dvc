@@ -111,8 +111,10 @@ def clone(url: str, to_path: str, **kwargs):
 def resolve_rev(scm: "Git", rev: str) -> str:
     from scmrepo.exceptions import RevError as InternalRevError
 
+    from dvc.repo.experiments.utils import fix_exp_head
+
     try:
-        return scm.resolve_rev(rev)
+        return scm.resolve_rev(fix_exp_head(scm, rev))
     except InternalRevError as exc:
         # `scm` will only resolve git branch and tag names,
         # if rev is not a sha it may be an abbreviated experiment name
@@ -141,7 +143,6 @@ def iter_revs(
     all_commits: bool = False,
     all_experiments: bool = False,
 ) -> Mapping[str, List[str]]:
-    from dvc.repo.experiments.utils import fix_exp_head
 
     if num < 1 and num != -1:
         raise InvalidArgumentError(f"Invalid number of commits '{num}'")
@@ -160,8 +161,7 @@ def iter_revs(
             if num == n:
                 break
             try:
-                head = fix_exp_head(scm, f"{rev}~{n}")
-                assert head
+                head = f"{rev}~{n}"
                 revs.append(resolve_rev(scm, head))
             except RevError:
                 break

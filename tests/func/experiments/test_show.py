@@ -388,7 +388,7 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
 def test_show_running_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, workspace, mocker
 ):
-    from dvc.repo.experiments.base import EXEC_BRANCH
+    from dvc.repo.experiments.base import EXEC_BASELINE, EXEC_BRANCH
     from dvc.repo.experiments.executor.local import TempDirExecutor
 
     baseline_rev = scm.get_rev()
@@ -422,6 +422,8 @@ def test_show_running_checkpoint(
     )
     if workspace:
         scm.set_ref(EXEC_BRANCH, str(exp_ref), symbolic=True)
+        scm.set_ref(EXEC_BASELINE, str(baseline_rev))
+        scm.checkout(str(exp_ref))
 
     results = dvc.experiments.show()
 

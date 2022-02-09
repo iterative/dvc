@@ -5,7 +5,6 @@ from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
 from dvc.repo import locked
-from dvc.repo.experiments.utils import fix_exp_head
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +26,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
 
     repo_fs = RepoFileSystem(self)
 
-    a_rev = fix_exp_head(self.scm, a_rev)
-    b_rev = fix_exp_head(self.scm, b_rev) if b_rev else "workspace"
+    b_rev = b_rev if b_rev else "workspace"
     results = {}
     missing_targets = {}
     for rev in self.brancher(revs=[a_rev, b_rev]):
