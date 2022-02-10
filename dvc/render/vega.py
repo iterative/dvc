@@ -1,12 +1,23 @@
 import json
 import os
 from copy import deepcopy
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-from dvc.render.base import BadTemplateError, Renderer
-from dvc.render.data import to_datapoints
+from funcy import cached_property
+
+from dvc.render.base import REVISION_FIELD, BadTemplateError, Renderer
+from dvc.render.data import Converter, to_datapoints
 from dvc.render.utils import get_files
 from dvc.repo.plots.template import Template
+
+
+def _flatten_datapoints(rev_datapoints: Dict[str, List[Dict]]) -> List[Dict]:
+    flat = []
+    for revision, datapoints in rev_datapoints.items():
+        datapoints_cp = deepcopy(datapoints)
+        Converter.update(datapoints_cp, {REVISION_FIELD: revision})
+        flat.extend(datapoints_cp)
+    return flat
 
 
 class VegaRenderer(Renderer):
@@ -37,7 +48,8 @@ class VegaRenderer(Renderer):
     def _revisions(self):
         return list(self.data.keys())
 
-    def _fill_template(self, template, datapoints, props=None):
+    # TODO Shouldn't it be a part of plots?
+    def _fill_template(self, template, datapoints, props=None, fill_data=True):
         props = props or {}
 
         content = deepcopy(template.content)
@@ -52,7 +64,8 @@ class VegaRenderer(Renderer):
         if props.get("y"):
             template.check_field_exists(datapoints, props.get("y"))
 
-        content = template.fill_anchor(content, "data", datapoints)
+        if fill_data:
+            content = template.fill_anchor(content, "data", datapoints)
 
         props.setdefault("title", "")
         props.setdefault("x_label", props.get("x"))
@@ -66,27 +79,38 @@ class VegaRenderer(Renderer):
 
         return content
 
-    def get_filled_template(self):
-        props = self.properties
-        datapoints, final_props = to_datapoints(self.data, props)
+    @cached_property
+    def _converted_data(self):
+        return to_datapoints(self.data, self.properties)
+
+    def _get_filled_template(self, fill_data=True):
+        datapoints, final_props = self._converted_data
+        flat_datapoints = _flatten_datapoints(datapoints)
 
         if datapoints:
             filled_template = self._fill_template(
-                self.template, datapoints, final_props
+                self.template,
+                flat_datapoints,
+                final_props,
+                fill_data=fill_data,
             )
 
             return filled_template
-        return None
+        return ""
 
-    def asdict(self):
-        filled_template = self.get_filled_template()
+    # TODO rename
+    def asdict(self, fill_data=True):
+        filled_template = self._get_filled_template(fill_data)
         if filled_template:
             return json.loads(filled_template)
         return {}
 
     def as_json(self, **kwargs) -> Optional[str]:
 
-        content = self.asdict()
+        fill_data = kwargs.get("fill_data", True)
+
+        content = self.asdict(fill_data)
+        datapoints, _ = self._converted_data
 
         return json.dumps(
             [
@@ -94,12 +118,14 @@ class VegaRenderer(Renderer):
                     self.TYPE_KEY: self.TYPE,
                     self.REVISIONS_KEY: self._revisions(),
                     "content": content,
+                    "datapoints": datapoints,
                 }
             ],
         )
 
     def partial_html(self, **kwargs):
-        return self.get_filled_template() or ""
+        filled_template = self._get_filled_template()
+        return filled_template
 
     @staticmethod
     def matches(data):

@@ -4,13 +4,9 @@ from typing import Dict, List
 import dpath.util
 
 
-def get_files(data: Dict) -> List:
-    files = set()
-    for rev in data.keys():
-        for file in data[rev].get("data", {}).keys():
-            files.add(file)
-    sorted_files = sorted(files)
-    return sorted_files
+def get_files(plots_data: Dict) -> List:
+    values = dpath.util.values(plots_data, ["*", "*"])
+    return sorted({key for submap in values for key in submap.keys()})
 
 
 def group_by_filename(plots_data: Dict) -> List[Dict]:
@@ -35,7 +31,6 @@ def match_renderers(plots_data, templates):
 
     renderers = []
     for group in group_by_filename(plots_data):
-
         plot_properties = squash_plots_properties(group)
         template = templates.load(plot_properties.get("template", None))
 
