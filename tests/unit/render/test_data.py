@@ -150,10 +150,12 @@ def test_to_datapoints():
 
     datapoints, resolved_properties = to_datapoints(input_data, props)
 
-    assert datapoints == [
-        {"v": 1, "v2": 0.1, "v3": 0.01, "rev": "revision"},
-        {"v": 2, "v2": 0.2, "v3": 0.02, "rev": "revision"},
-    ]
+    assert datapoints == {
+        "revision": [
+            {"v": 1, "v2": 0.1, "v3": 0.01},
+            {"v": 2, "v2": 0.2, "v3": 0.02},
+        ]
+    }
     assert resolved_properties == {
         "fields": {"v", "v2", "v3"},
         "x": "v2",

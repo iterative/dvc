@@ -276,6 +276,7 @@ def test_plots_diff_json(dvc, mocker, capsys):
             "HEAD~10",
             "HEAD~1",
             "--json",
+            "--split",
             "--targets",
             "plot.csv",
             "-o",
@@ -295,7 +296,7 @@ def test_plots_diff_json(dvc, mocker, capsys):
 
     assert cmd.run() == 0
 
-    show_json_mock.assert_called_once_with(renderers, "out")
+    show_json_mock.assert_called_once_with(renderers, "out", True)
 
     render_mock.assert_not_called()
 

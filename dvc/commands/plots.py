@@ -14,12 +14,14 @@ from dvc.utils import format_link
 logger = logging.getLogger(__name__)
 
 
-def _show_json(renderers, path: None):
+def _show_json(renderers, path: None, split=False):
     if any(r.needs_output_path for r in renderers) and not path:
         raise DvcException("Output path ('-o') is required!")
 
     result = {
-        renderer.filename: json.loads(renderer.as_json(path=path))
+        renderer.filename: json.loads(
+            renderer.as_json(path=path, fill_data=not split)
+        )
         for renderer in renderers
     }
     if result:
@@ -80,10 +82,11 @@ class CmdPlots(CmdBase):
                     filter(lambda r: isinstance(r, VegaRenderer), renderers)
                 )
                 if renderer:
-                    ui.write_json(renderer.asdict())
+                    content = renderer.asdict()
+                    ui.write_json(content)
                 return 0
             if self.args.json:
-                _show_json(renderers, self.args.out)
+                _show_json(renderers, self.args.out, self.args.split)
                 return 0
 
             rel: str = self.args.out or "dvc_plots"
@@ -353,6 +356,9 @@ def _add_ui_arguments(parser):
         action="store_true",
         default=False,
         help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--split", action="store_true", default=False, help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--open",

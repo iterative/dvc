@@ -180,15 +180,14 @@ class Converter:
 def to_datapoints(data: Dict, props: Dict):
     converter = Converter(props)
 
-    datapoints = []
+    datapoints: Dict[str, List[Dict]] = {}
     for revision, rev_data in data.items():
+        datapoints[revision] = []
         for _, file_data in rev_data.get("data", {}).items():
             if "data" in file_data:
                 processed, final_props = converter.convert(
                     file_data.get("data")
                 )
 
-                Converter.update(processed, {REVISION_FIELD: revision})
-
-                datapoints.extend(processed)
+                datapoints[revision].extend(processed)
     return datapoints, final_props

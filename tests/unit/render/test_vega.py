@@ -341,6 +341,7 @@ def test_should_resolve_template(tmp_dir, dvc, template_path, target_name):
     )
 
 
+# TODO remove content checks
 def test_as_json(tmp_dir, scm, dvc):
     metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
     data = {"workspace": {"data": {"file.json": {"data": metric}}}}
@@ -355,3 +356,20 @@ def test_as_json(tmp_dir, scm, dvc):
     assert plot_as_json["type"] == "vega"
     assert plot_as_json["revisions"] == ["workspace"]
     assert plot_as_json["content"] == plot_content
+
+
+def test_as_json_split(tmp_dir, scm, dvc):
+    metric = [{"a": 1, "b": 2, "c": 3}, {"a": 2, "b": 3, "c": 4}]
+    data = {"workspace": {"data": {"file.json": {"data": metric}}}}
+    props = {"fields": {"b"}}
+
+    renderer = VegaRenderer(
+        data, template=dvc.plots.templates.load(), properties=props
+    )
+    plot_content = renderer.asdict(fill_data=False)
+    plot_as_json = first(json.loads(renderer.as_json(fill_data=False)))
+
+    assert plot_as_json["type"] == "vega"
+    assert plot_as_json["revisions"] == ["workspace"]
+    assert plot_as_json["content"] == plot_content
+    assert plot_as_json["datapoints"] == renderer._converted_data[0]
