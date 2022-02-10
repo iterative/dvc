@@ -20,7 +20,7 @@ LIVE_SCRIPT = dedent(
            metrics_logger.log("loss", 1-i/r)
            metrics_logger.log("accuracy", i/r)
            image = Image.new("RGB", (10,10), (i,i,i))
-           metrics_logger.log("image.jpg", image)
+           metrics_logger.log_image("image.jpg", image)
            metrics_logger.next_step()"""
 )
 
@@ -131,10 +131,10 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
     assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
     files = get_files(plots_data)
-    assert os.path.join("logs", "accuracy.tsv") in files
-    assert os.path.join("logs", "loss.tsv") in files
-    assert os.path.join("logs", "0", "image.jpg") in files
-    assert os.path.join("logs", "1", "image.jpg") in files
+    assert os.path.join("logs", "scalars", "accuracy.tsv") in files
+    assert os.path.join("logs", "scalars", "loss.tsv") in files
+    assert os.path.join("logs", "images", "0", "image.jpg") in files
+    assert os.path.join("logs", "images", "1", "image.jpg") in files
 
 
 def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
@@ -146,8 +146,8 @@ def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
     assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
     files = get_files(plots_data)
-    assert os.path.join("logs", "accuracy.tsv") in files
-    assert os.path.join("logs", "loss.tsv") in files
+    assert os.path.join("logs", "scalars", "accuracy.tsv") in files
+    assert os.path.join("logs", "scalars", "loss.tsv") in files
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
