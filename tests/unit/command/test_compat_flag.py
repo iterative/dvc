@@ -14,6 +14,7 @@ def _id_gen(val) -> str:
 @pytest.mark.parametrize(
     "args, key",
     [
+        (["dag", "--show-md"], "markdown"),
         (["diff", "--show-json"], "json"),
         (["diff", "--show-md"], "markdown"),
         (["experiments", "diff", "--show-json"], "json"),
