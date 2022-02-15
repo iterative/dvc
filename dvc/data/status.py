@@ -132,9 +132,7 @@ def status(
             hashes.difference_update(exists)
 
     if hashes:
-        exists.update(
-            odb.hashes_exist(hashes, name=odb.fs_path, jobs=jobs, **kwargs)
-        )
+        exists.update(odb.hashes_exist(hashes, name=odb.fs_path, jobs=jobs))
     return StatusResult(
         {hash_infos[hash_] for hash_ in exists},
         {hash_infos[hash_] for hash_ in (hashes - exists)},
