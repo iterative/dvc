@@ -213,7 +213,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
         "Please retry with an existing parameters file.\n"
         "Path to a parameters file [params.yaml, n to omit]:"
     ) in err
-    assert out == "Creating script.py\n"
+    assert out == "Created script.py.\n"
 
 
 def test_init_with_no_defaults_interactive(tmp_dir, dvc):
@@ -298,7 +298,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
         assert "'data' does not exist, the directory will be created." in err
     else:
         assert "Using experiment project structure: " in out
-    assert "Creating script.py and data" in out
+    assert "Created script.py and data" in out
 
 
 @pytest.mark.timeout(5, func_only=True)
@@ -384,7 +384,7 @@ def test_init_interactive_live(
         assert "'data' does not exist, the directory will be created." in err
     else:
         assert "Using experiment project structure: " in out
-    assert "Creating script.py and data" in out
+    assert "Created script.py and data" in out
 
 
 @pytest.mark.parametrize(

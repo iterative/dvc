@@ -226,7 +226,7 @@ def init_deps(stage: PipelineStage) -> None:
 
     if new_deps:
         paths = map("[green]{0}[/]".format, new_deps)
-        ui.write(f"Creating {humanize.join(paths)}", styled=True)
+        ui.write(f"Created {humanize.join(paths)}.", styled=True)
 
     # always create a file for params, detect file/folder based on extension
     # for other dependencies
