@@ -213,7 +213,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
         "Please retry with an existing parameters file.\n"
         "Path to a parameters file [params.yaml, n to omit]:"
     ) in err
-    assert not out
+    assert out == "Creating script.py\n"
 
 
 def test_init_with_no_defaults_interactive(tmp_dir, dvc):
@@ -296,9 +296,8 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-        assert not out
-        return
-    assert "Using experiment project structure: " in out
+    else:
+        assert "Using experiment project structure: " in out
     assert "Creating script.py and data" in out
 
 
@@ -383,9 +382,8 @@ def test_init_interactive_live(
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-        assert not out
-        return
-    assert "Using experiment project structure: " in out
+    else:
+        assert "Using experiment project structure: " in out
     assert "Creating script.py and data" in out
 
 

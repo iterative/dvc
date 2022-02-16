@@ -69,7 +69,6 @@ class CmdExperimentsInit(CmdBase):
         )
 
         text = ui.rich_text.assemble(
-            "\n" if self.args.interactive else "",
             "Created ",
             (self.args.name, "bright_blue"),
             " stage in ",
