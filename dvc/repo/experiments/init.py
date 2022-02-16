@@ -215,7 +215,7 @@ def is_file(path: str) -> bool:
     return bool(ext)
 
 
-def init_deps(stage: PipelineStage, log: bool = False) -> None:
+def init_deps(stage: PipelineStage) -> None:
     from funcy import rpartial
 
     from dvc.dependency import ParamsDependency
@@ -224,7 +224,7 @@ def init_deps(stage: PipelineStage, log: bool = False) -> None:
     new_deps = [dep for dep in stage.deps if not dep.exists]
     params, deps = lsplit(rpartial(isinstance, ParamsDependency), new_deps)
 
-    if log:
+    if new_deps:
         paths = map("[green]{0}[/]".format, new_deps)
         ui.write(f"Creating {humanize.join(paths)}", styled=True)
 
@@ -319,23 +319,26 @@ def init(
 
     from dvc.ui.prompt import Confirm
 
-    if not interactive or Confirm.ask(
+    if interactive and not Confirm.ask(
         "Do you want to add the above contents to dvc.yaml?",
         console=ui.error_console,
         default=True,
         stream=stream,
     ):
-        with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
-            stage.dump(update_lock=False)
-            stage.ignore_outs()
-            if not interactive:
-                label = "Using experiment project structure:"
-                display_workspace_tree(context, label)
-            init_deps(stage, log=not interactive)
-            if params:
-                repo.scm_context.track_file(params)
-    else:
         raise DvcException("Aborting ...")
+
+    if interactive:
+        ui.error_write()  # add a newline after the prompts
+
+    with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
+        stage.dump(update_lock=False)
+        stage.ignore_outs()
+        if not interactive:
+            label = "Using experiment project structure:"
+            display_workspace_tree(context, label)
+        init_deps(stage)
+        if params:
+            repo.scm_context.track_file(params)
 
     assert isinstance(stage, PipelineStage)
     return stage
