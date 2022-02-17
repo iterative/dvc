@@ -5,7 +5,6 @@ import pytest
 
 from dvc.cli import main
 from dvc.commands.experiments.init import CmdExperimentsInit
-from dvc.exceptions import DvcException
 from dvc.repo.experiments.init import init
 from dvc.stage.exceptions import DuplicateStageName
 
@@ -93,21 +92,6 @@ def test_init_with_no_defaults_non_interactive(tmp_dir, scm, dvc):
     scm._reset()
     assert not (tmp_dir / "dvc.lock").exists()
     assert scm.is_tracked("dvc.yaml")
-
-
-def test_abort_confirmation(tmp_dir, dvc):
-    (tmp_dir / "param").dump({"foo": 1})
-    inp = io.StringIO("./script\nscript\ndata\nmodel\nparam\nmetric\nplt\nn")
-    with pytest.raises(DvcException) as exc:
-        init(
-            dvc,
-            interactive=True,
-            defaults=CmdExperimentsInit.DEFAULTS,
-            stream=inp,
-        )
-    assert str(exc.value) == "Aborting ..."
-    assert not (tmp_dir / "dvc.yaml").exists()
-    assert not (tmp_dir / "dvc.lock").exists()
 
 
 @pytest.mark.parametrize(
@@ -213,7 +197,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
         "Please retry with an existing parameters file.\n"
         "Path to a parameters file [params.yaml, n to omit]:"
     ) in err
-    assert out == "Created script.py.\n"
+    assert "Created script.py." in out
 
 
 def test_init_with_no_defaults_interactive(tmp_dir, dvc):
@@ -296,8 +280,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-    else:
-        assert "Using experiment project structure: " in out
+    assert "Using experiment project structure: " in out
     assert "Created script.py and data" in out
 
 
@@ -382,8 +365,7 @@ def test_init_interactive_live(
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-    else:
-        assert "Using experiment project structure: " in out
+    assert "Using experiment project structure: " in out
     assert "Created script.py and data" in out
 
 
