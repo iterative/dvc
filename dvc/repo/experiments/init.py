@@ -12,19 +12,14 @@ from typing import (
     TextIO,
     Tuple,
     Union,
-    cast,
 )
 
 from funcy import compact, lremove, lsplit
-from rich.rule import Rule
-from rich.syntax import Syntax
 
 from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
-from dvc.stage.serialize import to_pipeline_file
 from dvc.types import OptStr
 from dvc.utils import humanize
-from dvc.utils.serialize import dumps_yaml
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -89,15 +84,13 @@ def build_workspace_tree(workspace: Dict[str, str], label: str) -> "Tree":
     return tree
 
 
-def display_workspace_tree(
-    workspace: Dict[str, str], label: str, stderr: bool = False
-) -> None:
+def display_workspace_tree(workspace: Dict[str, str], label: str) -> None:
     d = workspace.copy()
     d.pop("cmd", None)
 
     if d:
-        ui.write(build_workspace_tree(d, label), styled=True, stderr=stderr)
-    ui.write(styled=True, stderr=stderr)
+        ui.write(build_workspace_tree(d, label), styled=True)
+    ui.write(styled=True)
 
 
 PIPELINE_FILE_LINK = "https://s.dvc.org/g/pipeline-files"
@@ -112,55 +105,40 @@ def init_interactive(
     stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
     command = provided.pop("cmd", None)
-    primary = lremove(provided.keys(), ["code", "data", "models", "params"])
-    secondary = lremove(
-        provided.keys(), ["live"] if live else ["metrics", "plots"]
+    prompts = lremove(provided.keys(), ["code", "data", "models", "params"])
+    prompts.extend(
+        lremove(provided.keys(), ["live"] if live else ["metrics", "plots"])
     )
-    prompts = primary + secondary
-
-    workspace = {**defaults, **provided}
-    if not live and "live" not in provided:
-        workspace.pop("live", None)
-    for key in ("plots", "metrics"):
-        if live and key not in provided:
-            workspace.pop(key, None)
 
     ret: Dict[str, str] = {}
+    if prompts or command:
+        ui.error_write(
+            f"This command will guide you to set up a [bright_blue]{name}[/]",
+            "stage in [green]dvc.yaml[/].",
+            f"\nSee [repr.url]{PIPELINE_FILE_LINK}[/].\n",
+            styled=True,
+        )
+
     if command:
         ret["cmd"] = command
-
-    if not prompts and command:
-        return ret
-
-    ui.error_write(
-        f"This command will guide you to set up a [bright_blue]{name}[/]",
-        "stage in [green]dvc.yaml[/].",
-        f"\nSee [repr.url]{PIPELINE_FILE_LINK}[/].\n",
-        styled=True,
-    )
-
-    if not command:
+    else:
         ret.update(
             compact(_prompts(["cmd"], allow_omission=False, stream=stream))
         )
         if prompts:
             ui.error_write(styled=True)
 
-    if not prompts:
-        return ret
-
-    ui.error_write(
-        "Enter the paths for dependencies and outputs of the command.",
-        styled=True,
-    )
-
-    tree_label = "Using experiment project structure:"
-    display_workspace_tree(workspace, tree_label, stderr=True)
-    ret.update(
-        compact(
-            _prompts(prompts, defaults, validator=validator, stream=stream)
+    if prompts:
+        ui.error_write(
+            "Enter the paths for dependencies and outputs of the command.",
+            styled=True,
         )
-    )
+        ret.update(
+            compact(
+                _prompts(prompts, defaults, validator=validator, stream=stream)
+            )
+        )
+        ui.error_write(styled=True)
     return ret
 
 
@@ -311,31 +289,10 @@ def init(
         **{"checkpoints" if checkpoint_out else "outs": compact([models])},
     )
 
-    if interactive:
-        ui.error_write(Rule(style="green"), styled=True)
-        _yaml = dumps_yaml(to_pipeline_file(cast(PipelineStage, stage)))
-        syn = Syntax(_yaml, "yaml", theme="ansi_dark")
-        ui.error_write(syn, styled=True)
-
-    from dvc.ui.prompt import Confirm
-
-    if interactive and not Confirm.ask(
-        "Do you want to add the above contents to dvc.yaml?",
-        console=ui.error_console,
-        default=True,
-        stream=stream,
-    ):
-        raise DvcException("Aborting ...")
-
-    if interactive:
-        ui.error_write()  # add a newline after the prompts
-
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
         stage.ignore_outs()
-        if not interactive:
-            label = "Using experiment project structure:"
-            display_workspace_tree(context, label)
+        display_workspace_tree(context, "Using experiment project structure:")
         init_deps(stage)
         if params:
             repo.scm_context.track_file(params)
