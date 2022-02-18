@@ -1,9 +1,13 @@
 import logging
 import os
+import threading
 import typing
 
+from fsspec import AbstractFileSystem
+from funcy import cached_property, wrap_prop
+
 from ._callback import DEFAULT_CALLBACK
-from .base import FileSystem
+from .fsspec_wrapper import FSSpecWrapper
 
 if typing.TYPE_CHECKING:
     from dvc.types import AnyPath
@@ -11,7 +15,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
+class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     """DVC repo fs.
 
     Args:
@@ -74,81 +78,25 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     def open(  # type: ignore
         self, path: str, mode="r", encoding=None, **kwargs
-    ):  # pylint: disable=arguments-renamed
+    ):  # pylint: disable=arguments-renamed,arguments-differ
         fs, fspath = self._get_fs_path(path, **kwargs)
         return fs.open(fspath, mode=mode, encoding=encoding)
 
-    def exists(self, path):  # pylint: disable=arguments-renamed
-        try:
-            self.info(path)
-            return True
-        except FileNotFoundError:
-            return False
-
-    def isdir(self, path):  # pylint: disable=arguments-renamed
-        try:
-            return self.info(path)["type"] == "directory"
-        except FileNotFoundError:
-            return False
-
-    def isfile(self, path):  # pylint: disable=arguments-renamed
-        try:
-            return self.info(path)["type"] == "file"
-        except FileNotFoundError:
-            return False
-
-    def _walk(self, root, topdown=True, **kwargs):
-        dirs = set()
-        files = []
-
-        root_parts = self._get_key(root)
-        root_len = len(root_parts)
-        try:
-            for key, (meta, hash_info) in self.repo.index.tree.iteritems(
-                prefix=root_parts
-            ):  # noqa: B301
-                if hash_info and hash_info.isdir and meta and not meta.obj:
-                    raise FileNotFoundError
-
-                if key == root_parts:
-                    continue
-
-                if hash_info.isdir:
-                    continue
-
-                name = key[root_len]
-                if len(key) > root_len + 1:
-                    dirs.add(name)
-                    continue
-
-                files.append(name)
-        except KeyError:
-            pass
-
-        assert topdown
-        dirs = list(dirs)
-        yield root, dirs, files
-
-        for dname in dirs:
-            yield from self._walk(self.path.join(root, dname))
-
-    def walk(self, top, topdown=True, **kwargs):
-        assert topdown
-        try:
-            info = self.info(top)
-        except FileNotFoundError:
-            return
-
+    def ls(self, path, detail=True, **kwargs):
+        info = self.info(path)
         if info["type"] != "directory":
-            return
+            return [info] if detail else [path]
 
-        yield from self._walk(top, topdown=topdown, **kwargs)
+        root_key = self._get_key(path)
+        entries = [
+            self.sep.join((path, name))
+            for name in self.repo.index.tree.ls(prefix=root_key)
+        ]
 
-    def find(self, path, prefix=None):
-        for root, _, files in self.walk(path):
-            for fname in files:
-                # NOTE: os.path.join is ~5.5 times slower
-                yield f"{root}{os.sep}{fname}"
+        if not detail:
+            return entries
+
+        return [self.info(epath) for epath in entries]
 
     def isdvc(self, path, recursive=False, strict=True):
         try:
@@ -159,7 +107,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         recurse = recursive or not strict
         return bool(info.get("outs") if recurse else info.get("isout"))
 
-    def info(self, path):
+    def info(self, path, **kwargs):
         from dvc.data.meta import Meta
 
         key = self._get_key(path)
@@ -175,6 +123,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
             "isexec": False,
             "isdvc": False,
             "outs": outs,
+            "name": path,
         }
 
         if len(outs) > 1 and outs[0][0] != key:
@@ -206,12 +155,10 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
             ret["type"] = "directory"
         return ret
 
-    def get_file(
-        self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        fs, path = self._get_fs_path(from_info)
+    def get_file(self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs):
+        fs, path = self._get_fs_path(rpath)
         fs.get_file(  # pylint: disable=protected-access
-            path, to_file, callback=callback, **kwargs
+            path, lpath, callback=callback, **kwargs
         )
 
     def checksum(self, path):
@@ -220,3 +167,20 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         if md5:
             return md5
         raise NotImplementedError
+
+
+class DvcFileSystem(FSSpecWrapper):
+    def _prepare_credentials(self, **config):
+        return config
+
+    @wrap_prop(threading.Lock())
+    @cached_property
+    def fs(self):
+        return _DvcFileSystem(**self.fs_args)
+
+    def isdvc(self, path, **kwargs):
+        return self.fs.isdvc(path, **kwargs)
+
+    @property
+    def repo(self):
+        return self.fs.repo

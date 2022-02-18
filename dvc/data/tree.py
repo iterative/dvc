@@ -197,6 +197,23 @@ class Tree(HashFile):
         tree.digest()
         return tree
 
+    def ls(self, prefix=None):
+        kwargs = {}
+        if prefix:
+            kwargs["prefix"] = prefix
+
+        ret = []
+
+        def node_factory(_, key, children, *args):
+            if key == prefix:
+                list(children)
+            else:
+                ret.append(key[-1])
+
+        self._trie.traverse(node_factory, **kwargs)
+
+        return ret
+
 
 def du(odb, tree):
     try:
