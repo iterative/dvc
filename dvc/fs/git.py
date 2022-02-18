@@ -1,10 +1,10 @@
 import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from funcy import cached_property, wrap_prop
 
-from .fsspec_wrapper import AnyFSPath, FSSpecWrapper
+from .fsspec_wrapper import FSSpecWrapper
 
 if TYPE_CHECKING:
     from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
@@ -50,15 +50,3 @@ class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     @property
     def rev(self) -> str:
         return self.fs.rev
-
-    def isfile(self, path: AnyFSPath) -> bool:
-        return self.fs.isfile(path)
-
-    def walk(
-        self,
-        top: AnyFSPath,
-        topdown: bool = True,
-        onerror: Callable[[OSError], None] = None,
-        **kwargs: Any,
-    ):
-        return self.fs.walk(top, topdown=topdown, onerror=onerror, **kwargs)
