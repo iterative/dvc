@@ -132,18 +132,14 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         for dname in dirs:
             yield from self._walk(self.path.join(root, dname))
 
-    def walk(self, top, topdown=True, onerror=None, **kwargs):
+    def walk(self, top, topdown=True, **kwargs):
         assert topdown
         try:
             info = self.info(top)
         except FileNotFoundError:
-            if onerror is not None:
-                onerror(FileNotFoundError(top))
             return
 
         if info["type"] != "directory":
-            if onerror is not None:
-                onerror(NotADirectoryError(top))
             return
 
         yield from self._walk(top, topdown=topdown, **kwargs)

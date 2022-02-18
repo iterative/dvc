@@ -154,7 +154,7 @@ class FileSystem:
         """Check if this file is an independent copy."""
         return False  # We can't be sure by default
 
-    def walk(self, top, topdown=True, onerror=None, **kwargs):
+    def walk(self, top, topdown=True, **kwargs):
         """Return a generator with (root, dirs, files)."""
         raise NotImplementedError
 

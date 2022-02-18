@@ -51,14 +51,15 @@ class LocalFileSystem(FileSystem):
     def iscopy(self, path):
         return not (System.is_symlink(path) or System.is_hardlink(path))
 
-    def walk(self, top, topdown=True, onerror=None, **kwargs):
+    def walk(self, top, topdown=True, **kwargs):
         """Directory fs generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
         """
         for root, dirs, files in os.walk(
-            top, topdown=topdown, onerror=onerror
+            top,
+            topdown=topdown,
         ):
             yield os.path.normpath(root), dirs, files
 
