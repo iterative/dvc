@@ -204,20 +204,31 @@ def test_diff_show_markdown_and_hash(mocker, show_hash):
     mock_show_markdown.assert_called_once_with(diff, show_hash, False)
 
 
-def test_no_changes(mocker, capsys):
-    args = parse_args(["diff", "--json"])
+@pytest.mark.parametrize(
+    "opts",
+    (
+        [],
+        ["a_rev", "b_rev"],
+        ["--targets", "."],
+        ["--hide-missing"],
+    ),
+)
+@pytest.mark.parametrize(
+    "show, expected",
+    (
+        ([], ""),
+        (["--json"], "{}"),
+        (["--md"], "| Status   | Path   |\n|----------|--------|"),
+    ),
+)
+def test_no_changes(mocker, capsys, opts, show, expected):
+    args = parse_args(["diff", *opts, *show])
     cmd = args.func(args)
     mocker.patch("dvc.repo.Repo.diff", return_value={})
 
     assert 0 == cmd.run()
     out, _ = capsys.readouterr()
-    assert "{}" in out
-
-    args = parse_args(["diff"])
-    cmd = args.func(args)
-    assert 0 == cmd.run()
-    out, _ = capsys.readouterr()
-    assert not out
+    assert expected == out.strip()
 
 
 def test_show_markdown(capsys):
