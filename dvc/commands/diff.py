@@ -128,7 +128,7 @@ class CmdDiff(CmdBase):
             show_hash = self.args.show_hash
             hide_missing = self.args.b_rev or self.args.hide_missing
             if hide_missing:
-                del diff["not in cache"]
+                diff.pop("not in cache", None)
 
             for key, entries in diff.items():
                 entries = sorted(
