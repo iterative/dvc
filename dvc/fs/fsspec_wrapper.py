@@ -1,15 +1,6 @@
 import os
 import shutil
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    Optional,
-    overload,
-)
+from typing import IO, TYPE_CHECKING, Any, Dict, Iterator, Optional, overload
 
 from funcy import cached_property
 from tqdm.utils import CallbackIOWrapper
@@ -149,10 +140,9 @@ class FSSpecWrapper(FileSystem):
         self,
         top: AnyFSPath,
         topdown: bool = True,
-        onerror: Callable[[OSError], None] = None,
         **kwargs: Any,
     ):
-        return self.fs.walk(top, topdown=topdown, onerror=onerror, **kwargs)
+        return self.fs.walk(top, topdown=topdown, **kwargs)
 
 
 # pylint: disable=abstract-method

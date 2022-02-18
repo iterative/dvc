@@ -47,23 +47,16 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
 
 
 def _ls(repo, fs_path, recursive=None, dvc_only=False):
-    def onerror(exc):
-        raise exc
-
     fs = repo.repo_fs
     infos = []
-    try:
-        for root, dirs, files in fs.walk(
-            fs_path, onerror=onerror, dvcfiles=True
-        ):
-            entries = chain(files, dirs) if not recursive else files
-            infos.extend(fs.path.join(root, entry) for entry in entries)
-            if not recursive:
-                break
-    except NotADirectoryError:
+    for root, dirs, files in fs.walk(fs_path, dvcfiles=True):
+        entries = chain(files, dirs) if not recursive else files
+        infos.extend(fs.path.join(root, entry) for entry in entries)
+        if not recursive:
+            break
+
+    if not infos and fs.isfile(fs_path):
         infos.append(fs_path)
-    except FileNotFoundError:
-        return {}
 
     ret = {}
     for info in infos:
