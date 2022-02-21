@@ -44,7 +44,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         fs_key = "repo"
         key = self.path.parts(path)
-        if key == (".",):
+        if key == (".",) or key == ("",):
             key = ()
 
         return (fs_key, *key)

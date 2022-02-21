@@ -10,6 +10,20 @@ from dvc.hash_info import HashInfo
 from dvc.utils.fs import remove
 
 
+@pytest.mark.parametrize(
+    "path, key",
+    [
+        ("", ("repo",)),
+        (".", ("repo",)),
+        ("foo", ("repo", "foo")),
+        (os.path.join("dir", "foo"), ("repo", "dir", "foo")),
+    ],
+)
+def test_get_key(tmp_dir, dvc, path, key):
+    fs = DvcFileSystem(repo=dvc)
+    assert fs._get_key(path) == key
+
+
 def test_exists(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
     dvc.add("foo")
