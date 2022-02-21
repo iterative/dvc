@@ -862,5 +862,5 @@ def test_show_experiments_pcp(tmp_dir, mocker):
 
     kwargs = td.to_parallel_coordinates.call_args[1]
 
-    assert kwargs["output_path"] == str(tmp_dir / "dvc_plots")
+    assert kwargs["output_path"] == str(tmp_dir / "dvc_plots" / "index.html")
     assert kwargs["color_by"] == "Experiment"

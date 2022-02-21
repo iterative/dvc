@@ -432,14 +432,15 @@ def show_experiments(
             for x in td.column("Experiment")
         ]
         out = kwargs.get("out") or "dvc_plots"
+        output_file = os.path.join(out, "index.html")
         ui.write(
             td.to_parallel_coordinates(
-                output_path=os.path.abspath(out),
+                output_path=os.path.abspath(output_file),
                 color_by=kwargs.get("sort_by") or "Experiment",
             )
         )
         if kwargs.get("open"):
-            return ui.open_browser(os.path.join(out, "index.html"))
+            return ui.open_browser(output_file)
 
     else:
         td.render(

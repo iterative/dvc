@@ -55,7 +55,7 @@ def test_plots_diff(dvc, mocker, plots_data):
     cmd = cli_args.func(cli_args)
     m = mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
     render_mock = mocker.patch(
-        "dvc.render.utils.render", return_value="html_path"
+        "dvc_render.render_html", return_value="html_path"
     )
 
     assert cmd.run() == 0
@@ -100,7 +100,7 @@ def test_plots_show_vega(dvc, mocker, plots_data):
         return_value=plots_data,
     )
     render_mock = mocker.patch(
-        "dvc.render.utils.render", return_value="html_path"
+        "dvc_render.render_html", return_value="html_path"
     )
 
     assert cmd.run() == 0
@@ -127,10 +127,10 @@ def test_plots_diff_vega(dvc, mocker, capsys, plots_data):
     cmd = cli_args.func(cli_args)
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
     mocker.patch(
-        "dvc.render.VegaRenderer.asdict",
-        return_value={"this": "is vega json"},
+        "dvc_render.VegaRenderer.partial_html",
+        return_value=json.dumps({"this": "is vega json"}),
     )
-    render_mock = mocker.patch("dvc.render.utils.render")
+    render_mock = mocker.patch("dvc_render.render_html")
     assert cmd.run() == 0
 
     out, _ = capsys.readouterr()
@@ -156,7 +156,7 @@ def test_plots_diff_open(tmp_dir, dvc, mocker, capsys, plots_data, auto_open):
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
 
     index_path = tmp_dir / "dvc_plots" / "index.html"
-    mocker.patch("dvc.render.utils.render", return_value=index_path)
+    mocker.patch("dvc_render.render_html", return_value=index_path)
 
     assert cmd.run() == 0
     mocked_open.assert_called_once_with(index_path.as_uri())
@@ -178,7 +178,7 @@ def test_plots_diff_open_WSL(tmp_dir, dvc, mocker, plots_data):
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
 
     index_path = tmp_dir / "dvc_plots" / "index.html"
-    mocker.patch("dvc.render.utils.render", return_value=index_path)
+    mocker.patch("dvc_render.render_html", return_value=index_path)
 
     assert cmd.run() == 0
     mocked_open.assert_called_once_with(str(Path("dvc_plots") / "index.html"))
@@ -253,9 +253,9 @@ def test_should_call_render(tmp_dir, mocker, capsys, plots_data, output):
     output = output or "dvc_plots"
     index_path = tmp_dir / output / "index.html"
     renderers = mocker.MagicMock()
-    mocker.patch("dvc.render.utils.match_renderers", return_value=renderers)
+    mocker.patch("dvc.render.match.match_renderers", return_value=renderers)
     render_mock = mocker.patch(
-        "dvc.render.utils.render", return_value=index_path
+        "dvc_render.render_html", return_value=index_path
     )
 
     assert cmd.run() == 0
@@ -264,7 +264,9 @@ def test_should_call_render(tmp_dir, mocker, capsys, plots_data, output):
     assert index_path.as_uri() in out
 
     render_mock.assert_called_once_with(
-        cmd.repo, renderers, path=tmp_dir / output, html_template_path=None
+        renderers=renderers,
+        output_file=Path(tmp_dir / output / "index.html"),
+        template_path=None,
     )
 
 
@@ -289,66 +291,21 @@ def test_plots_diff_json(dvc, mocker, capsys):
     mocker.patch("dvc.repo.plots.diff.diff", return_value=data)
 
     renderers = mocker.MagicMock()
-    mocker.patch("dvc.render.utils.match_renderers", return_value=renderers)
-    render_mock = mocker.patch("dvc.render.utils.render")
+    mocker.patch("dvc.render.match.match_renderers", return_value=renderers)
+    render_mock = mocker.patch("dvc_render.render_html")
 
     show_json_mock = mocker.patch("dvc.commands.plots._show_json")
 
     assert cmd.run() == 0
 
-    show_json_mock.assert_called_once_with(renderers, "out", True)
+    show_json_mock.assert_called_once_with(renderers, True)
 
     render_mock.assert_not_called()
 
 
-def test_show_json_requires_out(dvc, mocker, capsys):
-    cli_args = parse_args(
-        [
-            "plots",
-            "diff",
-            "HEAD~10",
-            "HEAD~1",
-            "--json",
-            "--targets",
-            "plot.csv",
-        ]
-    )
-    cmd = cli_args.func(cli_args)
-
-    mocker.patch("dvc.repo.plots.diff.diff")
-
-    renderer = mocker.MagicMock()
-    renderer.needs_output_path = False
-    renderer.filename = "foo"
-    renderer.as_json.return_value = "{}"
-    mocker.patch("dvc.render.utils.match_renderers", return_value=[renderer])
-
-    assert cmd.run() == 0
-
-    renderer.needs_output_path = True
-
-    assert cmd.run() == 1
-
-    cli_args = parse_args(
-        [
-            "plots",
-            "diff",
-            "HEAD~10",
-            "HEAD~1",
-            "--json",
-            "--targets",
-            "plot.csv",
-            "-o",
-            "out",
-        ]
-    )
-    cmd = cli_args.func(cli_args)
-    assert cmd.run() == 0
-
-
 @pytest.mark.parametrize("target", (("t1"), (None)))
 def test_plots_templates(tmp_dir, dvc, mocker, capsys, target):
-    assert not os.path.exists(dvc.plots.templates.templates_dir)
+    assert not os.path.exists(dvc.plots.templates_dir)
     mocker.patch(
         "dvc.commands.plots.CmdPlotsTemplates.TEMPLATES_CHOICES",
         ["t1", "t2"],
@@ -361,21 +318,21 @@ def test_plots_templates(tmp_dir, dvc, mocker, capsys, target):
     cli_args = parse_args(arguments)
     assert cli_args.func == CmdPlotsTemplates
 
-    init_mock = mocker.patch("dvc.repo.plots.template.PlotTemplates.init")
+    dump_mock = mocker.patch("dvc_render.vega_templates.dump_templates")
     cmd = cli_args.func(cli_args)
 
     assert cmd.run() == 0
     out, _ = capsys.readouterr()
 
-    init_mock.assert_called_once_with(
+    dump_mock.assert_called_once_with(
         output=os.path.abspath("output"), targets=[target] if target else None
     )
     assert "Templates have been written into 'output'." in out
 
 
 def test_plots_templates_choices(tmp_dir, dvc):
-    from dvc.repo.plots.template import PlotTemplates
+    from dvc_render import TEMPLATES
 
     assert CmdPlotsTemplates.TEMPLATES_CHOICES == list(
-        pluck_attr("DEFAULT_NAME", PlotTemplates.TEMPLATES)
+        pluck_attr("DEFAULT_NAME", TEMPLATES)
     )

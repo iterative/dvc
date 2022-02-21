@@ -6,7 +6,7 @@ import pytest
 from funcy import first
 
 from dvc import stage as stage_module
-from dvc.render.utils import get_files
+from dvc.render.match import get_files
 
 LIVE_SCRIPT = dedent(
     """

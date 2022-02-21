@@ -2,13 +2,13 @@ from collections import OrderedDict
 
 import pytest
 
-from dvc.render.data import (
-    Converter,
+from dvc.render.vega_converter import (
     FieldsNotFoundError,
+    PlotDataStructureError,
+    VegaConverter,
     _filter_fields,
     _find_first_list,
     _lists,
-    to_datapoints,
 )
 
 
@@ -19,6 +19,9 @@ def test_find_first_list_in_dict():
 
     assert _find_first_list(dmetric, fields=set()) == m1
     assert _find_first_list(dmetric, fields={"x"}) == m2
+
+    with pytest.raises(PlotDataStructureError):
+        _find_first_list(dmetric, fields={"foo"})
 
 
 def test_filter_fields():
@@ -57,14 +60,20 @@ def test_finding_lists(dictionary, expected_result):
             # default x and y
             {"metric": [{"v": 1}, {"v": 2}]},
             {},
-            [{"v": 1, "step": 0}, {"v": 2, "step": 1}],
+            [
+                {"v": 1, "step": 0, "filename": "f", "rev": "r"},
+                {"v": 2, "step": 1, "filename": "f", "rev": "r"},
+            ],
             {"x": "step", "y": "v"},
         ),
         (
             # filter fields
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"fields": {"v"}},
-            [{"v": 1, "step": 0}, {"v": 2, "step": 1}],
+            [
+                {"v": 1, "step": 0, "filename": "f", "rev": "r"},
+                {"v": 2, "step": 1, "filename": "f", "rev": "r"},
+            ],
             {
                 "x": "step",
                 "y": "v",
@@ -75,7 +84,10 @@ def test_finding_lists(dictionary, expected_result):
             # choose x and y
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"x": "v", "y": "v2"},
-            [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}],
+            [
+                {"v": 1, "v2": 0.1, "filename": "f", "rev": "r"},
+                {"v": 2, "v2": 0.2, "filename": "f", "rev": "r"},
+            ],
             {"x": "v", "y": "v2"},
         ),
         (
@@ -88,8 +100,8 @@ def test_finding_lists(dictionary, expected_result):
             },
             {"x": "v3", "y": "v4", "fields": {"v"}},
             [
-                {"v": 1, "v3": 0.01, "v4": 0.001},
-                {"v": 2, "v3": 0.02, "v4": 0.002},
+                {"v": 1, "v3": 0.01, "v4": 0.001, "filename": "f", "rev": "r"},
+                {"v": 2, "v3": 0.02, "v4": 0.002, "filename": "f", "rev": "r"},
             ],
             {"x": "v3", "y": "v4", "fields": {"v", "v3", "v4"}},
         ),
@@ -104,60 +116,41 @@ def test_finding_lists(dictionary, expected_result):
                 },
             },
             {"x": "v", "y": "v2"},
-            [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}],
+            [
+                {"v": 1, "v2": 0.1, "filename": "f", "rev": "r"},
+                {"v": 2, "v2": 0.2, "filename": "f", "rev": "r"},
+            ],
             {"x": "v", "y": "v2"},
         ),
     ],
 )
 def test_convert(
-    input_data, properties, expected_datapoints, expected_properties
+    input_data,
+    properties,
+    expected_datapoints,
+    expected_properties,
 ):
-    converter = Converter(properties)
-    datapoints, resolved_properties = converter.convert(input_data)
+    converter = VegaConverter(properties)
+    datapoints, resolved_properties = converter.convert(
+        revision="r", filename="f", data=input_data
+    )
 
     assert datapoints == expected_datapoints
     assert resolved_properties == expected_properties
 
 
 def test_convert_skip_step():
-    converter = Converter()
+    converter = VegaConverter()
     converter.skip_step("append_index")
 
     datapoints, resolved_properties = converter.convert(
-        {"a": "b", "metric": [{"v": 1}, {"v": 2}]}
+        revision="r",
+        filename="f",
+        data={"a": "b", "metric": [{"v": 1}, {"v": 2}]},
     )
 
-    assert datapoints == [{"v": 1}, {"v": 2}]
+    assert datapoints == [
+        {"v": 1, "filename": "f", "rev": "r"},
+        {"v": 2, "filename": "f", "rev": "r"},
+    ]
     assert resolved_properties == {"x": "step", "y": "v"}
-
-
-def test_to_datapoints():
-    input_data = {
-        "revision": {
-            "data": {
-                "filename": {
-                    "data": {
-                        "metric": [
-                            {"v": 1, "v2": 0.1, "v3": 0.01, "v4": 0.001},
-                            {"v": 2, "v2": 0.2, "v3": 0.02, "v4": 0.002},
-                        ]
-                    }
-                }
-            }
-        }
-    }
-    props = {"fields": {"v"}, "x": "v2", "y": "v3"}
-
-    datapoints, resolved_properties = to_datapoints(input_data, props)
-
-    assert datapoints == {
-        "revision": [
-            {"v": 1, "v2": 0.1, "v3": 0.01},
-            {"v": 2, "v2": 0.2, "v3": 0.02},
-        ]
-    }
-    assert resolved_properties == {
-        "fields": {"v", "v2", "v3"},
-        "x": "v2",
-        "y": "v3",
-    }

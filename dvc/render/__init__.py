@@ -1,4 +1,5 @@
-from .image import ImageRenderer
-from .vega import VegaRenderer
-
-RENDERERS = [ImageRenderer, VegaRenderer]
+INDEX_FIELD = "step"
+REVISION_FIELD = "rev"
+REVISIONS_KEY = "revisions"
+TYPE_KEY = "type"
+SRC_FIELD = "src"

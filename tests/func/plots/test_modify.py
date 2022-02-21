@@ -4,7 +4,6 @@ import pytest
 
 from dvc.dvcfile import PIPELINE_LOCK
 from dvc.repo.plots import PropsNotFoundError
-from dvc.repo.plots.template import TemplateNotFoundError
 from dvc.utils import relpath
 
 
@@ -47,6 +46,8 @@ def test_plots_modify_should_not_change_lockfile(
 
 
 def test_plots_modify_not_existing_template(dvc):
+    from dvc_render.vega_templates import TemplateNotFoundError
+
     with pytest.raises(TemplateNotFoundError):
         dvc.plots.modify(
             "metric.json", props={"template": "not-existing-template.json"}

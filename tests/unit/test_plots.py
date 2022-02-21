@@ -1,7 +1,7 @@
 import json
 import os
 
-from dvc.render.utils import get_files
+from dvc.render.match import get_files
 
 
 def test_plots_order(tmp_dir, dvc):

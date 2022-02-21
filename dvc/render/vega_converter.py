@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Set, Union
 from funcy import first, project
 
 from dvc.exceptions import DvcException
-from dvc.render.base import INDEX_FIELD, REVISION_FIELD
+from dvc.render import INDEX_FIELD, REVISION_FIELD
 
 
 class FieldsNotFoundError(DvcException):
@@ -76,19 +76,13 @@ def _append_index(datapoints: List[Dict]) -> List[Dict]:
     return datapoints
 
 
-class Converter:
+class VegaConverter:
     """
     Class that takes care of converting unspecified data blob
     (Dict or List[Dict]) into datapoints (List[Dict]).
     If some properties that are required by Template class are missing
     ('x', 'y') it will attempt to fill in the blanks.
     """
-
-    @staticmethod
-    def update(datapoints: List[Dict], update_dict: Dict):
-        for data_point in datapoints:
-            data_point.update(update_dict)
-        return datapoints
 
     def __init__(self, plot_properties: Optional[Dict] = None):
         plot_properties = plot_properties or {}
@@ -162,7 +156,7 @@ class Converter:
             else:
                 self.inferred_props["y"] = inferred_y
 
-    def convert(self, data):
+    def convert(self, revision: str, filename: str, data: Dict):
         """
         Convert the data. Fill necessary fields ('x', 'y') and return both
         generated datapoints and updated properties.
@@ -174,20 +168,8 @@ class Converter:
 
         self._infer_y(processed)
 
+        for datapoint in processed:
+            datapoint[REVISION_FIELD] = revision
+            datapoint["filename"] = filename
+
         return processed, {**self.props, **self.inferred_props}
-
-
-def to_datapoints(data: Dict, props: Dict):
-    converter = Converter(props)
-
-    datapoints: Dict[str, List[Dict]] = {}
-    for revision, rev_data in data.items():
-        datapoints[revision] = []
-        for _, file_data in rev_data.get("data", {}).items():
-            if "data" in file_data:
-                processed, final_props = converter.convert(
-                    file_data.get("data")
-                )
-
-                datapoints[revision].extend(processed)
-    return datapoints, final_props
