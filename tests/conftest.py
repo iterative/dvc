@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from contextlib import suppress
@@ -164,19 +165,10 @@ def pytest_configure(config):
 
 @pytest.fixture
 def custom_template(tmp_dir, dvc):
-    try:
-        import importlib_resources
-    except ImportError:
-        import importlib.resources as importlib_resources
-
-    content = (
-        importlib_resources.files("dvc.repo.plots")
-        / "templates"
-        / "simple.json"
-    ).read_text()
+    from dvc_render.vega_templates import SimpleLinearTemplate
 
     template = tmp_dir / "custom_template.json"
-    template.write_text(content)
+    template.write_text(json.dumps(SimpleLinearTemplate.DEFAULT_CONTENT))
     return template
 
 

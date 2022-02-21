@@ -195,12 +195,14 @@ class Plots:
             out.plot.pop(prop)
 
     def modify(self, path, props=None, unset=None):
+        from dvc_render.vega_templates import get_template
+
         from dvc.dvcfile import Dvcfile
 
         props = props or {}
         template = props.get("template")
         if template:
-            self.templates.get_template(template)
+            get_template(template, self.templates_dir)
 
         (out,) = self.repo.find_outs_by_path(path)
         if not out.plot and unset is not None:
@@ -225,10 +227,8 @@ class Plots:
         dvcfile.dump(out.stage, update_lock=False)
 
     @cached_property
-    def templates(self):
-        from .template import PlotTemplates
-
-        return PlotTemplates(self.repo.dvc_dir)
+    def templates_dir(self):
+        return os.path.join(self.repo.dvc_dir, "plots")
 
 
 def _is_plot(out: "Output") -> bool:

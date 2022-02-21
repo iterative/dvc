@@ -1,9 +1,11 @@
 import logging
+import os
 from typing import TYPE_CHECKING, List, Optional
 
+from dvc_render import render_html
 from funcy import once_per_args
 
-from dvc.render.utils import match_renderers, render
+from dvc.render.match import match_renderers
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,13 @@ def create_summary(out):
 
     metrics, plots = out.repo.live.show(out.fs_path)
 
-    html_path = out.fs_path + "_dvc_plots"
+    html_path = os.path.join(out.fs_path + "_dvc_plots", "index.html")
 
-    renderers = match_renderers(plots, out.repo.plots.templates)
-    index_path = render(
-        out.repo, renderers, metrics=metrics, path=html_path, refresh_seconds=5
+    renderers = match_renderers(
+        plots, templates_dir=out.repo.plots.templates_dir
+    )
+    index_path = render_html(
+        renderers, output_file=html_path, metrics=metrics, refresh_seconds=5
     )
     if out.repo.config["plots"].get("auto_open", False):
         webbrowser_open(index_path)
