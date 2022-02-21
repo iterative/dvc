@@ -47,8 +47,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return (cls.scheme, *fs.path.parts(fs_path))
 
         fs_key = "repo"
-        key = self.path.parts(path)
-        if key == (".",) or key == ("",):
+        key = path.split(self.sep)
+        if key == ["."] or key == [""]:
             key = ()
 
         return (fs_key, *key)
@@ -88,10 +88,13 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return [info] if detail else [path]
 
         root_key = self._get_key(path)
-        entries = [
-            self.sep.join((path, name))
-            for name in self.repo.index.tree.ls(prefix=root_key)
-        ]
+        try:
+            entries = [
+                self.sep.join((path, name)) if path else name
+                for name in self.repo.index.tree.ls(prefix=root_key)
+            ]
+        except KeyError as exc:
+            raise FileNotFoundError from exc
 
         if not detail:
             return entries

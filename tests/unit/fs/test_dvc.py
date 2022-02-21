@@ -21,7 +21,7 @@ from dvc.utils.fs import remove
 )
 def test_get_key(tmp_dir, dvc, path, key):
     fs = DvcFileSystem(repo=dvc)
-    assert fs._get_key(path) == key
+    assert fs.fs._get_key(path) == key
 
 
 def test_exists(tmp_dir, dvc):

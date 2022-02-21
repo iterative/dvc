@@ -140,6 +140,7 @@ class RepoDependency(Dependency):
                 raise PathMissingError(
                     self.def_path, self.def_repo[self.PARAM_URL]
                 ) from exc
+
             staging = copy(staging)
             staging.read_only = True
 

@@ -8,6 +8,7 @@ from scmrepo.git import Git
 
 from dvc.config import NoRemoteError
 from dvc.data.db import ODBManager
+from dvc.data.tree import TreeError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.stage.exceptions import StagePathNotFoundError
@@ -292,7 +293,7 @@ def test_push_wildcard_from_bare_git_repo(
         dvc_repo.dvc.imp(os.fspath(tmp_dir), "dirextra")
         clean_staging()
 
-        with pytest.raises(PathMissingError):
+        with pytest.raises(TreeError):
             dvc_repo.dvc.imp(os.fspath(tmp_dir), "dir123")
 
 

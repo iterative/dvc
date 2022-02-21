@@ -19,6 +19,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class TreeError(Exception):
+    pass
+
+
 def _try_load(
     odbs: Iterable["ObjectDB"],
     hash_info: "HashInfo",
@@ -201,6 +205,12 @@ class Tree(HashFile):
         kwargs = {}
         if prefix:
             kwargs["prefix"] = prefix
+
+        # FIXME do I need to _load() here too?
+
+        meta, hash_info = self._trie.get(prefix, (None, None))
+        if hash_info and hash_info.isdir and meta and not meta.obj:
+            raise TreeError("missing information about f{hash_info}")
 
         ret = []
 
