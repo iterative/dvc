@@ -1,7 +1,6 @@
 import contextlib
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partialmethod
 from multiprocessing import cpu_count
 from typing import ClassVar, Dict, Optional
@@ -14,6 +13,7 @@ from dvc.fs._callback import DEFAULT_CALLBACK, FsspecCallback
 from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
+from dvc.utils.threadpool import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -317,25 +317,19 @@ class FileSystem:
         download_files = FsspecCallback.wrap_fn(callback, self._download_file)
         max_workers = jobs or self.jobs
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
-                executor.submit(download_files, from_info, to_info)
-                for from_info, to_info in zip(from_infos, to_infos)
-            ]
-
             # NOTE: unlike pulling/fetching cache, where we need to
             # download everything we can, not raising an error here might
             # turn very ugly, as the user might think that he has
             # downloaded a complete directory, while having a partial one,
             # which might cause unexpected results in his pipeline.
-            for future in as_completed(futures):
-                # NOTE: executor won't let us raise until all futures that
-                # it has are finished, so we need to cancel them ourselves
-                # before re-raising.
-                exc = future.exception()
-                if exc:
-                    for entry in futures:
-                        entry.cancel()
-                    raise exc
+            try:
+                for _ in executor.imap_unordered(
+                    download_files, from_infos, to_infos, cancel_futures=True
+                ):
+                    pass
+            except Exception:
+                executor.shutdown(wait=False)
+                raise
 
     def _download_file(
         self,

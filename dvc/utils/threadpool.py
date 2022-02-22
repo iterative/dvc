@@ -13,11 +13,18 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
         return self._max_workers
 
     def imap_unordered(
-        self, fn: Callable[..., _T], *iterables: Iterable[Any]
+        self,
+        fn: Callable[..., _T],
+        *iterables: Iterable[Any],
+        cancel_futures: bool = False,
     ) -> Iterator[_T]:
         """Lazier version of map that does not preserve ordering of results.
 
         It does not create all the futures at once to reduce memory usage.
+
+        If cancel_futures is True and a future in the taskset raises an
+        exception, any unfinished futures in the taskset will be cancelled
+        before the exception is re-raised to the executor.
         """
 
         def create_taskset(n: int) -> Set[futures.Future]:
@@ -29,6 +36,12 @@ class ThreadPoolExecutor(futures.ThreadPoolExecutor):
             done, tasks = futures.wait(
                 tasks, return_when=futures.FIRST_COMPLETED
             )
-            for fut in done:
-                yield fut.result()
+            try:
+                for fut in done:
+                    yield fut.result()
+            except Exception:
+                if cancel_futures:
+                    for fut in tasks:
+                        fut.cancel()
+                raise
             tasks.update(create_taskset(len(done)))
