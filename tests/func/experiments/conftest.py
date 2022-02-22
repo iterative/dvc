@@ -102,3 +102,15 @@ def http_auth_patch(mocker):
     patch = mocker.patch("dulwich.client.get_transport_and_path")
     patch.return_value = (client, url)
     return url
+
+
+@pytest.fixture(
+    params=[
+        True,
+        pytest.param(
+            False, marks=pytest.mark.xfail(reason="celery tests disabled")
+        ),
+    ]
+)
+def workspace(request) -> bool:
+    return request.param

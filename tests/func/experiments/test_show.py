@@ -57,7 +57,6 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     }
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
@@ -101,6 +100,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
             assert exp["data"]["params"]["params.yaml"] == expected_params
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     baseline_rev = scm.get_rev()
 
@@ -132,7 +132,6 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     assert exp["params"]["params.yaml"] == {"data": {"foo": 3}}
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_show_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
 ):
@@ -169,7 +168,6 @@ def test_show_checkpoint(
         assert f"{fs} {name}" in cap.out
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_show_checkpoint_branch(
     tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
 ):
@@ -357,6 +355,7 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     assert info.location in cap.out
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     baseline_rev = scm.get_rev()
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
@@ -381,7 +380,7 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     assert not results["workspace"]["baseline"]["data"]["running"]
 
 
-@pytest.mark.parametrize("workspace", [True, False])
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_show_running_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, workspace, mocker
 ):
