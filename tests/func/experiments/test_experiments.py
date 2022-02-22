@@ -16,10 +16,7 @@ from dvc.utils.serialize import PythonFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
-@pytest.mark.parametrize(
-    "name,workspace",
-    [(None, True), (None, False), ("foo", True), ("foo", False)],
-)
+@pytest.mark.parametrize("name", [None, "foo"])
 def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
     baseline = scm.get_rev()
     tmp_dir.gen("params.yaml", "foo: 2")
@@ -45,7 +42,6 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
     assert resolve_rev(scm, exp_name) == exp
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
     from dvc.repo.experiments.exceptions import ExperimentExistsError
 
@@ -92,6 +88,7 @@ def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
     assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
     from dvc.exceptions import ReproductionError
 
@@ -172,6 +169,7 @@ def test_add_params(tmp_dir, scm, dvc, changes):
         dvc.experiments.run(stage.addressing, params=changes)
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 @pytest.mark.parametrize("queue", [True, False])
 def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     from dvc.exceptions import InvalidArgumentError
@@ -218,6 +216,7 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     )
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     from dvc.repo.experiments.refs import EXPS_STASH
 
@@ -242,10 +241,10 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=5"], queue=True)
     assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{0}}") == promote_rev
-    print("stash 1")
     assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{1}}") == init_rev
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_update_py_params(tmp_dir, scm, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.py", "INT = 1\n")
@@ -408,7 +407,7 @@ def test_no_scm(tmp_dir):
             getattr(dvc.experiments, cmd)()
 
 
-@pytest.mark.parametrize("workspace", [True, False])
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.scm_gen("params.yaml", "foo: 1", commit="track params")
@@ -487,7 +486,6 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     }
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_subdir(tmp_dir, scm, dvc, workspace):
     subdir = tmp_dir / "dir"
     subdir.gen("copy.py", COPY_SCRIPT)
@@ -524,7 +522,6 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     assert resolve_rev(scm, ref_info.name) == exp
 
 
-@pytest.mark.parametrize("workspace", [True, False])
 def test_subrepo(tmp_dir, scm, workspace):
     from tests.unit.fs.test_dvc import make_subrepo
 
@@ -569,6 +566,7 @@ def test_subrepo(tmp_dir, scm, workspace):
     assert resolve_rev(scm, ref_info.name) == exp
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
@@ -636,8 +634,8 @@ def test_fix_exp_head(tmp_dir, scm, tail):
 
 
 @pytest.mark.parametrize(
-    "workspace, params, target",
-    itertools.product((True, False), ("foo: 1", "foo: 2"), (True, False)),
+    "params, target",
+    itertools.product(("foo: 1", "foo: 2"), (True, False)),
 )
 def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
     tmp_dir.dvc_gen("data", "data")
