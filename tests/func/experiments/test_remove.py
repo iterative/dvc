@@ -32,6 +32,7 @@ def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
     assert scm.get_ref(ref_name_list[2]) is not None
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     queue_length = 3
     ref_list = []
@@ -52,6 +53,7 @@ def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(ref_info)) is not None
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     results = dvc.experiments.run(
         exp_stage.addressing, params=["foo=1"], queue=True, name="queue1"
@@ -86,6 +88,7 @@ def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(ref_info2)) is not None
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 def test_remove_all(tmp_dir, scm, dvc, exp_stage):
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
     ref_info1 = first(exp_refs_by_rev(scm, first(results)))
