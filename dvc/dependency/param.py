@@ -1,4 +1,3 @@
-import errno
 import logging
 import os
 import typing
@@ -133,29 +132,17 @@ class ParamsDependency(Dependency):
 
     def validate_filepath(self):
         if not self.exists:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), str(self)
-            )
+            raise MissingParamsFile(f"Parameters file '{self}' does not exist")
         if self.isdir():
-            raise IsADirectoryError(
-                errno.EISDIR, os.strerror(errno.EISDIR), str(self)
+            raise ParamsIsADirectoryError(
+                f"'{self}' is a directory, expected a parameters file"
             )
 
     def read_file(self):
         _, ext = os.path.splitext(self.fs_path)
         loader = LOADERS[ext]
 
-        try:
-            self.validate_filepath()
-        except FileNotFoundError as exc:
-            raise MissingParamsFile(
-                f"Parameters file '{self}' does not exist"
-            ) from exc
-        except IsADirectoryError as exc:
-            raise ParamsIsADirectoryError(
-                f"'{self}' is a directory, expected a parameters file"
-            ) from exc
-
+        self.validate_filepath()
         try:
             return loader(self.fs_path, fs=self.repo.fs)
         except ParseError as exc:

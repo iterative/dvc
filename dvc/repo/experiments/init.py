@@ -159,32 +159,28 @@ def validate_prompts(
 ) -> Union[Any, Tuple[Any, str]]:
     from dvc.ui.prompt import InvalidResponse
 
+    msg_format = "[yellow]'{0}' does not exist, the {1} will be created.[/]"
     if key == "params":
-        import errno
-
-        from dvc.dependency.param import ParamsDependency
+        from dvc.dependency.param import (
+            MissingParamsFile,
+            ParamsDependency,
+            ParamsIsADirectoryError,
+        )
 
         assert isinstance(value, str)
-        msg_format = (
-            "[prompt.invalid]'{0}' {1}. "
-            "Please retry with an existing parameters file."
-        )
         try:
             ParamsDependency(None, value, repo=repo).validate_filepath()
-        except (IsADirectoryError, FileNotFoundError) as e:
-            suffices = {
-                errno.EISDIR: "is a directory",
-                errno.ENOENT: "does not exist",
-            }
-            raise InvalidResponse(msg_format.format(value, suffices[e.errno]))
+        except MissingParamsFile:
+            return value, msg_format.format(value, "file")
+        except ParamsIsADirectoryError:
+            raise InvalidResponse(
+                f"[prompt.invalid]'{value}' is a directory. "
+                "Please retry with an existing parameters file."
+            )
     elif key in ("code", "data"):
         if not os.path.exists(value):
             typ = "file" if is_file(value) else "directory"
-            return (
-                value,
-                f"[yellow]'{value}' does not exist, "
-                f"the {typ} will be created. ",
-            )
+            return value, msg_format.format(value, typ)
     return value
 
 
@@ -260,7 +256,6 @@ def init(
     context: Dict[str, str] = {**defaults, **overrides}
     assert "cmd" in context
 
-    params_kv = []
     params = context.get("params")
     if params:
         from dvc.dependency.param import (
@@ -270,10 +265,11 @@ def init(
         )
 
         try:
-            params_d = ParamsDependency(None, params, repo=repo).read_file()
-        except (MissingParamsFile, ParamsIsADirectoryError) as exc:
+            ParamsDependency(None, params, repo=repo).validate_filepath()
+        except ParamsIsADirectoryError as exc:
             raise DvcException(f"{exc}.")  # swallow cause for display
-        params_kv.append({params: list(params_d.keys())})
+        except MissingParamsFile:
+            pass
 
     checkpoint_out = bool(context.get("live"))
     models = context.get("models")
@@ -281,7 +277,7 @@ def init(
         name=name,
         cmd=context["cmd"],
         deps=compact([context.get("code"), context.get("data")]),
-        params=params_kv,
+        params=[{params: None}] if params else None,
         metrics_no_cache=compact([context.get("metrics")]),
         plots_no_cache=compact([context.get("plots")]),
         live=context.get("live"),

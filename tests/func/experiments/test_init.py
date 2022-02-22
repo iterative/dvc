@@ -38,7 +38,7 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
                 "deps": ["data", "src"],
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
@@ -76,6 +76,24 @@ def test_when_stage_force_if_already_exists(tmp_dir, dvc):
     assert d["stages"]["train"]["cmd"] == "true"
 
 
+@pytest.mark.parametrize("interactive", [True, False])
+def test_creates_params_file_by_default(tmp_dir, dvc, interactive, capsys):
+    init(
+        dvc,
+        interactive=interactive,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={"cmd": "cmd"},
+        stream=io.StringIO(""),
+    )
+
+    assert (tmp_dir / "params.yaml").is_file()
+    assert (tmp_dir / "params.yaml").parse() == {}
+    out, err = capsys.readouterr()
+    assert "Created src, data and params.yaml." in out
+    if interactive:
+        assert "'params.yaml' does not exist, the file will be created." in err
+
+
 def test_with_a_custom_name(tmp_dir, dvc):
     init(dvc, name="custom", overrides={"cmd": "cmd"})
     assert (tmp_dir / "dvc.yaml").parse() == {
@@ -111,7 +129,7 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
         interactive=True,
         defaults=CmdExperimentsInit.DEFAULTS,
         overrides={**CmdExperimentsInit.DEFAULTS, **extra_overrides},
-        stream=inp,  # we still need to confirm
+        stream=inp,
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
@@ -123,7 +141,7 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
                 # we specify `live` through `overrides`,
                 # so it creates checkpoint-based output.
                 "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
@@ -164,9 +182,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
 def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
     tmp_dir.gen({"data": {"foo": "foo"}})
     (tmp_dir / "params.yaml").dump({"foo": 1})
-    inp = io.StringIO(
-        "python script.py\nscript.py\ndata\nmodels\nparams.json\ndata\n"
-    )
+    inp = io.StringIO("python script.py\nscript.py\ndata\nmodels\ndata\n")
 
     init(
         dvc, stream=inp, interactive=True, defaults=CmdExperimentsInit.DEFAULTS
@@ -179,7 +195,7 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
@@ -189,9 +205,6 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
 
     out, err = capsys.readouterr()
     assert (
-        "Path to a parameters file [params.yaml, n to omit]: "
-        "'params.json' does not exist. "
-        "Please retry with an existing parameters file.\n"
         "Path to a parameters file [params.yaml, n to omit]: "
         "'data' is a directory. "
         "Please retry with an existing parameters file.\n"
@@ -262,7 +275,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
                 "deps": ["data", "script.py"],
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": ["models"],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
@@ -347,7 +360,7 @@ def test_init_interactive_live(
                 "deps": ["data", "script.py"],
                 "live": {"dvclive": {"html": True, "summary": True}},
                 "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
             }
         }
     }
@@ -396,7 +409,7 @@ def test_init_with_type_live_and_models_plots_provided(
                 "live": {"dvclive": {"html": True, "summary": True}},
                 "metrics": [{"m": {"cache": False}}],
                 "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"p": {"cache": False}}],
             }
         }
@@ -431,7 +444,7 @@ def test_init_with_type_default_and_live_provided(
                 "live": {"live": {"html": True, "summary": True}},
                 "metrics": [{"metrics.json": {"cache": False}}],
                 "outs": [{"models": {"checkpoint": True}}],
-                "params": ["foo"],
+                "params": [{"params.yaml": None}],
                 "plots": [{"plots": {"cache": False}}],
             }
         }
