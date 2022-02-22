@@ -4,6 +4,7 @@ from funcy import first
 from tests.func.test_repro_multistage import COPY_SCRIPT
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 @pytest.mark.parametrize("queued, expected", [(True, 0), (False, 1)])
 def test_workspace(tmp_dir, scm, dvc, queued, expected):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
@@ -25,6 +26,7 @@ def test_workspace(tmp_dir, scm, dvc, queued, expected):
     assert removed == expected
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 @pytest.mark.parametrize("queued, expected", [(True, 0), (False, 2)])
 def test_all_commits(tmp_dir, scm, dvc, queued, expected):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
@@ -54,6 +56,7 @@ def test_all_commits(tmp_dir, scm, dvc, queued, expected):
     assert removed == expected
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 @pytest.mark.parametrize("queued, expected", [(True, 2), (False, 3)])
 def test_all_branches(tmp_dir, scm, dvc, queued, expected):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
@@ -90,6 +93,7 @@ def test_all_branches(tmp_dir, scm, dvc, queued, expected):
     assert removed == expected
 
 
+@pytest.mark.xfail(reason="celery tests disabled")
 @pytest.mark.parametrize("queued, expected", [(True, 2), (False, 3)])
 def test_all_tags(tmp_dir, scm, dvc, queued, expected):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
