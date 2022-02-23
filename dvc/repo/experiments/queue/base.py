@@ -18,7 +18,13 @@ from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 
-from ..executor.base import EXEC_PID_DIR, EXEC_TMP_DIR, BaseExecutor
+from ..exceptions import CheckpointExistsError, ExperimentExistsError
+from ..executor.base import (
+    EXEC_PID_DIR,
+    EXEC_TMP_DIR,
+    BaseExecutor,
+    ExecutorResult,
+)
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
@@ -104,6 +110,10 @@ class BaseStashQueue(ABC):
     @abstractmethod
     def get(self) -> QueueGetResult:
         """Pop and return the first item in the queue."""
+
+    @abstractmethod
+    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
+        """Reproduce queued experiments sequentially."""
 
     def _stash_exp(
         self,
@@ -392,6 +402,33 @@ class BaseStashQueue(ABC):
             f"{name}{BaseExecutor.INFOFILE_EXT}",
         )
 
-    @abstractmethod
-    def reproduce(self) -> Mapping[str, Mapping[str, str]]:
-        """Reproduce queued experiments sequentially."""
+    @staticmethod
+    @scm_locked
+    def collect_executor(
+        exp: "Experiments",
+        executor: BaseExecutor,
+        exec_result: ExecutorResult,
+    ) -> Dict[str, str]:
+        results = {}
+
+        def on_diverged(ref: str, checkpoint: bool):
+            ref_info = ExpRefInfo.from_ref(ref)
+            if checkpoint:
+                raise CheckpointExistsError(ref_info.name)
+            raise ExperimentExistsError(ref_info.name)
+
+        for ref in executor.fetch_exps(
+            exp.scm,
+            force=exec_result.force,
+            on_diverged=on_diverged,
+        ):
+            exp_rev = exp.scm.get_ref(ref)
+            if exp_rev:
+                assert exec_result.exp_hash
+                logger.debug("Collected experiment '%s'.", exp_rev[:7])
+                results[exp_rev] = exec_result.exp_hash
+
+        if exec_result.ref_info is not None:
+            executor.collect_cache(exp.repo, exec_result.ref_info)
+
+        return results
