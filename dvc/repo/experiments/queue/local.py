@@ -8,15 +8,15 @@ from funcy import cached_property, first
 from dvc.exceptions import DvcException
 
 from ..exceptions import ExpQueueEmptyError
-from ..executor.base import EXEC_TMP_DIR, BaseExecutor
+from ..executor.base import EXEC_TMP_DIR, BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
 from .tasks import setup_exp
 
 if TYPE_CHECKING:
-    from celery import Celery
-
+    from dvc.repo.experiments import Experiments
+    from dvc_task.app import FSApp
     from dvc_task.worker import TemporaryWorker
 
 logger = logging.getLogger(__name__)
@@ -35,31 +35,42 @@ class LocalCeleryQueue(BaseStashQueue):
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, self.CELERY_DIR)
 
     @cached_property
-    def celery(self) -> "Celery":
-        from celery import Celery
+    def celery(self) -> "FSApp":
+        from dvc_task.app import FSApp
 
-        from .celery import get_config
-
-        app = Celery()
-        app.conf.update(get_config(self.wdir))
+        app = FSApp(
+            "dvc-exp-local",
+            wdir=self.wdir,
+            mkdir=True,
+            include=[
+                "dvc.repo.experiments.queue.tasks",
+                "dvc_task.proc.tasks",
+            ],
+        )
         return app
 
     @cached_property
     def worker(self) -> "TemporaryWorker":
         from dvc_task.worker import TemporaryWorker
 
-        return TemporaryWorker(self.celery, concurrency=1)
+        return TemporaryWorker(self.celery, concurrency=1, timeout=10)
+
+    def spawn_worker(self):
+        from dvc_task.proc.process import ManagedProcess
+
+        logger.debug("Spawning exp queue worker")
+        ManagedProcess.spawn(
+            ["dvc", "exp", "queue-worker", "dvc-exp1@localhost"],
+            wdir=self.wdir,
+            name="dvc-exp-worker",
+        )
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
-        from celery import chain
-
-        entry = super()._stash_exp(*args, **kwargs)
+        entry = self._stash_exp(*args, **kwargs)
         # schedule executor setup
         # TODO: chain separated git/dvc setup tasks
-        chain(
-            self.celery.tasks[setup_exp.name](entry.asdict()),
-        ).delay()
+        self.celery.tasks[setup_exp.name].delay(entry.asdict())
         return entry
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
@@ -125,7 +136,9 @@ class WorkspaceQueue(BaseStashQueue):
                 )
             if exec_result.ref_info:
                 results[rev].update(
-                    self._collect_executor(executor, exec_result)
+                    self.collect_executor(
+                        self.repo.experiments, executor, exec_result
+                    )
                 )
         except CheckpointKilledError:
             # Checkpoint errors have already been logged
@@ -140,12 +153,16 @@ class WorkspaceQueue(BaseStashQueue):
             executor.cleanup()
         return results
 
-    def _collect_executor(  # pylint: disable=unused-argument
-        self, executor, exec_result
+    @staticmethod
+    def collect_executor(  # pylint: disable=unused-argument
+        exp: "Experiments",
+        executor: BaseExecutor,
+        exec_result: ExecutorResult,
     ) -> Dict[str, str]:
-        results = {}
-        exp_rev = self.scm.get_ref(EXEC_BRANCH)
+        results: Dict[str, str] = {}
+        exp_rev = exp.scm.get_ref(EXEC_BRANCH)
         if exp_rev:
+            assert exec_result.exp_hash
             logger.debug("Collected experiment '%s'.", exp_rev[:7])
             results[exp_rev] = exec_result.exp_hash
         return results
