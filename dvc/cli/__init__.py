@@ -124,13 +124,6 @@ def main(argv=None):  # noqa: C901
     finally:
         logger.setLevel(outerLogLevel)
 
-        from dvc.fs.pool import close_pools
-
-        # Closing pools by-hand to prevent weird messages when closing SSH
-        # connections. See https://github.com/iterative/dvc/issues/3248 for
-        # more info.
-        close_pools()
-
         from dvc.external_repo import clean_repos
 
         # Remove cached repos in the end of the call, these are anonymous
