@@ -65,14 +65,6 @@ def clean_repos():
     clean_repos()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _close_pools():
-    from dvc.fs.pool import close_pools
-
-    yield
-    close_pools()
-
-
 def _get_opt(remote_name, action):
     return f"--{action}-{remote_name}"
 
