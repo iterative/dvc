@@ -1,7 +1,7 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Mapping
+from typing import TYPE_CHECKING, Dict, Generator, Mapping
 
 from funcy import cached_property, first
 
@@ -78,6 +78,14 @@ class LocalCeleryQueue(BaseStashQueue):
     def get(self) -> QueueGetResult:
         raise NotImplementedError
 
+    def iter_queued(self) -> Generator[QueueEntry, None, None]:
+        for msg in self.celery.iter_queued():
+            if msg.headers.get("task") != setup_exp.name:
+                continue
+            args, kwargs, _embed = msg.decode()
+            entry_dict = kwargs.get("entry_dict", args[0])
+            yield QueueEntry.from_dict(entry_dict)
+
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
@@ -102,6 +110,18 @@ class WorkspaceQueue(BaseStashQueue):
         )
         executor = self.setup_executor(self.repo.experiments, entry)
         return QueueGetResult(entry, executor)
+
+    def iter_queued(self) -> Generator[QueueEntry, None, None]:
+        for rev, entry in self.stash.stash_revs:
+            yield QueueEntry(
+                self.repo.root_dir,
+                self.scm.root_dir,
+                self.ref,
+                rev,
+                entry.baseline_rev,
+                entry.branch,
+                entry.name,
+            )
 
     def reproduce(self) -> Dict[str, Dict[str, str]]:
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
