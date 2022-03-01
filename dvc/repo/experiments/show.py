@@ -193,7 +193,8 @@ def show(
                 onerror=onerror,
             )
         # collect queued (not yet reproduced) experiments
-        for stash_rev, entry in repo.experiments.stash_revs.items():
+        for entry in repo.experiments.celery_queue.iter_queued():
+            stash_rev = entry.stash_rev
             if entry.baseline_rev in found_revs:
                 if stash_rev not in running or not running[stash_rev].get(
                     "last"
