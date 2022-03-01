@@ -6,6 +6,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Generator,
     Mapping,
     NamedTuple,
     Optional,
@@ -110,6 +111,10 @@ class BaseStashQueue(ABC):
     @abstractmethod
     def get(self) -> QueueGetResult:
         """Pop and return the first item in the queue."""
+
+    @abstractmethod
+    def iter_queued(self) -> Generator[QueueEntry, None, None]:
+        """Iterate over items in the queue."""
 
     @abstractmethod
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
