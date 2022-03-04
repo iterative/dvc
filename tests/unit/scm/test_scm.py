@@ -36,6 +36,7 @@ def test_iter_revs(
     assert gen == {rev_root: [rev_root], rev_new: ["new"]}
     gen = iter_revs(scm, ["new"], 2)
     assert gen == {rev_new: ["new"], rev_old: [rev_old]}
+    scm.gitpython.repo.create_remote("upstream", "some_remote")
     gen = iter_revs(scm, ["other"], -1)
     assert gen == {
         rev_other: ["other"],
