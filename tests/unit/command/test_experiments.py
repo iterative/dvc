@@ -22,7 +22,7 @@ from dvc.stage import PipelineStage
 from tests.utils import ANY
 from tests.utils.asserts import called_once_with_subset
 
-from .test_repro import default_arguments as repro_arguments
+from .test_repro import common_arguments as repro_arguments
 
 
 def test_experiments_apply(dvc, scm, mocker):
