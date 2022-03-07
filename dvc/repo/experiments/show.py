@@ -1,6 +1,7 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 from dvc.repo.metrics.show import _gather_metrics
@@ -192,8 +193,11 @@ def show(
                 running=running,
                 onerror=onerror,
             )
-        # collect queued (not yet reproduced) experiments
-        for entry in repo.experiments.celery_queue.iter_queued():
+        # collect celery experiments
+        for entry in chain(
+            repo.experiments.celery_queue.iter_active(),
+            repo.experiments.celery_queue.iter_queued(),
+        ):
             stash_rev = entry.stash_rev
             if entry.baseline_rev in found_revs:
                 if stash_rev not in running or not running[stash_rev].get(
