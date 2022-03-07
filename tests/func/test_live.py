@@ -68,7 +68,6 @@ def live_stage(tmp_dir, scm, dvc, mocker):
     mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(
-        summary=True,
         html=True,
         live=None,
         live_no_cache=None,
@@ -84,7 +83,6 @@ def live_stage(tmp_dir, scm, dvc, mocker):
             name="live_stage",
             live=live,
             live_no_cache=live_no_cache,
-            live_no_summary=not summary,
             live_no_html=not html,
         )
 
@@ -96,10 +94,9 @@ def live_stage(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.mark.parametrize("html", (True, False))
-@pytest.mark.parametrize("summary", (True, False))
-def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
+def test_export_config(tmp_dir, dvc, mocker, live_stage, html):
     run_spy = mocker.spy(stage_module.run, "_run")
-    live_stage(summary=summary, html=html, live="logs")
+    live_stage(html=html, live="logs")
 
     assert run_spy.call_count == 1
     _, kwargs = run_spy.call_args
@@ -107,15 +104,12 @@ def test_export_config(tmp_dir, dvc, mocker, live_stage, summary, html):
     assert "DVCLIVE_PATH" in kwargs["env"]
     assert kwargs["env"]["DVCLIVE_PATH"] == "logs"
 
-    assert "DVCLIVE_SUMMARY" in kwargs["env"]
-    assert kwargs["env"]["DVCLIVE_SUMMARY"] == str(int(summary))
-
     assert "DVCLIVE_HTML" in kwargs["env"]
     assert kwargs["env"]["DVCLIVE_HTML"] == str(int(html))
 
 
 def test_live_provides_metrics(tmp_dir, dvc, live_stage):
-    live_stage(summary=True, live="logs")
+    live_stage(live="logs")
 
     assert (tmp_dir / "logs.json").is_file()
     assert dvc.metrics.show() == {
@@ -137,22 +131,9 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
     assert os.path.join("logs", "images", "1", "image.jpg") in files
 
 
-def test_live_provides_no_metrics(tmp_dir, dvc, live_stage):
-    live_stage(summary=False, live="logs")
-
-    assert not (tmp_dir / "logs.json").is_file()
-    assert dvc.metrics.show() == {"": {}}
-
-    assert (tmp_dir / "logs").is_dir()
-    plots_data = dvc.plots.show()
-    files = get_files(plots_data)
-    assert os.path.join("logs", "scalars", "accuracy.tsv") in files
-    assert os.path.join("logs", "scalars", "loss.tsv") in files
-
-
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
 def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
-    live_stage(summary=True, **{typ: "logs"})
+    live_stage(**{typ: "logs"})
     baseline_rev = scm.get_rev()
 
     experiments = dvc.experiments.run(targets=["live_stage"], params=["foo=2"])
@@ -165,7 +146,7 @@ def test_experiments_track_summary(tmp_dir, scm, dvc, live_stage, typ):
 
 @pytest.mark.parametrize("html", [True, False])
 def test_live_html(tmp_dir, dvc, live_stage, html):
-    live_stage(html=html, live="logs")
+    live_stage(live="logs", html=html)
 
     assert (tmp_dir / "logs_dvc_plots" / "index.html").is_file() == html
     if html:
@@ -269,7 +250,7 @@ def test_dvc_generates_html_during_run(
             str(monitor_await_time * 10)
         )
     )
-    live_stage(summary=True, live="logs", code=script)
+    live_stage(live="logs", code=script)
 
     assert show_spy.call_count == 2
     assert webbrowser_open.call_count == (2 if auto_open else 0)
