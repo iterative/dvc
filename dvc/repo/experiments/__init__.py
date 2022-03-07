@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
@@ -14,12 +14,7 @@ from .exceptions import (
     InvalidExpRefError,
     MultipleBranchError,
 )
-from .executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
-    BaseExecutor,
-    ExecutorInfo,
-)
+from .executor.base import BaseExecutor, ExecutorInfo
 from .queue.base import BaseStashQueue, QueueEntry
 from .queue.local import LocalCeleryQueue, WorkspaceQueue
 from .refs import (
@@ -396,61 +391,63 @@ class Experiments:
             return self.stash_revs[rev].name
         return None
 
-    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, int]:
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Any]:
         """Return info for running experiments."""
+        result = {}
+        infofile = self.workspace_queue.get_infofile_path("workspace")
+        result.update(self._get_running_exp("workspace", infofile, fetch_refs))
+        for entry in self.celery_queue.iter_active():
+            infofile = self.celery_queue.get_infofile_path(entry.stash_rev)
+            result.update(
+                self._get_running_exp(entry.stash_rev, infofile, fetch_refs)
+            )
+        return result
+
+    def _get_running_exp(
+        self, rev: str, infofile: str, fetch_refs: bool
+    ) -> Dict[str, Any]:
         from dvc.scm import InvalidRemoteSCMRepo
         from dvc.utils.serialize import load_json
 
         from .executor.local import TempDirExecutor
 
-        result = {}
-        pid_dir = os.path.join(
-            self.repo.tmp_dir,
-            EXEC_TMP_DIR,
-            EXEC_PID_DIR,
-        )
-        for fname in self.repo.fs.find(pid_dir):
-            rev, ext = os.path.splitext(os.path.basename(fname))
-            if ext != BaseExecutor.INFOFILE_EXT:
-                continue
-
-            try:
-                info = ExecutorInfo.from_dict(load_json(fname))
-                if info.result is not None:
-                    continue
-                if rev == "workspace":
-                    # If we are appending to a checkpoint branch in a workspace
-                    # run, show the latest checkpoint as running.
-                    last_rev = self.scm.get_ref(EXEC_BRANCH)
-                    if last_rev:
-                        result[last_rev] = info.asdict()
-                    else:
-                        result[rev] = info.asdict()
+        result: Dict[str, Any] = {}
+        try:
+            info = ExecutorInfo.from_dict(load_json(infofile))
+        except OSError:
+            return result
+        if info.result is None:
+            if rev == "workspace":
+                # If we are appending to a checkpoint branch in a workspace
+                # run, show the latest checkpoint as running.
+                last_rev = self.scm.get_ref(EXEC_BRANCH)
+                if last_rev:
+                    result[last_rev] = info.asdict()
                 else:
                     result[rev] = info.asdict()
-                    if info.git_url and fetch_refs:
+            else:
+                result[rev] = info.asdict()
+                if info.git_url and fetch_refs:
 
-                        def on_diverged(_ref: str, _checkpoint: bool):
-                            return False
+                    def on_diverged(_ref: str, _checkpoint: bool):
+                        return False
 
-                        executor = TempDirExecutor.from_info(info)
-                        try:
-                            for ref in executor.fetch_exps(
-                                self.scm,
-                                on_diverged=on_diverged,
-                            ):
-                                logger.debug(
-                                    "Updated running experiment '%s'.", ref
-                                )
-                                last_rev = self.scm.get_ref(ref)
-                                result[rev]["last"] = last_rev
-                                if last_rev:
-                                    result[last_rev] = info.asdict()
-                        except InvalidRemoteSCMRepo:
-                            # ignore stale info files
-                            del result[rev]
-            except OSError:
-                pass
+                    executor = TempDirExecutor.from_info(info)
+                    try:
+                        for ref in executor.fetch_exps(
+                            self.scm,
+                            on_diverged=on_diverged,
+                        ):
+                            logger.debug(
+                                "Updated running experiment '%s'.", ref
+                            )
+                            last_rev = self.scm.get_ref(ref)
+                            result[rev]["last"] = last_rev
+                            if last_rev:
+                                result[last_rev] = info.asdict()
+                    except InvalidRemoteSCMRepo:
+                        # ignore stale info files
+                        del result[rev]
         return result
 
     def apply(self, *args, **kwargs):
