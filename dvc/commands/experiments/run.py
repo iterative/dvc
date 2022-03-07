@@ -39,7 +39,7 @@ class CmdExperimentsRun(CmdRepro):
             reset=self.args.reset,
             tmp_dir=self.args.tmp_dir,
             machine=self.args.machine,
-            **self._repro_kwargs,
+            **self._common_kwargs,
         )
 
         if self.args.metrics and results:

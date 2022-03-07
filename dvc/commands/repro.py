@@ -10,7 +10,9 @@ class CmdRepro(CmdBase):
     def run(self):
         from dvc.ui import ui
 
-        stages = self.repo.reproduce(**self._repro_kwargs)
+        stages = self.repo.reproduce(
+            **self._common_kwargs, **self._repro_kwargs
+        )
         if len(stages) == 0:
             ui.write(CmdDataStatus.UP_TO_DATE_MSG)
         else:
@@ -27,7 +29,7 @@ class CmdRepro(CmdBase):
         return 0
 
     @property
-    def _repro_kwargs(self):
+    def _common_kwargs(self):
         return {
             "targets": self.args.targets,
             "single_item": self.args.single_item,
@@ -36,12 +38,17 @@ class CmdRepro(CmdBase):
             "interactive": self.args.interactive,
             "pipeline": self.args.pipeline,
             "all_pipelines": self.args.all_pipelines,
-            "run_cache": not self.args.no_run_cache,
-            "no_commit": self.args.no_commit,
             "downstream": self.args.downstream,
             "recursive": self.args.recursive,
             "force_downstream": self.args.force_downstream,
             "pull": self.args.pull,
+        }
+
+    @property
+    def _repro_kwargs(self):
+        return {
+            "run_cache": not self.args.no_run_cache,
+            "no_commit": self.args.no_commit,
             "glob": self.args.glob,
         }
 
@@ -111,26 +118,11 @@ def add_arguments(repro_parser):
         help="Reproduce all stages in the specified directory.",
     )
     repro_parser.add_argument(
-        "--no-run-cache",
-        action="store_true",
-        default=False,
-        help=(
-            "Execute stage commands even if they have already been run with "
-            "the same command/dependencies/outputs/etc before."
-        ),
-    )
-    repro_parser.add_argument(
         "--force-downstream",
         action="store_true",
         default=False,
         help="Reproduce all descendants of a changed stage even if their "
         "direct dependencies didn't change.",
-    )
-    repro_parser.add_argument(
-        "--no-commit",
-        action="store_true",
-        default=False,
-        help="Don't put files/directories into cache.",
     )
     repro_parser.add_argument(
         "--downstream",
@@ -147,12 +139,6 @@ def add_arguments(repro_parser):
             "from the run-cache."
         ),
     )
-    repro_parser.add_argument(
-        "--glob",
-        action="store_true",
-        default=False,
-        help="Allows targets containing shell-style wildcards.",
-    )
 
 
 def add_parser(subparsers, parent_parser):
@@ -166,5 +152,28 @@ def add_parser(subparsers, parent_parser):
         help=REPRO_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    # repro/exp run shared args
     add_arguments(repro_parser)
+    # repro only args
+    repro_parser.add_argument(
+        "--no-run-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Execute stage commands even if they have already been run with "
+            "the same command/dependencies/outputs/etc before."
+        ),
+    )
+    repro_parser.add_argument(
+        "--no-commit",
+        action="store_true",
+        default=False,
+        help="Don't put files/directories into cache.",
+    )
+    repro_parser.add_argument(
+        "--glob",
+        action="store_true",
+        default=False,
+        help="Allows targets containing shell-style wildcards.",
+    )
     repro_parser.set_defaults(func=CmdRepro)
