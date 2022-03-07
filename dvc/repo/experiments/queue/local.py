@@ -8,7 +8,12 @@ from funcy import cached_property, first
 from dvc.exceptions import DvcException
 
 from ..exceptions import ExpQueueEmptyError
-from ..executor.base import EXEC_TMP_DIR, BaseExecutor, ExecutorResult
+from ..executor.base import (
+    EXEC_PID_DIR,
+    EXEC_TMP_DIR,
+    BaseExecutor,
+    ExecutorResult,
+)
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
@@ -17,6 +22,7 @@ from .tasks import setup_exp
 if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
     from dvc_task.app import FSApp
+    from dvc_task.proc.manager import ProcessManager
     from dvc_task.worker import TemporaryWorker
 
 logger = logging.getLogger(__name__)
@@ -48,6 +54,13 @@ class LocalCeleryQueue(BaseStashQueue):
             ],
         )
         return app
+
+    @cached_property
+    def proc(self) -> "ProcessManager":
+        from dvc_task.proc.manager import ProcessManager
+
+        pid_dir = os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
+        return ProcessManager(pid_dir)
 
     @cached_property
     def worker(self) -> "TemporaryWorker":
@@ -86,6 +99,20 @@ class LocalCeleryQueue(BaseStashQueue):
             entry_dict = kwargs.get("entry_dict", args[0])
             yield QueueEntry.from_dict(entry_dict)
 
+    def _iter_processed(self) -> Generator[QueueEntry, None, None]:
+        for msg in self.celery.iter_processed():
+            if msg.headers.get("task") != setup_exp.name:
+                continue
+            args, kwargs, _embed = msg.decode()
+            entry_dict = kwargs.get("entry_dict", args[0])
+            yield QueueEntry.from_dict(entry_dict)
+
+    def iter_active(self) -> Generator[QueueEntry, None, None]:
+        for entry in self._iter_processed():
+            proc_info = self.proc.get(entry.stash_rev)
+            if proc_info is not None and proc_info.returncode is None:
+                yield entry
+
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
@@ -122,6 +149,11 @@ class WorkspaceQueue(BaseStashQueue):
                 entry.branch,
                 entry.name,
             )
+
+    def iter_active(self) -> Generator[QueueEntry, None, None]:
+        # Workspace run state is reflected in the workspace itself and does not
+        # need to be handled via the queue
+        raise NotImplementedError
 
     def reproduce(self) -> Dict[str, Dict[str, str]]:
         results: Dict[str, Dict[str, str]] = defaultdict(dict)

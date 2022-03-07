@@ -7,7 +7,7 @@ from celery.utils.log import get_task_logger
 
 from dvc.utils.fs import makedirs, remove
 
-from ..executor.base import EXEC_PID_DIR, EXEC_TMP_DIR, ExecutorInfo
+from ..executor.base import ExecutorInfo
 from ..executor.local import TempDirExecutor
 from .base import BaseStashQueue, QueueEntry
 
@@ -26,15 +26,8 @@ def setup_exp(entry_dict: Dict[str, Any]) -> None:
     executor = BaseStashQueue.setup_executor(
         repo.experiments, entry, TempDirExecutor
     )
-    pid_dir = os.path.join(
-        repo.tmp_dir,
-        EXEC_TMP_DIR,
-        EXEC_PID_DIR,
-    )
-    infofile = os.path.join(
-        pid_dir,
-        f"{entry.stash_rev}{TempDirExecutor.INFOFILE_EXT}",
-    )
+    proc = repo.experiments.celery_queue.proc
+    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
     makedirs(os.path.dirname(infofile), exist_ok=True)
     with open(infofile, "w", encoding="utf-8") as fobj:
         json.dump(executor.info.asdict(), fobj)
@@ -42,7 +35,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> None:
 
     # schedule execution + cleanup
     chain(
-        run.si(cmd, wdir=pid_dir, name=entry.stash_rev),
+        proc.run(cmd, name=entry.stash_rev),
         collect_exp.s(entry.asdict(), infofile),
         cleanup_exp.si(entry.asdict(), executor.root_dir),
     ).delay()
