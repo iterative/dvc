@@ -93,8 +93,9 @@ def add_rev_selection_flags(
         dest="num",
         metavar="<num>",
         help=(
-            f"{command} experiments from the `--rev` baseline and from `num` "
-            "commits before it (first parents). Give a negative value to "
-            "include all first-parent commits."
+            f"{command} experiments from the last `num` commits "
+            "(first parents) starting from the `--rev` baseline. "
+            "Give a negative value to include all first-parent commits "
+            "(similar to `git log -n`)."
         ),
     )
