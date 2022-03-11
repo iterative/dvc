@@ -47,16 +47,29 @@ def loads_from(stage, s_list, erepo=None):
 def _merge_params(s_list):
     d = defaultdict(list)
     default_file = ParamsDependency.DEFAULT_PARAMS_FILE
+
+    # figure out completely tracked params file, and ignore specific keys
+    wholly_tracked = set()
+    for key in s_list:
+        if not isinstance(key, dict):
+            continue
+        wholly_tracked.update(k for k, params in key.items() if not params)
+
     for key in s_list:
         if isinstance(key, str):
-            d[default_file].append(key)
+            if default_file not in wholly_tracked:
+                d[default_file].append(key)
             continue
+
         if not isinstance(key, dict):
             msg = "Only list of str/dict is supported. Got: "
             msg += f"'{type(key).__name__}'."
             raise ValueError(msg)
 
         for k, params in key.items():
+            if k in wholly_tracked:
+                d[k] = []
+                continue
             if not isinstance(params, list):
                 msg = "Expected list of params for custom params file "
                 msg += f"'{k}', got '{type(params).__name__}'."

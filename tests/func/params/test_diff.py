@@ -1,3 +1,5 @@
+import pytest
+
 from dvc.utils import relpath
 
 
@@ -217,4 +219,25 @@ def test_diff_targeted(tmp_dir, scm, dvc, run_copy):
 
     assert dvc.params.diff(a_rev="HEAD~2", targets=["other_params.yaml"]) == {
         "other_params.yaml": {"xyz": {"old": "val", "new": "val3"}}
+    }
+
+
+@pytest.mark.parametrize("file", ["params.yaml", "other_params.yaml"])
+def test_diff_without_targets_specified(tmp_dir, dvc, scm, file):
+    params_file = tmp_dir / file
+    params_file.dump({"foo": {"bar": "bar"}, "x": "0"})
+    dvc.stage.add(
+        name="test",
+        cmd=f"echo {file}",
+        params=[{file: None}],
+    )
+    scm.add_commit([params_file, "dvc.yaml"], message="foo")
+
+    params_file.dump({"foo": {"bar": "baz"}, "y": "100"})
+    assert dvc.params.diff() == {
+        file: {
+            "foo.bar": {"new": "baz", "old": "bar"},
+            "x": {"new": None, "old": "0"},
+            "y": {"new": "100", "old": None},
+        }
     }
