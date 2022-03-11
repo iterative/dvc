@@ -280,7 +280,7 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-    assert "Using experiment project structure: " in out
+    assert "Using experiment project structure:" in out
     assert "Created script.py and data" in out
 
 
@@ -365,7 +365,7 @@ def test_init_interactive_live(
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-    assert "Using experiment project structure: " in out
+    assert "Using experiment project structure:" in out
     assert "Created script.py and data" in out
 
 
