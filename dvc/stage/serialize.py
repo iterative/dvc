@@ -90,18 +90,12 @@ def _serialize_params_keys(params):
     """
     keys = []
     for param_dep in sort_by_path(params):
-        dump = param_dep.dumpd()
-        path, params = dump[PARAM_PATH], dump[PARAM_PARAMS]
-        assert isinstance(params, (dict, list))
         # when on no_exec, params are not filled and are saved as list
-        k = sorted(params.keys() if isinstance(params, dict) else params)
-        if not k:
-            continue
-
-        if path == DEFAULT_PARAMS_FILE:
+        k = sorted(param_dep.params)
+        if k and param_dep.def_path == DEFAULT_PARAMS_FILE:
             keys = k + keys
         else:
-            keys.append({path: k})
+            keys.append({param_dep.def_path: k or None})
     return keys
 
 

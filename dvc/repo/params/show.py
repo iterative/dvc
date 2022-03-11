@@ -66,7 +66,9 @@ def _read_params(
 
     if deps:
         for param in params:
-            params_dict = error_handler(param.read_params_d)(onerror=onerror)
+            params_dict = error_handler(param.read_params)(
+                onerror=onerror, flatten=False
+            )
             if params_dict:
                 res[
                     repo.fs.path.relpath(param.fs_path, os.getcwd())

@@ -178,3 +178,17 @@ def test_log_errors(tmp_dir, scm, dvc, capsys, file, error_path):
         "DVC failed to load some parameters for following revisions: 'v1'."
         in error
     )
+
+
+@pytest.mark.parametrize("file", ["params.yaml", "other_params.yaml"])
+def test_show_without_targets_specified(tmp_dir, dvc, scm, file):
+    params_file = tmp_dir / file
+    data = {"foo": {"bar": "bar"}, "x": "0"}
+    params_file.dump(data)
+    dvc.stage.add(
+        name="test",
+        cmd=f"echo {file}",
+        params=[{file: None}],
+    )
+
+    assert dvc.params.show() == {"": {"data": {file: {"data": data}}}}
