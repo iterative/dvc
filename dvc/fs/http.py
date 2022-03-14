@@ -81,11 +81,20 @@ class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
                     f"Auth method {auth_method!r} is not supported."
                 )
 
+        # Force cleanup of closed SSL transports.
+        # https://github.com/iterative/dvc/issues/7414
+        connector_kwargs = {"enable_cleanup_closed": True}
+
         if "ssl_verify" in config:
-            with fsspec_loop():
-                client_kwargs["connector"] = aiohttp.TCPConnector(
-                    ssl=make_context(config["ssl_verify"])
-                )
+            connector_kwargs.update(ssl=make_context(config["ssl_verify"]))
+
+        with fsspec_loop():
+            client_kwargs["connector"] = aiohttp.TCPConnector(
+                **connector_kwargs
+            )
+        # The connector should not be owned by aiohttp.ClientSession since
+        # it is closed by fsspec (HTTPFileSystem.close_session)
+        client_kwargs["connector_owner"] = False
 
         # Allow reading proxy configurations from the environment.
         client_kwargs["trust_env"] = True
