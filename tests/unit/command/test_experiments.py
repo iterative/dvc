@@ -864,3 +864,98 @@ def test_show_experiments_pcp(tmp_dir, mocker):
 
     assert kwargs["output_path"] == str(tmp_dir / "dvc_plots")
     assert kwargs["color_by"] == "Experiment"
+
+
+def test_show_checkpoint_csv(
+    capsys,
+):
+    all_experiments = {
+        "workspace": {
+            "baseline": {
+                "data": {
+                    "timestamp": None,
+                    "params": {
+                        "params.yaml": {"data": {"start": 0}},
+                        "checkpoint.py": {"data": {"EPOCHS": 2, "STEP": 1}},
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {
+                        "scores.yaml": {"data": {"epoch": 1, "mult": 1}}
+                    },
+                }
+            }
+        },
+        "0fd92c2c0ff17c923a79b4b0b96e54fe4": {
+            "baseline": {
+                "data": {
+                    "timestamp": datetime(2021, 3, 10, 14, 5, 52),
+                    "params": {
+                        "params.yaml": {"data": {"start": 0}},
+                        "checkpoint.py": {"data": {"EPOCHS": 2, "STEP": 1}},
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {},
+                    "name": "main",
+                }
+            },
+            "0a2b7379f2720a2fe240a826a611c285d": {
+                "data": {
+                    "checkpoint_tip": "0a2b7379f2720a2fe240a826a611c285d",
+                    "timestamp": datetime(2021, 11, 18, 20, 30, 27),
+                    "params": {
+                        "params.yaml": {"data": {"start": 0}},
+                        "checkpoint.py": {"data": {"EPOCHS": 2, "STEP": 1}},
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {
+                        "scores.yaml": {"data": {"epoch": 1, "mult": 1}}
+                    },
+                    "name": "exp-e44da",
+                    "checkpoint_parent": "8acf8ec4ea2dcedc39eac011d35cf26a1",
+                }
+            },
+            "8acf8ec4ea2dcedc39eac011d35cf26a1": {
+                "data": {
+                    "checkpoint_tip": "0a2b7379f2720a2fe240a826a611c285d",
+                    "timestamp": datetime(2021, 11, 18, 20, 30, 26),
+                    "params": {
+                        "params.yaml": {"data": {"start": 0}},
+                        "checkpoint.py": {"data": {"EPOCHS": 2, "STEP": 1}},
+                    },
+                    "queued": False,
+                    "running": False,
+                    "executor": None,
+                    "metrics": {
+                        "scores.yaml": {"data": {"epoch": 0, "mult": 0}}
+                    },
+                    "checkpoint_parent": "0fd92c2c0ff17c923a79b4b0b96e54fe4",
+                }
+            },
+        },
+    }
+
+    show_experiments(
+        all_experiments, precision=None, fill_value="", iso=True, csv=True
+    )
+    cap = capsys.readouterr()
+    assert (
+        "Experiment,rev,typ,Created,parent,epoch,mult,start,EPOCHS,STEP"
+        in cap.out
+    )
+    assert ",workspace,baseline,,,1,1,0,2,1" in cap.out
+    assert "main,0fd92c2,baseline,2021-03-10T14:05:52,,,,0,2,1" in cap.out
+    print(cap.out)
+    assert (
+        "exp-e44da,0a2b737,checkpoint_tip,2021-11-18T20:30:27,"
+        "8acf8ec,1,1,0,2,1" in cap.out
+    )
+    assert (
+        ",8acf8ec,checkpoint_base,2021-11-18T20:30:26,0fd92c2,0,0,0,2,1"
+        in cap.out
+    )

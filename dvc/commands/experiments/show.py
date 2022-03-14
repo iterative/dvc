@@ -126,7 +126,7 @@ def _collect_rows(
                 typ = "checkpoint_base"
             else:
                 typ = "checkpoint_commit"
-                parent = parent_rev[:7]
+            parent = parent_rev[:7]
         elif i < len(experiments) - 1:
             typ = "branch_commit"
         else:
