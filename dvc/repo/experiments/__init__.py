@@ -1,11 +1,13 @@
 import logging
 import os
 import re
+import time
 from typing import Any, Dict, Iterable, Mapping, Optional
 
 from funcy import cached_property, first
 
 from dvc.exceptions import DvcException
+from dvc.ui import ui
 from dvc.utils import relpath
 
 from .exceptions import (
@@ -142,8 +144,13 @@ class Experiments:
             )
             return [entry.stash_rev]
         if tmp_dir:
-            # TODO: start celery worker
-            raise NotImplementedError
+            self.celery_queue.spawn_worker()
+            # wait for task execution to start
+            while not self.celery_queue.proc.get(entry.stash_rev):
+                time.sleep(1)
+            for line in self.celery_queue.proc.follow(entry.stash_rev):
+                ui.write(line, end="")
+            return
         if machine:
             # TODO: decide how to handle queued remote execution
             raise NotImplementedError
@@ -161,12 +168,7 @@ class Experiments:
         return None
 
     def reproduce_queued(self, **kwargs):
-        # TODO: start celery worker
-        raise NotImplementedError
-        # results = self._reproduce_revs(**kwargs)
-        # if results:
-        #     self._log_reproduced(results, tmp_dir=True)
-        # return results
+        self.celery_queue.spawn_worker()
 
     def _log_reproduced(self, revs: Iterable[str], tmp_dir: bool = False):
         names = []
