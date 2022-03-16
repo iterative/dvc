@@ -2,6 +2,8 @@ import logging
 import os
 from typing import List
 
+from scmrepo.exceptions import SCMError
+
 from dvc.fs.repo import RepoFileSystem
 from dvc.output import Output
 from dvc.repo import locked
@@ -121,8 +123,8 @@ def show(
     # Hide workspace metrics if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except (TypeError, NoSCMError):
-        # TypeError - detached head
+    except (SCMError, NoSCMError):
+        # SCMError - detached head
         # NoSCMError - no repo case
         pass
     else:
