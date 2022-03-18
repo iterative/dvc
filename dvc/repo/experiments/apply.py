@@ -49,7 +49,7 @@ def apply(repo, rev, force=True, **kwargs):
     from scmrepo.exceptions import SCMError as _SCMError
 
     try:
-        repo.scm.merge(exp_rev, commit=False)
+        repo.scm.merge(exp_rev, commit=False, squash=True)
     except _SCMError as exc:
         raise SCMError(str(exc))
 
