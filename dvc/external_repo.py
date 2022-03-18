@@ -201,12 +201,14 @@ def _clone_default_branch(url, rev, for_write=False):
                     # given repo URL it is easier/safer for us to work with
                     # full clones in this case.
                     logger.debug("erepo: unshallowing clone for '%s'", url)
-                    _unshallow(git)
+                    git.fetch(unshallow=True)
+                    _merge_upstream(git)
                     shallow = False
                     CLONES[url] = (clone_path, shallow)
                 else:
                     logger.debug("erepo: git pull '%s'", url)
-                    git.pull()
+                    git.fetch()
+                    _merge_upstream(git)
         else:
             from dvc.scm import clone
 
@@ -217,10 +219,13 @@ def _clone_default_branch(url, rev, for_write=False):
 
                 try:
                     git = clone(url, clone_path, shallow_branch=rev)
-                    shallow = True
-                    logger.debug(
-                        "erepo: using shallow clone for branch '%s'", rev
+                    shallow = os.path.exists(
+                        os.path.join(clone_path, Git.GIT_DIR, "shallow")
                     )
+                    if shallow:
+                        logger.debug(
+                            "erepo: using shallow clone for branch '%s'", rev
+                        )
                 except CloneError:
                     pass
             if not git:
@@ -234,17 +239,16 @@ def _clone_default_branch(url, rev, for_write=False):
     return clone_path, shallow
 
 
-def _unshallow(git):
-    if git.gitpython.repo.head.is_detached:
-        # If this is a detached head (i.e. we shallow cloned a tag) switch to
-        # the default branch
-        origin_refs = git.gitpython.repo.remotes["origin"].refs
-        ref = origin_refs["HEAD"].reference
-        branch_name = ref.name.split("/")[-1]
-        branch = git.gitpython.repo.create_head(branch_name, ref)
-        branch.set_tracking_branch(ref)
-        branch.checkout()
-    git.pull(unshallow=True)
+def _merge_upstream(git):
+    from scmrepo.exceptions import SCMError
+
+    try:
+        branch = git.active_branch()
+        upstream = f"refs/remotes/origin/{branch}"
+        if git.get_ref(upstream):
+            git.merge(upstream)
+    except SCMError:
+        pass
 
 
 def _git_checkout(repo_path, rev):

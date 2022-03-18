@@ -1,5 +1,5 @@
 import os
-from unittest.mock import ANY, patch
+from unittest.mock import ANY
 
 from scmrepo.git import Git
 
@@ -20,7 +20,7 @@ def test_external_repo(erepo_dir, mocker):
 
     url = os.fspath(erepo_dir)
 
-    mock = mocker.patch.object(Git, "clone", wraps=Git.clone)
+    clone_spy = mocker.spy(Git, "clone")
 
     with external_repo(url) as repo:
         with repo.open_by_relpath("file") as fd:
@@ -30,7 +30,7 @@ def test_external_repo(erepo_dir, mocker):
         with repo.open_by_relpath("file") as fd:
             assert fd.read() == "branch"
 
-    assert mock.call_count == 1
+    assert clone_spy.call_count == 1
 
 
 def test_source_change(erepo_dir):
@@ -128,35 +128,34 @@ def test_relative_remote(erepo_dir, tmp_dir):
             assert fd.read() == "contents"
 
 
-def test_shallow_clone_branch(erepo_dir):
+def test_shallow_clone_branch(erepo_dir, mocker):
     with erepo_dir.chdir():
         with erepo_dir.branch("branch", new=True):
             erepo_dir.dvc_gen("file", "branch", commit="create file on branch")
         erepo_dir.dvc_gen("file", "master", commit="create file on master")
 
     url = os.fspath(erepo_dir)
+    clone_spy = mocker.spy(Git, "clone")
 
-    with patch.object(Git, "clone", wraps=Git.clone) as mock_clone:
-        with external_repo(url, rev="branch") as repo:
-            with repo.open_by_relpath("file") as fd:
-                assert fd.read() == "branch"
+    with external_repo(url, rev="branch") as repo:
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "branch"
 
-        mock_clone.assert_called_with(
-            url, ANY, shallow_branch="branch", progress=ANY
-        )
-        _, shallow = CLONES[url]
-        assert shallow
+    clone_spy.assert_called_with(
+        url, ANY, shallow_branch="branch", progress=ANY
+    )
 
-        with external_repo(url) as repo:
-            with repo.open_by_relpath("file") as fd:
-                assert fd.read() == "master"
+    path, _ = CLONES[url]
+    CLONES[url] = (path, True)
 
-        assert mock_clone.call_count == 1
-        _, shallow = CLONES[url]
-        assert not shallow
+    mock_fetch = mocker.patch.object(Git, "fetch")
+    with external_repo(url) as repo:
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "master"
+    mock_fetch.assert_called_with(unshallow=True)
 
 
-def test_shallow_clone_tag(erepo_dir):
+def test_shallow_clone_tag(erepo_dir, mocker):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "foo", commit="init")
         erepo_dir.scm.tag("v1")
@@ -164,24 +163,21 @@ def test_shallow_clone_tag(erepo_dir):
 
     url = os.fspath(erepo_dir)
 
-    with patch.object(Git, "clone", wraps=Git.clone) as mock_clone:
-        with external_repo(url, rev="v1") as repo:
-            with repo.open_by_relpath("file") as fd:
-                assert fd.read() == "foo"
+    clone_spy = mocker.spy(Git, "clone")
+    with external_repo(url, rev="v1") as repo:
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "foo"
 
-        mock_clone.assert_called_with(
-            url, ANY, shallow_branch="v1", progress=ANY
-        )
-        _, shallow = CLONES[url]
-        assert shallow
+    clone_spy.assert_called_with(url, ANY, shallow_branch="v1", progress=ANY)
 
-        with external_repo(url, rev="master") as repo:
-            with repo.open_by_relpath("file") as fd:
-                assert fd.read() == "bar"
+    path, _ = CLONES[url]
+    CLONES[url] = (path, True)
 
-        assert mock_clone.call_count == 1
-        _, shallow = CLONES[url]
-        assert not shallow
+    mock_fetch = mocker.patch.object(Git, "fetch")
+    with external_repo(url, rev="master") as repo:
+        with repo.open_by_relpath("file") as fd:
+            assert fd.read() == "bar"
+    mock_fetch.assert_called_with(unshallow=True)
 
 
 def test_subrepos_are_ignored(tmp_dir, erepo_dir):
