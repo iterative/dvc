@@ -54,7 +54,8 @@ class CheckpointExistsError(DvcException):
             "experiment run:\n\n"
             "\tdvc exp run -f ...\n\n"
             "To resume the existing experiment, run:\n\n"
-            f"\tdvc exp resume {name}\n"
+            f"\tdvc exp apply {name}\n"
+            f"\tdvc exp run\n"
         )
         super().__init__(msg)
         self.name = name
