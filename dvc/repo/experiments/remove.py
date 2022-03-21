@@ -1,19 +1,10 @@
 import logging
-from typing import (
-    TYPE_CHECKING,
-    Collection,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Union,
-)
+from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Set, Union
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
-from .base import ExpRefInfo
 from .exceptions import UnresolvedExpNamesError
 from .utils import (
     exp_refs,
@@ -24,7 +15,10 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from dvc.repo import Repo
     from dvc.scm import Git
+
+    from .base import ExpRefInfo
 
 
 logger = logging.getLogger(__name__)
@@ -33,48 +27,50 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def remove(
-    repo,
+    repo: "Repo",
     exp_names: Union[None, str, List[str]] = None,
     rev: Optional[str] = None,
     all_commits: bool = False,
     num: int = 1,
     queue: bool = False,
     git_remote: Optional[str] = None,
-) -> int:
+) -> List[str]:
+    removed: List[str] = []
     if not any([exp_names, queue, all_commits, rev]):
-        return 0
-
-    removed = 0
-    if queue:
-        removed += _clear_stash(repo)
-    if all_commits:
-        removed += _clear_all_commits(repo.scm, git_remote)
         return removed
 
-    commit_ref_set: Set[ExpRefInfo] = set()
-    queued_ref_set: Set[int] = set()
+    if queue:
+        removed.extend(_clear_stash(repo))
+    if all_commits:
+        removed.extend(_clear_all_commits(repo, git_remote))
+        return removed
+
+    commit_ref_dict: Dict["ExpRefInfo", str] = {}
+    queued_ref_dict: Dict[int, str] = {}
     if exp_names:
         _resolve_exp_by_name(
-            repo, exp_names, commit_ref_set, queued_ref_set, git_remote
+            repo, exp_names, commit_ref_dict, queued_ref_dict, git_remote
         )
 
     if rev:
-        _resolve_exp_by_baseline(repo, rev, num, commit_ref_set, git_remote)
+        _resolve_exp_by_baseline(repo, rev, num, commit_ref_dict, git_remote)
 
-    if commit_ref_set:
-        removed += _remove_commited_exps(repo.scm, commit_ref_set, git_remote)
+    if commit_ref_dict:
+        removed.extend(
+            _remove_commited_exps(repo.scm, commit_ref_dict, git_remote)
+        )
 
-    if queued_ref_set:
-        removed += _remove_queued_exps(repo, queued_ref_set)
+    if queued_ref_dict:
+        removed.extend(_remove_queued_exps(repo, queued_ref_dict))
 
     return removed
 
 
 def _resolve_exp_by_name(
-    repo,
+    repo: "Repo",
     exp_names: Union[str, List[str]],
-    commit_ref_set: Set["ExpRefInfo"],
-    queued_ref_set: Set[int],
+    commit_ref_dict: Dict["ExpRefInfo", str],
+    queued_ref_dict: Dict[int, str],
     git_remote: Optional[str],
 ):
     remained = set()
@@ -86,13 +82,13 @@ def _resolve_exp_by_name(
         if exp_ref is None:
             remained.add(exp_name)
         else:
-            commit_ref_set.add(exp_ref)
+            commit_ref_dict[exp_ref] = exp_name
 
     if not git_remote:
         stash_index_dict = _get_queued_index_by_names(repo, remained)
         for exp_name, stash_index in stash_index_dict.items():
             if stash_index is not None:
-                queued_ref_set.add(stash_index)
+                queued_ref_dict[stash_index] = exp_name
                 remained.remove(exp_name)
 
     if remained:
@@ -103,7 +99,7 @@ def _resolve_exp_by_baseline(
     repo,
     rev: str,
     num: int,
-    commit_ref_set: Set["ExpRefInfo"],
+    commit_ref_dict: Dict["ExpRefInfo", str],
     git_remote: Optional[str] = None,
 ):
     rev_dict = iter_revs(repo.scm, [rev], num)
@@ -112,19 +108,27 @@ def _resolve_exp_by_baseline(
 
     for _, ref_info_list in ref_info_dict.items():
         for ref_info in ref_info_list:
-            commit_ref_set.add(ref_info)
+            if ref_info not in commit_ref_dict:
+                commit_ref_dict[ref_info] = ref_info.name
 
 
-def _clear_stash(repo):
-    removed = len(repo.experiments.stash)
+def _clear_stash(repo: "Repo") -> List[str]:
+    removed_name_list = []
+    for entry in repo.experiments.stash.list():
+        new_sha = entry.new_sha.decode("utf8")
+        name = repo.experiments.get_exact_name(new_sha)
+        if not name:
+            name = new_sha[:7]
+        removed_name_list.append(name)
     repo.experiments.stash.clear()
-    return removed
+    return removed_name_list
 
 
-def _clear_all_commits(scm, git_remote):
-    ref_infos = list(exp_refs(scm, git_remote))
-    _remove_commited_exps(scm, ref_infos, git_remote)
-    return len(ref_infos)
+def _clear_all_commits(repo, git_remote) -> List:
+    ref_infos = {
+        ref_info: ref_info.name for ref_info in exp_refs(repo.scm, git_remote)
+    }
+    return _remove_commited_exps(repo.scm, ref_infos, git_remote)
 
 
 def _get_queued_index_by_names(
@@ -152,12 +156,12 @@ def _get_queued_index_by_names(
 
 
 def _remove_commited_exps(
-    scm: "Git", exp_ref_list: Collection["ExpRefInfo"], remote: Optional[str]
-) -> int:
+    scm: "Git", exp_ref_dict: Mapping["ExpRefInfo", str], remote: Optional[str]
+) -> List[str]:
     if remote:
         from dvc.scm import TqdmGit
 
-        for ref_info in exp_ref_list:
+        for ref_info in exp_ref_dict:
             with TqdmGit(desc="Pushing git refs") as pbar:
                 push_refspec(
                     scm,
@@ -167,13 +171,13 @@ def _remove_commited_exps(
                     progress=pbar.update_git,
                 )
     else:
-        remove_exp_refs(scm, exp_ref_list)
-    return len(exp_ref_list)
+        remove_exp_refs(scm, exp_ref_dict)
+    return list(exp_ref_dict.values())
 
 
-def _remove_queued_exps(repo, indexes: Collection[int]) -> int:
-    index_list = list(indexes)
+def _remove_queued_exps(repo, indexes: Mapping[int, str]) -> List[str]:
+    index_list = list(indexes.keys())
     index_list.sort(reverse=True)
     for index in index_list:
         repo.experiments.stash.drop(index)
-    return len(index_list)
+    return list(indexes.values())

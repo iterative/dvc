@@ -4,6 +4,7 @@ import logging
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import InvalidArgumentError
+from dvc.ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class CmdExperimentsRemove(CmdBase):
 
         self.raise_error_if_all_disabled()
 
-        self.repo.experiments.remove(
+        removed_list = self.repo.experiments.remove(
             exp_names=self.args.experiment,
             all_commits=self.args.all_commits,
             rev=self.args.rev,
@@ -35,6 +36,8 @@ class CmdExperimentsRemove(CmdBase):
             queue=self.args.queue,
             git_remote=self.args.git_remote,
         )
+        removed = ",".join(removed_list)
+        ui.write(f"Removed experiments: {removed}")
 
         return 0
 
