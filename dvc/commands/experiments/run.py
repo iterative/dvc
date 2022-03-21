@@ -81,7 +81,7 @@ def add_parser(experiments_subparsers, parent_parser):
 
 
 def _add_run_common(parser):
-    """Add common args for 'exp run' and 'exp resume'."""
+    """Add common args for 'exp run'."""
     # inherit arguments from `dvc repro`
     add_repro_arguments(parser)
     parser.add_argument(

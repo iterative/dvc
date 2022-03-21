@@ -28,8 +28,7 @@ def _reproduce_stage(stage: "Stage", **kwargs):
         else:
             raise DvcException(
                 "Checkpoint stages are not supported in 'dvc repro'. "
-                "Checkpoint stages must be reproduced with 'dvc exp run' "
-                "or 'dvc exp resume'."
+                "Checkpoint stages must be reproduced with 'dvc exp run'. "
             )
 
     if stage.frozen and not stage.is_import:
