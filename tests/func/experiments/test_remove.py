@@ -7,34 +7,39 @@ from dvc.repo.experiments.utils import exp_refs_by_rev
 
 def test_remove_experiments_by_ref(tmp_dir, scm, dvc, exp_stage, caplog):
     queue_length = 3
-    ref_list = []
+    ref_info_list = []
+    ref_name_list = []
 
     for i in range(queue_length):
         results = dvc.experiments.run(
             exp_stage.addressing, params=[f"foo={i}"]
         )
         ref_info = first(exp_refs_by_rev(scm, first(results)))
-        ref_list.append(str(ref_info))
+        ref_info_list.append(ref_info)
+        ref_name_list.append(str(ref_info))
 
     with pytest.raises(InvalidArgumentError):
-        dvc.experiments.remove(ref_list[:2] + ["non-exist"])
-    assert scm.get_ref(str(ref_list[0])) is not None
-    assert scm.get_ref(str(ref_list[1])) is not None
-    assert scm.get_ref(str(ref_list[2])) is not None
+        dvc.experiments.remove(ref_name_list[:2] + ["non-exist"])
+    assert scm.get_ref(ref_name_list[0]) is not None
+    assert scm.get_ref(ref_name_list[1]) is not None
+    assert scm.get_ref(ref_name_list[2]) is not None
 
-    assert dvc.experiments.remove(ref_list[:2])
-    assert scm.get_ref(str(ref_list[0])) is None
-    assert scm.get_ref(str(ref_list[1])) is None
-    assert scm.get_ref(str(ref_list[2])) is not None
+    assert set(dvc.experiments.remove(ref_name_list[:2])) == set(
+        ref_name_list[:2]
+    )
+    assert scm.get_ref(ref_name_list[0]) is None
+    assert scm.get_ref(ref_name_list[1]) is None
+    assert scm.get_ref(ref_name_list[2]) is not None
 
 
 def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     queue_length = 3
-
+    ref_list = []
     for i in range(queue_length):
-        dvc.experiments.run(
+        result = dvc.experiments.run(
             exp_stage.addressing, params=[f"foo={i}"], queue=True
         )
+        ref_list.append(first(result)[:7])
 
     results = dvc.experiments.run(
         exp_stage.addressing, params=[f"foo={queue_length}"]
@@ -42,7 +47,7 @@ def test_remove_all_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     ref_info = first(exp_refs_by_rev(scm, first(results)))
 
     assert len(dvc.experiments.stash) == queue_length
-    assert dvc.experiments.remove(queue=True) == queue_length
+    assert set(dvc.experiments.remove(queue=True)) == set(ref_list)
     assert len(dvc.experiments.stash) == 0
     assert scm.get_ref(str(ref_info)) is not None
 
@@ -71,7 +76,9 @@ def test_remove_special_queued_experiments(tmp_dir, scm, dvc, exp_stage):
     assert scm.get_ref(str(ref_info1)) is not None
     assert scm.get_ref(str(ref_info2)) is not None
 
-    assert dvc.experiments.remove(["queue1", rev2[:5], str(ref_info1)]) == 3
+    assert set(
+        dvc.experiments.remove(["queue1", rev2[:5], str(ref_info1)])
+    ) == {"queue1", rev2[:5], str(ref_info1)}
     assert rev1 not in dvc.experiments.stash_revs
     assert rev2 not in dvc.experiments.stash_revs
     assert rev3 in dvc.experiments.stash_revs
@@ -90,8 +97,10 @@ def test_remove_all(tmp_dir, scm, dvc, exp_stage):
     ref_info2 = first(exp_refs_by_rev(scm, first(results)))
     dvc.experiments.run(exp_stage.addressing, params=["foo=4"], queue=True)
 
-    removed = dvc.experiments.remove(all_commits=True)
-    assert removed == 2
+    assert set(dvc.experiments.remove(all_commits=True)) == {
+        ref_info1.name,
+        ref_info2.name,
+    }
     assert len(dvc.experiments.stash) == 2
     assert scm.get_ref(str(ref_info2)) is None
     assert scm.get_ref(str(ref_info1)) is None
@@ -130,8 +139,7 @@ def test_remove_experiments_by_rev(tmp_dir, scm, dvc, exp_stage):
     baseline = scm.get_rev()
 
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=1"])
-    ref_info = first(exp_refs_by_rev(scm, first(results)))
-    baseline_exp_ref = str(ref_info)
+    baseline_exp_ref = first(exp_refs_by_rev(scm, first(results)))
 
     results = dvc.experiments.run(
         exp_stage.addressing, params=["foo=2"], queue=True, name="queue2"
@@ -148,8 +156,8 @@ def test_remove_experiments_by_rev(tmp_dir, scm, dvc, exp_stage):
         exp_stage.addressing, params=["foo=4"], queue=True, name="queue4"
     )
     new_queue_ref = first(results)
-    assert dvc.experiments.remove(rev=baseline) == 1
-    assert scm.get_ref(baseline_exp_ref) is None
+    assert dvc.experiments.remove(rev=baseline) == [baseline_exp_ref.name]
+    assert scm.get_ref(str(baseline_exp_ref)) is None
     assert baseline_queue_ref in dvc.experiments.stash_revs
     assert scm.get_ref(new_exp_ref) is not None
     assert new_queue_ref in dvc.experiments.stash_revs
