@@ -408,7 +408,7 @@ def test_import_pipeline_tracked_outs(
     dvc.scm.commit("add pipeline stage")
 
     with erepo_dir.chdir():
-        erepo_dir.dvc.imp(f"file:///{os.fspath(tmp_dir)}", "bar", out="baz")
+        erepo_dir.dvc.imp(f"file://{os.fspath(tmp_dir)}", "bar", out="baz")
         assert (erepo_dir / "baz").read_text() == "foo"
 
 

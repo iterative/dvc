@@ -150,7 +150,7 @@ def test_read_with_subrepos(tmp_dir, scm, local_cloud, local_repo):
         subrepo.dvc_gen("dvc-file", "dvc-file", commit="add dir")
         subrepo.dvc.push()
 
-    repo_path = None if local_repo else f"file:///{tmp_dir}"
+    repo_path = None if local_repo else f"file://{tmp_dir}"
     subrepo_path = os.path.join("dir", "subrepo")
 
     assert api.read("foo.txt", repo=repo_path) == "foo.txt"
