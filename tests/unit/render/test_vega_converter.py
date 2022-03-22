@@ -132,7 +132,7 @@ def test_convert(
 ):
     converter = VegaConverter(properties)
     datapoints, resolved_properties = converter.convert(
-        revision="r", filename="f", data=input_data
+        data=input_data, revision="r", filename="f"
     )
 
     assert datapoints == expected_datapoints
@@ -144,9 +144,9 @@ def test_convert_skip_step():
     converter.skip_step("append_index")
 
     datapoints, resolved_properties = converter.convert(
+        data={"a": "b", "metric": [{"v": 1}, {"v": 2}]},
         revision="r",
         filename="f",
-        data={"a": "b", "metric": [{"v": 1}, {"v": 2}]},
     )
 
     assert datapoints == [

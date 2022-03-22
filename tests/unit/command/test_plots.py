@@ -127,7 +127,7 @@ def test_plots_diff_vega(dvc, mocker, capsys, plots_data):
     cmd = cli_args.func(cli_args)
     mocker.patch("dvc.repo.plots.diff.diff", return_value=plots_data)
     mocker.patch(
-        "dvc_render.VegaRenderer.partial_html",
+        "dvc_render.VegaRenderer.get_filled_template",
         return_value=json.dumps({"this": "is vega json"}),
     )
     render_mock = mocker.patch("dvc_render.render_html")

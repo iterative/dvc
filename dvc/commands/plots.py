@@ -78,7 +78,7 @@ class CmdPlots(CmdBase):
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
-                    ui.write_json(json.loads(renderer.partial_html()))
+                    ui.write_json(json.loads(renderer.get_filled_template()))
                 return 0
             if self.args.json:
                 _show_json(renderers, self.args.split)
