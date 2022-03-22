@@ -43,7 +43,7 @@ class CmdExperimentsPush(CmdBase):
                 f"to Git remote '{self.args.git_remote}'."
             )
         else:
-            ui.write("No experiments to pull.")
+            ui.write("No experiments to push.")
         if not self.args.push_cache:
             ui.write(
                 "To push cached outputs",
