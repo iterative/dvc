@@ -2,7 +2,7 @@ import base64
 import os
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from dvc.render import REVISION_FIELD, SRC_FIELD
+from dvc.render import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
@@ -35,7 +35,7 @@ class ImageConverter:
         return f"data:image;base64,{base64_str}"
 
     def convert(
-        self, revision, filename, data: bytes
+        self, data: bytes, revision, filename
     ) -> Tuple[List[Dict], Dict]:
         """
         Convert the DVC Plots content to DVC Render datapoints.
@@ -52,7 +52,7 @@ class ImageConverter:
             src = self._encode_image(data)
         datapoint = {
             REVISION_FIELD: revision,
-            "filename": filename,
+            FILENAME_FIELD: filename,
             SRC_FIELD: src,
         }
         return [datapoint], self.plot_properties

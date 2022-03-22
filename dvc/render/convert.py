@@ -7,7 +7,7 @@ from dvc.render.image_converter import ImageConverter
 from dvc.render.vega_converter import VegaConverter
 
 
-def get_converter(
+def _get_converter(
     renderer_class, props
 ) -> Union[VegaConverter, ImageConverter]:
     from dvc_render import ImageRenderer, VegaRenderer
@@ -21,13 +21,13 @@ def get_converter(
 
 
 def to_datapoints(renderer_class, data: Dict, props: Dict):
-    converter = get_converter(renderer_class, props)
+    converter = _get_converter(renderer_class, props)
     datapoints: List[Dict] = []
     for revision, rev_data in data.items():
         for filename, file_data in rev_data.get("data", {}).items():
             if "data" in file_data:
                 processed, final_props = converter.convert(
-                    revision, filename, file_data.get("data")
+                    file_data.get("data"), revision, filename
                 )
                 datapoints.extend(processed)
     return datapoints, final_props

@@ -1,5 +1,6 @@
 INDEX_FIELD = "step"
 REVISION_FIELD = "rev"
+FILENAME_FIELD = "filename"
 REVISIONS_KEY = "revisions"
 TYPE_KEY = "type"
 SRC_FIELD = "src"

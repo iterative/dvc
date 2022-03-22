@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Set, Union
 from funcy import first, project
 
 from dvc.exceptions import DvcException
-from dvc.render import INDEX_FIELD, REVISION_FIELD
+from dvc.render import FILENAME_FIELD, INDEX_FIELD, REVISION_FIELD
 
 
 class FieldsNotFoundError(DvcException):
@@ -156,7 +156,12 @@ class VegaConverter:
             else:
                 self.inferred_props["y"] = inferred_y
 
-    def convert(self, revision: str, filename: str, data: Dict):
+    def convert(
+        self,
+        data: Dict,
+        revision: Optional[str] = None,
+        filename: Optional[str] = None,
+    ):
         """
         Convert the data. Fill necessary fields ('x', 'y') and return both
         generated datapoints and updated properties.
@@ -164,12 +169,15 @@ class VegaConverter:
         processed = deepcopy(data)
 
         for _, step in self.steps:
-            processed = step(processed)
+            processed = step(processed)  # type: ignore
 
-        self._infer_y(processed)
+        self._infer_y(processed)  # type: ignore
 
-        for datapoint in processed:
-            datapoint[REVISION_FIELD] = revision
-            datapoint["filename"] = filename
+        if revision:
+            for datapoint in processed:
+                datapoint[REVISION_FIELD] = revision
+        if filename:
+            for datapoint in processed:
+                datapoint[FILENAME_FIELD] = filename
 
         return processed, {**self.props, **self.inferred_props}

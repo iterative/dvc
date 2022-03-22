@@ -6,7 +6,7 @@ def test_image_converter_no_out():
     data = b"content"
     converter = ImageConverter()
 
-    datapoints, _ = converter.convert("r", "image.png", data)
+    datapoints, _ = converter.convert(data, "r", "image.png")
 
     assert datapoints[0] == {
         REVISION_FIELD: "r",
@@ -19,7 +19,7 @@ def test_image_converter_with_out(tmp_dir):
     data = b"content"
     converter = ImageConverter({"out": tmp_dir / "foo"})
 
-    datapoints, _ = converter.convert("r", "image.png", data)
+    datapoints, _ = converter.convert(data, "r", "image.png")
 
     assert datapoints[0] == {
         REVISION_FIELD: "r",
