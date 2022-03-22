@@ -5,8 +5,10 @@ from dataclasses import asdict, dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
+    Collection,
     Dict,
     Generator,
+    List,
     Mapping,
     NamedTuple,
     Optional,
@@ -111,6 +113,42 @@ class BaseStashQueue(ABC):
     @abstractmethod
     def get(self) -> QueueGetResult:
         """Pop and return the first item in the queue."""
+
+    def remove(self, revs: Collection[str]) -> List[str]:
+        """Remove the specified entries from the queue.
+
+        Arguments:
+            revs: Stash revisions or queued exp names to be removed.
+
+        Returns:
+            Revisions (or names) which were removed.
+        """
+        to_remove = {}
+        removed: List[str] = []
+        for stash_rev, stash_entry in self.stash.stash_revs.items():
+            if stash_rev in revs:
+                to_remove[stash_rev] = stash_entry
+                removed.append(stash_rev)
+            elif stash_entry.name in revs:
+                to_remove[stash_rev] = stash_entry
+                removed.append(stash_entry.name)
+        self._remove_revs(to_remove)
+        return removed
+
+    def clear(self) -> List[str]:
+        """Remove all entries from the queue.
+
+        Returns:
+            Revisions which were removed.
+        """
+        stash_revs = self.stash.stash_revs
+        removed = list(stash_revs)
+        self._remove_revs(stash_revs)
+        return removed
+
+    @abstractmethod
+    def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
+        """Remove the specified entries from the queue by stash revision."""
 
     @abstractmethod
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
