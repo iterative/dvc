@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
@@ -36,9 +36,7 @@ def remove(
 
 
 def _clear_stash(repo):
-    removed = len(repo.experiments.workspace_queue.stash)
-    repo.experiments.workspace_queue.stash.clear()
-    return removed
+    return len(repo.experiments.celery_queue.clear())
 
 
 def _clear_all(repo):
@@ -93,21 +91,16 @@ def _remove_commited_exps(
     return remain_list
 
 
-def _remove_queued_exps(repo, refs_or_revs: List[str]) -> List[str]:
-    remain_list = []
-    for ref_or_rev in refs_or_revs:
-        stash_index = _get_exp_stash_index(repo, ref_or_rev)
-        if stash_index is None:
-            remain_list.append(ref_or_rev)
-        else:
-            repo.experiments.workspace_queue.stash.drop(stash_index)
-    return remain_list
+def _remove_queued_exps(repo, refs_or_revs: List[str]) -> Iterable[str]:
+    return set(refs_or_revs).difference(
+        repo.experiments.celery_queue.remove(refs_or_revs)
+    )
 
 
 def _remove_exp_by_names(repo, remote, exp_names: List[str]) -> int:
     remained = _remove_commited_exps(repo, remote, exp_names)
     if not remote:
-        remained = _remove_queued_exps(repo, remained)
+        remained = list(_remove_queued_exps(repo, remained))
     if remained:
         raise InvalidArgumentError(
             "'{}' is not a valid experiment".format(";".join(remained))
