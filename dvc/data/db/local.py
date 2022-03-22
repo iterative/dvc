@@ -78,7 +78,7 @@ class LocalObjectDB(ObjectDB):
 
         return ret
 
-    def _list_paths(self, prefix=None, progress_callback=None):
+    def _list_paths(self, prefix=None):
         assert self.fs_path is not None
         if prefix:
             fs_path = self.fs.path.join(self.fs_path, prefix[:2])
@@ -89,12 +89,7 @@ class LocalObjectDB(ObjectDB):
 
         # NOTE: use utils.fs walk_files since fs.walk_files will not follow
         # symlinks
-        if progress_callback:
-            for path in walk_files(fs_path):
-                progress_callback()
-                yield path
-        else:
-            yield from walk_files(fs_path)
+        yield from walk_files(fs_path)
 
     def _remove_unpacked_dir(self, hash_):
         hash_fs_path = self.hash_to_path(hash_)

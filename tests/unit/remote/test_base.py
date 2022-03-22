@@ -75,21 +75,15 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     size = 256 / odb.fs._JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
     list(odb._list_hashes_traverse(size, {0}))
     for i in range(1, 16):
-        list_hashes.assert_any_call(
-            prefix=f"{i:03x}", progress_callback=CallableOrNone
-        )
+        list_hashes.assert_any_call(f"{i:03x}")
     for i in range(1, 256):
-        list_hashes.assert_any_call(
-            prefix=f"{i:02x}", progress_callback=CallableOrNone
-        )
+        list_hashes.assert_any_call(f"{i:02x}")
 
     # default traverse (small remote)
     size -= 1
     list_hashes.reset_mock()
     list(odb._list_hashes_traverse(size - 1, {0}))
-    list_hashes.assert_called_with(
-        prefix=None, progress_callback=CallableOrNone
-    )
+    list_hashes.assert_called_with(None)
 
 
 def test_list_hashes(dvc):

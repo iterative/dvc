@@ -10,6 +10,8 @@ from dvc.objects.file import HashFile
 from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
+    from typing import Tuple
+
     from dvc.fs.base import FileSystem
     from dvc.hash_info import HashInfo
     from dvc.types import AnyPath
@@ -179,24 +181,14 @@ class ObjectDB:
             # next time
             self.protect(obj.fs_path)
 
-    def _list_paths(self, prefix=None, progress_callback=None):
+    def _list_paths(self, prefix: str = None):
+        prefix = prefix or ""
+        parts: "Tuple[str, ...]" = (self.fs_path,)
         if prefix:
-            if len(prefix) > 2:
-                fs_path = self.fs.path.join(
-                    self.fs_path, prefix[:2], prefix[2:]
-                )
-            else:
-                fs_path = self.fs.path.join(self.fs_path, prefix[:2])
-            prefix = True
-        else:
-            fs_path = self.fs_path
-            prefix = False
-        if progress_callback:
-            for file_info in self.fs.find(fs_path, prefix=prefix):
-                progress_callback()
-                yield file_info
-        else:
-            yield from self.fs.find(fs_path, prefix=prefix)
+            parts = *parts, prefix[:2]
+        if len(prefix) > 2:
+            parts = *parts, prefix[2:]
+        yield from self.fs.find(self.fs.path.join(*parts), prefix=bool(prefix))
 
     def _path_to_hash(self, path):
         parts = self.fs.path.parts(path)[-2:]
@@ -206,13 +198,13 @@ class ObjectDB:
 
         return "".join(parts)
 
-    def _list_hashes(self, prefix=None, progress_callback=None):
+    def _list_hashes(self, prefix=None):
         """Iterate over hashes in this fs.
 
         If `prefix` is specified, only hashes which begin with `prefix`
         will be returned.
         """
-        for path in self._list_paths(prefix, progress_callback):
+        for path in self._list_paths(prefix):
             try:
                 yield self._path_to_hash(path)
             except ValueError:
@@ -220,9 +212,9 @@ class ObjectDB:
                     "'%s' doesn't look like a cache file, skipping", path
                 )
 
-    def _hashes_with_limit(self, limit, prefix=None, progress_callback=None):
+    def _hashes_with_limit(self, limit, prefix=None):
         count = 0
-        for hash_ in self._list_hashes(prefix, progress_callback):
+        for hash_ in self._list_hashes(prefix):
             yield hash_
             count += 1
             if count > limit:
@@ -258,17 +250,19 @@ class ObjectDB:
             unit="file",
         ) as pbar:
 
-            def update(n=1):
-                pbar.update(n * total_prefixes)
+            def iter_with_pbar(hashes):
+                for hash_ in hashes:
+                    pbar.update(total_prefixes)
+                    yield hash_
 
             if max_hashes:
                 hashes = self._hashes_with_limit(
-                    max_hashes / total_prefixes, prefix, update
+                    max_hashes / total_prefixes, prefix
                 )
             else:
-                hashes = self._list_hashes(prefix, update)
+                hashes = self._list_hashes(prefix)
 
-            remote_hashes = set(hashes)
+            remote_hashes = set(iter_with_pbar(hashes))
             if remote_hashes:
                 remote_size = total_prefixes * len(remote_hashes)
             else:
@@ -319,18 +313,13 @@ class ObjectDB:
             initial=initial,
             unit="file",
         ) as pbar:
-
-            def list_with_update(prefix):
-                return list(
-                    self._list_hashes(
-                        prefix=prefix, progress_callback=pbar.update
-                    )
-                )
+            from funcy import collecting
 
             with ThreadPoolExecutor(
                 max_workers=jobs or self.fs.jobs
             ) as executor:
-                in_remote = executor.map(list_with_update, traverse_prefixes)
+                list_hashes = collecting(pbar.wrap_fn(self._list_hashes))
+                in_remote = executor.map(list_hashes, traverse_prefixes)
                 yield from itertools.chain.from_iterable(in_remote)
 
     def all(self, jobs=None, name=None):
