@@ -1,9 +1,10 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Generator, Mapping
+from typing import TYPE_CHECKING, Dict, Generator, List, Mapping, NamedTuple
 
 from funcy import cached_property, first
+from kombu.message import Message
 
 from dvc.exceptions import DvcException
 
@@ -16,6 +17,7 @@ from ..executor.base import (
 )
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
+from ..stash import ExpStashEntry
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
 from .tasks import setup_exp
 
@@ -26,6 +28,11 @@ if TYPE_CHECKING:
     from dvc_task.worker import TemporaryWorker
 
 logger = logging.getLogger(__name__)
+
+
+class _MessageEntry(NamedTuple):
+    msg: Message
+    entry: QueueEntry
 
 
 class LocalCeleryQueue(BaseStashQueue):
@@ -91,13 +98,30 @@ class LocalCeleryQueue(BaseStashQueue):
     def get(self) -> QueueGetResult:
         raise NotImplementedError
 
+    def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
+        to_drop: List[int] = []
+        try:
+            for msg, queue_entry in self._iter_queued():
+                if queue_entry.stash_rev in stash_revs:
+                    self.celery.reject(msg.delivery_tag)
+                    stash_entry = stash_revs[queue_entry.stash_rev]
+                    assert stash_entry.stash_index is not None
+                    to_drop.append(stash_entry.stash_index)
+        finally:
+            for index in sorted(to_drop, reverse=True):
+                self.stash.drop(index)
+
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
+        for _, entry in self._iter_queued():
+            yield entry
+
+    def _iter_queued(self) -> Generator[_MessageEntry, None, None]:
         for msg in self.celery.iter_queued():
             if msg.headers.get("task") != setup_exp.name:
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
-            yield QueueEntry.from_dict(entry_dict)
+            yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_processed(self) -> Generator[QueueEntry, None, None]:
         for msg in self.celery.iter_processed():
@@ -137,6 +161,17 @@ class WorkspaceQueue(BaseStashQueue):
         )
         executor = self.setup_executor(self.repo.experiments, entry)
         return QueueGetResult(entry, executor)
+
+    def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
+        for index in sorted(
+            (
+                entry.stash_index
+                for entry in stash_revs.values()
+                if entry.stash_index is not None
+            ),
+            reverse=True,
+        ):
+            self.stash.drop(index)
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
         for rev, entry in self.stash.stash_revs:
