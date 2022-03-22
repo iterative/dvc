@@ -35,9 +35,11 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
     @classmethod
     def _strip_protocol(cls, path: str) -> str:
-        from fsspec.utils import infer_storage_options
-
-        return infer_storage_options(path)["path"].lstrip("/")
+        """
+        For WebDAVFileSystem, provided url is the base path itself, so it
+        should be treated as being a root path.
+        """
+        return ""
 
     def unstrip_protocol(self, path: str) -> str:
         return self.fs_args["base_url"] + "/" + path
