@@ -1,5 +1,6 @@
 import argparse
 import logging
+from typing import TYPE_CHECKING, List
 
 from funcy import compact
 
@@ -7,6 +8,11 @@ from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.exceptions import InvalidArgumentError
 from dvc.ui import ui
+
+if TYPE_CHECKING:
+    from dvc.dependency import Dependency
+    from dvc.stage import PipelineStage
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +35,6 @@ class CmdExperimentsInit(CmdBase):
         "plots": PLOTS,
         "live": DVCLIVE,
     }
-    EXP_LINK = "https://s.dvc.org/g/exp/run"
 
     def run(self):
         from dvc.commands.stage import parse_cmd
@@ -58,7 +63,7 @@ class CmdExperimentsInit(CmdBase):
             }
         )
 
-        initialized_stage = init(
+        initialized_stage, initialized_deps = init(
             self.repo,
             name=self.args.name,
             type=self.args.type,
@@ -67,32 +72,42 @@ class CmdExperimentsInit(CmdBase):
             interactive=self.args.interactive,
             force=self.args.force,
         )
-
-        text = ui.rich_text.assemble(
-            "Created ",
-            (self.args.name, "bright_blue"),
-            " stage in ",
-            ("dvc.yaml", "green"),
-            ".",
-        )
-        if not self.args.run:
-            text.append_text(
-                ui.rich_text.assemble(
-                    " To run, use ",
-                    ('"dvc exp run"', "green"),
-                    ".\nSee ",
-                    (self.EXP_LINK, "repr.url"),
-                    ".",
-                )
-            )
-
-        ui.write(text, styled=True)
+        self._post_init_display(initialized_stage, initialized_deps)
         if self.args.run:
-            return self.repo.experiments.run(
-                targets=[initialized_stage.addressing]
-            )
-
+            self.repo.experiments.run(targets=[initialized_stage.addressing])
         return 0
+
+    def _post_init_display(
+        self, stage: "PipelineStage", new_deps: List["Dependency"]
+    ) -> None:
+        from dvc.utils import humanize
+
+        path_fmt = "[green]{0}[/green]".format
+        if new_deps:
+            deps_paths = humanize.join(map(path_fmt, new_deps))
+            ui.write(f"Creating dependencies: {deps_paths}", styled=True)
+
+        ui.write(
+            f"Creating [b]{self.args.name}[/b] stage in [green]dvc.yaml[/]",
+            styled=True,
+        )
+        if stage.outs or not self.args.run:
+            # separate the above status-like messages with help/tips section
+            ui.write(styled=True)
+
+        if stage.outs:
+            outs_paths = humanize.join(map(path_fmt, stage.outs))
+            tips = f"Ensure your experiment command creates {outs_paths}."
+            ui.write(tips, styled=True)
+
+        if not self.args.run:
+            ui.write(
+                'You can now run your experiment using [b]"dvc exp run"[/].',
+                styled=True,
+            )
+        else:
+            # separate between `exp.run` output and `dvc exp init` output
+            ui.write(styled=True)
 
 
 def add_parser(experiments_subparsers, parent_parser):

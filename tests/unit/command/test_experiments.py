@@ -18,7 +18,6 @@ from dvc.commands.experiments.run import CmdExperimentsRun
 from dvc.commands.experiments.show import CmdExperimentsShow, show_experiments
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
-from dvc.stage import PipelineStage
 from tests.utils import ANY
 from tests.utils.asserts import called_once_with_subset
 
@@ -669,9 +668,9 @@ def test_show_experiments_sort_by(capsys, sort_order):
 
 @pytest.mark.parametrize("extra_args", [(), ("--run",)])
 def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
+    stage = mocker.Mock(outs=[], addressing="train")
     m = mocker.patch(
-        "dvc.repo.experiments.init.init",
-        return_value=PipelineStage(dvc, path="dvc.yaml", name="stage1"),
+        "dvc.repo.experiments.init.init", return_value=(stage, [])
     )
     runner = mocker.patch("dvc.repo.experiments.run.run", return_value=0)
     cli_args = parse_args(["exp", "init", *extra_args, "cmd"])
@@ -696,22 +695,20 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
         interactive=False,
         force=False,
     )
-    expected = "Created train stage in dvc.yaml."
-    if not extra_args:
-        expected += (
-            ' To run, use "dvc exp run".\n' "See https://s.dvc.org/g/exp/run."
-        )
-    assert capsys.readouterr() == (expected + "\n", "")
+
     if extra_args:
         # `parse_args` creates a new `Repo` object
-        runner.assert_called_once_with(ANY(Repo), targets=["stage1"])
+        runner.assert_called_once_with(ANY(Repo), targets=["train"])
 
 
 def test_experiments_init_config(dvc, scm, mocker):
     with dvc.config.edit() as conf:
         conf["exp"] = {"code": "new_src", "models": "new_models"}
 
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [])
+    )
     cli_args = parse_args(["exp", "init", "cmd"])
     cmd = cli_args.func(cli_args)
 
@@ -738,7 +735,10 @@ def test_experiments_init_config(dvc, scm, mocker):
 
 
 def test_experiments_init_explicit(dvc, mocker):
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [])
+    )
     cli_args = parse_args(["exp", "init", "--explicit", "cmd"])
     cmd = cli_args.func(cli_args)
 
@@ -769,7 +769,10 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
     cmd = cli_args.func(cli_args)
     assert isinstance(cmd, CmdExperimentsInit)
 
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [])
+    )
     assert cmd.run() == 0
     assert called_once_with_subset(m, ANY(Repo), interactive=True)
 
@@ -822,7 +825,10 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
     cmd = cli_args.func(cli_args)
     assert isinstance(cmd, CmdExperimentsInit)
 
-    m = mocker.patch("dvc.repo.experiments.init.init")
+    stage = mocker.Mock(outs=[])
+    m = mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, [])
+    )
     assert cmd.run() == 0
     assert called_once_with_subset(m, ANY(Repo), **expected_kw)
 
@@ -830,6 +836,40 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
 def test_experiments_init_type_invalid_choice():
     with pytest.raises(DvcParserError):
         parse_args(["exp", "init", "--type=invalid", "cmd"])
+
+
+@pytest.mark.parametrize("args", [[], ["--run"]])
+def test_experiments_init_displays_output_on_no_run(dvc, mocker, capsys, args):
+    stage = dvc.stage.create(
+        name="train",
+        cmd=["cmd"],
+        deps=["code", "data"],
+        params=["params.yaml"],
+        outs=["metrics.json", "plots", "models"],
+    )
+    mocker.patch(
+        "dvc.repo.experiments.init.init", return_value=(stage, stage.deps)
+    )
+    mocker.patch("dvc.repo.experiments.run.run", return_value=0)
+    cli_args = parse_args(["exp", "init", "cmd", *args])
+    cmd = cli_args.func(cli_args)
+    assert cmd.run() == 0
+
+    expected_lines = [
+        "Creating dependencies: code, data and params.yaml",
+        "Creating train stage in dvc.yaml",
+        "",
+        "Ensure your experiment command creates "
+        "metrics.json, plots and models.",
+    ]
+    if not cli_args.run:
+        expected_lines += [
+            'You can now run your experiment using "dvc exp run".',
+        ]
+
+    out, err = capsys.readouterr()
+    assert not err
+    assert out.splitlines() == expected_lines
 
 
 def test_show_experiments_pcp(tmp_dir, mocker):

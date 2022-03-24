@@ -30,7 +30,11 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
     assert main(["exp", "init", script]) == 0
     out, err = capsys.readouterr()
     assert not err
-    assert "Created train stage in dvc.yaml" in out
+    assert (
+        "Creating train stage in dvc.yaml\n\n"
+        "Ensure your experiment command creates metrics.json, plots and models"
+        '.\nYou can now run your experiment using "dvc exp run".'
+    ) in out
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
             "train": {
@@ -77,7 +81,7 @@ def test_when_stage_force_if_already_exists(tmp_dir, dvc):
 
 
 @pytest.mark.parametrize("interactive", [True, False])
-def test_creates_params_file_by_default(tmp_dir, dvc, interactive, capsys):
+def test_creates_params_file_by_default(tmp_dir, dvc, interactive):
     init(
         dvc,
         interactive=interactive,
@@ -88,10 +92,6 @@ def test_creates_params_file_by_default(tmp_dir, dvc, interactive, capsys):
 
     assert (tmp_dir / "params.yaml").is_file()
     assert (tmp_dir / "params.yaml").parse() == {}
-    out, err = capsys.readouterr()
-    assert "Created src, data and params.yaml." in out
-    if interactive:
-        assert "'params.yaml' does not exist, the file will be created." in err
 
 
 def test_with_a_custom_name(tmp_dir, dvc):
@@ -152,7 +152,7 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
 
 def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
     (tmp_dir / "params.yaml").dump({"foo": 1})
-    inp = io.StringIO("python script.py\nscript.py\ndata\nmodels\nn")
+    inp = io.StringIO("python script.py\nscript.py\ndata\nn")
 
     init(
         dvc, interactive=True, stream=inp, defaults=CmdExperimentsInit.DEFAULTS
@@ -182,7 +182,7 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
 def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
     tmp_dir.gen({"data": {"foo": "foo"}})
     (tmp_dir / "params.yaml").dump({"foo": 1})
-    inp = io.StringIO("python script.py\nscript.py\ndata\nmodels\ndata\n")
+    inp = io.StringIO("python script.py\nscript.py\ndata\ndata")
 
     init(
         dvc, stream=inp, interactive=True, defaults=CmdExperimentsInit.DEFAULTS
@@ -204,17 +204,17 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
     assert (tmp_dir / "data").is_dir()
 
     out, err = capsys.readouterr()
+    assert not out
     assert (
         "Path to a parameters file [params.yaml, n to omit]: "
         "'data' is a directory. "
         "Please retry with an existing parameters file.\n"
         "Path to a parameters file [params.yaml, n to omit]:"
     ) in err
-    assert "Created script.py." in out
 
 
 def test_init_with_no_defaults_interactive(tmp_dir, dvc):
-    inp = io.StringIO("script.py\n" "data\n" "model\n" "n\n" "metric\n" "n\n")
+    inp = io.StringIO("script.py\n" "data\n" "n\n" "model\n" "metric\n" "n\n")
     init(
         dvc,
         defaults={},
@@ -247,8 +247,8 @@ def test_init_with_no_defaults_interactive(tmp_dir, dvc):
                 "python script.py\n"
                 "script.py\n"
                 "data\n"
-                "models\n"
                 "params.yaml\n"
+                "models\n"
                 "metrics.json\n"
                 "plots\n"
                 "y"
@@ -290,11 +290,10 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     assert scm.is_ignored("models")
     out, err = capsys.readouterr()
 
+    assert not out
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-    assert "Using experiment project structure:" in out
-    assert "Created script.py and data" in out
 
 
 @pytest.mark.timeout(5, func_only=True)
@@ -309,8 +308,8 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
                 "python script.py\n"
                 "script.py\n"
                 "data\n"
-                "models\n"
                 "params.yaml\n"
+                "models\n"
                 "dvclive\n"
                 "y"
             ),
@@ -321,8 +320,8 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
             io.StringIO(
                 "script.py\n"
                 "data\n"
-                "models\n"
                 "params.yaml\n"
+                "models\n"
                 "dvclive\n"
                 "y"
             ),
@@ -375,11 +374,10 @@ def test_init_interactive_live(
 
     out, err = capsys.readouterr()
 
+    assert not out
     if interactive:
         assert "'script.py' does not exist, the file will be created." in err
         assert "'data' does not exist, the directory will be created." in err
-    assert "Using experiment project structure:" in out
-    assert "Created script.py and data" in out
 
 
 @pytest.mark.parametrize(

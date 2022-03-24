@@ -8,6 +8,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    List,
     Optional,
     TextIO,
     Tuple,
@@ -19,12 +20,11 @@ from funcy import compact, lremove, lsplit
 from dvc.exceptions import DvcException
 from dvc.stage import PipelineStage
 from dvc.types import OptStr
-from dvc.utils import humanize
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
     from dvc.dvcfile import DVCFile
-    from rich.tree import Tree
+    from dvc.dependency import Dependency
 
 from dvc.ui import ui
 
@@ -75,70 +75,41 @@ def _disable_logging(highest_level=logging.CRITICAL):
         logging.disable(previous_level)
 
 
-def build_workspace_tree(workspace: Dict[str, str], label: str) -> "Tree":
-    from rich.tree import Tree
-
-    tree = Tree(label, highlight=True)
-    for value in sorted(workspace.values()):
-        tree.add(f"[green]{value}[/green]")
-    return tree
-
-
-def display_workspace_tree(workspace: Dict[str, str], label: str) -> None:
-    d = workspace.copy()
-    d.pop("cmd", None)
-
-    if d:
-        ui.write(build_workspace_tree(d, label), styled=True)
-    ui.write(styled=True)
-
-
-PIPELINE_FILE_LINK = "https://s.dvc.org/g/pipeline-files"
-
-
 def init_interactive(
-    name: str,
     defaults: Dict[str, str],
     provided: Dict[str, str],
     validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
     live: bool = False,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
-    command = provided.pop("cmd", None)
-    prompts = lremove(provided.keys(), ["code", "data", "models", "params"])
-    prompts.extend(
-        lremove(provided.keys(), ["live"] if live else ["metrics", "plots"])
+    command_prompts = lremove(provided.keys(), ["cmd"])
+    dependencies_prompts = lremove(provided.keys(), ["code", "data", "params"])
+    outputs_prompts = lremove(
+        provided.keys(),
+        ["models"] + (["live"] if live else ["metrics", "plots"]),
     )
 
     ret: Dict[str, str] = {}
-    if prompts or command:
-        ui.error_write(
-            f"This command will guide you to set up a [bright_blue]{name}[/]",
-            "stage in [green]dvc.yaml[/].",
-            f"\nSee [repr.url]{PIPELINE_FILE_LINK}[/].\n",
-            styled=True,
-        )
+    if "cmd" in provided:
+        ret["cmd"] = provided["cmd"]
 
-    if command:
-        ret["cmd"] = command
-    else:
-        ret.update(
-            compact(_prompts(["cmd"], allow_omission=False, stream=stream))
+    for heading, prompts, allow_omission in (
+        ("", command_prompts, False),
+        ("Enter experiment dependencies.", dependencies_prompts, True),
+        ("Enter experiment outputs.", outputs_prompts, True),
+    ):
+        if prompts and heading:
+            ui.error_write(heading, styled=True)
+        response = _prompts(
+            prompts,
+            defaults=defaults,
+            allow_omission=allow_omission,
+            validator=validator,
+            stream=stream,
         )
+        ret.update(compact(response))
         if prompts:
             ui.error_write(styled=True)
-
-    if prompts:
-        ui.error_write(
-            "Enter the paths for dependencies and outputs of the command.",
-            styled=True,
-        )
-        ret.update(
-            compact(
-                _prompts(prompts, defaults, validator=validator, stream=stream)
-            )
-        )
-        ui.error_write(styled=True)
     return ret
 
 
@@ -189,7 +160,7 @@ def is_file(path: str) -> bool:
     return bool(ext)
 
 
-def init_deps(stage: PipelineStage) -> None:
+def init_deps(stage: PipelineStage) -> List["Dependency"]:
     from funcy import rpartial
 
     from dvc.dependency import ParamsDependency
@@ -197,10 +168,6 @@ def init_deps(stage: PipelineStage) -> None:
 
     new_deps = [dep for dep in stage.deps if not dep.exists]
     params, deps = lsplit(rpartial(isinstance, ParamsDependency), new_deps)
-
-    if new_deps:
-        paths = map("[green]{0}[/]".format, new_deps)
-        ui.write(f"Created {humanize.join(paths)}.", styled=True)
 
     # always create a file for params, detect file/folder based on extension
     # for other dependencies
@@ -213,6 +180,8 @@ def init_deps(stage: PipelineStage) -> None:
         with localfs.open(path, "w", encoding="utf-8"):
             pass
 
+    return new_deps
+
 
 def init(
     repo: "Repo",
@@ -223,7 +192,7 @@ def init(
     interactive: bool = False,
     force: bool = False,
     stream: Optional[TextIO] = None,
-) -> PipelineStage:
+) -> Tuple[PipelineStage, List["Dependency"]]:
     from dvc.dvcfile import make_dvcfile
 
     dvcfile = make_dvcfile(repo, "dvc.yaml")
@@ -236,7 +205,6 @@ def init(
 
     if interactive:
         defaults = init_interactive(
-            name,
             validator=partial(validate_prompts, repo),
             defaults=defaults,
             live=with_live,
@@ -288,10 +256,9 @@ def init(
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
         stage.ignore_outs()
-        display_workspace_tree(context, "Using experiment project structure:")
-        init_deps(stage)
+        initialized_deps = init_deps(stage)
         if params:
             repo.scm_context.track_file(params)
 
     assert isinstance(stage, PipelineStage)
-    return stage
+    return stage, initialized_deps
