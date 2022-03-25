@@ -56,17 +56,17 @@ class Repo:
     from dvc.repo.add import add
     from dvc.repo.checkout import checkout
     from dvc.repo.commit import commit
-    from dvc.repo.destroy import destroy
+    from dvc.repo.destroy import destroy  # type: ignore[misc]
     from dvc.repo.diff import diff
     from dvc.repo.fetch import fetch
-    from dvc.repo.freeze import freeze, unfreeze
+    from dvc.repo.freeze import freeze, unfreeze  # type: ignore[misc]
     from dvc.repo.gc import gc
-    from dvc.repo.get import get as _get
-    from dvc.repo.get_url import get_url as _get_url
-    from dvc.repo.imp import imp
+    from dvc.repo.get import get as _get  # type: ignore[misc]
+    from dvc.repo.get_url import get_url as _get_url  # type: ignore[misc]
+    from dvc.repo.imp import imp  # type: ignore[misc]
     from dvc.repo.imp_url import imp_url
-    from dvc.repo.install import install
-    from dvc.repo.ls import ls as _ls
+    from dvc.repo.install import install  # type: ignore[misc]
+    from dvc.repo.ls import ls as _ls  # type: ignore[misc]
     from dvc.repo.move import move
     from dvc.repo.pull import pull
     from dvc.repo.push import push

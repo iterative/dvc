@@ -1,4 +1,5 @@
 """Exceptions raised by the dvc."""
+from dvc.utils import format_link
 
 
 class DvcException(Exception):
@@ -287,7 +288,6 @@ class PathMissingError(DvcException):
 
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, scheme, fs_path):
-        from dvc.utils import format_link
 
         super().__init__(
             (
@@ -323,7 +323,6 @@ class MergeError(DvcException):
 
 
 class CacheLinkError(DvcException):
-    from dvc.utils import format_link
 
     SUPPORT_LINK = "See {} for more information.".format(
         format_link(
