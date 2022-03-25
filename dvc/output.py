@@ -27,6 +27,7 @@ from .fs import get_cloud_fs
 from .fs.hdfs import HDFSFileSystem
 from .fs.local import LocalFileSystem
 from .fs.s3 import S3FileSystem
+from .fs.base import RemoteMissingDepsError
 from .hash_info import HashInfo
 from .istextfile import istextfile
 from .objects.errors import ObjectFormatError
@@ -871,6 +872,8 @@ class Output:
 
         try:
             self.get_dir_cache(jobs=jobs, remote=remote)
+        except RemoteMissingDepsError as ex:
+            raise ex
         except DvcException:
             logger.debug(f"failed to pull cache for '{self}'")
 
