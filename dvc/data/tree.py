@@ -197,6 +197,27 @@ class Tree(HashFile):
         tree.digest()
         return tree
 
+    def ls(self, prefix=None):
+        kwargs = {}
+        if prefix:
+            kwargs["prefix"] = prefix
+
+        meta, hash_info = self._trie.get(prefix, (None, None))
+        if hash_info and hash_info.isdir and meta and not meta.obj:
+            raise FileNotFoundError
+
+        ret = []
+
+        def node_factory(_, key, children, *args):
+            if key == prefix:
+                list(children)
+            else:
+                ret.append(key[-1])
+
+        self._trie.traverse(node_factory, **kwargs)
+
+        return ret
+
 
 def du(odb, tree):
     try:
