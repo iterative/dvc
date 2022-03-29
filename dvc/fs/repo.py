@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from contextlib import suppress
 from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
@@ -21,6 +22,21 @@ RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
 def _wrap_walk(dvc_fs, *args, **kwargs):
     for root, dnames, fnames in dvc_fs.walk(*args, **kwargs):
         yield dvc_fs.path.join(dvc_fs.repo.root_dir, root), dnames, fnames
+
+
+def _ls(fs, path):
+    dnames = []
+    fnames = []
+
+    with suppress(FileNotFoundError):
+        for entry in fs.ls(path, detail=True):
+            name = fs.path.name(entry["name"])
+            if entry["type"] == "directory":
+                dnames.append(name)
+            else:
+                fnames.append(name)
+
+    return dnames, fnames
 
 
 class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
@@ -326,15 +342,6 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         return info["type"] == "file"
 
-    def _dvc_walk(self, walk):
-        try:
-            root, dirs, files = next(walk)
-        except StopIteration:
-            return
-        yield root, dirs, files
-        for _ in dirs:
-            yield from self._dvc_walk(walk)
-
     def _subrepo_walk(self, dir_path, **kwargs):
         """Walk into a new repo.
 
@@ -343,21 +350,17 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         """
         fs, dvc_fs, dvc_path = self._get_fs_pair(dir_path)
         fs_walk = fs.walk(dir_path, topdown=True)
-        if dvc_fs:
-            dvc_walk = _wrap_walk(dvc_fs, dvc_path, topdown=True, **kwargs)
-        else:
-            dvc_walk = None
-        yield from self._walk(fs_walk, dvc_walk, **kwargs)
+        yield from self._walk(fs_walk, dvc_fs, dvc_path, **kwargs)
 
-    def _walk(self, repo_walk, dvc_walk=None, dvcfiles=False):
+    def _walk(self, repo_walk, dvc_fs, dvc_path, dvcfiles=False):
         from dvc.dvcfile import is_valid_filename
         from dvc.ignore import DvcIgnore
 
         assert repo_walk
+
+        dvc_dirs, dvc_fnames = _ls(dvc_fs, dvc_path) if dvc_fs else ([], [])
+
         try:
-            _, dvc_dirs, dvc_fnames = (
-                next(dvc_walk) if dvc_walk else (None, [], [])
-            )
             repo_root, repo_dirs, repo_fnames = next(repo_walk)
         except StopIteration:
             return
@@ -398,11 +401,18 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
                 dir_path = os.path.join(repo_root, dirname)
                 yield from self._subrepo_walk(dir_path, dvcfiles=dvcfiles)
             elif dirname in shared:
-                yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
+                yield from self._walk(
+                    repo_walk,
+                    dvc_fs,
+                    dvc_fs.path.join(dvc_path, dirname),
+                    dvcfiles=dvcfiles,
+                )
             elif dirname in dvc_set:
-                yield from self._dvc_walk(dvc_walk)
+                yield from _wrap_walk(
+                    dvc_fs, dvc_fs.path.join(dvc_path, dirname)
+                )
             elif dirname in repo_set:
-                yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
+                yield from self._walk(repo_walk, None, None, dvcfiles=dvcfiles)
 
     def walk(self, top, topdown=True, **kwargs):
         """Walk and merge both DVC and repo fss.
@@ -433,17 +443,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         repo_walk = repo.dvcignore.walk(fs, top, topdown=topdown, **kwargs)
 
         if not dvc_fs or (repo_exists and dvc_fs.isdvc(dvc_path)):
-            yield from self._walk(repo_walk, None, dvcfiles=dvcfiles)
+            yield from self._walk(repo_walk, None, None, dvcfiles=dvcfiles)
             return
 
         if not repo_exists:
             yield from _wrap_walk(dvc_fs, dvc_path, topdown=topdown, **kwargs)
 
-        dvc_walk = None
-        if dvc_fs.exists(dvc_path):
-            dvc_walk = _wrap_walk(dvc_fs, dvc_path, topdown=topdown, **kwargs)
-
-        yield from self._walk(repo_walk, dvc_walk, dvcfiles=dvcfiles)
+        yield from self._walk(repo_walk, dvc_fs, dvc_path, dvcfiles=dvcfiles)
 
     def find(self, path, prefix=None):
         for root, _, files in self.walk(path):
