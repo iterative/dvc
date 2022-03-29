@@ -97,33 +97,35 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
+    def ls(self, path, detail=True, **kwargs):
+        info = self.info(path)
+        if info["type"] != "directory":
+            return [info] if detail else [path]
+
+        root_key = self._get_key(path)
+        try:
+            entries = [
+                self.sep.join((path, name)) if path else name
+                for name in self.repo.index.tree.ls(prefix=root_key)
+            ]
+        except KeyError as exc:
+            raise FileNotFoundError from exc
+
+        if not detail:
+            return entries
+
+        return [self.info(epath) for epath in entries]
+
     def _walk(self, root, topdown=True, **kwargs):
-        dirs = set()
+        dirs = []
         files = []
 
-        root_parts = self._get_key(root)
-        root_len = len(root_parts)
-        try:
-            for key, (meta, hash_info) in self.repo.index.tree.iteritems(
-                prefix=root_parts
-            ):  # noqa: B301
-                if hash_info and hash_info.isdir and meta and not meta.obj:
-                    raise FileNotFoundError
-
-                if key == root_parts:
-                    continue
-
-                if hash_info.isdir:
-                    continue
-
-                name = key[root_len]
-                if len(key) > root_len + 1:
-                    dirs.add(name)
-                    continue
-
+        for entry in self.ls(root, detail=True):
+            name = self.path.name(entry["name"])
+            if entry["type"] == "directory":
+                dirs.append(name)
+            else:
                 files.append(name)
-        except KeyError:
-            pass
 
         assert topdown
         dirs = list(dirs)
@@ -175,6 +177,7 @@ class DvcFileSystem(FileSystem):  # pylint:disable=abstract-method
             "isexec": False,
             "isdvc": False,
             "outs": outs,
+            "name": path,
         }
 
         if len(outs) > 1 and outs[0][0] != key:
