@@ -4,7 +4,6 @@ import pytest
 from ruamel.yaml import __with_libyaml__ as ruamel_clib
 
 from dvc.cli import main
-from dvc.ui import ui
 
 DUPLICATE_KEYS = """\
 stages:
@@ -325,25 +324,37 @@ examples = {
 }
 
 
+@pytest.fixture
+def force_posixpath(mocker):
+    # make it always return posix path, easier for validating error messages
+    mocker.patch(
+        "dvc.utils.strictyaml.make_relpath",
+        return_value="./dvc.yaml",
+    )
+
+
+@pytest.fixture
+def fixed_width_term(mocker):
+    """Fixed width console."""
+    from rich.console import Console
+
+    mocker.patch.object(
+        Console, "width", new_callable=mocker.PropertyMock(return_value=80)
+    )
+
+
 @pytest.mark.parametrize(
     "text, expected", examples.values(), ids=examples.keys()
 )
-def test_exceptions(tmp_dir, dvc, capsys, text, expected, mocker):
-    # make it always return posix path, easier for validating error messages
-    mocker.patch(
-        "dvc.utils.strictyaml.make_relpath", return_value="./dvc.yaml"
-    )
-
-    console = ui.error_console
-    original_printer = console.print
-
-    def print_with_fixed_width(*args, **kwargs):
-        console.options.min_width = console.options.max_width = 80
-        console.width = kwargs["width"] = 80
-        return original_printer(*args, **kwargs)
-
-    mocker.patch.object(console, "print", print_with_fixed_width)
-
+def test_exceptions(
+    tmp_dir,
+    dvc,
+    capsys,
+    force_posixpath,
+    fixed_width_term,
+    text,
+    expected,
+):
     tmp_dir.gen("dvc.yaml", text)
 
     capsys.readouterr()  # clear outputs
@@ -358,6 +369,36 @@ def test_exceptions(tmp_dir, dvc, capsys, text, expected, mocker):
         expected.splitlines(), err.splitlines()
     ):
         assert expected_line == err_line.rstrip(" ")
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        (DUPLICATE_KEYS, "'./dvc.yaml' is invalid in revision '{short_rev}'."),
+        (
+            MISSING_CMD,
+            "'./dvc.yaml' validation failed in revision '{short_rev}'.",
+        ),
+    ],
+)
+def test_on_revision(
+    tmp_dir,
+    scm,
+    dvc,
+    force_posixpath,
+    fixed_width_term,
+    capsys,
+    text,
+    expected,
+):
+    tmp_dir.scm_gen("dvc.yaml", text, commit="add dvc.yaml")
+    capsys.readouterr()  # clear outputs
+
+    assert main(["ls", f"file://{tmp_dir}", "--rev", "HEAD"]) != 0
+
+    out, err = capsys.readouterr()
+    assert not out
+    assert expected.format(short_rev=scm.get_rev()[:7]) in err
 
 
 def test_make_relpath(tmp_dir, monkeypatch):
