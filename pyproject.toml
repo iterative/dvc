@@ -65,6 +65,7 @@ disable = [
     "logging-format-interpolation", "logging-fstring-interpolation",
     "missing-function-docstring", "missing-module-docstring",
     "missing-class-docstring", "raise-missing-from", "import-outside-toplevel",
+    "cannot-enumerate-pytest-fixtures",
 ]
 enable = ["c-extension-no-member", "no-else-return"]
 

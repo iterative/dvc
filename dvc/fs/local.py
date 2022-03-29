@@ -26,8 +26,7 @@ class LocalFileSystem(FileSystem):
         super().__init__(**config)
         self.fs = LocalFS()
 
-    @staticmethod
-    def open(path, mode="r", encoding=None, **kwargs):
+    def open(self, path, mode="r", encoding=None, **kwargs):
         return open(path, mode=mode, encoding=encoding)
 
     def exists(self, path) -> bool:
@@ -107,8 +106,7 @@ class LocalFileSystem(FileSystem):
             self.remove(tmp_info)
             raise
 
-    @staticmethod
-    def symlink(from_info, to_info):
+    def symlink(self, from_info, to_info):
         System.symlink(from_info, to_info)
 
     @staticmethod
