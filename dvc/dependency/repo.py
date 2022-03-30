@@ -99,7 +99,7 @@ class RepoDependency(Dependency):
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.data.stage import stage
-        from dvc.data.tree import Tree
+        from dvc.data.tree import Tree, TreeError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
 
         local_odb = self.repo.odb.local
@@ -136,7 +136,7 @@ class RepoDependency(Dependency):
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
                 )
-            except FileNotFoundError as exc:
+            except (FileNotFoundError, TreeError) as exc:
                 raise PathMissingError(
                     self.def_path, self.def_repo[self.PARAM_URL]
                 ) from exc
