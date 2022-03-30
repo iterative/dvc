@@ -28,6 +28,10 @@ def get_url(path, repo=None, rev=None, remote=None):
 
         cloud = info["repo"].cloud
         dvc_path = _repo.fs.path.relpath(fs_path, info["repo"].root_dir)
+
+        if not os.path.isabs(path):
+            dvc_path = dvc_path.replace("\\", "/")
+
         md5 = info["repo"].dvcfs.info(dvc_path)["md5"]
         return cloud.get_url_for(remote, checksum=md5)
 

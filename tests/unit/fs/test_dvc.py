@@ -1,4 +1,4 @@
-import os
+import posixpath
 import shutil
 
 import pytest
@@ -16,12 +16,12 @@ from dvc.utils.fs import remove
         ("", ("repo",)),
         (".", ("repo",)),
         ("foo", ("repo", "foo")),
-        (os.path.join("dir", "foo"), ("repo", "dir", "foo")),
+        ("dir/foo", ("repo", "dir", "foo")),
     ],
 )
 def test_get_key(tmp_dir, dvc, path, key):
     fs = DvcFileSystem(repo=dvc)
-    assert fs._get_key(path) == key
+    assert fs.fs._get_key(path) == key
 
 
 def test_exists(tmp_dir, dvc):
@@ -143,19 +143,19 @@ def test_walk(tmp_dir, dvc):
     fs = DvcFileSystem(repo=dvc)
 
     expected = [
-        os.path.join("dir", "subdir1"),
-        os.path.join("dir", "subdir2"),
-        os.path.join("dir", "subdir1", "foo1"),
-        os.path.join("dir", "subdir1", "bar1"),
-        os.path.join("dir", "subdir2", "foo2"),
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
+        "dir/subdir1",
+        "dir/subdir2",
+        "dir/subdir1/foo1",
+        "dir/subdir1/bar1",
+        "dir/subdir2/foo2",
+        "dir/foo",
+        "dir/bar",
     ]
 
     actual = []
     for root, dirs, files in fs.walk("dir"):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
@@ -177,19 +177,19 @@ def test_walk_dir(tmp_dir, dvc):
     fs = DvcFileSystem(repo=dvc)
 
     expected = [
-        os.path.join("dir", "subdir1"),
-        os.path.join("dir", "subdir2"),
-        os.path.join("dir", "subdir1", "foo1"),
-        os.path.join("dir", "subdir1", "bar1"),
-        os.path.join("dir", "subdir2", "foo2"),
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
+        "dir/subdir1",
+        "dir/subdir2",
+        "dir/subdir1/foo1",
+        "dir/subdir1/bar1",
+        "dir/subdir2/foo2",
+        "dir/foo",
+        "dir/bar",
     ]
 
     actual = []
     for root, dirs, files in fs.walk("dir"):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
@@ -241,13 +241,13 @@ def test_get_hash_granular(tmp_dir, dvc):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = DvcFileSystem(repo=dvc)
-    subdir = os.path.join("dir", "subdir")
+    subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
     _, _, obj = stage(dvc.odb.local, subdir, fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
-    data = os.path.join(subdir, "data")
+    data = posixpath.join(subdir, "data")
     assert fs.info(data)["md5"] == "8d777f385d3dfec8815d20f7496026dc"
     _, _, obj = stage(dvc.odb.local, data, fs, "md5", dry_run=True)
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")

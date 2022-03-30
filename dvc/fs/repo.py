@@ -228,6 +228,8 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         if path.startswith(repo.root_dir):
             dvc_path = path[len(repo.root_dir) + 1 :]
+
+            dvc_path = dvc_path.replace("\\", "/")
         else:
             dvc_path = path
 
