@@ -8,6 +8,9 @@ from funcy import first
 from dvc import stage as stage_module
 from dvc.render.match import get_files
 
+pytest.importorskip("dvclive", reason="no dvclive")
+
+
 LIVE_SCRIPT = dedent(
     """
         from dvclive import Live
@@ -60,11 +63,6 @@ LIVE_CHECKPOINT_SCRIPT = dedent(
 
 @pytest.fixture
 def live_stage(tmp_dir, scm, dvc, mocker):
-    try:
-        import dvclive  # noqa, pylint:disable=unused-import
-    except ImportError:
-        pytest.skip("no dvclive")
-
     mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(
@@ -156,11 +154,6 @@ def test_live_html(tmp_dir, dvc, live_stage, html):
 
 @pytest.fixture
 def live_checkpoint_stage(tmp_dir, scm, dvc, mocker):
-    try:
-        import dvclive  # noqa, pylint:disable=unused-import
-    except ImportError:
-        pytest.skip("no dvclive")
-
     mocker.patch("dvc.stage.run.Monitor.AWAIT", 0.01)
 
     def make(live=None, live_no_cache=None):
