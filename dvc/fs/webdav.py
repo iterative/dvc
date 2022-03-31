@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     scheme = Schemes.WEBDAV
+    root_marker = ""
     CAN_TRAVERSE = True
     TRAVERSE_PREFIX_LEN = 2
     REQUIRES = {"webdav4": "webdav4"}
@@ -32,14 +33,6 @@ class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
                 "timeout": config.get("timeout", 30),
             }
         )
-
-    @classmethod
-    def _strip_protocol(cls, path: str) -> str:
-        """
-        For WebDAVFileSystem, provided url is the base path itself, so it
-        should be treated as being a root path.
-        """
-        return ""
 
     def unstrip_protocol(self, path: str) -> str:
         return self.fs_args["base_url"] + "/" + path
