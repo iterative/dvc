@@ -114,7 +114,12 @@ def get_cloud_fs(repo, **kwargs):
         remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
 
     url = remote_conf.pop("url")
-    fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
+    if issubclass(cls, WebDAVFileSystem):
+        # For WebDAVFileSystem, provided url is the base path itself, so it
+        # should be treated as being a root path.
+        fs_path = cls.root_marker
+    else:
+        fs_path = cls._strip_protocol(url)  # pylint:disable=protected-access
 
     extras = cls._get_kwargs_from_urls(url)  # pylint:disable=protected-access
     conf = {**extras, **remote_conf}  # remote config takes priority
