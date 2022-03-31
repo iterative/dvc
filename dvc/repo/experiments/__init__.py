@@ -169,6 +169,12 @@ class Experiments:
 
     def reproduce_queued(self, **kwargs):
         self.celery_queue.spawn_worker()
+        # wait for task execution to start
+        while not first(self.celery_queue.iter_active()):
+            time.sleep(1)
+        for entry in self.celery_queue.iter_active():
+            for line in self.celery_queue.proc.follow(entry.stash_rev):
+                ui.write(line, end="")
 
     def _log_reproduced(self, revs: Iterable[str], tmp_dir: bool = False):
         names = []
