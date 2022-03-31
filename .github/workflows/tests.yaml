@@ -30,6 +30,7 @@ jobs:
     - name: Install requirements
       run: |
         pip install --upgrade pip setuptools wheel
+        pip install collective.checkdocs==0.2
         pip install ".[dev]" pre-commit
     - name: Check README
       run: python setup.py checkdocs
