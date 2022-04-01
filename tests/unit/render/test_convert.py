@@ -214,6 +214,6 @@ def test_to_json_image(mocker):
     result = to_json(image_renderer)
     assert result[0] == {
         "url": image_renderer.datapoints[0].get(SRC_FIELD),
-        REVISIONS_KEY: image_renderer.datapoints[0].get(REVISION_FIELD),
+        REVISIONS_KEY: [image_renderer.datapoints[0].get(REVISION_FIELD)],
         TYPE_KEY: image_renderer.TYPE,
     }
