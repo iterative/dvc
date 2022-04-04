@@ -621,6 +621,10 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys):
     assert '"label": "Created"' not in html_text
     assert '"label": "foobar"' not in html_text
 
+    assert main(["exp", "show", "--pcp", "--drop", "Experiment"]) == 0
+    html_text = (tmp_dir / "dvc_plots" / "index.html").read_text()
+    assert '"label": "Experiment"' not in html_text
+
 
 def test_show_outs(tmp_dir, dvc, scm):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
