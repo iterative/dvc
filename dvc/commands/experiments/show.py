@@ -426,11 +426,12 @@ def show_experiments(
             subset=subset,
         )
         td.drop_duplicates("rows", subset=subset)
-        td.column("Experiment")[:] = [
-            # remove tree characters
-            str(x).encode("ascii", "ignore").strip().decode()
-            for x in td.column("Experiment")
-        ]
+        if "Experiment" in td:
+            td.column("Experiment")[:] = [
+                # remove tree characters
+                str(x).encode("ascii", "ignore").strip().decode()
+                for x in td.column("Experiment")
+            ]
         out = kwargs.get("out") or "dvc_plots"
         output_file = os.path.join(out, "index.html")
         ui.write(
