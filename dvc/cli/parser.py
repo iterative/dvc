@@ -27,7 +27,6 @@ from dvc.commands import (
     imp_url,
     init,
     install,
-    live,
     ls,
     machine,
     metrics,
@@ -86,7 +85,6 @@ COMMANDS = [
     stage,
     experiments,
     check_ignore,
-    live,
     machine,
 ]
 
