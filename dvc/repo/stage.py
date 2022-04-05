@@ -474,7 +474,8 @@ class StageLoad:
             self.fs, self.repo.root_dir
         ):
             logger.trace(  # type: ignore[attr-defined]
-                "Collect repo walking '%s'", root)
+                "Collect repo walking '%s'", root
+            )
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
             for file in filter(dvcfile_filter, files):
                 file_path = os.path.join(root, file)
