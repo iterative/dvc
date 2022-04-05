@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from unittest.mock import patch
 
 import pytest
 from flaky.flaky_decorator import flaky
@@ -9,6 +10,7 @@ import dvc as dvc_module
 from dvc.cli import main
 from dvc.data.db.local import LocalObjectDB
 from dvc.external_repo import clean_repos
+from dvc.fs.base import RemoteMissingDepsError
 from dvc.objects.db import ObjectDB
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
@@ -570,3 +572,19 @@ def test_target_remote(tmp_dir, dvc, make_remote):
         "6b18131dc289fd37006705affe961ef8.dir",
         "b8a9f715dbb64fd5c56e7783c6820a61",
     }
+
+
+def test_remote_missing_data_dir(tmp_dir, scm, dvc, make_remote):
+    make_remote("default", default=True)
+    tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
+    dvc.push()
+
+    remove("dir")
+    remove(dvc.odb.local.cache_dir)
+
+    with patch(
+        "dvc.fs.base.FileSystem._check_requires",
+        side_effect=RemoteMissingDepsError("remote missing"),
+    ):
+        with pytest.raises(RemoteMissingDepsError):
+            dvc.pull()
