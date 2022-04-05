@@ -336,3 +336,30 @@ def test_plots_templates_choices(tmp_dir, dvc):
     assert CmdPlotsTemplates.TEMPLATES_CHOICES == list(
         pluck_attr("DEFAULT_NAME", TEMPLATES)
     )
+
+
+@pytest.mark.parametrize("split", (True, False))
+def test_show_json(split, mocker, capsys):
+    import dvc.commands.plots
+
+    renderer = mocker.MagicMock()
+    renderer.name = "rname"
+    to_json_mock = mocker.patch(
+        "dvc.render.convert.to_json", return_value={"renderer": "json"}
+    )
+
+    dvc.commands.plots._show_json([renderer], split)
+
+    to_json_mock.assert_called_once_with(renderer, split)
+
+    out, _ = capsys.readouterr()
+    assert json.dumps({"rname": {"renderer": "json"}}) in out
+
+
+def test_show_json_no_renderers(capsys):
+    import dvc.commands.plots
+
+    dvc.commands.plots._show_json([])
+
+    out, _ = capsys.readouterr()
+    assert json.dumps({}) in out
