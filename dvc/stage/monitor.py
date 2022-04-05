@@ -6,13 +6,10 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List
 
-from dvc.repo.live import create_summary
 from dvc.stage.decorators import relock_repo
 from dvc.stage.exceptions import StageCmdFailedError
-from dvc.ui import ui
 
 if TYPE_CHECKING:
-    from dvc.output import Output
     from dvc.stage import Stage
 
 
@@ -79,24 +76,6 @@ class CheckpointTask(MonitorTask):
         stage.unprotect_outs()
         logger.debug("Running checkpoint callback for stage '%s'", stage)
         callback_func()
-
-
-class LiveTask(MonitorTask):
-    name = "live"
-    SIGNAL_FILE = "DVC_LIVE"
-    error_cls = LiveKilledError
-
-    def __init__(self, stage: "Stage", out: "Output", proc: subprocess.Popen):
-        self.output_path = os.path.join(
-            os.getcwd(), out.fs_path + "_dvc_plots", "index.html"
-        )
-        ui.write(f"Live summary will be created at:\n{self.output_path}")
-        super().__init__(stage, functools.partial(create_summary, out), proc)
-
-    def after_run(self):
-        # make sure summary is prepared for all the data
-        self.execute()
-        ui.write(f"Live summary has been created at:\n{self.output_path}")
 
 
 class Monitor:

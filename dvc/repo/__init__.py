@@ -155,7 +155,6 @@ class Repo:
         from dvc.fs.git import GitFileSystem
         from dvc.fs.local import localfs
         from dvc.lock import LockNoop, make_lock
-        from dvc.repo.live import Live
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
@@ -209,7 +208,6 @@ class Repo:
         self.metrics = Metrics(self)
         self.plots = Plots(self)
         self.params = Params(self)
-        self.live = Live(self)
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]

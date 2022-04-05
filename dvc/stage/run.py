@@ -4,8 +4,6 @@ import signal
 import subprocess
 import threading
 
-from funcy import first
-
 from dvc.stage.monitor import Monitor
 from dvc.utils import fix_env
 
@@ -115,12 +113,6 @@ def _get_monitor_tasks(stage, checkpoint_func, proc):
         from .monitor import CheckpointTask
 
         result.append(CheckpointTask(stage, checkpoint_func, proc))
-
-    live = first(o for o in stage.outs if (o.live and o.live["html"]))
-    if live:
-        from .monitor import LiveTask
-
-        result.append(LiveTask(stage, live, proc))
 
     return result
 
