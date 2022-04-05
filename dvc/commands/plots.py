@@ -21,8 +21,7 @@ def _show_json(renderers, split=False):
     result = {
         renderer.name: to_json(renderer, split) for renderer in renderers
     }
-    if result:
-        ui.write_json(result)
+    ui.write_json(result)
 
 
 class CmdPlots(CmdBase):
