@@ -575,15 +575,16 @@ def test_target_remote(tmp_dir, dvc, make_remote):
 
 
 def test_remote_missing_data_dir(tmp_dir, scm, dvc, make_remote):
-    make_remote("default", default=True)
     tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
-    dvc.push()
+    with dvc.config.edit() as conf:
+        conf["remote"]["s3"] = {"url": "s3://bucket/name"}
+        conf["core"] = {"remote": "s3"}
 
     remove("dir")
     remove(dvc.odb.local.cache_dir)
 
     with patch(
-        "dvc.fs.base.FileSystem._check_requires",
+        "dvc.data_cloud.DataCloud.get_remote_odb",
         side_effect=RemoteMissingDepsError("remote missing"),
     ):
         with pytest.raises(RemoteMissingDepsError):
