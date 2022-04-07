@@ -291,3 +291,15 @@ def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
     assert index.used_objs("copy-foo-bar", with_deps=True) == {
         None: {expected_objs[0]}
     }
+
+
+def test_getitem(tmp_dir, dvc, run_copy):
+    (stage1,) = tmp_dir.dvc_gen("foo", "foo")
+    stage2 = run_copy("foo", "bar", name="copy-foo-bar")
+
+    index = Index(dvc)
+    assert index["foo.dvc"] == stage1
+    assert index["copy-foo-bar"] == stage2
+
+    with pytest.raises(KeyError):
+        _ = index["no-valid-stage-name"]

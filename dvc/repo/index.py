@@ -91,6 +91,13 @@ class Index:
     def __iter__(self) -> Iterator["Stage"]:
         yield from self.stages
 
+    def __getitem__(self, item: str) -> "Stage":
+        """Get a Stage by its addressing attribute"""
+        for stage in self.stages:
+            if stage.addressing == item:
+                return stage
+        raise KeyError(f"{item} - available stages are {self.stages}")
+
     def filter(self, filter_fn: Callable[["Stage"], bool]) -> "Index":
         stages_it = filter(filter_fn, self)
         return Index(self.repo, self.fs, stages=list(stages_it))
