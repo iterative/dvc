@@ -93,7 +93,7 @@ class Index:
 
     def __getitem__(self, item: str) -> "Stage":
         """Get a stage by its addressing attribute."""
-        for stage in self.stages:
+        for stage in self:
             if stage.addressing == item:
                 return stage
         raise KeyError(f"{item} - available stages are {self.stages}")
