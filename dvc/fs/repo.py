@@ -351,19 +351,29 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         ignore_subrepos is set to False.
         """
         fs, dvc_fs, dvc_path = self._get_fs_pair(dir_path)
-        fs_walk = fs.walk(dir_path, topdown=True)
-        yield from self._walk(fs_walk, dvc_fs, dvc_path, **kwargs)
+        yield from self._walk(fs, dir_path, dvc_fs, dvc_path, **kwargs)
 
-    def _walk(self, repo_walk, dvc_fs, dvc_path, dvcfiles=False):
+    def _walk(
+        self,
+        fs,
+        fs_path,
+        dvc_fs,
+        dvc_path,
+        dvcfiles=False,
+        dvcignore=None,
+        **kwargs,
+    ):
         from dvc.dvcfile import is_valid_filename
         from dvc.ignore import DvcIgnore
 
-        assert repo_walk
+        assert dvcignore
 
         dvc_dirs, dvc_fnames = _ls(dvc_fs, dvc_path) if dvc_fs else ([], [])
 
         try:
-            repo_root, repo_dirs, repo_fnames = next(repo_walk)
+            _, repo_dirs, repo_fnames = next(
+                dvcignore.walk(fs, fs_path, **kwargs)
+            )
         except StopIteration:
             return
 
@@ -386,10 +396,10 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         # merge file lists
         files = set(filter(_func, dvc_fnames + repo_fnames))
 
-        yield repo_root, dirs, list(files)
+        yield fs_path, dirs, list(files)
 
         def is_dvc_repo(d):
-            return self._is_dvc_repo(os.path.join(repo_root, d))
+            return self._is_dvc_repo(os.path.join(fs_path, d))
 
         # remove subrepos to prevent it from being traversed
         subrepos = set(filter(is_dvc_repo, repo_only))
@@ -400,21 +410,34 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         for dirname in dirs:
             if dirname in subrepos:
-                dir_path = os.path.join(repo_root, dirname)
-                yield from self._subrepo_walk(dir_path, dvcfiles=dvcfiles)
+                dir_path = os.path.join(fs_path, dirname)
+                yield from self._subrepo_walk(
+                    dir_path, dvcfiles=dvcfiles, dvcignore=dvcignore, **kwargs
+                )
             elif dirname in shared:
                 yield from self._walk(
-                    repo_walk,
+                    fs,
+                    fs.path.join(fs_path, dirname),
                     dvc_fs,
                     dvc_fs.path.join(dvc_path, dirname),
                     dvcfiles=dvcfiles,
+                    dvcignore=dvcignore,
+                    **kwargs,
                 )
             elif dirname in dvc_set:
                 yield from _wrap_walk(
                     dvc_fs, dvc_fs.path.join(dvc_path, dirname)
                 )
             elif dirname in repo_set:
-                yield from self._walk(repo_walk, None, None, dvcfiles=dvcfiles)
+                yield from self._walk(
+                    fs,
+                    fs.path.join(fs_path, dirname),
+                    None,
+                    None,
+                    dvcfiles=dvcfiles,
+                    dvcignore=dvcignore,
+                    **kwargs,
+                )
 
     def walk(self, top, topdown=True, **kwargs):
         """Walk and merge both DVC and repo fss.
@@ -437,21 +460,36 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             return
 
         repo = self._get_repo(os.path.abspath(top))
+        dvcignore = repo.dvcignore
         dvcfiles = kwargs.pop("dvcfiles", False)
 
         fs, dvc_fs, dvc_path = self._get_fs_pair(top)
         repo_exists = fs.exists(top)
 
-        repo_walk = repo.dvcignore.walk(fs, top, topdown=topdown, **kwargs)
-
         if not dvc_fs or (repo_exists and dvc_fs.isdvc(dvc_path)):
-            yield from self._walk(repo_walk, None, None, dvcfiles=dvcfiles)
+            yield from self._walk(
+                fs,
+                top,
+                None,
+                None,
+                dvcfiles=dvcfiles,
+                dvcignore=dvcignore,
+                **kwargs,
+            )
             return
 
         if not repo_exists:
             yield from _wrap_walk(dvc_fs, dvc_path, topdown=topdown, **kwargs)
 
-        yield from self._walk(repo_walk, dvc_fs, dvc_path, dvcfiles=dvcfiles)
+        yield from self._walk(
+            fs,
+            top,
+            dvc_fs,
+            dvc_path,
+            dvcfiles=dvcfiles,
+            dvcignore=dvcignore,
+            **kwargs,
+        )
 
     def find(self, path, prefix=None):
         for root, _, files in self.walk(path):
