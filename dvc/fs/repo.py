@@ -233,7 +233,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         else:
             dvc_path = path
 
-        return repo.fs, dvc_fs, dvc_path
+        return repo.fs, path, dvc_fs, dvc_path
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
@@ -241,9 +241,9 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         if "b" in mode:
             encoding = None
 
-        fs, dvc_fs, dvc_path = self._get_fs_pair(path)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
         try:
-            return fs.open(path, mode=mode, encoding=encoding)
+            return fs.open(fs_path, mode=mode, encoding=encoding)
         except FileNotFoundError:
             if not dvc_fs:
                 raise
@@ -251,12 +251,10 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
 
     def exists(self, path) -> bool:
-        path = os.path.abspath(path)
-
-        fs, dvc_fs, dvc_path = self._get_fs_pair(path)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         if not dvc_fs:
-            return fs.exists(path)
+            return fs.exists(fs_path)
 
         if dvc_fs.repo.dvcignore.is_ignored(fs, path):
             return False
@@ -267,7 +265,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         if not dvc_fs.exists(dvc_path):
             return False
 
-        for p in self.path.parents(path):
+        for p in self.path.parents(fs_path):
             try:
                 if fs.info(p)["type"] != "directory":
                     return False
@@ -277,15 +275,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         return True
 
     def isdir(self, path):  # pylint: disable=arguments-renamed
-        path = os.path.abspath(path)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        fs, dvc_fs, dvc_path = self._get_fs_pair(path)
-
-        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(path):
+        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(fs_path):
             return False
 
         try:
-            info = fs.info(path)
+            info = fs.info(fs_path)
             return info["type"] == "directory"
         except (OSError, ValueError):
             # from CPython's os.path.isdir()
@@ -299,7 +295,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        for p in self.path.parents(path):
+        for p in fs.path.parents(fs_path):
             try:
                 if fs.info(p)["type"] != "directory":
                     return False
@@ -309,19 +305,17 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         return info["type"] == "directory"
 
     def isdvc(self, path, **kwargs):
-        _, dvc_fs, dvc_path = self._get_fs_pair(path)
+        _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
     def isfile(self, path):  # pylint: disable=arguments-renamed
-        path = os.path.abspath(path)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        fs, dvc_fs, dvc_path = self._get_fs_pair(path)
-
-        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(path):
+        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(fs_path):
             return False
 
         try:
-            info = fs.info(path)
+            info = fs.info(fs_path)
             return info["type"] == "file"
         except (OSError, ValueError):
             # from CPython's os.path.isfile()
@@ -335,7 +329,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         except FileNotFoundError:
             return False
 
-        for p in self.path.parents(path):
+        for p in fs.path.parents(fs_path):
             try:
                 if fs.info(p)["type"] != "directory":
                     return False
@@ -350,8 +344,8 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         NOTE: subrepo will only be discovered when walking if
         ignore_subrepos is set to False.
         """
-        fs, dvc_fs, dvc_path = self._get_fs_pair(dir_path)
-        yield from self._walk(fs, dir_path, dvc_fs, dvc_path, **kwargs)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(dir_path)
+        yield from self._walk(fs, fs_path, dvc_fs, dvc_path, **kwargs)
 
     def _walk(
         self,
@@ -463,13 +457,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         dvcignore = repo.dvcignore
         dvcfiles = kwargs.pop("dvcfiles", False)
 
-        fs, dvc_fs, dvc_path = self._get_fs_pair(top)
-        repo_exists = fs.exists(top)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(top)
+        repo_exists = fs.exists(fs_path)
 
         if not dvc_fs or (repo_exists and dvc_fs.isdvc(dvc_path)):
             yield from self._walk(
                 fs,
-                top,
+                fs_path,
                 None,
                 None,
                 dvcfiles=dvcfiles,
@@ -483,7 +477,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         yield from self._walk(
             fs,
-            top,
+            fs_path,
             dvc_fs,
             dvc_path,
             dvcfiles=dvcfiles,
@@ -499,10 +493,10 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
     def get_file(
         self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        fs, dvc_fs, dvc_path = self._get_fs_pair(from_info)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(from_info)
         try:
             fs.get_file(  # pylint: disable=protected-access
-                from_info, to_file, callback=callback, **kwargs
+                fs_path, to_file, callback=callback, **kwargs
             )
             return
         except FileNotFoundError:
@@ -514,7 +508,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         )
 
     def info(self, path):
-        fs, dvc_fs, dvc_path = self._get_fs_pair(path)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         try:
             dvc_info = dvc_fs.info(dvc_path)
@@ -524,7 +518,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         try:
             from dvc.utils import is_exec
 
-            fs_info = fs.info(path)
+            fs_info = fs.info(fs_path)
             fs_info["repo"] = dvc_fs.repo
             fs_info["isout"] = (
                 dvc_info.get("isout", False) if dvc_info else False
@@ -550,9 +544,9 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             return dvc_info
 
     def checksum(self, path):
-        fs, dvc_fs, dvc_path = self._get_fs_pair(path)
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         try:
-            return fs.checksum(path)
+            return fs.checksum(fs_path)
         except FileNotFoundError:
             return dvc_fs.checksum(dvc_path)
