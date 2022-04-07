@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from funcy import retry, wrap_with
 
@@ -18,6 +18,9 @@ from dvc.exceptions import (
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
 from dvc.utils import relpath
+
+if TYPE_CHECKING:
+    from scmrepo import Git
 
 logger = logging.getLogger(__name__)
 
@@ -201,14 +204,12 @@ def _clone_default_branch(url, rev, for_write=False):
                     # given repo URL it is easier/safer for us to work with
                     # full clones in this case.
                     logger.debug("erepo: unshallowing clone for '%s'", url)
-                    git.fetch(unshallow=True)
-                    _merge_upstream(git)
+                    _pull(git, unshallow=True)
                     shallow = False
                     CLONES[url] = (clone_path, shallow)
                 else:
                     logger.debug("erepo: git pull '%s'", url)
-                    git.fetch()
-                    _merge_upstream(git)
+                    _pull(git)
         else:
             from dvc.scm import clone
 
@@ -227,7 +228,9 @@ def _clone_default_branch(url, rev, for_write=False):
                             "erepo: using shallow clone for branch '%s'", rev
                         )
                 except CloneError:
-                    pass
+                    git_dir = os.path.join(clone_path, ".git")
+                    if os.path.exists(git_dir):
+                        _remove(git_dir)
             if not git:
                 git = clone(url, clone_path)
                 shallow = False
@@ -239,7 +242,15 @@ def _clone_default_branch(url, rev, for_write=False):
     return clone_path, shallow
 
 
-def _merge_upstream(git):
+def _pull(git: "Git", unshallow: bool = False):
+    from dvc.repo.experiments.utils import fetch_all_exps
+
+    git.fetch(unshallow=unshallow)
+    _merge_upstream(git)
+    fetch_all_exps(git, "origin")
+
+
+def _merge_upstream(git: "Git"):
     from scmrepo.exceptions import SCMError
 
     try:

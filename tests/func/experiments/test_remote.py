@@ -374,3 +374,20 @@ def test_auth_error_push(tmp_dir, scm, dvc, exp_stage, http_auth_patch):
         match=f"HTTP Git authentication is not supported: '{http_auth_patch}'",
     ):
         dvc.experiments.push(http_auth_patch, [ref_info.name])
+
+
+@pytest.mark.parametrize("use_ref", [True, False])
+def test_get(tmp_dir, scm, dvc, exp_stage, erepo_dir, use_ref):
+    from dvc.repo import Repo
+
+    results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp_rev = first(results)
+    exp_ref = first(exp_refs_by_rev(scm, exp_rev))
+
+    with erepo_dir.chdir():
+        Repo.get(
+            str(tmp_dir),
+            "params.yaml",
+            rev=exp_ref.name if use_ref else exp_rev,
+        )
+        assert (erepo_dir / "params.yaml").read_text().strip() == "foo: 2"

@@ -101,9 +101,14 @@ class TqdmGit(Tqdm):
 def clone(url: str, to_path: str, **kwargs):
     from scmrepo.exceptions import CloneError as InternalCloneError
 
+    from dvc.repo.experiments.utils import fetch_all_exps
+
     with TqdmGit(desc="Cloning") as pbar:
         try:
-            return Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
+            git = Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
+            if "shallow_branch" not in kwargs:
+                fetch_all_exps(git, "origin", progress=pbar.update_git)
+            return git
         except InternalCloneError as exc:
             raise CloneError(str(exc))
 
