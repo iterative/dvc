@@ -191,3 +191,16 @@ def check_ref_format(scm: "Git", ref: ExpRefInfo):
             f"Invalid exp name {ref.name}, the exp name must follow rules in "
             "https://git-scm.com/docs/git-check-ref-format"
         )
+
+
+def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
+    refspecs = [
+        f"{ref}:{ref}"
+        for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
+        if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH)
+    ]
+    scm.fetch_refspecs(
+        url,
+        refspecs,
+        progress=progress,
+    )
