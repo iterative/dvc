@@ -92,7 +92,7 @@ class Index:
         yield from self.stages
 
     def __getitem__(self, item: str) -> "Stage":
-        """Get a Stage by its addressing attribute"""
+        """Get a stage by its addressing attribute."""
         for stage in self.stages:
             if stage.addressing == item:
                 return stage
