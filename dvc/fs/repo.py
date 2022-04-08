@@ -28,13 +28,12 @@ def _ls(fs, path):
     dnames = []
     fnames = []
 
-    with suppress(FileNotFoundError):
-        for entry in fs.ls(path, detail=True):
-            name = fs.path.name(entry["name"])
-            if entry["type"] == "directory":
-                dnames.append(name)
-            else:
-                fnames.append(name)
+    for entry in fs.ls(path, detail=True):
+        name = fs.path.name(entry["name"])
+        if entry["type"] == "directory":
+            dnames.append(name)
+        else:
+            fnames.append(name)
 
     return dnames, fnames
 
@@ -362,14 +361,19 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         assert dvcignore
 
-        dvc_dirs, dvc_fnames = _ls(dvc_fs, dvc_path) if dvc_fs else ([], [])
+        dvc_dirs, dvc_fnames = [], []
+        if dvc_fs:
+            with suppress(FileNotFoundError):
+                dvc_dirs, dvc_fnames = _ls(dvc_fs, dvc_path)
 
         try:
-            _, repo_dirs, repo_fnames = next(
-                dvcignore.walk(fs, fs_path, **kwargs)
-            )
-        except StopIteration:
+            repo_dirs, repo_fnames = _ls(fs, fs_path)
+        except FileNotFoundError:
             return
+
+        repo_dirs, repo_fnames = dvcignore(
+            fs_path, repo_dirs, repo_fnames, **kwargs
+        )
 
         # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
         dvc_set = set(dvc_dirs)
