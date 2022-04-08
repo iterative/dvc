@@ -147,6 +147,9 @@ class LocalFileSystem(FileSystem):
     def info(self, path):
         return self.fs.info(path)
 
+    def ls(self, path, **kwargs):
+        return self.fs.ls(path, **kwargs)
+
     def put_file(
         self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
     ):
