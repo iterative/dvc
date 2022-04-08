@@ -153,6 +153,15 @@ class LocalObjectDB(ObjectDB):
             mode = os.stat(fs_path).st_mode
         except FileNotFoundError:
             return False
+        except PermissionError as error:
+            if os.path.isfile(fs_path):
+                # os module sometimes cannot read stats on NFS filesystem
+                # fix for https://github.com/iterative/dvc/issues/7553
+                with open(fs_path):
+                    pass
+                mode = os.stat(fs_path).st_mode
+            else:
+                raise error
 
         return stat.S_IMODE(mode) == self.CACHE_MODE
 
