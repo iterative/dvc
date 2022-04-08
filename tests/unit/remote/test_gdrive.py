@@ -41,3 +41,11 @@ class TestRemoteGDrive:
         )
         with pytest.raises(GDriveAuthError):
             assert fs.fs
+
+    def test_service_account_using_env_var(self, dvc, monkeypatch):
+        monkeypatch.setenv(GDriveFileSystem.GDRIVE_CREDENTIALS_DATA, "foo")
+        GDriveFileSystem(
+            gdrive_credentials_tmp_dir=dvc.tmp_dir,
+            gdrive_use_service_account=True,
+            **self.CONFIG
+        )
