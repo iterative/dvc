@@ -23,7 +23,7 @@ class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
     def _strip_protocol(cls, path: str) -> str:
         from fsspec.utils import infer_storage_options
 
-        return infer_storage_options(path)["path"].lstrip("/")
+        return infer_storage_options(path)["path"]
 
     def unstrip_protocol(self, path: str) -> str:
         host = self.fs_args["host"]
@@ -60,7 +60,7 @@ class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
         result = self._run_command(
             f"checksum {url}",
             env=fix_env(os.environ),
-            user=self.fs_args["user"],
+            user=self.fs_args.get("user"),
         )
         if result is None:
             return None
