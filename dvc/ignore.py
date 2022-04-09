@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from collections import namedtuple
-from itertools import groupby, takewhile
+from itertools import groupby, takewhile, chain
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -266,6 +266,23 @@ class DvcIgnoreFilter:
         if ignore_pattern:
             dirs, files = ignore_pattern(abs_root, dirs, files)
         return dirs, files
+
+    def ls(self, fs, path, detail=True, **kwargs):
+        fs_dict = {}
+        dirs = []
+        nondirs = []
+
+        for entry in fs.ls(path, detail=True, **kwargs):
+            name = fs.path.name(entry["name"])
+            fs_dict[name] = entry
+            if entry["type"] == "directory":
+                dirs.append(name)
+            else:
+                nondirs.append(name)
+
+        dirs, nondirs = self(path, dirs, nondirs, **kwargs)
+
+        return [fs_dict[name] for name in chain(dirs, nondirs)]
 
     def walk(self, fs: FileSystem, path: AnyPath, **kwargs):
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)

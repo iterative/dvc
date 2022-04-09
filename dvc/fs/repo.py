@@ -5,7 +5,7 @@ from contextlib import suppress
 from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
-from funcy import lfilter, wrap_with
+from funcy import wrap_with
 
 from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
@@ -36,6 +36,29 @@ def _ls(fs, path):
             fnames.append(name)
 
     return dnames, fnames
+
+
+def _merge_info(repo, fs_info, dvc_info):
+    from dvc.utils import is_exec
+
+    if not fs_info:
+        dvc_info["repo"] = repo
+        dvc_info["isdvc"] = True
+        return dvc_info
+
+    fs_info["repo"] = repo
+    fs_info["isout"] = dvc_info.get("isout", False) if dvc_info else False
+    fs_info["outs"] = dvc_info["outs"] if dvc_info else None
+    fs_info["isdvc"] = dvc_info["isdvc"] if dvc_info else False
+    fs_info["meta"] = dvc_info.get("meta") if dvc_info else None
+
+    isexec = False
+    if dvc_info:
+        isexec = dvc_info["isexec"]
+    elif fs_info["type"] == "file":
+        isexec = is_exec(fs_info["mode"])
+    fs_info["isexec"] = isexec
+    return fs_info
 
 
 class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
@@ -249,13 +272,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
 
-    def exists(self, path) -> bool:
+    def exists(self, path, **kwargs) -> bool:
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         if not dvc_fs:
             return fs.exists(fs_path)
 
-        if dvc_fs.repo.dvcignore.is_ignored(fs, path):
+        if dvc_fs.repo.dvcignore.is_ignored(fs, path, **kwargs):
             return False
 
         if fs.exists(path):
@@ -273,10 +296,10 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         return True
 
-    def isdir(self, path):  # pylint: disable=arguments-renamed
+    def isdir(self, path, **kwargs):  # pylint: disable=arguments-renamed
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(fs_path):
+        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_dir(fs_path, **kwargs):
             return False
 
         try:
@@ -307,10 +330,10 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
-    def isfile(self, path):  # pylint: disable=arguments-renamed
+    def isfile(self, path, **kwargs):  # pylint: disable=arguments-renamed
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(fs_path):
+        if dvc_fs and dvc_fs.repo.dvcignore.is_ignored_file(fs_path, **kwargs):
             return False
 
         try:
@@ -337,53 +360,39 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         return info["type"] == "file"
 
-    def _subrepo_walk(self, dir_path, **kwargs):
-        """Walk into a new repo.
+    def ls(self, path, detail=True, **kwargs):
+        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        NOTE: subrepo will only be discovered when walking if
-        ignore_subrepos is set to False.
-        """
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(dir_path)
-        yield from self._walk(fs, fs_path, dvc_fs, dvc_path, **kwargs)
+        repo = self._get_repo(os.path.abspath(path))
+        dvcignore = repo.dvcignore
+        ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
-    def _walk(
-        self,
-        fs,
-        fs_path,
-        dvc_fs,
-        dvc_path,
-        dvcfiles=False,
-        dvcignore=None,
-        **kwargs,
-    ):
-        from dvc.dvcfile import is_valid_filename
-        from dvc.ignore import DvcIgnore
-
-        assert dvcignore
-
-        dvc_dirs, dvc_fnames = [], []
+        dvc_entries = []
         if dvc_fs:
             with suppress(FileNotFoundError):
-                dvc_dirs, dvc_fnames = _ls(dvc_fs, dvc_path)
+                dvc_entries = dvc_fs.ls(dvc_path, detail=True)
 
+        fs_entries = []
         try:
-            repo_dirs, repo_fnames = _ls(fs, fs_path)
-        except FileNotFoundError:
-            return
+            fs_entries = dvcignore.ls(
+                fs, fs_path, detail=True, ignore_subrepos=ignore_subrepos
+            )
+        except (FileNotFoundError, NotADirectoryError):
+            pass
 
-        repo_dirs, repo_fnames = dvcignore(
-            fs_path, repo_dirs, repo_fnames, **kwargs
-        )
+        def _to_dict(fs, entries):
+            return {fs.path.name(entry["name"]): entry for entry in entries}
 
-        # separate subdirs into shared dirs, dvc-only dirs, repo-only dirs
-        dvc_set = set(dvc_dirs)
-        repo_set = set(repo_dirs)
-        dvc_only = list(dvc_set - repo_set)
-        repo_only = list(repo_set - dvc_set)
-        shared = list(dvc_set & repo_set)
-        dirs = shared + dvc_only + repo_only
+        dvc_dict = _to_dict(dvc_fs, dvc_entries)
+        fs_dict = _to_dict(fs, fs_entries)
+        overlay = {**dvc_dict, **fs_dict}
+
+        dvcfiles = kwargs.get("dvcfiles", False)
 
         def _func(fname):
+            from dvc.dvcfile import is_valid_filename
+            from dvc.ignore import DvcIgnore
+
             if dvcfiles:
                 return True
 
@@ -391,51 +400,15 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
                 is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
             )
 
-        # merge file lists
-        files = set(filter(_func, dvc_fnames + repo_fnames))
+        names = filter(_func, overlay.keys())
 
-        yield fs_path, dirs, list(files)
+        if not detail:
+            return list(names)
 
-        def is_dvc_repo(d):
-            return self._is_dvc_repo(os.path.join(fs_path, d))
-
-        # remove subrepos to prevent it from being traversed
-        subrepos = set(filter(is_dvc_repo, repo_only))
-        # set dir order for next recursion level - shared dirs first so that
-        # next() for both generators recurses into the same shared directory
-        dvc_dirs[:] = [dirname for dirname in dirs if dirname in dvc_set]
-        repo_dirs[:] = lfilter(lambda d: d in (repo_set - subrepos), dirs)
-
-        for dirname in dirs:
-            if dirname in subrepos:
-                dir_path = os.path.join(fs_path, dirname)
-                yield from self._subrepo_walk(
-                    dir_path, dvcfiles=dvcfiles, dvcignore=dvcignore, **kwargs
-                )
-            elif dirname in shared:
-                yield from self._walk(
-                    fs,
-                    fs.path.join(fs_path, dirname),
-                    dvc_fs,
-                    dvc_fs.path.join(dvc_path, dirname),
-                    dvcfiles=dvcfiles,
-                    dvcignore=dvcignore,
-                    **kwargs,
-                )
-            elif dirname in dvc_set:
-                yield from _wrap_walk(
-                    dvc_fs, dvc_fs.path.join(dvc_path, dirname)
-                )
-            elif dirname in repo_set:
-                yield from self._walk(
-                    fs,
-                    fs.path.join(fs_path, dirname),
-                    None,
-                    None,
-                    dvcfiles=dvcfiles,
-                    dvcignore=dvcignore,
-                    **kwargs,
-                )
+        return [
+            _merge_info(dvc_fs.repo, fs_dict.get(name), dvc_dict.get(name))
+            for name in names
+        ]
 
     def walk(self, top, topdown=True, **kwargs):
         """Walk and merge both DVC and repo fss.
@@ -449,45 +422,34 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         Any kwargs will be passed into methods used for fetching and/or
         streaming DVC outs from remotes.
         """
-        assert topdown
+        dirs = []
+        nondirs = []
 
-        if not self.exists(top):
+        ignore_subrepos = kwargs.get("ignore_subrepos", True)
+
+        if not self.exists(top, ignore_subrepos=ignore_subrepos):
             return
 
-        if not self.isdir(top):
+        if not self.isdir(top, ignore_subrepos=ignore_subrepos):
             return
 
-        repo = self._get_repo(os.path.abspath(top))
-        dvcignore = repo.dvcignore
-        dvcfiles = kwargs.pop("dvcfiles", False)
+        for entry in self.ls(top, **kwargs):
+            name = self.path.name(entry["name"])
+            if entry["type"] == "directory":
+                dirs.append(name)
+            else:
+                nondirs.append(name)
 
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(top)
-        repo_exists = fs.exists(fs_path)
+        if topdown:
+            yield top, dirs, nondirs
 
-        if not dvc_fs or (repo_exists and dvc_fs.isdvc(dvc_path)):
-            yield from self._walk(
-                fs,
-                fs_path,
-                None,
-                None,
-                dvcfiles=dvcfiles,
-                dvcignore=dvcignore,
-                **kwargs,
+        for dname in dirs:
+            yield from self.walk(
+                self.path.join(top, dname), topdown=topdown, **kwargs
             )
-            return
 
-        if not repo_exists:
-            yield from _wrap_walk(dvc_fs, dvc_path, topdown=topdown, **kwargs)
-
-        yield from self._walk(
-            fs,
-            fs_path,
-            dvc_fs,
-            dvc_path,
-            dvcfiles=dvcfiles,
-            dvcignore=dvcignore,
-            **kwargs,
-        )
+        if not topdown:
+            yield top, dirs, nondirs
 
     def find(self, path, prefix=None):
         for root, _, files in self.walk(path):
@@ -520,32 +482,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             dvc_info = None
 
         try:
-            from dvc.utils import is_exec
-
             fs_info = fs.info(fs_path)
-            fs_info["repo"] = dvc_fs.repo
-            fs_info["isout"] = (
-                dvc_info.get("isout", False) if dvc_info else False
-            )
-            fs_info["outs"] = dvc_info["outs"] if dvc_info else None
-            fs_info["isdvc"] = dvc_info["isdvc"] if dvc_info else False
-            fs_info["meta"] = dvc_info.get("meta") if dvc_info else None
-
-            isexec = False
-            if dvc_info:
-                isexec = dvc_info["isexec"]
-            elif fs_info["type"] == "file":
-                isexec = is_exec(fs_info["mode"])
-            fs_info["isexec"] = isexec
-            return fs_info
-
         except FileNotFoundError:
             if not dvc_info:
                 raise
+            fs_info = None
 
-            dvc_info["repo"] = dvc_fs.repo
-            dvc_info["isdvc"] = True
-            return dvc_info
+        return _merge_info(dvc_fs.repo, fs_info, dvc_info)
 
     def checksum(self, path):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)

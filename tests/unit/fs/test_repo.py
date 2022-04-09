@@ -194,13 +194,13 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     fs = RepoFileSystem(repo=dvc)
 
     expected = [
-        os.path.join(tmp_dir, "dir", "subdir1"),
-        os.path.join(tmp_dir, "dir", "subdir2"),
-        os.path.join(tmp_dir, "dir", "subdir1", "foo1"),
-        os.path.join(tmp_dir, "dir", "subdir1", "bar1"),
-        os.path.join(tmp_dir, "dir", "subdir2", "foo2"),
-        os.path.join(tmp_dir, "dir", "foo"),
-        os.path.join(tmp_dir, "dir", "bar"),
+        os.path.join("dir", "subdir1"),
+        os.path.join("dir", "subdir2"),
+        os.path.join("dir", "subdir1", "foo1"),
+        os.path.join("dir", "subdir1", "bar1"),
+        os.path.join("dir", "subdir2", "foo2"),
+        os.path.join("dir", "foo"),
+        os.path.join("dir", "bar"),
     ]
 
     actual = []
@@ -208,7 +208,7 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
-    expected += [os.path.join(tmp_dir, path) for path in extra_expected]
+    expected += [os.path.join(path) for path in extra_expected]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
@@ -228,14 +228,15 @@ def test_walk_dirty(tmp_dir, dvc):
 
     fs = RepoFileSystem(repo=dvc)
     expected = [
-        os.path.join(tmp_dir, "dir", "subdir1"),
-        os.path.join(tmp_dir, "dir", "subdir2"),
-        os.path.join(tmp_dir, "dir", "subdir3"),
-        os.path.join(tmp_dir, "dir", "subdir1", "foo1"),
-        os.path.join(tmp_dir, "dir", "subdir1", "bar1"),
-        os.path.join(tmp_dir, "dir", "subdir2", "foo2"),
-        os.path.join(tmp_dir, "dir", "subdir3", "foo3"),
-        os.path.join(tmp_dir, "dir", "bar"),
+        os.path.join("dir", "subdir1"),
+        os.path.join("dir", "subdir2"),
+        os.path.join("dir", "subdir3"),
+        os.path.join("dir", "subdir1", "foo1"),
+        os.path.join("dir", "subdir1", "bar1"),
+        os.path.join("dir", "subdir2", "foo2"),
+        os.path.join("dir", "subdir3", "foo3"),
+        os.path.join("dir", "bar"),
+        os.path.join("dir", "foo"),
     ]
 
     actual = []
@@ -260,7 +261,7 @@ def test_walk_dirty_cached_dir(tmp_dir, scm, dvc):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
-    assert actual == [(data / "bar").fs_path]
+    assert actual == [(data / "bar").fs_path, (data / "foo").fs_path]
 
 
 def test_walk_mixed_dir(tmp_dir, scm, dvc):
@@ -278,9 +279,9 @@ def test_walk_mixed_dir(tmp_dir, scm, dvc):
     fs = RepoFileSystem(repo=dvc)
 
     expected = [
-        os.path.join(tmp_dir, "dir", "foo"),
-        os.path.join(tmp_dir, "dir", "bar"),
-        os.path.join(tmp_dir, "dir", ".gitignore"),
+        os.path.join("dir", "foo"),
+        os.path.join("dir", "bar"),
+        os.path.join("dir", ".gitignore"),
     ]
     actual = []
     for root, dirs, files in fs.walk("dir"):
