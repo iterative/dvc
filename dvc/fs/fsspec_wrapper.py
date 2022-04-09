@@ -91,7 +91,7 @@ class FSSpecWrapper(FileSystem):
         ...
 
     def ls(self, path, detail=False):
-        yield from self.fs.ls(path, detail=detail)
+        return self.fs.ls(path, detail=detail)
 
     def find(self, path, prefix=None):
         yield from self.fs.find(path)
