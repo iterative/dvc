@@ -28,7 +28,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
     with external_repo(str(erepo_dir)) as repo:
         spy = mocker.spy(repo.repo_fs, "repo_factory")
 
-        list(repo.repo_fs.walk(repo.root_dir, ignore_subrepos=False))  # drain
+        list(repo.repo_fs.walk("", ignore_subrepos=False))  # drain
         assert spy.call_count == len(subrepos)
 
         paths = [os.path.join(repo.root_dir, path) for path in subrepo_paths]
@@ -65,7 +65,7 @@ def test_subrepo_is_constructed_properly(
     ) as repo:
         spy = mocker.spy(repo.repo_fs, "repo_factory")
 
-        list(repo.repo_fs.walk(repo.root_dir, ignore_subrepos=False))  # drain
+        list(repo.repo_fs.walk("", ignore_subrepos=False))  # drain
         assert spy.call_count == 1
         subrepo = spy.spy_return
 

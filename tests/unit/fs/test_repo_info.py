@@ -61,7 +61,7 @@ def test_info_not_existing(repo_fs):
 def test_info_git_tracked_file(repo_fs, path):
     info = repo_fs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.root_dir
+    assert info["repo"].root_dir == repo_fs._root_dir
     assert not info["isdvc"]
     assert info["type"] == "file"
     assert not info["isexec"]
@@ -80,7 +80,7 @@ def test_info_git_tracked_file(repo_fs, path):
 def test_info_dvc_tracked_file(repo_fs, path):
     info = repo_fs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.root_dir
+    assert info["repo"].root_dir == repo_fs._root_dir
     assert info["isdvc"]
     assert info["type"] == "file"
     assert not info["isexec"]
@@ -90,7 +90,7 @@ def test_info_dvc_tracked_file(repo_fs, path):
 def test_info_git_only_dirs(repo_fs, path):
     info = repo_fs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.root_dir
+    assert info["repo"].root_dir == repo_fs._root_dir
     assert not info["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
@@ -98,9 +98,9 @@ def test_info_git_only_dirs(repo_fs, path):
 
 @pytest.mark.parametrize("path", [".", "models"])
 def test_info_git_dvc_mixed_dirs(repo_fs, path):
-    info = repo_fs.info(os.path.join(repo_fs.root_dir, path))
+    info = repo_fs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.root_dir
+    assert info["repo"].root_dir == repo_fs._root_dir
     assert not info["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
@@ -115,9 +115,9 @@ def test_info_git_dvc_mixed_dirs(repo_fs, path):
     ],
 )
 def test_info_dvc_only_dirs(repo_fs, path):
-    info = repo_fs.info(os.path.join(repo_fs.root_dir, path))
+    info = repo_fs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.root_dir
+    assert info["repo"].root_dir == repo_fs._root_dir
     assert info["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
@@ -135,7 +135,7 @@ def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):
         os.path.join("subrepo", "foo"),
         os.path.join("subrepo", "foobar"),
     ]:
-        info = repo_fs.info(tmp_dir / path)
+        info = repo_fs.info(path)
         assert info["repo"].root_dir == str(
             subrepo
         ), f"repo root didn't match for {path}"

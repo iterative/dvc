@@ -29,9 +29,7 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
     from . import Repo
 
     with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
-        fs_path = repo.root_dir
-        if path:
-            fs_path = os.path.abspath(repo.fs.path.join(fs_path, path))
+        fs_path = path or ""
 
         ret = _ls(repo, fs_path, recursive, dvc_only)
 

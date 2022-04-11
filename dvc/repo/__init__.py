@@ -494,7 +494,6 @@ class Repo:
         from dvc.fs.repo import RepoFileSystem
 
         fs = RepoFileSystem(self, subrepos=True)
-        path = self.fs.path.join(self.root_dir, path)
         try:
             with fs.open(
                 path, mode=mode, encoding=encoding, remote=remote

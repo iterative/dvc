@@ -34,22 +34,22 @@ def _collect_paths(
     from dvc.fs.repo import RepoFileSystem
     from dvc.utils import relpath
 
-    fs_paths = [os.path.abspath(target) for target in targets]
     fs = RepoFileSystem(repo)
 
     target_paths = []
-    for fs_path in fs_paths:
+    for target in targets:
+        if os.path.isabs(target):
+            target = relpath(target, repo.root_dir) 
 
-        if recursive and fs.isdir(fs_path):
-            target_paths.extend(repo.dvcignore.find(fs, fs_path))
+        if recursive and fs.isdir(target):
+            target_paths.extend(repo.dvcignore.find(fs, target))
 
-        if not fs.exists(fs_path):
-            rel = relpath(fs_path)
+        if not fs.exists(target):
             if rev == "workspace" or rev == "":
-                logger.warning("'%s' was not found in current workspace.", rel)
+                logger.warning("'%s' was not found in current workspace.", target)
             else:
-                logger.warning("'%s' was not found at: '%s'.", rel, rev)
-        target_paths.append(fs_path)
+                logger.warning("'%s' was not found at: '%s'.", target, rev)
+        target_paths.append(target)
     return target_paths
 
 
@@ -58,12 +58,14 @@ def _filter_duplicates(
 ) -> Tuple[Outputs, StrPaths]:
     res_outs: Outputs = []
     fs_res_paths = fs_paths
+    from dvc.utils import relpath
 
     for out in outs:
-        if out.fs_path in fs_paths:
+        rel = relpath(out.fs_path, out.stage.repo.root_dir)
+        if rel in fs_paths:
             res_outs.append(out)
             # MUTATING THE SAME LIST!!
-            fs_res_paths.remove(out.fs_path)
+            fs_res_paths.remove(rel)
 
     return res_outs, fs_res_paths
 

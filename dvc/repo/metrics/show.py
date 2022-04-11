@@ -80,11 +80,12 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
     res = {}
     for metric in metrics:
-        if not fs.isfile(metric):
+        fs_path = repo.fs.path.relpath(metric, repo.root_dir)
+        if not fs.isfile(fs_path):
             continue
 
         res[fs.path.relpath(metric, os.getcwd())] = _read_metric(
-            metric, fs, rev, onerror=onerror
+            fs_path, fs, rev, onerror=onerror
         )
 
     return res

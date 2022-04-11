@@ -30,6 +30,7 @@ class ReferenceHashFile(HashFile):
         checksum: Optional[str] = None,
         **kwargs,
     ):
+        from dvc.fs.repo import RepoFileSystem
         super().__init__(fs_path, fs, hash_info, **kwargs)
         self.checksum = checksum or fs.checksum(fs_path)
 
@@ -60,9 +61,6 @@ class ReferenceHashFile(HashFile):
         # ReferenceHashFiles should currently only be serialized in
         # memory and not to disk
         fs_path = self.fs_path
-        if isinstance(self.fs, RepoFileSystem):
-            fs_path = self.fs.path.relpath(fs_path, self.fs.root_dir)
-
         dict_ = {
             self.PARAM_PATH: fs_path,
             self.PARAM_HASH: self.hash_info,
@@ -95,11 +93,10 @@ class ReferenceHashFile(HashFile):
         if not fs:
             config = dict(config_pairs)
             if RepoFileSystem.PARAM_REPO_URL in config:
-                fs = RepoFileSystem(**config)
-                fs_path = fs.path.join(fs.root_dir, fs_path)
+                fs_cls = RepoFileSystem
             else:
                 fs_cls = get_fs_cls(config, scheme=scheme)
-                fs = fs_cls(**config)
+            fs = fs_cls(**config)
         return ReferenceHashFile(
             fs_path,
             fs,

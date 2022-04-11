@@ -96,7 +96,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            os.path.join(repo.root_dir, "subdir", "file"),
+            os.path.join("subdir", "file"),
             os.fspath(dest),
         )
 
@@ -192,7 +192,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
 
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            os.path.join(repo.root_dir, "dir"),
+            "dir",
             os.fspath(tmp_dir / "out"),
         )
         expected_files = {"foo": "foo", "bar": "bar", ".gitignore": "/foo\n"}
@@ -206,7 +206,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
 
         staging, _, obj = stage(
             repo.odb.local,
-            os.path.join(repo.root_dir, "dir"),
+            "dir",
             repo.repo_fs,
             "md5",
             dvcignore=repo.dvcignore,
@@ -238,7 +238,7 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
 
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            os.path.join(repo.root_dir, "dir"),
+            "dir",
             os.fspath(tmp_dir / "out"),
         )
         # subrepo files should not be here

@@ -335,7 +335,7 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
 
     callback = fsspec.Callback()
     fs.download(
-        (tmp_dir / "dir").fs_path,
+        "dir",
         (tmp_dir / "dir2").fs_path,
         callback=callback,
     )
@@ -346,7 +346,7 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
 
     callback = fsspec.Callback()
     fs.download(
-        (tmp_dir / "dir" / "foo").fs_path,
+        os.path.join("dir", "foo"),
         (tmp_dir / "foo").fs_path,
         callback=callback,
     )
@@ -358,7 +358,7 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
 
     callback = fsspec.Callback()
     fs.download(
-        (tmp_dir / "dir" / "bar").fs_path,
+        os.path.join("dir", "bar"),
         (tmp_dir / "bar").fs_path,
         callback=callback,
     )

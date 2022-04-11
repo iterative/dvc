@@ -49,9 +49,6 @@ def get(url, path, out=None, rev=None, jobs=None):
         with external_repo(
             url=url, rev=rev, cache_dir=tmp_dir, cache_types=cache_types
         ) as repo:
-            from_fs_path = os.path.abspath(os.path.join(repo.root_dir, path))
-            repo.repo_fs.download(
-                from_fs_path, os.path.abspath(out), jobs=jobs
-            )
+            repo.repo_fs.download(path, os.path.abspath(out), jobs=jobs)
     finally:
         remove(tmp_dir)
