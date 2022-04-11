@@ -45,9 +45,7 @@ class ImageConverter:
         if path:
             if not os.path.isdir(path):
                 os.makedirs(path, exist_ok=True)
-            src = self._write_image(
-                os.path.abspath(path), revision, filename, data
-            )
+            src = self._write_image(path, revision, filename, data)
         else:
             src = self._encode_image(data)
         datapoint = {

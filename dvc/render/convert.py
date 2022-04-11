@@ -1,4 +1,5 @@
 import json
+import os
 from collections import defaultdict
 from typing import Dict, List, Union
 
@@ -42,8 +43,10 @@ def _group_by_rev(datapoints):
 
 
 def to_json(renderer, split: bool = False) -> List[Dict]:
+    from copy import deepcopy
+
     if renderer.TYPE == "vega":
-        grouped = _group_by_rev(renderer.datapoints)
+        grouped = _group_by_rev(deepcopy(renderer.datapoints))
         if split:
             content = renderer.get_filled_template(skip_anchors=["data"])
         else:
@@ -61,7 +64,7 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
             {
                 TYPE_KEY: renderer.TYPE,
                 REVISIONS_KEY: [datapoint.get(REVISION_FIELD)],
-                "url": datapoint.get(SRC_FIELD),
+                "url": os.path.abspath(datapoint.get(SRC_FIELD)),
             }
             for datapoint in renderer.datapoints
         ]
