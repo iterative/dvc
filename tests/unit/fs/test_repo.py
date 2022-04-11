@@ -261,7 +261,9 @@ def test_walk_dirty_cached_dir(tmp_dir, scm, dvc):
         for entry in dirs + files:
             actual.append(os.path.join(root, entry))
 
-    assert actual == [(data / "bar").fs_path, (data / "foo").fs_path]
+    expected = [(data / "foo").fs_path, (data / "bar").fs_path]
+    assert set(actual) == set(expected)
+    assert len(actual) == len(expected)
 
 
 def test_walk_mixed_dir(tmp_dir, scm, dvc):

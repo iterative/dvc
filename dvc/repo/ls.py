@@ -60,11 +60,7 @@ def _ls(repo, fs_path, recursive=None, dvc_only=False):
 
     ret = {}
     for info in infos:
-        try:
-            _info = fs.info(info)
-        except FileNotFoundError:
-            # broken symlink
-            _info = {"type": "file", "isexec": False}
+        _info = fs.info(info)
 
         if _info.get("outs") or not dvc_only:
             path = (

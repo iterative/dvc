@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from collections import namedtuple
-from itertools import groupby, takewhile, chain
+from itertools import chain, groupby, takewhile
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -282,6 +282,9 @@ class DvcIgnoreFilter:
 
         dirs, nondirs = self(path, dirs, nondirs, **kwargs)
 
+        if not detail:
+            return dirs + nondirs
+
         return [fs_dict[name] for name in chain(dirs, nondirs)]
 
     def walk(self, fs: FileSystem, path: AnyPath, **kwargs):
@@ -354,10 +357,10 @@ class DvcIgnoreFilter:
 
         return self._is_ignored(path, True, ignore_subrepos=ignore_subrepos)
 
-    def is_ignored_file(self, path: str) -> bool:
+    def is_ignored_file(self, path: str, ignore_subrepos: bool = True) -> bool:
         "Only used in LocalFileSystem"
         path = os.path.abspath(path)
-        return self._is_ignored(path, False)
+        return self._is_ignored(path, False, ignore_subrepos=ignore_subrepos)
 
     def _outside_repo(self, path):
         # paths outside of the repo should be ignored
@@ -395,12 +398,12 @@ class DvcIgnoreFilter:
         if fs.scheme != Schemes.LOCAL:
             return False
         if fs.isfile(path):
-            return self.is_ignored_file(path)
+            return self.is_ignored_file(path, ignore_subrepos)
         if fs.isdir(path):
             return self.is_ignored_dir(path, ignore_subrepos)
-        return self.is_ignored_file(path) or self.is_ignored_dir(
+        return self.is_ignored_file(
             path, ignore_subrepos
-        )
+        ) or self.is_ignored_dir(path, ignore_subrepos)
 
 
 def init(path):
