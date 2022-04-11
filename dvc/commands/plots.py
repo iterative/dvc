@@ -70,8 +70,13 @@ class CmdPlots(CmdBase):
                     "visualization file will not be created."
                 )
 
+            out: str = self.args.out or "dvc_plots"
+
+            renderers_out = (
+                out if self.args.json else os.path.join(out, "static")
+            )
             renderers = match_renderers(
-                plots_data=plots_data, out=self.args.out
+                plots_data=plots_data, out=renderers_out
             )
 
             if self.args.show_vega:
@@ -95,8 +100,7 @@ class CmdPlots(CmdBase):
                         self.repo.dvc_dir, html_template_path
                     )
 
-            rel: str = self.args.out or "dvc_plots"
-            output_file: Path = (Path.cwd() / rel).resolve() / "index.html"
+            output_file: Path = (Path.cwd() / out).resolve() / "index.html"
 
             render_html(
                 renderers=renderers,
