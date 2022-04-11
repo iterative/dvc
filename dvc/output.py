@@ -387,6 +387,11 @@ class Output:
         )
 
     @property
+    def repo_path(self):
+        assert self.is_in_repo
+        return relpath(self.fs_path, self.repo.root_dir)
+
+    @property
     def use_scm_ignore(self):
         if not self.is_in_repo:
             return False

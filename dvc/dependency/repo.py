@@ -112,11 +112,14 @@ class RepoDependency(Dependency):
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
                 self.def_repo[self.PARAM_REV_LOCK] = rev
 
-            path = os.path.abspath(os.path.join(repo.root_dir, self.def_path))
             if not obj_only:
                 try:
                     for odb, obj_ids in repo.used_objs(
-                        [path],
+                        [
+                            os.path.abspath(
+                                os.path.join(repo.root_dir, self.def_path)
+                            )
+                        ],
                         force=True,
                         jobs=kwargs.get("jobs"),
                         recursive=True,
@@ -132,7 +135,7 @@ class RepoDependency(Dependency):
             try:
                 staging, _, staged_obj = stage(
                     local_odb,
-                    path,
+                    self.def_path,
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
                 )
@@ -172,17 +175,17 @@ class RepoDependency(Dependency):
                 continue
             if (
                 obj.fs.repo_url in checked_urls
-                or obj.fs.root_dir in checked_urls
+                or obj.fs._root_dir in checked_urls
             ):
                 continue
             self_url = self.repo.url or self.repo.root_dir
             if (
                 obj.fs.repo_url is not None
                 and obj.fs.repo_url == self_url
-                or obj.fs.root_dir == self.repo.root_dir
+                or obj.fs._root_dir == self.repo.root_dir
             ):
                 raise CircularImportError(self, obj.fs.repo_url, self_url)
-            checked_urls.update([obj.fs.repo_url, obj.fs.root_dir])
+            checked_urls.update([obj.fs.repo_url, obj.fs._root_dir])
 
     def get_obj(self, filter_info=None, **kwargs):
         locked = kwargs.get("locked", True)

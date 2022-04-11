@@ -675,9 +675,9 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
     for rev in dvc.brancher(revs=[exp]):
         if rev != exp:
             continue
-        with dvc.repo_fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with dvc.repo_fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == params
-        with dvc.repo_fs.open((tmp_dir / "data").fs_path) as fobj:
+        with dvc.repo_fs.open("data") as fobj:
             assert fobj.read().strip() == "modified"
 
     if workspace:

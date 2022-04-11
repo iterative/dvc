@@ -19,15 +19,14 @@ def get_url(path, repo=None, rev=None, remote=None):
     directory in the remote storage.
     """
     with Repo.open(repo, rev=rev, subrepos=True, uninitialized=True) as _repo:
-        fs_path = _repo.fs.path.join(_repo.root_dir, path)
         with reraise(FileNotFoundError, PathMissingError(path, repo)):
-            info = _repo.repo_fs.info(fs_path)
+            info = _repo.repo_fs.info(path)
 
         if not info["isdvc"]:
             raise OutputNotFoundError(path, repo)
 
         cloud = info["repo"].cloud
-        dvc_path = _repo.fs.path.relpath(fs_path, info["repo"].root_dir)
+        _, _, dvc_fs, dvc_path = _repo.repo_fs._get_fs_pair(path)
 
         if not os.path.isabs(path):
             dvc_path = dvc_path.replace("\\", "/")

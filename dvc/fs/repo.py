@@ -107,19 +107,19 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         self._main_repo = repo
         self.hash_jobs = repo.fs.hash_jobs
-        self.root_dir: str = repo.root_dir
+        self._root_dir: str = repo.root_dir
         self._traverse_subrepos = subrepos
 
         self._subrepos_trie = PathStringTrie()
         """Keeps track of each and every path with the corresponding repo."""
 
-        self._subrepos_trie[self.root_dir] = repo
+        self._subrepos_trie[self._root_dir] = repo
 
         self._dvcfss = {}
         """Keep a dvcfs instance of each repo."""
 
         if hasattr(repo, "dvc_dir"):
-            self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
+            self._dvcfss[self._root_dir] = DvcFileSystem(repo=repo)
 
     @property
     def repo_url(self):
@@ -131,7 +131,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
     def config(self):
         return {
             self.PARAM_REPO_URL: self.repo_url,
-            self.PARAM_REPO_ROOT: self.root_dir,
+            self.PARAM_REPO_ROOT: self._root_dir,
             self.PARAM_REV: getattr(self._main_repo.fs, "rev", None),
             self.PARAM_CACHE_DIR: os.path.abspath(
                 self._main_repo.odb.local.cache_dir
@@ -202,13 +202,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         prefix, repo = self._subrepos_trie.longest_prefix(path)
         if not prefix:
-            return None
+            return self._main_repo
 
         parents = (parent for parent in self.path.parents(path))
         dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
         dirs.reverse()
         self._update(dirs, starting_repo=repo)
-        return self._subrepos_trie.get(path)
+        return self._subrepos_trie.get(path) or self._main_repo
 
     @wrap_with(threading.Lock())
     def _update(self, dirs, starting_repo):
@@ -240,22 +240,31 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         """
         Returns a pair of fss based on repo the path falls in, using prefix.
         """
-        path = os.path.abspath(path)
+        if os.path.isabs(path):
+            return None, None, self._main_repo.dvcfs, path
 
-        # fallback to the top-level repo if repo was not found
-        # this can happen if the path is outside of the repo
-        repo = self._get_repo(path) or self._main_repo
+        parts = self.path.parts(path)
+        if parts and parts[0] == os.curdir:
+            parts = parts[1:]
+
+        fs_path = self._main_repo.fs.path.join(
+            self._main_repo.root_dir, *parts
+        )
+        repo = self._get_repo(fs_path)
+        fs = repo.fs
+
+        repo_parts = fs.path.relparts(repo.root_dir, self._main_repo.root_dir)
+        if repo_parts[0] == os.curdir:
+            repo_parts = repo_parts[1:]
+
+        dvc_parts = parts[len(repo_parts) :]
+        if dvc_parts and dvc_parts[0] == os.curdir:
+            dvc_parts = dvc_parts[1:]
 
         dvc_fs = self._dvcfss.get(repo.root_dir)
+        dvc_path = dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
 
-        if path.startswith(repo.root_dir):
-            dvc_path = path[len(repo.root_dir) + 1 :]
-
-            dvc_path = dvc_path.replace("\\", "/")
-        else:
-            dvc_path = path
-
-        return repo.fs, path, dvc_fs, dvc_path
+        return fs, fs_path, dvc_fs, dvc_path
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
@@ -397,14 +406,16 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         self, from_info, to_file, callback=DEFAULT_CALLBACK, **kwargs
     ):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(from_info)
-        try:
-            fs.get_file(  # pylint: disable=protected-access
-                fs_path, to_file, callback=callback, **kwargs
-            )
-            return
-        except FileNotFoundError:
-            if not dvc_fs:
-                raise
+
+        if fs:
+            try:
+                fs.get_file(  # pylint: disable=protected-access
+                    fs_path, to_file, callback=callback, **kwargs
+                )
+                return
+            except FileNotFoundError:
+                if not dvc_fs:
+                    raise
 
         dvc_fs.get_file(  # pylint: disable=protected-access
             dvc_path, to_file, callback=callback, **kwargs
@@ -417,25 +428,28 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         dvcignore = repo.dvcignore
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
-        try:
-            dvc_info = dvc_fs.info(dvc_path)
-        except FileNotFoundError:
-            dvc_info = None
+        dvc_info = None
+        if dvc_fs:
+            try:
+                dvc_info = dvc_fs.info(dvc_path)
+            except FileNotFoundError:
+                pass
 
-        try:
-            fs_info = fs.info(fs_path)
-            if dvcignore.is_ignored(
-                fs, fs_path, ignore_subrepos=ignore_subrepos
-            ):
-                fs_info = None
-        except (FileNotFoundError, NotADirectoryError):
-            if not dvc_info:
-                raise
-            fs_info = None
+        fs_info = None
+        if fs:
+            try:
+                fs_info = fs.info(fs_path)
+                if dvcignore.is_ignored(
+                    fs, fs_path, ignore_subrepos=ignore_subrepos
+                ):
+                    fs_info = None
+            except (FileNotFoundError, NotADirectoryError):
+                if not dvc_info:
+                    raise
 
         # NOTE: if some parent in fs_path turns out to be a file, it means
         # that that whole repofs branch doesn't exist.
-        if not fs_info and dvc_info:
+        if fs and not fs_info and dvc_info:
             for parent in self.path.parents(fs_path):
                 try:
                     if fs.info(parent)["type"] != "directory":

@@ -251,8 +251,8 @@ def _collect_plots(
         recursive=recursive,
     )
 
-    result = {plot.fs_path: _plot_props(plot) for plot in plots}
-    result.update({fs_path: {} for fs_path in fs_paths})
+    result = {relpath(plot.fs_path, repo.root_dir): _plot_props(plot) for plot in plots}
+    result.update({relpath(fs_path, repo.root_dir): {} for fs_path in fs_paths})
     return result
 
 
