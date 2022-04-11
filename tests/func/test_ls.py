@@ -578,5 +578,4 @@ def test_broken_symlink(tmp_dir, dvc):
             "isexec": False,
             "path": ".dvcignore",
         },
-        {"isout": False, "isdir": False, "isexec": False, "path": "link"},
     ]
