@@ -70,10 +70,23 @@ def add_parser(subparsers, parent_parser):
         "--file", metavar="<filename>", help=argparse.SUPPRESS
     )
     run_parser.add_argument(
+        "--single-stage",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
+    )
+    _add_common_args(run_parser)
+    run_parser.add_argument(
         "--no-exec",
         action="store_true",
         default=False,
         help="Only create dvc.yaml without actually running it.",
+    )
+    run_parser.add_argument(
+        "--no-commit",
+        action="store_true",
+        default=False,
+        help="Don't put files/directories into cache.",
     )
     run_parser.add_argument(
         "--no-run-cache",
@@ -84,17 +97,4 @@ def add_parser(subparsers, parent_parser):
             "with the same command/dependencies/outputs/etc before."
         ),
     )
-    run_parser.add_argument(
-        "--no-commit",
-        action="store_true",
-        default=False,
-        help="Don't put files/directories into cache.",
-    )
-    run_parser.add_argument(
-        "--single-stage",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    _add_common_args(run_parser)
     run_parser.set_defaults(func=CmdRun)

@@ -67,33 +67,19 @@ def add_arguments(repro_parser):
         help="Reproduce even if dependencies were not changed.",
     )
     repro_parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        default=False,
+        help="Ask for confirmation before reproducing each stage.",
+    )
+    repro_parser.add_argument(
         "-s",
         "--single-item",
         action="store_true",
         default=False,
         help="Reproduce only single data item without recursive dependencies "
         "check.",
-    )
-    repro_parser.add_argument(
-        "-m",
-        "--metrics",
-        action="store_true",
-        default=False,
-        help="Show metrics after reproduction.",
-    )
-    repro_parser.add_argument(
-        "--dry",
-        action="store_true",
-        default=False,
-        help="Only print the commands that would be executed without "
-        "actually executing.",
-    )
-    repro_parser.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
-        default=False,
-        help="Ask for confirmation before reproducing each stage.",
     )
     repro_parser.add_argument(
         "-p",
@@ -118,17 +104,24 @@ def add_arguments(repro_parser):
         help="Reproduce all stages in the specified directory.",
     )
     repro_parser.add_argument(
-        "--force-downstream",
+        "-m",
+        "--metrics",
         action="store_true",
         default=False,
-        help="Reproduce all descendants of a changed stage even if their "
-        "direct dependencies didn't change.",
+        help="Show metrics after reproduction.",
     )
     repro_parser.add_argument(
         "--downstream",
         action="store_true",
         default=False,
         help="Start from the specified stages when reproducing pipelines.",
+    )
+    repro_parser.add_argument(
+        "--force-downstream",
+        action="store_true",
+        default=False,
+        help="Reproduce all descendants of a changed stage even if their "
+        "direct dependencies didn't change.",
     )
     repro_parser.add_argument(
         "--pull",
@@ -138,6 +131,13 @@ def add_arguments(repro_parser):
             "Try automatically pulling missing cache for outputs restored "
             "from the run-cache."
         ),
+    )
+    repro_parser.add_argument(
+        "--dry",
+        action="store_true",
+        default=False,
+        help="Only print the commands that would be executed without "
+        "actually executing.",
     )
 
 
@@ -156,13 +156,10 @@ def add_parser(subparsers, parent_parser):
     add_arguments(repro_parser)
     # repro only args
     repro_parser.add_argument(
-        "--no-run-cache",
+        "--glob",
         action="store_true",
         default=False,
-        help=(
-            "Execute stage commands even if they have already been run with "
-            "the same command/dependencies/outputs/etc before."
-        ),
+        help="Allows targets containing shell-style wildcards.",
     )
     repro_parser.add_argument(
         "--no-commit",
@@ -171,9 +168,12 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     repro_parser.add_argument(
-        "--glob",
+        "--no-run-cache",
         action="store_true",
         default=False,
-        help="Allows targets containing shell-style wildcards.",
+        help=(
+            "Execute stage commands even if they have already been run with "
+            "the same command/dependencies/outputs/etc before."
+        ),
     )
     repro_parser.set_defaults(func=CmdRepro)
