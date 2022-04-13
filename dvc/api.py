@@ -22,17 +22,14 @@ def get_url(path, repo=None, rev=None, remote=None):
         with reraise(FileNotFoundError, PathMissingError(path, repo)):
             info = _repo.repo_fs.info(path)
 
-        if not info["isdvc"]:
+        dvc_info = info.get("dvc_info")
+        if not dvc_info:
             raise OutputNotFoundError(path, repo)
 
-        cloud = info["repo"].cloud
-        _, _, dvc_fs, dvc_path = _repo.repo_fs._get_fs_pair(path)
+        dvc_repo = info["repo"]
+        md5 = dvc_info["md5"]
 
-        if not os.path.isabs(path):
-            dvc_path = dvc_path.replace("\\", "/")
-
-        md5 = info["repo"].dvcfs.info(dvc_path)["md5"]
-        return cloud.get_url_for(remote, checksum=md5)
+        return dvc_repo.cloud.get_url_for(remote, checksum=md5)
 
 
 def open(  # noqa, pylint: disable=redefined-builtin

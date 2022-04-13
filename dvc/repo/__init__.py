@@ -482,7 +482,9 @@ class Repo:
     def repo_fs(self):
         from dvc.fs.repo import RepoFileSystem
 
-        return RepoFileSystem(self, subrepos=self.subrepos, **self._fs_conf)
+        return RepoFileSystem(
+            repo=self, subrepos=self.subrepos, **self._fs_conf
+        )
 
     @cached_property
     def index_db_dir(self):
@@ -493,7 +495,7 @@ class Repo:
         """Opens a specified resource as a file descriptor"""
         from dvc.fs.repo import RepoFileSystem
 
-        fs = RepoFileSystem(self, subrepos=True)
+        fs = RepoFileSystem(repo=self, subrepos=True)
         try:
             with fs.open(
                 path, mode=mode, encoding=encoding, remote=remote

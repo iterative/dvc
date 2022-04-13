@@ -81,8 +81,6 @@ class Path:
         return self.isin_or_eq(left, right) or self.isin(right, left)
 
     def relpath(self, path, start):
-        if not start:
-            return path
         return self.flavour.relpath(path, start=start)
 
     def relparts(self, path, base):

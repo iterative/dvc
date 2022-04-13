@@ -101,6 +101,7 @@ class RepoDependency(Dependency):
         from dvc.data.stage import stage
         from dvc.data.tree import Tree, TreeError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
+        from dvc.utils import as_posix
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
@@ -115,11 +116,7 @@ class RepoDependency(Dependency):
             if not obj_only:
                 try:
                     for odb, obj_ids in repo.used_objs(
-                        [
-                            os.path.abspath(
-                                os.path.join(repo.root_dir, self.def_path)
-                            )
-                        ],
+                        [os.path.join(repo.root_dir, self.def_path)],
                         force=True,
                         jobs=kwargs.get("jobs"),
                         recursive=True,
@@ -135,7 +132,7 @@ class RepoDependency(Dependency):
             try:
                 staging, _, staged_obj = stage(
                     local_odb,
-                    self.def_path,
+                    as_posix(self.def_path),
                     repo.repo_fs,
                     local_odb.fs.PARAM_CHECKSUM,
                 )
@@ -175,17 +172,17 @@ class RepoDependency(Dependency):
                 continue
             if (
                 obj.fs.repo_url in checked_urls
-                or obj.fs._root_dir in checked_urls
+                or obj.fs.repo.root_dir in checked_urls
             ):
                 continue
             self_url = self.repo.url or self.repo.root_dir
             if (
                 obj.fs.repo_url is not None
                 and obj.fs.repo_url == self_url
-                or obj.fs._root_dir == self.repo.root_dir
+                or obj.fs.repo.root_dir == self.repo.root_dir
             ):
                 raise CircularImportError(self, obj.fs.repo_url, self_url)
-            checked_urls.update([obj.fs.repo_url, obj.fs._root_dir])
+            checked_urls.update([obj.fs.repo_url, obj.fs.repo.root_dir])
 
     def get_obj(self, filter_info=None, **kwargs):
         locked = kwargs.get("locked", True)

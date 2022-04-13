@@ -63,7 +63,7 @@ def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
-            and not stage.repo.repo_fs.isdvc(dep.fs.path.relpath(dep.fs_path, stage.repo.root_dir))
+            and not stage.repo.repo_fs.isdvc(dep.fs_path)
         ):
             yield dep.fs_path
     for out in stage.outs:

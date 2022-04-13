@@ -30,7 +30,6 @@ class ReferenceHashFile(HashFile):
         checksum: Optional[str] = None,
         **kwargs,
     ):
-        from dvc.fs.repo import RepoFileSystem
         super().__init__(fs_path, fs, hash_info, **kwargs)
         self.checksum = checksum or fs.checksum(fs_path)
 
@@ -53,8 +52,6 @@ class ReferenceHashFile(HashFile):
         return self.fs.checksum(self.fs_path)
 
     def to_bytes(self):
-        from dvc.fs.repo import RepoFileSystem
-
         # NOTE: dumping reference FS's this way is insecure, as the
         # fully parsed remote FS config will include credentials
         #
@@ -75,7 +72,7 @@ class ReferenceHashFile(HashFile):
     @classmethod
     def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
         from dvc.fs import get_fs_cls
-        from dvc.fs.repo import RepoFileSystem
+        from dvc.fs.repo import RepoFileSystem, _RepoFileSystem
 
         try:
             dict_ = pickle.loads(data)
@@ -92,7 +89,7 @@ class ReferenceHashFile(HashFile):
         fs = fs_cache.get((scheme, config_pairs)) if fs_cache else None
         if not fs:
             config = dict(config_pairs)
-            if RepoFileSystem.PARAM_REPO_URL in config:
+            if _RepoFileSystem.PARAM_REPO_URL in config:
                 fs_cls = RepoFileSystem
             else:
                 fs_cls = get_fs_cls(config, scheme=scheme)
