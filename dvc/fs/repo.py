@@ -105,7 +105,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         else:
             self.repo_factory = repo_factory
 
-        self._main_repo = repo
+        self.repo = repo
         self.hash_jobs = repo.fs.hash_jobs
         self._root_dir: str = repo.root_dir
         self._traverse_subrepos = subrepos
@@ -123,20 +123,20 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
     @property
     def repo_url(self):
-        if self._main_repo is None:
+        if self.repo is None:
             return None
-        return self._main_repo.url
+        return self.repo.url
 
     @property
     def config(self):
         return {
             self.PARAM_REPO_URL: self.repo_url,
             self.PARAM_REPO_ROOT: self._root_dir,
-            self.PARAM_REV: getattr(self._main_repo.fs, "rev", None),
+            self.PARAM_REV: getattr(self.repo.fs, "rev", None),
             self.PARAM_CACHE_DIR: os.path.abspath(
-                self._main_repo.odb.local.cache_dir
+                self.repo.odb.local.cache_dir
             ),
-            self.PARAM_CACHE_TYPES: self._main_repo.odb.local.cache_types,
+            self.PARAM_CACHE_TYPES: self.repo.odb.local.cache_types,
             self.PARAM_SUBREPOS: self._traverse_subrepos,
         }
 
@@ -202,13 +202,13 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
 
         prefix, repo = self._subrepos_trie.longest_prefix(path)
         if not prefix:
-            return self._main_repo
+            return self.repo
 
         parents = (parent for parent in self.path.parents(path))
         dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
         dirs.reverse()
         self._update(dirs, starting_repo=repo)
-        return self._subrepos_trie.get(path) or self._main_repo
+        return self._subrepos_trie.get(path) or self.repo
 
     @wrap_with(threading.Lock())
     def _update(self, dirs, starting_repo):
@@ -218,7 +218,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
             if self._is_dvc_repo(d):
                 repo = self.repo_factory(
                     d,
-                    fs=self._main_repo.fs,
+                    fs=self.repo.fs,
                     repo_factory=self.repo_factory,
                 )
                 self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
@@ -232,7 +232,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         from dvc.repo import Repo
 
         repo_path = os.path.join(dir_path, Repo.DVC_DIR)
-        return self._main_repo.fs.isdir(repo_path)
+        return self.repo.fs.isdir(repo_path)
 
     def _get_fs_pair(
         self, path
@@ -241,19 +241,17 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
         Returns a pair of fss based on repo the path falls in, using prefix.
         """
         if os.path.isabs(path):
-            return None, None, self._main_repo.dvcfs, path
+            return None, None, self.repo.dvcfs, path
 
         parts = self.path.parts(path)
         if parts and parts[0] == os.curdir:
             parts = parts[1:]
 
-        fs_path = self._main_repo.fs.path.join(
-            self._main_repo.root_dir, *parts
-        )
+        fs_path = self.repo.fs.path.join(self.repo.root_dir, *parts)
         repo = self._get_repo(fs_path)
         fs = repo.fs
 
-        repo_parts = fs.path.relparts(repo.root_dir, self._main_repo.root_dir)
+        repo_parts = fs.path.relparts(repo.root_dir, self.repo.root_dir)
         if repo_parts[0] == os.curdir:
             repo_parts = repo_parts[1:]
 
@@ -307,7 +305,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
     def ls(self, path, detail=True, **kwargs):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        repo = dvc_fs.repo if dvc_fs else self._main_repo
+        repo = dvc_fs.repo if dvc_fs else self.repo
         dvcignore = repo.dvcignore
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
@@ -424,7 +422,7 @@ class RepoFileSystem(FileSystem):  # pylint:disable=abstract-method
     def info(self, path, **kwargs):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        repo = dvc_fs.repo if dvc_fs else self._main_repo
+        repo = dvc_fs.repo if dvc_fs else self.repo
         dvcignore = repo.dvcignore
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
