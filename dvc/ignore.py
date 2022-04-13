@@ -303,7 +303,7 @@ class DvcIgnoreFilter:
             for root, _, files in self.walk(fs, path, **kwargs):
                 for file in files:
                     # NOTE: os.path.join is ~5.5 times slower
-                    yield f"{root}{os.sep}{file}"
+                    yield f"{root}{fs.sep}{file}"
         else:
             yield from fs.find(path)
 

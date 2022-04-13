@@ -24,7 +24,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
 
     from dvc.fs.repo import RepoFileSystem
 
-    repo_fs = RepoFileSystem(self)
+    repo_fs = RepoFileSystem(repo=self)
 
     b_rev = b_rev if b_rev else "workspace"
     results = {}
@@ -188,10 +188,11 @@ def _filter_missing(repo_fs, paths):
     for path in paths:
         try:
             info = repo_fs.info(path)
+            dvc_info = info.get("dvc_info")
             if (
-                info["isdvc"]
+                dvc_info
                 and info["type"] == "directory"
-                and not info["meta"].obj
+                and not dvc_info["meta"].obj
             ):
                 yield path
         except FileNotFoundError:

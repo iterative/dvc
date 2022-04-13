@@ -51,5 +51,5 @@ class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
     def rev(self) -> str:
         return self.fs.rev
 
-    def ls(self, path, **kwargs):
-        return self.fs.ls(path, **kwargs) or []
+    def ls(self, path, detail=True, **kwargs):
+        return self.fs.ls(path, detail=detail, **kwargs) or []

@@ -76,16 +76,15 @@ def _read_metric(path, fs, rev, **kwargs):
 
 
 def _read_metrics(repo, metrics, rev, onerror=None):
-    fs = RepoFileSystem(repo)
+    fs = RepoFileSystem(repo=repo)
 
     res = {}
     for metric in metrics:
-        fs_path = repo.fs.path.relpath(metric, repo.root_dir)
-        if not fs.isfile(fs_path):
+        if not fs.isfile(metric):
             continue
 
-        res[fs.path.relpath(metric, os.getcwd())] = _read_metric(
-            fs_path, fs, rev, onerror=onerror
+        res[os.path.relpath(metric, os.getcwd())] = _read_metric(
+            metric, fs, rev, onerror=onerror
         )
 
     return res

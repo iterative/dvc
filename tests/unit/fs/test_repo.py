@@ -1,4 +1,5 @@
 import os
+import posixpath
 import shutil
 from unittest import mock
 
@@ -116,8 +117,8 @@ def test_isdir_isfile(tmp_dir, dvc):
     assert fs.isdir("subdir")
     assert not fs.isfile("subdir")
     assert not fs.isdvc("subdir")
-    assert fs.isfile(os.path.join("subdir", "baz"))
-    assert fs.isdir(os.path.join("subdir", "data"))
+    assert fs.isfile("subdir/baz")
+    assert fs.isdir("subdir/data")
 
 
 def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
@@ -129,31 +130,30 @@ def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
     shutil.rmtree(tmp_dir / "datadir")
     (tmp_dir / "datafile").unlink()
 
-    root = tmp_dir
     assert fs.exists("datafile")
     assert fs.exists("datadir")
-    assert fs.exists(os.path.join("datadir", "foo"))
+    assert fs.exists("datadir/foo")
     assert fs.isfile("datafile")
     assert not fs.isfile("datadir")
-    assert fs.isfile(os.path.join("datadir", "foo"))
+    assert fs.isfile("datadir/foo")
     assert not fs.isdir("datafile")
     assert fs.isdir("datadir")
-    assert not fs.isdir(os.path.join("datadir", "foo"))
+    assert not fs.isdir("datadir/foo")
 
     # NOTE: creating file instead of dir and dir instead of file
     tmp_dir.gen({"datadir": "data", "datafile": {"foo": "foo", "bar": "bar"}})
     assert fs.exists("datafile")
     assert fs.exists("datadir")
-    assert not fs.exists(os.path.join("datadir", "foo"))
-    assert fs.exists(os.path.join("datafile", "foo"))
+    assert not fs.exists("datadir/foo")
+    assert fs.exists("datafile/foo")
     assert not fs.isfile("datafile")
     assert fs.isfile("datadir")
-    assert not fs.isfile(os.path.join("datadir", "foo"))
-    assert fs.isfile(os.path.join("datafile", "foo"))
+    assert not fs.isfile("datadir/foo")
+    assert fs.isfile("datafile/foo")
     assert fs.isdir("datafile")
     assert not fs.isdir("datadir")
-    assert not fs.isdir(os.path.join("datadir", "foo"))
-    assert not fs.isdir(os.path.join("datafile", "foo"))
+    assert not fs.isdir("datadir/foo")
+    assert not fs.isdir("datafile/foo")
 
 
 def test_isdir_mixed(tmp_dir, dvc):
@@ -173,9 +173,9 @@ def test_isdir_mixed(tmp_dir, dvc):
         (
             True,
             [
-                os.path.join("dir", "subdir1", "foo1.dvc"),
-                os.path.join("dir", "subdir1", "bar1.dvc"),
-                os.path.join("dir", "subdir2", "foo2.dvc"),
+                "dir/subdir1/foo1.dvc",
+                "dir/subdir1/bar1.dvc",
+                "dir/subdir2/foo2.dvc",
             ],
         ),
     ],
@@ -194,21 +194,21 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     fs = RepoFileSystem(repo=dvc)
 
     expected = [
-        os.path.join("dir", "subdir1"),
-        os.path.join("dir", "subdir2"),
-        os.path.join("dir", "subdir1", "foo1"),
-        os.path.join("dir", "subdir1", "bar1"),
-        os.path.join("dir", "subdir2", "foo2"),
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
+        "dir/subdir1",
+        "dir/subdir2",
+        "dir/subdir1/foo1",
+        "dir/subdir1/bar1",
+        "dir/subdir2/foo2",
+        "dir/foo",
+        "dir/bar",
     ]
 
     actual = []
     for root, dirs, files in fs.walk("dir", dvcfiles=dvcfiles):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
-    expected += [os.path.join(path) for path in extra_expected]
+    expected += extra_expected
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
@@ -228,21 +228,21 @@ def test_walk_dirty(tmp_dir, dvc):
 
     fs = RepoFileSystem(repo=dvc)
     expected = [
-        os.path.join("dir", "subdir1"),
-        os.path.join("dir", "subdir2"),
-        os.path.join("dir", "subdir3"),
-        os.path.join("dir", "subdir1", "foo1"),
-        os.path.join("dir", "subdir1", "bar1"),
-        os.path.join("dir", "subdir2", "foo2"),
-        os.path.join("dir", "subdir3", "foo3"),
-        os.path.join("dir", "bar"),
-        os.path.join("dir", "foo"),
+        "dir/subdir1",
+        "dir/subdir2",
+        "dir/subdir3",
+        "dir/subdir1/foo1",
+        "dir/subdir1/bar1",
+        "dir/subdir2/foo2",
+        "dir/subdir3/foo3",
+        "dir/bar",
+        "dir/foo",
     ]
 
     actual = []
     for root, dirs, files in fs.walk("dir"):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
@@ -254,14 +254,12 @@ def test_walk_dirty_cached_dir(tmp_dir, scm, dvc):
 
     fs = RepoFileSystem(repo=dvc)
 
-    data = tmp_dir / "data"
-
     actual = []
     for root, dirs, files in fs.walk("data"):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
-    expected = [os.path.join("data", "foo"), os.path.join("data", "bar")]
+    expected = ["data/foo", "data/bar"]
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
@@ -281,14 +279,14 @@ def test_walk_mixed_dir(tmp_dir, scm, dvc):
     fs = RepoFileSystem(repo=dvc)
 
     expected = [
-        os.path.join("dir", "foo"),
-        os.path.join("dir", "bar"),
-        os.path.join("dir", ".gitignore"),
+        "dir/foo",
+        "dir/bar",
+        "dir/.gitignore",
     ]
     actual = []
     for root, dirs, files in fs.walk("dir"):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
@@ -317,8 +315,8 @@ def test_isdvc(tmp_dir, dvc):
     assert fs.isdvc("foo")
     assert not fs.isdvc("bar")
     assert fs.isdvc("dir")
-    assert fs.isdvc(os.path.join("dir", "baz"))
-    assert fs.isdvc(os.path.join("dir", "baz"), recursive=True)
+    assert fs.isdvc("dir/baz")
+    assert fs.isdvc("dir/baz", recursive=True)
 
 
 def make_subrepo(dir_, scm, config=None):
@@ -353,7 +351,7 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
     fs = RepoFileSystem(repo=dvc, subrepos=True)
 
     def assert_fs_belongs_to_repo(ret_val):
-        method = fs._get_repo
+        method = fs.fs._get_repo
 
         def f(*args, **kwargs):
             r = method(*args, **kwargs)
@@ -363,32 +361,32 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
         return f
 
     with mock.patch.object(
-        fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo1.dvc)
+        fs.fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo1.dvc)
     ):
-        assert fs.exists(os.path.join("dir", "repo", "foo")) is True
-        assert fs.exists(os.path.join("dir", "repo", "bar")) is False
+        assert fs.exists("dir/repo/foo") is True
+        assert fs.exists("dir/repo/bar") is False
 
-        assert fs.isfile(os.path.join("dir", "repo", "foo")) is True
-        assert fs.isfile(os.path.join("dir", "repo", "dir1", "bar")) is True
-        assert fs.isfile(os.path.join("dir", "repo", "dir1")) is False
+        assert fs.isfile("dir/repo/foo") is True
+        assert fs.isfile("dir/repo/dir1/bar") is True
+        assert fs.isfile("dir/repo/dir1") is False
 
-        assert fs.isdir(os.path.join("dir", "repo", "dir1")) is True
-        assert fs.isdir(os.path.join("dir", "repo", "dir1", "bar")) is False
-        assert fs.isdvc(os.path.join("dir", "repo", "foo")) is True
+        assert fs.isdir("dir/repo/dir1") is True
+        assert fs.isdir("dir/repo/dir1/bar") is False
+        assert fs.isdvc("dir/repo/foo") is True
 
     with mock.patch.object(
-        fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo2.dvc)
+        fs.fs, "_get_repo", side_effect=assert_fs_belongs_to_repo(subrepo2.dvc)
     ):
-        assert fs.exists(os.path.join("dir", "repo2", "lorem")) is True
-        assert fs.exists(os.path.join("dir", "repo2", "ipsum")) is False
+        assert fs.exists("dir/repo2/lorem") is True
+        assert fs.exists("dir/repo2/ipsum") is False
 
-        assert fs.isfile(os.path.join("dir", "repo2", "lorem")) is True
-        assert fs.isfile(os.path.join("dir", "repo2", "dir2", "ipsum")) is True
-        assert fs.isfile(os.path.join("dir", "repo2", "dir2")) is False
+        assert fs.isfile("dir/repo2/lorem") is True
+        assert fs.isfile("dir/repo2/dir2/ipsum") is True
+        assert fs.isfile("dir/repo2/dir2") is False
 
-        assert fs.isdir(os.path.join("dir", "repo2", "dir2")) is True
-        assert fs.isdir(os.path.join("dir", "repo2", "dir2", "ipsum")) is False
-        assert fs.isdvc(os.path.join("dir", "repo2", "lorem")) is True
+        assert fs.isdir("dir/repo2/dir2") is True
+        assert fs.isdir("dir/repo2/dir2/ipsum") is False
+        assert fs.isdvc("dir/repo2/lorem") is True
 
 
 @pytest.mark.parametrize(
@@ -398,12 +396,12 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
         (
             True,
             [
-                os.path.join("dir", "repo", "foo.dvc"),
-                os.path.join("dir", "repo", ".dvcignore"),
-                os.path.join("dir", "repo", "dir1.dvc"),
-                os.path.join("dir", "repo2", ".dvcignore"),
-                os.path.join("dir", "repo2", "lorem.dvc"),
-                os.path.join("dir", "repo2", "dir2.dvc"),
+                "dir/repo/foo.dvc",
+                "dir/repo/.dvcignore",
+                "dir/repo/dir1.dvc",
+                "dir/repo2/.dvcignore",
+                "dir/repo2/lorem.dvc",
+                "dir/repo2/dir2.dvc",
             ],
         ),
     ],
@@ -432,17 +430,17 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     dvc._reset()
     fs = RepoFileSystem(repo=dvc)
     expected = [
-        os.path.join("dir", "repo"),
-        os.path.join("dir", "repo.txt"),
-        os.path.join("dir", "repo2"),
-        os.path.join("dir", "repo", ".gitignore"),
-        os.path.join("dir", "repo", "foo"),
-        os.path.join("dir", "repo", "dir1"),
-        os.path.join("dir", "repo", "dir1", "bar"),
-        os.path.join("dir", "repo2", ".gitignore"),
-        os.path.join("dir", "repo2", "lorem"),
-        os.path.join("dir", "repo2", "dir2"),
-        os.path.join("dir", "repo2", "dir2", "ipsum"),
+        "dir/repo",
+        "dir/repo.txt",
+        "dir/repo2",
+        "dir/repo/.gitignore",
+        "dir/repo/foo",
+        "dir/repo/dir1",
+        "dir/repo/dir1/bar",
+        "dir/repo2/.gitignore",
+        "dir/repo2/lorem",
+        "dir/repo2/dir2",
+        "dir/repo2/dir2/ipsum",
     ]
 
     actual = []
@@ -452,7 +450,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
         ignore_subrepos=False,
     ):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
     expected += extra_expected
     assert set(actual) == set(expected)
@@ -481,27 +479,27 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
         "lorem",
         "lorem.dvc",
         "dir",
-        os.path.join("dir", "repo.txt"),
+        "dir/repo.txt",
     ]
 
     actual = []
     for root, dirs, files in fs.walk("", dvcfiles=True):
         for entry in dirs + files:
-            actual.append(os.path.join(root, entry))
+            actual.append(posixpath.join(root, entry))
 
     assert set(actual) == set(expected)
     assert len(actual) == len(expected)
 
     assert fs.isfile("lorem") is True
-    assert fs.isfile(os.path.join("dir", "repo", "foo")) is False
-    assert fs.isdir(os.path.join("dir", "repo")) is False
+    assert fs.isfile("dir/repo/foo") is False
+    assert fs.isdir("dir/repo") is False
     assert fs.isdir("dir") is True
 
     assert fs.isdvc("lorem") is True
-    assert fs.isdvc(os.path.join("dir", "repo", "dir1")) is False
+    assert fs.isdvc("dir/repo/dir1") is False
 
-    assert fs.exists(os.path.join("dir", "repo.txt")) is True
-    assert fs.exists(os.path.join("repo", "ipsum")) is False
+    assert fs.exists("dir/repo.txt") is True
+    assert fs.exists("repo/ipsum") is False
 
 
 def test_get_hash_cached_file(tmp_dir, dvc, mocker):
@@ -540,18 +538,18 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = RepoFileSystem(repo=dvc)
-    subdir = os.path.join("dir", "subdir")
+    subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
     _, _, obj = stage(dvc.odb.local, subdir, fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "af314506f1622d107e0ed3f14ec1a3b5.dir"
     )
-    assert fs.info(os.path.join(subdir, "data")).get("md5") is None
-    _, _, obj = stage(dvc.odb.local, os.path.join(subdir, "data"), fs, "md5")
+    assert fs.info(posixpath.join(subdir, "data")).get("md5") is None
+    _, _, obj = stage(dvc.odb.local, posixpath.join(subdir, "data"), fs, "md5")
     assert obj.hash_info == HashInfo("md5", "8d777f385d3dfec8815d20f7496026dc")
     (tmp_dir / "dir" / "subdir" / "data").unlink()
     assert (
-        fs.info(os.path.join(subdir, "data"))["md5"]
+        fs.info(posixpath.join(subdir, "data"))["md5"]
         == "8d777f385d3dfec8815d20f7496026dc"
     )
 
@@ -593,9 +591,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     # get_file_hash(file) should return workspace hash, not DVC cached hash
     fs = RepoFileSystem(repo=dvc)
     assert fs.info("file").get("md5") is None
-    staging, _, obj = stage(
-        dvc.odb.local, "file", fs, "md5"
-    )
+    staging, _, obj = stage(dvc.odb.local, "file", fs, "md5")
     assert obj.hash_info == something_hash_info
     check(staging, obj)
 
@@ -607,9 +603,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 
     # get_file_hash(file) should return DVC cached hash
     assert fs.info("file")["md5"] == file_hash_info.value
-    _, hash_info = get_file_hash(
-        "file", fs, "md5", state=dvc.state
-    )
+    _, hash_info = get_file_hash("file", fs, "md5", state=dvc.state)
     assert hash_info == file_hash_info
 
     # tmp_dir/file can be staged even though it is missing in workspace since
@@ -662,14 +656,22 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
             repo_dir.dvc_gen(dvc_files, commit=f"dvc add in {repo_dir}")
 
         if traverse_subrepos or repo_dir == tmp_dir:
-            repo_dir_path = repo_dir.relative_to(tmp_dir).fs_path if repo_dir != tmp_dir else ""
+            repo_dir_path = (
+                repo_dir.relative_to(tmp_dir).as_posix()
+                if repo_dir != tmp_dir
+                else ""
+            )
             expected[repo_dir_path] = set(
                 scm_files.keys() | dvc_files.keys() | extras
             )
             # files inside a dvc directory
-            expected[os.path.join(repo_dir_path, f"dvc-{base}")] = {f"ipsum-{base}"}
+            expected[posixpath.join(repo_dir_path, f"dvc-{base}")] = {
+                f"ipsum-{base}"
+            }
             # files inside a git directory
-            expected[os.path.join(repo_dir_path, f"dir-{base}")] = {f"bar-{base}"}
+            expected[posixpath.join(repo_dir_path, f"dir-{base}")] = {
+                f"bar-{base}"
+            }
 
     if traverse_subrepos:
         # update subrepos

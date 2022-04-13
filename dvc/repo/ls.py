@@ -29,9 +29,9 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
     from . import Repo
 
     with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
-        fs_path = path or ""
+        path = path or ""
 
-        ret = _ls(repo, fs_path, recursive, dvc_only)
+        ret = _ls(repo.repo_fs, path, recursive, dvc_only)
 
         if path and not ret:
             raise PathMissingError(path, repo, dvc_only=dvc_only)
@@ -44,31 +44,36 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
         return ret_list
 
 
-def _ls(repo, fs_path, recursive=None, dvc_only=False):
-    fs = repo.repo_fs
-    infos = []
+def _ls(fs, path, recursive=None, dvc_only=False):
+    try:
+        fs_path = fs.info(path)["name"]
+    except FileNotFoundError:
+        return {}
+
+    infos = {}
     for root, dirs, files in fs.walk(fs_path, dvcfiles=True):
         entries = chain(files, dirs) if not recursive else files
-        infos.extend(fs.path.join(root, entry) for entry in entries)
+
+        for entry in entries:
+            entry_fs_path = fs.path.join(root, entry)
+            relparts = fs.path.relparts(entry_fs_path, fs_path)
+            name = os.path.join(*relparts)
+            infos[name] = fs.info(entry_fs_path)
+
         if not recursive:
             break
 
     if not infos and fs.isfile(fs_path):
-        infos.append(fs_path)
+        infos[os.path.basename(path)] = fs.info(fs_path)
 
     ret = {}
-    for info in infos:
-        _info = fs.info(info)
-
-        if _info.get("outs") or not dvc_only:
-            path = (
-                fs.path.name(fs_path)
-                if fs_path == info
-                else fs.path.relpath(info, fs_path)
-            )
-            ret[path] = {
-                "isout": _info.get("isout", False),
-                "isdir": _info["type"] == "directory",
-                "isexec": _info["isexec"],
+    for name, info in infos.items():
+        dvc_info = info.get("dvc_info", {})
+        if dvc_info.get("outs") or not dvc_only:
+            ret[name] = {
+                "isout": dvc_info.get("isout", False),
+                "isdir": info["type"] == "directory",
+                "isexec": info.get("isexec", False),
             }
+
     return ret

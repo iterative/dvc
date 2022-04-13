@@ -106,7 +106,7 @@ class Plots:
     ):
         from dvc.fs.repo import RepoFileSystem
 
-        fs = RepoFileSystem(self.repo)
+        fs = RepoFileSystem(repo=self.repo)
         plots = _collect_plots(self.repo, targets, revision, recursive)
         res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
@@ -240,7 +240,7 @@ def _collect_plots(
     targets: List[str] = None,
     rev: str = None,
     recursive: bool = False,
-) -> Dict["List[str]", Dict]:
+) -> Dict[str, Dict]:
     from dvc.repo.collect import collect
 
     plots, fs_paths = collect(
@@ -251,8 +251,8 @@ def _collect_plots(
         recursive=recursive,
     )
 
-    result = {relpath(plot.fs_path, repo.root_dir): _plot_props(plot) for plot in plots}
-    result.update({relpath(fs_path, repo.root_dir): {} for fs_path in fs_paths})
+    result = {plot.fs_path: _plot_props(plot) for plot in plots}
+    result.update({fs_path: {} for fs_path in fs_paths})
     return result
 
 

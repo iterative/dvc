@@ -96,7 +96,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
         repo.repo_fs.download(
-            os.path.join("subdir", "file"),
+            "subdir/file",
             os.fspath(dest),
         )
 
