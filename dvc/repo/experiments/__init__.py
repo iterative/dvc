@@ -742,7 +742,7 @@ class Experiments:
             return self.stash_revs[rev].name
         return None
 
-    def get_running_exps(self) -> Dict[str, int]:
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, int]:
         """Return info for running experiments."""
         from dvc.scm import InvalidRemoteSCMRepo
         from dvc.utils.serialize import load_json
@@ -774,7 +774,7 @@ class Experiments:
                         result[rev] = info.asdict()
                 else:
                     result[rev] = info.asdict()
-                    if info.git_url:
+                    if info.git_url and fetch_refs:
 
                         def on_diverged(_ref: str, _checkpoint: bool):
                             return False

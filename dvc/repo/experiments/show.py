@@ -136,6 +136,7 @@ def show(
     num=1,
     param_deps=False,
     onerror: Optional[Callable] = None,
+    fetch_running: bool = True,
 ):
 
     if onerror is None:
@@ -153,7 +154,7 @@ def show(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
 
-    running = repo.experiments.get_running_exps()
+    running = repo.experiments.get_running_exps(fetch_refs=fetch_running)
 
     for rev in found_revs:
         res[rev]["baseline"] = _collect_experiment_commit(
