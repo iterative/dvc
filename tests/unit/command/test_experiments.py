@@ -118,6 +118,7 @@ def test_experiments_show(dvc, scm, mocker):
         revs="foo",
         sha_only=True,
         param_deps=True,
+        fetch_running=True,
     )
 
 
