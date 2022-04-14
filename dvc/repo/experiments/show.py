@@ -1,14 +1,16 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from dvc.repo import Repo, locked  # pylint: disable=unused-import
 from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
 from dvc.utils import error_handler, onerror_collect
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +126,6 @@ def _collect_experiment_branch(
     return res
 
 
-@locked
 def show(
     repo: "Repo",
     all_branches=False,
