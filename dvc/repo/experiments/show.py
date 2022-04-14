@@ -22,6 +22,7 @@ def _collect_experiment_commit(
     param_deps=False,
     running=None,
     onerror: Optional[Callable] = None,
+    is_baseline: bool = False,
 ):
     from dvc.dependency import ParamsDependency, RepoDependency
 
@@ -75,10 +76,12 @@ def _collect_experiment_commit(
             res["metrics"] = vals
 
         if not sha_only and rev != "workspace":
-            for refspec in ["refs/tags", "refs/heads"]:
-                name = repo.scm.describe(rev, base=refspec)
-                if name:
-                    break
+            name: Optional[str] = None
+            if is_baseline:
+                for refspec in ["refs/tags", "refs/heads"]:
+                    name = repo.scm.describe(rev, base=refspec)
+                    if name:
+                        break
             if not name:
                 name = repo.experiments.get_exact_name(rev)
             if name:
@@ -159,6 +162,7 @@ def show(
             param_deps=param_deps,
             running=running,
             onerror=onerror,
+            is_baseline=True,
         )
 
         if rev == "workspace":
