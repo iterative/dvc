@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import (
@@ -134,9 +135,19 @@ def make_definition(
 
 class DataResolver:
     def __init__(self, repo: "Repo", wdir: str, d: dict):
+        from dvc.fs import LocalFileSystem
+
         self.fs = fs = repo.fs
+
+        if os.path.isabs(wdir):
+            start = (
+                os.curdir if isinstance(fs, LocalFileSystem) else repo.root_dir
+            )
+            wdir = relpath(wdir, start)
+            wdir = "" if wdir == os.curdir else wdir
+
         self.wdir = wdir
-        self.relpath = relpath(fs.path.join(self.wdir, "dvc.yaml"))
+        self.relpath = os.path.normpath(fs.path.join(self.wdir, "dvc.yaml"))
 
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)
