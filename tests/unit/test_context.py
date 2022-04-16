@@ -288,14 +288,13 @@ def test_track(tmp_dir):
         "dct": {"foo": "foo", "bar": "bar", "baz": "baz"},
     }
     fs = LocalFileSystem()
-    path = tmp_dir / "params.yaml"
-    path.dump(d, fs=fs)
+    (tmp_dir / "params.yaml").dump(d, fs=fs)
 
-    context = Context.load_from(fs, path)
+    context = Context.load_from(fs, "params.yaml")
 
     def key_tracked(d, key):
         assert len(d) == 1
-        return key in d[relpath(path)]
+        return key in d["params.yaml"]
 
     with context.track() as tracked:
         context.select("lst")
@@ -323,10 +322,10 @@ def test_track_from_multiple_files(tmp_dir):
     d2 = {"Train": {"us": {"layers": 100}}}
 
     fs = LocalFileSystem()
-    path1 = tmp_dir / "params.yaml"
-    path2 = tmp_dir / "params2.yaml"
-    path1.dump(d1, fs=fs)
-    path2.dump(d2, fs=fs)
+    path1 = "params.yaml"
+    path2 = "params2.yaml"
+    (tmp_dir / path1).dump(d1, fs=fs)
+    (tmp_dir / path2).dump(d2, fs=fs)
 
     context = Context.load_from(fs, path1)
     c = Context.load_from(fs, path2)
@@ -428,16 +427,15 @@ def test_resolve_resolves_boolean_value():
 
 def test_load_from_raises_if_file_not_exist(tmp_dir, dvc):
     with pytest.raises(ParamsLoadError) as exc_info:
-        Context.load_from(dvc.fs, tmp_dir / DEFAULT_PARAMS_FILE)
+        Context.load_from(dvc.fs, DEFAULT_PARAMS_FILE)
 
     assert str(exc_info.value) == "'params.yaml' does not exist"
 
 
 def test_load_from_raises_if_file_is_directory(tmp_dir, dvc):
-    data_dir = tmp_dir / "data"
-    data_dir.mkdir()
+    (tmp_dir / "data").mkdir()
 
     with pytest.raises(ParamsLoadError) as exc_info:
-        Context.load_from(dvc.fs, data_dir)
+        Context.load_from(dvc.fs, "data")
 
     assert str(exc_info.value) == "'data' is a directory"

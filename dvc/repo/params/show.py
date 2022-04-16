@@ -10,7 +10,12 @@ from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils import (
+    error_handler,
+    errored_revisions,
+    onerror_collect,
+    relpath,
+)
 from dvc.utils.serialize import LOADERS
 
 if TYPE_CHECKING:
@@ -85,10 +90,20 @@ def _read_params(
 
 
 def _collect_vars(repo, params) -> Dict:
+    from dvc.fs.git import GitFileSystem
+
     vars_params: Dict[str, Dict] = defaultdict(dict)
+    rel_to_root = relpath(repo.root_dir)
+
     for stage in repo.index.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
+                if isinstance(repo.fs, GitFileSystem):
+                    # GitFileSystem uses relatively-absolute paths from the
+                    # root of the repo. We need to convert them to relative
+                    # paths based on the current working directory.
+                    file = os.path.normpath(os.path.join(rel_to_root, file))
+
                 # `params` file are shown regardless of `tracked` or not
                 # to reduce noise and duplication, they are skipped
                 if file in params:

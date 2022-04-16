@@ -600,3 +600,33 @@ def test_circular_import(tmp_dir, dvc, scm, erepo_dir):
             erepo_dir.dvc.imp(
                 os.fspath(tmp_dir), "dir_imported", "circular_import"
             )
+
+
+@pytest.mark.parametrize("paths", ([], ["dir"]))
+def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
+    path = erepo_dir.joinpath(*paths)
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "params.yaml").dump({"out": "foo"})
+    (path / "dvc.yaml").dump(
+        {
+            "stages": {
+                "train": {"cmd": "echo ${out} > ${out}", "outs": ["${out}"]},
+            }
+        }
+    )
+    path.gen({"foo": "foo"})
+    with path.chdir():
+        erepo_dir.dvc.commit(None, force=True)
+        erepo_dir.scm.add_commit(
+            ["params.yaml", "dvc.yaml", "dvc.lock", ".gitignore"],
+            message="init",
+        )
+
+    to_import = os.path.join(*paths, "foo")
+    stage = dvc.imp(os.fspath(erepo_dir), to_import, "foo_imported")
+
+    assert (tmp_dir / "foo_imported").read_text() == "foo"
+    assert stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }

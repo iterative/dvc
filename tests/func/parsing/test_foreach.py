@@ -386,9 +386,7 @@ def test_foreach_with_interpolated_wdir_and_local_vars(
             }
         },
     }
-    assert resolver.context.imports == {
-        str(tmp_dir / DEFAULT_PARAMS_FILE): None
-    }
+    assert resolver.context.imports == {DEFAULT_PARAMS_FILE: None}
 
 
 def test_foreach_do_syntax_is_checked_once(tmp_dir, dvc, mocker):
