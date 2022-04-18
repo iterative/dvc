@@ -5,10 +5,10 @@ from funcy import cached_property, wrap_prop
 from dvc.scheme import Schemes
 
 # pylint:disable=abstract-method
-from .fsspec_wrapper import CallbackMixin, ObjectFSWrapper
+from .fsspec_wrapper import ObjectFSWrapper
 
 
-class GSFileSystem(CallbackMixin, ObjectFSWrapper):
+class GSFileSystem(ObjectFSWrapper):
     scheme = Schemes.GS
     REQUIRES = {"gcsfs": "gcsfs"}
     PARAM_CHECKSUM = "etag"
