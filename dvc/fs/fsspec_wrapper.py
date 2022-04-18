@@ -1,9 +1,7 @@
-import os
 import shutil
 from typing import IO, TYPE_CHECKING, Any, Dict, Iterator, Optional, overload
 
 from funcy import cached_property
-from tqdm.utils import CallbackIOWrapper
 
 from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
@@ -218,40 +216,3 @@ class NoDirectoriesMixin:
 
     def ls(self, *args, **kwargs):
         raise NotImplementedError
-
-
-class CallbackMixin:
-    """Provides callback support for the filesystem that don't support yet."""
-
-    def put_file(
-        self,
-        from_file,
-        to_info,
-        callback=DEFAULT_CALLBACK,
-        **kwargs,
-    ):
-        """Add compatibility support for Callback."""
-        # pylint: disable=protected-access
-        self.makedirs(self.path.parent(to_info))
-        size = os.path.getsize(from_file)
-        with open(from_file, "rb") as fobj:
-            callback.set_size(size)
-            wrapped = CallbackIOWrapper(callback.relative_update, fobj)
-            self.upload_fobj(wrapped, to_info)
-            self.fs.invalidate_cache(self.path.parent(to_info))
-
-    def get_file(
-        self,
-        from_info,
-        to_info,
-        callback=DEFAULT_CALLBACK,
-        **kwargs,
-    ):
-        # pylint: disable=protected-access
-        total: int = self.getsize(from_info)
-        if total:
-            callback.set_size(total)
-
-        with self.open(from_info, "rb") as fobj, open(to_info, "wb") as fdest:
-            wrapped = CallbackIOWrapper(callback.relative_update, fobj)
-            shutil.copyfileobj(wrapped, fdest, length=fobj.blocksize)

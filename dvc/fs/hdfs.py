@@ -8,13 +8,13 @@ from funcy import cached_property, wrap_prop
 from dvc.scheme import Schemes
 from dvc.utils import fix_env
 
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
+from .fsspec_wrapper import FSSpecWrapper
 
 CHECKSUM_REGEX = re.compile(r".*\t.*\t(?P<checksum>.*)")
 
 
 # pylint: disable=abstract-method
-class HDFSFileSystem(CallbackMixin, FSSpecWrapper):
+class HDFSFileSystem(FSSpecWrapper):
     scheme = Schemes.HDFS
     REQUIRES = {"fsspec": "fsspec", "pyarrow": "pyarrow"}
     PARAM_CHECKSUM = "checksum"

@@ -5,10 +5,10 @@ from funcy import cached_property, wrap_prop
 from dvc.scheme import Schemes
 
 # pylint:disable=abstract-method
-from .fsspec_wrapper import CallbackMixin, FSSpecWrapper
+from .fsspec_wrapper import FSSpecWrapper
 
 
-class WebHDFSFileSystem(CallbackMixin, FSSpecWrapper):
+class WebHDFSFileSystem(FSSpecWrapper):
     scheme = Schemes.WEBHDFS
     REQUIRES = {"fsspec": "fsspec"}
     PARAM_CHECKSUM = "checksum"
