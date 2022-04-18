@@ -1,1 +1,1 @@
-PyInstaller==4.10
+PyInstaller==5.0
