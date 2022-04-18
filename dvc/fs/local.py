@@ -1,6 +1,8 @@
 import logging
 import os
 
+from funcy import cached_property
+
 from dvc.scheme import Schemes
 from dvc.system import System
 from dvc.utils import tmp_fname
@@ -25,6 +27,12 @@ class LocalFileSystem(FileSystem):
 
         super().__init__(**config)
         self.fs = LocalFS()
+
+    @cached_property
+    def path(self):
+        from .path import Path
+
+        return Path(self.sep, os.getcwd)
 
     def open(self, path, mode="r", encoding=None, **kwargs):
         return open(path, mode=mode, encoding=encoding)

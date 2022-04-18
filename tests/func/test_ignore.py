@@ -115,7 +115,8 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
                 os.fspath(tmp_dir),
                 _to_pattern_info_list([os.path.basename(dname)]),
                 top_ignore_path,
-            )
+            ),
+            os.sep,
         )
         == dvcignore._get_trie_pattern(top_ignore_path)
         == dvcignore._get_trie_pattern(sub_dir_path)
@@ -140,7 +141,7 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     }
 
     dvc.fs = GitFileSystem(scm=scm, rev="branch")
-    assert dvc.dvcignore.is_ignored_file(tmp_dir / "foo")
+    assert dvc.dvcignore.is_ignored_file((tmp_dir / "foo").fs_path)
 
 
 def test_match_nested(tmp_dir, dvc):
@@ -372,15 +373,15 @@ def test_pattern_trie_fs(tmp_dir, dvc):
         os.fspath(tmp_dir / "other"),
     )
 
-    assert DvcIgnorePatterns(*base_pattern) == ignore_pattern_top
-    assert DvcIgnorePatterns(*other_pattern) == ignore_pattern_other
+    assert DvcIgnorePatterns(*base_pattern, os.sep) == ignore_pattern_top
+    assert DvcIgnorePatterns(*other_pattern, os.sep) == ignore_pattern_other
     assert (
-        DvcIgnorePatterns(*first_pattern)
+        DvcIgnorePatterns(*first_pattern, os.sep)
         == ignore_pattern_first
         == ignore_pattern_middle
     )
     assert (
-        DvcIgnorePatterns(*second_pattern)
+        DvcIgnorePatterns(*second_pattern, os.sep)
         == ignore_pattern_second
         == ignore_pattern_bottom
     )
