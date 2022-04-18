@@ -12,7 +12,6 @@ from dvc.fs.local import localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.scheme import Schemes
 from dvc.types import AnyPath, List, Optional
-from dvc.utils import relpath
 from dvc.utils.collections import PathStringTrie
 
 logger = logging.getLogger(__name__)
@@ -26,16 +25,17 @@ class DvcIgnore:
 
 
 class DvcIgnorePatterns(DvcIgnore):
-    def __init__(self, pattern_list, dirname):
+    def __init__(self, pattern_list, dirname, sep):
         if pattern_list:
             if isinstance(pattern_list[0], str):
                 pattern_list = [
                     PatternInfo(pattern, "") for pattern in pattern_list
                 ]
 
+        self.sep = sep
         self.pattern_list = pattern_list
         self.dirname = dirname
-        self.prefix = self.dirname + os.sep
+        self.prefix = self.dirname + self.sep
 
         self.regex_pattern_list = [
             GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
@@ -52,8 +52,8 @@ class DvcIgnorePatterns(DvcIgnore):
 
     @classmethod
     def from_file(cls, path, fs, name):
-        assert os.path.isabs(path)
-        dirname = os.path.normpath(os.path.dirname(path))
+        assert fs.path.isabs(path)
+        dirname = fs.path.normpath(fs.path.dirname(path))
         with fs.open(path, encoding="utf-8") as fobj:
             path_spec_lines = [
                 PatternInfo(line, f"{name}:{line_no + 1}:{line}")
@@ -63,7 +63,7 @@ class DvcIgnorePatterns(DvcIgnore):
                 if line and not (line.strip().startswith("#"))
             ]
 
-        return cls(path_spec_lines, dirname)
+        return cls(path_spec_lines, dirname, fs.sep)
 
     def __call__(self, root: List[str], dirs: List[str], files: List[str]):
         files = [f for f in files if not self.matches(root, f)]
@@ -79,7 +79,7 @@ class DvcIgnorePatterns(DvcIgnore):
         elif dirname.startswith(self.prefix):
             rel = dirname[len(self.prefix) :]
             # NOTE: `os.path.join` is ~x5.5 slower
-            path = f"{rel}{os.sep}{basename}"
+            path = f"{rel}{self.sep}{basename}"
         else:
             return False
 
@@ -173,7 +173,9 @@ class DvcIgnoreFilter:
         self.ignores_trie_fs = PathStringTrie()
         self._ignores_trie_subrepos = PathStringTrie()
         self.ignores_trie_fs[root_dir] = DvcIgnorePatterns(
-            default_ignore_patterns, root_dir
+            default_ignore_patterns,
+            root_dir,
+            fs.sep,
         )
         self._ignores_trie_subrepos[root_dir] = self.ignores_trie_fs[root_dir]
         self._update(
@@ -193,19 +195,18 @@ class DvcIgnoreFilter:
         old_pattern = trie.longest_prefix(dirname).value
         matches = old_pattern.matches(dirname, DvcIgnore.DVCIGNORE_FILE, False)
 
-        path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
+        path = self.fs.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
         if not matches and self.fs.exists(path):
-            name = os.path.relpath(path, self.root_dir)
+            name = self.fs.path.relpath(path, self.root_dir)
             new_pattern = DvcIgnorePatterns.from_file(path, self.fs, name)
             if old_pattern:
-                trie[dirname] = DvcIgnorePatterns(
-                    *merge_patterns(
-                        old_pattern.pattern_list,
-                        old_pattern.dirname,
-                        new_pattern.pattern_list,
-                        new_pattern.dirname,
-                    )
+                plist, prefix = merge_patterns(
+                    old_pattern.pattern_list,
+                    old_pattern.dirname,
+                    new_pattern.pattern_list,
+                    new_pattern.dirname,
                 )
+                trie[dirname] = DvcIgnorePatterns(plist, prefix, self.fs.sep)
             else:
                 trie[dirname] = new_pattern
         elif old_pattern:
@@ -229,7 +230,7 @@ class DvcIgnoreFilter:
 
             for dname in dnames:
                 self._update_sub_repo(
-                    os.path.join(dirname, dname), ignore_trie
+                    self.fs.path.join(dirname, dname), ignore_trie
                 )
 
     def _update_sub_repo(self, path, ignore_trie: PathStringTrie):
@@ -238,28 +239,27 @@ class DvcIgnoreFilter:
         if path == self.root_dir:
             return
 
-        dvc_dir = os.path.join(path, Repo.DVC_DIR)
-        if not os.path.exists(dvc_dir):
+        dvc_dir = self.fs.path.join(path, Repo.DVC_DIR)
+        if not self.fs.exists(dvc_dir):
             return
 
-        root, dname = os.path.split(path)
+        root, dname = self.fs.path.split(path)
         pattern_info = PatternInfo(f"/{dname}/", f"in sub_repo:{dname}")
-        new_pattern = DvcIgnorePatterns([pattern_info], root)
+        new_pattern = DvcIgnorePatterns([pattern_info], root, self.fs.sep)
         old_pattern = ignore_trie.longest_prefix(root).value
         if old_pattern:
-            ignore_trie[root] = DvcIgnorePatterns(
-                *merge_patterns(
-                    old_pattern.pattern_list,
-                    old_pattern.dirname,
-                    new_pattern.pattern_list,
-                    new_pattern.dirname,
-                )
+            plist, prefix = merge_patterns(
+                old_pattern.pattern_list,
+                old_pattern.dirname,
+                new_pattern.pattern_list,
+                new_pattern.dirname,
             )
+            ignore_trie[root] = DvcIgnorePatterns(plist, prefix, self.fs.sep)
         else:
             ignore_trie[root] = new_pattern
 
     def __call__(self, root, dirs, files, ignore_subrepos=True):
-        abs_root = os.path.abspath(root)
+        abs_root = self.fs.path.abspath(root)
         ignore_pattern = self._get_trie_pattern(
             abs_root, dnames=dirs, ignore_subrepos=ignore_subrepos
         )
@@ -343,7 +343,7 @@ class DvcIgnoreFilter:
     ):
         if self._outside_repo(path):
             return False
-        dirname, basename = os.path.split(os.path.normpath(path))
+        dirname, basename = self.fs.path.split(self.fs.path.normpath(path))
         ignore_pattern = self._get_trie_pattern(dirname, None, ignore_subrepos)
         if ignore_pattern:
             return ignore_pattern.matches(dirname, basename, is_dir)
@@ -351,7 +351,7 @@ class DvcIgnoreFilter:
 
     def is_ignored_dir(self, path: str, ignore_subrepos: bool = True) -> bool:
         "Only used in LocalFileSystem"
-        path = os.path.abspath(path)
+        path = self.fs.path.abspath(path)
         if path == self.root_dir:
             return False
 
@@ -359,31 +359,24 @@ class DvcIgnoreFilter:
 
     def is_ignored_file(self, path: str, ignore_subrepos: bool = True) -> bool:
         "Only used in LocalFileSystem"
-        path = os.path.abspath(path)
+        path = self.fs.path.abspath(path)
         return self._is_ignored(path, False, ignore_subrepos=ignore_subrepos)
 
     def _outside_repo(self, path):
-        # paths outside of the repo should be ignored
-        path = relpath(path, self.root_dir)
-        if path.startswith("..") or (
-            os.name == "nt"
-            and not os.path.commonprefix(
-                [os.path.abspath(path), self.root_dir]
-            )
-        ):
-            return True
-        return False
+        return not self.fs.path.isin_or_eq(path, self.root_dir)
 
     def check_ignore(self, target):
         # NOTE: can only be used in `dvc check-ignore`, see
         # https://github.com/iterative/dvc/issues/5046
-        full_target = os.path.abspath(target)
+        full_target = self.fs.path.abspath(target)
         if not self._outside_repo(full_target):
-            dirname, basename = os.path.split(os.path.normpath(full_target))
+            dirname, basename = self.fs.path.split(
+                self.fs.path.normpath(full_target)
+            )
             pattern = self._get_trie_pattern(dirname)
             if pattern:
                 matches = pattern.matches(
-                    dirname, basename, os.path.isdir(full_target), True
+                    dirname, basename, self.fs.isdir(full_target), True
                 )
 
                 if matches:

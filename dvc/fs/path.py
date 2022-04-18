@@ -3,7 +3,11 @@ import posixpath
 
 
 class Path:
-    def __init__(self, sep):
+    def __init__(self, sep, getcwd=None):
+        def _getcwd():
+            return ""
+
+        self.getcwd = getcwd or _getcwd
         if sep == posixpath.sep:
             self.flavour = posixpath
         elif sep == ntpath.sep:
@@ -13,6 +17,23 @@ class Path:
 
     def join(self, *parts):
         return self.flavour.join(*parts)
+
+    def split(self, path):
+        return self.flavour.split(path)
+
+    def normpath(self, path):
+        return self.flavour.normpath(path)
+
+    def isabs(self, path):
+        return self.flavour.isabs(path)
+
+    def abspath(self, path):
+        if not self.isabs(path):
+            path = self.join(self.getcwd(), path)
+        return self.normpath(path)
+
+    def commonprefix(self, path):
+        return self.flavour.commonprefix(path)
 
     def parts(self, path):
         drive, path = self.flavour.splitdrive(path.rstrip(self.flavour.sep))
@@ -39,6 +60,9 @@ class Path:
 
     def parent(self, path):
         return self.flavour.dirname(path)
+
+    def dirname(self, path):
+        return self.parent(path)
 
     def parents(self, path):
         parts = self.parts(path)
