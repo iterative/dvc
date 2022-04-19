@@ -201,7 +201,7 @@ def test_experiments_list(dvc, scm, mocker):
             "-1",
             "--rev",
             "foo",
-            "--names-only",
+            "--name-only",
         ]
     )
     assert cli_args.func == CmdExperimentsList

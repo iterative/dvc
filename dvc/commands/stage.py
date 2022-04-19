@@ -94,9 +94,7 @@ class CmdStageList(CmdBase):
         self.repo.stage_collection_error_handler = log_error
 
         stages = self._get_stages()
-        names_only = self.args.names_only
-
-        data = prepare_stages_data(stages, description=not names_only)
+        data = prepare_stages_data(stages, description=not self.args.name_only)
         ui.table(data.items())
 
         return 0
@@ -358,6 +356,7 @@ def add_parser(subparsers, parent_parser):
         help="List all stages inside the specified directory.",
     )
     stage_list_parser.add_argument(
+        "--name-only",
         "--names-only",
         action="store_true",
         default=False,
