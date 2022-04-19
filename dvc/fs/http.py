@@ -7,7 +7,7 @@ from dvc import prompt
 from dvc.scheme import Schemes
 
 from ._callback import DEFAULT_CALLBACK
-from .fsspec_wrapper import AnyFSPath, FSSpecWrapper, NoDirectoriesMixin
+from .fsspec_wrapper import AnyFSPath, FSSpecWrapper
 
 
 @wrap_with(threading.Lock())
@@ -33,7 +33,7 @@ def make_context(ssl_verify):
 
 
 # pylint: disable=abstract-method
-class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
+class HTTPFileSystem(FSSpecWrapper):
     scheme = Schemes.HTTP
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"aiohttp": "aiohttp", "aiohttp-retry": "aiohttp_retry"}
@@ -148,3 +148,22 @@ class HTTPFileSystem(NoDirectoriesMixin, FSSpecWrapper):
     ) -> None:
         kwargs.setdefault("method", self.upload_method)
         super().put_file(from_file, to_info, callback=callback, **kwargs)
+
+    # pylint: disable=arguments-differ
+
+    def find(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def isdir(self, *args, **kwargs):
+        return False
+
+    def isfile(self, *args, **kwargs):
+        return True
+
+    def ls(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def walk(self, *args, **kwargs):
+        raise NotImplementedError
+
+    # pylint: enable=arguments-differ
