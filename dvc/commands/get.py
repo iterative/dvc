@@ -1,11 +1,11 @@
 import argparse
 import logging
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.exceptions import DvcException
 
 from ..cli.utils import append_doc_link
-from . import completion
 
 logger = logging.getLogger(__name__)
 

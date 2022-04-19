@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 
 from funcy import lmap
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.commands import completion
 from dvc.commands.metrics import DEFAULT_PRECISION
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.ui import ui

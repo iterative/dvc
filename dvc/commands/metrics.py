@@ -1,9 +1,9 @@
 import argparse
 import logging
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands import completion
 from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils.serialize import encode_exception

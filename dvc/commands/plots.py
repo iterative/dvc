@@ -5,9 +5,9 @@ import os
 
 from funcy import first
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands import completion
 from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import format_link
