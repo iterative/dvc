@@ -31,7 +31,7 @@ _dvc_compgen_stages_and_files() {
 }
 
 _dvc_compgen_exps() {
-    local _dvc_exps=($(dvc exp list -q --all --names-only))
+    local _dvc_exps=($(dvc exp list -q --all-commits --names-only))
     compgen -W "${_dvc_exps[*]}" -- $1
 }
     """,
@@ -64,7 +64,7 @@ _dvc_compadd_stages_and_files() {
 }
 
 _dvc_compadd_exps() {
-    _describe 'experiments' "($(dvc exp list -q -a --names-only))"
+    _describe 'experiments' "($(dvc exp list -q --all-commits --names-only))"
 }
     """,
 }
