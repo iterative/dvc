@@ -86,13 +86,37 @@ def push_refspec(
     **kwargs,
 ):
     from scmrepo.exceptions import AuthError
+    from scmrepo.git.backend.base import SyncStatus
 
-    from ...scm import GitAuthError
+    from ...scm import GitAuthError, SCMError
+
+    if not src:
+        refspecs = [f":{dest}"]
+    elif src.endswith("/"):
+        refspecs = []
+        dest = dest.rstrip("/") + "/"
+        for ref in scm.iter_refs(base=src):
+            refname = ref.split("/")[-1]
+            refspecs.append(f"{ref}:{dest}{refname}")
+    else:
+        if dest.endswith("/"):
+            refname = src.split("/")[-1]
+            refspecs = [f"{src}:{dest}/{refname}"]
+        else:
+            refspecs = [f"{src}:{dest}"]
 
     try:
-        return scm.push_refspec(
-            url, src, dest, force=force, on_diverged=on_diverged, **kwargs
+        results = scm.push_refspecs(
+            url, refspecs, force=force, on_diverged=on_diverged, **kwargs
         )
+        diverged = [
+            ref for ref in results if results[ref] == SyncStatus.DIVERGED
+        ]
+
+        if diverged:
+            raise SCMError(
+                f"local ref '{diverged}' diverged from remote '{url}'"
+            )
     except AuthError as exc:
         raise GitAuthError(str(exc))
 
