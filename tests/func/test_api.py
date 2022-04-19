@@ -4,7 +4,11 @@ import pytest
 from funcy import first, get_in
 
 from dvc import api
-from dvc.exceptions import FileMissingError, OutputNotFoundError
+from dvc.exceptions import (
+    FileMissingError,
+    OutputNotFoundError,
+    PathMissingError,
+)
 from dvc.testing.test_api import TestAPI  # noqa, pylint: disable=unused-import
 from dvc.utils.fs import remove
 from tests.unit.fs.test_repo import make_subrepo
@@ -207,7 +211,10 @@ def test_get_url_subrepos(tmp_dir, scm, local_cloud):
     assert api.get_url("subrepo/bar") == expected_url
 
 
-@pytest.mark.xfail(reason="https://github.com/iterative/dvc/issues/7341")
+@pytest.mark.xfail(
+    raises=PathMissingError,
+    reason="https://github.com/iterative/dvc/issues/7341",
+)
 def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
     erepo_dir.add_remote(config=cloud.config, name="other")
     erepo_dir.add_remote(config=local_cloud.config, default=True)
@@ -216,6 +223,6 @@ def test_open_from_remote(tmp_dir, erepo_dir, cloud, local_cloud):
     remove(erepo_dir.dvc.odb.local.cache_dir)
 
     with api.open(
-        os.path.join("dir", "foo"), repo=erepo_dir.as_uri(), remote="other"
+        os.path.join("dir", "foo"), repo=f"file://{erepo_dir}", remote="other"
     ) as fd:
         assert fd.read() == "foo content"
