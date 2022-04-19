@@ -3,9 +3,9 @@ import logging
 from itertools import chain, filterfalse
 from typing import TYPE_CHECKING, Dict, Iterable, List
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands import completion
 from dvc.utils.cli_parse import parse_params
 from dvc.utils.humanize import truncate_text
 
