@@ -3,7 +3,6 @@ import os
 import pytest
 from funcy import first
 
-from dvc.exceptions import DvcException
 from dvc.repo.experiments.utils import exp_refs_by_rev
 
 
@@ -81,8 +80,7 @@ def test_push_diverged(tmp_dir, scm, dvc, git_upstream, exp_stage):
 
     git_upstream.tmp_dir.scm.set_ref(str(ref_info), remote_rev)
 
-    with pytest.raises(DvcException):
-        dvc.experiments.push(git_upstream.remote, [ref_info.name])
+    assert dvc.experiments.push(git_upstream.remote, [ref_info.name]) == []
     assert git_upstream.tmp_dir.scm.get_ref(str(ref_info)) == remote_rev
 
     dvc.experiments.push(git_upstream.remote, [ref_info.name], force=True)
@@ -254,8 +252,7 @@ def test_pull_diverged(tmp_dir, scm, dvc, git_downstream, exp_stage):
     git_downstream.tmp_dir.scm.set_ref(str(ref_info), remote_rev)
 
     downstream_exp = git_downstream.tmp_dir.dvc.experiments
-    with pytest.raises(DvcException):
-        downstream_exp.pull(git_downstream.remote, ref_info.name)
+    assert downstream_exp.pull(git_downstream.remote, ref_info.name) == []
     assert git_downstream.tmp_dir.scm.get_ref(str(ref_info)) == remote_rev
 
     downstream_exp.pull(git_downstream.remote, ref_info.name, force=True)

@@ -1,20 +1,17 @@
 import logging
-from typing import Iterable, Optional, Set, Union
+from typing import Iterable, List, Mapping, Optional, Set, Union
 
-from dvc.exceptions import DvcException
+from funcy import group_by
+from scmrepo.git.backend.base import SyncStatus
+
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
+from dvc.ui import ui
 
 from .base import ExpRefInfo
 from .exceptions import UnresolvedExpNamesError
-from .utils import (
-    exp_commits,
-    exp_refs,
-    exp_refs_by_baseline,
-    push_refspec,
-    resolve_name,
-)
+from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +57,21 @@ def push(
             for _, ref_info_list in ref_info_dict.items():
                 exp_ref_set.update(ref_info_list)
 
-    _push(repo, git_remote, exp_ref_set, force)
+    push_result = _push(repo, git_remote, exp_ref_set, force)
+    if push_result[SyncStatus.DIVERGED]:
+        diverged_refs = [ref.name for ref in push_result[SyncStatus.DIVERGED]]
+        ui.warn(
+            f"Local experiment '{diverged_refs}' has diverged from remote "
+            "experiment with the same name. To override the remote experiment "
+            "re-run with '--force'."
+        )
     if push_cache:
-        _push_cache(repo, exp_ref_set, **kwargs)
-    return [ref.name for ref in exp_ref_set]
+        push_cache_ref = (
+            push_result[SyncStatus.UP_TO_DATE]
+            + push_result[SyncStatus.SUCCESS]
+        )
+        _push_cache(repo, push_cache_ref, **kwargs)
+    return [ref.name for ref in push_result[SyncStatus.SUCCESS]]
 
 
 def _push(
@@ -71,30 +79,33 @@ def _push(
     git_remote: str,
     refs: Iterable["ExpRefInfo"],
     force: bool,
-):
-    def on_diverged(refname: str, rev: str) -> bool:
-        if repo.scm.get_ref(refname) == rev:
-            return True
-        exp_name = refname.split("/")[-1]
-        raise DvcException(
-            f"Local experiment '{exp_name}' has diverged from remote "
-            "experiment with the same name. To override the remote experiment "
-            "re-run with '--force'."
-        )
+) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
+    from scmrepo.exceptions import AuthError
 
+    from ...scm import GitAuthError
+
+    refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
     logger.debug(f"git push experiment '{refs}' -> '{git_remote}'")
 
-    for exp_ref in refs:
-        with TqdmGit(desc="Pushing git refs") as pbar:
-            push_refspec(
-                repo.scm,
+    with TqdmGit(desc="Pushing git refs") as pbar:
+        try:
+            results: Mapping[str, SyncStatus] = repo.scm.push_refspecs(
                 git_remote,
-                str(exp_ref),
-                str(exp_ref),
+                refspec_list,
                 force=force,
-                on_diverged=on_diverged,
                 progress=pbar.update_git,
             )
+        except AuthError as exc:
+            raise GitAuthError(str(exc))
+
+    def group_result(refspec):
+        return results[str(refspec)]
+
+    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(
+        group_result, refs
+    )
+
+    return pull_result
 
 
 def _push_cache(
