@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class CmdExperimentsList(CmdBase):
     def run(self):
-        names_only = self.args.names_only
+        name_only = self.args.name_only
         exps = self.repo.experiments.ls(
             all_commits=self.args.all_commits,
             rev=self.args.rev,
@@ -23,10 +23,10 @@ class CmdExperimentsList(CmdBase):
                 if branch:
                     tag = branch.split("/")[-1]
             name = tag if tag else baseline[:7]
-            if not names_only:
+            if not name_only:
                 print(f"{name}:")
             for exp_name in exps[baseline]:
-                indent = "" if names_only else "\t"
+                indent = "" if name_only else "\t"
                 print(f"{indent}{exp_name}")
 
         return 0
@@ -45,6 +45,7 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     add_rev_selection_flags(experiments_list_parser, "List")
     experiments_list_parser.add_argument(
+        "--name-only",
         "--names-only",
         action="store_true",
         help="Only output experiment names (without parent commits).",
