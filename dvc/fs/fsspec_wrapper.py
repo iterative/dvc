@@ -198,21 +198,3 @@ class ObjectFSWrapper(FSSpecWrapper):
             return None
 
         yield from files
-
-
-# pylint: disable=arguments-differ
-class NoDirectoriesMixin:
-    def isdir(self, *args, **kwargs):
-        return False
-
-    def isfile(self, *args, **kwargs):
-        return True
-
-    def find(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def walk(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def ls(self, *args, **kwargs):
-        raise NotImplementedError
