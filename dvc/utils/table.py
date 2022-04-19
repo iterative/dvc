@@ -51,7 +51,11 @@ class Table(RichTable):
         return widths
 
     def _collapse_widths(  # type: ignore[override]
-        self, widths: List[int], wrapable: List[bool], max_width: int
+        # pylint: disable=arguments-differ
+        self,
+        widths: List[int],
+        wrapable: List[bool],
+        max_width: int,
     ) -> List[int]:
         """Collapse columns right-to-left if possible to fit table into
         max_width.
