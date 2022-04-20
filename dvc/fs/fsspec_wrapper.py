@@ -4,7 +4,7 @@ from typing import IO, TYPE_CHECKING, Any, Dict, Iterator, Optional, overload
 from funcy import cached_property
 
 from ._callback import DEFAULT_CALLBACK
-from .base import FileSystem
+from .base import FileSystem, RemoteActionNotImplemented
 
 FSPath = str
 AnyFSPath = str
@@ -66,7 +66,7 @@ class FSSpecWrapper(FileSystem):
         encoding: Optional[str] = None,
         **kwargs,
     ) -> "IO":  # pylint: disable=arguments-differ
-        return self.fs.open(path, mode=mode)
+        return self.fs.open(path, mode=mode, encoding=encoding, **kwargs)
 
     def checksum(self, path: AnyFSPath) -> str:
         return self.fs.checksum(path)
@@ -78,6 +78,42 @@ class FSSpecWrapper(FileSystem):
     def exists(self, path: AnyFSPath) -> bool:
         return self.fs.exists(path)
 
+    def lexists(self, path: AnyFSPath) -> bool:
+        return self.fs.lexists(path)
+
+    def symlink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
+        try:
+            return self.fs.symlink(from_info, to_info)
+        except AttributeError:
+            raise RemoteActionNotImplemented("symlink", self.scheme)
+
+    def hardlink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
+        try:
+            return self.fs.hardlink(from_info, to_info)
+        except AttributeError:
+            raise RemoteActionNotImplemented("hardlink", self.scheme)
+
+    def reflink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
+        try:
+            return self.fs.reflink(from_info, to_info)
+        except AttributeError:
+            raise RemoteActionNotImplemented("reflink", self.scheme)
+
+    def is_symlink(self, path: AnyFSPath) -> bool:
+        try:
+            return self.fs.is_symlink(path)
+        except AttributeError:
+            return False
+
+    def is_hardlink(self, path: AnyFSPath) -> bool:
+        try:
+            return self.fs.is_hardlink(path)
+        except AttributeError:
+            return False
+
+    def iscopy(self, path: AnyFSPath) -> bool:
+        return self.is_symlink(path) or self.is_hardlink(path)
+
     @overload
     def ls(
         self, path: AnyFSPath, detail: "Literal[True]"
@@ -88,7 +124,7 @@ class FSSpecWrapper(FileSystem):
     def ls(self, path: AnyFSPath, detail: "Literal[False]") -> Iterator[str]:
         ...
 
-    def ls(self, path, detail=False):
+    def ls(self, path, detail=False, **kwargs):
         return self.fs.ls(path, detail=detail)
 
     def find(self, path, prefix=None):
