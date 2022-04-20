@@ -1,3 +1,4 @@
+import errno
 import hashlib
 import logging
 import os
@@ -18,6 +19,9 @@ from .db.reference import ReferenceObjectDB
 if TYPE_CHECKING:
     from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.objects.db import ObjectDB
+
+    from .tree import Tree
+
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +237,7 @@ def _make_staging_url(
     return url
 
 
-def _get_staging(odb: "ObjectDB") -> "ObjectDB":
+def _get_staging(odb: "ObjectDB") -> "ReferenceObjectDB":
     """Return an ODB that can be used for staging objects.
 
     Staging will be a reference ODB stored in the the global memfs.
@@ -247,7 +251,33 @@ def _get_staging(odb: "ObjectDB") -> "ObjectDB":
     return ReferenceObjectDB(fs, fs_path, state=state)
 
 
-def _load_from_state(odb, staging, fs_path, fs, name):
+def _load_raw_dir_obj(odb: "ObjectDB", hash_info: "HashInfo") -> "Tree":
+    from dvc.objects.errors import ObjectFormatError
+
+    from .tree import Tree
+
+    try:
+        tree = Tree.load(odb, hash_info.as_raw())
+        tree.check(odb)
+        tree.hash_info = hash_info
+    except ObjectFormatError as exc:
+        raise FileNotFoundError(
+            errno.ENOENT,
+            "No such object",
+            odb.hash_to_path(hash_info.as_raw().value),
+        ) from exc
+
+    return tree
+
+
+def _load_from_state(
+    odb: "ObjectDB",
+    staging: "ReferenceObjectDB",
+    fs_path: "AnyFSPath",
+    fs: "FileSystem",
+    name: str,
+    dry_run: bool,
+) -> Tuple["ObjectDB", "Meta", "HashFile"]:
     from dvc.objects.errors import ObjectFormatError
 
     from . import check, load
@@ -255,19 +285,56 @@ def _load_from_state(odb, staging, fs_path, fs, name):
 
     state = odb.state
     meta, hash_info = state.get(fs_path, fs)
-    if hash_info:
-        for odb_ in (odb, staging):
-            if odb_.exists(hash_info):
-                try:
-                    obj = load(odb_, hash_info)
-                    check(odb_, obj, check_hash=False)
-                    if isinstance(obj, Tree):
-                        meta.nfiles = len(obj)
-                    assert obj.hash_info.name == name
-                    return odb_, meta, obj
-                except (ObjectFormatError, FileNotFoundError):
-                    pass
-    raise FileNotFoundError
+    if not hash_info:
+        raise FileNotFoundError
+
+    for odb_ in (odb, staging):
+        if not odb_.exists(hash_info):
+            continue
+
+        try:
+            obj = load(odb, hash_info)
+            check(odb, obj, check_hash=False)
+        except (ObjectFormatError, FileNotFoundError):
+            continue
+
+        if isinstance(obj, Tree):
+            meta.nfiles = len(obj)
+        assert obj.hash_info.name == name
+        return odb_, meta, obj
+
+    if not hash_info.isdir:
+        raise FileNotFoundError
+
+    # Try loading the raw dir object saved by `stage`, see below and #7390
+    tree = _load_raw_dir_obj(odb, hash_info)
+    meta.nfiles = len(tree)
+    assert tree.hash_info.name == name
+
+    if not dry_run:
+        assert tree.fs
+        for key, _, oid in tree:
+            staging.add(
+                fs.path.join(fs_path, *key),
+                fs,
+                oid,
+                hardlink=False,
+                verify=False,
+            )
+
+        staging.add(
+            tree.fs_path,
+            tree.fs,
+            hash_info,
+            hardlink=False,
+        )
+
+        raw = staging.get(hash_info)
+        tree.fs = raw.fs
+        tree.fs_path = raw.fs_path
+
+    logger.debug("loaded tree '%s' from raw dir obj", tree)
+    return staging, meta, tree
 
 
 def _stage_external_tree_info(odb, tree, name):
@@ -318,7 +385,7 @@ def stage(
     staging = _get_staging(odb)
     if odb:
         try:
-            return _load_from_state(odb, staging, fs_path, fs, name)
+            return _load_from_state(odb, staging, fs_path, fs, name, dry_run)
         except FileNotFoundError:
             pass
 
@@ -336,6 +403,12 @@ def stage(
         logger.debug("staged tree '%s'", obj)
         if name != "md5":
             obj = _stage_external_tree_info(odb, obj, name)
+
+        # In order to avoid re-building the tree when it is not committed to
+        # the local odb (e.g. for a status call), we save it as a raw object.
+        # Loading this instead of building the tree can speed up `dvc status`
+        # for modified directories, see #7390
+        odb.add(obj.fs_path, obj.fs, obj.hash_info.as_raw())
     else:
         _, meta, obj = _stage_file(
             fs_path,

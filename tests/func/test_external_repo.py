@@ -219,6 +219,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             hardlink=True,
         )
         assert set(cache_dir.glob("??/*")) == {
+            cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7",
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
             cache_dir / "94" / "7d2b84e5aa88170e80dff467a5bfb6",
