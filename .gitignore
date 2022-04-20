@@ -1,10 +1,13 @@
+__pycache__/
 neatlynx.conf
-neatlynx/__pycache__
 .idea
 /cache
 *.pyc
-.env/
-.env2.7/
+
+.env*/
+.venv
+env/
+venv/
 .python-version
 
 .dvc.conf.lock
@@ -26,6 +29,7 @@ innosetup/config.ini
 
 .coverage
 .coverage.*
+coverage.xml
 
 *.sw?
 
@@ -40,3 +44,9 @@ scripts/ci/gcp-creds.json
 
 *~
 /dvc/_dvc_version.py
+
+.mypy_cache/
+.pytest_cache/
+.nox/
+.tox/
+htmlcov/

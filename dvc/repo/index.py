@@ -298,9 +298,14 @@ class Index:
 
 
 if __name__ == "__main__":
+    import logging
+
     from funcy import log_durations
 
+    from dvc.logger import setup
     from dvc.repo import Repo
+
+    setup(level=logging.TRACE)  # type: ignore[attr-defined]
 
     repo = Repo()
     index = Index(repo, repo.fs)
