@@ -13,6 +13,7 @@ from dvc.stage.run import run_stage
 from dvc.utils.serialize import dump_yaml, load_yaml
 from dvc.utils.strictyaml import YAMLValidationError
 from tests.basic_env import TestDvc
+from tests.utils import clean_staging
 
 
 def test_cmd_obj():
@@ -321,3 +322,62 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
     mock_cmd_run.assert_called_with(
         stage, checkpoint_func=callback, dry=False, run_env=None
     )
+
+
+@pytest.mark.parametrize(
+    "dry_run, expected_staging_contents",
+    [
+        (True, set()),
+        (
+            False,
+            {
+                "37b51d194a7513e45b56f6524f2d51f2",
+                "568f3dd88592a68ef99459a5491011cd",
+                "68dde2c3c4e7953c2290f176bbdc9a54",
+                "fd4034d9514d6e875538422c8b0dbeb2.dir",
+            },
+        ),
+    ],
+)
+def test_stage_dir_optimization(
+    tmp_dir, dvc, mocker, dry_run, expected_staging_contents
+):
+    from dvc.data import stage
+    from dvc.data.tree import Tree
+
+    tmp_dir.dvc_gen(
+        {
+            "data": {
+                "foo": "bar",
+                "subdir": {"subfoo": "subbar"},
+            }
+        }
+    )
+    odb = dvc.odb.local
+
+    objs = set(odb.all())
+    clean_staging()
+
+    tmp_dir.gen({"data": {"baz": "quz"}})
+
+    stage_spy = mocker.spy(stage, "_stage_tree")
+    _, _, tree = stage.stage(odb, "data", odb.fs, odb.fs.PARAM_CHECKSUM)
+
+    assert stage_spy.called
+    assert set(odb.all()) - objs == {tree.hash_info.as_raw().value}
+    stage_spy.reset_mock()
+    clean_staging()
+
+    load_spy = mocker.spy(Tree, "load")
+    build_tree_spy = mocker.spy(stage, "_build_tree")
+
+    staging, _, tree = stage.stage(
+        odb, "data", odb.fs, odb.fs.PARAM_CHECKSUM, dry_run=dry_run
+    )
+    assert not stage_spy.called
+    assert not build_tree_spy.called
+
+    load_args, _ = load_spy.call_args
+    assert load_args[1].value == tree.hash_info.as_raw().value
+
+    assert set(staging.all()) == expected_staging_contents

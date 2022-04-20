@@ -206,6 +206,9 @@ def test_shared_cache(tmp_dir, dvc, group):
     expected = {
         os.path.join(cache_dir, "17"): dir_mode,
         os.path.join(
+            cache_dir, "17", "4eaa1dd94050255b7b98a7e1924b31"
+        ): file_mode,
+        os.path.join(
             cache_dir, "17", "4eaa1dd94050255b7b98a7e1924b31.dir"
         ): file_mode,
         os.path.join(cache_dir, "97"): dir_mode,

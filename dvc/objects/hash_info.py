@@ -41,3 +41,9 @@ class HashInfo:
         if not self:
             return False
         return self.value.endswith(HASH_DIR_SUFFIX)
+
+    def as_raw(self) -> "HashInfo":
+        assert self.value
+        return HashInfo(
+            self.name, self.value.rsplit(HASH_DIR_SUFFIX)[0], self.obj_name
+        )

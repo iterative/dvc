@@ -140,7 +140,7 @@ class Tree(HashFile):
         return tree
 
     @classmethod
-    def load(cls, odb, hash_info):
+    def load(cls, odb, hash_info) -> "Tree":
         obj = odb.get(hash_info)
 
         try:
