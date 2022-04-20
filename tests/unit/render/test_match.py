@@ -1,8 +1,20 @@
 from dvc.render.match import (
+    get_files,
     group_by_filename,
     match_renderers,
     squash_plots_properties,
 )
+
+
+def test_get_files_on_error():
+    plots_data = {
+        "v2": {"error": "ERROR"},
+        "v1": {
+            "data": {"file.json": {"data": [{"y": 2}, {"y": 3}], "props": {}}}
+        },
+    }
+    files = get_files(plots_data)
+    assert files == ["file.json"]
 
 
 def test_group_by_filename():
