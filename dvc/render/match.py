@@ -10,8 +10,12 @@ if TYPE_CHECKING:
 
 
 def get_files(plots_data: Dict) -> List:
-    values = dpath.util.values(plots_data, ["*", "*"])
-    return sorted({key for submap in values for key in submap.keys()})
+    files = set()
+    for rev in plots_data.keys():
+        for file in plots_data[rev].get("data", {}).keys():
+            files.add(file)
+    sorted_files = sorted(files)
+    return sorted_files
 
 
 def group_by_filename(plots_data: Dict) -> Dict:
