@@ -1,6 +1,7 @@
 import fnmatch
 import logging
 import os
+import time
 import typing
 from contextlib import suppress
 from functools import partial, wraps
@@ -14,6 +15,8 @@ from typing import (
     Tuple,
     Union,
 )
+
+from funcy.debug import format_time
 
 from dvc.exceptions import (
     DvcException,
@@ -34,6 +37,14 @@ if typing.TYPE_CHECKING:
     from dvc.types import OptStr
 
 PIPELINE_FILE = "dvc.yaml"
+
+
+def log_walk(seq):
+    for root, dirs, files in seq:
+        start = time.perf_counter()
+        yield root, dirs, files
+        duration = format_time(time.perf_counter() - start)
+        logger.trace("%s in collecting stages from %s", duration, root)
 
 
 class StageInfo(NamedTuple):
@@ -470,12 +481,11 @@ class StageLoad:
             # trailing slash needed to check if a directory is gitignored
             return dir_path in outs or is_ignored(f"{dir_path}{sep}")
 
-        for root, dirs, files in self.repo.dvcignore.walk(
-            self.fs, self.repo.root_dir
-        ):
-            logger.trace(  # type: ignore[attr-defined]
-                "Collect repo walking '%s'", root
-            )
+        walk_iter = self.repo.dvcignore.walk(self.fs, self.repo.root_dir)
+        if logger.isEnabledFor(logging.TRACE):  # type: ignore[attr-defined]
+            walk_iter = log_walk(walk_iter)
+
+        for root, dirs, files in walk_iter:
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
             for file in filter(dvcfile_filter, files):
                 file_path = os.path.join(root, file)
