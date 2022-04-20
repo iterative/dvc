@@ -783,7 +783,7 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
     m = mocker.spy(LocalFileSystem, "is_hardlink")
     stages = dvc.add(["foo", "bar", "lorem", "ipsum"])
 
-    assert m.call_count == 4
+    assert m.call_count == 8
     assert m.call_args != call(tmp_dir / "foo")
     assert m.call_args != call(tmp_dir / "bar")
 
