@@ -239,18 +239,20 @@ def init(
         except MissingParamsFile:
             pass
 
-    checkpoint_out = bool(context.get("live"))
     models = context.get("models")
+    live_path = context.pop("live", None)
+    live_metrics = f"{live_path}.json" if live_path else None
+    live_plots = os.path.join(live_path, "scalars") if live_path else None
+
     stage = repo.stage.create(
         name=name,
         cmd=context["cmd"],
         deps=compact([context.get("code"), context.get("data")]),
         params=[{params: None}] if params else None,
-        metrics_no_cache=compact([context.get("metrics")]),
-        plots_no_cache=compact([context.get("plots")]),
-        live=context.get("live"),
+        metrics_no_cache=compact([context.get("metrics"), live_metrics]),
+        plots_no_cache=compact([context.get("plots"), live_plots]),
         force=force,
-        **{"checkpoints" if checkpoint_out else "outs": compact([models])},
+        **{"checkpoints" if with_live else "outs": compact([models])},
     )
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):

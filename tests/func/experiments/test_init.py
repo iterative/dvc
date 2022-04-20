@@ -136,13 +136,16 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
             "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
-                "live": {"dvclive": {"html": True, "summary": True}},
-                "metrics": [{"metrics.json": {"cache": False}}],
-                # we specify `live` through `overrides`,
-                # so it creates checkpoint-based output.
-                "outs": [{"models": {"checkpoint": True}}],
+                "metrics": [
+                    {"dvclive.json": {"cache": False}},
+                    {"metrics.json": {"cache": False}},
+                ],
+                "outs": ["models"],
                 "params": [{"params.yaml": None}],
-                "plots": [{"plots": {"cache": False}}],
+                "plots": [
+                    {os.path.join("dvclive", "scalars"): {"cache": False}},
+                    {"plots": {"cache": False}},
+                ],
             }
         }
     }
@@ -357,9 +360,12 @@ def test_init_interactive_live(
             "train": {
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
-                "live": {"dvclive": {"html": True, "summary": True}},
+                "metrics": [{"dvclive.json": {"cache": False}}],
                 "outs": [{"models": {"checkpoint": True}}],
                 "params": [{"params.yaml": None}],
+                "plots": [
+                    {os.path.join("dvclive", "scalars"): {"cache": False}}
+                ],
             }
         }
     }
@@ -404,11 +410,16 @@ def test_init_with_type_live_and_models_plots_provided(
             "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
-                "live": {"dvclive": {"html": True, "summary": True}},
-                "metrics": [{"m": {"cache": False}}],
+                "metrics": [
+                    {"dvclive.json": {"cache": False}},
+                    {"m": {"cache": False}},
+                ],
                 "outs": [{"models": {"checkpoint": True}}],
                 "params": [{"params.yaml": None}],
-                "plots": [{"p": {"cache": False}}],
+                "plots": [
+                    {os.path.join("dvclive", "scalars"): {"cache": False}},
+                    {"p": {"cache": False}},
+                ],
             }
         }
     }
@@ -439,11 +450,16 @@ def test_init_with_type_default_and_live_provided(
             "train": {
                 "cmd": "cmd",
                 "deps": ["data", "src"],
-                "live": {"live": {"html": True, "summary": True}},
-                "metrics": [{"metrics.json": {"cache": False}}],
-                "outs": [{"models": {"checkpoint": True}}],
+                "metrics": [
+                    {"live.json": {"cache": False}},
+                    {"metrics.json": {"cache": False}},
+                ],
+                "outs": ["models"],
                 "params": [{"params.yaml": None}],
-                "plots": [{"plots": {"cache": False}}],
+                "plots": [
+                    {os.path.join("live", "scalars"): {"cache": False}},
+                    {"plots": {"cache": False}},
+                ],
             }
         }
     }
