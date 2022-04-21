@@ -165,7 +165,7 @@ class Tree(HashFile):
 
         return tree
 
-    def filter(self, prefix: Tuple[str]) -> Optional["Tree"]:
+    def filter(self, prefix: Tuple[str, ...]) -> "Tree":
         """Return a filtered copy of this tree that only contains entries
         inside prefix.
 

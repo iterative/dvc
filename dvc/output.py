@@ -18,10 +18,10 @@ from dvc.exceptions import (
 
 from .data import check as ocheck
 from .data import load as oload
+from .data.add import add as oadd
 from .data.checkout import checkout
 from .data.meta import Meta
 from .data.stage import stage as ostage
-from .data.transfer import transfer as otransfer
 from .data.tree import Tree
 from .fs import get_cloud_fs
 from .fs.base import RemoteMissingDepsError
@@ -571,61 +571,44 @@ class Output:
 
         assert self.hash_info
 
-        if self.use_cache:
-            granular = (
-                self.is_dir_checksum
-                and filter_info
-                and filter_info != self.fs_path
-            )
-            if granular:
-                obj = self._commit_granular_dir(filter_info)
-            else:
-                staging, _, obj = ostage(
-                    self.odb,
-                    filter_info or self.fs_path,
-                    self.fs,
-                    self.odb.fs.PARAM_CHECKSUM,
-                    dvcignore=self.dvcignore,
-                )
-                otransfer(
-                    staging,
-                    self.odb,
-                    {obj.hash_info},
-                    shallow=False,
-                    hardlink=True,
-                )
-            checkout(
-                filter_info or self.fs_path,
-                self.fs,
-                obj,
-                self.odb,
-                relink=True,
-                dvcignore=self.dvcignore,
-                state=self.repo.state,
-            )
-            self.set_exec()
+        if not self.use_cache:
+            return
 
-    def _commit_granular_dir(self, filter_info):
-        prefix = self.fs.path.parts(
-            self.fs.path.relpath(filter_info, self.fs_path)
+        granular = (
+            self.is_dir_checksum
+            and filter_info
+            and filter_info != self.fs_path
         )
-        staging, _, save_obj = ostage(
+        prefix = None
+        if granular:
+            prefix = self.fs.path.parts(
+                self.fs.path.relpath(filter_info, self.fs_path)
+            )
+
+        _, obj = oadd(
             self.odb,
-            self.fs_path,
             self.fs,
+            self.fs_path if granular else (filter_info or self.fs_path),
             self.odb.fs.PARAM_CHECKSUM,
+            filter_prefix=prefix,
             dvcignore=self.dvcignore,
-        )
-        save_obj = save_obj.filter(prefix)
-        checkout_obj = save_obj.get(self.odb, prefix)
-        otransfer(
-            staging,
-            self.odb,
-            {save_obj.hash_info} | {oid for _, _, oid in save_obj},
-            shallow=True,
             hardlink=True,
         )
-        return checkout_obj
+
+        if granular:
+            assert isinstance(obj, Tree)
+            obj = obj.get(self.odb, prefix)
+
+        checkout(
+            filter_info or self.fs_path,
+            self.fs,
+            obj,
+            self.odb,
+            relink=True,
+            dvcignore=self.dvcignore,
+            state=self.repo.state,
+        )
+        self.set_exec()
 
     def dumpd(self):
         ret = {**self.hash_info.to_dict(), **self.meta.to_dict()}
@@ -805,24 +788,16 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        staging, self.meta, obj = ostage(
+        self.meta, obj = oadd(
             odb,
-            from_info,
             from_fs,
+            from_info,
             "md5",
             upload=upload,
             jobs=jobs,
             no_progress_bar=no_progress_bar,
-        )
-        otransfer(
-            staging,
-            odb,
-            {obj.hash_info},
-            jobs=jobs,
             hardlink=False,
-            shallow=False,
         )
-
         self.hash_info = obj.hash_info
         return obj
 
