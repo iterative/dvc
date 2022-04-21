@@ -254,11 +254,6 @@ def test_import_url_to_remote_invalid_combinations(dvc):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)
 
 
-empty_xfail = pytest.mark.xfail(
-    reason="https://github.com/iterative/dvc/issues/5521"
-)
-
-
 def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
     local_cloud.gen("foo", "foo")
 
