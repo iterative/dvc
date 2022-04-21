@@ -34,6 +34,7 @@ addopts = "-ra"
 markers = [
     "needs_internet: Might need network access for the tests",
 ]
+xfail_strict = true
 
 [tool.mypy]
 # Error output
