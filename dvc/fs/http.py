@@ -7,7 +7,7 @@ from dvc import prompt
 from dvc.scheme import Schemes
 
 from ._callback import DEFAULT_CALLBACK
-from .fsspec_wrapper import AnyFSPath, FSSpecWrapper
+from .base import AnyFSPath, FileSystem
 
 
 @wrap_with(threading.Lock())
@@ -33,7 +33,7 @@ def make_context(ssl_verify):
 
 
 # pylint: disable=abstract-method
-class HTTPFileSystem(FSSpecWrapper):
+class HTTPFileSystem(FileSystem):
     scheme = Schemes.HTTP
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"aiohttp": "aiohttp", "aiohttp-retry": "aiohttp_retry"}

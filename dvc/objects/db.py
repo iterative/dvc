@@ -12,9 +12,8 @@ from dvc.progress import Tqdm
 if TYPE_CHECKING:
     from typing import Tuple
 
-    from dvc.fs.base import FileSystem
+    from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +77,8 @@ class ObjectDB:
     def _add_file(
         self,
         from_fs: "FileSystem",
-        from_info: "AnyPath",
-        to_info: "AnyPath",
+        from_info: "AnyFSPath",
+        to_info: "AnyFSPath",
         _hash_info: "HashInfo",
         hardlink: bool = False,
     ):
@@ -96,7 +95,7 @@ class ObjectDB:
 
     def add(
         self,
-        fs_path: "AnyPath",
+        fs_path: "AnyFSPath",
         fs: "FileSystem",
         hash_info: "HashInfo",
         hardlink: bool = False,

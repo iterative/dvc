@@ -10,7 +10,7 @@ from dvc.exceptions import DvcException
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .fsspec_wrapper import ObjectFSWrapper
+from .base import ObjectFileSystem
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -38,7 +38,7 @@ def _az_config():
 
 
 # pylint:disable=abstract-method
-class AzureFileSystem(ObjectFSWrapper):
+class AzureFileSystem(ObjectFileSystem):
     scheme = Schemes.AZURE
     PARAM_CHECKSUM = "etag"
     REQUIRES = {

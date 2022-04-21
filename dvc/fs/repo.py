@@ -11,7 +11,6 @@ from funcy import cached_property, wrap_prop, wrap_with
 from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
 from .dvc import DvcFileSystem
-from .fsspec_wrapper import FSSpecWrapper
 from .path import Path
 
 if TYPE_CHECKING:
@@ -421,7 +420,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return dvc_fs.checksum(dvc_path)
 
 
-class RepoFileSystem(FSSpecWrapper):
+class RepoFileSystem(FileSystem):
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 

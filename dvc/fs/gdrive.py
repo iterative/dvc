@@ -8,7 +8,7 @@ from dvc.exceptions import DvcException
 from dvc.scheme import Schemes
 from dvc.utils import format_link, tmp_fname
 
-from .fsspec_wrapper import FSSpecWrapper
+from .base import FileSystem
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -30,13 +30,12 @@ class GDriveAuthError(DvcException):
         super().__init__(message)
 
 
-class GDriveFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+class GDriveFileSystem(FileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.GDRIVE
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"pydrive2": "pydrive2"}
     # Always prefer traverse for GDrive since API usage quotas are a concern.
     TRAVERSE_WEIGHT_MULTIPLIER = 1
-    TRAVERSE_PREFIX_LEN = 2
 
     GDRIVE_CREDENTIALS_DATA = "GDRIVE_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"

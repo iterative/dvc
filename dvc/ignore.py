@@ -7,11 +7,11 @@ from itertools import chain, groupby, takewhile
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 
-from dvc.fs.base import FileSystem
+from dvc.fs.base import AnyFSPath, FileSystem
 from dvc.fs.local import localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.scheme import Schemes
-from dvc.types import AnyPath, List, Optional
+from dvc.types import List, Optional
 from dvc.utils.collections import PathStringTrie
 
 logger = logging.getLogger(__name__)
@@ -287,7 +287,7 @@ class DvcIgnoreFilter:
 
         return [fs_dict[name] for name in chain(dirs, nondirs)]
 
-    def walk(self, fs: FileSystem, path: AnyPath, **kwargs):
+    def walk(self, fs: FileSystem, path: AnyFSPath, **kwargs):
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
         if fs.scheme == Schemes.LOCAL:
             for root, dirs, files in fs.walk(path, **kwargs):
@@ -298,7 +298,7 @@ class DvcIgnoreFilter:
         else:
             yield from fs.walk(path, **kwargs)
 
-    def find(self, fs: FileSystem, path: AnyPath, **kwargs):
+    def find(self, fs: FileSystem, path: AnyFSPath, **kwargs):
         if fs.scheme == Schemes.LOCAL:
             for root, _, files in self.walk(fs, path, **kwargs):
                 for file in files:

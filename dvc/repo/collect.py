@@ -30,14 +30,14 @@ def _collect_paths(
     targets: Iterable[str],
     recursive: bool = False,
     rev: str = None,
-):
+) -> StrPaths:
     from dvc.fs.repo import RepoFileSystem
     from dvc.utils import relpath
 
     fs_paths = [os.path.abspath(target) for target in targets]
     fs = RepoFileSystem(repo=repo)
 
-    target_paths = []
+    target_paths: StrPaths = []
     for fs_path in fs_paths:
         if recursive and fs.isdir(fs_path):
             target_paths.extend(fs.find(fs_path))
