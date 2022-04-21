@@ -33,6 +33,8 @@ log_level = "debug"
 addopts = "-ra"
 markers = [
     "needs_internet: Might need network access for the tests",
+"vscode: Tests verifying contract between DVC and VSCode plugin",
+"studio: Tests verifying contract between DVC and Studio"
 ]
 xfail_strict = true
 
