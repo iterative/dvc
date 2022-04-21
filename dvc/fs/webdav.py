@@ -5,17 +5,15 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import FSSpecWrapper
+from .base import FileSystem
 from .http import ask_password
 
 logger = logging.getLogger(__name__)
 
 
-class WebDAVFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+class WebDAVFileSystem(FileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.WEBDAV
     root_marker = ""
-    CAN_TRAVERSE = True
-    TRAVERSE_PREFIX_LEN = 2
     REQUIRES = {"webdav4": "webdav4"}
     PARAM_CHECKSUM = "etag"
 

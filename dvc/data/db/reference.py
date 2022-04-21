@@ -10,9 +10,8 @@ from dvc.scheme import Schemes
 from ..reference import ReferenceHashFile
 
 if TYPE_CHECKING:
-    from dvc.fs.base import FileSystem
+    from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +54,8 @@ class ReferenceObjectDB(ObjectDB):
     def _add_file(
         self,
         from_fs: "FileSystem",
-        from_info: "AnyPath",
-        to_info: "AnyPath",
+        from_info: "AnyFSPath",
+        to_info: "AnyFSPath",
         hash_info: "HashInfo",
         hardlink: bool = False,
     ):

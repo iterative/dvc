@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from funcy import cached_property, wrap_prop
 
-from .fsspec_wrapper import FSSpecWrapper
+from .base import FileSystem
 
 if TYPE_CHECKING:
     from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from scmrepo.git.objects import GitTrie
 
 
-class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
     sep = os.sep

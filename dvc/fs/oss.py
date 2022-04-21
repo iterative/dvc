@@ -6,13 +6,13 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import ObjectFSWrapper
+from .base import ObjectFileSystem
 
 logger = logging.getLogger(__name__)
 
 
 # pylint:disable=abstract-method
-class OSSFileSystem(ObjectFSWrapper):
+class OSSFileSystem(ObjectFileSystem):
     scheme = Schemes.OSS
     REQUIRES = {"ossfs": "ossfs"}
     PARAM_CHECKSUM = "etag"

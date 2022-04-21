@@ -10,7 +10,7 @@ from dvc.system import System
 from dvc.utils import tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
-from .fsspec_wrapper import FSSpecWrapper
+from .base import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ class FsspecLocalFileSystem(AbstractFileSystem):
         return System.reflink(path1, path2)
 
 
-class LocalFileSystem(FSSpecWrapper):
+class LocalFileSystem(FileSystem):
     sep = os.sep
 
     scheme = Schemes.LOCAL

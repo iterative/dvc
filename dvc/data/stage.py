@@ -16,9 +16,8 @@ from .db.reference import ReferenceObjectDB
 from .meta import Meta
 
 if TYPE_CHECKING:
-    from dvc.fs.base import FileSystem
+    from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.objects.db import ObjectDB
-    from dvc.types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +286,7 @@ def _stage_external_tree_info(odb, tree, name):
 
 def stage(
     odb: "ObjectDB",
-    fs_path: "AnyPath",
+    fs_path: "AnyFSPath",
     fs: "FileSystem",
     name: str,
     upload: bool = False,

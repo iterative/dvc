@@ -174,6 +174,7 @@ class SSHExecutor(BaseExecutor):
         script_path = self._setup_script_path(
             posixpath.join(self._repo_abspath, self.dvc_dir)
         )
+        assert self._setup_script
         fs.upload(self._setup_script, script_path)
 
     def _ssh_cmd(self, sshfs, cmd, chdir=None, **kwargs):

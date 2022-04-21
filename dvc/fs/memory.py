@@ -4,10 +4,10 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .fsspec_wrapper import FSSpecWrapper
+from .base import FileSystem
 
 
-class MemoryFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+class MemoryFileSystem(FileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.MEMORY
     PARAM_CHECKSUM = "md5"
     TRAVERSE_PREFIX_LEN = 2
@@ -18,7 +18,7 @@ class MemoryFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
         # single global store
         return isinstance(other, type(self))
 
-    __hash__ = FSSpecWrapper.__hash__
+    __hash__ = FileSystem.__hash__
 
     @wrap_prop(threading.Lock())
     @cached_property

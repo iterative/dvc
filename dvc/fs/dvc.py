@@ -7,7 +7,7 @@ from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
 from ._callback import DEFAULT_CALLBACK
-from .fsspec_wrapper import FSSpecWrapper
+from .base import FileSystem
 
 if typing.TYPE_CHECKING:
     from dvc.types import AnyPath
@@ -167,7 +167,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         raise NotImplementedError
 
 
-class DvcFileSystem(FSSpecWrapper):
+class DvcFileSystem(FileSystem):
     scheme = "local"
 
     PARAM_CHECKSUM = "md5"

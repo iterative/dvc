@@ -34,16 +34,18 @@ def test_hashes_exist(object_exists, traverse, dvc):
     # large remote, small local
     object_exists.reset_mock()
     traverse.reset_mock()
-    with mock.patch.object(odb, "_list_hashes", return_value=list(range(256))):
+    with mock.patch.object(
+        odb, "_list_hashes", return_value=list(range(2048))
+    ):
         hashes = list(range(1000))
         odb.hashes_exist(hashes)
         # verify that _odb_paths_with_max() short circuits
-        # before returning all 256 remote hashes
+        # before returning all 2048 remote hashes
         max_hashes = math.ceil(
             odb._max_estimation_size(hashes)
             / pow(16, odb.fs.TRAVERSE_PREFIX_LEN)
         )
-        assert max_hashes < 256
+        assert max_hashes < 2048
         object_exists.assert_called_with(
             frozenset(range(max_hashes, 1000)), None, None
         )
@@ -75,7 +77,7 @@ def test_list_hashes_traverse(_path_to_hash, list_hashes, dvc):
     size = 256 / odb.fs._JOBS * odb.fs.LIST_OBJECT_PAGE_SIZE
     list(odb._list_hashes_traverse(size, {0}))
     for i in range(1, 16):
-        list_hashes.assert_any_call(f"{i:03x}")
+        list_hashes.assert_any_call(f"{i:0{odb.fs.TRAVERSE_PREFIX_LEN}x}")
     for i in range(1, 256):
         list_hashes.assert_any_call(f"{i:02x}")
 

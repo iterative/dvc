@@ -4,9 +4,8 @@ import os
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from dvc.fs.base import FileSystem
+    from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.hash_info import HashInfo
-    from dvc.types import AnyPath
 
     from .db import ObjectDB
 
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 class HashFile:
     def __init__(
         self,
-        fs_path: Optional["AnyPath"],
+        fs_path: "AnyFSPath",
         fs: Optional["FileSystem"],
         hash_info: "HashInfo",
         name: Optional[str] = None,
