@@ -24,6 +24,7 @@ def _get_converter(
 def to_datapoints(renderer_class, data: Dict, props: Dict):
     converter = _get_converter(renderer_class, props)
     datapoints: List[Dict] = []
+    final_props: Dict = {}
     for revision, rev_data in data.items():
         for filename, file_data in rev_data.get("data", {}).items():
             if "data" in file_data:
