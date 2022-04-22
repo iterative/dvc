@@ -11,6 +11,7 @@ def mock_dvcignore(dvcignore_path, patterns):
 
     fs = MagicMock()
     fs.path = localfs.path
+    fs.sep = localfs.sep
     with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
         ignore_patterns = DvcIgnorePatterns.from_file(
             dvcignore_path, fs, "mocked"

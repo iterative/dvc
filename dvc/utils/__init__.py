@@ -332,7 +332,7 @@ def relpath(path, start=os.curdir):
     return os.path.relpath(path, start)
 
 
-def as_posix(path):
+def as_posix(path: str) -> str:
     import ntpath
     import posixpath
 

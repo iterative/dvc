@@ -1,6 +1,5 @@
 import fnmatch
 import logging
-import os
 import time
 import typing
 from contextlib import suppress
@@ -24,7 +23,7 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.repo import lock_repo
-from dvc.utils import parse_target, relpath
+from dvc.utils import as_posix, parse_target, relpath
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +377,7 @@ class StageLoad:
         if recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
-            path = os.path.abspath(target)
+            path = self.fs.path.abspath(target)
             return collect_inside_path(path, graph or self.graph)
 
         stages = self.from_target(target, accept_group=accept_group, glob=glob)
@@ -416,6 +415,8 @@ class StageLoad:
         if not target:
             return [StageInfo(stage) for stage in self.repo.index]
 
+        target = as_posix(target)
+
         stages, file, _ = _collect_specific_target(
             self, target, with_deps, recursive, accept_group
         )
@@ -423,7 +424,7 @@ class StageLoad:
             if not (recursive and self.fs.isdir(target)):
                 try:
                     (out,) = self.repo.find_outs_by_path(target, strict=False)
-                    return [StageInfo(out.stage, os.path.abspath(target))]
+                    return [StageInfo(out.stage, self.fs.path.abspath(target))]
                 except OutputNotFoundError:
                     pass
 
@@ -467,7 +468,7 @@ class StageLoad:
         from dvc.fs.local import LocalFileSystem
 
         scm = self.repo.scm
-        sep = os.sep
+        sep = self.fs.sep
         outs: Set[str] = set()
 
         is_local_fs = isinstance(self.fs, LocalFileSystem)
@@ -493,7 +494,7 @@ class StageLoad:
         for root, dirs, files in walk_iter:
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
             for file in filter(dvcfile_filter, files):
-                file_path = os.path.join(root, file)
+                file_path = self.fs.path.join(root, file)
                 try:
                     new_stages = self.load_file(file_path)
                 except DvcException as exc:

@@ -106,7 +106,12 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self.repo_factory = repo_factory
 
         def _getcwd():
-            return self.root_marker
+            relparts = ()
+            if repo.fs.path.isin(repo.fs.path.getcwd(), repo.root_dir):
+                relparts = repo.fs.path.relparts(
+                    repo.fs.path.getcwd(), repo.root_dir
+                )
+            return self.root_marker + self.sep.join(relparts)
 
         self.path = Path(self.sep, getcwd=_getcwd)
         self.repo = repo
@@ -190,7 +195,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             repo_kwargs["config"] = cache_config
         else:
             repo_kwargs["cache_dir"] = cache_dir
-            factory = erepo_factory(url, cache_config)
+            factory = erepo_factory(url, root, cache_config)
 
         with _open(
             url if url else root,
@@ -237,6 +242,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 repo = self.repo_factory(
                     d,
                     fs=self.repo.fs,
+                    scm=self.repo.scm,
                     repo_factory=self.repo_factory,
                 )
                 self._dvcfss[key] = DvcFileSystem(repo=repo)
@@ -249,7 +255,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         from dvc.repo import Repo
 
-        repo_path = os.path.join(dir_path, Repo.DVC_DIR)
+        repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
 
     def _get_fs_pair(
@@ -417,7 +423,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if not dvc_info and not fs_info:
             raise FileNotFoundError
 
-        info = _merge_info(dvc_fs.repo, fs_info, dvc_info)
+        info = _merge_info(repo, fs_info, dvc_info)
         info["name"] = path
         return info
 
@@ -444,6 +450,10 @@ class RepoFileSystem(FileSystem):
 
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)
+
+    @property
+    def path(self):  # pylint: disable=invalid-overridden-method
+        return self.fs.path
 
     @property
     def repo(self):

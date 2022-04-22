@@ -10,12 +10,7 @@ from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
-from dvc.utils import (
-    error_handler,
-    errored_revisions,
-    onerror_collect,
-    relpath,
-)
+from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.serialize import LOADERS
 
 if TYPE_CHECKING:
@@ -42,7 +37,7 @@ def _collect_configs(
     )
     all_fs_paths = fs_paths + [p.fs_path for p in params]
     if not targets:
-        default_params = os.path.join(
+        default_params = repo.fs.path.join(
             repo.root_dir, ParamsDependency.DEFAULT_PARAMS_FILE
         )
         if default_params not in all_fs_paths and repo.fs.exists(
@@ -75,41 +70,33 @@ def _read_params(
                 onerror=onerror, flatten=False
             )
             if params_dict:
-                res[
-                    repo.fs.path.relpath(param.fs_path, os.getcwd())
-                ] = params_dict
+                name = os.sep.join(repo.fs.path.relparts(param.fs_path))
+                res[name] = params_dict
     else:
         fs_paths += [param.fs_path for param in params]
 
     for fs_path in fs_paths:
         from_path = _read_fs_path(repo.fs, fs_path, onerror=onerror)
         if from_path:
-            res[repo.fs.path.relpath(fs_path, os.getcwd())] = from_path
+            name = os.sep.join(repo.fs.path.relparts(fs_path))
+            res[name] = from_path
 
     return res
 
 
 def _collect_vars(repo, params) -> Dict:
-    from dvc.fs.git import GitFileSystem
-
     vars_params: Dict[str, Dict] = defaultdict(dict)
-    rel_to_root = relpath(repo.root_dir)
 
     for stage in repo.index.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
-                if isinstance(repo.fs, GitFileSystem):
-                    # GitFileSystem uses relatively-absolute paths from the
-                    # root of the repo. We need to convert them to relative
-                    # paths based on the current working directory.
-                    file = os.path.normpath(os.path.join(rel_to_root, file))
-
                 # `params` file are shown regardless of `tracked` or not
                 # to reduce noise and duplication, they are skipped
                 if file in params:
                     continue
 
-                vars_params[file].update(vars_)
+                name = os.sep.join(repo.fs.path.parts(file))
+                vars_params[name].update(vars_)
     return vars_params
 
 

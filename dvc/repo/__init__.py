@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from dvc.fs.base import FileSystem
     from dvc.objects.file import HashFile
     from dvc.repo.scm_context import SCMContext
+    from dvc.scm import Base
 
 logger = logging.getLogger(__name__)
 
@@ -85,29 +86,32 @@ class Repo:
         root_dir: str = None,
         fs: "FileSystem" = None,
         uninitialized: bool = False,
+        scm: "Base" = None,
     ):
-        from dvc.scm import SCM, Base, SCMError
-        from dvc.utils.fs import makedirs
+        from dvc.fs.local import localfs
+        from dvc.scm import SCM, SCMError
 
         dvc_dir = None
         tmp_dir = None
         try:
             root_dir = self.find_root(root_dir, fs)
-            dvc_dir = os.path.join(root_dir, self.DVC_DIR)
-            tmp_dir = os.path.join(dvc_dir, "tmp")
-            makedirs(tmp_dir, exist_ok=True)
+            fs = fs or localfs
+            dvc_dir = fs.path.join(root_dir, self.DVC_DIR)
+            tmp_dir = fs.path.join(dvc_dir, "tmp")
         except NotDvcRepoError:
             if not uninitialized:
                 raise
 
-            try:
-                scm = SCM(root_dir or os.curdir)
-            except SCMError:
-                scm = SCM(os.curdir, no_scm=True)
+            if not scm:
+                try:
+                    scm = SCM(root_dir or os.curdir)
+                except SCMError:
+                    scm = SCM(os.curdir, no_scm=True)
 
-            assert isinstance(scm, Base)
-            root_dir = scm.root_dir
+            if not fs or not root_dir:
+                root_dir = scm.root_dir
 
+        assert root_dir
         return root_dir, dvc_dir, tmp_dir
 
     def _get_database_dir(self, db_name):
@@ -148,6 +152,7 @@ class Repo:
         config=None,
         url=None,
         repo_factory=None,
+        scm=None,
     ):
         from dvc.config import Config
         from dvc.data.db import ODBManager
@@ -166,14 +171,18 @@ class Repo:
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}
         self._fs = fs or localfs
-        self._scm = None
+        self._scm = scm
 
         if rev and not fs:
-            self._scm = SCM(root_dir or os.curdir)
+            self._scm = scm = SCM(root_dir or os.curdir)
+            root_dir = "/"
             self._fs = GitFileSystem(scm=self._scm, rev=rev)
 
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
-            root_dir=root_dir, fs=self.fs, uninitialized=uninitialized
+            root_dir=root_dir,
+            fs=self.fs,
+            uninitialized=uninitialized,
+            scm=scm,
         )
 
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
@@ -189,7 +198,11 @@ class Repo:
             self.lock = LockNoop()
             self.state = StateNoop()
             self.odb = ODBManager(self)
+            self.tmp_dir = None
         else:
+            from dvc.utils.fs import makedirs
+
+            makedirs(self.tmp_dir, exist_ok=True)
             self.lock = make_lock(
                 os.path.join(self.tmp_dir, "lock"),
                 tmp_dir=self.tmp_dir,
@@ -312,9 +325,9 @@ class Repo:
     def find_root(cls, root=None, fs=None) -> str:
         from dvc.fs.local import LocalFileSystem, localfs
 
-        root = root or os.curdir
-        root_dir = os.path.realpath(root)
         fs = fs or localfs
+        root = root or os.curdir
+        root_dir = fs.path.realpath(root)
 
         if not fs.isdir(root_dir):
             raise NotDvcRepoError(f"directory '{root}' does not exist")
@@ -443,7 +456,7 @@ class Repo:
         # using `outs_graph` to ensure graph checks are run
         outs = outs or self.index.outs_graph
 
-        abs_path = os.path.abspath(path)
+        abs_path = self.fs.path.abspath(path)
         fs_path = abs_path
 
         def func(out):
@@ -467,7 +480,7 @@ class Repo:
         return matched
 
     def is_dvc_internal(self, path):
-        path_parts = os.path.normpath(path).split(os.path.sep)
+        path_parts = self.fs.path.normpath(path).split(self.fs.sep)
         return self.DVC_DIR in path_parts
 
     @cached_property

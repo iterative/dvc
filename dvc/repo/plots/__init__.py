@@ -17,12 +17,7 @@ from typing import (
 from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException
-from dvc.utils import (
-    error_handler,
-    errored_revisions,
-    onerror_collect,
-    relpath,
-)
+from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.serialize import LOADERS
 
 if TYPE_CHECKING:
@@ -110,6 +105,7 @@ class Plots:
         plots = _collect_plots(self.repo, targets, revision, recursive)
         res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
+            base = os.path.join(*fs.path.relparts(fs_path, fs.fs.root_marker))
             if fs.isdir(fs_path):
                 plot_files = []
                 unpacking_res = _unpack_dir_files(fs, fs_path, onerror=onerror)
@@ -118,12 +114,17 @@ class Plots:
                         "data"
                     ):
                         plot_files.append(
-                            (pi, relpath(pi, self.repo.root_dir))
+                            (
+                                pi,
+                                os.path.join(
+                                    base, *fs.path.relparts(pi, fs_path)
+                                ),
+                            )
                         )
                 else:
-                    res[relpath(fs_path, self.repo.root_dir)] = unpacking_res
+                    res[base] = unpacking_res
             else:
-                plot_files = [(fs_path, relpath(fs_path, self.repo.root_dir))]
+                plot_files = [(fs_path, base)]
 
             props = props or {}
 

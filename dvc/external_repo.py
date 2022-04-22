@@ -50,19 +50,21 @@ def external_repo(
     config.update(cache_config)
 
     if for_write:
+        scm = None
         root_dir = path
         fs = None
     else:
-        root_dir = os.path.realpath(path)
-        scm = Git(root_dir)
+        scm = Git(path)
         fs = GitFileSystem(scm=scm, rev=rev)
+        root_dir = "/"
 
     repo_kwargs = dict(
         root_dir=root_dir,
         url=url,
         fs=fs,
         config=config,
-        repo_factory=erepo_factory(url, cache_config),
+        repo_factory=erepo_factory(url, root_dir, cache_config),
+        scm=scm,
         **kwargs,
     )
 
@@ -92,14 +94,16 @@ def external_repo(
             _remove(path)
 
 
-def erepo_factory(url, cache_config, *args, **kwargs):
-    def make_repo(path, **_kwargs):
+def erepo_factory(url, root_dir, cache_config):
+    from dvc.fs.local import localfs
+
+    def make_repo(path, fs=None, **_kwargs):
         _config = cache_config.copy()
         if os.path.isdir(url):
-            rel = os.path.relpath(path, _kwargs["fs"].fs_args["scm"].root_dir)
-            repo_path = os.path.join(url, rel)
+            fs = fs or localfs
+            repo_path = os.path.join(url, *fs.path.relparts(path, root_dir))
             _config.update(_get_remote_config(repo_path))
-        return Repo(path, config=_config, **_kwargs)
+        return Repo(path, fs=fs, config=_config, **_kwargs)
 
     return make_repo
 
