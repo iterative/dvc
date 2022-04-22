@@ -670,6 +670,9 @@ class Output:
         if self.live:
             ret[self.PARAM_LIVE] = self.live
 
+        if self.remote:
+            ret[self.PARAM_REMOTE] = self.remote
+
         return ret
 
     def verify_metric(self):

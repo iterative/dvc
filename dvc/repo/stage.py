@@ -168,7 +168,12 @@ class StageLoad:
             stage_data: Stage data to create from
                 (see create_stage and loads_from for more information)
         """
-        from dvc.stage import PipelineStage, Stage, create_stage, restore_meta
+        from dvc.stage import (
+            PipelineStage,
+            Stage,
+            create_stage,
+            restore_fields,
+        )
         from dvc.stage.exceptions import InvalidStageName
         from dvc.stage.utils import (
             is_valid_name,
@@ -201,7 +206,7 @@ class StageLoad:
             new_index = self.repo.index.add(stage)
             new_index.check_graph()
 
-        restore_meta(stage)
+        restore_fields(stage)
         return stage
 
     def from_target(
