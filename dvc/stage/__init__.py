@@ -95,7 +95,7 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     return stage
 
 
-def restore_meta(stage):
+def restore_fields(stage):
     from .exceptions import StageNotFound
 
     if not stage.dvcfile.exists():
@@ -113,10 +113,12 @@ def restore_meta(stage):
     stage.meta = old.meta
     stage.desc = old.desc
 
-    old_desc = {out.def_path: out.desc for out in old.outs}
+    old_fields = {out.def_path: (out.desc, out.remote) for out in old.outs}
 
     for out in stage.outs:
-        out.desc = old_desc.get(out.def_path, None)
+        out_fields = old_fields.get(out.def_path, None)
+        if out_fields:
+            out.desc, out.remote = out_fields
 
 
 class Stage(params.StageParams):

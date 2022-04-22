@@ -894,7 +894,7 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     }
 
 
-def test_add_preserve_meta(tmp_dir, dvc):
+def test_add_preserve_fields(tmp_dir, dvc):
     text = textwrap.dedent(
         """\
         # top comment
@@ -902,11 +902,11 @@ def test_add_preserve_meta(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          remote: testremote
         meta: some metadata
     """
     )
     tmp_dir.gen("foo.dvc", text)
-
     tmp_dir.dvc_gen("foo", "foo")
     assert (tmp_dir / "foo.dvc").read_text() == textwrap.dedent(
         """\
@@ -915,6 +915,7 @@ def test_add_preserve_meta(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          remote: testremote
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
