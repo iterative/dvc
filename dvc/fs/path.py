@@ -3,17 +3,25 @@ import posixpath
 
 
 class Path:
-    def __init__(self, sep, getcwd=None):
+    def __init__(self, sep, getcwd=None, realpath=None):
         def _getcwd():
             return ""
 
         self.getcwd = getcwd or _getcwd
+        self.realpath = realpath or self.abspath
+
         if sep == posixpath.sep:
             self.flavour = posixpath
         elif sep == ntpath.sep:
             self.flavour = ntpath
         else:
             raise ValueError(f"unsupported separator '{sep}'")
+
+    def chdir(self, path):
+        def _getcwd():
+            return path
+
+        self.getcwd = _getcwd
 
     def join(self, *parts):
         return self.flavour.join(*parts)
@@ -104,15 +112,15 @@ class Path:
         # pylint: disable=arguments-out-of-order
         return self.isin_or_eq(left, right) or self.isin(right, left)
 
-    def relpath(self, path, start):
-        if not start:
+    def relpath(self, path, start=None):
+        if start is None:
             start = "."
         return self.flavour.relpath(
             self.abspath(path), start=self.abspath(start)
         )
 
-    def relparts(self, path, base):
-        return self.parts(self.relpath(path, base))
+    def relparts(self, path, start=None):
+        return self.parts(self.relpath(path, start=start))
 
     def as_posix(self, path):
         return path.replace(self.flavour.sep, posixpath.sep)

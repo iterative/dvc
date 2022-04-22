@@ -3,14 +3,6 @@ import os
 
 import pytest
 
-from dvc.exceptions import NoOutputOrStageError
-from dvc.stage.exceptions import StageFileDoesNotExistError
-
-gitfs_xfail = pytest.mark.xfail(
-    raises=(NoOutputOrStageError, StageFileDoesNotExistError),
-    reason="gitfs works on absolute paths only",
-)
-
 
 @pytest.mark.parametrize(
     "stage_wdir, cwd, target",
@@ -19,23 +11,21 @@ gitfs_xfail = pytest.mark.xfail(
         (os.curdir, os.curdir, "train"),
         (os.curdir, os.curdir, "dvc.yaml:train"),
         (os.curdir, "sub", os.path.join(os.pardir, "foo")),
-        pytest.param(
+        (
             os.curdir,
             "sub",
             os.path.join(os.pardir, "dvc.yaml:train"),
-            marks=gitfs_xfail,
         ),
         ("sub", os.curdir, os.path.join("sub", "foo")),
         ("sub", os.curdir, os.path.join("sub", "dvc.yaml:train")),
         ("sub", "sub", "foo"),
-        pytest.param("sub", "sub", "train", marks=gitfs_xfail),
-        pytest.param("sub", "sub", "dvc.yaml:train", marks=gitfs_xfail),
+        ("sub", "sub", "train"),
+        ("sub", "sub", "dvc.yaml:train"),
         ("sub", "dir", os.path.join(os.pardir, "sub", "foo")),
-        pytest.param(
+        (
             "sub",
             "dir",
             os.path.join(os.pardir, "sub", "dvc.yaml:train"),
-            marks=gitfs_xfail,
         ),
     ],
 )

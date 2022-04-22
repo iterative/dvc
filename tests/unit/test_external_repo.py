@@ -31,12 +31,13 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
         list(repo.repo_fs.walk("", ignore_subrepos=False))  # drain
         assert spy.call_count == len(subrepos)
 
-        paths = [os.path.join(repo.root_dir, path) for path in subrepo_paths]
+        paths = ["/" + path.replace("\\", "/") for path in subrepo_paths]
         spy.assert_has_calls(
             [
                 call(
                     path,
                     fs=repo.fs,
+                    scm=repo.scm,
                     repo_factory=repo.repo_fs.fs.repo_factory,
                 )
                 for path in paths

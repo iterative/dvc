@@ -31,7 +31,6 @@ def _collect_paths(
     rev: str = None,
 ) -> StrPaths:
     from dvc.fs.repo import RepoFileSystem
-    from dvc.utils import relpath
 
     fs = RepoFileSystem(repo=repo)
     fs_paths = [fs.from_os_path(target) for target in targets]
@@ -41,7 +40,7 @@ def _collect_paths(
         if recursive and fs.isdir(fs_path):
             target_paths.extend(fs.find(fs_path))
 
-        rel = relpath(fs_path)
+        rel = fs.path.relpath(fs_path)
         if not fs.exists(fs_path):
             if rev == "workspace" or rev == "":
                 logger.warning("'%s' was not found in current workspace.", rel)

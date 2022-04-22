@@ -295,11 +295,20 @@ class Output:
         if (
             self.fs.scheme == "local"
             and stage
+            and isinstance(stage.repo.fs, LocalFileSystem)
             and path_isin(path, stage.repo.root_dir)
         ):
             self.def_path = relpath(path, stage.wdir)
+            self.fs = stage.repo.fs
         else:
             self.def_path = path
+
+        if (
+            self.repo
+            and self.fs.scheme == "local"
+            and not self.fs.path.isabs(self.def_path)
+        ):
+            self.fs = self.repo.fs
 
         self._validate_output_path(path, stage)
         # This output (and dependency) objects have too many paths/urls
@@ -342,7 +351,7 @@ class Output:
             if self.stage and not os.path.isabs(fs_path):
                 fs_path = fs.path.join(self.stage.wdir, fs_path)
 
-        abs_p = os.path.abspath(os.path.normpath(fs_path))
+        abs_p = fs.path.abspath(fs.path.normpath(fs_path))
         return abs_p
 
     def __repr__(self):
@@ -361,11 +370,11 @@ class Output:
         ):
             return str(self.def_path)
 
-        cur_dir = os.getcwd()
-        if path_isin(cur_dir, self.repo.root_dir):
-            return relpath(self.fs_path, cur_dir)
+        cur_dir = self.fs.path.getcwd()
+        if self.fs.path.isin(cur_dir, self.repo.root_dir):
+            return self.fs.path.relpath(self.fs_path, cur_dir)
 
-        return relpath(self.fs_path, self.repo.root_dir)
+        return self.fs.path.relpath(self.fs_path, self.repo.root_dir)
 
     @property
     def scheme(self):
@@ -379,11 +388,12 @@ class Output:
         if urlparse(self.def_path).scheme == "remote":
             return False
 
-        if os.path.isabs(self.def_path):
+        if self.fs.path.isabs(self.def_path):
             return False
 
-        return self.repo and path_isin(
-            os.path.realpath(self.fs_path), self.repo.root_dir
+        return self.repo and self.fs.path.isin(
+            self.fs.path.realpath(self.fs_path),
+            self.repo.root_dir,
         )
 
     @property

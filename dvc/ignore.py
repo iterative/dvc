@@ -35,7 +35,6 @@ class DvcIgnorePatterns(DvcIgnore):
         self.sep = sep
         self.pattern_list = pattern_list
         self.dirname = dirname
-        self.prefix = self.dirname + self.sep
 
         self.regex_pattern_list = [
             GitWildMatchPattern.pattern_to_regex(pattern_info.patterns)
@@ -74,10 +73,13 @@ class DvcIgnorePatterns(DvcIgnore):
     def _get_normalize_path(self, dirname, basename):
         # NOTE: `relpath` is too slow, so we have to assume that both
         # `dirname` and `self.dirname` are relative or absolute together.
+
+        prefix = self.dirname.rstrip(self.sep) + self.sep
+
         if dirname == self.dirname:
             path = basename
-        elif dirname.startswith(self.prefix):
-            rel = dirname[len(self.prefix) :]
+        elif dirname.startswith(prefix):
+            rel = dirname[len(prefix) :]
             # NOTE: `os.path.join` is ~x5.5 slower
             path = f"{rel}{self.sep}{basename}"
         else:
@@ -210,6 +212,7 @@ class DvcIgnoreFilter:
             new_pattern = DvcIgnorePatterns.from_file(path, self.fs, name)
             if old_pattern:
                 plist, prefix = merge_patterns(
+                    self.fs.path.flavour,
                     old_pattern.pattern_list,
                     old_pattern.dirname,
                     new_pattern.pattern_list,
@@ -259,6 +262,7 @@ class DvcIgnoreFilter:
         old_pattern = ignore_trie.longest_prefix(key).value
         if old_pattern:
             plist, prefix = merge_patterns(
+                self.fs.path.flavour,
                 old_pattern.pattern_list,
                 old_pattern.dirname,
                 new_pattern.pattern_list,

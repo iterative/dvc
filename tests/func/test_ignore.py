@@ -111,6 +111,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert (
         DvcIgnorePatterns(
             *merge_patterns(
+                os.path,
                 _to_pattern_info_list([".hg/", ".git/", ".git", ".dvc/"]),
                 os.fspath(tmp_dir),
                 _to_pattern_info_list([os.path.basename(dname)]),
@@ -141,7 +142,8 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     }
 
     dvc.fs = GitFileSystem(scm=scm, rev="branch")
-    assert dvc.dvcignore.is_ignored_file((tmp_dir / "foo").fs_path)
+    dvc.root_dir = "/"
+    assert dvc.dvcignore.is_ignored_file("/foo")
 
 
 def test_match_nested(tmp_dir, dvc):
@@ -175,26 +177,6 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     assert (
         dvc.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup")) is False
     )
-
-
-def test_ignore_subrepo(tmp_dir, scm, dvc):
-    tmp_dir.gen({".dvcignore": "foo", "subdir": {"foo": "foo"}})
-    scm.add([".dvcignore"])
-    scm.commit("init parent dvcignore")
-    dvc._reset()
-
-    subrepo_dir = tmp_dir / "subdir"
-
-    result = walk_files(dvc, dvc.fs, subrepo_dir)
-    assert set(result) == set()
-
-    with subrepo_dir.chdir():
-        subrepo = Repo.init(subdir=True)
-        scm.add(str(subrepo_dir / "foo"))
-        scm.commit("subrepo init")
-
-    for _ in subrepo.brancher(all_commits=True):
-        assert subrepo.fs.exists(subrepo_dir / "foo")
 
 
 def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
@@ -358,16 +340,19 @@ def test_pattern_trie_fs(tmp_dir, dvc):
         os.fspath(tmp_dir),
     )
     first_pattern = merge_patterns(
+        os.path,
         *base_pattern,
         _to_pattern_info_list(["a", "b", "c"]),
         os.fspath(tmp_dir / "top" / "first"),
     )
     second_pattern = merge_patterns(
+        os.path,
         *first_pattern,
         _to_pattern_info_list(["d", "e", "f"]),
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second"),
     )
     other_pattern = merge_patterns(
+        os.path,
         *base_pattern,
         _to_pattern_info_list(["1", "2", "3"]),
         os.fspath(tmp_dir / "other"),

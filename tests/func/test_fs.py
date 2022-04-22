@@ -198,7 +198,7 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     get_dirs = itemgetter(1)
 
     assert set(get_dirs(next(dvc_fs.walk(path)))) == {".dvc", "subdir", ".git"}
-    assert set(get_dirs(next(scm_fs.walk(path)))) == {".dvc", "subdir"}
+    assert set(get_dirs(next(scm_fs.walk("/")))) == {".dvc", "subdir"}
 
 
 def test_fs_size(dvc, cloud):

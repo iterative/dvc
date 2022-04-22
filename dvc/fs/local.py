@@ -182,7 +182,7 @@ class LocalFileSystem(FileSystem):
     def path(self):
         from .path import Path
 
-        return Path(self.sep, os.getcwd)
+        return Path(self.sep, getcwd=os.getcwd, realpath=os.path.realpath)
 
     def upload_fobj(self, fobj, to_info, **kwargs):
         self.makedirs(self.path.parent(to_info))
