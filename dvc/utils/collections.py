@@ -1,10 +1,7 @@
 import inspect
-import os
 from collections.abc import Mapping
 from functools import wraps
 from typing import Callable, Dict, Iterable, List, TypeVar, Union
-
-from pygtrie import StringTrie as _StringTrie
 
 from dvc.exceptions import DvcException
 
@@ -15,14 +12,6 @@ class NewParamsFound(DvcException):
     def __init__(self, new_params: List, *args):
         self.new_params = new_params
         super().__init__("New params found during merge", *args)
-
-
-class PathStringTrie(_StringTrie):
-    """Trie based on platform-dependent separator for pathname components."""
-
-    def __init__(self, *args, **kwargs):
-        kwargs["separator"] = os.sep
-        super().__init__(*args, **kwargs)
 
 
 def apply_diff(src, dest):
