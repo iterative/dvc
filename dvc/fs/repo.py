@@ -89,7 +89,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     ):
         super().__init__()
 
-        from dvc.utils.collections import PathStringTrie
+        from pygtrie import Trie
 
         if repo is None:
             repo, repo_factory = self._repo_from_fs_config(
@@ -106,19 +106,25 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         self.path = Path(self.sep)
         self.repo = repo
         self.hash_jobs = repo.fs.hash_jobs
-        self._root_dir: str = repo.root_dir
         self._traverse_subrepos = subrepos
 
-        self._subrepos_trie = PathStringTrie()
+        self._subrepos_trie = Trie()
         """Keeps track of each and every path with the corresponding repo."""
 
-        self._subrepos_trie[self._root_dir] = repo
+        key = self._get_key(self.repo.root_dir)
+        self._subrepos_trie[key] = repo
 
         self._dvcfss = {}
         """Keep a dvcfs instance of each repo."""
 
         if hasattr(repo, "dvc_dir"):
-            self._dvcfss[self._root_dir] = DvcFileSystem(repo=repo)
+            self._dvcfss[key] = DvcFileSystem(repo=repo)
+
+    def _get_key(self, path):
+        parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
+        if parts == (".",):
+            parts = ()
+        return parts
 
     @property
     def repo_url(self):
@@ -195,33 +201,41 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         Otherwise, it collects the repos that might be in the path's parents
         and then returns the appropriate one.
         """
-        repo = self._subrepos_trie.get(path)
+        if not self.repo.fs.path.isin_or_eq(path, self.repo.root_dir):
+            # outside of repo
+            return self.repo
+
+        key = self._get_key(path)
+        repo = self._subrepos_trie.get(key)
         if repo:
             return repo
 
-        prefix, repo = self._subrepos_trie.longest_prefix(path)
-        if not prefix:
-            return self.repo
+        prefix_key, repo = self._subrepos_trie.longest_prefix(key)
+        prefix = self.repo.fs.path.join(
+            self.repo.root_dir,
+            *prefix_key,  # pylint: disable=not-an-iterable
+        )
 
         parents = (parent for parent in self.repo.fs.path.parents(path))
         dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
         dirs.reverse()
         self._update(dirs, starting_repo=repo)
-        return self._subrepos_trie.get(path) or self.repo
+        return self._subrepos_trie.get(key) or self.repo
 
     @wrap_with(threading.Lock())
     def _update(self, dirs, starting_repo):
         """Checks for subrepo in directories and updates them."""
         repo = starting_repo
         for d in dirs:
+            key = self._get_key(d)
             if self._is_dvc_repo(d):
                 repo = self.repo_factory(
                     d,
                     fs=self.repo.fs,
                     repo_factory=self.repo_factory,
                 )
-                self._dvcfss[repo.root_dir] = DvcFileSystem(repo=repo)
-            self._subrepos_trie[d] = repo
+                self._dvcfss[key] = DvcFileSystem(repo=repo)
+            self._subrepos_trie[key] = repo
 
     def _is_dvc_repo(self, dir_path):
         """Check if the directory is a dvc repo."""
@@ -270,7 +284,8 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if dvc_parts and dvc_parts[0] == os.curdir:
             dvc_parts = dvc_parts[1:]
 
-        dvc_fs = self._dvcfss.get(repo.root_dir)
+        key = self._get_key(repo.root_dir)
+        dvc_fs = self._dvcfss.get(key)
         if dvc_fs:
             dvc_path = dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
         else:
