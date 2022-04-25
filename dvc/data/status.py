@@ -30,17 +30,11 @@ class CompareStatusResult(NamedTuple):
 def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
     # Validate our index by verifying all indexed .dir hashes
     # still exist on the remote
-    from ._progress import QueryingProgress
-
     dir_hashes = set(dir_objs.keys())
     indexed_dirs = set(index.dir_hashes())
     indexed_dir_exists = set()
     if indexed_dirs:
-        hashes = QueryingProgress(
-            odb.list_hashes_exists(indexed_dirs, jobs=jobs),
-            total=len(indexed_dirs),
-        )
-        indexed_dir_exists.update(hashes)
+        indexed_dir_exists.update(odb.list_hashes_exists(indexed_dirs, jobs))
         missing_dirs = indexed_dirs.difference(indexed_dir_exists)
         if missing_dirs:
             logger.debug(
@@ -52,13 +46,7 @@ def _indexed_dir_hashes(odb, index, dir_objs, name, cache_odb, jobs=None):
 
     # Check if non-indexed (new) dir hashes exist on remote
     dir_exists = dir_hashes.intersection(indexed_dir_exists)
-    dir_missing = dir_hashes - dir_exists
-    dir_exists.update(
-        QueryingProgress(
-            odb.list_hashes_exists(dir_missing, jobs=jobs),
-            total=len(dir_missing),
-        )
-    )
+    dir_exists.update(odb.list_hashes_exists(dir_hashes - dir_exists, jobs))
 
     # If .dir hash exists in the ODB, assume directory contents
     # also exists
@@ -144,12 +132,7 @@ def status(
             hashes.difference_update(exists)
 
     if hashes:
-        from ._progress import QueryingProgress
-
-        with QueryingProgress(phase="Checking", name=odb.fs_path) as pbar:
-            exists.update(
-                odb.hashes_exist(hashes, jobs=jobs, progress=pbar.callback)
-            )
+        exists.update(odb.hashes_exist(hashes, name=odb.fs_path, jobs=jobs))
     return StatusResult(
         {hash_infos[hash_] for hash_ in exists},
         {hash_infos[hash_] for hash_ in (hashes - exists)},
