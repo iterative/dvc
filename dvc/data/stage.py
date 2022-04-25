@@ -25,7 +25,8 @@ logger = logging.getLogger(__name__)
 _STAGING_MEMFS_PATH = "dvc-staging"
 
 
-def _upload_file(from_fs_path, fs, odb, upload_odb):
+def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
+    from dvc.fs._callback import FsspecCallback
     from dvc.utils import tmp_fname
     from dvc.utils.stream import HashedStreamReader
 
@@ -34,9 +35,13 @@ def _upload_file(from_fs_path, fs, odb, upload_odb):
     with fs.open(from_fs_path, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
         stream = HashedStreamReader(stream)
         size = fs.size(from_fs_path)
-        upload_odb.fs.upload(
-            stream, tmp_info, desc=fs_path.name(from_fs_path), total=size
-        )
+        with FsspecCallback.as_tqdm_callback(
+            callback,
+            desc=fs_path.name(from_fs_path),
+            bytes=True,
+            total=size,
+        ) as cb:
+            upload_odb.fs.upload(stream, tmp_info, size=size, callback=cb)
 
     odb.add(tmp_info, upload_odb.fs, stream.hash_info)
     meta = Meta(size=size)

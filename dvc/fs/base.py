@@ -1,9 +1,6 @@
-import contextlib
 import logging
 import os
 import shutil
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partialmethod
 from multiprocessing import cpu_count
 from typing import (
     IO,
@@ -22,9 +19,8 @@ from typing import (
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.ui import ui
-from dvc.utils import tmp_fname
-from dvc.utils.fs import makedirs, move
+from dvc.utils.fs import as_atomic, makedirs
+from dvc.utils.threadpool import ThreadPoolExecutor
 
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
 
@@ -325,145 +321,86 @@ class FileSystem:
         self,
         from_info: Union[AnyFSPath, IO],
         to_info: AnyFSPath,
-        total: int = None,
-        desc: str = None,
-        callback=None,
-        no_progress_bar: bool = False,
-        **pbar_args: Any,
+        size: int = None,
+        callback: FsspecCallback = None,
     ):
+        from .local import localfs
+
         if not hasattr(from_info, "read"):
-            from .local import localfs
-
-            desc = desc or localfs.path.name(from_info)
             logger.debug("Uploading '%s' to '%s'", from_info, to_info)
+            desc = localfs.path.name(from_info)
+        else:
+            desc = self.path.name(to_info)
 
-        stack = contextlib.ExitStack()
-        if not callback:
-            pbar = ui.progress(
-                desc=desc,
-                disable=no_progress_bar,
-                bytes=True,
-                total=total or -1,
-                **pbar_args,
-            )
-            stack.enter_context(pbar)
-            callback = pbar.as_callback()
-
-        with stack:
-            if total:
-                callback.set_size(total)
-            return self.put_file(
-                from_info, to_info, callback=callback, size=total
-            )
+        with FsspecCallback.as_tqdm_callback(
+            callback,
+            desc=desc,
+            bytes=True,
+            total=size or -1,
+        ) as cb:
+            return self.put_file(from_info, to_info, callback=cb, size=size)
 
     def download(
         self,
         from_info: AnyFSPath,
         to_info: AnyFSPath,
-        name: str = None,
-        callback=None,
-        no_progress_bar: bool = False,
+        callback: "FsspecCallback" = None,
         jobs: int = None,
-        _only_file: bool = False,
-        **kwargs: Any,
     ):
+        if not self.isdir(from_info):
+            return self.download_file(from_info, to_info, callback=callback)
+
         from .local import localfs
 
-        if not hasattr(self, "get_file"):
-            raise RemoteActionNotImplemented("get_file", self.scheme)
-
-        download_dir = not _only_file and self.isdir(from_info)
-
-        desc = name or localfs.path.name(to_info)
-        stack = contextlib.ExitStack()
-        if not callback:
-            pbar_kwargs = {"unit": "Files"} if download_dir else {}
-            pbar = ui.progress(
-                total=-1,
-                desc="Downloading directory" if download_dir else desc,
-                bytes=not download_dir,
-                disable=no_progress_bar,
-                **pbar_kwargs,
+        pairs = {
+            info: localfs.path.join(
+                to_info, *self.path.relparts(info, from_info)
             )
-            stack.enter_context(pbar)
-            callback = pbar.as_callback()
-
-        with stack:
-            if download_dir:
-                return self._download_dir(
-                    from_info, to_info, callback=callback, jobs=jobs, **kwargs
-                )
-            return self._download_file(from_info, to_info, callback=callback)
-
-    download_file = partialmethod(download, _only_file=True)
-
-    def _download_dir(
-        self,
-        from_info: AnyFSPath,
-        to_info: AnyFSPath,
-        callback: FsspecCallback = DEFAULT_CALLBACK,
-        jobs: int = None,
-        **kwargs,
-    ):
-        from .local import localfs
-
-        from_infos = list(self.find(from_info, **kwargs))
-        if not from_infos:
+            for info in self.find(from_info)
+        }
+        if not pairs:
             makedirs(to_info, exist_ok=True)
-            return None
+            return
 
-        to_infos = (
-            localfs.path.join(to_info, *self.path.relparts(info, from_info))
-            for info in from_infos
-        )
-        callback.set_size(len(from_infos))
-
-        download_files = callback.wrap_fn(self._download_file)
-        max_workers = jobs or self.jobs
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
-                executor.submit(download_files, from_info, to_info)
-                for from_info, to_info in zip(from_infos, to_infos)
-            ]
-
+        with FsspecCallback.as_tqdm_callback(
+            callback,
+            total=-1,
+            desc=f"Downloading directory {self.path.name(from_info)}",
+            unit="files",
+        ) as cb:
+            cb.set_size(len(pairs))
+            download_files = cb.wrap_and_branch(self.download_file, fs=self)
+            max_workers = jobs or self.jobs
             # NOTE: unlike pulling/fetching cache, where we need to
             # download everything we can, not raising an error here might
             # turn very ugly, as the user might think that he has
             # downloaded a complete directory, while having a partial one,
             # which might cause unexpected results in his pipeline.
-            for future in as_completed(futures):
-                # NOTE: executor won't let us raise until all futures that
-                # it has are finished, so we need to cancel them ourselves
-                # before re-raising.
-                exc = future.exception()
-                if exc:
-                    for entry in futures:
-                        entry.cancel()
-                    raise exc
+            with ThreadPoolExecutor(
+                max_workers=max_workers, cancel_on_error=True
+            ) as executor:
+                list(
+                    executor.imap_unordered(
+                        lambda args: download_files(*args), pairs.items()
+                    )
+                )
 
-    def _download_file(
+    def download_file(
         self,
         from_info: AnyFSPath,
         to_info: AnyFSPath,
-        callback=DEFAULT_CALLBACK,
-    ) -> None:
+        callback: FsspecCallback = None,
+    ):
         from .local import localfs
 
-        makedirs(localfs.path.parent(to_info), exist_ok=True)
-        tmp_file = tmp_fname(to_info)
-
-        logger.debug("Downloading '%s' to '%s'", from_info, to_info)
-        try:
-            # noqa, pylint: disable=no-member
-            self.get_file(from_info, tmp_file, callback=callback)
-        except Exception:  # pylint: disable=broad-except
-            # do we need to rollback makedirs for previously not-existing
-            # directories?
-            with contextlib.suppress(FileNotFoundError):
-                os.unlink(tmp_file)
-            raise
-
-        move(tmp_file, to_info)
+        with FsspecCallback.as_tqdm_callback(
+            callback,
+            total=-1,
+            desc=self.path.name(from_info),
+            bytes=True,
+        ) as cb:
+            with as_atomic(localfs, to_info, create_parents=True) as tmp_file:
+                self.get_file(from_info, tmp_file, callback=cb)
 
 
 class ObjectFileSystem(FileSystem):  # pylint: disable=abstract-method
