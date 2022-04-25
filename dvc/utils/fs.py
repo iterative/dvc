@@ -200,17 +200,17 @@ def copyfile(src, dest, callback=None, no_progress_bar=False, name=None):
     try:
         System.reflink(src, dest)
     except OSError:
-        from dvc.fs._callback import tdqm_or_callback_wrapped
+        from dvc.fs._callback import FsspecCallback
 
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
-            with tdqm_or_callback_wrapped(
-                fdest,
-                "write",
-                total,
-                callback=callback,
+            with FsspecCallback.as_tqdm_callback(
+                callback,
+                total=total,
+                bytes=True,
                 disable=no_progress_bar,
                 desc=name,
-            ) as wrapped:
+            ) as cb:
+                wrapped = cb.wrap_attr(fdest, "write")
                 while True:
                     buf = fsrc.read(LOCAL_CHUNK_SIZE)
                     if not buf:
@@ -234,10 +234,14 @@ def walk_files(directory):
 
 
 @contextmanager
-def as_atomic(fs, to_info):
+def as_atomic(fs, to_info, create_parents=False):
     from dvc.utils import tmp_fname
 
-    tmp_info = fs.path.join(fs.path.parent(to_info), tmp_fname())
+    parent = fs.path.parent(to_info)
+    if create_parents:
+        fs.makedirs(parent, exist_ok=True)
+
+    tmp_info = fs.path.join(parent, tmp_fname())
     try:
         yield tmp_info
     except BaseException:

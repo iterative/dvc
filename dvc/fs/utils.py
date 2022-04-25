@@ -48,7 +48,7 @@ def _copy(
 
     with from_fs.open(from_path, mode="rb") as fobj:
         size = from_fs.size(from_path)
-        return to_fs.upload(fobj, to_path, total=size)
+        return to_fs.upload(fobj, to_path, size=size)
 
 
 def _try_links(

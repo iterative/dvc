@@ -135,11 +135,6 @@ class Tqdm(tqdm):
 
         return wrapped
 
-    def as_callback(self):
-        from dvc.fs._callback import TqdmCallback
-
-        return TqdmCallback(self)
-
     def close(self):
         self.postfix["info"] = ""
         # remove ETA (either unknown or zero); remove completed bar
