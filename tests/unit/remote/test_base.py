@@ -26,7 +26,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
     with mock.patch.object(odb, "_list_hashes", return_value=list(range(256))):
         hashes = set(range(1000))
         odb.hashes_exist(hashes)
-        object_exists.assert_called_with(hashes, None)
+        object_exists.assert_called_with(hashes, None, None)
         traverse.assert_not_called()
 
     odb.fs.CAN_TRAVERSE = True
@@ -47,7 +47,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
         )
         assert max_hashes < 2048
         object_exists.assert_called_with(
-            frozenset(range(max_hashes, 1000)), None
+            frozenset(range(max_hashes, 1000)), None, None
         )
         traverse.assert_not_called()
 
@@ -63,6 +63,7 @@ def test_hashes_exist(object_exists, traverse, dvc):
             256 * pow(16, odb.fs.TRAVERSE_PREFIX_LEN),
             set(range(256)),
             jobs=None,
+            name=None,
         )
 
 

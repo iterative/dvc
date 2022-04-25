@@ -2,8 +2,6 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
     from dvc.data.tree import Tree
     from dvc.objects.errors import ObjectDBPermissionError
 
-    from ._progress import QueryingProgress
-
     if odb.read_only:
         raise ObjectDBPermissionError("Cannot gc read-only ODB")
     if not cache_odb:
@@ -24,9 +22,11 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
 
     removed = False
     # hashes must be sorted to ensure we always remove .dir files first
-
-    hashes = QueryingProgress(odb.all(jobs), name=odb.fs_path)
-    for hash_ in sorted(hashes, key=_is_dir_hash, reverse=True):
+    for hash_ in sorted(
+        odb.all(jobs, odb.fs_path),
+        key=_is_dir_hash,
+        reverse=True,
+    ):
         if hash_ in used_hashes:
             continue
         fs_path = odb.hash_to_path(hash_)
