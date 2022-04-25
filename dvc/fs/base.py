@@ -262,7 +262,7 @@ class FileSystem:
         self.fs.move(from_info, to_info)
 
     def remove(self, path: AnyFSPath) -> None:
-        self.fs.rm_file(path)
+        self.fs.rm(path, recursive=True)
 
     def info(self, path: AnyFSPath) -> "Entry":
         return self.fs.info(path)
