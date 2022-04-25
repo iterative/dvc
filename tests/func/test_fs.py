@@ -3,10 +3,10 @@ import os
 from operator import itemgetter
 from os.path import join
 
-import fsspec
 import pytest
 
 from dvc.fs import get_cloud_fs
+from dvc.fs._callback import FsspecCallback
 from dvc.fs.local import LocalFileSystem
 from dvc.repo import Repo
 
@@ -201,7 +201,7 @@ def test_walk_dont_ignore_subrepos(tmp_dir, scm, dvc):
     assert set(get_dirs(next(scm_fs.walk(path)))) == {".dvc", "subdir"}
 
 
-def test_fs_getsize(dvc, cloud):
+def test_fs_size(dvc, cloud):
     cloud.gen({"data": {"foo": "foo"}, "baz": "baz baz"})
     cls, config, path = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
@@ -248,7 +248,7 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     fs = cls(**config)
     expected_size = os.path.getsize(tmp_dir / "foo")
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.upload(
         (tmp_dir / "foo").fs_path,
         (cloud / "foo").fs_path,
@@ -267,7 +267,7 @@ def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
     fs.upload((tmp_dir / "to_upload").fs_path, (cloud / "foo").fs_path)
     expected_size = fs.size((cloud / "foo").fs_path)
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download_file(
         (cloud / "foo").fs_path,
         (tmp_dir / "foo").fs_path,
@@ -284,7 +284,7 @@ def test_download_dir_callback(tmp_dir, dvc, cloud):
     fs = cls(**config)
     cloud.gen({"dir": {"foo": "foo", "bar": "bar"}})
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download(
         (cloud / "dir").fs_path, (tmp_dir / "dir").fs_path, callback=callback
     )
@@ -303,7 +303,7 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
 
     fs = dvc.dvcfs if fs_type == "dvc" else GitFileSystem(scm=scm, rev="HEAD")
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download_file(
         "file",
         (tmp_dir / "file2").fs_path,
@@ -315,7 +315,7 @@ def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
     assert callback.size == size
     assert callback.value == size
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download(
         "dir",
         (tmp_dir / "dir2").fs_path,
@@ -333,7 +333,7 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
 
     fs = dvc.repo_fs
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download(
         "dir",
         (tmp_dir / "dir2").fs_path,
@@ -344,7 +344,7 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
     assert callback.size == 2
     assert callback.value == 2
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download(
         os.path.join("dir", "foo"),
         (tmp_dir / "foo").fs_path,
@@ -356,7 +356,7 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
     assert callback.size == size
     assert callback.value == size
 
-    callback = fsspec.Callback()
+    callback = FsspecCallback()
     fs.download(
         os.path.join("dir", "bar"),
         (tmp_dir / "bar").fs_path,

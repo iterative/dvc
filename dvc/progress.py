@@ -136,9 +136,9 @@ class Tqdm(tqdm):
         return wrapped
 
     def as_callback(self):
-        from dvc.fs._callback import FsspecCallback
+        from dvc.fs._callback import TqdmCallback
 
-        return FsspecCallback(self)
+        return TqdmCallback(self)
 
     def close(self):
         self.postfix["info"] = ""
