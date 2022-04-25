@@ -1,14 +1,14 @@
 import logging
 import os
 import stat
+from functools import partial
 
 from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.hash_info import HashInfo
-from dvc.objects.db import ObjectDB
+from dvc.objects.db import ObjectDB, noop, wrap_iter
 from dvc.objects.errors import ObjectFormatError
-from dvc.progress import Tqdm
 from dvc.utils import relpath
 from dvc.utils.fs import copyfile, remove, umask, walk_files
 
@@ -60,15 +60,12 @@ class LocalObjectDB(ObjectDB):
         return f"{self.cache_path}{os.sep}{hash_[0:2]}{os.sep}{hash_[2:]}"
 
     def hashes_exist(
-        self, hashes, jobs=None, name=None
+        self, hashes, jobs=None, progress=noop
     ):  # pylint: disable=unused-argument
         ret = []
+        progress = partial(progress, "querying", len(hashes))
 
-        for hash_ in Tqdm(
-            hashes,
-            unit="file",
-            desc="Querying " + ("cache in " + name if name else "local cache"),
-        ):
+        for hash_ in wrap_iter(hashes, progress):
             hash_info = HashInfo(self.fs.PARAM_CHECKSUM, hash_)
             try:
                 self.check(hash_info)
