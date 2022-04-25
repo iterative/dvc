@@ -206,8 +206,8 @@ def test_fs_getsize(dvc, cloud):
     cls, config, path = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
 
-    assert fs.getsize(fs.path.join(path, "baz")) == 7
-    assert fs.getsize(fs.path.join(path, "data", "foo")) == 3
+    assert fs.size(fs.path.join(path, "baz")) == 7
+    assert fs.size(fs.path.join(path, "data", "foo")) == 3
 
 
 def test_fs_upload_fobj(dvc, tmp_dir, cloud):
@@ -265,7 +265,7 @@ def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
 
     (tmp_dir / "to_upload").write_text("foo")
     fs.upload((tmp_dir / "to_upload").fs_path, (cloud / "foo").fs_path)
-    expected_size = fs.getsize((cloud / "foo").fs_path)
+    expected_size = fs.size((cloud / "foo").fs_path)
 
     callback = fsspec.Callback()
     fs.download_file(

@@ -226,7 +226,7 @@ class Tree(HashFile):
 def du(odb, tree):
     try:
         return sum(
-            odb.fs.getsize(odb.hash_to_path(oid.value)) for _, _, oid in tree
+            odb.fs.size(odb.hash_to_path(oid.value)) for _, _, oid in tree
         )
     except FileNotFoundError:
         return None

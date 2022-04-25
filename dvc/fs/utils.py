@@ -47,7 +47,7 @@ def _copy(
         return from_fs.download_file(from_path, to_path)
 
     with from_fs.open(from_path, mode="rb") as fobj:
-        size = from_fs.getsize(from_path)
+        size = from_fs.size(from_path)
         return to_fs.upload(fobj, to_path, total=size)
 
 

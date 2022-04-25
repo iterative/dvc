@@ -48,7 +48,7 @@ def file_md5(fname, fs):
 
     hash_md5 = hashlib.md5()
     binary = not istextfile(fname, fs=fs)
-    size = fs.getsize(fname) or 0
+    size = fs.size(fname) or 0
     no_progress_bar = True
     if size >= LARGE_FILE_SIZE:
         no_progress_bar = False

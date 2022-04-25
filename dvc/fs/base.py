@@ -305,8 +305,8 @@ class FileSystem:
     ):
         return self.fs.walk(path, topdown=topdown, **kwargs)
 
-    def getsize(self, path: AnyFSPath) -> Optional[int]:
-        return self.info(path).get("size")
+    def size(self, path: AnyFSPath) -> Optional[int]:
+        return self.fs.size(path)
 
     # pylint: enable=unused-argument
 
