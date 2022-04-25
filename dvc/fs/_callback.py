@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
     from dvc.fs.base import FileSystem
     from dvc.progress import Tqdm
+    from dvc.ui._rich_progress import RichTransferProgress
 
     _P = ParamSpec("_P")
     _R = TypeVar("_R")
@@ -82,6 +83,12 @@ class FsspecCallback(fsspec.Callback):
     ) -> "FsspecCallback":
         return callback or TqdmCallback(**tqdm_kwargs)
 
+    @classmethod
+    def as_rich_callback(
+        cls, callback: Optional["FsspecCallback"] = None, **rich_kwargs
+    ):
+        return callback or RichCallback(**rich_kwargs)
+
 
 class NoOpCallback(FsspecCallback, fsspec.callbacks.NoOpCallback):
     pass
@@ -117,6 +124,67 @@ class TqdmCallback(FsspecCallback):
 
     def branch(self, path_1: str, path_2: str, kwargs):
         return TqdmCallback(bytes=True, total=-1, desc=path_1, **kwargs)
+
+
+class RichCallback(FsspecCallback):
+    def __init__(
+        self,
+        progress: "RichTransferProgress" = None,
+        desc: str = None,
+        total: int = None,
+        bytes: bool = False,  # pylint: disable=redefined-builtin
+        unit: str = None,
+        disable: bool = False,
+    ) -> None:
+        from dvc.ui import ui
+        from dvc.ui._rich_progress import RichTransferProgress
+
+        self.progress = progress or RichTransferProgress(
+            transient=True,
+            disable=disable,
+            console=ui.error_console,
+        )
+        self.visible = not disable
+        self._newly_created = progress is None
+        total = 0 if total is None or total < 0 else total
+        self.task = self.progress.add_task(
+            description=desc or "",
+            total=total,
+            bytes=bytes,
+            visible=False,
+            unit=unit,
+            progress_type=None if bytes else "summary",
+        )
+        super().__init__()
+
+    def __enter__(self):
+        if self._newly_created:
+            self.progress.__enter__()
+        return self
+
+    def close(self):
+        if self._newly_created:
+            self.progress.stop()
+        try:
+            self.progress.remove_task(self.task)
+        except KeyError:
+            pass
+
+    def set_size(self, size: int = None) -> None:
+        if size is not None:
+            self.progress.update(self.task, total=size, visible=self.visible)
+            super().set_size(size)
+
+    def relative_update(self, inc: int = 1) -> None:
+        self.progress.update(self.task, advance=inc)
+        super().relative_update(inc)
+
+    def absolute_update(self, value: int) -> None:
+        self.progress.update(self.task, completed=value)
+        super().absolute_update(value)
+
+    def branch(self, path_1, path_2, kwargs):
+        return RichCallback(self.progress, desc=path_1, bytes=True, total=-1)
 
 
 DEFAULT_CALLBACK = NoOpCallback()
