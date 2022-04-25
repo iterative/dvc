@@ -3,11 +3,11 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from copy import copy
+from functools import partial
 from typing import TYPE_CHECKING, Optional
 
 from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
 from dvc.objects.file import HashFile
-from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
     from typing import Tuple
@@ -16,6 +16,16 @@ if TYPE_CHECKING:
     from dvc.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
+
+
+def noop(*args, **kwargs):
+    pass
+
+
+def wrap_iter(iterable, callback):
+    for index, item in enumerate(iterable, start=1):
+        yield item
+        callback(index)
 
 
 class ObjectDB:
@@ -232,9 +242,11 @@ class ObjectDB:
             * self.fs.LIST_OBJECT_PAGE_SIZE,
         )
 
-    def _estimate_remote_size(self, hashes=None, name=None):
+    def _estimate_remote_size(self, hashes=None, progress=noop):
         """Estimate fs size based on number of entries beginning with
         "00..." prefix.
+
+        Takes a progress callback that returns current_estimated_size.
         """
         prefix = "0" * self.fs.TRAVERSE_PREFIX_LEN
         total_prefixes = pow(16, self.fs.TRAVERSE_PREFIX_LEN)
@@ -243,35 +255,29 @@ class ObjectDB:
         else:
             max_hashes = None
 
-        with Tqdm(
-            desc="Estimating size of "
-            + (f"cache in '{name}'" if name else "remote cache"),
-            unit="file",
-        ) as pbar:
+        def iter_with_pbar(hashes):
+            total = 0
+            for hash_ in hashes:
+                total += total_prefixes
+                progress(total)
+                yield hash_
 
-            def iter_with_pbar(hashes):
-                for hash_ in hashes:
-                    pbar.update(total_prefixes)
-                    yield hash_
+        if max_hashes:
+            hashes = self._hashes_with_limit(
+                max_hashes / total_prefixes, prefix
+            )
+        else:
+            hashes = self._list_hashes(prefix)
 
-            if max_hashes:
-                hashes = self._hashes_with_limit(
-                    max_hashes / total_prefixes, prefix
-                )
-            else:
-                hashes = self._list_hashes(prefix)
-
-            remote_hashes = set(iter_with_pbar(hashes))
-            if remote_hashes:
-                remote_size = total_prefixes * len(remote_hashes)
-            else:
-                remote_size = total_prefixes
-            logger.debug(f"Estimated remote size: {remote_size} files")
+        remote_hashes = set(iter_with_pbar(hashes))
+        if remote_hashes:
+            remote_size = total_prefixes * len(remote_hashes)
+        else:
+            remote_size = total_prefixes
+        logger.debug(f"Estimated remote size: {remote_size} files")
         return remote_size, remote_hashes
 
-    def _list_hashes_traverse(
-        self, remote_size, remote_hashes, jobs=None, name=None
-    ):
+    def _list_hashes_traverse(self, remote_size, remote_hashes, jobs=None):
         """Iterate over all hashes found in this fs.
         Hashes are fetched in parallel according to prefix, except in
         cases where the remote size is very small.
@@ -286,6 +292,8 @@ class ObjectDB:
         sense to use a generator to gradually iterate over it, without
         keeping all of it in memory.
         """
+        from funcy import collecting
+
         num_pages = remote_size / self.fs.LIST_OBJECT_PAGE_SIZE
         if num_pages < 256 / self.fs.jobs:
             # Fetching prefixes in parallel requires at least 255 more
@@ -295,81 +303,48 @@ class ObjectDB:
             # NOTE: this ends up re-fetching hashes that were already
             # fetched during remote size estimation
             traverse_prefixes = [None]
-            initial = 0
         else:
             yield from remote_hashes
-            initial = len(remote_hashes)
             traverse_prefixes = [f"{i:02x}" for i in range(1, 256)]
             if self.fs.TRAVERSE_PREFIX_LEN > 2:
                 traverse_prefixes += [
                     "{0:0{1}x}".format(i, self.fs.TRAVERSE_PREFIX_LEN)
                     for i in range(1, pow(16, self.fs.TRAVERSE_PREFIX_LEN - 2))
                 ]
-        with Tqdm(
-            desc="Querying "
-            + (f"cache in '{name}'" if name else "remote cache"),
-            total=remote_size,
-            initial=initial,
-            unit="file",
-        ) as pbar:
-            from funcy import collecting
 
-            with ThreadPoolExecutor(
-                max_workers=jobs or self.fs.jobs
-            ) as executor:
-                list_hashes = collecting(pbar.wrap_fn(self._list_hashes))
-                in_remote = executor.map(list_hashes, traverse_prefixes)
-                yield from itertools.chain.from_iterable(in_remote)
+        list_hashes = collecting(self._list_hashes)
+        with ThreadPoolExecutor(max_workers=jobs or self.fs.jobs) as executor:
+            in_remote = executor.map(list_hashes, traverse_prefixes)
+            yield from itertools.chain.from_iterable(in_remote)
 
-    def all(self, jobs=None, name=None):
+    def all(self, jobs=None):
         """Iterate over all hashes in this fs.
 
         Hashes will be fetched in parallel threads according to prefix
         (except for small remotes) and a progress bar will be displayed.
         """
-        logger.debug(
-            "Fetching all hashes from '{}'".format(
-                name if name else "remote cache"
-            )
-        )
-
         if not self.fs.CAN_TRAVERSE:
             return self._list_hashes()
 
-        remote_size, remote_hashes = self._estimate_remote_size(name=name)
+        remote_size, remote_hashes = self._estimate_remote_size()
         return self._list_hashes_traverse(
-            remote_size, remote_hashes, jobs=jobs, name=name
+            remote_size, remote_hashes, jobs=jobs
         )
 
     def _remove_unpacked_dir(self, hash_):
         pass
 
-    def list_hashes_exists(self, hashes, jobs=None, name=None):
+    def list_hashes_exists(self, hashes, jobs=None):
         """Return list of the specified hashes which exist in this fs.
         Hashes will be queried individually.
         """
         logger.debug(f"Querying {len(hashes)} hashes via object_exists")
-        with Tqdm(
-            desc="Querying "
-            + ("cache in " + name if name else "remote cache"),
-            total=len(hashes),
-            unit="file",
-        ) as pbar:
+        with ThreadPoolExecutor(max_workers=jobs or self.fs.jobs) as executor:
+            fs_paths = map(self.hash_to_path, hashes)
+            in_remote = executor.map(self.fs.exists, fs_paths)
+            yield from itertools.compress(hashes, in_remote)
 
-            def exists_with_progress(fs_path):
-                ret = self.fs.exists(fs_path)
-                pbar.update_msg(fs_path)
-                return ret
-
-            with ThreadPoolExecutor(
-                max_workers=jobs or self.fs.jobs
-            ) as executor:
-                fs_paths = map(self.hash_to_path, hashes)
-                in_remote = executor.map(exists_with_progress, fs_paths)
-                ret = list(itertools.compress(hashes, in_remote))
-                return ret
-
-    def hashes_exist(self, hashes, jobs=None, name=None):
+    def hashes_exist(self, hashes, jobs=None, progress=noop):
         """Check if the given hashes are stored in the remote.
 
         There are two ways of performing this check:
@@ -399,6 +374,9 @@ class ObjectDB:
         cache can be estimated, since the cache is evenly distributed according
         to hash.
 
+        Takes a callback that returns value in the format of:
+        (phase, total, current). The phase can be {"estimating, "querying"}.
+
         Returns:
             A list with hashes that were found in the remote
         """
@@ -415,11 +393,16 @@ class ObjectDB:
         if (
             len(hashes) == 1 or not self.fs.CAN_TRAVERSE
         ) and not always_traverse:
-            remote_hashes = self.list_hashes_exists(hashes, jobs, name)
-            return remote_hashes
+            remote_hashes = self.list_hashes_exists(hashes, jobs)
+            callback = partial(progress, "querying", len(hashes))
+            return list(wrap_iter(remote_hashes, callback))
 
         # Max remote size allowed for us to use traverse method
-        remote_size, remote_hashes = self._estimate_remote_size(hashes, name)
+
+        estimator_cb = partial(progress, "estimating", None)
+        remote_size, remote_hashes = self._estimate_remote_size(
+            hashes, progress=estimator_cb
+        )
 
         traverse_pages = remote_size / self.fs.LIST_OBJECT_PAGE_SIZE
         # For sufficiently large remotes, traverse must be weighted to account
@@ -439,14 +422,19 @@ class ObjectDB:
                     len(hashes), traverse_weight
                 )
             )
-            return list(hashes & remote_hashes) + self.list_hashes_exists(
-                hashes - remote_hashes, jobs, name
+            remaining_hashes = hashes - remote_hashes
+            ret = list(hashes & remote_hashes)
+            callback = partial(progress, "querying", len(remaining_hashes))
+            ret.extend(
+                wrap_iter(
+                    self.list_hashes_exists(remaining_hashes, jobs), callback
+                )
             )
+            return ret
 
         logger.debug(f"Querying '{len(hashes)}' hashes via traverse")
-        remote_hashes = set(
-            self._list_hashes_traverse(
-                remote_size, remote_hashes, jobs=jobs, name=name
-            )
+        remote_hashes = self._list_hashes_traverse(
+            remote_size, remote_hashes, jobs=jobs
         )
-        return list(hashes & set(remote_hashes))
+        callback = partial(progress, "querying", remote_size)
+        return list(hashes & set(wrap_iter(remote_hashes, callback)))
