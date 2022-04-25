@@ -1,12 +1,12 @@
 import threading
-from typing import Any
+from typing import IO, Union
 
 from funcy import cached_property, memoize, wrap_with
 
 from dvc import prompt
 from dvc.scheme import Schemes
 
-from ._callback import DEFAULT_CALLBACK
+from ._callback import DEFAULT_CALLBACK, FsspecCallback
 from .base import AnyFSPath, FileSystem
 
 
@@ -141,9 +141,9 @@ class HTTPFileSystem(FileSystem):
 
     def put_file(
         self,
-        from_file: AnyFSPath,
+        from_file: Union[AnyFSPath, IO],
         to_info: AnyFSPath,
-        callback: Any = DEFAULT_CALLBACK,
+        callback: FsspecCallback = DEFAULT_CALLBACK,
         **kwargs,
     ) -> None:
         kwargs.setdefault("method", self.upload_method)

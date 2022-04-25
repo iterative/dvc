@@ -15,17 +15,18 @@ from typing import (
     List,
     Optional,
     Union,
+    cast,
     overload,
 )
 
 from funcy import cached_property
-from tqdm.utils import CallbackIOWrapper
 
 from dvc.exceptions import DvcException
-from dvc.fs._callback import DEFAULT_CALLBACK, FsspecCallback
 from dvc.ui import ui
 from dvc.utils import tmp_fname
 from dvc.utils.fs import makedirs, move
+
+from ._callback import DEFAULT_CALLBACK, FsspecCallback
 
 if TYPE_CHECKING:
     from fsspec.spec import AbstractFileSystem
@@ -271,19 +272,29 @@ class FileSystem:
 
     def put_file(
         self,
-        from_file: AnyFSPath,
+        from_file: Union[AnyFSPath, IO],
         to_info: AnyFSPath,
-        callback: Any = DEFAULT_CALLBACK,
+        callback: FsspecCallback = DEFAULT_CALLBACK,
         **kwargs,
     ) -> None:
-        self.fs.put_file(from_file, to_info, callback=callback, **kwargs)
+        size = kwargs.get("size")
+        if size:
+            callback.set_size(size)
+        if hasattr(from_file, "read"):
+            stream = callback.wrap_attr(cast("IO", from_file))
+            self.upload_fobj(stream, to_info, size=size)
+        else:
+            assert isinstance(from_file, str)
+            self.fs.put_file(
+                os.fspath(from_file), to_info, callback=callback, **kwargs
+            )
         self.fs.invalidate_cache(self.path.parent(to_info))
 
     def get_file(
         self,
         from_info: AnyFSPath,
         to_info: AnyFSPath,
-        callback: Any = DEFAULT_CALLBACK,
+        callback: FsspecCallback = DEFAULT_CALLBACK,
         **kwargs,
     ) -> None:
         self.fs.get_file(from_info, to_info, callback=callback, **kwargs)
@@ -320,15 +331,11 @@ class FileSystem:
         no_progress_bar: bool = False,
         **pbar_args: Any,
     ):
-        is_file_obj = hasattr(from_info, "read")
-        method = "upload_fobj" if is_file_obj else "put_file"
-        if not hasattr(self, method):
-            raise RemoteActionNotImplemented(method, self.scheme)
-
-        if not is_file_obj:
+        if not hasattr(from_info, "read"):
             from .local import localfs
 
             desc = desc or localfs.path.name(from_info)
+            logger.debug("Uploading '%s' to '%s'", from_info, to_info)
 
         stack = contextlib.ExitStack()
         if not callback:
@@ -341,24 +348,12 @@ class FileSystem:
             )
             stack.enter_context(pbar)
             callback = pbar.as_callback()
-            if total:
-                callback.set_size(total)
 
         with stack:
-            if is_file_obj:
-                wrapped = CallbackIOWrapper(
-                    callback.relative_update, from_info
-                )
-                # `size` is used to provide hints to the WebdavFileSystem
-                # for legacy servers.
-                # pylint: disable=no-member
-                return self.upload_fobj(wrapped, to_info, size=total)
-
-            assert isinstance(from_info, str)
-            logger.debug("Uploading '%s' to '%s'", from_info, to_info)
-            # pylint: disable=no-member
+            if total:
+                callback.set_size(total)
             return self.put_file(
-                os.fspath(from_info), to_info, callback=callback
+                from_info, to_info, callback=callback, size=total
             )
 
     def download(
@@ -406,7 +401,7 @@ class FileSystem:
         self,
         from_info: AnyFSPath,
         to_info: AnyFSPath,
-        callback=DEFAULT_CALLBACK,
+        callback: FsspecCallback = DEFAULT_CALLBACK,
         jobs: int = None,
         **kwargs,
     ):
@@ -423,7 +418,7 @@ class FileSystem:
         )
         callback.set_size(len(from_infos))
 
-        download_files = FsspecCallback.wrap_fn(callback, self._download_file)
+        download_files = callback.wrap_fn(self._download_file)
         max_workers = jobs or self.jobs
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [

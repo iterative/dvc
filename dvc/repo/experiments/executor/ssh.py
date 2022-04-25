@@ -257,7 +257,7 @@ class SSHExecutor(BaseExecutor):
             with TemporaryFile(mode="w+", encoding="utf-8") as fobj:
                 json.dump(info.asdict(), fobj)
                 fobj.seek(0)
-                fs.upload_fobj(fobj, infofile)
+                fs.put_file(fobj, infofile)
             cmd = ["source ~/.profile"]
             script_path = cls._setup_script_path(info.dvc_dir)
             if fs.exists(posixpath.join(info.root_dir, script_path)):
