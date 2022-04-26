@@ -24,7 +24,7 @@ from .refs import (
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
-    EXPS_STASH,
+    STASHES,
     ExpRefInfo,
 )
 
@@ -66,7 +66,7 @@ def exp_refs(
         else scm.iter_refs(base=EXPS_NAMESPACE)
     )
     for ref in ref_gen:
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
+        if ref.startswith(EXEC_NAMESPACE) or ref in STASHES:
             continue
         yield ExpRefInfo.from_ref(ref)
 
@@ -74,7 +74,7 @@ def exp_refs(
 def exp_refs_by_rev(scm: "Git", rev: str) -> Generator[ExpRefInfo, None, None]:
     """Iterate over all experiment refs pointing to the specified revision."""
     for ref in scm.get_refs_containing(rev, EXPS_NAMESPACE):
-        if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH):
+        if not (ref.startswith(EXEC_NAMESPACE) or ref in STASHES):
             yield ExpRefInfo.from_ref(ref)
 
 
@@ -153,7 +153,7 @@ def push_refspec(
 def remote_exp_refs(scm: "Git", url: str) -> Generator[ExpRefInfo, None, None]:
     """Iterate over all remote experiment refs."""
     for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE):
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
+        if ref.startswith(EXEC_NAMESPACE) or ref in STASHES:
             continue
         yield ExpRefInfo.from_ref(ref)
 
@@ -177,7 +177,7 @@ def remote_exp_refs_by_baseline(
     """Iterate over all remote experiment refs with the specified baseline."""
     ref_info = ExpRefInfo(baseline_sha=rev)
     for ref in iter_remote_refs(scm, url, base=str(ref_info)):
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
+        if ref.startswith(EXEC_NAMESPACE) or ref in STASHES:
             continue
         yield ExpRefInfo.from_ref(ref)
 
@@ -267,7 +267,7 @@ def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
     refspecs = [
         f"{ref}:{ref}"
         for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
-        if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH)
+        if not (ref.startswith(EXEC_NAMESPACE) or ref in STASHES)
     ]
     scm.fetch_refspecs(
         url,
