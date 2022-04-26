@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -89,8 +90,10 @@ class LocalCeleryQueue(BaseStashQueue):
         from dvc_task.proc.process import ManagedProcess
 
         logger.debug("Spawning exp queue worker")
+        wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
+        node_name = f"dvc-exp-{wdir_hash}-1@localhost"
         ManagedProcess.spawn(
-            ["dvc", "exp", "queue-worker", "dvc-exp1@localhost"],
+            ["dvc", "exp", "queue-worker", node_name],
             wdir=self.wdir,
             name="dvc-exp-worker",
         )
