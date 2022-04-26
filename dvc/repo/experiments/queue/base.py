@@ -20,6 +20,7 @@ from funcy import cached_property
 from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
+from dvc.ui import ui
 
 from ..exceptions import CheckpointExistsError, ExperimentExistsError
 from ..executor.base import (
@@ -227,10 +228,9 @@ class BaseStashQueue(ABC):
                         else:
                             branch_name = f"{resume_rev[:7]}"
                         if self.scm.is_dirty():
-                            logger.info(
+                            ui.write(
                                 "Modified checkpoint experiment based on "
-                                "'%s' will be created",
-                                branch_name,
+                                f"'{branch_name}' will be created",
                             )
                             branch = None
                         elif (
@@ -267,10 +267,9 @@ class BaseStashQueue(ABC):
                                 )
                             raise DvcException("".join(err_msg))
                         else:
-                            logger.info(
-                                "Existing checkpoint experiment '%s' will be "
-                                "resumed",
-                                branch_name,
+                            ui.write(
+                                "Existing checkpoint experiment "
+                                f"'{branch_name}' will be resumed"
                             )
                         if name:
                             logger.warning(
