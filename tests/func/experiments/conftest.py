@@ -104,13 +104,6 @@ def http_auth_patch(mocker):
     return url
 
 
-@pytest.fixture(
-    params=[
-        True,
-        pytest.param(
-            False, marks=pytest.mark.xfail(reason="celery tests disabled")
-        ),
-    ]
-)
+@pytest.fixture(params=[True, False])
 def workspace(request) -> bool:
     return request.param
