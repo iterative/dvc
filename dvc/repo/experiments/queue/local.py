@@ -1,7 +1,16 @@
+import json
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Generator, List, Mapping, NamedTuple
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Generator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+)
 
 from funcy import cached_property, first
 from kombu.message import Message
@@ -13,6 +22,7 @@ from ..executor.base import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
     BaseExecutor,
+    ExecutorInfo,
     ExecutorResult,
 )
 from ..executor.local import WorkspaceExecutor
@@ -140,6 +150,15 @@ class LocalCeleryQueue(BaseStashQueue):
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
+    def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+        infofile = self.get_infofile_path(entry.stash_rev)
+        try:
+            with open(infofile, encoding="utf-8") as fobj:
+                executor_info = ExecutorInfo.from_dict(json.load(fobj))
+        except FileNotFoundError:
+            return None
+        return executor_info.result
+
 
 class WorkspaceQueue(BaseStashQueue):
     def put(self, *args, **kwargs) -> QueueEntry:
@@ -253,3 +272,6 @@ class WorkspaceQueue(BaseStashQueue):
             logger.debug("Collected experiment '%s'.", exp_rev[:7])
             results[exp_rev] = exec_result.exp_hash
         return results
+
+    def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+        raise NotImplementedError
