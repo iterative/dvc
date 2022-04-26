@@ -84,26 +84,44 @@ def SCM(
 
 
 class TqdmGit(Tqdm):
+    BAR_FMT = (
+        "{desc}|{bar}|"
+        "{postfix[info]}{n_fmt}/{total_fmt}"
+        " [{elapsed}, {rate_fmt:>11}]"
+    )
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("unit", "obj")
+        kwargs.setdefault("bar_format", self.BAR_FMT)
         super().__init__(*args, **kwargs)
+        self._last_phase = None
 
     def update_git(self, event: "GitProgressEvent") -> None:
         phase, completed, total, message, *_ = event
         if phase:
             message = (phase + " | " + message) if message else phase
         if message:
-            self.postfix["info"] = f" {message} | "
-        if completed:
+            self.set_msg(message)
+        force_refresh = (  # force-refresh progress bar when:
+            (total and completed and completed >= total)  # the task completes
+            or total != self.total  # the total changes
+            or phase != self._last_phase  # or, the phase changes
+        )
+        if completed is not None:
             self.update_to(completed, total)
+        if force_refresh:
+            self.refresh()
+        self._last_phase = phase
 
 
 def clone(url: str, to_path: str, **kwargs):
+    import os
+
     from scmrepo.exceptions import CloneError as InternalCloneError
 
     from dvc.repo.experiments.utils import fetch_all_exps
 
-    with TqdmGit(desc="Cloning") as pbar:
+    with TqdmGit(desc=f"Cloning {os.path.basename(url)}") as pbar:
         try:
             git = Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
             if "shallow_branch" not in kwargs:
