@@ -138,10 +138,8 @@ class Experiments:
             **kwargs,
         )
         if queue:
-            logger.info(
-                "Queued experiment '%s' for future execution.",
-                entry.stash_rev[:7],
-            )
+            name = entry.name or entry.stash_rev[:7]
+            ui.write(f"Queued experiment '{name}' for future execution.")
             return [entry.stash_rev]
         if tmp_dir:
             return self.reproduce_celery(entries=[entry])
@@ -202,18 +200,16 @@ class Experiments:
         for rev in revs:
             name = self.get_exact_name(rev)
             names.append(name if name else rev[:7])
-        logger.info("\nReproduced experiment(s): %s", ", ".join(names))
+        ui.write("\nReproduced experiment(s): {}".format(", ".join(names)))
         if tmp_dir:
-            logger.info(
+            ui.write(
                 "To apply the results of an experiment to your workspace "
                 "run:\n\n"
                 "\tdvc exp apply <exp>"
             )
         else:
-            logger.info(
-                "Experiment results have been applied to your workspace."
-            )
-        logger.info(
+            ui.write("Experiment results have been applied to your workspace.")
+        ui.write(
             "\nTo promote an experiment to a Git branch run:\n\n"
             "\tdvc exp branch <exp> <branch>\n"
         )
