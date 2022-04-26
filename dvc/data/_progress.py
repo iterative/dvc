@@ -8,9 +8,10 @@ class QueryingProgress(Tqdm):
 
         self._estimating_msg = msg_fmt.format(phase="Estimating size of")
         self._listing_msg = msg_fmt.format(phase="Querying")
+        self.desc = desc = msg_fmt.format(phase=phase)
         super().__init__(
             iterable=iterable,
-            desc=msg_fmt.format(phase=phase),
+            desc=desc,
             total=total,
             unit="files",
             unit_scale=False,
