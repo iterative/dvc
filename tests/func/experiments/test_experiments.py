@@ -169,7 +169,6 @@ def test_add_params(tmp_dir, scm, dvc, changes):
         dvc.experiments.run(stage.addressing, params=changes)
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
 @pytest.mark.parametrize("queue", [True, False])
 def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     from dvc.exceptions import InvalidArgumentError
@@ -244,7 +243,6 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{1}}") == init_rev
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
 def test_update_py_params(tmp_dir, scm, dvc):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.py", "INT = 1\n")
@@ -407,8 +405,9 @@ def test_no_scm(tmp_dir):
             getattr(dvc.experiments, cmd)()
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
 def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
+    if not workspace:
+        pytest.skip("celery tests disabled")
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.scm_gen("params.yaml", "foo: 1", commit="track params")
     stage = dvc.run(
@@ -421,12 +420,12 @@ def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
     )
 
     # copy.py is untracked
-    with caplog.at_level(logging.ERROR):
-        results = dvc.experiments.run(
-            stage.addressing, params=["foo=2"], tmp_dir=True
-        )
-        assert "Failed to reproduce experiment" in caplog.text
-        assert not results
+    # with caplog.at_level(logging.ERROR):
+    #     results = dvc.experiments.run(
+    #         stage.addressing, params=["foo=2"], tmp_dir=True
+    #     )
+    #     assert "Failed to reproduce experiment" in caplog.text
+    #     assert not results
 
     # dvc.yaml, copy.py are staged as new file but not committed
     scm.add(["dvc.yaml", "copy.py"])
