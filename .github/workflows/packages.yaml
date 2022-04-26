@@ -3,106 +3,11 @@ on:
   push:
     branches:
     - main
+  pull_request: {}
   release:
     types: [released, prereleased]
   workflow_dispatch:
 jobs:
-  deb:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v3
-      with:
-          fetch-depth: 0
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
-      with:
-        python-version: 3.9
-    - name: Set up Ruby 2.4
-      uses: actions/setup-ruby@v1.1.3
-      with:
-        ruby-version: 2.4
-    - name: Install deps
-      run: |
-        pip install .[all]
-        pip install -r scripts/build-requirements.txt
-        gem install --no-document fpm
-    - name: Build deb
-      run: python scripts/build.py deb
-    - name: Publish deb
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: scripts/fpm/dvc_${{ github.event.release.tag_name }}_amd64.deb
-        asset_name: dvc_${{ github.event.release.tag_name }}_amd64.deb
-        asset_content_type: binary/octet-stream
-  rpm:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
-      with:
-        python-version: 3.9
-    - name: Set up Ruby 2.4
-      uses: actions/setup-ruby@v1.1.3
-      with:
-        ruby-version: 2.4
-    - name: Install deps
-      run: |
-        pip install .[all]
-        pip install -r scripts/build-requirements.txt
-        gem install --no-document fpm
-    - name: Build rpm
-      run: python scripts/build.py rpm
-    - name: Publish rpm
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: scripts/fpm/dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm
-        asset_name: dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm
-        asset_content_type: binary/octet-stream
-  osxpkg:
-    runs-on: macos-10.15
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
-      with:
-        python-version: 3.9
-    - name: Set up Ruby 2.4
-      uses: actions/setup-ruby@v1.1.3
-      with:
-        ruby-version: 2.4
-    - name: Install deps
-      run: |
-        # available lxml (webdav dependency) wheels are built with an old
-        # SDK, which breaks osxpkg notarization. Building from scratch
-        # instead.
-        pip install .[all] --no-binary lxml
-        pip install -r scripts/build-requirements.txt
-        gem install --no-document fpm
-    - name: Build
-      run: python scripts/build.py osxpkg
-    - name: Publish
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: scripts/fpm/dvc-${{ github.event.release.tag_name }}.pkg
-        asset_name: dvc-${{ github.event.release.tag_name }}.pkg
-        asset_content_type: binary/octet-stream
   exe:
     runs-on: windows-2019
     steps:
@@ -115,11 +20,12 @@ jobs:
         python-version: 3.9
     - name: Install deps
       run: |
+        pip install -U pip wheel setuptools
         pip install .[all]
         pip install -r scripts/build-requirements.txt
     - name: Pull images
       run: |
-        dvc pull
+        dvc pull -vv
     - name: Build
       run: python scripts\build.py exe
       shell: cmd
@@ -133,25 +39,3 @@ jobs:
         asset_path: scripts/innosetup/dvc-${{ github.event.release.tag_name }}.exe
         asset_name: dvc-${{ github.event.release.tag_name }}.exe
         asset_content_type: binary/octet-stream
-  pip:
-    runs-on: ubuntu-18.04
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v3
-      with:
-        python-version: 3.7
-    - name: Install
-      run: pip install ".[all,tests]"
-    - name: Build packages
-      run: |
-        pip install -U pip
-        ./scripts/build_package.sh
-    - name: Publish packages to PyPI
-      if: github.event_name == 'release'
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}

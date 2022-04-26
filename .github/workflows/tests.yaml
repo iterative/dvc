@@ -12,37 +12,14 @@ env:
   SHELL: /bin/bash
 
 jobs:
-  lint:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
-    - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.9.1
-      with:
-        access_token: ${{ github.token }}
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v3
-      with:
-        python-version: 3.8
-    - name: Install requirements
-      run: |
-        pip install --upgrade pip setuptools wheel
-        pip install collective.checkdocs==0.2
-        pip install ".[dev]" pre-commit
-    - name: Check README
-      run: python setup.py checkdocs
-    - uses: pre-commit/action@v2.0.3
   tests:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
-        pyv: ["3.7", "3.8", "3.9", "3.10"]
+        os: [ubuntu-20.04]
+        pyv: ["3.7"]
     steps:
     - uses: actions/checkout@v3
       with:
