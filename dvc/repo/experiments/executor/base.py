@@ -22,6 +22,7 @@ from typing import (
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.stage.serialize import to_lockfile
+from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 
@@ -627,7 +628,7 @@ class BaseExecutor(ABC):
             if env2bool(DVC_EXP_AUTO_PUSH):
                 git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
                 cls._auto_push(dvc, scm, git_remote)
-            logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
+            ui.write(f"Checkpoint experiment iteration '{exp_rev[:7]}'.")
         except UnchangedExperimentError:
             pass
 
