@@ -40,11 +40,12 @@ def gc(
     removed = len(to_remove)
 
     delete_stashes = []
-    for _, entry in repo.experiments.workspace_queue.stash.stash_revs.items():
+    stash = repo.experiments.celery_queue.stash
+    for stash_rev, entry in stash.stash_revs.items():
         if not queued or entry.baseline_rev not in keep_revs:
-            delete_stashes.append(entry.stash_index)
-    for index in sorted(delete_stashes, reverse=True):
-        repo.experiments.workspace_queue.stash.drop(index)
+            delete_stashes.append(stash_rev)
+    if delete_stashes:
+        repo.experiments.celery_queue.remove(delete_stashes)
     removed += len(delete_stashes)
 
     return removed
