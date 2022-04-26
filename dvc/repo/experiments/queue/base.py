@@ -162,6 +162,10 @@ class BaseStashQueue(ABC):
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         """Reproduce queued experiments sequentially."""
 
+    @abstractmethod
+    def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+        """Return result of the specified item."""
+
     def _stash_exp(
         self,
         *args,

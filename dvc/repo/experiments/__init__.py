@@ -144,13 +144,7 @@ class Experiments:
             )
             return [entry.stash_rev]
         if tmp_dir:
-            self.celery_queue.spawn_worker()
-            # wait for task execution to start
-            while not self.celery_queue.proc.get(entry.stash_rev):
-                time.sleep(1)
-            for line in self.celery_queue.proc.follow(entry.stash_rev):
-                ui.write(line, end="")
-            return
+            return self.reproduce_celery(entries=[entry])
         if machine:
             # TODO: decide how to handle queued remote execution
             raise NotImplementedError
@@ -167,14 +161,41 @@ class Experiments:
             return last_applied
         return None
 
-    def reproduce_queued(self, **kwargs):
+    def reproduce_celery(
+        self, entries: Optional[Iterable[QueueEntry]] = None, **kwargs
+    ) -> Dict[str, str]:
+        results: Dict[str, str] = {}
+        if entries is None:
+            entries = list(self.celery_queue.iter_queued())
+        if not entries:
+            return results
+
         self.celery_queue.spawn_worker()
-        # wait for task execution to start
-        while not first(self.celery_queue.iter_active()):
-            time.sleep(1)
-        for entry in self.celery_queue.iter_active():
+        failed = []
+        for entry in entries:
+            # wait for task execution to start
+            while not self.celery_queue.proc.get(entry.stash_rev):
+                time.sleep(1)
             for line in self.celery_queue.proc.follow(entry.stash_rev):
                 ui.write(line, end="")
+            # wait for task collection to complete
+            while True:
+                result = self.celery_queue.get_result(entry)
+                if result is not None:
+                    if result.exp_hash is None:
+                        name = entry.name or entry.stash_rev[:7]
+                        failed.append(name)
+                        break
+                    exp_rev = self.scm.get_ref(str(result.ref_info))
+                    if exp_rev is not None:
+                        results[exp_rev] = result.exp_hash
+                        break
+                time.sleep(1)
+        if failed:
+            names = ", ".join(name for name in failed)
+            ui.error(f"Failed to reproduce experiment(s) '{names}'")
+        self._log_reproduced((rev for rev in results), True)
+        return results
 
     def _log_reproduced(self, revs: Iterable[str], tmp_dir: bool = False):
         names = []
