@@ -11,8 +11,7 @@ from dvc.utils.fs import as_atomic
 from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
 
-_SSH_TIMEOUT = 60 * 30
-_SSH_CONFIG_FILE = os.path.expanduser(os.path.join("~", ".ssh", "config"))
+DEFAULT_PORT = 22
 
 
 @wrap_with(threading.Lock())
@@ -30,8 +29,6 @@ def ask_password(host, user, port):
 class SSHFileSystem(FileSystem):
     scheme = Schemes.SSH
     REQUIRES = {"sshfs": "sshfs"}
-
-    DEFAULT_PORT = 22
     PARAM_CHECKSUM = "md5"
 
     @classmethod
@@ -65,11 +62,10 @@ class SSHFileSystem(FileSystem):
             or user_ssh_config.get("User")
             or getpass.getuser()
         )
-
         login_info["port"] = (
             config.get("port")
             or silent(int)(user_ssh_config.get("Port"))
-            or self.DEFAULT_PORT
+            or DEFAULT_PORT
         )
 
         if config.get("ask_password") and config.get("password") is None:
@@ -91,7 +87,7 @@ class SSHFileSystem(FileSystem):
                 os.path.expanduser(key) for key in raw_keys
             ]
 
-        login_info["timeout"] = config.get("timeout", _SSH_TIMEOUT)
+        login_info["timeout"] = config.get("timeout", 1800)
 
         # These two settings fine tune the asyncssh to use the
         # fastest encryption algorithm and disable compression
