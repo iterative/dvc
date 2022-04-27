@@ -1,11 +1,9 @@
-import json
-import os
 from typing import Any, Dict
 
 from celery import chain, shared_task
 from celery.utils.log import get_task_logger
 
-from dvc.utils.fs import makedirs, remove
+from dvc.utils.fs import remove
 
 from ..executor.base import ExecutorInfo
 from ..executor.local import TempDirExecutor
@@ -28,9 +26,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> None:
     )
     proc = repo.experiments.celery_queue.proc
     infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
-    makedirs(os.path.dirname(infofile), exist_ok=True)
-    with open(infofile, "w", encoding="utf-8") as fobj:
-        json.dump(executor.info.asdict(), fobj)
+    executor.info.dump_json(infofile)
     cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
 
     # schedule execution + cleanup
@@ -57,19 +53,22 @@ def collect_exp(
 
     entry = QueueEntry.from_dict(entry_dict)
     repo = Repo(entry.dvc_root)
-    with open(infofile, encoding="utf-8") as fobj:
-        executor_info = ExecutorInfo.from_dict(json.load(fobj))
+    executor_info = ExecutorInfo.load_json(infofile)
     logger.debug("Collecting experiment info '%s'", str(executor_info))
     executor = TempDirExecutor.from_info(executor_info)
     exec_result = executor_info.result
-    if exec_result is not None:
-        results = BaseStashQueue.collect_executor(
-            repo.experiments, executor, exec_result
-        )
-        for rev in results:
-            logger.debug("Collected experiment '%s'", rev[:7])
-    else:
-        logger.debug("Exec result was None")
+    try:
+        if exec_result is not None:
+            results = BaseStashQueue.collect_executor(
+                repo.experiments, executor, exec_result
+            )
+            for rev in results:
+                logger.debug("Collected experiment '%s'", rev[:7])
+        else:
+            logger.debug("Exec result was None")
+    finally:
+        executor_info.collected = True
+        executor_info.dump_json(infofile)
 
 
 @shared_task(ignore_result=True)
