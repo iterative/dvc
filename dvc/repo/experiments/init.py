@@ -177,8 +177,7 @@ def init_deps(stage: PipelineStage) -> List["Dependency"]:
         localfs.makedirs(path)
     for path in files:
         localfs.makedirs(localfs.path.parent(path), exist_ok=True)
-        with localfs.open(path, "w", encoding="utf-8"):
-            pass
+        localfs.touch(path)
 
     return new_deps
 

@@ -10,8 +10,6 @@ from .base import FileSystem
 class MemoryFileSystem(FileSystem):  # pylint:disable=abstract-method
     scheme = Schemes.MEMORY
     PARAM_CHECKSUM = "md5"
-    TRAVERSE_PREFIX_LEN = 2
-    DEFAULT_BLOCKSIZE = 4096
 
     def __eq__(self, other):
         # NOTE: all fsspec MemoryFileSystem instances are equivalent and use a
@@ -26,8 +24,3 @@ class MemoryFileSystem(FileSystem):  # pylint:disable=abstract-method
         from fsspec.implementations.memory import MemoryFileSystem as MemFS
 
         return MemFS(**self.fs_args)
-
-    def open(self, *args, **kwargs):
-        with super().open(*args, **kwargs) as fobj:
-            fobj.blocksize = self.DEFAULT_BLOCKSIZE
-            return fobj

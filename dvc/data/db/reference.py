@@ -1,4 +1,3 @@
-import io
 import logging
 import os
 from typing import TYPE_CHECKING, Dict
@@ -37,10 +36,10 @@ class ReferenceObjectDB(ObjectDB):
             pass
         fs_path = self.hash_to_path(hash_info.value)
         try:
-            with self.fs.open(fs_path, "rb") as fobj:
-                ref_file = ReferenceHashFile.from_bytes(
-                    fobj.read(), fs_cache=self._fs_cache
-                )
+            ref_file = ReferenceHashFile.from_bytes(
+                self.fs.cat_file(fs_path),
+                fs_cache=self._fs_cache,
+            )
         except OSError:
             raise FileNotFoundError
         try:
@@ -70,10 +69,8 @@ class ReferenceObjectDB(ObjectDB):
             )
         ref_file = ReferenceHashFile(from_info, from_fs, hash_info)
         self._obj_cache[hash_info] = ref_file
-        ref_fobj = io.BytesIO(ref_file.to_bytes())
-        ref_fobj.seek(0)
         try:
-            self.fs.upload(ref_fobj, to_info)
+            self.fs.pipe_file(to_info, ref_file.to_bytes())
         except OSError as exc:
             if isinstance(exc, FileExistsError) or (
                 os.name == "nt"
