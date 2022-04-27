@@ -188,6 +188,54 @@ class FileSystem:
     ) -> "IO":  # pylint: disable=arguments-differ
         return self.fs.open(path, mode=mode, encoding=encoding, **kwargs)
 
+    def cat(
+        self,
+        path: Union[AnyFSPath, List[AnyFSPath]],
+        recursive: bool = False,
+        on_error: "Literal['raise', 'omit', 'return']" = "raise",
+        **kwargs: Any,
+    ) -> Union[bytes, Dict[AnyFSPath, bytes]]:
+        return self.fs.cat(
+            path, recursive=recursive, on_error=on_error, **kwargs
+        )
+
+    def cat_ranges(
+        self,
+        paths: List[AnyFSPath],
+        starts: List[int],
+        ends: List[int],
+        max_gap: int = None,
+        **kwargs,
+    ) -> List[bytes]:
+        return self.fs.cat_ranges(
+            paths, starts, ends, max_gap=max_gap, **kwargs
+        )
+
+    def cat_file(
+        self,
+        path: AnyFSPath,
+        start: int = None,
+        end: int = None,
+        **kwargs: Any,
+    ) -> bytes:
+        return self.fs.cat_file(path, start=start, end=end, **kwargs)
+
+    def pipe_file(self, path: AnyFSPath, value: bytes, **kwargs: Any) -> None:
+        return self.fs.pipe_file(path, value, **kwargs)
+
+    def pipe(
+        self,
+        path: Union[AnyFSPath, Dict[AnyFSPath, bytes]],
+        value: Optional[bytes] = None,
+        **kwargs: Any,
+    ) -> None:
+        return self.fs.pipe(path, value=value, **kwargs)
+
+    def touch(
+        self, path: AnyFSPath, truncate: bool = True, **kwargs: Any
+    ) -> None:
+        return self.fs.touch(path, truncate=truncate, **kwargs)
+
     def checksum(self, path: AnyFSPath) -> str:
         return self.fs.checksum(path)
 

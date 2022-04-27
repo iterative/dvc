@@ -62,8 +62,7 @@ class Tree(HashFile):
 
         memfs = MemoryFileSystem()
         fs_path = "memory://{}".format(tmp_fname(""))
-        with memfs.open(fs_path, "wb") as fobj:
-            fobj.write(self.as_bytes())
+        memfs.pipe_file(fs_path, self.as_bytes())
         self.fs = memfs
         self.fs_path = fs_path
         if hash_info:
