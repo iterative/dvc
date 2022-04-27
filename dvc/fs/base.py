@@ -64,9 +64,6 @@ class FileSystem:
     TRAVERSE_THRESHOLD_SIZE = 500000
     CAN_TRAVERSE = True
 
-    # Needed for some providers, and http open()
-    CHUNK_SIZE = 64 * 1024 * 1024  # 64 MiB
-
     PARAM_CHECKSUM: ClassVar[Optional[str]] = None
 
     def __init__(self, **kwargs):
