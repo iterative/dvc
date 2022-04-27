@@ -73,6 +73,7 @@ class ExecutorInfo:
     dvc_dir: str
     name: Optional[str] = None
     wdir: Optional[str] = None
+    collected: bool = False
     result_hash: Optional[str] = None
     result_ref: Optional[str] = None
     result_force: bool = False
@@ -101,6 +102,12 @@ class ExecutorInfo:
         makedirs(os.path.dirname(filename), exist_ok=True)
         with modify_json(filename) as d:
             d.update(self.asdict())
+
+    @classmethod
+    def load_json(cls, filename: str) -> "ExecutorInfo":
+        from dvc.utils.serialize import load_json
+
+        return cls.from_dict(load_json(filename))
 
 
 _T = TypeVar("_T", bound="BaseExecutor")

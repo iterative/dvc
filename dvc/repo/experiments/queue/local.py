@@ -1,7 +1,7 @@
 import hashlib
-import json
 import logging
 import os
+import time
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
@@ -155,12 +155,15 @@ class LocalCeleryQueue(BaseStashQueue):
 
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
         infofile = self.get_infofile_path(entry.stash_rev)
-        try:
-            with open(infofile, encoding="utf-8") as fobj:
-                executor_info = ExecutorInfo.from_dict(json.load(fobj))
-        except FileNotFoundError:
-            return None
-        return executor_info.result
+        while True:
+            try:
+                executor_info = ExecutorInfo.load_json(infofile)
+                if executor_info.collected:
+                    return executor_info.result
+            except FileNotFoundError:
+                # Infofile will not be created until execution begins
+                pass
+            time.sleep(1)
 
 
 class WorkspaceQueue(BaseStashQueue):
