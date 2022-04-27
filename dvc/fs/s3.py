@@ -1,4 +1,3 @@
-import functools
 import os
 import threading
 from collections import defaultdict
@@ -7,14 +6,13 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from ._callback import DEFAULT_CALLBACK
 from .base import ObjectFileSystem
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 
 # pylint:disable=abstract-method
-class BaseS3FileSystem(ObjectFileSystem):
+class S3FileSystem(ObjectFileSystem):
     scheme = Schemes.S3
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
@@ -160,73 +158,3 @@ class BaseS3FileSystem(ObjectFileSystem):
 
     def unstrip_protocol(self, path):
         return "s3://" + path.lstrip("/")
-
-
-def _translate_exceptions(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except Exception as exc:
-            from s3fs.errors import translate_boto_error
-
-            raise translate_boto_error(exc)
-
-    return wrapper
-
-
-class S3FileSystem(BaseS3FileSystem):  # pylint:disable=abstract-method
-    @wrap_prop(threading.Lock())
-    @cached_property
-    def s3(self):
-        import boto3
-
-        login_info = self.fs_args
-        client_kwargs = login_info.get("client_kwargs", {})
-        session_opts = {
-            "profile_name": login_info.get("profile"),
-            "region_name": client_kwargs.get("region_name"),
-        }
-
-        if "key" in login_info:
-            session_opts["aws_access_key_id"] = login_info["key"]
-        if "secret" in login_info:
-            session_opts["aws_secret_access_key"] = login_info["secret"]
-        if "token" in login_info:
-            session_opts["aws_session_token"] = login_info["token"]
-
-        session = boto3.session.Session(**session_opts)
-
-        return session.resource(
-            "s3",
-            endpoint_url=client_kwargs.get("endpoint_url"),
-            use_ssl=login_info["use_ssl"],
-            verify=client_kwargs.get("verify"),
-        )
-
-    def _get_obj(self, path):
-        bucket_name, key, _ = self.fs.split_path(path)
-        bucket = self.s3.Bucket(bucket_name)
-        return bucket.Object(key)
-
-    @_translate_exceptions
-    def put_file(
-        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        callback.set_size(os.path.getsize(from_file))
-        obj = self._get_obj(to_info)
-        obj.upload_file(
-            from_file,
-            Callback=callback.relative_update,
-            ExtraArgs=self.fs_args.get("s3_additional_kwargs"),
-            Config=self._transfer_config,
-        )
-        self.fs.invalidate_cache(self.path.parent(to_info))
-
-    @_translate_exceptions
-    def get_file(
-        self, from_info, to_info, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        obj = self._get_obj(from_info)
-        callback.set_size(obj.content_length)
-        obj.download_file(to_info, Callback=callback.relative_update)
