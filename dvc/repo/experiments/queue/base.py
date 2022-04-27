@@ -165,7 +165,10 @@ class BaseStashQueue(ABC):
 
     @abstractmethod
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
-        """Return result of the specified item."""
+        """Return result of the specified item.
+
+        This method blocks until the specified item has been collected.
+        """
 
     def _stash_exp(
         self,
