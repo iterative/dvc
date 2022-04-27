@@ -52,14 +52,16 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
             content = renderer.get_filled_template(skip_anchors=["data"])
         else:
             content = renderer.get_filled_template()
-        return [
-            {
-                TYPE_KEY: renderer.TYPE,
-                REVISIONS_KEY: sorted(grouped.keys()),
-                "content": json.loads(content),
-                "datapoints": grouped,
-            }
-        ]
+        if grouped:
+            return [
+                {
+                    TYPE_KEY: renderer.TYPE,
+                    REVISIONS_KEY: sorted(grouped.keys()),
+                    "content": json.loads(content),
+                    "datapoints": grouped,
+                }
+            ]
+        return []
     if renderer.TYPE == "image":
         return [
             {

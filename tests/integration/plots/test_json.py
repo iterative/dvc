@@ -235,12 +235,22 @@ def test_repo_with_plots(
         split_json_result,
     )
     verify_vega_props("confusion.json", json_result, **confusion_props)
+
+
+@pytest.mark.vscode
+def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
     from dvc.utils.fs import remove
+
+    next(repo_with_plots())
 
     # even if there is no data, call should be successful
     remove(tmp_dir / ".dvc" / "cache")
     remove("linear.json")
     remove("confusion.json")
     remove("image.png")
-    call(capsys)
-    call(capsys, subcommand="diff")
+
+    for s in {"show", "diff"}:
+        _, json_result, split_json_result = call(capsys, subcommand=s)
+        for p in {"linear.json", "confusion.json", "image.png"}:
+            assert json_result[p] == []
+            assert split_json_result[p] == []
