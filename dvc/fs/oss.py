@@ -16,7 +16,6 @@ class OSSFileSystem(ObjectFileSystem):
     scheme = Schemes.OSS
     REQUIRES = {"ossfs": "ossfs"}
     PARAM_CHECKSUM = "etag"
-    COPY_POLL_SECONDS = 5
     LIST_OBJECT_PAGE_SIZE = 100
 
     def _prepare_credentials(self, **config):
