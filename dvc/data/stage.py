@@ -32,7 +32,7 @@ def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
 
     fs_path = upload_odb.fs.path
     tmp_info = fs_path.join(upload_odb.fs_path, tmp_fname())
-    with fs.open(from_fs_path, mode="rb", chunk_size=fs.CHUNK_SIZE) as stream:
+    with fs.open(from_fs_path, mode="rb") as stream:
         stream = HashedStreamReader(stream)
         size = fs.size(from_fs_path)
         with FsspecCallback.as_tqdm_callback(
