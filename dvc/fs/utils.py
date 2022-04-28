@@ -1,20 +1,40 @@
 import errno
 import logging
 import os
-from typing import TYPE_CHECKING, List, Optional
+from contextlib import nullcontext
+from typing import IO, TYPE_CHECKING, List, Optional, Union, cast
 
+from ..utils.fs import as_atomic
+from ._callback import DEFAULT_CALLBACK, FsspecCallback
 from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
-    from .base import FileSystem
-    from .types import AnyPath
+    from dvc.types import AnyPath
+
+    from .base import AnyFSPath, FileSystem
 
 logger = logging.getLogger(__name__)
 
 
+def upload(
+    fs: "FileSystem",
+    lpath: Union["AnyFSPath", IO],
+    rpath: "AnyFSPath",
+    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    size: int = None,
+    atomic: bool = False,
+):
+    """Atomic version of `fs.put_file`."""
+    # no need for `create_parents` here
+    # it should depend on `fs.put_file` to handle that.
+    context = as_atomic(fs, rpath) if atomic else nullcontext(rpath)
+    with context as tmp_file:
+        return fs.put_file(lpath, tmp_file, callback=callback, size=size)
+
+
 def _link(
-    link: "AnyPath",
+    link: "str",
     from_fs: "FileSystem",
     from_path: "AnyPath",
     to_fs: "FileSystem",
@@ -34,36 +54,74 @@ def _link(
         ) from exc
 
 
-def _copy(
+def fileobj_size(
+    fs: "FileSystem", fileobj: "IO", path: "AnyFSPath"
+) -> Optional[int]:
+    """Try to deduce size of the file object.
+
+    This does not use `.seek`, instead it tries to deduce that from
+    AbstractBufferredFile.size if it exists, otherwise it fetches from
+    the filesystem.
+    """
+    size = cast(Optional[int], getattr(fileobj, "size", None))
+    return size or fs.size(path)
+
+
+def copy(
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
+    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    atomic: bool = False,
 ) -> None:
+    logger.debug("Transferring '%s' to '%s'", from_path, to_path)
+
     if isinstance(from_fs, LocalFileSystem):
-        return to_fs.upload(from_path, to_path)
+        return upload(
+            to_fs, from_path, to_path, callback=callback, atomic=atomic
+        )
 
     if isinstance(to_fs, LocalFileSystem):
-        return from_fs.download_file(from_path, to_path)
+        return from_fs.download_file(
+            from_path, to_path, callback=callback, atomic=atomic
+        )
 
     with from_fs.open(from_path, mode="rb") as fobj:
-        size = from_fs.size(from_path)
-        return to_fs.upload(fobj, to_path, size=size)
+        size = fileobj_size(from_fs, fobj, from_path)
+        return upload(
+            to_fs, fobj, to_path, callback=callback, size=size, atomic=atomic
+        )
 
 
 def _try_links(
-    links: List["AnyPath"],
+    links: List["str"],
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
+    callback: "FsspecCallback" = None,
+    atomic: bool = False,
 ) -> None:
     error = None
     while links:
         link = links[0]
 
         if link == "copy":
-            return _copy(from_fs, from_path, to_fs, to_path)
+            with FsspecCallback.as_tqdm_callback(
+                callback,
+                desc=from_fs.path.name(from_path),
+                bytes=True,
+                total=-1,
+            ) as cb:
+                return copy(
+                    from_fs,
+                    from_path,
+                    to_fs,
+                    to_path,
+                    callback=cb,
+                    atomic=atomic,
+                )
 
         try:
             return _link(link, from_fs, from_path, to_fs, to_path)
@@ -81,11 +139,12 @@ def _try_links(
 
 def transfer(
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
     hardlink: bool = False,
-    links: Optional[List["AnyPath"]] = None,
+    links: List["str"] = None,
+    atomic: bool = False,
 ) -> None:
     try:
         assert not (hardlink and links)
@@ -93,7 +152,7 @@ def transfer(
             links = links or ["reflink", "hardlink", "copy"]
         else:
             links = links or ["reflink", "copy"]
-        _try_links(links, from_fs, from_path, to_fs, to_path)
+        _try_links(links, from_fs, from_path, to_fs, to_path, atomic=atomic)
     except OSError as exc:
         # If the target file already exists, we are going to simply
         # ignore the exception (#4992).
@@ -114,11 +173,11 @@ def transfer(
 
 
 def _test_link(
-    link: "AnyPath",
+    link: "str",
     from_fs: "FileSystem",
-    from_file: "AnyPath",
+    from_file: "AnyFSPath",
     to_fs: "FileSystem",
-    to_file: "AnyPath",
+    to_file: "AnyFSPath",
 ) -> bool:
     try:
         _try_links([link], from_fs, from_file, to_fs, to_file)
@@ -136,12 +195,12 @@ def _test_link(
 
 
 def test_links(
-    links: List["AnyPath"],
+    links: List["str"],
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
-) -> List["AnyPath"]:
+    to_path: "AnyFSPath",
+) -> List["AnyFSPath"]:
     from dvc.utils import tmp_fname
 
     from_file = from_fs.path.join(from_path, tmp_fname())

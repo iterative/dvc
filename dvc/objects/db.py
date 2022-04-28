@@ -101,6 +101,7 @@ class ObjectDB:
             self.fs,
             to_info,
             hardlink=hardlink,
+            atomic=True,
         )
 
     def add(
