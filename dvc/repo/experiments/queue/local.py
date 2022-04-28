@@ -16,6 +16,7 @@ from typing import (
 from funcy import cached_property, first
 from kombu.message import Message
 
+from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
 
 from ..exceptions import ExpQueueEmptyError
@@ -92,11 +93,13 @@ class LocalCeleryQueue(BaseStashQueue):
         logger.debug("Spawning exp queue worker")
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
         node_name = f"dvc-exp-{wdir_hash}-1@localhost"
-        ManagedProcess.spawn(
-            ["dvc", "exp", "queue-worker", node_name],
-            wdir=self.wdir,
-            name="dvc-exp-worker",
-        )
+        cmd = ["exp", "queue-worker", node_name]
+        if os.name == "nt":
+            daemonize(cmd)
+        else:
+            ManagedProcess.spawn(
+                ["dvc"] + cmd, wdir=self.wdir, name="dvc-exp-worker"
+            )
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
