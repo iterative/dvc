@@ -316,9 +316,9 @@ class FileSystem:
         from_file: Union[AnyFSPath, IO],
         to_info: AnyFSPath,
         callback: FsspecCallback = DEFAULT_CALLBACK,
+        size: int = None,
         **kwargs,
     ) -> None:
-        size = kwargs.pop("size", None)
         if size:
             callback.set_size(size)
         if hasattr(from_file, "read"):
