@@ -6,6 +6,7 @@ import os
 import platform
 import sys
 from subprocess import Popen
+from typing import List
 
 from dvc.env import DVC_DAEMON
 from dvc.utils import fix_env, is_binary
@@ -99,11 +100,13 @@ def daemon(args):
     Args:
         args (list): list of arguments to append to `dvc daemon` command.
     """
+    daemonize(["daemon", "-q"] + args)
+
+
+def daemonize(cmd: List[str]):
     if os.environ.get(DVC_DAEMON):
         logger.debug("skipping launching a new daemon.")
         return
-
-    cmd = ["daemon", "-q"] + args
 
     env = fix_env()
     if not is_binary():
