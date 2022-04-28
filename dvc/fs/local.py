@@ -87,9 +87,7 @@ class FsspecLocalFileSystem(AbstractFileSystem):
     def put_file(self, lpath, rpath, callback=None, **kwargs):
         parent = self._parent(rpath)
         makedirs(parent, exist_ok=True)
-        tmp_file = os.path.join(parent, tmp_fname())
-        copyfile(lpath, tmp_file, callback=callback)
-        os.replace(tmp_file, rpath)
+        copyfile(lpath, rpath, callback=callback)
 
     def get_file(self, rpath, lpath, callback=None, **kwargs):
         copyfile(rpath, lpath, callback=callback)
