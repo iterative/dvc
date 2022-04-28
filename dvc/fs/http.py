@@ -144,10 +144,13 @@ class HTTPFileSystem(FileSystem):
         from_file: Union[AnyFSPath, IO],
         to_info: AnyFSPath,
         callback: FsspecCallback = DEFAULT_CALLBACK,
+        size: int = None,
         **kwargs,
     ) -> None:
         kwargs.setdefault("method", self.upload_method)
-        super().put_file(from_file, to_info, callback=callback, **kwargs)
+        super().put_file(
+            from_file, to_info, callback=callback, size=size, **kwargs
+        )
 
     # pylint: disable=arguments-differ
 
