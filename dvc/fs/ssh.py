@@ -127,7 +127,14 @@ class SSHFileSystem(FileSystem):
             super().upload_fobj(fobj, tmp_file, **kwargs)
 
     def put_file(
-        self, from_file, to_info, callback=DEFAULT_CALLBACK, **kwargs
+        self,
+        from_file,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        size=None,
+        **kwargs,
     ):
         with as_atomic(self, to_info) as tmp_file:
-            super().put_file(from_file, tmp_file, callback=callback, **kwargs)
+            super().put_file(
+                from_file, tmp_file, callback=callback, size=size, **kwargs
+            )
