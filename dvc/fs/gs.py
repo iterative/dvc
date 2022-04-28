@@ -17,6 +17,7 @@ class GSFileSystem(ObjectFileSystem):
         login_info = {"consistency": None}
         login_info["project"] = config.get("projectname")
         login_info["token"] = config.get("credentialpath")
+        login_info["session_kwargs"] = {"trust_env": True}
         return login_info
 
     @wrap_prop(threading.Lock())
