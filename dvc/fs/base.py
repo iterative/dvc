@@ -318,7 +318,7 @@ class FileSystem:
         callback: FsspecCallback = DEFAULT_CALLBACK,
         **kwargs,
     ) -> None:
-        size = kwargs.pop("size")
+        size = kwargs.pop("size", None)
         if size:
             callback.set_size(size)
         if hasattr(from_file, "read"):
