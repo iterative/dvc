@@ -183,7 +183,7 @@ class BaseExecutorManager(ABC, Mapping):
                     executor.reproduce,
                     info=executor.info,
                     rev=rev,
-                    queue=pid_q,
+                    queue=pid_q,  # type: ignore[arg-type]
                     infofile=infofile,
                     log_level=logger.getEffectiveLevel(),
                 )
