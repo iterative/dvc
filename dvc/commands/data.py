@@ -78,9 +78,9 @@ class CmdDataStatus(CmdBase):
     def _patch_clone(self):
         from funcy import monkey
 
-        from dvc.scm import Git
+        from dvc import scm
 
-        @monkey(Git, "clone")
+        @monkey(scm, "clone")
         def clone(url, *args, **kwargs):
             with print_durations(f"cloning {os.path.basename(url)}"):
                 return clone.original(url, *args, **kwargs)
