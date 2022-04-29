@@ -26,25 +26,29 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
             "isexec": bool,
         }
     """
-    from . import Repo
+    from dvc.repo import Repo
 
     with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
-        path = path or ""
-
-        ret = _ls(repo.repo_fs, path, recursive, dvc_only)
-
-        if path and not ret:
-            raise PathMissingError(path, repo, dvc_only=dvc_only)
-
-        ret_list = []
-        for path, info in ret.items():
-            info["path"] = path
-            ret_list.append(info)
-        ret_list.sort(key=lambda f: f["path"])
-        return ret_list
+        # pylint: disable=protected-access
+        return repo._ls(path=path, recursive=recursive, dvc_only=dvc_only)
 
 
-def _ls(fs, path, recursive=None, dvc_only=False):
+def _ls(repo, path=None, recursive=None, dvc_only=False):
+    path = path or ""
+    ret = list_files(repo.repo_fs, path, recursive, dvc_only)
+
+    if path and not ret:
+        raise PathMissingError(path, repo, dvc_only=dvc_only)
+
+    ret_list = []
+    for path, info in ret.items():
+        info["path"] = path
+        ret_list.append(info)
+    ret_list.sort(key=lambda f: f["path"])
+    return ret_list
+
+
+def list_files(fs, path, recursive=None, dvc_only=False):
     try:
         fs_path = fs.info(path)["name"]
     except FileNotFoundError:
