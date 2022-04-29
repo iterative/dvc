@@ -312,7 +312,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
-    def ls(self, path, detail=True, **kwargs):
+    def ls(self, path, detail=True, dvc_only=False, **kwargs):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         repo = dvc_fs.repo if dvc_fs else self.repo
@@ -325,7 +325,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 for entry in dvc_fs.ls(dvc_path, detail=False):
                     names.add(dvc_fs.path.name(entry))
 
-        if fs:
+        if not dvc_only and fs:
             try:
                 for entry in dvcignore.ls(
                     fs, fs_path, detail=False, ignore_subrepos=ignore_subrepos
