@@ -205,8 +205,6 @@ def test_to_json_vega_split(mocker):
 
 
 def test_to_json_image(mocker):
-    import os
-
     image_renderer = mocker.MagicMock()
     image_renderer.TYPE = "image"
     image_renderer.datapoints = [
@@ -215,7 +213,7 @@ def test_to_json_image(mocker):
     ]
     result = to_json(image_renderer)
     assert result[0] == {
-        "url": os.path.abspath(image_renderer.datapoints[0].get(SRC_FIELD)),
+        "url": image_renderer.datapoints[0].get(SRC_FIELD),
         REVISIONS_KEY: [image_renderer.datapoints[0].get(REVISION_FIELD)],
         TYPE_KEY: image_renderer.TYPE,
     }

@@ -1,5 +1,4 @@
 import json
-import os
 from collections import defaultdict
 from typing import Dict, List, Union
 
@@ -67,7 +66,7 @@ def to_json(renderer, split: bool = False) -> List[Dict]:
             {
                 TYPE_KEY: renderer.TYPE,
                 REVISIONS_KEY: [datapoint.get(REVISION_FIELD)],
-                "url": os.path.abspath(datapoint.get(SRC_FIELD)),
+                "url": datapoint.get(SRC_FIELD),
             }
             for datapoint in renderer.datapoints
         ]
