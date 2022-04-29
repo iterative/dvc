@@ -51,7 +51,9 @@ def _ls(fs, path, recursive=None, dvc_only=False):
         return {}
 
     infos = {}
-    for root, dirs, files in fs.walk(fs_path, dvcfiles=True):
+    for root, dirs, files in fs.walk(
+        fs_path, dvcfiles=True, dvc_only=dvc_only
+    ):
         entries = chain(files, dirs) if not recursive else files
 
         for entry in entries:
