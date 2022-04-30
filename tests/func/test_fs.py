@@ -231,7 +231,7 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     fs = cls(**config)
 
     with io.BytesIO(b"foo") as stream:
-        fs.put_file(stream, (cloud / "dir" / "foo").fs_path)
+        fs.upload(stream, (cloud / "dir" / "foo").fs_path)
 
     assert fs.isdir((cloud / "dir").fs_path)
     assert fs.exists((cloud / "dir" / "foo").fs_path)
@@ -242,12 +242,29 @@ def test_fs_makedirs_on_upload_and_copy(dvc, cloud):
     assert fs.exists((cloud / "dir2" / "foo").fs_path)
 
 
+def test_upload_callback(tmp_dir, dvc, cloud):
+    tmp_dir.gen("foo", "foo")
+    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
+    fs = cls(**config)
+    expected_size = os.path.getsize(tmp_dir / "foo")
+
+    callback = FsspecCallback()
+    fs.upload(
+        (tmp_dir / "foo").fs_path,
+        (cloud / "foo").fs_path,
+        callback=callback,
+    )
+
+    assert callback.size == expected_size
+    assert callback.value == expected_size
+
+
 def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
 
     (tmp_dir / "to_upload").write_text("foo")
-    fs.put_file((tmp_dir / "to_upload").fs_path, (cloud / "foo").fs_path)
+    fs.upload((tmp_dir / "to_upload").fs_path, (cloud / "foo").fs_path)
     expected_size = fs.size((cloud / "foo").fs_path)
 
     callback = FsspecCallback()

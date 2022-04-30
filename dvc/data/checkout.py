@@ -138,14 +138,7 @@ class Link:
 
         cache.makedirs(cache.fs.path.parent(to_path))
         try:
-            transfer(
-                cache.fs,
-                from_path,
-                to_fs,
-                to_path,
-                links=self._links,
-                atomic=False,
-            )
+            transfer(cache.fs, from_path, to_fs, to_path, links=self._links)
         except FileNotFoundError as exc:
             raise CheckoutError([to_path]) from exc
         except OSError as exc:

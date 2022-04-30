@@ -6,7 +6,9 @@ from funcy import cached_property, memoize, silent, wrap_prop, wrap_with
 
 from dvc import prompt
 from dvc.scheme import Schemes
+from dvc.utils.fs import as_atomic
 
+from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
 
 DEFAULT_PORT = 22
@@ -116,3 +118,23 @@ class SSHFileSystem(FileSystem):
         from sshfs import SSHFileSystem as _SSHFileSystem
 
         return _SSHFileSystem(**self.fs_args)
+
+    # Ensure that if an interrupt happens during the transfer, we don't
+    # pollute the cache.
+
+    def upload_fobj(self, fobj, to_info, **kwargs):
+        with as_atomic(self, to_info) as tmp_file:
+            super().upload_fobj(fobj, tmp_file, **kwargs)
+
+    def put_file(
+        self,
+        from_file,
+        to_info,
+        callback=DEFAULT_CALLBACK,
+        size=None,
+        **kwargs,
+    ):
+        with as_atomic(self, to_info) as tmp_file:
+            super().put_file(
+                from_file, tmp_file, callback=callback, size=size, **kwargs
+            )
