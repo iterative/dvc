@@ -175,7 +175,7 @@ class SSHExecutor(BaseExecutor):
             posixpath.join(self._repo_abspath, self.dvc_dir)
         )
         assert self._setup_script
-        fs.put_file(self._setup_script, script_path)
+        fs.upload(self._setup_script, script_path)
 
     def _ssh_cmd(self, sshfs, cmd, chdir=None, **kwargs):
         working_dir = chdir or self.root_dir
