@@ -6,8 +6,13 @@ on:
   release:
     types: [released, prereleased]
   workflow_dispatch:
+permissions:
+  contents: read
+
 jobs:
   deb:
+    permissions:
+      contents: write  # for actions/upload-release-asset to upload release asset
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v3
@@ -39,6 +44,8 @@ jobs:
         asset_name: dvc_${{ github.event.release.tag_name }}_amd64.deb
         asset_content_type: binary/octet-stream
   rpm:
+    permissions:
+      contents: write  # for actions/upload-release-asset to upload release asset
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v3
@@ -70,6 +77,8 @@ jobs:
         asset_name: dvc-${{ github.event.release.tag_name }}-1.x86_64.rpm
         asset_content_type: binary/octet-stream
   osxpkg:
+    permissions:
+      contents: write  # for actions/upload-release-asset to upload release asset
     runs-on: macos-10.15
     steps:
     - uses: actions/checkout@v3
@@ -104,6 +113,8 @@ jobs:
         asset_name: dvc-${{ github.event.release.tag_name }}.pkg
         asset_content_type: binary/octet-stream
   exe:
+    permissions:
+      contents: write  # for actions/upload-release-asset to upload release asset
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v3
