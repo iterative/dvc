@@ -76,6 +76,8 @@ class BaseS3FileSystem(ObjectFSWrapper):
         return self._split_s3_config(s3_config)
 
     def _prepare_credentials(self, **config):
+        from s3fs.utils import SSEParams
+
         from dvc.config import ConfigError
         from dvc.utils.flatten import flatten, unflatten
 
@@ -103,9 +105,28 @@ class BaseS3FileSystem(ObjectFSWrapper):
 
         # encryptions
         additional = login_info["s3_additional_kwargs"]
-        additional["ServerSideEncryption"] = config.get("sse")
-        additional["SSEKMSKeyId"] = config.get("sse_kms_key_id")
+        sse_customer_key = None
+        if config.get("sse_customer_key"):
+            if config.get("sse_kms_key_id"):
+                raise ConfigError(
+                    "`sse_kms_key_id` and `sse_customer_key` AWS S3 config "
+                    "options are mutually exclusive"
+                )
+            import base64
+
+            sse_customer_key = base64.b64decode(config.get("sse_customer_key"))
+        sse_customer_algorithm = config.get("sse_customer_algorithm")
+        if not sse_customer_algorithm:
+            sse_customer_algorithm = "AES256"
+        sse_params = SSEParams(
+            server_side_encryption=config.get("sse"),
+            sse_customer_algorithm=sse_customer_algorithm,
+            sse_customer_key=sse_customer_key,
+            sse_kms_key_id=config.get("sse_kms_key_id"),
+        )
+        additional.update(sse_params.to_kwargs())
         additional["ACL"] = config.get("acl")
+
         for grant_option, grant_key in self._GRANTS.items():
             if config.get(grant_option):
                 if additional["ACL"]:

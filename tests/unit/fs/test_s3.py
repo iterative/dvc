@@ -11,6 +11,8 @@ url = f"s3://{bucket_name}/{prefix}"
 key_id = "key-id"
 key_secret = "key-secret"
 session_token = "session-token"
+sse_customer_key = "3v2Q08ia8HOMGi5N21vsXI1fyfGAM6aVkW5pMu0A5dE="
+sse_customer_algorithm = "AES256"
 
 
 @pytest.fixture(autouse=True)
@@ -136,3 +138,31 @@ def test_key_id_and_secret(dvc):
     assert fs.fs_args["key"] == key_id
     assert fs.fs_args["secret"] == key_secret
     assert fs.fs_args["token"] == session_token
+
+
+def test_sse_customer_key(dvc):
+    fs = S3FileSystem(
+        url=url,
+        sse_customer_key=sse_customer_key,
+        sse_customer_algorithm=sse_customer_algorithm,
+    )
+
+    import base64
+
+    sse_key = fs.fs_args["s3_additional_kwargs"]["SSECustomerKey"]
+    assert base64.b64encode(sse_key).decode() == sse_customer_key
+    assert (
+        fs.fs_args["s3_additional_kwargs"]["SSECustomerAlgorithm"]
+        == sse_customer_algorithm
+    )
+
+
+def test_sse_customer_key_and_sse_kms_key_id_mutually_exclusive(dvc):
+    config = {
+        "url": url,
+        "sse_customer_key": sse_customer_key,
+        "sse_kms_key_id": "key",
+    }
+
+    with pytest.raises(ConfigError):
+        S3FileSystem(**config)
