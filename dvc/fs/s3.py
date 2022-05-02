@@ -116,7 +116,7 @@ class BaseS3FileSystem(ObjectFSWrapper):
 
             sse_customer_key = base64.b64decode(config.get("sse_customer_key"))
         sse_customer_algorithm = config.get("sse_customer_algorithm")
-        if not sse_customer_algorithm:
+        if not sse_customer_algorithm and sse_customer_key:
             sse_customer_algorithm = "AES256"
         sse_params = SSEParams(
             server_side_encryption=config.get("sse"),
