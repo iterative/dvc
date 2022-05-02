@@ -144,7 +144,7 @@ def clone(url: str, to_path: str, **kwargs):
         try:
             git = Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
             if "shallow_branch" not in kwargs:
-                fetch_all_exps(git, "origin", progress=pbar.update_git)
+                fetch_all_exps(git, url, progress=pbar.update_git)
             return git
         except InternalCloneError as exc:
             raise CloneError(str(exc))
