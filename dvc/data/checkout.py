@@ -3,6 +3,7 @@ from itertools import chain
 
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
+from dvc.fs._callback import FsspecCallback
 from dvc.fs.utils import test_links, transfer
 from dvc.ignore import DvcIgnoreFilter
 from dvc.types import Optional
@@ -52,7 +53,6 @@ def _checkout_file(
     change,
     cache,
     force,
-    progress_callback=None,
     relink=False,
     state=None,
 ):
@@ -92,9 +92,6 @@ def _checkout_file(
     if state:
         state.save(fs_path, fs, change.new.oid)
 
-    if progress_callback:
-        progress_callback(fs_path)
-
     return modified
 
 
@@ -132,13 +129,26 @@ class Link:
         self._links = links
 
     @slow_link_guard
-    def __call__(self, cache, from_path, to_fs, to_path):
+    def __call__(self, cache, from_path, to_fs, to_path, callback=None):
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
 
         cache.makedirs(cache.fs.path.parent(to_path))
         try:
-            transfer(cache.fs, from_path, to_fs, to_path, links=self._links)
+            with FsspecCallback.as_tqdm_callback(
+                callback,
+                desc=cache.fs.path.name(from_path),
+                bytes=True,
+                total=-1,
+            ) as cb:
+                transfer(
+                    cache.fs,
+                    from_path,
+                    to_fs,
+                    to_path,
+                    links=self._links,
+                    callback=cb,
+                )
         except FileNotFoundError as exc:
             raise CheckoutError([to_path]) from exc
         except OSError as exc:
@@ -190,10 +200,11 @@ def _checkout(
                 change,
                 cache,
                 force,
-                progress_callback,
                 relink,
                 state=state,
             )
+            if progress_callback:
+                progress_callback(entry_path)
         except CheckoutError as exc:
             failed.extend(exc.target_infos)
 

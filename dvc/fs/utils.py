@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING, List, Optional
 
 from dvc.utils.fs import as_atomic
 
-from ._callback import DEFAULT_CALLBACK, FsspecCallback
+from ._callback import DEFAULT_CALLBACK
 from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
+    from ._callback import FsspecCallback
     from .base import AnyFSPath, FileSystem
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def transfer(
     to_path: "AnyFSPath",
     hardlink: bool = False,
     links: Optional[List["str"]] = None,
-    callback: "FsspecCallback" = None,
+    callback: "FsspecCallback" = DEFAULT_CALLBACK,
 ) -> None:
     try:
         assert not (hardlink and links)
@@ -102,13 +103,9 @@ def transfer(
         else:
             links = links or ["reflink", "copy"]
 
-        with FsspecCallback.as_tqdm_callback(
-            callback,
-            desc=from_fs.path.name(from_path),
-            bytes=True,
-            total=-1,
-        ) as cb:
-            _try_links(links, from_fs, from_path, to_fs, to_path, callback=cb)
+        _try_links(
+            links, from_fs, from_path, to_fs, to_path, callback=callback
+        )
     except OSError as exc:
         # If the target file already exists, we are going to simply
         # ignore the exception (#4992).
