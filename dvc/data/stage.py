@@ -41,7 +41,7 @@ def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
             bytes=True,
             total=size,
         ) as cb:
-            upload_odb.fs.upload(stream, tmp_info, size=size, callback=cb)
+            upload_odb.fs.put_file(stream, tmp_info, size=size, callback=cb)
 
     odb.add(tmp_info, upload_odb.fs, stream.hash_info)
     meta = Meta(size=size)

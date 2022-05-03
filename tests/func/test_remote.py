@@ -430,21 +430,3 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     assert not remote_odb.exists(out.hash_info)
     assert not remote_odb.exists(file_objs[0])
     assert remote_odb.exists(file_objs[1])
-
-
-def test_upload_exists(tmp_dir, dvc, local_remote):
-    tmp_dir.gen("foo", "foo")
-    odb = dvc.cloud.get_remote_odb("upstream")
-    # allow uploaded files to be writable for this test,
-    # normally they are set to read-only for DVC remotes
-    odb.fs.CACHE_MODE = 0o644
-
-    from_info = (tmp_dir / "foo").fs_path
-    to_info = odb.fs.path.join(odb.fs_path, "foo")
-    odb.fs.upload(from_info, to_info)
-    assert odb.fs.exists(to_info)
-
-    tmp_dir.gen("foo", "bar")
-    odb.fs.upload(from_info, to_info)
-    with odb.fs.open(to_info) as fobj:
-        assert fobj.read() == "bar"

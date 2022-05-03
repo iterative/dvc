@@ -362,29 +362,6 @@ class FileSystem:
 
     # pylint: enable=unused-argument
 
-    def upload(
-        self,
-        from_info: Union[AnyFSPath, IO],
-        to_info: AnyFSPath,
-        size: int = None,
-        callback: FsspecCallback = None,
-    ):
-        from .local import localfs
-
-        if not hasattr(from_info, "read"):
-            logger.debug("Uploading '%s' to '%s'", from_info, to_info)
-            desc = localfs.path.name(from_info)
-        else:
-            desc = self.path.name(to_info)
-
-        with FsspecCallback.as_tqdm_callback(
-            callback,
-            desc=desc,
-            bytes=True,
-            total=size or -1,
-        ) as cb:
-            return self.put_file(from_info, to_info, callback=cb, size=size)
-
     def download(
         self,
         from_info: AnyFSPath,
