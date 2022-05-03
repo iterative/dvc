@@ -9,7 +9,11 @@ from scmrepo.git import Git
 from dvc.config import NoRemoteError
 from dvc.data.db import ODBManager
 from dvc.dvcfile import Dvcfile
-from dvc.exceptions import DownloadError, PathMissingError
+from dvc.exceptions import (
+    DownloadError,
+    GlobDoesNotMatchError,
+    PathMissingError,
+)
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
@@ -264,6 +268,21 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
     assert (tmp_dir / "dir_imported123").read_text() == {"foo": "foo content"}
+
+
+def test_push_pull_glob_no_match(
+    tmp_dir, dvc, erepo_dir, run_copy, local_remote
+):
+    tmp_dir.gen("foo", "foo")
+    erepo_dir.add_remote(config=local_remote.config)
+
+    with erepo_dir.chdir():
+        with pytest.raises(GlobDoesNotMatchError):
+            dvc.push(targets="b*", glob=True)
+
+        with pytest.raises(GlobDoesNotMatchError):
+            dvc.pull(targets="b*", glob=True)
+        assert not os.path.exists(erepo_dir.dvc.stage_cache.cache_dir)
 
 
 def test_push_wildcard_from_bare_git_repo(
