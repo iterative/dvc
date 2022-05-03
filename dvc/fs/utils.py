@@ -3,22 +3,22 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
+from ._callback import DEFAULT_CALLBACK, FsspecCallback
 from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
 
 if TYPE_CHECKING:
-    from .base import FileSystem
-    from .types import AnyPath
+    from .base import AnyFSPath, FileSystem
 
 logger = logging.getLogger(__name__)
 
 
 def _link(
-    link: "AnyPath",
+    link: "str",
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
 ) -> None:
     if not isinstance(from_fs, type(to_fs)):
         raise OSError(errno.EXDEV, "can't link across filesystems")
@@ -34,36 +34,38 @@ def _link(
         ) from exc
 
 
-def _copy(
+def copy(
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
+    callback: "FsspecCallback" = DEFAULT_CALLBACK,
 ) -> None:
     if isinstance(from_fs, LocalFileSystem):
-        return to_fs.upload(from_path, to_path)
+        return to_fs.put_file(from_path, to_path, callback=callback)
 
     if isinstance(to_fs, LocalFileSystem):
-        return from_fs.download_file(from_path, to_path)
+        return from_fs.download_file(from_path, to_path, callback=callback)
 
     with from_fs.open(from_path, mode="rb") as fobj:
         size = from_fs.size(from_path)
-        return to_fs.upload(fobj, to_path, size=size)
+        return to_fs.put_file(fobj, to_path, size=size, callback=callback)
 
 
 def _try_links(
-    links: List["AnyPath"],
+    links: List["str"],
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
+    callback: "FsspecCallback" = DEFAULT_CALLBACK,
 ) -> None:
     error = None
     while links:
         link = links[0]
 
         if link == "copy":
-            return _copy(from_fs, from_path, to_fs, to_path)
+            return copy(from_fs, from_path, to_fs, to_path, callback=callback)
 
         try:
             return _link(link, from_fs, from_path, to_fs, to_path)
@@ -81,11 +83,12 @@ def _try_links(
 
 def transfer(
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
+    to_path: "AnyFSPath",
     hardlink: bool = False,
-    links: Optional[List["AnyPath"]] = None,
+    links: Optional[List["str"]] = None,
+    callback: "FsspecCallback" = None,
 ) -> None:
     try:
         assert not (hardlink and links)
@@ -93,7 +96,14 @@ def transfer(
             links = links or ["reflink", "hardlink", "copy"]
         else:
             links = links or ["reflink", "copy"]
-        _try_links(links, from_fs, from_path, to_fs, to_path)
+
+        with FsspecCallback.as_tqdm_callback(
+            callback,
+            desc=from_fs.path.name(from_path),
+            bytes=True,
+            total=-1,
+        ) as cb:
+            _try_links(links, from_fs, from_path, to_fs, to_path, callback=cb)
     except OSError as exc:
         # If the target file already exists, we are going to simply
         # ignore the exception (#4992).
@@ -114,11 +124,11 @@ def transfer(
 
 
 def _test_link(
-    link: "AnyPath",
+    link: "str",
     from_fs: "FileSystem",
-    from_file: "AnyPath",
+    from_file: "AnyFSPath",
     to_fs: "FileSystem",
-    to_file: "AnyPath",
+    to_file: "AnyFSPath",
 ) -> bool:
     try:
         _try_links([link], from_fs, from_file, to_fs, to_file)
@@ -136,12 +146,12 @@ def _test_link(
 
 
 def test_links(
-    links: List["AnyPath"],
+    links: List["str"],
     from_fs: "FileSystem",
-    from_path: "AnyPath",
+    from_path: "AnyFSPath",
     to_fs: "FileSystem",
-    to_path: "AnyPath",
-) -> List["AnyPath"]:
+    to_path: "AnyFSPath",
+) -> List["AnyFSPath"]:
     from dvc.utils import tmp_fname
 
     from_file = from_fs.path.join(from_path, tmp_fname())

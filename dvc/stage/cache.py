@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property, first
 
+from dvc import fs
+from dvc.data.transfer import _log_exceptions
 from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
-    from dvc.objects.db.base import ObjectDB
+    from dvc.objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -210,51 +212,46 @@ class StageCache:
         )
         cached_stage.checkout()
 
-    @staticmethod
-    def _transfer(func, from_remote, to_remote):
+    def transfer(self, from_odb, to_odb):
+        from dvc.fs._callback import FsspecCallback
+
+        from_fs = from_odb.fs
+        to_fs = from_odb.fs
+        func = _log_exceptions(fs.utils.copy)
+        runs = from_fs.path.join(from_odb.fs_path, "runs")
+
         ret = []
+        if not from_fs.exists(runs):
+            return ret
 
-        runs = from_remote.fs.path.join(from_remote.fs_path, "runs")
-        if not from_remote.fs.exists(runs):
-            return []
-
-        from_path = from_remote.fs.path
-        for src in from_remote.fs.find(runs):
-            rel = from_path.relpath(src, from_remote.fs_path)
-            dst = to_remote.fs.path.join(to_remote.fs_path, rel)
-            key = to_remote.fs.path.parent(dst)
+        for src in from_fs.find(runs):
+            rel = from_fs.path.relpath(src, from_odb.fs_path)
+            dst = to_fs.path.join(to_odb.fs_path, rel)
+            key = to_fs.path.parent(dst)
             # check if any build cache already exists for this key
             # TODO: check if MaxKeys=1 or something like that applies
             # or otherwise this will take a lot of time!
-            if to_remote.fs.exists(key) and first(to_remote.fs.find(key)):
+            if to_fs.exists(key) and first(to_fs.find(key)):
                 continue
-            func(src, dst)
-            ret.append(
-                (from_path.name(from_path.parent(src)), from_path.name(src))
-            )
 
+            src_name = from_fs.path.name(src)
+            parent_name = from_fs.path.name(from_fs.path.parent(src))
+            with FsspecCallback.as_tqdm_callback(
+                desc=src_name,
+                bytes=True,
+                total=-1,
+            ) as cb:
+                func(from_fs, src, to_fs, dst, callback=cb)
+            ret.append((parent_name, src_name))
         return ret
 
     def push(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
-        from dvc.data.transfer import _log_exceptions
+        dest_odb = odb or self.repo.cloud.get_remote_odb(remote)
+        return self.transfer(self.repo.odb.local, dest_odb)
 
-        if odb is None:
-            odb = self.repo.cloud.get_remote_odb(remote)
-        return self._transfer(
-            _log_exceptions(odb.fs.upload),
-            self.repo.odb.local,
-            odb,
-        )
-
-    def pull(self, remote: Optional[str]):
-        from dvc.data.transfer import _log_exceptions
-
-        odb = self.repo.cloud.get_remote_odb(remote)
-        return self._transfer(
-            _log_exceptions(odb.fs.download),
-            odb,
-            self.repo.odb.local,
-        )
+    def pull(self, remote: Optional[str], odb: Optional["ObjectDB"] = None):
+        odb = odb or self.repo.cloud.get_remote_odb(remote)
+        return self.transfer(odb, self.repo.odb.local)
 
     def get_used_objs(self, used_run_cache, *args, **kwargs):
         """Return used cache for the specified run-cached stages."""
