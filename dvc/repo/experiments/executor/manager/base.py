@@ -7,15 +7,7 @@ from typing import TYPE_CHECKING, Deque, Dict, Generator, Optional, Tuple, Type
 
 from dvc.proc.manager import ProcessManager
 
-from ...base import (
-    EXEC_BASELINE,
-    EXEC_HEAD,
-    EXEC_MERGE,
-    CheckpointExistsError,
-    ExperimentExistsError,
-    ExpRefInfo,
-    ExpStashEntry,
-)
+from ...base import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpStashEntry
 from ..base import EXEC_PID_DIR, BaseExecutor
 from ..local import TempDirExecutor, WorkspaceExecutor
 
@@ -243,16 +235,9 @@ class BaseExecutorManager(ABC, Mapping):
 
         results = {}
 
-        def on_diverged(ref: str, checkpoint: bool):
-            ref_info = ExpRefInfo.from_ref(ref)
-            if checkpoint:
-                raise CheckpointExistsError(ref_info.name)
-            raise ExperimentExistsError(ref_info.name)
-
         for ref in executor.fetch_exps(
             self.scm,
             force=exec_result.force,
-            on_diverged=on_diverged,
         ):
             exp_rev = self.scm.get_ref(ref)
             if exp_rev:

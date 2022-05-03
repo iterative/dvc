@@ -281,7 +281,7 @@ class BaseExecutor(ABC):
         self,
         dest_scm: "Git",
         force: bool = False,
-        on_diverged: Callable[[str, bool], None] = None,
+        on_diverged: Callable[[str, bool], bool] = None,
         **kwargs,
     ) -> Iterable[str]:
         """Fetch reproduced experiment refs into the specified SCM.
@@ -294,6 +294,8 @@ class BaseExecutor(ABC):
 
         Extra kwargs will be passed into the remote git client.
         """
+        from scmrepo.git.backend.base import SyncStatus
+
         from ..utils import iter_remote_refs
 
         refs = []
@@ -314,16 +316,19 @@ class BaseExecutor(ABC):
                 logger.debug("Replacing existing experiment '%s'", orig_ref)
                 return True
 
-            self._raise_ref_conflict(
-                dest_scm, orig_ref, new_rev, has_checkpoint
-            )
-            if on_diverged:
-                on_diverged(orig_ref, has_checkpoint)
+            try:
+                self._raise_ref_conflict(
+                    dest_scm, orig_ref, new_rev, has_checkpoint
+                )
+            except (ExperimentExistsError, CheckpointExistsError):
+                if on_diverged:
+                    return on_diverged(orig_ref, has_checkpoint)
+                raise
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
         # fetch experiments
-        dest_scm.fetch_refspecs(
+        results = dest_scm.fetch_refspecs(
             self.git_url,
             [f"{ref}:{ref}" for ref in refs],
             on_diverged=on_diverged_ref,
@@ -338,7 +343,11 @@ class BaseExecutor(ABC):
                 force=True,
                 **kwargs,
             )
-        return refs
+        return [
+            ref
+            for ref, status in results.items()
+            if status != SyncStatus.DIVERGED
+        ]
 
     @classmethod
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
@@ -680,14 +689,20 @@ class BaseExecutor(ABC):
 
     @staticmethod
     def _raise_ref_conflict(scm, ref, new_rev, checkpoint):
+        from scmrepo.exceptions import SCMError
+
         # If this commit is a duplicate of the existing commit at 'ref', return
         # the existing commit. Otherwise, error out and require user to re-run
         # with --force as needed
         orig_rev = scm.get_ref(ref)
-        if scm.diff(orig_rev, new_rev):
-            if checkpoint:
-                raise CheckpointExistsError(ref)
-            raise ExperimentExistsError(ref)
+        exc_cls = (
+            CheckpointExistsError if checkpoint else ExperimentExistsError
+        )
+        try:
+            if scm.diff(orig_rev, new_rev):
+                raise exc_cls(ref)
+        except (SCMError, KeyError) as exc:
+            raise exc_cls(ref) from exc
         return orig_rev
 
     @staticmethod
