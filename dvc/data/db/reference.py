@@ -9,6 +9,7 @@ from dvc.scheme import Schemes
 from ..reference import ReferenceHashFile
 
 if TYPE_CHECKING:
+    from dvc.fs._callback import FsspecCallback
     from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.hash_info import HashInfo
 
@@ -57,8 +58,8 @@ class ReferenceObjectDB(ObjectDB):
         to_info: "AnyFSPath",
         hash_info: "HashInfo",
         hardlink: bool = False,
+        callback: "FsspecCallback" = None,
     ):
-        self.makedirs(self.fs.path.parent(to_info))
         if hash_info.isdir:
             return super()._add_file(
                 from_fs,
@@ -66,7 +67,10 @@ class ReferenceObjectDB(ObjectDB):
                 to_info,
                 hash_info,
                 hardlink=hardlink,
+                callback=callback,
             )
+
+        self.makedirs(self.fs.path.parent(to_info))
         ref_file = ReferenceHashFile(from_info, from_fs, hash_info)
         self._obj_cache[hash_info] = ref_file
         try:

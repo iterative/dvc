@@ -12,6 +12,7 @@ from dvc.objects.file import HashFile
 if TYPE_CHECKING:
     from typing import Tuple
 
+    from dvc.fs._callback import FsspecCallback
     from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.hash_info import HashInfo
 
@@ -91,8 +92,10 @@ class ObjectDB:
         to_info: "AnyFSPath",
         _hash_info: "HashInfo",
         hardlink: bool = False,
+        callback: "FsspecCallback" = None,
     ):
         from dvc import fs
+        from dvc.fs._callback import FsspecCallback
 
         self.makedirs(self.fs.path.parent(to_info))
         return fs.utils.transfer(
@@ -101,6 +104,7 @@ class ObjectDB:
             self.fs,
             to_info,
             hardlink=hardlink,
+            callback=FsspecCallback.as_callback(callback),
         )
 
     def add(
@@ -110,7 +114,10 @@ class ObjectDB:
         hash_info: "HashInfo",
         hardlink: bool = False,
         verify: Optional[bool] = None,
+        callback: "FsspecCallback" = None,
     ):
+        from dvc.fs._callback import FsspecCallback
+
         if self.read_only:
             raise ObjectDBPermissionError("Cannot add to read-only ODB")
 
@@ -123,9 +130,20 @@ class ObjectDB:
             pass
 
         cache_fs_path = self.hash_to_path(hash_info.value)
-        self._add_file(
-            fs, fs_path, cache_fs_path, hash_info, hardlink=hardlink
-        )
+        with FsspecCallback.as_tqdm_callback(
+            callback,
+            desc=fs.path.name(fs_path),
+            bytes=True,
+            total=-1,
+        ) as cb:
+            self._add_file(
+                fs,
+                fs_path,
+                cache_fs_path,
+                hash_info,
+                hardlink=hardlink,
+                callback=cb,
+            )
 
         try:
             if verify:
