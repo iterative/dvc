@@ -19,7 +19,6 @@ from typing import (
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.utils.fs import as_atomic, makedirs
 from dvc.utils.threadpool import ThreadPoolExecutor
 
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
@@ -360,19 +359,24 @@ class FileSystem:
     def size(self, path: AnyFSPath) -> Optional[int]:
         return self.fs.size(path)
 
-    # pylint: enable=unused-argument
-
-    def download(
+    def get(
         self,
         from_info: AnyFSPath,
         to_info: AnyFSPath,
-        callback: "FsspecCallback" = None,
-        jobs: int = None,
+        callback: "FsspecCallback" = DEFAULT_CALLBACK,
+        batch_size: int = None,
     ):
-        if not self.isdir(from_info):
-            return self.download_file(from_info, to_info, callback=callback)
-
         from .local import localfs
+
+        def get_file(from_info, to_info):
+            localfs.makedirs(localfs.path.parent(to_info), exist_ok=True)
+            branch = callback.branch(from_info, to_info, {})
+            self.get_file(from_info, to_info, callback=branch)
+            callback.relative_update()
+
+        if not self.isdir(from_info):
+            callback.set_size(1)
+            return get_file(from_info, to_info)
 
         pairs = {
             info: localfs.path.join(
@@ -381,48 +385,24 @@ class FileSystem:
             for info in self.find(from_info)
         }
         if not pairs:
-            makedirs(to_info, exist_ok=True)
+            localfs.makedirs(to_info, exist_ok=True)
             return
 
-        with FsspecCallback.as_tqdm_callback(
-            callback,
-            total=-1,
-            desc=f"Downloading directory {self.path.name(from_info)}",
-            unit="files",
-        ) as cb:
-            cb.set_size(len(pairs))
-            download_files = cb.wrap_and_branch(self.download_file, fs=self)
-            max_workers = jobs or self.jobs
-            # NOTE: unlike pulling/fetching cache, where we need to
-            # download everything we can, not raising an error here might
-            # turn very ugly, as the user might think that he has
-            # downloaded a complete directory, while having a partial one,
-            # which might cause unexpected results in his pipeline.
-            with ThreadPoolExecutor(
-                max_workers=max_workers, cancel_on_error=True
-            ) as executor:
-                list(
-                    executor.imap_unordered(
-                        lambda args: download_files(*args), pairs.items()
-                    )
+        callback.set_size(len(pairs))
+        max_workers = batch_size or self.jobs
+        # NOTE: unlike pulling/fetching cache, where we need to
+        # download everything we can, not raising an error here might
+        # turn very ugly, as the user might think that he has
+        # downloaded a complete directory, while having a partial one,
+        # which might cause unexpected results in his pipeline.
+        with ThreadPoolExecutor(
+            max_workers=max_workers, cancel_on_error=True
+        ) as executor:
+            list(
+                executor.imap_unordered(
+                    lambda args: get_file(*args), pairs.items()
                 )
-
-    def download_file(
-        self,
-        from_info: AnyFSPath,
-        to_info: AnyFSPath,
-        callback: FsspecCallback = None,
-    ):
-        from .local import localfs
-
-        with FsspecCallback.as_tqdm_callback(
-            callback,
-            total=-1,
-            desc=self.path.name(from_info),
-            bytes=True,
-        ) as cb:
-            with as_atomic(localfs, to_info, create_parents=True) as tmp_file:
-                self.get_file(from_info, tmp_file, callback=cb)
+            )
 
 
 class ObjectFileSystem(FileSystem):  # pylint: disable=abstract-method

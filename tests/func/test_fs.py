@@ -3,8 +3,6 @@ from io import BytesIO
 from operator import itemgetter
 from os.path import join
 
-import pytest
-
 from dvc.fs import get_cloud_fs
 from dvc.fs._callback import FsspecCallback
 from dvc.fs.local import LocalFileSystem
@@ -258,33 +256,13 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     assert callback.value == expected_size
 
 
-def test_download_callback(tmp_dir, dvc, cloud, local_cloud):
-    cls, config, _ = get_cloud_fs(dvc, **cloud.config)
-    fs = cls(**config)
-
-    (tmp_dir / "to_upload").write_text("foo")
-    fs.put_file((tmp_dir / "to_upload").fs_path, (cloud / "foo").fs_path)
-    expected_size = fs.size((cloud / "foo").fs_path)
-
-    callback = FsspecCallback()
-    fs.download_file(
-        (cloud / "foo").fs_path,
-        (tmp_dir / "foo").fs_path,
-        callback=callback,
-    )
-
-    assert callback.size == expected_size
-    assert callback.value == expected_size
-    assert (tmp_dir / "foo").read_text() == "foo"
-
-
-def test_download_dir_callback(tmp_dir, dvc, cloud):
+def test_get_dir_callback(tmp_dir, dvc, cloud):
     cls, config, _ = get_cloud_fs(dvc, **cloud.config)
     fs = cls(**config)
     cloud.gen({"dir": {"foo": "foo", "bar": "bar"}})
 
     callback = FsspecCallback()
-    fs.download(
+    fs.get(
         (cloud / "dir").fs_path, (tmp_dir / "dir").fs_path, callback=callback
     )
 
@@ -293,47 +271,14 @@ def test_download_dir_callback(tmp_dir, dvc, cloud):
     assert (tmp_dir / "dir").read_text() == {"foo": "foo", "bar": "bar"}
 
 
-@pytest.mark.parametrize("fs_type", ["git", "dvc"])
-def test_download_callbacks_on_dvc_git_fs(tmp_dir, dvc, scm, fs_type):
-    from dvc.fs.git import GitFileSystem
-
-    gen = tmp_dir.scm_gen if fs_type == "git" else tmp_dir.dvc_gen
-    gen({"dir": {"foo": "foo", "bar": "bar"}, "file": "file"}, commit="gen")
-
-    fs = dvc.dvcfs if fs_type == "dvc" else GitFileSystem(scm=scm, rev="HEAD")
-
-    callback = FsspecCallback()
-    fs.download_file(
-        "file",
-        (tmp_dir / "file2").fs_path,
-        callback=callback,
-    )
-
-    size = os.path.getsize(tmp_dir / "file")
-    assert (tmp_dir / "file2").read_text() == "file"
-    assert callback.size == size
-    assert callback.value == size
-
-    callback = FsspecCallback()
-    fs.download(
-        "dir",
-        (tmp_dir / "dir2").fs_path,
-        callback=callback,
-    )
-
-    assert (tmp_dir / "dir2").read_text() == {"foo": "foo", "bar": "bar"}
-    assert callback.size == 2
-    assert callback.value == 2
-
-
-def test_callback_on_repo_fs(tmp_dir, dvc, scm):
+def test_callback_on_repo_fs(tmp_dir, dvc, scm, mocker):
     tmp_dir.dvc_gen({"dir": {"bar": "bar"}}, commit="dvc")
     tmp_dir.scm_gen({"dir": {"foo": "foo"}}, commit="git")
 
     fs = dvc.repo_fs
 
     callback = FsspecCallback()
-    fs.download(
+    fs.get(
         "dir",
         (tmp_dir / "dir2").fs_path,
         callback=callback,
@@ -344,7 +289,8 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
     assert callback.value == 2
 
     callback = FsspecCallback()
-    fs.download(
+    branch = mocker.spy(callback, "branch")
+    fs.get(
         os.path.join("dir", "foo"),
         (tmp_dir / "foo").fs_path,
         callback=callback,
@@ -352,11 +298,18 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
 
     size = os.path.getsize(tmp_dir / "dir" / "foo")
     assert (tmp_dir / "foo").read_text() == "foo"
-    assert callback.size == size
-    assert callback.value == size
+    assert callback.size == 1
+    assert callback.value == 1
+
+    assert branch.call_count == 1
+    assert branch.spy_return.size == size
+    assert branch.spy_return.value == size
+
+    branch.reset_mock()
 
     callback = FsspecCallback()
-    fs.download(
+    branch = mocker.spy(callback, "branch")
+    fs.get(
         os.path.join("dir", "bar"),
         (tmp_dir / "bar").fs_path,
         callback=callback,
@@ -364,5 +317,9 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm):
 
     size = os.path.getsize(tmp_dir / "dir" / "bar")
     assert (tmp_dir / "bar").read_text() == "bar"
-    assert callback.size == size
-    assert callback.value == size
+    assert callback.size == 1
+    assert callback.value == 1
+
+    assert branch.call_count == 1
+    assert branch.spy_return.size == size
+    assert branch.spy_return.value == size

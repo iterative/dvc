@@ -695,7 +695,14 @@ class Output:
             raise DvcException(msg.format(self.fs_path, name))
 
     def download(self, to, jobs=None):
-        self.fs.download(self.fs_path, to.fs_path, jobs=jobs)
+        from dvc.fs._callback import FsspecCallback
+
+        with FsspecCallback.as_tqdm_callback(
+            total=-1,
+            desc=f"Downloading {self.fs.path.name(self.fs_path)}",
+            unit="files",
+        ) as cb:
+            self.fs.get(self.fs_path, to.fs_path, batch_size=jobs, callback=cb)
 
     def get_obj(self, filter_info=None, **kwargs):
         if self.obj:

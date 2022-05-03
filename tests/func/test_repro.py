@@ -877,10 +877,10 @@ class TestReproAlreadyCached(TestRepro):
         ret = main(["import-url", self.FOO, self.BAR])
         self.assertEqual(ret, 0)
 
-        patch_download = patch.object(
+        patch_get = patch.object(
             LocalFileSystem,
-            "download",
-            side_effect=LocalFileSystem.download,
+            "get",
+            side_effect=LocalFileSystem.get,
             autospec=True,
         )
 
@@ -891,7 +891,7 @@ class TestReproAlreadyCached(TestRepro):
             autospec=True,
         )
 
-        with patch_download as mock_download:
+        with patch_get as mock_download:
             with patch_checkout as mock_checkout:
                 assert main(["unfreeze", "bar.dvc"]) == 0
                 ret = main(["repro", "--force", "bar.dvc"])
