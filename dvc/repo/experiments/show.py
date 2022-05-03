@@ -7,7 +7,7 @@ from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
-from dvc.utils import error_handler, onerror_collect
+from dvc.utils import error_handler, onerror_collect, relpath
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -45,7 +45,7 @@ def _collect_experiment_commit(
             res["params"] = params
 
         res["deps"] = {
-            dep.def_path: {
+            relpath(dep.fs_path, repo.root_dir): {
                 "hash": dep.hash_info.value,
                 "size": dep.meta.size,
                 "nfiles": dep.meta.nfiles,
@@ -53,12 +53,13 @@ def _collect_experiment_commit(
             for dep in repo.index.deps
             if not isinstance(dep, (ParamsDependency, RepoDependency))
         }
-
         res["outs"] = {
-            out.def_path: {
+            relpath(out.fs_path, repo.root_dir): {
                 "hash": out.hash_info.value,
                 "size": out.meta.size,
                 "nfiles": out.meta.nfiles,
+                "use_cache": out.use_cache,
+                "is_data_source": out.stage.is_data_source,
             }
             for out in repo.index.outs
             if not (out.is_metric or out.is_plot)

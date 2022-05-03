@@ -34,6 +34,7 @@ def make_executor_info(**kwargs):
     return ExecutorInfo(**kwargs)
 
 
+@pytest.mark.vscode
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
@@ -57,6 +58,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     }
 
 
+@pytest.mark.vscode
 @pytest.mark.parametrize("workspace", [True, False])
 def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
     baseline_rev = scm.get_rev()
@@ -101,6 +103,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
             assert exp["data"]["params"]["params.yaml"] == expected_params
 
 
+@pytest.mark.vscode
 def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     baseline_rev = scm.get_rev()
 
@@ -132,6 +135,7 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     assert exp["params"]["params.yaml"] == {"data": {"foo": 3}}
 
 
+@pytest.mark.vscode
 @pytest.mark.parametrize("workspace", [True, False])
 def test_show_checkpoint(
     tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
@@ -169,6 +173,7 @@ def test_show_checkpoint(
         assert f"{fs} {name}" in cap.out
 
 
+@pytest.mark.vscode
 @pytest.mark.parametrize("workspace", [True, False])
 def test_show_checkpoint_branch(
     tmp_dir, scm, dvc, checkpoint_stage, capsys, workspace
@@ -281,6 +286,7 @@ def test_show_filter(
     assert "Experiment" not in cap.out
 
 
+@pytest.mark.vscode
 def test_show_multiple_commits(tmp_dir, scm, dvc, exp_stage):
     init_rev = scm.get_rev()
     tmp_dir.scm_gen("file", "file", "commit")
@@ -318,6 +324,7 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
     )
 
 
+@pytest.mark.vscode
 def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
@@ -626,7 +633,8 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys):
     assert '"label": "Experiment"' not in html_text
 
 
-def test_show_outs(tmp_dir, dvc, scm):
+@pytest.mark.vscode
+def test_show_outs(tmp_dir, dvc, scm, erepo_dir):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     params_file = tmp_dir / "params.yaml"
     params_data = {
@@ -652,7 +660,59 @@ def test_show_outs(tmp_dir, dvc, scm):
             "hash": ANY,
             "size": ANY,
             "nfiles": None,
+            "use_cache": True,
+            "is_data_source": False,
         }
+    }
+
+    tmp_dir.dvc_gen("out_add", "foo", commit="dvc add output")
+
+    outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
+    assert outs == {
+        "out": {
+            "hash": ANY,
+            "size": ANY,
+            "nfiles": None,
+            "use_cache": True,
+            "is_data_source": False,
+        },
+        "out_add": {
+            "hash": ANY,
+            "size": ANY,
+            "nfiles": None,
+            "use_cache": True,
+            "is_data_source": True,
+        },
+    }
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("out", "out content", commit="create out")
+
+    dvc.imp(os.fspath(erepo_dir), "out", "out_imported")
+
+    outs = dvc.experiments.show()["workspace"]["baseline"]["data"]["outs"]
+    assert outs == {
+        "out": {
+            "hash": ANY,
+            "size": ANY,
+            "nfiles": None,
+            "use_cache": True,
+            "is_data_source": False,
+        },
+        "out_add": {
+            "hash": ANY,
+            "size": ANY,
+            "nfiles": None,
+            "use_cache": True,
+            "is_data_source": True,
+        },
+        "out_imported": {
+            "hash": ANY,
+            "size": ANY,
+            "nfiles": None,
+            "use_cache": True,
+            "is_data_source": True,
+        },
     }
 
 
