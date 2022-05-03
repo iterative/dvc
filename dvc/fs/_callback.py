@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import IO, TYPE_CHECKING, Any, Optional, TypeVar, cast
+from typing import IO, TYPE_CHECKING, Any, Dict, Optional, TypeVar, cast
 
 import fsspec
 
@@ -48,8 +48,7 @@ class FsspecCallback(fsspec.Callback):
 
         def make_callback(path1, path2):
             # pylint: disable=assignment-from-none
-            child = self.branch(fs.path.name(path1), path2, {})
-            return self.as_callback(child)
+            return self.branch(fs.path.name(path1), path2, {})
 
         @wraps(fn)
         def func(path1, path2, **kwargs):
@@ -88,6 +87,11 @@ class FsspecCallback(fsspec.Callback):
         cls, callback: Optional["FsspecCallback"] = None, **rich_kwargs
     ):
         return callback or RichCallback(**rich_kwargs)
+
+    def branch(
+        self, path_1: str, path_2: str, kwargs: Dict[str, Any]
+    ) -> "FsspecCallback":
+        return DEFAULT_CALLBACK
 
 
 class NoOpCallback(FsspecCallback, fsspec.callbacks.NoOpCallback):

@@ -3,6 +3,8 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
+from dvc.utils.fs import as_atomic
+
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
 from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
@@ -45,7 +47,10 @@ def copy(
         return to_fs.put_file(from_path, to_path, callback=callback)
 
     if isinstance(to_fs, LocalFileSystem):
-        return from_fs.download_file(from_path, to_path, callback=callback)
+        from .local import localfs
+
+        with as_atomic(localfs, to_path, create_parents=True) as tmp_file:
+            return from_fs.get_file(from_path, tmp_file, callback=callback)
 
     with from_fs.open(from_path, mode="rb") as fobj:
         size = from_fs.size(from_path)
