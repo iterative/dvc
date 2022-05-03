@@ -349,3 +349,9 @@ class CircularImportError(DvcException):
 class PrettyDvcException(DvcException):
     def __pretty_exc__(self, **kwargs):
         """Print prettier exception message."""
+
+
+class GlobDoesNotMatchError(DvcException):
+    def __init__(self, glob):
+        msg = f"Glob {glob} has no matches."
+        super().__init__(msg)
