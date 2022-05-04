@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import shutil
@@ -184,6 +185,15 @@ class FileSystem:
     ) -> "IO":  # pylint: disable=arguments-differ
         return self.fs.open(path, mode=mode, encoding=encoding, **kwargs)
 
+    def read_block(
+        self,
+        path: AnyFSPath,
+        offset: int,
+        length: int,
+        delimiter: bytes = None,
+    ) -> bytes:
+        return self.fs.read_block(path, offset, length, delimiter=delimiter)
+
     def cat(
         self,
         path: Union[AnyFSPath, List[AnyFSPath]],
@@ -216,6 +226,12 @@ class FileSystem:
     ) -> bytes:
         return self.fs.cat_file(path, start=start, end=end, **kwargs)
 
+    def head(self, path: AnyFSPath, size: int = 1024) -> bytes:
+        return self.fs.head(path, size=size)
+
+    def tail(self, path: AnyFSPath, size: int = 1024) -> bytes:
+        return self.fs.tail(path, size=size)
+
     def pipe_file(self, path: AnyFSPath, value: bytes, **kwargs: Any) -> None:
         return self.fs.pipe_file(path, value, **kwargs)
 
@@ -238,6 +254,11 @@ class FileSystem:
     def copy(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
         self.makedirs(self.path.parent(to_info))
         self.fs.copy(from_info, to_info)
+
+    def cp_file(
+        self, from_info: AnyFSPath, to_info: AnyFSPath, **kwargs: Any
+    ) -> None:
+        self.fs.cp_file(from_info, to_info, **kwargs)
 
     def exists(self, path: AnyFSPath) -> bool:
         return self.fs.exists(path)
@@ -298,14 +319,31 @@ class FileSystem:
     ) -> Iterator[str]:
         yield from self.fs.find(path)
 
-    def move(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
-        self.fs.move(from_info, to_info)
+    def mv(
+        self, from_info: AnyFSPath, to_info: AnyFSPath, **kwargs: Any
+    ) -> None:
+        self.fs.mv(from_info, to_info)
 
-    def remove(self, path: AnyFSPath) -> None:
+    move = mv
+
+    def rmdir(self, path: AnyFSPath) -> None:
+        self.fs.rmdir(path)
+
+    def rm_file(self, path: AnyFSPath) -> None:
+        self.fs.rm_file(path)
+
+    def rm(self, path: AnyFSPath) -> None:
         self.fs.rm(path, recursive=True)
+
+    remove = rm
 
     def info(self, path: AnyFSPath) -> "Entry":
         return self.fs.info(path)
+
+    def mkdir(
+        self, path: AnyFSPath, create_parents: bool = True, **kwargs: Any
+    ) -> None:
+        self.fs.mkdir(path, create_parents=create_parents, **kwargs)
 
     def makedirs(self, path: AnyFSPath, **kwargs: Any) -> None:
         self.fs.makedirs(path, exist_ok=kwargs.pop("exist_ok", True))
@@ -356,8 +394,23 @@ class FileSystem:
     ):
         return self.fs.walk(path, topdown=topdown, **kwargs)
 
+    def glob(self, path: AnyFSPath, **kwargs: Any):
+        return self.fs.glob(path, **kwargs)
+
     def size(self, path: AnyFSPath) -> Optional[int]:
         return self.fs.size(path)
+
+    def sizes(self, paths: List[AnyFSPath]) -> List[Optional[int]]:
+        return self.fs.sizes(paths)
+
+    def du(
+        self,
+        path: AnyFSPath,
+        total: bool = True,
+        maxdepth: int = None,
+        **kwargs: Any,
+    ) -> Union[int, Dict[AnyFSPath, int]]:
+        return self.fs.du(path, total=total, maxdepth=maxdepth, **kwargs)
 
     def get(
         self,
@@ -404,6 +457,20 @@ class FileSystem:
                 )
             )
 
+    def ukey(self, path: AnyFSPath) -> str:
+        return self.fs.ukey(path)
+
+    def created(self, path: AnyFSPath) -> datetime.datetime:
+        return self.fs.created(path)
+
+    def modified(self, path: AnyFSPath) -> datetime.datetime:
+        return self.fs.modified(path)
+
+    def sign(
+        self, path: AnyFSPath, expiration: int = 100, **kwargs: Any
+    ) -> str:
+        return self.fs.sign(path, expiration=expiration, **kwargs)
+
 
 class ObjectFileSystem(FileSystem):  # pylint: disable=abstract-method
     TRAVERSE_PREFIX_LEN = 3
@@ -414,6 +481,11 @@ class ObjectFileSystem(FileSystem):  # pylint: disable=abstract-method
         # and create if it doesn't though we don't want to support
         # that behavior, and the check will cost some time so we'll
         # simply ignore all mkdir()/makedirs() calls.
+        return None
+
+    def mkdir(
+        self, path: AnyFSPath, create_parents: bool = True, **kwargs: Any
+    ) -> None:
         return None
 
     def _isdir(self, path: AnyFSPath) -> bool:

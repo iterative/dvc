@@ -107,6 +107,9 @@ class FsspecLocalFileSystem(AbstractFileSystem):
     def rm(self, path, recursive=False, maxdepth=None):
         remove(path)
 
+    def cp_file(self, path1, path2, **kwargs):
+        return self.copy(path1, path2, **kwargs)
+
     def copy(self, path1, path2, recursive=False, on_error=None, **kwargs):
         tmp_info = os.path.join(self._parent(path2), tmp_fname(""))
         try:
@@ -154,6 +157,12 @@ class FsspecLocalFileSystem(AbstractFileSystem):
 
     def reflink(self, path1, path2):
         return System.reflink(path1, path2)
+
+    def created(self, path):
+        return self.fs.created(path)
+
+    def modified(self, path):
+        return self.fs.modified(path)
 
 
 class LocalFileSystem(FileSystem):
