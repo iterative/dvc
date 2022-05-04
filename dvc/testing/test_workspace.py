@@ -3,6 +3,21 @@ import os
 import pytest
 
 
+@pytest.fixture
+def stage_md5():
+    pytest.skip()
+
+
+@pytest.fixture
+def dir_md5():
+    pytest.skip()
+
+
+@pytest.fixture
+def is_object_storage():
+    pytest.skip()
+
+
 class TestImport:
     def test_import(self, tmp_dir, dvc, workspace):
         workspace.gen("file", "file")
@@ -10,14 +25,6 @@ class TestImport:
         dvc.imp_url("remote://workspace/file")
         assert (tmp_dir / "file").read_text() == "file"
         assert dvc.status() == {}
-
-    @pytest.fixture
-    def stage_md5(self):
-        pytest.skip()
-
-    @pytest.fixture
-    def dir_md5(self):
-        pytest.skip()
 
     def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
         from dvc.data.db import ODBManager
@@ -59,10 +66,6 @@ class TestImport:
                 "  path: dir\n"
             )
 
-    @pytest.fixture
-    def is_object_storage(self):
-        pytest.skip()
-
     def test_import_empty_dir(
         self, tmp_dir, dvc, workspace, is_object_storage
     ):
@@ -83,19 +86,22 @@ class TestImport:
         assert tuple(empty_dir.iterdir()) == ()
 
 
+@pytest.fixture
+def hash_name():
+    pytest.skip()
+
+
+@pytest.fixture
+def hash_value():
+    pytest.skip()
+
+
+@pytest.fixture
+def dir_hash_value():
+    pytest.skip()
+
+
 class TestAdd:
-    @pytest.fixture
-    def hash_name(self):
-        pytest.skip()
-
-    @pytest.fixture
-    def hash_value(self):
-        pytest.skip()
-
-    @pytest.fixture
-    def dir_hash_value(self):
-        pytest.skip()
-
     def test_add(self, tmp_dir, dvc, workspace, hash_name, hash_value):
         from dvc.stage.exceptions import StageExternalOutputsError
 
