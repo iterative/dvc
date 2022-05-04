@@ -180,10 +180,11 @@ class FileSystem:
         self,
         path: AnyFSPath,
         mode: str = "r",
-        encoding: Optional[str] = None,
         **kwargs,
     ) -> "IO":  # pylint: disable=arguments-differ
-        return self.fs.open(path, mode=mode, encoding=encoding, **kwargs)
+        if "b" in mode:
+            kwargs.pop("encoding", None)
+        return self.fs.open(path, mode=mode, **kwargs)
 
     def read_block(
         self,
