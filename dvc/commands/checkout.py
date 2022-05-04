@@ -55,6 +55,10 @@ class CmdCheckout(CmdBase):
 
         if exc:
             raise exc
+
+        if self.args.relink:
+            msg = "Relinked successfully"
+            ui.write(msg)
         return 0
 
 
