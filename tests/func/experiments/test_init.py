@@ -19,7 +19,6 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
             CmdExperimentsInit.CODE: {"copy.py": ""},
             "data": "data",
             "params.yaml": '{"foo": 1}',
-            "dvclive": {},
             "plots": {},
         }
     )
@@ -137,13 +136,11 @@ def test_init_interactive_when_no_path_prompts_need_to_be_asked(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"dvclive.json": {"cache": False}},
                     {"metrics.json": {"cache": False}},
                 ],
                 "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("dvclive", "scalars"): {"cache": False}},
                     {"plots": {"cache": False}},
                 ],
             }
@@ -313,26 +310,18 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
                 "data\n"
                 "params.yaml\n"
                 "models\n"
-                "dvclive\n"
                 "y"
             ),
         ),
         (
             True,
             {"cmd": "python script.py"},
-            io.StringIO(
-                "script.py\n"
-                "data\n"
-                "params.yaml\n"
-                "models\n"
-                "dvclive\n"
-                "y"
-            ),
+            io.StringIO("script.py\n" "data\n" "params.yaml\n" "models\n" "y"),
         ),
         (
             True,
             {"cmd": "python script.py", "models": "models"},
-            io.StringIO("script.py\ndata\nparams.yaml\ndvclive\ny"),
+            io.StringIO("script.py\ndata\nparams.yaml\ny"),
         ),
     ],
     ids=[
@@ -345,11 +334,12 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
 def test_init_interactive_live(
     tmp_dir, scm, dvc, interactive, overrides, inp, capsys
 ):
+    overrides["live"] = "dvclive"
+
     (tmp_dir / "params.yaml").dump({"foo": {"bar": 1}})
 
     init(
         dvc,
-        type="dl",
         interactive=interactive,
         defaults=CmdExperimentsInit.DEFAULTS,
         overrides=overrides,
@@ -361,7 +351,7 @@ def test_init_interactive_live(
                 "cmd": "python script.py",
                 "deps": ["data", "script.py"],
                 "metrics": [{"dvclive.json": {"cache": False}}],
-                "outs": [{"models": {"checkpoint": True}}],
+                "outs": ["models"],
                 "params": [{"params.yaml": None}],
                 "plots": [
                     {os.path.join("dvclive", "scalars"): {"cache": False}}
@@ -393,13 +383,13 @@ def test_init_interactive_live(
         (True, io.StringIO()),
     ],
 )
-def test_init_with_type_live_and_models_plots_provided(
+def test_init_with_type_checkpoint_and_models_plots_provided(
     tmp_dir, dvc, interactive, inp
 ):
     (tmp_dir / "params.yaml").dump({"foo": 1})
     init(
         dvc,
-        type="dl",
+        type="checkpoint",
         interactive=interactive,
         stream=inp,
         defaults=CmdExperimentsInit.DEFAULTS,
@@ -411,13 +401,11 @@ def test_init_with_type_live_and_models_plots_provided(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"dvclive.json": {"cache": False}},
                     {"m": {"cache": False}},
                 ],
                 "outs": [{"models": {"checkpoint": True}}],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {os.path.join("dvclive", "scalars"): {"cache": False}},
                     {"p": {"cache": False}},
                 ],
             }
@@ -444,6 +432,49 @@ def test_init_with_type_default_and_live_provided(
         stream=inp,
         defaults=CmdExperimentsInit.DEFAULTS,
         overrides={"cmd": "cmd", "live": "live"},
+    )
+    assert (tmp_dir / "dvc.yaml").parse() == {
+        "stages": {
+            "train": {
+                "cmd": "cmd",
+                "deps": ["data", "src"],
+                "metrics": [
+                    {"live.json": {"cache": False}},
+                ],
+                "outs": ["models"],
+                "params": [{"params.yaml": None}],
+                "plots": [
+                    {os.path.join("live", "scalars"): {"cache": False}},
+                ],
+            }
+        }
+    }
+    assert (tmp_dir / "src").is_dir()
+    assert (tmp_dir / "data").is_dir()
+
+
+@pytest.mark.parametrize(
+    "interactive, inp",
+    [
+        (False, None),
+        (True, io.StringIO()),
+    ],
+)
+def test_init_with_live_and_metrics_plots_provided(
+    tmp_dir, dvc, interactive, inp
+):
+    (tmp_dir / "params.yaml").dump({"foo": 1})
+    init(
+        dvc,
+        interactive=interactive,
+        stream=inp,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={
+            "cmd": "cmd",
+            "live": "live",
+            "metrics": "metrics.json",
+            "plots": "plots",
+        },
     )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {

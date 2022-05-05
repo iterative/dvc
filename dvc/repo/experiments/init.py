@@ -36,7 +36,6 @@ PROMPTS = {
     "params": "Path to a [b]parameters[/b] file",
     "metrics": "Path to a [b]metrics[/b] file",
     "plots": "Path to a [b]plots[/b] file/directory",
-    "live": "Path to log [b]dvclive[/b] outputs",
 }
 
 
@@ -79,15 +78,14 @@ def init_interactive(
     defaults: Dict[str, str],
     provided: Dict[str, str],
     validator: Callable[[str, str], Union[str, Tuple[str, str]]] = None,
-    live: bool = False,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, str]:
     command_prompts = lremove(provided.keys(), ["cmd"])
     dependencies_prompts = lremove(provided.keys(), ["code", "data", "params"])
-    outputs_prompts = lremove(
-        provided.keys(),
-        ["models"] + (["live"] if live else ["metrics", "plots"]),
-    )
+    output_keys = ["models"]
+    if "live" not in provided:
+        output_keys.extend(["metrics", "plots"])
+    outputs_prompts = lremove(provided.keys(), output_keys)
 
     ret: Dict[str, str] = {}
     if "cmd" in provided:
@@ -200,21 +198,16 @@ def init(
     defaults = defaults.copy() if defaults else {}
     overrides = overrides.copy() if overrides else {}
 
-    with_live = type == "dl"
-
     if interactive:
         defaults = init_interactive(
             validator=partial(validate_prompts, repo),
             defaults=defaults,
-            live=with_live,
             provided=overrides,
             stream=stream,
         )
     else:
-        if with_live:
-            # suppress `metrics`/`plots` if live is selected, unless
-            # it is also provided via overrides/cli.
-            # This makes output to be a checkpoint as well.
+        if "live" in overrides:
+            # suppress `metrics`/`plots` if live is selected.
             defaults.pop("metrics", None)
             defaults.pop("plots", None)
         else:
@@ -251,7 +244,11 @@ def init(
         metrics_no_cache=compact([context.get("metrics"), live_metrics]),
         plots_no_cache=compact([context.get("plots"), live_plots]),
         force=force,
-        **{"checkpoints" if with_live else "outs": compact([models])},
+        **{
+            "checkpoints"
+            if type == "checkpoint"
+            else "outs": compact([models])
+        },
     )
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):

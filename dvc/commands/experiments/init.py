@@ -25,7 +25,6 @@ class CmdExperimentsInit(CmdBase):
     DEFAULT_METRICS = "metrics.json"
     DEFAULT_PARAMS = "params.yaml"
     PLOTS = "plots"
-    DVCLIVE = "dvclive"
     DEFAULTS = {
         "code": CODE,
         "data": DATA,
@@ -33,7 +32,6 @@ class CmdExperimentsInit(CmdBase):
         "metrics": DEFAULT_METRICS,
         "params": DEFAULT_PARAMS,
         "plots": PLOTS,
-        "live": DVCLIVE,
     }
 
     def run(self):
@@ -190,12 +188,11 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--live",
-        help="Path to log dvclive outputs for your experiments"
-        f" (default: {CmdExperimentsInit.DVCLIVE})",
+        help="Path to log dvclive outputs for your experiments",
     )
     experiments_init_parser.add_argument(
         "--type",
-        choices=["default", "dl"],
+        choices=["default", "checkpoint"],
         default="default",
         help="Select type of stage to create (default: %(default)s)",
     )
