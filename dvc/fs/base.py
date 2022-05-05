@@ -414,48 +414,57 @@ class FileSystem:
 
     def get(
         self,
-        from_info: AnyFSPath,
-        to_info: AnyFSPath,
+        from_info: Union[AnyFSPath, List[AnyFSPath]],
+        to_info: Union[AnyFSPath, List[AnyFSPath]],
         callback: "FsspecCallback" = DEFAULT_CALLBACK,
+        recursive: bool = False,  # pylint: disable=unused-argument
         batch_size: int = None,
-    ):
+    ) -> None:
+        # Currently, the implementation is non-recursive if the paths are
+        # provided as a list, and recursive if it's a single path.
         from .local import localfs
 
-        def get_file(from_info, to_info):
-            localfs.makedirs(localfs.path.parent(to_info), exist_ok=True)
-            branch = callback.branch(from_info, to_info, {})
-            self.get_file(from_info, to_info, callback=branch)
-            callback.relative_update()
+        def get_file(rpath, lpath, **kwargs):
+            localfs.makedirs(localfs.path.parent(lpath), exist_ok=True)
+            self.fs.get_file(rpath, lpath, **kwargs)
 
-        if not self.isdir(from_info):
-            callback.set_size(1)
-            return get_file(from_info, to_info)
+        get_file = callback.wrap_and_branch(get_file)
 
-        pairs = {
-            info: localfs.path.join(
-                to_info, *self.path.relparts(info, from_info)
-            )
-            for info in self.find(from_info)
-        }
-        if not pairs:
-            localfs.makedirs(to_info, exist_ok=True)
-            return
+        if isinstance(from_info, list) and isinstance(to_info, list):
+            from_infos: List[AnyFSPath] = from_info
+            to_infos: List[AnyFSPath] = to_info
+        else:
+            assert isinstance(from_info, str)
+            assert isinstance(to_info, str)
 
-        callback.set_size(len(pairs))
-        max_workers = batch_size or self.jobs
-        # NOTE: unlike pulling/fetching cache, where we need to
-        # download everything we can, not raising an error here might
-        # turn very ugly, as the user might think that he has
-        # downloaded a complete directory, while having a partial one,
-        # which might cause unexpected results in his pipeline.
-        with ThreadPoolExecutor(
-            max_workers=max_workers, cancel_on_error=True
-        ) as executor:
-            list(
-                executor.imap_unordered(
-                    lambda args: get_file(*args), pairs.items()
+            if not self.isdir(from_info):
+                callback.set_size(1)
+                return get_file(from_info, to_info)
+
+            from_infos = list(self.find(from_info))
+            if not from_infos:
+                return localfs.makedirs(to_info, exist_ok=True)
+
+            to_infos = [
+                localfs.path.join(
+                    to_info, *self.path.relparts(info, from_info)
                 )
+                for info in from_infos
+            ]
+
+        jobs = batch_size or self.jobs
+        if self.fs.async_impl:
+            return self.fs.get(
+                from_infos,
+                to_infos,
+                callback=callback,
+                batch_size=jobs,
             )
+
+        callback.set_size(len(from_infos))
+        executor = ThreadPoolExecutor(max_workers=jobs, cancel_on_error=True)
+        with executor:
+            list(executor.imap_unordered(get_file, from_infos, to_infos))
 
     def ukey(self, path: AnyFSPath) -> str:
         return self.fs.ukey(path)
