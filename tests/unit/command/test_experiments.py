@@ -690,7 +690,6 @@ def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
             "metrics": "metrics.json",
             "params": "params.yaml",
             "plots": "plots",
-            "live": "dvclive",
         },
         overrides={"cmd": "cmd"},
         interactive=False,
@@ -727,7 +726,6 @@ def test_experiments_init_config(dvc, scm, mocker):
             "metrics": "metrics.json",
             "params": "params.yaml",
             "plots": "plots",
-            "live": "dvclive",
         },
         overrides={"cmd": "cmd"},
         interactive=False,
@@ -782,11 +780,11 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
     "extra_args, expected_kw",
     [
         (["--type", "default"], {"type": "default", "name": "train"}),
-        (["--type", "dl"], {"type": "dl", "name": "train"}),
+        (["--type", "checkpoint"], {"type": "checkpoint", "name": "train"}),
         (["--force"], {"force": True, "name": "train"}),
         (
-            ["--name", "name", "--type", "dl"],
-            {"name": "name", "type": "dl"},
+            ["--name", "name", "--type", "checkpoint"],
+            {"name": "name", "type": "checkpoint"},
         ),
         (
             [
