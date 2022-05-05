@@ -13,7 +13,15 @@ logger = get_task_logger(__name__)
 
 
 @shared_task
-def setup_exp(entry_dict: Dict[str, Any]) -> None:
+def setup_exp(entry_dict: Dict[str, Any]) -> str:
+    """Setup (queue) an experiment.
+
+    Arguments:
+        entry_dict: Serialized QueueEntry for this experiment.
+
+    Returns:
+        Celery task ID for the queued experiment task chain.
+    """
     from dvc.repo import Repo
     from dvc_task.proc.tasks import run
 
@@ -30,11 +38,14 @@ def setup_exp(entry_dict: Dict[str, Any]) -> None:
     cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
 
     # schedule execution + cleanup
-    chain(
+    exp_chain = chain(
         proc.run(cmd, name=entry.stash_rev),
         collect_exp.s(entry.asdict(), infofile),
         cleanup_exp.si(entry.asdict(), executor.root_dir),
-    ).delay()
+    )
+    exp_chain.freeze()
+    exp_chain.delay()
+    return exp_chain.id
 
 
 @shared_task
