@@ -11,6 +11,7 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
+    Set,
 )
 
 from funcy import cached_property, first
@@ -47,6 +48,11 @@ class _MessageEntry(NamedTuple):
     entry: QueueEntry
 
 
+class _TaskEntry(NamedTuple):
+    task_id: str
+    entry: QueueEntry
+
+
 class LocalCeleryQueue(BaseStashQueue):
     """DVC experiment queue.
 
@@ -54,6 +60,8 @@ class LocalCeleryQueue(BaseStashQueue):
     """
 
     CELERY_DIR = "celery"
+
+    _shutdown_task_ids: Set[str] = set()
 
     @cached_property
     def wdir(self) -> str:
@@ -139,19 +147,26 @@ class LocalCeleryQueue(BaseStashQueue):
             entry_dict = kwargs.get("entry_dict", args[0])
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
-    def _iter_processed(self) -> Generator[QueueEntry, None, None]:
+    def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
         for msg in self.celery.iter_processed():
             if msg.headers.get("task") != setup_exp.name:
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
-            yield QueueEntry.from_dict(entry_dict)
+            yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
+
+    def _iter_active_tasks(self) -> Generator[_TaskEntry, None, None]:
+        from celery.result import AsyncResult
+
+        for msg, entry in self._iter_processed():
+            task_id = msg.headers["id"]
+            result = AsyncResult(task_id)
+            if not result.ready():
+                yield _TaskEntry(task_id, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:
-        for entry in self._iter_processed():
-            proc_info = self.proc.get(entry.stash_rev)
-            if proc_info is not None and proc_info.returncode is None:
-                yield entry
+        for _, entry in self._iter_active_tasks():
+            yield entry
 
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
@@ -167,6 +182,25 @@ class LocalCeleryQueue(BaseStashQueue):
                 # Infofile will not be created until execution begins
                 pass
             time.sleep(1)
+
+    def _shutdown_handler(self, task_id: str = None, **kwargs):
+        if task_id in self._shutdown_task_ids:
+            self._shutdown_task_ids.remove(task_id)
+        if not self._shutdown_task_ids:
+            self.celery.control.shutdown()
+
+    def shutdown(self, kill: bool = False):
+        from celery.signals import task_postrun
+
+        if kill:
+            raise NotImplementedError
+        tasks = list(self._iter_active_tasks())
+        if tasks:
+            for task_id, _ in tasks:
+                self._shutdown_task_ids.add(task_id)
+            task_postrun.connect()(self._shutdown_handler)
+        else:
+            self.celery.control.shutdown()
 
 
 class WorkspaceQueue(BaseStashQueue):
@@ -283,4 +317,7 @@ class WorkspaceQueue(BaseStashQueue):
         return results
 
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+        raise NotImplementedError
+
+    def shutdown(self, kill: bool = False):
         raise NotImplementedError
