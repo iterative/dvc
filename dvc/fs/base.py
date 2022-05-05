@@ -412,6 +412,34 @@ class FileSystem:
     ) -> Union[int, Dict[AnyFSPath, int]]:
         return self.fs.du(path, total=total, maxdepth=maxdepth, **kwargs)
 
+    def put(
+        self,
+        from_info: Union[AnyFSPath, List[AnyFSPath]],
+        to_info: Union[AnyFSPath, List[AnyFSPath]],
+        callback: "FsspecCallback" = DEFAULT_CALLBACK,
+        recursive: bool = False,  # pylint: disable=unused-argument
+        batch_size: int = None,
+    ):
+        jobs = batch_size or self.jobs
+        if self.fs.async_impl:
+            return self.fs.put(
+                from_info,
+                to_info,
+                callback=callback,
+                batch_size=jobs,
+                recursive=recursive,
+            )
+
+        assert not recursive, "not implemented yet"
+        from_infos = [from_info] if isinstance(from_info, str) else from_info
+        to_infos = [to_info] if isinstance(to_info, str) else to_info
+
+        callback.set_size(len(from_infos))
+        executor = ThreadPoolExecutor(max_workers=jobs, cancel_on_error=True)
+        with executor:
+            put_file = callback.wrap_and_branch(self.put_file)
+            list(executor.imap_unordered(put_file, from_infos, to_infos))
+
     def get(
         self,
         from_info: Union[AnyFSPath, List[AnyFSPath]],
