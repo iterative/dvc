@@ -170,6 +170,16 @@ class BaseStashQueue(ABC):
         This method blocks until the specified item has been collected.
         """
 
+    @abstractmethod
+    def shutdown(self, kill: bool = False):
+        """Shutdown the queue worker.
+
+        Arguments:
+            kill: If True, the any active experiments will be killed and the
+                worker will shutdown immediately. If False, the worker will
+                finish any active experiments before shutting down.
+        """
+
     def _stash_exp(
         self,
         *args,
