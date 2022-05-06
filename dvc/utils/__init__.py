@@ -476,16 +476,23 @@ def is_exec(mode):
 
 
 def glob_targets(targets, glob=True, recursive=True):
+    from dvc.exceptions import GlobDoesNotMatchError
+
     if not glob:
         return targets
 
     from glob import iglob
 
-    return [
+    results = [
         exp_target
         for target in targets
         for exp_target in iglob(target, recursive=recursive)
     ]
+
+    if not results:
+        raise GlobDoesNotMatchError(targets)
+
+    return results
 
 
 def error_handler(func):

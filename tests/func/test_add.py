@@ -16,6 +16,7 @@ from dvc.data.db import ODBManager
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
+    GlobDoesNotMatchError,
     InvalidArgumentError,
     OutputDuplicationError,
     OverlappingOutputPathsError,
@@ -290,6 +291,11 @@ def test_add_filtered_files_in_dir(
         # Current dir should not be taken into account
         assert stage.wdir == os.path.dirname(stage.path)
         assert stage.outs[0].def_path in expected_def_paths
+
+
+def test_add_glob_no_result_exception(dvc):
+    with pytest.raises(GlobDoesNotMatchError):
+        dvc.add(["invalid*"], glob=True)
 
 
 class TestAddExternal(TestAdd):
