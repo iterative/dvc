@@ -574,15 +574,10 @@ def test_target_remote(tmp_dir, dvc, make_remote):
 
 
 def test_push_pull_glob_no_match(
-    tmp_dir, dvc, erepo_dir, run_copy, local_remote
+    tmp_dir, dvc,
 ):
-    tmp_dir.gen("foo", "foo")
-    erepo_dir.add_remote(config=local_remote.config)
+    with pytest.raises(GlobDoesNotMatchError):
+        dvc.push(targets="b*", glob=True)
 
-    with erepo_dir.chdir():
-        with pytest.raises(GlobDoesNotMatchError):
-            dvc.push(targets="b*", glob=True)
-
-        with pytest.raises(GlobDoesNotMatchError):
-            dvc.pull(targets="b*", glob=True)
-        assert not os.path.exists(erepo_dir.dvc.stage_cache.cache_dir)
+    with pytest.raises(GlobDoesNotMatchError):
+        dvc.pull(targets="b*", glob=True)
