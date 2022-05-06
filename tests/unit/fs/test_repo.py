@@ -474,16 +474,16 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
     dvc._reset()
     fs = RepoFileSystem(repo=dvc)
     expected = [
-        ".dvcignore",
-        ".gitignore",
-        "lorem",
-        "lorem.dvc",
-        "dir",
-        "dir/repo.txt",
+        "/.dvcignore",
+        "/.gitignore",
+        "/lorem",
+        "/lorem.dvc",
+        "/dir",
+        "/dir/repo.txt",
     ]
 
     actual = []
-    for root, dirs, files in fs.walk("", dvcfiles=True):
+    for root, dirs, files in fs.walk("/", dvcfiles=True):
         for entry in dirs + files:
             actual.append(posixpath.join(root, entry))
 
@@ -657,9 +657,9 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
 
         if traverse_subrepos or repo_dir == tmp_dir:
             repo_dir_path = (
-                repo_dir.relative_to(tmp_dir).as_posix()
+                "/" + repo_dir.relative_to(tmp_dir).as_posix()
                 if repo_dir != tmp_dir
-                else ""
+                else "/"
             )
             expected[repo_dir_path] = set(
                 scm_files.keys() | dvc_files.keys() | extras
@@ -675,13 +675,13 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
 
     if traverse_subrepos:
         # update subrepos
-        expected[""].update(["subrepo1", "subrepo2"])
-        expected["subrepo1"].add("subrepo3")
+        expected["/"].update(["subrepo1", "subrepo2"])
+        expected["/subrepo1"].add("subrepo3")
 
     actual = {}
     fs = RepoFileSystem(repo=dvc)
     for root, dirs, files in fs.walk(
-        "", ignore_subrepos=not traverse_subrepos
+        "/", ignore_subrepos=not traverse_subrepos
     ):
         actual[root] = set(dirs + files)
     assert expected == actual

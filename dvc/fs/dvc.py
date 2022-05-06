@@ -1,5 +1,4 @@
 import logging
-import os
 import threading
 import typing
 
@@ -22,31 +21,43 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         repo: DVC repo.
     """
 
-    def __init__(self, **kwargs):
+    root_marker = "/"
+
+    def __init__(self, workspace=None, **kwargs):
         super().__init__(**kwargs)
         self.repo = kwargs["repo"]
+        self.workspace = workspace or "repo"
+
+    @cached_property
+    def path(self):
+        from .path import Path
+
+        def _getcwd():
+            return self.root_marker
+
+        return Path(self.sep, getcwd=_getcwd)
 
     @property
     def config(self):
         raise NotImplementedError
 
     def _get_key(self, path):
-        from dvc.fs.local import LocalFileSystem
+        if self.workspace != "repo":
+            from . import get_cloud_fs
 
-        from . import get_cloud_fs
-
-        cls, kwargs, fs_path = get_cloud_fs(None, url=path)
-
-        if cls != LocalFileSystem or os.path.isabs(path):
+            cls, kwargs, fs_path = get_cloud_fs(None, url=path)
             fs = cls(**kwargs)
-            return (cls.scheme, *fs.path.parts(fs_path))
+            return (self.workspace, *fs.path.parts(fs_path))
 
-        fs_key = "repo"
-        key = path.split(self.sep)
-        if key == ["."] or key == [""]:
+        path = self.path.abspath(path)
+        if path == self.root_marker:
+            return (self.workspace,)
+
+        key = self.path.relparts(path, self.root_marker)
+        if key == (".") or key == (""):
             key = ()
 
-        return (fs_key, *key)
+        return (self.workspace, *key)
 
     def _get_fs_path(self, path: "AnyPath", remote=None):
         from dvc.config import NoRemoteError

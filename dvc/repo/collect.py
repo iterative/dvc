@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
 
 from dvc.types import AnyPath
@@ -34,8 +33,8 @@ def _collect_paths(
     from dvc.fs.repo import RepoFileSystem
     from dvc.utils import relpath
 
-    fs_paths = [os.path.abspath(target) for target in targets]
     fs = RepoFileSystem(repo=repo)
+    fs_paths = [fs.from_os_path(target) for target in targets]
 
     target_paths: StrPaths = []
     for fs_path in fs_paths:
@@ -60,10 +59,11 @@ def _filter_duplicates(
     fs_res_paths = fs_paths
 
     for out in outs:
-        if out.fs_path in fs_paths:
+        fs_path = out.repo.repo_fs.from_os_path(out.fs_path)
+        if fs_path in fs_paths:
             res_outs.append(out)
             # MUTATING THE SAME LIST!!
-            fs_res_paths.remove(out.fs_path)
+            fs_res_paths.remove(fs_path)
 
     return res_outs, fs_res_paths
 

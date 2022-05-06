@@ -491,12 +491,22 @@ class Repo:
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
+        from dvc.fs.dvc import DvcFileSystem
         from dvc.fs.repo import RepoFileSystem
 
-        fs = RepoFileSystem(repo=self, subrepos=True)
+        if os.path.isabs(path):
+            fs = DvcFileSystem(repo=self, workspace="local")
+            fs_path = path
+        else:
+            fs = RepoFileSystem(repo=self, subrepos=True)
+            fs_path = fs.from_os_path(path)
+
         try:
             with fs.open(
-                path, mode=mode, encoding=encoding, remote=remote
+                fs_path,
+                mode=mode,
+                encoding=encoding,
+                remote=remote,
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:

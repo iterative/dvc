@@ -137,10 +137,3 @@ def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):
         assert info["repo"].root_dir == str(
             subrepo
         ), f"repo root didn't match for {path}"
-
-    # supports external outputs on top-level DVC repo
-    external_dir = make_tmp_dir("external-output")
-    external_dir.gen("bar", "bar")
-    dvc.add(str(external_dir / "bar"), external=True)
-    info = repo_fs.info((external_dir / "bar").fs_path)
-    assert info["repo"].root_dir == str(tmp_dir)

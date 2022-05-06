@@ -40,6 +40,12 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
             }
         )
 
+    @cached_property
+    def path(self):
+        from .path import Path
+
+        return Path(self.sep, getcwd=os.getcwd)
+
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self) -> "FsspecGitFileSystem":

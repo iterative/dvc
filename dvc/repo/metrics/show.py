@@ -24,11 +24,11 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
     result = []
     for out in metrics:
         if out.metric:
-            result.append(out.fs_path)
+            result.append(out.repo.repo_fs.from_os_path(out.fs_path))
         elif out.live:
             fs_path = summary_fs_path(out)
             if fs_path:
-                result.append(fs_path)
+                result.append(out.repo.repo_fs.from_os_path(fs_path))
     return result
 
 
@@ -78,12 +78,16 @@ def _read_metric(path, fs, rev, **kwargs):
 def _read_metrics(repo, metrics, rev, onerror=None):
     fs = RepoFileSystem(repo=repo)
 
+    relpath = ""
+    if repo.root_dir != repo.fs.path.getcwd():
+        relpath = repo.fs.path.relpath(repo.root_dir, repo.fs.path.getcwd())
+
     res = {}
     for metric in metrics:
         if not fs.isfile(metric):
             continue
 
-        res[os.path.relpath(metric, os.getcwd())] = _read_metric(
+        res[os.path.join(relpath, *fs.path.parts(metric))] = _read_metric(
             metric, fs, rev, onerror=onerror
         )
 

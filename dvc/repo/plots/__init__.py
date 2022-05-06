@@ -251,7 +251,10 @@ def _collect_plots(
         recursive=recursive,
     )
 
-    result = {plot.fs_path: _plot_props(plot) for plot in plots}
+    result = {
+        repo.repo_fs.from_os_path(plot.fs_path): _plot_props(plot)
+        for plot in plots
+    }
     result.update({fs_path: {} for fs_path in fs_paths})
     return result
 
