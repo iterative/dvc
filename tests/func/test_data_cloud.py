@@ -574,7 +574,8 @@ def test_target_remote(tmp_dir, dvc, make_remote):
 
 
 def test_push_pull_glob_no_match(
-    tmp_dir, dvc,
+    tmp_dir,
+    dvc,
 ):
     with pytest.raises(GlobDoesNotMatchError):
         dvc.push(targets="b*", glob=True)
