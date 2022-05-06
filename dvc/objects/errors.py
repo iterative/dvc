@@ -1,15 +1,8 @@
-from dvc.exceptions import DvcException
-
-
-class ObjectError(DvcException):
+class ObjectFormatError(Exception):
     pass
 
 
-class ObjectFormatError(ObjectError):
-    pass
-
-
-class ObjectDBError(DvcException):
+class ObjectDBError(Exception):
     pass
 
 
