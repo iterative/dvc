@@ -186,8 +186,9 @@ def _dir_output_paths(fs, fs_path, obj, targets=None):
 
 def _filter_missing(repo_fs, paths):
     for path in paths:
+        fs_path = repo_fs.from_os_path(path)
         try:
-            info = repo_fs.info(path)
+            info = repo_fs.info(fs_path)
             dvc_info = info.get("dvc_info")
             if (
                 dvc_info

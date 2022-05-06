@@ -15,6 +15,7 @@ from dvc.utils.fs import remove
     [
         ("", ("repo",)),
         (".", ("repo",)),
+        ("/", ("repo",)),
         ("foo", ("repo", "foo")),
         ("dir/foo", ("repo", "dir", "foo")),
     ],

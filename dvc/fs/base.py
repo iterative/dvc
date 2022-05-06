@@ -83,7 +83,10 @@ class FileSystem:
     def path(self):
         from .path import Path
 
-        return Path(self.sep)
+        def _getcwd():
+            return self.fs.root_marker
+
+        return Path(self.sep, getcwd=_getcwd)
 
     @classmethod
     def _strip_protocol(cls, path: str) -> str:

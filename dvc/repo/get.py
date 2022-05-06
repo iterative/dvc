@@ -50,14 +50,26 @@ def get(url, path, out=None, rev=None, jobs=None):
         with external_repo(
             url=url, rev=rev, cache_dir=tmp_dir, cache_types=cache_types
         ) as repo:
-            fs = repo.repo_fs
+
+            if os.path.isabs(path):
+                from dvc.fs.dvc import DvcFileSystem
+
+                fs = DvcFileSystem(repo=repo, workspace="local")
+                fs_path = path
+            else:
+                fs = repo.repo_fs
+                fs_path = fs.from_os_path(path)
+
             with FsspecCallback.as_tqdm_callback(
                 total=-1,
                 desc=f"Downloading {fs.path.name(path)}",
                 unit="files",
             ) as cb:
                 fs.get(
-                    path, os.path.abspath(out), batch_size=jobs, callback=cb
+                    fs_path,
+                    os.path.abspath(out),
+                    batch_size=jobs,
+                    callback=cb,
                 )
     finally:
         remove(tmp_dir)

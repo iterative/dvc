@@ -45,8 +45,10 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
 
 
 def _ls(fs, path, recursive=None, dvc_only=False):
+    fs_path = fs.from_os_path(path)
+
     try:
-        fs_path = fs.info(path)["name"]
+        fs_path = fs.info(fs_path)["name"]
     except FileNotFoundError:
         return {}
 

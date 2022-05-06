@@ -73,6 +73,8 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         kwargs: Additional keyword arguments passed to the `DvcFileSystem()`.
     """
 
+    root_marker = "/"
+
     PARAM_REPO_URL = "repo_url"
     PARAM_REPO_ROOT = "repo_root"
     PARAM_REV = "rev"
@@ -103,7 +105,10 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         else:
             self.repo_factory = repo_factory
 
-        self.path = Path(self.sep)
+        def _getcwd():
+            return self.root_marker
+
+        self.path = Path(self.sep, getcwd=_getcwd)
         self.repo = repo
         self.hash_jobs = repo.fs.hash_jobs
         self._traverse_subrepos = subrepos
@@ -258,17 +263,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         """
         Returns a pair of fss based on repo the path falls in, using prefix.
         """
-        from dvc.utils import as_posix
-
-        if os.path.isabs(path):
-            if self.repo.fs.path.isin_or_eq(path, self.repo.root_dir):
-                path = self.repo.fs.path.relpath(path, self.repo.root_dir)
-            else:
-                return None, None, self.repo.dvcfs, path
-
-        path = as_posix(path)
-
-        parts = self.path.parts(path)
+        parts = self.path.relparts(path, self.root_marker)
         if parts and parts[0] == os.curdir:
             parts = parts[1:]
 
@@ -461,3 +456,11 @@ class RepoFileSystem(FileSystem):
     @property
     def config(self):
         return self.fs.config
+
+    def from_os_path(self, path):
+        from dvc.utils import as_posix
+
+        if os.path.isabs(path):
+            path = os.path.relpath(path, self.repo.root_dir)
+
+        return as_posix(path)
