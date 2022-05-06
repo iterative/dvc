@@ -1,7 +1,6 @@
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import GlobDoesNotMatchError
 from dvc.repo import locked
 from dvc.utils import glob_targets
 
@@ -31,9 +30,6 @@ def pull(
         targets = [targets]
 
     expanded_targets = glob_targets(targets, glob=glob)
-
-    if targets and not expanded_targets:
-        raise GlobDoesNotMatchError(targets)
 
     processed_files_count = self.fetch(
         expanded_targets,

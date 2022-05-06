@@ -1,10 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import (
-    FileTransferError,
-    GlobDoesNotMatchError,
-    UploadError,
-)
+from dvc.exceptions import FileTransferError, UploadError
 
 from ..utils import glob_targets
 from . import locked
@@ -38,9 +34,6 @@ def push(
         targets = [targets]
 
     expanded_targets = glob_targets(targets, glob=glob)
-
-    if targets and not expanded_targets:
-        raise GlobDoesNotMatchError(targets)
 
     used = self.used_objs(
         expanded_targets,
