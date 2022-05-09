@@ -1,7 +1,9 @@
+from contextlib import ExitStack
 from functools import wraps
 from typing import IO, TYPE_CHECKING, Any, Dict, Optional, TypeVar, cast
 
 import fsspec
+from funcy import cached_property
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -96,17 +98,24 @@ class NoOpCallback(FsspecCallback, fsspec.callbacks.NoOpCallback):
 
 class TqdmCallback(FsspecCallback):
     def __init__(self, progress_bar: "Tqdm" = None, **tqdm_kwargs):
-        from dvc.progress import Tqdm
-
-        self.progress_bar = progress_bar or Tqdm(**tqdm_kwargs)
+        self._tqdm_kwargs = tqdm_kwargs
+        self._progress_bar = progress_bar
+        self._stack = ExitStack()
         super().__init__()
 
+    @cached_property
+    def progress_bar(self):
+        from dvc.progress import Tqdm
+
+        return self._stack.enter_context(
+            self._progress_bar or Tqdm(**self._tqdm_kwargs)
+        )
+
     def __enter__(self):
-        self.progress_bar.__enter__()
         return self
 
     def close(self):
-        self.progress_bar.close()
+        self._stack.close()
 
     def set_size(self, size):
         if size is not None:
