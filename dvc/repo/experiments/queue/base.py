@@ -171,6 +171,14 @@ class BaseStashQueue(ABC):
         """
 
     @abstractmethod
+    def kill(self, revs: str) -> None:
+        """Kill the specified running entries in the queue.
+
+        Arguments:
+            revs: Stash revs or running exp name to be killed.
+        """
+
+    @abstractmethod
     def shutdown(self, kill: bool = False):
         """Shutdown the queue worker.
 
@@ -495,3 +503,28 @@ class BaseStashQueue(ABC):
             executor.collect_cache(exp.repo, exec_result.ref_info)
 
         return results
+
+    def get_queue_entry_by_names(
+        self,
+        exp_names: Collection[str],
+    ) -> Dict[str, Optional[QueueEntry]]:
+        from scmrepo.exceptions import RevError as InternalRevError
+
+        exp_name_set = set(exp_names)
+        result: Dict[str, Optional[QueueEntry]] = {}
+        rev_entries = {}
+
+        for entry in self.iter_queued():
+            if entry.name in exp_name_set:
+                result[entry.name] = entry
+            else:
+                rev_entries[entry.stash_rev] = entry
+
+        for exp_name in exp_name_set.difference(result.keys()):
+            try:
+                rev = self.scm.resolve_rev(exp_name)
+                if rev in rev_entries:
+                    result[exp_name] = rev_entries[rev]
+            except InternalRevError:
+                result[exp_name] = None
+        return result
