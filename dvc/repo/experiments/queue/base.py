@@ -171,6 +171,14 @@ class BaseStashQueue(ABC):
         """
 
     @abstractmethod
+    def kill(self, name: str) -> None:
+        """Kill the specified running entries in the queue.
+
+        Arguments:
+            name: Running exp name to be killed.
+        """
+
+    @abstractmethod
     def shutdown(self, kill: bool = False):
         """Shutdown the queue worker.
 

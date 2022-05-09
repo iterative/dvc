@@ -184,6 +184,9 @@ class LocalCeleryQueue(BaseStashQueue):
                 pass
             time.sleep(1)
 
+    def kill(self, name: str) -> None:
+        self.proc.kill(name)
+
     def _shutdown_handler(self, task_id: str = None, **kwargs):
         if task_id in self._shutdown_task_ids:
             self._shutdown_task_ids.remove(task_id)
@@ -318,6 +321,9 @@ class WorkspaceQueue(BaseStashQueue):
         return results
 
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+        raise NotImplementedError
+
+    def kill(self, name: str) -> None:
         raise NotImplementedError
 
     def shutdown(self, kill: bool = False):
