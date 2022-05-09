@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Set, Union
+from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Union
 
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
@@ -85,7 +85,9 @@ def _resolve_exp_by_name(
             commit_ref_dict[exp_ref] = exp_name
 
     if not git_remote:
-        _named_entries = _get_queue_entry_by_names(repo, remained)
+        _named_entries = (
+            repo.experiments.celery_queue.get_queue_entry_by_names(remained)
+        )
         for exp_name, entry in _named_entries.items():
             if entry is not None:
                 queue_entry_dict[exp_name] = entry
@@ -125,30 +127,6 @@ def _clear_all_commits(repo, git_remote) -> List:
         ref_info: ref_info.name for ref_info in exp_refs(repo.scm, git_remote)
     }
     return _remove_commited_exps(repo.scm, ref_infos, git_remote)
-
-
-def _get_queue_entry_by_names(
-    repo: "Repo",
-    exp_name_set: Set[str],
-) -> Dict[str, Optional[QueueEntry]]:
-    from scmrepo.exceptions import RevError as InternalRevError
-
-    result = {}
-    rev_entries = {}
-    for entry in repo.experiments.celery_queue.iter_queued():
-        if entry.name in exp_name_set:
-            result[entry.name] = entry
-        else:
-            rev_entries[entry.stash_rev] = entry
-
-    for exp_name in exp_name_set.difference(result.keys()):
-        try:
-            rev = repo.scm.resolve_rev(exp_name)
-            if rev in rev_entries:
-                result[exp_name] = rev_entries[rev]
-        except InternalRevError:
-            result[exp_name] = None
-    return result
 
 
 def _remove_commited_exps(
