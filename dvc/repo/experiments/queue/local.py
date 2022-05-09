@@ -5,6 +5,7 @@ import time
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
+    Collection,
     Dict,
     Generator,
     List,
@@ -20,7 +21,7 @@ from kombu.message import Message
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
 
-from ..exceptions import ExpQueueEmptyError
+from ..exceptions import ExpQueueEmptyError, UnresolvedExpNamesError
 from ..executor.base import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
@@ -200,6 +201,29 @@ class LocalCeleryQueue(BaseStashQueue):
                 pass
             time.sleep(1)
 
+    def kill(self, revs: Collection[str]) -> None:
+        to_kill: Set[QueueEntry] = set()
+        not_active: List[str] = []
+        name_dict: Dict[
+            str, Optional[QueueEntry]
+        ] = self.get_queue_entry_by_names(set(revs))
+
+        missing_rev: List[str] = []
+        active_queue_entry = set(self.iter_active())
+        for rev, queue_entry in name_dict.items():
+            if queue_entry is None:
+                missing_rev.append(rev)
+            elif queue_entry not in active_queue_entry:
+                not_active.append(rev)
+            else:
+                to_kill.add(queue_entry)
+
+        if missing_rev:
+            raise UnresolvedExpNamesError(missing_rev)
+
+        for queue_entry in to_kill:
+            self.proc.kill(queue_entry.name)
+
     def _shutdown_handler(self, task_id: str = None, **kwargs):
         if task_id in self._shutdown_task_ids:
             self._shutdown_task_ids.remove(task_id)
@@ -334,6 +358,9 @@ class WorkspaceQueue(BaseStashQueue):
         return results
 
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:
+        raise NotImplementedError
+
+    def kill(self, revs: Collection[str]) -> None:
         raise NotImplementedError
 
     def shutdown(self, kill: bool = False):
