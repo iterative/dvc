@@ -14,25 +14,34 @@
 
 |
 
-**Data Version Control** or **DVC** is an **open-source** tool for data science and machine
-learning projects. Key features:
+**Data Version Control** or **DVC** helps you develop reproducible machine
+learning projects:
 
-#. Simple **command line** Git-like experience. Does not require installing and maintaining
-   any databases. Does not depend on any proprietary online services.
+#. Version your data and models.
 
-#. Management and versioning of **datasets** and **machine learning
-   models**. Data can be saved in S3, Google cloud, Azure, Alibaba 
-   cloud, SSH server, HDFS, or even local HDD RAID.
+#. Connect them to your code and parameters to form a pipeline.
 
-#. Makes projects **reproducible** and **shareable**; helping to answer questions about how
-   a model was built.
+#. Modify data, code, or parameters and run your modified pipeline.
 
-#. Helps manage experiments with Git tags/branches and **metrics** tracking.
+#. Iterate and track each experiment.
 
-**DVC** aims to replace spreadsheet and document sharing tools (such as Excel or Google Docs)
-frequently used as both knowledge repositories and team ledgers.
-DVC also replaces both ad-hoc scripts to track, move, and deploy different model versions
-and ad-hoc data file suffixes and prefixes.
+#. Share, compare, and reconstruct experiments.
+
+**Why DVC?**
+
+#. **Store** data and models (big) in your cloud storage, but keep their version
+   info (small) in your Git repo.
+
+#. **Iterate** fast with straightforward YAML pipelines. When you make changes,
+   only run the steps impacted by those changes.
+
+#. **Track** experiments in your local Git repo (no servers needed) and choose
+   which to keep and share.
+
+#. **Compare** any data, code, parameters, metrics, or plots and analyze however
+   you want.
+
+#. **Reconstruct** anyone's experiment with a single command.
 
 .. contents:: **Contents**
   :backlinks: none
