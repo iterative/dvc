@@ -33,6 +33,7 @@ from dvc.commands import (
     move,
     params,
     plots,
+    queue,
     remote,
     remove,
     repro,
@@ -50,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 COMMANDS = [
     init,
+    queue,
     get,
     get_url,
     destroy,
