@@ -93,7 +93,24 @@ class LocalCeleryQueue(BaseStashQueue):
     def worker(self) -> "TemporaryWorker":
         from dvc_task.worker import TemporaryWorker
 
-        return TemporaryWorker(self.celery, concurrency=1, timeout=10)
+        # NOTE: Use thread pool with concurrency 1 and disabled prefetch.
+        # Worker scaling should be handled by running additional workers,
+        # rather than increasing pool concurrency.
+        #
+        # We use "threads" over "solo" (inline single-threaded) execution so
+        # that we still have access to the control/broadcast API (which
+        # requires a separate message handling thread in the worker).
+        #
+        # Disabled prefetch ensures that each worker will can only schedule and
+        # execute up to one experiment at a time (and a worker cannot prefetch
+        # additional experiments from the queue).
+        return TemporaryWorker(
+            self.celery,
+            pool="threads",
+            concurrency=1,
+            prefetch_multiplier=1,
+            timeout=10,
+        )
 
     def spawn_worker(self):
         from dvc_task.proc.process import ManagedProcess
