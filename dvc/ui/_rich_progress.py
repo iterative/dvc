@@ -20,7 +20,15 @@ class MofNCompleteColumnWithUnit(MofNCompleteColumn):
         return ret.append(f" {unit}") if unit else ret
 
 
-class RichTransferProgress(Progress):
+class RichProgress(Progress):
+    def clear_task(self, task):
+        try:
+            self.remove_task(task)
+        except KeyError:
+            pass
+
+
+class RichTransferProgress(RichProgress):
     SUMMARY_COLS = (
         TextColumn("[magenta]{task.description}[bold green]"),
         MofNCompleteColumnWithUnit(),

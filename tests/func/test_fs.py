@@ -3,8 +3,10 @@ from io import BytesIO
 from operator import itemgetter
 from os.path import join
 
+import pytest
+
 from dvc.fs import get_cloud_fs
-from dvc.fs._callback import FsspecCallback
+from dvc.fs._callback import DEFAULT_CALLBACK, FsspecCallback
 from dvc.fs.local import LocalFileSystem
 from dvc.repo import Repo
 
@@ -323,3 +325,35 @@ def test_callback_on_repo_fs(tmp_dir, dvc, scm, mocker):
     assert branch.call_count == 1
     assert branch.spy_return.size == size
     assert branch.spy_return.value == size
+
+
+@pytest.mark.parametrize(
+    "api", ["set_size", "relative_update", "absolute_update"]
+)
+@pytest.mark.parametrize(
+    "callback_factory, kwargs",
+    [
+        (FsspecCallback.as_callback, {}),
+        (FsspecCallback.as_tqdm_callback, {"desc": "test"}),
+        (FsspecCallback.as_rich_callback, {"desc": "test"}),
+    ],
+)
+def test_callback_with_none(request, api, callback_factory, kwargs, mocker):
+    """
+    Test that callback don't fail if they receive None.
+
+    The callbacks should not receive None, but there may be some
+    filesystems that are not compliant, we may want to maintain
+    maximum compatibility, and not break UI in these edge-cases.
+    See https://github.com/iterative/dvc/issues/7704.
+    """
+    callback = callback_factory(**kwargs)
+    request.addfinalizer(callback.close)
+
+    call_mock = mocker.spy(callback, "call")
+    method = getattr(callback, api)
+    method(None)
+    call_mock.assert_called_once_with()
+    if callback is not DEFAULT_CALLBACK:
+        assert callback.size is None
+        assert callback.value == 0

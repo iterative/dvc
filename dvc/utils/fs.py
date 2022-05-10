@@ -205,7 +205,7 @@ def copyfile(src, dest, callback=None, no_progress_bar=False, name=None):
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
             with FsspecCallback.as_tqdm_callback(
                 callback,
-                total=total,
+                size=total,
                 bytes=True,
                 disable=no_progress_bar,
                 desc=name,

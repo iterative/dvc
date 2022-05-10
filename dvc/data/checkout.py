@@ -139,7 +139,6 @@ class Link:
                 callback,
                 desc=cache.fs.path.name(from_path),
                 bytes=True,
-                total=-1,
             ) as cb:
                 transfer(
                     cache.fs,

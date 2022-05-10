@@ -39,7 +39,7 @@ def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
             callback,
             desc=fs_path.name(from_fs_path),
             bytes=True,
-            total=size,
+            size=size,
         ) as cb:
             upload_odb.fs.put_file(stream, tmp_info, size=size, callback=cb)
 

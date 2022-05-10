@@ -61,7 +61,6 @@ def get(url, path, out=None, rev=None, jobs=None):
                 fs_path = fs.from_os_path(path)
 
             with FsspecCallback.as_tqdm_callback(
-                total=-1,
                 desc=f"Downloading {fs.path.name(path)}",
                 unit="files",
             ) as cb:

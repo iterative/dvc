@@ -134,7 +134,6 @@ class ObjectDB:
             callback,
             desc=fs.path.name(fs_path),
             bytes=True,
-            total=-1,
         ) as cb:
             self._add_file(
                 fs,
