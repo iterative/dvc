@@ -2,12 +2,12 @@ import json
 import logging
 import os
 
-from .env import DVC_NO_ANALYTICS
+from .env import DVC_ANALYTICS_HOST, DVC_NO_ANALYTICS
 
 logger = logging.getLogger(__name__)
 
 
-def collect_and_send_report(args=None, return_code=None):
+def collect_and_send_report(args=None, return_code=None, detach: bool = True):
     """
     Collect information from the runtime/environment and the command
     being executed into a report and send it over the network.
@@ -34,7 +34,12 @@ def collect_and_send_report(args=None, return_code=None):
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
-    daemon(["analytics", fobj.name])
+
+    if detach:
+        daemon(["analytics", fobj.name])
+        return
+
+    send(fobj.name)
 
 
 def is_enabled():
@@ -65,7 +70,7 @@ def send(path):
     """
     import requests
 
-    url = "https://analytics.dvc.org"
+    url = os.environ.get(DVC_ANALYTICS_HOST, "https://analytics.dvc.org")
     headers = {"content-type": "application/json"}
 
     with open(path, encoding="utf-8") as fobj:
