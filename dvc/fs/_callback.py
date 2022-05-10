@@ -108,7 +108,9 @@ class TqdmCallback(FsspecCallback):
         from dvc.progress import Tqdm
 
         return self._stack.enter_context(
-            self._progress_bar or Tqdm(**self._tqdm_kwargs)
+            self._progress_bar
+            if self._progress_bar is not None
+            else Tqdm(**self._tqdm_kwargs)
         )
 
     def __enter__(self):
