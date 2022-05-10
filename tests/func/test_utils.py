@@ -1,4 +1,9 @@
+import re
+
+import pytest
+
 from dvc import utils
+from dvc.exceptions import DvcException
 from dvc.fs.local import LocalFileSystem
 
 
@@ -42,3 +47,10 @@ def test_boxify():
     )
 
     assert expected == utils.boxify("message")
+
+
+def test_glob_no_match():
+    with pytest.raises(
+        DvcException, match=re.escape("Glob ['invalid*'] has no matches.")
+    ):
+        utils.glob_targets(["invalid*"], glob=True)

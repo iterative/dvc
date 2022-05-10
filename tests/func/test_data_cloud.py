@@ -8,7 +8,6 @@ from flaky.flaky_decorator import flaky
 import dvc as dvc_module
 from dvc.cli import main
 from dvc.data.db.local import LocalObjectDB
-from dvc.exceptions import GlobDoesNotMatchError
 from dvc.external_repo import clean_repos
 from dvc.objects.db import ObjectDB
 from dvc.stage.exceptions import StageNotFound
@@ -571,14 +570,3 @@ def test_target_remote(tmp_dir, dvc, make_remote):
         "6b18131dc289fd37006705affe961ef8.dir",
         "b8a9f715dbb64fd5c56e7783c6820a61",
     }
-
-
-def test_push_pull_glob_no_match(
-    tmp_dir,
-    dvc,
-):
-    with pytest.raises(GlobDoesNotMatchError):
-        dvc.push(targets="b*", glob=True)
-
-    with pytest.raises(GlobDoesNotMatchError):
-        dvc.pull(targets="b*", glob=True)

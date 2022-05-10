@@ -476,7 +476,7 @@ def is_exec(mode):
 
 
 def glob_targets(targets, glob=True, recursive=True):
-    from dvc.exceptions import GlobDoesNotMatchError
+    from ..exceptions import DvcException
 
     if not glob:
         return targets
@@ -490,7 +490,8 @@ def glob_targets(targets, glob=True, recursive=True):
     ]
 
     if not results:
-        raise GlobDoesNotMatchError(targets)
+        msg = f"Glob {targets} has no matches."
+        raise DvcException(msg)
 
     return results
 
