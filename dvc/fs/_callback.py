@@ -59,6 +59,14 @@ class FsspecCallback(fsspec.Callback):
     def close(self):
         """Handle here on exit."""
 
+    def relative_update(self, inc: int = 1) -> None:
+        inc = inc if inc is not None else 0
+        return super().relative_update(inc)
+
+    def absolute_update(self, value: int) -> None:
+        value = value if value is not None else self.value
+        return super().absolute_update(value)
+
     @classmethod
     def as_callback(
         cls, maybe_callback: Optional["FsspecCallback"] = None
@@ -97,21 +105,29 @@ class NoOpCallback(FsspecCallback, fsspec.callbacks.NoOpCallback):
 
 
 class TqdmCallback(FsspecCallback):
-    def __init__(self, progress_bar: "Tqdm" = None, **tqdm_kwargs):
+    def __init__(
+        self,
+        size: Optional[int] = None,
+        value: int = 0,
+        progress_bar: "Tqdm" = None,
+        **tqdm_kwargs,
+    ):
+        tqdm_kwargs["total"] = size or -1
         self._tqdm_kwargs = tqdm_kwargs
         self._progress_bar = progress_bar
         self._stack = ExitStack()
-        super().__init__()
+        super().__init__(size=size, value=value)
 
     @cached_property
     def progress_bar(self):
         from dvc.progress import Tqdm
 
-        return self._stack.enter_context(
+        progress_bar = (
             self._progress_bar
             if self._progress_bar is not None
             else Tqdm(**self._tqdm_kwargs)
         )
+        return self._stack.enter_context(progress_bar)
 
     def __enter__(self):
         return self
@@ -120,18 +136,13 @@ class TqdmCallback(FsspecCallback):
         self._stack.close()
 
     def set_size(self, size):
-        if size is not None:
-            self.progress_bar.total = size
-            self.progress_bar.refresh()
-            super().set_size(size)
+        # Tqdm tries to be smart when to refresh,
+        # so we try to force it to re-render.
+        super().set_size(size)
+        self.progress_bar.refresh()
 
-    def relative_update(self, inc=1):
-        self.progress_bar.update(inc)
-        super().relative_update(inc)
-
-    def absolute_update(self, value):
-        self.progress_bar.update_to(value)
-        super().absolute_update(value)
+    def call(self, hook_name=None, **kwargs):
+        self.progress_bar.update_to(self.value, total=self.size)
 
     def branch(
         self,
@@ -140,72 +151,73 @@ class TqdmCallback(FsspecCallback):
         kwargs,
         child: Optional[FsspecCallback] = None,
     ):
-        child = child or TqdmCallback(bytes=True, total=-1, desc=path_1)
+        child = child or TqdmCallback(bytes=True, desc=path_1)
         return super().branch(path_1, path_2, kwargs, child=child)
 
 
 class RichCallback(FsspecCallback):
     def __init__(
         self,
+        size: Optional[int] = None,
+        value: int = 0,
         progress: "RichTransferProgress" = None,
         desc: str = None,
-        total: int = None,
         bytes: bool = False,  # pylint: disable=redefined-builtin
         unit: str = None,
         disable: bool = False,
     ) -> None:
+        self._progress = progress
+        self.disable = disable
+        self._task_kwargs = {
+            "description": desc or "",
+            "bytes": bytes,
+            "unit": unit,
+            "total": size or 0,
+            "visible": False,
+            "progress_type": None if bytes else "summary",
+        }
+        self._stack = ExitStack()
+        super().__init__(size=size, value=value)
+
+    @cached_property
+    def progress(self):
         from dvc.ui import ui
         from dvc.ui._rich_progress import RichTransferProgress
 
-        self.progress = progress or RichTransferProgress(
+        if self._progress is not None:
+            return self._progress
+
+        progress = RichTransferProgress(
             transient=True,
-            disable=disable,
+            disable=self.disable,
             console=ui.error_console,
         )
-        self.visible = not disable
-        self._newly_created = progress is None
-        total = 0 if total is None or total < 0 else total
-        self.task = self.progress.add_task(
-            description=desc or "",
-            total=total,
-            bytes=bytes,
-            visible=False,
-            unit=unit,
-            progress_type=None if bytes else "summary",
-        )
-        super().__init__()
+        return self._stack.enter_context(progress)
+
+    @cached_property
+    def task(self):
+        return self.progress.add_task(**self._task_kwargs)
 
     def __enter__(self):
-        if self._newly_created:
-            self.progress.__enter__()
         return self
 
     def close(self):
-        if self._newly_created:
-            self.progress.stop()
-        try:
-            self.progress.remove_task(self.task)
-        except KeyError:
-            pass
+        self.progress.clear_task(self.task)
+        self._stack.close()
 
-    def set_size(self, size: int = None) -> None:
-        if size is not None:
-            self.progress.update(self.task, total=size, visible=self.visible)
-            super().set_size(size)
-
-    def relative_update(self, inc: int = 1) -> None:
-        self.progress.update(self.task, advance=inc)
-        super().relative_update(inc)
-
-    def absolute_update(self, value: int) -> None:
-        self.progress.update(self.task, completed=value)
-        super().absolute_update(value)
+    def call(self, hook_name=None, **kwargs):
+        self.progress.update(
+            self.task,
+            completed=self.value,
+            total=self.size,
+            visible=not self.disable,
+        )
 
     def branch(
         self, path_1, path_2, kwargs, child: Optional[FsspecCallback] = None
     ):
         child = child or RichCallback(
-            self.progress, desc=path_1, bytes=True, total=-1
+            progress=self.progress, desc=path_1, bytes=True
         )
         return super().branch(path_1, path_2, kwargs, child=child)
 

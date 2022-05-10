@@ -701,7 +701,6 @@ class Output:
         from dvc.fs._callback import FsspecCallback
 
         with FsspecCallback.as_tqdm_callback(
-            total=-1,
             desc=f"Downloading {self.fs.path.name(self.fs_path)}",
             unit="files",
         ) as cb:

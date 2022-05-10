@@ -239,7 +239,6 @@ class StageCache:
             with FsspecCallback.as_tqdm_callback(
                 desc=src_name,
                 bytes=True,
-                total=-1,
             ) as cb:
                 func(from_fs, src, to_fs, dst, callback=cb)
             ret.append((parent_name, src_name))
