@@ -143,12 +143,12 @@ def test_show_dot(repo):
         "stage;\n"
         "stage;\n"
         "stage;\n"
-        "\"stage: '1'\" -> \"stage: 'a.dvc'\";\n"
-        "\"stage: '2'\" -> \"stage: 'b.dvc'\";\n"
-        "\"stage: '3'\" -> \"stage: 'a.dvc'\";\n"
-        "\"stage: '3'\" -> \"stage: 'b.dvc'\";\n"
-        "\"stage: '4'\" -> \"stage: 'a.dvc'\";\n"
-        "\"stage: '4'\" -> \"stage: '3'\";\n"
+        "\"stage: 'b.dvc'\" -> \"stage: '2'\";\n"
+        "\"stage: 'b.dvc'\" -> \"stage: '3'\";\n"
+        "\"stage: 'a.dvc'\" -> \"stage: '1'\";\n"
+        "\"stage: 'a.dvc'\" -> \"stage: '3'\";\n"
+        "\"stage: 'a.dvc'\" -> \"stage: '4'\";\n"
+        "\"stage: '3'\" -> \"stage: '4'\";\n"
         "}\n"
     )
 
