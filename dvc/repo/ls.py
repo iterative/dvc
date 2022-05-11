@@ -31,10 +31,10 @@ def ls(url, path=None, rev=None, recursive=None, dvc_only=False):
     with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
         path = path or ""
 
-        if path and not repo.repo_fs.exists(path):
-            raise PathMissingError(path, repo, dvc_only=dvc_only)
-
         ret = _ls(repo.repo_fs, path, recursive, dvc_only)
+
+        if path and not ret:
+            raise PathMissingError(path, repo, dvc_only=dvc_only)
 
         ret_list = []
         for path, info in ret.items():
