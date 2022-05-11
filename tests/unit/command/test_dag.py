@@ -135,22 +135,29 @@ def test_show_ascii(repo):
 
 
 def test_show_dot(repo):
-    assert _show_dot(repo.index.graph) == (
-        "strict digraph  {\n"
-        "stage;\n"
-        "stage;\n"
-        "stage;\n"
-        "stage;\n"
-        "stage;\n"
-        "stage;\n"
-        "\"stage: 'b.dvc'\" -> \"stage: '2'\";\n"
-        "\"stage: 'b.dvc'\" -> \"stage: '3'\";\n"
-        "\"stage: 'a.dvc'\" -> \"stage: '1'\";\n"
-        "\"stage: 'a.dvc'\" -> \"stage: '3'\";\n"
-        "\"stage: 'a.dvc'\" -> \"stage: '4'\";\n"
-        "\"stage: '3'\" -> \"stage: '4'\";\n"
-        "}\n"
+    # dot file rendering is not deterministic though graph
+    # output doesn't depend upon order of lines. Use sorted values
+    # https://github.com/iterative/dvc/pull/7725
+    expected = [
+        "\"stage: '3'\" -> \"stage: '4'\";",
+        "\"stage: 'a.dvc'\" -> \"stage: '1'\";",
+        "\"stage: 'a.dvc'\" -> \"stage: '3'\";",
+        "\"stage: 'a.dvc'\" -> \"stage: '4'\";",
+        "\"stage: 'b.dvc'\" -> \"stage: '2'\";",
+        "\"stage: 'b.dvc'\" -> \"stage: '3'\";",
+        "stage;",
+        "stage;",
+        "stage;",
+        "stage;",
+        "stage;",
+        "stage;",
+        "strict digraph  {",
+        "}",
+    ]
+    actual = sorted(
+        line.rstrip() for line in _show_dot(repo.index.graph).splitlines()
     )
+    assert actual == expected
 
 
 def test_show_mermaid(repo):
