@@ -23,9 +23,8 @@ def _show_dot(G):
 
     from networkx.drawing.nx_pydot import write_dot
 
-    G = G.reverse()
     dot_file = io.StringIO()
-    write_dot(G, dot_file)
+    write_dot(G.reverse(), dot_file)
     return dot_file.getvalue()
 
 
