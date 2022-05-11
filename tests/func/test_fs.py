@@ -273,11 +273,11 @@ def test_get_dir_callback(tmp_dir, dvc, cloud):
     assert (tmp_dir / "dir").read_text() == {"foo": "foo", "bar": "bar"}
 
 
-def test_callback_on_repo_fs(tmp_dir, dvc, scm, mocker):
+def test_callback_on_dvcfs(tmp_dir, dvc, scm, mocker):
     tmp_dir.dvc_gen({"dir": {"bar": "bar"}}, commit="dvc")
     tmp_dir.scm_gen({"dir": {"foo": "foo"}}, commit="git")
 
-    fs = dvc.repo_fs
+    fs = dvc.dvcfs
 
     callback = FsspecCallback()
     fs.get(

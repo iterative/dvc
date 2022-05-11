@@ -9,7 +9,7 @@ from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.system import System
 from dvc.utils.fs import makedirs
-from tests.unit.fs.test_repo import make_subrepo
+from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):

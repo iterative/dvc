@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from dvc.exceptions import PathMissingError
 
 if TYPE_CHECKING:
-    from dvc.fs.repo import RepoFileSystem
+    from dvc.fs.dvc import DvcFileSystem
 
     from . import Repo
 
@@ -56,7 +56,7 @@ def ls(
 def _ls(
     repo: "Repo", path: str, recursive: bool = None, dvc_only: bool = False
 ):
-    fs: "RepoFileSystem" = repo.repo_fs
+    fs: "DvcFileSystem" = repo.dvcfs
     fs_path = fs.from_os_path(path)
 
     try:

@@ -525,7 +525,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
 
 @pytest.mark.parametrize("workspace", [True, False])
 def test_subrepo(tmp_dir, scm, workspace):
-    from tests.unit.fs.test_repo import make_subrepo
+    from tests.unit.fs.test_dvc import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
@@ -673,9 +673,9 @@ def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
     for rev in dvc.brancher(revs=[exp]):
         if rev != exp:
             continue
-        with dvc.repo_fs.open("metrics.yaml") as fobj:
+        with dvc.dvcfs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == params
-        with dvc.repo_fs.open("data") as fobj:
+        with dvc.dvcfs.open("data") as fobj:
             assert fobj.read().strip() == "modified"
 
     if workspace:

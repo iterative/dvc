@@ -30,9 +30,9 @@ def _collect_paths(
     recursive: bool = False,
     rev: str = None,
 ) -> StrPaths:
-    from dvc.fs.repo import RepoFileSystem
+    from dvc.fs.dvc import DvcFileSystem
 
-    fs = RepoFileSystem(repo=repo)
+    fs = DvcFileSystem(repo=repo)
     fs_paths = [fs.from_os_path(target) for target in targets]
 
     target_paths: StrPaths = []
@@ -58,7 +58,7 @@ def _filter_duplicates(
     fs_res_paths = fs_paths
 
     for out in outs:
-        fs_path = out.repo.repo_fs.from_os_path(out.fs_path)
+        fs_path = out.repo.dvcfs.from_os_path(out.fs_path)
         if fs_path in fs_paths:
             res_outs.append(out)
             # MUTATING THE SAME LIST!!

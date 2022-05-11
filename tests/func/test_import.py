@@ -13,7 +13,7 @@ from dvc.exceptions import DownloadError, PathMissingError
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.system import System
 from dvc.utils.fs import makedirs, remove
-from tests.unit.fs.test_repo import make_subrepo
+from tests.unit.fs.test_dvc import make_subrepo
 from tests.utils import clean_staging
 
 

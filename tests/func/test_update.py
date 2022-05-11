@@ -4,7 +4,7 @@ import pytest
 
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import InvalidArgumentError
-from tests.unit.fs.test_repo import make_subrepo
+from tests.unit.fs.test_dvc import make_subrepo
 
 
 @pytest.mark.parametrize("cached", [True, False])

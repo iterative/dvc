@@ -4,7 +4,7 @@ from unittest.mock import call
 import pytest
 
 from dvc.external_repo import external_repo
-from tests.unit.fs.test_repo import make_subrepo
+from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_hook_is_called(tmp_dir, erepo_dir, mocker):
@@ -26,9 +26,9 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
             repo.dvc_gen("bar", "bar", commit=f"dvc add {repo}/bar")
 
     with external_repo(str(erepo_dir)) as repo:
-        spy = mocker.spy(repo.repo_fs.fs, "repo_factory")
+        spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 
-        list(repo.repo_fs.walk("", ignore_subrepos=False))  # drain
+        list(repo.dvcfs.walk("", ignore_subrepos=False))  # drain
         assert spy.call_count == len(subrepos)
 
         paths = ["/" + path.replace("\\", "/") for path in subrepo_paths]
@@ -38,7 +38,7 @@ def test_hook_is_called(tmp_dir, erepo_dir, mocker):
                     path,
                     fs=repo.fs,
                     scm=repo.scm,
-                    repo_factory=repo.repo_fs.fs.repo_factory,
+                    repo_factory=repo.dvcfs.fs.repo_factory,
                 )
                 for path in paths
             ],
@@ -64,9 +64,9 @@ def test_subrepo_is_constructed_properly(
     with external_repo(
         str(tmp_dir), cache_dir=str(cache_dir), cache_types=["symlink"]
     ) as repo:
-        spy = mocker.spy(repo.repo_fs.fs, "repo_factory")
+        spy = mocker.spy(repo.dvcfs.fs, "repo_factory")
 
-        list(repo.repo_fs.walk("", ignore_subrepos=False))  # drain
+        list(repo.dvcfs.walk("", ignore_subrepos=False))  # drain
         assert spy.call_count == 1
         subrepo = spy.spy_return
 
