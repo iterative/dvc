@@ -3,8 +3,8 @@ import io
 
 from funcy import cached_property
 
-from dvc.hash_info import HashInfo
 from dvc.istextfile import DEFAULT_CHUNK_SIZE, istextblock
+from dvc.objects.hash_info import HashInfo
 from dvc.utils import dos2unix
 
 

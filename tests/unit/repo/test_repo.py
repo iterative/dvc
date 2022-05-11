@@ -4,7 +4,7 @@ import shutil
 import pytest
 
 from dvc.exceptions import OutputDuplicationError
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.repo import NotDvcRepoError, Repo, locked
 
 

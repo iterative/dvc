@@ -22,7 +22,7 @@ from dvc.exceptions import (
     RecursiveAddingWhileUsingFilename,
 )
 from dvc.fs.local import LocalFileSystem
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.output import (
     OutputAlreadyTrackedError,
     OutputDoesNotExistError,

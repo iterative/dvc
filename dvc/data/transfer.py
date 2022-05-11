@@ -9,8 +9,8 @@ from dvc.progress import Tqdm
 from dvc.utils.threadpool import ThreadPoolExecutor
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
     from dvc.objects.db import ObjectDB
+    from dvc.objects.hash_info import HashInfo
 
     from .db.index import ObjectDBIndexBase
     from .tree import Tree

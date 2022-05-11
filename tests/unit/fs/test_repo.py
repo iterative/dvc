@@ -7,7 +7,7 @@ import pytest
 
 from dvc.data.stage import stage
 from dvc.fs.repo import RepoFileSystem
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from tests.utils import clean_staging
 
 

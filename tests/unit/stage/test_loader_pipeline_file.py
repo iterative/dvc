@@ -5,7 +5,7 @@ from itertools import chain
 import pytest
 
 from dvc.dvcfile import PIPELINE_FILE, Dvcfile
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.loader import StageLoader
 from dvc.stage.serialize import split_params_deps

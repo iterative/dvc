@@ -4,7 +4,7 @@ import pytest
 from voluptuous import Schema as _Schema
 
 from dvc.dvcfile import PIPELINE_FILE
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.schema import LOCK_FILE_STAGE_SCHEMA, LOCKFILE_STAGES_SCHEMA
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.serialize import DEFAULT_PARAMS_FILE, to_lockfile

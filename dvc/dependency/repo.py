@@ -8,9 +8,9 @@ from voluptuous import Required
 from .base import Dependency
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
     from dvc.objects.db import ObjectDB
     from dvc.objects.file import HashFile
+    from dvc.objects.hash_info import HashInfo
 
 
 class RepoDependency(Dependency):

@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from dvc.fs.base import AnyFSPath, FileSystem
-    from dvc.hash_info import HashInfo
 
     from .db import ObjectDB
+    from .hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

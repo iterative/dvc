@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Iterator, Union
 from .tree import Tree
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
     from dvc.objects.db import ObjectDB
     from dvc.objects.file import HashFile
+    from dvc.objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

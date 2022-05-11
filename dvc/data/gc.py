@@ -18,7 +18,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
             )
 
     def _is_dir_hash(_hash):
-        from dvc.hash_info import HASH_DIR_SUFFIX
+        from dvc.objects.hash_info import HASH_DIR_SUFFIX
 
         return _hash.endswith(HASH_DIR_SUFFIX)
 

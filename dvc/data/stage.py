@@ -6,14 +6,14 @@ from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.hash_info import HashInfo
 from dvc.ignore import DvcIgnore
 from dvc.objects.file import HashFile
+from dvc.objects.hash_info import HashInfo
+from dvc.objects.meta import Meta
 from dvc.progress import Tqdm
 from dvc.utils import file_md5, is_exec
 
 from .db.reference import ReferenceObjectDB
-from .meta import Meta
 
 if TYPE_CHECKING:
     from dvc.fs.base import AnyFSPath, FileSystem
