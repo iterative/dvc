@@ -14,7 +14,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     """DVC repo fs.
 
     Args:
@@ -178,7 +178,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         raise NotImplementedError
 
 
-class DvcFileSystem(FileSystem):
+class DataFileSystem(FileSystem):
     scheme = "local"
 
     PARAM_CHECKSUM = "md5"
@@ -189,7 +189,7 @@ class DvcFileSystem(FileSystem):
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
-        return _DvcFileSystem(**self.fs_args)
+        return _DataFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)

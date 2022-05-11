@@ -10,7 +10,7 @@ from funcy import cached_property, wrap_prop, wrap_with
 
 from ._callback import DEFAULT_CALLBACK
 from .base import FileSystem
-from .dvc import DvcFileSystem
+from .data import DataFileSystem
 from .path import Path
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         repo: DVC or git repo.
         subrepos: traverse to subrepos (by default, it ignores subrepos)
         repo_factory: A function to initialize subrepo with, default is Repo.
-        kwargs: Additional keyword arguments passed to the `DvcFileSystem()`.
+        kwargs: Additional keyword arguments passed to the `DataFileSystem()`.
     """
 
     root_marker = "/"
@@ -124,11 +124,11 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         key = self._get_key(self.repo.root_dir)
         self._subrepos_trie[key] = repo
 
-        self._dvcfss = {}
-        """Keep a dvcfs instance of each repo."""
+        self._datafss = {}
+        """Keep a datafs instance of each repo."""
 
         if hasattr(repo, "dvc_dir"):
-            self._dvcfss[key] = DvcFileSystem(repo=repo)
+            self._datafss[key] = DataFileSystem(repo=repo)
 
     def _get_key(self, path):
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
@@ -245,7 +245,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                     scm=self.repo.scm,
                     repo_factory=self.repo_factory,
                 )
-                self._dvcfss[key] = DvcFileSystem(repo=repo)
+                self._datafss[key] = DataFileSystem(repo=repo)
             self._subrepos_trie[key] = repo
 
     def _is_dvc_repo(self, dir_path):
@@ -263,7 +263,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     ) -> Tuple[
         Optional[FileSystem],
         Optional[str],
-        Optional[DvcFileSystem],
+        Optional[DataFileSystem],
         Optional[str],
     ]:
         """
@@ -286,7 +286,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             dvc_parts = dvc_parts[1:]
 
         key = self._get_key(repo.root_dir)
-        dvc_fs = self._dvcfss.get(key)
+        dvc_fs = self._datafss.get(key)
         if dvc_fs:
             dvc_path = dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
         else:
