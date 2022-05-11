@@ -31,7 +31,7 @@ def test_new_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
+        fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
         with fs.open("metrics.yaml") as fobj:
@@ -80,7 +80,7 @@ def test_resume_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
+        fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with fs.open("metrics.yaml") as fobj:
@@ -111,7 +111,7 @@ def test_reset_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
+        fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
         with fs.open("metrics.yaml") as fobj:
@@ -150,7 +150,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     for rev in dvc.brancher([checkpoint_a]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
+        fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with fs.open("metrics.yaml") as fobj:
@@ -159,7 +159,7 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     for rev in dvc.brancher([checkpoint_b]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
+        fs = dvc.dvcfs
         with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
         with fs.open("metrics.yaml") as fobj:

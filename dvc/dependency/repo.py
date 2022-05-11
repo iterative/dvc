@@ -133,7 +133,7 @@ class RepoDependency(Dependency):
                 staging, _, staged_obj = stage(
                     local_odb,
                     as_posix(self.def_path),
-                    repo.repo_fs,
+                    repo.dvcfs,
                     local_odb.fs.PARAM_CHECKSUM,
                 )
             except (FileNotFoundError, TreeError) as exc:
@@ -153,7 +153,7 @@ class RepoDependency(Dependency):
         from dvc.data.db.reference import ReferenceObjectDB
         from dvc.data.tree import Tree
         from dvc.exceptions import CircularImportError
-        from dvc.fs.repo import RepoFileSystem
+        from dvc.fs.dvc import DvcFileSystem
 
         if not isinstance(odb, ReferenceObjectDB):
             return
@@ -168,7 +168,7 @@ class RepoDependency(Dependency):
 
         checked_urls = set()
         for obj in iter_objs():
-            if not isinstance(obj.fs, RepoFileSystem):
+            if not isinstance(obj.fs, DvcFileSystem):
                 continue
             if (
                 obj.fs.repo_url in checked_urls

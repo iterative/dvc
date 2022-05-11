@@ -8,7 +8,7 @@ from dvc.data.transfer import transfer
 from dvc.external_repo import CLONES, external_repo
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
-from tests.unit.fs.test_repo import make_subrepo
+from tests.unit.fs.test_dvc import make_subrepo
 from tests.utils import clean_staging
 
 
@@ -95,7 +95,7 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_fs.get(
+        repo.dvcfs.get(
             "subdir/file",
             os.fspath(dest),
         )
@@ -191,7 +191,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_fs.get(
+        repo.dvcfs.get(
             "dir",
             os.fspath(tmp_dir / "out"),
         )
@@ -207,7 +207,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         staging, _, obj = stage(
             repo.odb.local,
             "dir",
-            repo.repo_fs,
+            repo.dvcfs,
             "md5",
             dvcignore=repo.dvcignore,
         )
@@ -237,7 +237,7 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_fs.get(
+        repo.dvcfs.get(
             "dir",
             os.fspath(tmp_dir / "out"),
         )

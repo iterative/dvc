@@ -4,7 +4,7 @@ from typing import List
 
 from scmrepo.exceptions import SCMError
 
-from dvc.fs.repo import RepoFileSystem
+from dvc.fs.dvc import DvcFileSystem
 from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
@@ -24,11 +24,11 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
     result = []
     for out in metrics:
         if out.metric:
-            result.append(out.repo.repo_fs.from_os_path(out.fs_path))
+            result.append(out.repo.dvcfs.from_os_path(out.fs_path))
         elif out.live:
             fs_path = summary_fs_path(out)
             if fs_path:
-                result.append(out.repo.repo_fs.from_os_path(fs_path))
+                result.append(out.repo.dvcfs.from_os_path(fs_path))
     return result
 
 
@@ -76,7 +76,7 @@ def _read_metric(path, fs, rev, **kwargs):
 
 
 def _read_metrics(repo, metrics, rev, onerror=None):
-    fs = RepoFileSystem(repo=repo)
+    fs = DvcFileSystem(repo=repo)
 
     relpath = ""
     if repo.root_dir != repo.fs.path.getcwd():

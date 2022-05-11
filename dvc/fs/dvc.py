@@ -63,7 +63,7 @@ def _merge_info(repo, fs_info, dvc_info):
     return ret
 
 
-class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     """DVC + git-tracked files fs.
 
     Args:
@@ -436,7 +436,7 @@ class _RepoFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return dvc_fs.checksum(dvc_path)
 
 
-class RepoFileSystem(FileSystem):
+class DvcFileSystem(FileSystem):
     scheme = "local"
     PARAM_CHECKSUM = "md5"
 
@@ -446,7 +446,7 @@ class RepoFileSystem(FileSystem):
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
-        return _RepoFileSystem(**self.fs_args)
+        return _DvcFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)

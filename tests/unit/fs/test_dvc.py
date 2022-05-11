@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from dvc.data.stage import stage
-from dvc.fs.repo import RepoFileSystem
+from dvc.fs.dvc import DvcFileSystem
 from dvc.objects.hash_info import HashInfo
 from tests.utils import clean_staging
 
@@ -16,7 +16,7 @@ def test_exists(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     assert fs.exists("foo")
 
 
@@ -25,7 +25,7 @@ def test_open(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     with fs.open("foo", "r") as fobj:
         assert fobj.read() == "foo"
 
@@ -34,7 +34,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     with fs.open("file", "r") as fobj:
         assert fobj.read() == "something"
 
@@ -43,7 +43,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     tmp_dir.gen("file", "file")
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     with fs.open("file", "r") as fobj:
         assert fobj.read() == "file"
 
@@ -63,7 +63,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
         if rev == "workspace":
             continue
 
-        fs = RepoFileSystem(repo=dvc)
+        fs = DvcFileSystem(repo=dvc)
         with fs.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
 
@@ -86,7 +86,7 @@ def test_isdir_isfile(tmp_dir, dvc):
         },
     )
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     assert fs.isdir("datadir")
     assert not fs.isfile("datadir")
     assert not fs.isdvc("datadir")
@@ -126,7 +126,7 @@ def test_exists_isdir_isfile_dirty(tmp_dir, dvc):
         {"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}}
     )
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     shutil.rmtree(tmp_dir / "datadir")
     (tmp_dir / "datafile").unlink()
 
@@ -161,7 +161,7 @@ def test_isdir_mixed(tmp_dir, dvc):
 
     dvc.add(str(tmp_dir / "dir" / "foo"))
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     assert fs.isdir("dir")
     assert not fs.isfile("dir")
 
@@ -191,7 +191,7 @@ def test_walk(tmp_dir, dvc, dvcfiles, extra_expected):
     )
     dvc.add(str(tmp_dir / "dir"), recursive=True)
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
 
     expected = [
         "dir/subdir1",
@@ -226,7 +226,7 @@ def test_walk_dirty(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"bar": "bar", "subdir3": {"foo3": "foo3"}}})
     (tmp_dir / "dir" / "foo").unlink()
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     expected = [
         "dir/subdir1",
         "dir/subdir2",
@@ -252,7 +252,7 @@ def test_walk_dirty_cached_dir(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}}, commit="add data")
     (tmp_dir / "data" / "foo").unlink()
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
 
     actual = []
     for root, dirs, files in fs.walk("data"):
@@ -276,7 +276,7 @@ def test_walk_mixed_dir(tmp_dir, scm, dvc):
     )
     tmp_dir.scm.commit("add dir")
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
 
     expected = [
         "dir/foo",
@@ -293,7 +293,7 @@ def test_walk_mixed_dir(tmp_dir, scm, dvc):
 
 
 def test_walk_missing(tmp_dir, dvc):
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
 
     for _ in fs.walk("dir"):
         pass
@@ -301,7 +301,7 @@ def test_walk_missing(tmp_dir, dvc):
 
 def test_walk_not_a_dir(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
 
     for _ in fs.walk("foo"):
         pass
@@ -311,7 +311,7 @@ def test_isdvc(tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar", "dir": {"baz": "baz"}})
     dvc.add("foo")
     dvc.add("dir")
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     assert fs.isdvc("foo")
     assert not fs.isdvc("bar")
     assert fs.isdvc("dir")
@@ -330,7 +330,7 @@ def make_subrepo(dir_, scm, config=None):
 
 def test_subrepos(tmp_dir, scm, dvc, mocker):
     tmp_dir.scm_gen(
-        {"dir": {"repo.txt": "file to confuse RepoFileSystem"}},
+        {"dir": {"repo.txt": "file to confuse DvcFileSystem"}},
         commit="dir/repo.txt",
     )
 
@@ -348,7 +348,7 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
         )
 
     dvc._reset()
-    fs = RepoFileSystem(repo=dvc, subrepos=True)
+    fs = DvcFileSystem(repo=dvc, subrepos=True)
 
     def assert_fs_belongs_to_repo(ret_val):
         method = fs.fs._get_repo
@@ -408,7 +408,7 @@ def test_subrepos(tmp_dir, scm, dvc, mocker):
 )
 def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     tmp_dir.scm_gen(
-        {"dir": {"repo.txt": "file to confuse RepoFileSystem"}},
+        {"dir": {"repo.txt": "file to confuse DvcFileSystem"}},
         commit="dir/repo.txt",
     )
 
@@ -428,7 +428,7 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
 
     # using fs that does not have dvcignore
     dvc._reset()
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     expected = [
         "dir/repo",
         "dir/repo.txt",
@@ -457,9 +457,9 @@ def test_subrepo_walk(tmp_dir, scm, dvc, dvcfiles, extra_expected):
     assert len(actual) == len(expected)
 
 
-def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
+def test_dvcfs_no_subrepos(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(
-        {"dir": {"repo.txt": "file to confuse RepoFileSystem"}},
+        {"dir": {"repo.txt": "file to confuse DvcFileSystem"}},
         commit="dir/repo.txt",
     )
     tmp_dir.dvc_gen({"lorem": "lorem"}, commit="add foo")
@@ -472,7 +472,7 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
 
     # using fs that does not have dvcignore
     dvc._reset()
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     expected = [
         "/.dvcignore",
         "/.gitignore",
@@ -504,7 +504,7 @@ def test_repo_fs_no_subrepos(tmp_dir, dvc, scm):
 
 def test_get_hash_cached_file(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen({"foo": "foo"})
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     expected = "acbd18db4cc2f85cedef654fccc4a4d8"
     assert fs.info("foo").get("md5") is None
     _, _, obj = stage(dvc.odb.local, "foo", fs, "md5")
@@ -517,7 +517,7 @@ def test_get_hash_cached_dir(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     expected = "8761c4e9acad696bee718615e23e22db.dir"
     assert fs.info("dir").get("md5") is None
     _, _, obj = stage(dvc.odb.local, "dir", fs, "md5")
@@ -537,7 +537,7 @@ def test_get_hash_cached_granular(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
     _, _, obj = stage(dvc.odb.local, subdir, fs, "md5")
@@ -567,7 +567,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
     tmp_dir.scm.commit("add dir")
     clean_staging()
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     _, _, obj = stage(dvc.odb.local, "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "e1d9e8eae5374860ae025ec84cfd85c7.dir"
@@ -589,7 +589,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 
     # file is modified in workspace
     # get_file_hash(file) should return workspace hash, not DVC cached hash
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     assert fs.info("file").get("md5") is None
     staging, _, obj = stage(dvc.odb.local, "file", fs, "md5")
     assert obj.hash_info == something_hash_info
@@ -617,7 +617,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     (tmp_dir / "dir" / "baz").write_text("baz")
     clean_staging()
 
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     _, meta, obj = stage(dvc.odb.local, "dir", fs, "md5")
     assert obj.hash_info == HashInfo(
         "md5", "ba75a2162ca9c29acecb7957105a0bc2.dir"
@@ -679,7 +679,7 @@ def test_walk_nested_subrepos(tmp_dir, dvc, scm, traverse_subrepos):
         expected["/subrepo1"].add("subrepo3")
 
     actual = {}
-    fs = RepoFileSystem(repo=dvc)
+    fs = DvcFileSystem(repo=dvc)
     for root, dirs, files in fs.walk(
         "/", ignore_subrepos=not traverse_subrepos
     ):

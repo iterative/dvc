@@ -71,7 +71,7 @@ class ReferenceHashFile(HashFile):
     @classmethod
     def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
         from dvc.fs import get_fs_cls
-        from dvc.fs.repo import RepoFileSystem, _RepoFileSystem
+        from dvc.fs.dvc import DvcFileSystem, _DvcFileSystem
 
         try:
             dict_ = pickle.loads(data)
@@ -88,8 +88,8 @@ class ReferenceHashFile(HashFile):
         fs = fs_cache.get((scheme, config_pairs)) if fs_cache else None
         if not fs:
             config = dict(config_pairs)
-            if _RepoFileSystem.PARAM_REPO_URL in config:
-                fs_cls = RepoFileSystem
+            if _DvcFileSystem.PARAM_REPO_URL in config:
+                fs_cls = DvcFileSystem
             else:
                 fs_cls = get_fs_cls(config, scheme=scheme)
             fs = fs_cls(**config)

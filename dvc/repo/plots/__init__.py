@@ -99,9 +99,9 @@ class Plots:
         onerror: Optional[Callable] = None,
         props: Optional[Dict] = None,
     ):
-        from dvc.fs.repo import RepoFileSystem
+        from dvc.fs.dvc import DvcFileSystem
 
-        fs = RepoFileSystem(repo=self.repo)
+        fs = DvcFileSystem(repo=self.repo)
         plots = _collect_plots(self.repo, targets, revision, recursive)
         res: Dict[str, Any] = {}
         for fs_path, rev_props in plots.items():
@@ -253,7 +253,7 @@ def _collect_plots(
     )
 
     result = {
-        repo.repo_fs.from_os_path(plot.fs_path): _plot_props(plot)
+        repo.dvcfs.from_os_path(plot.fs_path): _plot_props(plot)
         for plot in plots
     }
     result.update({fs_path: {} for fs_path in fs_paths})

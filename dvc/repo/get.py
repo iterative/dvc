@@ -57,7 +57,7 @@ def get(url, path, out=None, rev=None, jobs=None):
                 fs = DataFileSystem(repo=repo, workspace="local")
                 fs_path = path
             else:
-                fs = repo.repo_fs
+                fs = repo.dvcfs
                 fs_path = fs.from_os_path(path)
 
             with FsspecCallback.as_tqdm_callback(

@@ -2,12 +2,12 @@ import os
 
 import pytest
 
-from dvc.fs.repo import RepoFileSystem
-from tests.unit.fs.test_repo import make_subrepo
+from dvc.fs.dvc import DvcFileSystem
+from tests.unit.fs.test_dvc import make_subrepo
 
 
 @pytest.fixture
-def repo_fs(tmp_dir, dvc, scm):
+def dvcfs(tmp_dir, dvc, scm):
     fs_structure = {
         "models": {  # mixed dvc + git directory
             "train.py": "train dot py",
@@ -38,12 +38,12 @@ def repo_fs(tmp_dir, dvc, scm):
     tmp_dir.scm_gen(fs_structure, commit="repo init")
     tmp_dir.dvc_gen(dvc_structure, commit="use dvc")
 
-    yield RepoFileSystem(repo=dvc, subrepos=True)
+    yield DvcFileSystem(repo=dvc, subrepos=True)
 
 
-def test_info_not_existing(repo_fs):
+def test_info_not_existing(dvcfs):
     with pytest.raises(FileNotFoundError):
-        repo_fs.info("path/that/does/not/exist")
+        dvcfs.info("path/that/does/not/exist")
 
 
 @pytest.mark.parametrize(
@@ -56,10 +56,10 @@ def test_info_not_existing(repo_fs):
         "src/utils/serve_model.py",
     ],
 )
-def test_info_git_tracked_file(repo_fs, path):
-    info = repo_fs.info(path)
+def test_info_git_tracked_file(dvcfs, path):
+    info = dvcfs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.repo.root_dir
+    assert info["repo"].root_dir == dvcfs.repo.root_dir
     assert "dvc_info" not in info
     assert info["type"] == "file"
     assert not info["isexec"]
@@ -75,30 +75,30 @@ def test_info_git_tracked_file(repo_fs, path):
         "models/transform.pickle",
     ],
 )
-def test_info_dvc_tracked_file(repo_fs, path):
-    info = repo_fs.info(path)
+def test_info_dvc_tracked_file(dvcfs, path):
+    info = dvcfs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.repo.root_dir
+    assert info["repo"].root_dir == dvcfs.repo.root_dir
     assert info["dvc_info"]["isdvc"]
     assert info["type"] == "file"
     assert not info["isexec"]
 
 
 @pytest.mark.parametrize("path", ["src", "src/utils"])
-def test_info_git_only_dirs(repo_fs, path):
-    info = repo_fs.info(path)
+def test_info_git_only_dirs(dvcfs, path):
+    info = dvcfs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.repo.root_dir
+    assert info["repo"].root_dir == dvcfs.repo.root_dir
     assert "dvc_info" not in info
     assert info["type"] == "directory"
     assert not info["isexec"]
 
 
 @pytest.mark.parametrize("path", [".", "models"])
-def test_info_git_dvc_mixed_dirs(repo_fs, path):
-    info = repo_fs.info(path)
+def test_info_git_dvc_mixed_dirs(dvcfs, path):
+    info = dvcfs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.repo.root_dir
+    assert info["repo"].root_dir == dvcfs.repo.root_dir
     assert not info["dvc_info"]["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
@@ -112,16 +112,16 @@ def test_info_git_dvc_mixed_dirs(repo_fs, path):
         "data/processed",
     ],
 )
-def test_info_dvc_only_dirs(repo_fs, path):
-    info = repo_fs.info(path)
+def test_info_dvc_only_dirs(dvcfs, path):
+    info = dvcfs.info(path)
 
-    assert info["repo"].root_dir == repo_fs.repo.root_dir
+    assert info["repo"].root_dir == dvcfs.repo.root_dir
     assert info["dvc_info"]["isdvc"]
     assert info["type"] == "directory"
     assert not info["isexec"]
 
 
-def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):
+def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, dvcfs):
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
     with subrepo.chdir():
@@ -133,7 +133,7 @@ def test_info_on_subrepos(make_tmp_dir, tmp_dir, dvc, scm, repo_fs):
         "subrepo/foo",
         "subrepo/foobar",
     ]:
-        info = repo_fs.info(path)
+        info = dvcfs.info(path)
         assert info["repo"].root_dir == str(
             subrepo
         ), f"repo root didn't match for {path}"
