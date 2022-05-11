@@ -11,10 +11,9 @@ from dvc.objects.file import HashFile
 from .stage import get_file_hash
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
     from dvc.objects.db import ObjectDB
-
-    from .meta import Meta
+    from dvc.objects.hash_info import HashInfo
+    from dvc.objects.meta import Meta
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +128,7 @@ class Tree(HashFile):
 
     @classmethod
     def from_list(cls, lst):
-        from dvc.hash_info import HashInfo
+        from dvc.objects.hash_info import HashInfo
 
         tree = cls(None, None, None)
         for _entry in lst:

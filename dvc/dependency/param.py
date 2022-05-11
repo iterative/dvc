@@ -8,7 +8,7 @@ import dpath.util
 from voluptuous import Any
 
 from dvc.exceptions import DvcException
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.utils.serialize import LOADERS, ParseError
 
 from .base import Dependency

@@ -14,7 +14,8 @@ if TYPE_CHECKING:
 
     from dvc.fs._callback import FsspecCallback
     from dvc.fs.base import AnyFSPath, FileSystem
-    from dvc.hash_info import HashInfo
+
+    from .hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class ObjectDB:
     CACHE_MODE: Optional[int] = None
 
     def __init__(self, fs: "FileSystem", path: str, **config):
-        from dvc.state import StateNoop
+        from .state import StateNoop
 
         self.fs = fs
         self.fs_path = path

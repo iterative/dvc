@@ -6,9 +6,9 @@ from functools import partial
 from funcy import cached_property
 from shortuuid import uuid
 
-from dvc.hash_info import HashInfo
 from dvc.objects.db import ObjectDB, noop, wrap_iter
 from dvc.objects.errors import ObjectFormatError
+from dvc.objects.hash_info import HashInfo
 from dvc.utils import relpath
 from dvc.utils.fs import copyfile, remove, umask, walk_files
 

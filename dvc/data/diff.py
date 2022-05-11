@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
     from dvc.objects.file import HashFile
+    from dvc.objects.hash_info import HashInfo
 
 ADD = "add"
 MODIFY = "modify"

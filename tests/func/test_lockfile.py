@@ -6,7 +6,7 @@ from operator import itemgetter
 import pytest
 
 from dvc.dvcfile import PIPELINE_LOCK, Lockfile
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update

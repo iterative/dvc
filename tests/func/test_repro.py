@@ -817,7 +817,7 @@ class TestReproAllPipelines(SingleStageRun, TestDvc):
             ),
         ]
 
-        from dvc.state import StateNoop
+        from dvc.objects.state import StateNoop
 
         self.dvc.state = StateNoop()
 

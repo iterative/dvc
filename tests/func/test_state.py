@@ -1,9 +1,9 @@
 import os
 import re
 
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
+from dvc.objects.state import State
 from dvc.repo import Repo
-from dvc.state import State
 from dvc.utils import file_md5
 
 

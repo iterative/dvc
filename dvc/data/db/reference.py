@@ -11,7 +11,7 @@ from ..reference import ReferenceHashFile
 if TYPE_CHECKING:
     from dvc.fs._callback import FsspecCallback
     from dvc.fs.base import AnyFSPath, FileSystem
-    from dvc.hash_info import HashInfo
+    from dvc.objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

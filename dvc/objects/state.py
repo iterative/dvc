@@ -5,10 +5,11 @@ import os
 from abc import ABC, abstractmethod
 
 from dvc.fs.local import LocalFileSystem
-from dvc.hash_info import HashInfo
 from dvc.utils import relpath
 from dvc.utils.decorators import with_diskcache
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
+
+from .hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             HashInfo or None: hash for the specified path info or None if it
             doesn't exist in the state database.
         """
-        from .data.meta import Meta
+        from .meta import Meta
 
         if not isinstance(fs, LocalFileSystem):
             return None, None

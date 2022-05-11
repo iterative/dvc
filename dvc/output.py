@@ -15,11 +15,12 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
+from dvc.objects.hash_info import HashInfo
+from dvc.objects.meta import Meta
 
 from .data import check as ocheck
 from .data import load as oload
 from .data.checkout import checkout
-from .data.meta import Meta
 from .data.stage import stage as ostage
 from .data.transfer import transfer as otransfer
 from .data.tree import Tree
@@ -28,7 +29,6 @@ from .fs.base import RemoteMissingDepsError
 from .fs.hdfs import HDFSFileSystem
 from .fs.local import LocalFileSystem
 from .fs.s3 import S3FileSystem
-from .hash_info import HashInfo
 from .istextfile import istextfile
 from .objects.errors import ObjectFormatError
 from .scheme import Schemes

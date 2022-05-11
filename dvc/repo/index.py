@@ -22,8 +22,8 @@ if TYPE_CHECKING:
     from dvc.data.tree import Tree
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs.base import FileSystem
-    from dvc.hash_info import HashInfo
     from dvc.objects.db import ObjectDB
+    from dvc.objects.hash_info import HashInfo
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage

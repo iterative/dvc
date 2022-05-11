@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from dvc.data.db import get_index
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
     from dvc.objects.db import ObjectDB
+    from dvc.objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

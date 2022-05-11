@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
-from dvc.hash_info import HashInfo
+from dvc.objects.hash_info import HashInfo
 from dvc.scheme import Schemes
 
 from .tree import Tree

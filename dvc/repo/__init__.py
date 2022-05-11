@@ -155,13 +155,13 @@ class Repo:
         from dvc.fs.git import GitFileSystem
         from dvc.fs.local import localfs
         from dvc.lock import LockNoop, make_lock
+        from dvc.objects.state import State, StateNoop
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
         from dvc.repo.stage import StageLoad
         from dvc.scm import SCM
         from dvc.stage.cache import StageCache
-        from dvc.state import State, StateNoop
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}
