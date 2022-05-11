@@ -5,7 +5,7 @@ import pytest
 
 from dvc.config import NoRemoteError
 from dvc.data.stage import stage
-from dvc.fs.dvc import DvcFileSystem
+from dvc.fs.data import DataFileSystem
 from dvc.objects.hash_info import HashInfo
 from dvc.utils.fs import remove
 
@@ -21,7 +21,7 @@ from dvc.utils.fs import remove
     ],
 )
 def test_get_key(tmp_dir, dvc, path, key):
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     assert fs.fs._get_key(path) == key
 
 
@@ -30,7 +30,7 @@ def test_exists(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     assert fs.exists("foo")
 
 
@@ -39,7 +39,7 @@ def test_open(tmp_dir, dvc):
     dvc.add("foo")
     (tmp_dir / "foo").unlink()
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     with fs.open("foo", "r") as fobj:
         assert fobj.read() == "foo"
 
@@ -48,9 +48,9 @@ def test_open_dirty_hash(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     with fs.open("file", "r") as fobj:
-        # NOTE: Unlike RepoFileSystem, DvcFileSystem should not
+        # NOTE: Unlike RepoFileSystem, DataFileSystem should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
 
@@ -60,7 +60,7 @@ def test_open_no_remote(tmp_dir, dvc):
     (tmp_dir / "file").unlink()
     remove(dvc.odb.local.cache_dir)
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     with pytest.raises(FileNotFoundError) as exc_info:
         with fs.open("file", "r"):
             pass
@@ -71,8 +71,8 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     tmp_dir.gen("file", "file")
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
-    fs = DvcFileSystem(repo=dvc)
-    # NOTE: Unlike RepoFileSystem, DvcFileSystem should not
+    fs = DataFileSystem(repo=dvc)
+    # NOTE: Unlike RepoFileSystem, DataFileSystem should not
     # be affected by a dirty workspace.
     with pytest.raises(FileNotFoundError):
         with fs.open("file", "r"):
@@ -94,7 +94,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
         if rev == "workspace":
             continue
 
-        fs = DvcFileSystem(repo=dvc)
+        fs = DataFileSystem(repo=dvc)
         with fs.open("foo", "r") as fobj:
             assert fobj.read() == "foo"
 
@@ -102,7 +102,7 @@ def test_open_in_history(tmp_dir, scm, dvc):
 def test_isdir_isfile(tmp_dir, dvc):
     tmp_dir.gen({"datafile": "data", "datadir": {"foo": "foo", "bar": "bar"}})
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     assert not fs.isdir("datadir")
     assert not fs.isfile("datadir")
     assert not fs.isdir("datafile")
@@ -123,7 +123,7 @@ def test_isdir_mixed(tmp_dir, dvc):
 
     dvc.add(str(tmp_dir / "dir" / "foo"))
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     assert fs.isdir("dir")
     assert not fs.isfile("dir")
 
@@ -141,7 +141,7 @@ def test_walk(tmp_dir, dvc):
     )
 
     dvc.add("dir", recursive=True)
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
 
     expected = [
         "dir/subdir1",
@@ -175,7 +175,7 @@ def test_walk_dir(tmp_dir, dvc):
     )
 
     dvc.add("dir")
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
 
     expected = [
         "dir/subdir1",
@@ -197,7 +197,7 @@ def test_walk_dir(tmp_dir, dvc):
 
 
 def test_walk_missing(tmp_dir, dvc):
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
 
     for _ in fs.walk("dir"):
         pass
@@ -205,7 +205,7 @@ def test_walk_missing(tmp_dir, dvc):
 
 def test_walk_not_a_dir(tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
 
     for _ in fs.walk("foo"):
         pass
@@ -214,14 +214,14 @@ def test_walk_not_a_dir(tmp_dir, dvc):
 def test_isdvc(tmp_dir, dvc):
     tmp_dir.gen({"foo": "foo", "bar": "bar"})
     dvc.add("foo")
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     assert fs.isdvc("foo")
     assert not fs.isdvc("bar")
 
 
 def test_get_hash_file(tmp_dir, dvc):
     tmp_dir.dvc_gen({"foo": "foo"})
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     assert fs.info("foo")["md5"] == "acbd18db4cc2f85cedef654fccc4a4d8"
 
 
@@ -231,7 +231,7 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     get_file_hash_spy = mocker.spy(dvc_module.data.stage, "get_file_hash")
     assert fs.info("dir")["md5"] == "8761c4e9acad696bee718615e23e22db.dir"
     assert not get_file_hash_spy.called
@@ -241,7 +241,7 @@ def test_get_hash_granular(tmp_dir, dvc):
     tmp_dir.dvc_gen(
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     subdir = "dir/subdir"
     assert fs.info(subdir).get("md5") is None
     _, _, obj = stage(dvc.odb.local, subdir, fs, "md5", dry_run=True)
@@ -258,7 +258,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").write_text("something")
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     expected = "8c7dd922ad47494fc02c388e12c00eac"
     assert fs.info("file").get("md5") == expected
     _, _, obj = stage(dvc.odb.local, "file", fs, "md5", dry_run=True)
@@ -269,7 +269,7 @@ def test_get_hash_dirty_dir(tmp_dir, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     (tmp_dir / "dir" / "baz").write_text("baz")
 
-    fs = DvcFileSystem(repo=dvc)
+    fs = DataFileSystem(repo=dvc)
     expected = "5ea40360f5b4ec688df672a4db9c17d1.dir"
     assert fs.info("dir").get("md5") == expected
     _, _, obj = stage(dvc.odb.local, "dir", fs, "md5", dry_run=True)

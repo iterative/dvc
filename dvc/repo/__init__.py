@@ -484,10 +484,10 @@ class Repo:
         return self.DVC_DIR in path_parts
 
     @cached_property
-    def dvcfs(self):
-        from dvc.fs.dvc import DvcFileSystem
+    def datafs(self):
+        from dvc.fs.data import DataFileSystem
 
-        return DvcFileSystem(repo=self)
+        return DataFileSystem(repo=self)
 
     @cached_property
     def repo_fs(self):
@@ -504,11 +504,11 @@ class Repo:
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.data import DataFileSystem
         from dvc.fs.repo import RepoFileSystem
 
         if os.path.isabs(path):
-            fs = DvcFileSystem(repo=self, workspace="local")
+            fs = DataFileSystem(repo=self, workspace="local")
             fs_path = path
         else:
             fs = RepoFileSystem(repo=self, subrepos=True)

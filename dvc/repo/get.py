@@ -52,9 +52,9 @@ def get(url, path, out=None, rev=None, jobs=None):
         ) as repo:
 
             if os.path.isabs(path):
-                from dvc.fs.dvc import DvcFileSystem
+                from dvc.fs.data import DataFileSystem
 
-                fs = DvcFileSystem(repo=repo, workspace="local")
+                fs = DataFileSystem(repo=repo, workspace="local")
                 fs_path = path
             else:
                 fs = repo.repo_fs
