@@ -2,13 +2,16 @@
 
 # Based on https://eli.thegreenplace.net/2011/10/19/
 # perls-guess-if-file-is-text-or-binary-implemented-in-python
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from dvc.fs.base import AnyFSPath, FileSystem
 
 TEXT_CHARS = bytes(range(32, 127)) + b"\n\r\t\f\b"
 DEFAULT_CHUNK_SIZE = 512
 
 
-def istextblock(block):
+def istextblock(block: bytes) -> bool:
     if not block:
         # An empty file is considered a valid text file
         return True
@@ -23,7 +26,9 @@ def istextblock(block):
     return float(len(nontext)) / len(block) <= 0.30
 
 
-def istextfile(fname, fs, blocksize=DEFAULT_CHUNK_SIZE):
+def istextfile(
+    fname: "AnyFSPath", fs: "FileSystem", blocksize: int = DEFAULT_CHUNK_SIZE
+) -> bool:
     """Uses heuristics to guess whether the given file is text or binary,
     by reading a single block of bytes from the file.
     If more than 30% of the chars in the block are non-text, or there
