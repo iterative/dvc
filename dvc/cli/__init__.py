@@ -36,6 +36,43 @@ def parse_args(argv=None):
     return args
 
 
+def _log_exceptions(exc: Exception):
+    """Try to log some known exceptions, that are not DVCExceptions."""
+    from dvc.objects.cache import DiskError
+    from dvc.utils import error_link
+
+    if isinstance(exc, DiskError):
+        from dvc.utils import relpath
+
+        directory = relpath(exc.directory)
+        logger.exception(
+            f"Could not open pickled '{exc.type}' cache.\n"
+            f"Remove the '{directory}' directory and then retry this command."
+            f"\nSee {error_link('pickle')} for more information.",
+            extra={"tb_only": True},
+        )
+        return
+
+    if isinstance(exc, OSError):
+        import errno
+
+        if exc.errno == errno.EMFILE:
+            logger.exception(
+                "too many open files, please visit "
+                "{} to see how to handle this "
+                "problem".format(error_link("many-files")),
+                extra={"tb_only": True},
+            )
+            return
+
+    from dvc.info import get_dvc_info
+    from dvc.logger import FOOTER
+
+    logger.exception("unexpected error")
+    logger.debug("Version info for developers:\n%s", get_dvc_info())
+    logger.info(FOOTER)
+
+
 def main(argv=None):  # noqa: C901
     """Main entry point for dvc CLI.
 
@@ -48,7 +85,7 @@ def main(argv=None):  # noqa: C901
     from dvc._debug import debugtools
     from dvc.config import ConfigError
     from dvc.exceptions import DvcException, NotDvcRepoError
-    from dvc.logger import FOOTER, disable_other_loggers
+    from dvc.logger import disable_other_loggers
 
     # NOTE: stderr/stdout may be closed if we are running from dvc.daemon.
     # On Linux we directly call cli.main after double forking and closing
@@ -104,26 +141,7 @@ def main(argv=None):  # noqa: C901
         ret = 254
     except Exception as exc:  # noqa, pylint: disable=broad-except
         # pylint: disable=no-member
-        import errno
-
-        if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
-            from dvc.utils import error_link
-
-            logger.exception(
-                "too many open files, please visit "
-                "{} to see how to handle this "
-                "problem".format(error_link("many-files")),
-                extra={"tb_only": True},
-            )
-        else:
-            from dvc.info import get_dvc_info
-
-            logger.exception("unexpected error")
-
-            dvc_info = get_dvc_info()
-            logger.debug("Version info for developers:\n%s", dvc_info)
-
-            logger.info(FOOTER)
+        _log_exceptions(exc)
         ret = 255
 
     try:
