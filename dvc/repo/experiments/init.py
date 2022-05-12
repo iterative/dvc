@@ -182,6 +182,20 @@ def init_deps(stage: PipelineStage) -> List["Dependency"]:
     return new_deps
 
 
+def init_out_dirs(stage: PipelineStage):
+    from dvc.fs.local import localfs
+
+    missing_outs = [out for out in stage.outs if not out.exists]
+
+    # create dirs for outputs
+    for out in missing_outs:
+        path = out.fs_path
+        if is_file(path):
+            localfs.makedirs(localfs.path.parent(path), exist_ok=True)
+        else:
+            localfs.makedirs(path)
+
+
 def init(
     repo: "Repo",
     name: str = "train",
@@ -256,6 +270,7 @@ def init(
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
+        init_out_dirs(stage)
         stage.ignore_outs()
         initialized_deps = init_deps(stage)
         if params:
