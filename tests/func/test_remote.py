@@ -166,14 +166,14 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
 
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
-    import dvc.fs.utils as fs_utils
+    from dvc import fs
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
     baz = tmp_dir.dvc_gen({"baz": {"foo": "foo content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = fs_utils.transfer
+    original = fs.generic.transfer
     odb = dvc.cloud.get_remote_odb("upstream")
 
     def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
@@ -183,7 +183,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
             raise Exception("stop foo")
         return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
-    with patch.object(fs_utils, "transfer", unreliable_upload):
+    with patch.object(fs.generic, "transfer", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 2
@@ -197,7 +197,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
     remove(dvc.odb.local.cache_dir)
 
     baz._collect_used_dir_cache()
-    with patch.object(fs_utils, "transfer", side_effect=Exception):
+    with patch.object(fs.generic, "transfer", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -211,7 +211,7 @@ def test_raise_on_too_many_open_files(
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch(
-        "dvc.fs.utils.transfer",
+        "dvc.fs.generic.transfer",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
@@ -260,12 +260,12 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
 
 
 def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
-    import dvc.fs.utils as fs_utils
+    from dvc import fs
 
     foo = tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})[0].outs[0]
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.spy(fs_utils, "transfer")
+    mocked_upload = mocker.spy(fs.generic, "transfer")
     dvc.push()
 
     # foo .dir file should be uploaded after bar

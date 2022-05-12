@@ -99,7 +99,7 @@ class ObjectDB:
         from dvc.fs._callback import FsspecCallback
 
         self.makedirs(self.fs.path.parent(to_info))
-        return fs.utils.transfer(
+        return fs.generic.transfer(
             from_fs,
             from_info,
             self.fs,
