@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 from ..scheme import Schemes
-from . import utils  # noqa: F401
+from . import generic  # noqa: F401
 from .azure import AzureFileSystem
 from .gdrive import GDriveFileSystem
 from .gs import GSFileSystem

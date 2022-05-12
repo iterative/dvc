@@ -307,9 +307,9 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove("foo_imported")
     remove(dst_cache)
 
-    with patch("dvc.fs.utils.transfer", side_effect=Exception), pytest.raises(
-        DownloadError
-    ):
+    with patch(
+        "dvc.fs.generic.transfer", side_effect=Exception
+    ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
 
