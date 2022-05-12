@@ -6,8 +6,8 @@ from copy import copy
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
-from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
-from dvc.objects.file import HashFile
+from .errors import ObjectDBPermissionError, ObjectFormatError
+from .file import HashFile
 
 if TYPE_CHECKING:
     from typing import Tuple
