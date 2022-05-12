@@ -6,11 +6,12 @@ from functools import partial
 from funcy import cached_property
 from shortuuid import uuid
 
+from dvc.fs.system import umask
 from dvc.objects.db import ObjectDB, noop, wrap_iter
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.hash_info import HashInfo
 from dvc.utils import relpath
-from dvc.utils.fs import copyfile, remove, umask, walk_files
+from dvc.utils.fs import copyfile, remove, walk_files
 
 logger = logging.getLogger(__name__)
 

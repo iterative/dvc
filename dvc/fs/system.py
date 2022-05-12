@@ -4,6 +4,10 @@ import os
 import platform
 import stat
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .base import AnyFSPath
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +25,11 @@ else:
     realpath = os.path.realpath
 
 
-def hardlink(source, link_name):
+umask = os.umask(0)
+os.umask(umask)
+
+
+def hardlink(source: "AnyFSPath", link_name: "AnyFSPath") -> None:
     # NOTE: we should really be using `os.link()` here with
     # `follow_symlinks=True`, but unfortunately the implementation is
     # buggy across platforms, so until it is fixed, we just dereference
@@ -37,11 +45,11 @@ def hardlink(source, link_name):
     os.link(src, link_name)
 
 
-def symlink(source, link_name):
+def symlink(source: "AnyFSPath", link_name: "AnyFSPath") -> None:
     os.symlink(source, link_name)
 
 
-def _reflink_darwin(src, dst):
+def _reflink_darwin(src: "AnyFSPath", dst: "AnyFSPath") -> None:
     import ctypes
 
     def _cdll(name):
@@ -82,7 +90,7 @@ def _reflink_darwin(src, dst):
         raise OSError(err, msg)
 
 
-def _reflink_linux(src, dst):
+def _reflink_linux(src: "AnyFSPath", dst: "AnyFSPath") -> None:
     import fcntl  # pylint: disable=import-error
     from contextlib import suppress
 
@@ -97,9 +105,7 @@ def _reflink_linux(src, dst):
         raise
 
 
-def reflink(source, link_name):
-    from dvc.utils.fs import umask
-
+def reflink(source: "AnyFSPath", link_name: "AnyFSPath") -> None:
     source, link_name = os.fspath(source), os.fspath(link_name)
 
     system = platform.system()
@@ -118,15 +124,17 @@ def reflink(source, link_name):
     os.chmod(link_name, 0o666 & ~umask)
 
 
-def inode(path):
+def inode(path: "AnyFSPath") -> int:
     ino = os.lstat(path).st_ino
-    logger.trace("Path '%s' inode '%d'", path, ino)
+    logger.trace(  # type: ignore[attr-defined]
+        "Path '%s' inode '%d'", path, ino
+    )
     return ino
 
 
-def is_symlink(path):
+def is_symlink(path: "AnyFSPath") -> bool:
     return os.path.islink(path)
 
 
-def is_hardlink(path):
+def is_hardlink(path: "AnyFSPath") -> bool:
     return os.stat(path).st_nlink > 1

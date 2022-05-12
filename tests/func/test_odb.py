@@ -180,7 +180,7 @@ def test_default_cache_type(dvc):
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize("group", [False, True])
 def test_shared_cache(tmp_dir, dvc, group):
-    from dvc.utils.fs import umask
+    from dvc.fs.system import umask
 
     if group:
         with dvc.config.edit() as conf:
