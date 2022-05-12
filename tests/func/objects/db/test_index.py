@@ -66,7 +66,7 @@ def test_clear_on_download_err(tmp_dir, dvc, index, mocker):
 
     assert list(index.hashes())
 
-    mocker.patch("dvc.fs.utils.transfer", side_effect=Exception)
+    mocker.patch("dvc.fs.generic.transfer", side_effect=Exception)
     with pytest.raises(DownloadError):
         dvc.pull()
     assert not list(index.hashes())
@@ -83,7 +83,7 @@ def test_partial_upload(tmp_dir, dvc, index, mocker):
             raise Exception("stop baz")
         return original(self, from_file, to_info, name, **kwargs)
 
-    mocker.patch("dvc.fs.utils.transfer", unreliable_upload)
+    mocker.patch("dvc.fs.generic.transfer", unreliable_upload)
     with pytest.raises(UploadError):
         dvc.push()
     assert not list(index.hashes())

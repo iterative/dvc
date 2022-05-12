@@ -4,7 +4,7 @@ from itertools import chain
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
 from dvc.fs._callback import FsspecCallback
-from dvc.fs.utils import test_links, transfer
+from dvc.fs.generic import test_links, transfer
 from dvc.ignore import DvcIgnoreFilter
 from dvc.types import Optional
 

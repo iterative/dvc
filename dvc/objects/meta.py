@@ -3,8 +3,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.file import HashFile
+    from .db import ObjectDB
+    from .file import HashFile
 
 
 @dataclass

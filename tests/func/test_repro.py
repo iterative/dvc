@@ -14,11 +14,11 @@ from dvc.exceptions import (
     ReproductionError,
     StagePathAsOutputError,
 )
+from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -729,7 +729,7 @@ class TestReproChangedDirData(SingleStageRun, TestDvc):
         self.assertTrue(stages[0] is not None)
 
         # Check that dvc registers mtime change for the directory.
-        System.hardlink(self.DATA_SUB, self.DATA_SUB + ".lnk")
+        system.hardlink(self.DATA_SUB, self.DATA_SUB + ".lnk")
         stages = self.dvc.reproduce(target)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)

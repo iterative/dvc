@@ -10,8 +10,8 @@ from dvc.config import NoRemoteError
 from dvc.data.db import ODBManager
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
+from dvc.fs import system
 from dvc.stage.exceptions import StagePathNotFoundError
-from dvc.system import System
 from dvc.utils.fs import makedirs, remove
 from tests.unit.fs.test_dvc import make_subrepo
 from tests.utils import clean_staging
@@ -227,11 +227,11 @@ def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
             "set source repo cache type to symlink",
         )
         erepo_dir.dvc_gen("foo", "foo content", "create foo")
-    assert System.is_symlink(erepo_dir / "foo")
+    assert system.is_symlink(erepo_dir / "foo")
 
     dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported")
 
-    assert not System.is_symlink("foo_imported")
+    assert not system.is_symlink("foo_imported")
     assert (tmp_dir / "foo_imported").read_text() == "foo content"
     assert scm.is_ignored("foo_imported")
 
@@ -307,9 +307,9 @@ def test_download_error_pulling_imported_stage(tmp_dir, dvc, erepo_dir):
     remove("foo_imported")
     remove(dst_cache)
 
-    with patch("dvc.fs.utils.transfer", side_effect=Exception), pytest.raises(
-        DownloadError
-    ):
+    with patch(
+        "dvc.fs.generic.transfer", side_effect=Exception
+    ), pytest.raises(DownloadError):
         dvc.pull(["foo_imported.dvc"])
 
 

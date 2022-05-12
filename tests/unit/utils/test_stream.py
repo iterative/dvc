@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.fs.local import LocalFileSystem
-from dvc.istextfile import DEFAULT_CHUNK_SIZE, istextfile
+from dvc.objects.istextfile import DEFAULT_CHUNK_SIZE, istextfile
 from dvc.utils import file_md5
 from dvc.utils.stream import HashedStreamReader
 

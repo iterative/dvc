@@ -21,6 +21,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
+from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
 from dvc.objects.hash_info import HashInfo
 from dvc.output import (
@@ -33,7 +34,6 @@ from dvc.stage.exceptions import (
     StageExternalOutputsError,
     StagePathNotFoundError,
 )
-from dvc.system import System
 from dvc.testing.test_workspace import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
@@ -478,7 +478,7 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
             return False
 
         with patch.object(
-            System, "is_symlink", side_effect=is_symlink_true_below_dvc_root
+            system, "is_symlink", side_effect=is_symlink_true_below_dvc_root
         ):
 
             ret = main(["add", self.DATA])
@@ -582,7 +582,7 @@ class TestAddUnprotected(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(System.is_hardlink(self.FOO))
+        self.assertTrue(system.is_hardlink(self.FOO))
 
         ret = main(["unprotect", self.FOO])
         self.assertEqual(ret, 0)
@@ -591,7 +591,7 @@ class TestAddUnprotected(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(System.is_hardlink(self.FOO))
+        self.assertTrue(system.is_hardlink(self.FOO))
 
 
 @pytest.fixture
@@ -663,7 +663,7 @@ def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
     dvc.add("dir")
 
     assert not unprotect_spy.mock.called
-    assert System.is_symlink(os.path.join("dir", "new_file"))
+    assert system.is_symlink(os.path.join("dir", "new_file"))
 
 
 def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
@@ -683,10 +683,10 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 @pytest.mark.parametrize(
     "link,new_link,link_test_func",
     [
-        ("hardlink", "copy", lambda path: not System.is_hardlink(path)),
-        ("symlink", "copy", lambda path: not System.is_symlink(path)),
-        ("copy", "hardlink", System.is_hardlink),
-        ("copy", "symlink", System.is_symlink),
+        ("hardlink", "copy", lambda path: not system.is_hardlink(path)),
+        ("symlink", "copy", lambda path: not system.is_symlink(path)),
+        ("copy", "hardlink", system.is_hardlink),
+        ("copy", "symlink", system.is_symlink),
     ],
 )
 def test_should_relink_on_repeated_add(
@@ -789,10 +789,10 @@ def test_add_optimization_for_hardlink_on_empty_files(tmp_dir, dvc, mocker):
 
     for stage in stages[:2]:
         # hardlinks are not created for empty files
-        assert not System.is_hardlink(stage.outs[0].fs_path)
+        assert not system.is_hardlink(stage.outs[0].fs_path)
 
     for stage in stages[2:]:
-        assert System.is_hardlink(stage.outs[0].fs_path)
+        assert system.is_hardlink(stage.outs[0].fs_path)
 
     for stage in stages:
         assert os.path.exists(stage.path)

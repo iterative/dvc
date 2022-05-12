@@ -18,10 +18,10 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
+from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml
@@ -147,7 +147,7 @@ class CheckoutBase(TestDvcGit):
         ]
 
         return [
-            FileInfo(path=path, inode=System.inode(path)) for path in paths
+            FileInfo(path=path, inode=system.inode(path)) for path in paths
         ]
 
 
@@ -459,10 +459,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         old_foo_link = os.path.realpath(self.FOO)
 
-        self.assertTrue(System.is_symlink(self.DATA))
+        self.assertTrue(system.is_symlink(self.DATA))
         old_data_link = os.path.realpath(self.DATA)
 
         old_cache_dir = self.dvc.odb.local.cache_dir
@@ -475,10 +475,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["checkout", "-f"])
         self.assertEqual(ret, 0)
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         new_foo_link = os.path.realpath(self.FOO)
 
-        self.assertTrue(System.is_symlink(self.DATA))
+        self.assertTrue(system.is_symlink(self.DATA))
         new_data_link = os.path.realpath(self.DATA)
 
         self.assertEqual(
@@ -506,7 +506,7 @@ def test_checkout_no_checksum(tmp_dir, dvc):
 
 @pytest.mark.parametrize(
     "link, link_test_func",
-    [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
+    [("hardlink", system.is_hardlink), ("symlink", system.is_symlink)],
 )
 def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
     dvc.odb.local.cache_types = [link]

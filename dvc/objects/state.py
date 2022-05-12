@@ -5,10 +5,11 @@ import os
 from abc import ABC, abstractmethod
 
 from dvc.fs.local import LocalFileSystem
+from dvc.fs.system import inode as get_inode
 from dvc.utils import relpath
-from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
 from .hash_info import HashInfo
+from .utils import get_mtime_and_size
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return
 
         for path in unused:
-            remove(os.path.join(self.root_dir, path))
+            fs.remove(os.path.join(self.root_dir, path))
 
         with self.links as ref:
             for path in unused:

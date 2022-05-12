@@ -6,8 +6,8 @@ from copy import copy
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
-from dvc.objects.errors import ObjectDBPermissionError, ObjectFormatError
-from dvc.objects.file import HashFile
+from .errors import ObjectDBPermissionError, ObjectFormatError
+from .file import HashFile
 
 if TYPE_CHECKING:
     from typing import Tuple
@@ -99,7 +99,7 @@ class ObjectDB:
         from dvc.fs._callback import FsspecCallback
 
         self.makedirs(self.fs.path.parent(to_info))
-        return fs.utils.transfer(
+        return fs.generic.transfer(
             from_fs,
             from_info,
             self.fs,
@@ -310,8 +310,6 @@ class ObjectDB:
         sense to use a generator to gradually iterate over it, without
         keeping all of it in memory.
         """
-        from funcy import collecting
-
         num_pages = remote_size / self.fs.LIST_OBJECT_PAGE_SIZE
         if num_pages < 256 / self.fs.jobs:
             # Fetching prefixes in parallel requires at least 255 more
@@ -330,9 +328,8 @@ class ObjectDB:
                     for i in range(1, pow(16, self.fs.TRAVERSE_PREFIX_LEN - 2))
                 ]
 
-        list_hashes = collecting(self._list_hashes)
         with ThreadPoolExecutor(max_workers=jobs or self.fs.jobs) as executor:
-            in_remote = executor.map(list_hashes, traverse_prefixes)
+            in_remote = executor.map(self._list_hashes, traverse_prefixes)
             yield from itertools.chain.from_iterable(in_remote)
 
     def all(self, jobs=None):

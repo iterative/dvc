@@ -8,7 +8,7 @@ import psutil
 from dvc import __version__
 from dvc.exceptions import NotDvcRepoError
 from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
-from dvc.fs.utils import test_links
+from dvc.fs.generic import test_links
 from dvc.repo import Repo
 from dvc.scm import SCMError
 from dvc.utils import error_link
