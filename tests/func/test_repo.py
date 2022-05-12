@@ -1,6 +1,6 @@
 from dvc.data.db import ODBManager
 from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK
-from dvc.system import System
+from dvc.fs.system import System
 
 
 def test_destroy(tmp_dir, dvc, run_copy):

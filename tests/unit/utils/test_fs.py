@@ -5,7 +5,7 @@ import pytest
 
 import dvc
 from dvc.fs.local import LocalFileSystem
-from dvc.system import System
+from dvc.fs.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,

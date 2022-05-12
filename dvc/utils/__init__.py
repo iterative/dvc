@@ -371,10 +371,10 @@ def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
     from dvc.fs.local import localfs
+    from dvc.fs.system import System
 
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
-    from ..system import System
     from .fs import contains_symlink_up_to
 
     abspath = os.path.abspath(out)

@@ -22,6 +22,7 @@ from dvc.exceptions import (
     RecursiveAddingWhileUsingFilename,
 )
 from dvc.fs.local import LocalFileSystem
+from dvc.fs.system import System
 from dvc.objects.hash_info import HashInfo
 from dvc.output import (
     OutputAlreadyTrackedError,
@@ -33,7 +34,6 @@ from dvc.stage.exceptions import (
     StageExternalOutputsError,
     StagePathNotFoundError,
 )
-from dvc.system import System
 from dvc.testing.test_workspace import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
 from dvc.utils.fs import path_isin
