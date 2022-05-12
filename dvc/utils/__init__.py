@@ -43,7 +43,7 @@ def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
 
 def file_md5(fname, fs):
     """get the (md5 hexdigest, md5 digest) of a file"""
-    from dvc.istextfile import istextfile
+    from dvc.objects.istextfile import istextfile
     from dvc.progress import Tqdm
 
     hash_md5 = hashlib.md5()
