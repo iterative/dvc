@@ -370,8 +370,8 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
+    from dvc.fs import system
     from dvc.fs.local import localfs
-    from dvc.fs.system import System
 
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
@@ -390,7 +390,7 @@ def resolve_paths(repo, out, always_local=False):
     if scheme or not localfs.path.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
-        os.path.isdir(abspath) and System.is_symlink(abspath)
+        os.path.isdir(abspath) and system.is_symlink(abspath)
     ):
         msg = (
             "Cannot add files inside symlinked directories to DVC. "

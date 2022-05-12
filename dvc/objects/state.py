@@ -5,9 +5,10 @@ import os
 from abc import ABC, abstractmethod
 
 from dvc.fs.local import LocalFileSystem
+from dvc.fs.system import inode as get_inode
 from dvc.utils import relpath
 from dvc.utils.decorators import with_diskcache
-from dvc.utils.fs import get_inode, get_mtime_and_size, remove
+from dvc.utils.fs import get_mtime_and_size, remove
 
 from .hash_info import HashInfo
 

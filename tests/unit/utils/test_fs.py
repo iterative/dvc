@@ -4,15 +4,14 @@ import os
 import pytest
 
 import dvc
+from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
-from dvc.fs.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
     contains_symlink_up_to,
     copy_fobj_to_file,
     copyfile,
-    get_inode,
     get_mtime_and_size,
     makedirs,
     move,
@@ -47,20 +46,20 @@ def test_should_raise_exception_on_base_path_not_in_path():
 
 
 def test_should_return_true_on_symlink_in_path(mocker):
-    mocker.patch.object(System, "is_symlink", return_value=True)
+    mocker.patch.object(system, "is_symlink", return_value=True)
     base_path = "foo"
     path = os.path.join(base_path, "bar")
     assert contains_symlink_up_to(path, base_path)
 
 
 def test_should_return_false_on_path_eq_to_base_path(mocker):
-    mocker.patch.object(System, "is_symlink", return_value=False)
+    mocker.patch.object(system, "is_symlink", return_value=False)
     path = "path"
     assert not contains_symlink_up_to(path, path)
 
 
 def test_should_return_false_on_no_more_dirs_below_path(mocker):
-    mocker.patch.object(System, "is_symlink", return_value=False)
+    mocker.patch.object(system, "is_symlink", return_value=False)
     dirname_patch = mocker.patch.object(
         os.path, "dirname", side_effect=lambda arg: arg
     )
@@ -78,7 +77,7 @@ def test_should_return_false_when_base_path_is_symlink(mocker):
         return False
 
     mocker.patch.object(
-        System,
+        system,
         "is_symlink",
         return_value=True,
         side_effect=base_path_is_symlink,
@@ -94,7 +93,7 @@ def test_path_object_and_str_are_valid_arg_types():
 
 
 def test_should_call_recursive_on_no_condition_matched(mocker):
-    mocker.patch.object(System, "is_symlink", return_value=False)
+    mocker.patch.object(system, "is_symlink", return_value=False)
 
     contains_symlink_spy = mocker.spy(dvc.utils.fs, "contains_symlink_up_to")
 
@@ -119,7 +118,7 @@ def test_relpath_windows_different_drives():
 def test_get_inode(tmp_dir):
     tmp_dir.gen("foo", "foo content")
 
-    assert get_inode("foo") == get_inode("foo")
+    assert system.inode("foo") == system.inode("foo")
 
 
 def test_path_object_and_str_are_valid_types_get_mtime_and_size(tmp_dir):

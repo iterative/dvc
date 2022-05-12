@@ -5,7 +5,7 @@ import threading
 from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
-from dvc.fs.system import System
+from dvc.fs import system
 from dvc.scheme import Schemes
 from dvc.utils import tmp_fname
 from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
@@ -123,15 +123,15 @@ class FsspecLocalFileSystem(AbstractFileSystem):
         return open(path, mode=mode, encoding=encoding)
 
     def symlink(self, path1, path2):
-        return System.symlink(path1, path2)
+        return system.symlink(path1, path2)
 
     @staticmethod
     def is_symlink(path):
-        return System.is_symlink(path)
+        return system.is_symlink(path)
 
     @staticmethod
     def is_hardlink(path):
-        return System.is_hardlink(path)
+        return system.is_hardlink(path)
 
     def hardlink(self, path1, path2):
         # If there are a lot of empty files (which happens a lot in datasets),
@@ -153,10 +153,10 @@ class FsspecLocalFileSystem(AbstractFileSystem):
             logger.debug("Created empty file: %s -> %s", path1, path2)
             return
 
-        return System.hardlink(path1, path2)
+        return system.hardlink(path1, path2)
 
     def reflink(self, path1, path2):
-        return System.reflink(path1, path2)
+        return system.reflink(path1, path2)
 
     def created(self, path):
         return self.fs.created(path)
