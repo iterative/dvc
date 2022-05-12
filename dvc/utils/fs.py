@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
 from dvc.fs import system
-from dvc.utils import dict_md5
 
 if TYPE_CHECKING:
     from dvc.types import StrPath
@@ -17,39 +16,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 LOCAL_CHUNK_SIZE = 2**20  # 1 MB
-
-
-def get_mtime_and_size(path, fs, dvcignore=None):
-    import nanotime
-
-    if fs.isdir(path):
-        size = 0
-        files_mtimes = {}
-        if dvcignore:
-            walk_iterator = dvcignore.find(fs, path)
-        else:
-            walk_iterator = fs.find(path)
-        for file_path in walk_iterator:
-            try:
-                stats = fs.info(file_path)
-            except OSError as exc:
-                # NOTE: broken symlink case.
-                if exc.errno != errno.ENOENT:
-                    raise
-                continue
-            size += stats["size"]
-            files_mtimes[file_path] = stats["mtime"]
-
-        # We track file changes and moves, which cannot be detected with simply
-        # max(mtime(f) for f in non_ignored_files)
-        mtime = dict_md5(files_mtimes)
-    else:
-        base_stat = fs.info(path)
-        size = base_stat["size"]
-        mtime = base_stat["mtime"]
-        mtime = int(nanotime.timestamp(mtime))
-
-    return str(mtime), size
 
 
 class BasePathNotInCheckedPathException(DvcException):
