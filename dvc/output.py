@@ -16,6 +16,7 @@ from dvc.exceptions import (
     RemoteCacheRequiredError,
 )
 from dvc.objects.hash_info import HashInfo
+from dvc.objects.istextfile import istextfile
 from dvc.objects.meta import Meta
 
 from .data import check as ocheck
@@ -29,7 +30,6 @@ from .fs.base import RemoteMissingDepsError
 from .fs.hdfs import HDFSFileSystem
 from .fs.local import LocalFileSystem
 from .fs.s3 import S3FileSystem
-from .istextfile import istextfile
 from .objects.errors import ObjectFormatError
 from .scheme import Schemes
 from .utils import relpath
