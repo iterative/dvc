@@ -1,12 +1,12 @@
 from contextlib import ExitStack
 from functools import wraps
-from typing import IO, TYPE_CHECKING, Any, Dict, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, TypeVar, overload
 
 import fsspec
 from funcy import cached_property
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from typing import BinaryIO, Callable, TextIO, Union
 
     from typing_extensions import ParamSpec
 
@@ -20,11 +20,21 @@ if TYPE_CHECKING:
 class FsspecCallback(fsspec.Callback):
     """FsspecCallback usable as a context manager, and a few helper methods."""
 
-    def wrap_attr(self, fobj: IO, method: str = "read") -> IO:
+    @overload
+    def wrap_attr(self, fobj: "BinaryIO", method: str = "read") -> "BinaryIO":
+        ...
+
+    @overload
+    def wrap_attr(self, fobj: "TextIO", method: str = "read") -> "TextIO":
+        ...
+
+    def wrap_attr(
+        self, fobj: "Union[TextIO, BinaryIO]", method: str = "read"
+    ) -> "Union[TextIO, BinaryIO]":
         from tqdm.utils import CallbackIOWrapper
 
         wrapped = CallbackIOWrapper(self.relative_update, fobj, method)
-        return cast(IO, wrapped)
+        return wrapped
 
     def wrap_fn(self, fn: "Callable[_P, _R]") -> "Callable[_P, _R]":
         @wraps(fn)

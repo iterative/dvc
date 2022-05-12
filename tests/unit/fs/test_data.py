@@ -232,9 +232,9 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = DataFileSystem(repo=dvc)
-    get_file_hash_spy = mocker.spy(dvc_module.data.stage, "get_file_hash")
+    hash_file_spy = mocker.spy(dvc_module.objects.hash, "hash_file")
     assert fs.info("dir")["md5"] == "8761c4e9acad696bee718615e23e22db.dir"
-    assert not get_file_hash_spy.called
+    assert not hash_file_spy.called
 
 
 def test_get_hash_granular(tmp_dir, dvc):

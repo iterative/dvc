@@ -3,10 +3,8 @@ import re
 
 import pytest
 
-from dvc.fs.local import LocalFileSystem
 from dvc.utils import (
     dict_sha256,
-    file_md5,
     fix_env,
     parse_target,
     relpath,
@@ -81,13 +79,6 @@ def test_fix_env_pyenv(path, orig):
         "PYENV_HOOK_PATH": "/some/hook/path",
     }
     assert fix_env(env)["PATH"] == orig
-
-
-def test_file_md5(tmp_dir):
-    tmp_dir.gen("foo", "foo content")
-
-    fs = LocalFileSystem()
-    assert file_md5("foo", fs) == file_md5("foo", fs)
 
 
 def test_tmp_fname():

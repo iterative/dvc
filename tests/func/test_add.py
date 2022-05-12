@@ -23,6 +23,7 @@ from dvc.exceptions import (
 )
 from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
+from dvc.objects.hash import file_md5
 from dvc.objects.hash_info import HashInfo
 from dvc.output import (
     OutputAlreadyTrackedError,
@@ -35,7 +36,7 @@ from dvc.stage.exceptions import (
     StagePathNotFoundError,
 )
 from dvc.testing.test_workspace import TestAdd
-from dvc.utils import LARGE_DIR_SIZE, file_md5, relpath
+from dvc.utils import LARGE_DIR_SIZE, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
 from tests.basic_env import TestDvc
@@ -378,7 +379,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_module.data.stage, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.objects.hash, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -409,7 +410,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_module.data.stage, "file_md5")
+    file_md5_counter = mocker.spy(dvc_module.objects.hash, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 

@@ -7,8 +7,7 @@ from funcy import cached_property
 
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.file import HashFile
-
-from .stage import get_file_hash
+from dvc.objects.hash import hash_file
 
 if TYPE_CHECKING:
     from dvc.objects.db import ObjectDB
@@ -67,7 +66,7 @@ class Tree(HashFile):
         if hash_info:
             self.hash_info = hash_info
         else:
-            _, self.hash_info = get_file_hash(fs_path, memfs, "md5")
+            _, self.hash_info = hash_file(fs_path, memfs, "md5")
             assert self.hash_info.value
             self.hash_info.value += ".dir"
 
