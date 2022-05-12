@@ -175,8 +175,6 @@ def test_when_params_is_omitted_in_interactive_mode(tmp_dir, scm, dvc):
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
     assert not scm.is_tracked("params.yaml")
-    assert scm.is_tracked(".gitignore")
-    assert scm.is_ignored("models")
 
 
 def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
@@ -286,8 +284,6 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
     assert scm.is_tracked("params.yaml")
-    assert scm.is_tracked(".gitignore")
-    assert scm.is_ignored("models")
     out, err = capsys.readouterr()
 
     assert not out
@@ -365,8 +361,6 @@ def test_init_interactive_live(
     scm._reset()
     assert scm.is_tracked("dvc.yaml")
     assert scm.is_tracked("params.yaml")
-    assert scm.is_tracked(".gitignore")
-    assert scm.is_ignored("models")
 
     out, err = capsys.readouterr()
 
@@ -496,3 +490,16 @@ def test_init_with_live_and_metrics_plots_provided(
     }
     assert (tmp_dir / "src").is_dir()
     assert (tmp_dir / "data").is_dir()
+
+
+# Test that using an output subdir does not throw an scm error.
+# See https://github.com/iterative/dvc/issues/5802.
+def test_model_subdir_scm(scm, dvc):
+    init(
+        dvc,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={
+            "cmd": "cmd",
+            "models": "models/predict.h5",
+        },
+    )

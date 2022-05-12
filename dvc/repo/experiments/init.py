@@ -253,7 +253,6 @@ def init(
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
-        stage.ignore_outs()
         initialized_deps = init_deps(stage)
         if params:
             repo.scm_context.track_file(params)
