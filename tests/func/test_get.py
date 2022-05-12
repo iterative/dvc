@@ -5,7 +5,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.data.db import ODBManager
-from dvc.fs.system import System
+from dvc.fs import system
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
 from dvc.utils.fs import makedirs
@@ -86,11 +86,11 @@ def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
             [erepo_dir.dvc.config.files["repo"]], "set cache type to symlinks"
         )
         erepo_dir.dvc_gen("file", "contents", "create file")
-    assert System.is_symlink(erepo_dir / "file")
+    assert system.is_symlink(erepo_dir / "file")
 
     Repo.get(os.fspath(erepo_dir), "file", "file_imported")
 
-    assert not System.is_symlink("file_imported")
+    assert not system.is_symlink("file_imported")
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 

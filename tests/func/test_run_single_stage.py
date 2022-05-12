@@ -19,7 +19,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     StagePathAsOutputError,
 )
-from dvc.fs.system import System
+from dvc.fs import system
 from dvc.output import Output, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -401,7 +401,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         else:
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -428,7 +428,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         else:
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -460,7 +460,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(System.is_hardlink(self.FOO))
+        self.assertTrue(system.is_hardlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -481,7 +481,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(System.is_hardlink(self.FOO))
+        self.assertTrue(system.is_hardlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 

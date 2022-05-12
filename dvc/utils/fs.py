@@ -8,7 +8,7 @@ from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
-from dvc.fs.system import System
+from dvc.fs import system
 from dvc.utils import dict_md5
 
 if TYPE_CHECKING:
@@ -20,12 +20,6 @@ LOCAL_CHUNK_SIZE = 2**20  # 1 MB
 
 umask = os.umask(0)
 os.umask(umask)
-
-
-def get_inode(path):
-    inode = System.inode(path)
-    logger.trace("Path '%s' inode '%d'", path, inode)
-    return inode
 
 
 def get_mtime_and_size(path, fs, dvcignore=None):
@@ -78,7 +72,7 @@ def contains_symlink_up_to(path: "StrPath", base_path: "StrPath"):
 
     if path == base_path:
         return False
-    if System.is_symlink(path):
+    if system.is_symlink(path):
         return True
     if os.path.dirname(path) == path:
         return False
@@ -198,7 +192,7 @@ def copyfile(src, dest, callback=None, no_progress_bar=False, name=None):
         callback.set_size(total)
 
     try:
-        System.reflink(src, dest)
+        system.reflink(src, dest)
     except OSError:
         from dvc.fs._callback import FsspecCallback
 
