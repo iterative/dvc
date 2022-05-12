@@ -6,13 +6,13 @@ import pytest
 import dvc
 from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
+from dvc.objects.utils import get_mtime_and_size
 from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
     contains_symlink_up_to,
     copy_fobj_to_file,
     copyfile,
-    get_mtime_and_size,
     makedirs,
     move,
     path_isin,
