@@ -86,8 +86,7 @@ class System:
     @staticmethod
     def _reflink_linux(src, dst):
         import fcntl  # pylint: disable=import-error
-
-        from funcy import suppress
+        from contextlib import suppress
 
         FICLONE = 0x40049409
 

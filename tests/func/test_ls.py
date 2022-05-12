@@ -573,7 +573,7 @@ def test_subrepo(dvc_top_level, erepo):
 
 
 def test_broken_symlink(tmp_dir, dvc):
-    from dvc.system import System
+    from dvc.fs.system import System
 
     tmp_dir.gen("file", "content")
     System.symlink("file", "link")

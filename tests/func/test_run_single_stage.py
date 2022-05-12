@@ -19,6 +19,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     StagePathAsOutputError,
 )
+from dvc.fs.system import System
 from dvc.output import Output, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -29,7 +30,6 @@ from dvc.stage.exceptions import (
     StagePathNotFoundError,
     StagePathOutsideError,
 )
-from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils.serialize import load_yaml
 from tests.basic_env import TestDvc, TestDvcGit

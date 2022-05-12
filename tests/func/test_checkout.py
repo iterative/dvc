@@ -19,9 +19,9 @@ from dvc.exceptions import (
     NoOutputOrStageError,
 )
 from dvc.fs.local import LocalFileSystem
+from dvc.fs.system import System
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.fs import remove, walk_files
 from dvc.utils.serialize import dump_yaml, load_yaml

@@ -15,10 +15,10 @@ from dvc.exceptions import (
     StagePathAsOutputError,
 )
 from dvc.fs.local import LocalFileSystem
+from dvc.fs.system import System
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils import file_md5, relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml

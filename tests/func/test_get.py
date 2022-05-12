@@ -5,9 +5,9 @@ import pytest
 
 from dvc.cli import main
 from dvc.data.db import ODBManager
+from dvc.fs.system import System
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
-from dvc.system import System
 from dvc.utils.fs import makedirs
 from tests.unit.fs.test_dvc import make_subrepo
 

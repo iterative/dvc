@@ -8,7 +8,7 @@ from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING
 
 from dvc.exceptions import DvcException
-from dvc.system import System
+from dvc.fs.system import System
 from dvc.utils import dict_md5
 
 if TYPE_CHECKING:
