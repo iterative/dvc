@@ -216,7 +216,7 @@ class StageCache:
         from dvc.fs.callbacks import Callback
 
         from_fs = from_odb.fs
-        to_fs = from_odb.fs
+        to_fs = to_odb.fs
         func = _log_exceptions(fs.generic.copy)
         runs = from_fs.path.join(from_odb.fs_path, "runs")
 
