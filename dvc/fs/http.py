@@ -1,5 +1,5 @@
 import threading
-from typing import IO, Union
+from typing import BinaryIO, Union
 
 from funcy import cached_property, memoize, wrap_with
 
@@ -141,7 +141,7 @@ class HTTPFileSystem(FileSystem):
 
     def put_file(
         self,
-        from_file: Union[AnyFSPath, IO],
+        from_file: Union[AnyFSPath, BinaryIO],
         to_info: AnyFSPath,
         callback: FsspecCallback = DEFAULT_CALLBACK,
         size: int = None,

@@ -576,8 +576,8 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
     from dvc.data import check
-    from dvc.data.stage import get_file_hash
     from dvc.objects.errors import ObjectFormatError
+    from dvc.objects.hash import hash_file
 
     tmp_dir.dvc_gen("file", "file")
     file_hash_info = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
@@ -588,7 +588,7 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     clean_staging()
 
     # file is modified in workspace
-    # get_file_hash(file) should return workspace hash, not DVC cached hash
+    # hash_file(file) should return workspace hash, not DVC cached hash
     fs = DvcFileSystem(repo=dvc)
     assert fs.info("file").get("md5") is None
     staging, _, obj = stage(dvc.odb.local, "file", fs, "md5")
@@ -601,9 +601,9 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     with pytest.raises(ObjectFormatError):
         check(staging, obj)
 
-    # get_file_hash(file) should return DVC cached hash
+    # hash_file(file) should return DVC cached hash
     assert fs.info("file")["md5"] == file_hash_info.value
-    _, hash_info = get_file_hash("file", fs, "md5", state=dvc.state)
+    _, hash_info = hash_file("file", fs, "md5", state=dvc.state)
     assert hash_info == file_hash_info
 
     # tmp_dir/file can be staged even though it is missing in workspace since

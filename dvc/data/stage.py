@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore
 from dvc.objects.file import HashFile
+from dvc.objects.hash import hash_file
 from dvc.objects.hash_info import HashInfo
 from dvc.objects.meta import Meta
 from dvc.progress import Tqdm
-from dvc.utils import file_md5, is_exec
 
 from .db.reference import ReferenceObjectDB
 
@@ -32,7 +32,8 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
     from dvc.fs._callback import FsspecCallback
     from dvc.utils import tmp_fname
-    from dvc.utils.stream import HashedStreamReader
+
+    from .stream import HashedStreamReader
 
     fs_path = upload_odb.fs.path
     tmp_info = fs_path.join(upload_odb.fs_path, tmp_fname())
@@ -52,59 +53,9 @@ def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
     return from_fs_path, meta, odb.get(stream.hash_info)
 
 
-def _adapt_info(info, scheme):
-    if scheme == "s3" and "ETag" in info:
-        info["etag"] = info["ETag"].strip('"')
-    elif scheme == "gs" and "etag" in info:
-        import base64
-
-        info["etag"] = base64.b64decode(info["etag"]).hex()
-    elif scheme.startswith("http") and (
-        "ETag" in info or "Content-MD5" in info
-    ):
-        info["checksum"] = info.get("ETag") or info.get("Content-MD5")
-    return info
-
-
-def _get_file_hash(fs_path, fs, name):
-    info = _adapt_info(fs.info(fs_path), fs.scheme)
-
-    if name in info:
-        assert not info[name].endswith(".dir")
-        hash_value = info[name]
-    elif hasattr(fs, name):
-        func = getattr(fs, name)
-        hash_value = func(fs_path)
-    elif name == "md5":
-        hash_value = file_md5(fs_path, fs)
-    else:
-        raise NotImplementedError
-
-    meta = Meta(size=info["size"], isexec=is_exec(info.get("mode", 0)))
-    hash_info = HashInfo(name, hash_value)
-    return meta, hash_info
-
-
-def get_file_hash(fs_path, fs, name, state=None):
-    if state:
-        meta, hash_info = state.get(  # pylint: disable=assignment-from-none
-            fs_path, fs
-        )
-        if hash_info:
-            return meta, hash_info
-
-    meta, hash_info = _get_file_hash(fs_path, fs, name)
-
-    if state:
-        assert ".dir" not in hash_info.value
-        state.save(fs_path, fs, hash_info)
-
-    return meta, hash_info
-
-
 def _stage_file(fs_path, fs, name, odb=None, upload_odb=None, dry_run=False):
     state = odb.state if odb else None
-    meta, hash_info = get_file_hash(fs_path, fs, name, state=state)
+    meta, hash_info = hash_file(fs_path, fs, name, state=state)
     if upload_odb and not dry_run:
         assert odb and name == "md5"
         return _upload_file(fs_path, fs, odb, upload_odb)
@@ -346,7 +297,7 @@ def _stage_external_tree_info(odb, tree, name):
 
     odb.add(tree.fs_path, tree.fs, tree.hash_info)
     raw = odb.get(tree.hash_info)
-    _, hash_info = get_file_hash(raw.fs_path, raw.fs, name, state=odb.state)
+    _, hash_info = hash_file(raw.fs_path, raw.fs, name, state=odb.state)
     tree.fs_path = raw.fs_path
     tree.fs = raw.fs
     tree.hash_info.name = hash_info.name

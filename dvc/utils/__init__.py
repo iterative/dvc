@@ -6,7 +6,6 @@ import logging
 import math
 import os
 import re
-import stat
 import sys
 import time
 from typing import Dict, List, Optional, Tuple
@@ -15,60 +14,8 @@ import colorama
 
 logger = logging.getLogger(__name__)
 
-LOCAL_CHUNK_SIZE = 2**20  # 1 MB
-LARGE_FILE_SIZE = 2**30  # 1 GB
 LARGE_DIR_SIZE = 100
 TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
-
-
-def dos2unix(data):
-    return data.replace(b"\r\n", b"\n")
-
-
-def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
-    while True:
-        data = fobj.read(LOCAL_CHUNK_SIZE)
-        if not data:
-            break
-
-        if binary:
-            chunk = data
-        else:
-            chunk = dos2unix(data)
-
-        hash_md5.update(chunk)
-        if progress_func:
-            progress_func(len(data))
-
-
-def file_md5(fname, fs):
-    """get the (md5 hexdigest, md5 digest) of a file"""
-    from dvc.objects.istextfile import istextfile
-    from dvc.progress import Tqdm
-
-    hash_md5 = hashlib.md5()
-    binary = not istextfile(fname, fs=fs)
-    size = fs.size(fname) or 0
-    no_progress_bar = True
-    if size >= LARGE_FILE_SIZE:
-        no_progress_bar = False
-        msg = (
-            f"Computing md5 for a large file '{fname}'. "
-            "This is only done once."
-        )
-        logger.info(msg)
-
-    with Tqdm(
-        desc=str(fname),
-        disable=no_progress_bar,
-        total=size,
-        bytes=True,
-        leave=False,
-    ) as pbar:
-        with fs.open(fname, "rb") as fobj:
-            _fobj_md5(fobj, hash_md5, binary, pbar.update)
-
-    return hash_md5.hexdigest()
 
 
 def bytes_hash(byts, typ):
@@ -370,7 +317,6 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
-    from dvc.fs import system
     from dvc.fs.local import localfs
 
     from ..dvcfile import DVC_FILE_SUFFIX
@@ -390,7 +336,7 @@ def resolve_paths(repo, out, always_local=False):
     if scheme or not localfs.path.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
-        os.path.isdir(abspath) and system.is_symlink(abspath)
+        os.path.isdir(abspath) and localfs.is_symlink(abspath)
     ):
         msg = (
             "Cannot add files inside symlinked directories to DVC. "
@@ -469,10 +415,6 @@ def parse_target(
         )
 
     return path or default, name
-
-
-def is_exec(mode):
-    return bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
 
 def glob_targets(targets, glob=True, recursive=True):

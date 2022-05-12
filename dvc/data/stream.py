@@ -3,9 +3,9 @@ import io
 
 from funcy import cached_property
 
+from dvc.objects.hash import dos2unix
 from dvc.objects.hash_info import HashInfo
 from dvc.objects.istextfile import DEFAULT_CHUNK_SIZE, istextblock
-from dvc.utils import dos2unix
 
 
 class HashedStreamReader(io.IOBase):

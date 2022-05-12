@@ -6,7 +6,7 @@ import pytest
 from git import GitCommandError
 
 from dvc.exceptions import DvcException
-from dvc.utils import file_md5
+from dvc.objects.hash import file_md5
 from tests.func.parsing.test_errors import escape_ansi
 
 

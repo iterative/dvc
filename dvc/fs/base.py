@@ -25,6 +25,8 @@ from dvc.utils.threadpool import ThreadPoolExecutor
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
 
 if TYPE_CHECKING:
+    from typing import BinaryIO, TextIO
+
     from fsspec.spec import AbstractFileSystem
     from typing_extensions import Literal
 
@@ -179,12 +181,30 @@ class FileSystem:
             return not self.fs.ls(path)
         return entry["size"] == 0
 
+    @overload
+    def open(
+        self,
+        path: AnyFSPath,
+        mode: "Literal['rb', 'br', 'wb']",
+        **kwargs: Any,
+    ) -> "BinaryIO":  # pylint: disable=arguments-differ
+        return self.open(path, mode, **kwargs)
+
+    @overload
+    def open(
+        self,
+        path: AnyFSPath,
+        mode: "Literal['r', 'rt', 'w']",
+        **kwargs: Any,
+    ) -> "TextIO":  # pylint: disable=arguments-differ
+        ...
+
     def open(
         self,
         path: AnyFSPath,
         mode: str = "r",
-        **kwargs,
-    ) -> "IO":  # pylint: disable=arguments-differ
+        **kwargs: Any,
+    ) -> "IO[Any]":  # pylint: disable=arguments-differ
         if "b" in mode:
             kwargs.pop("encoding", None)
         return self.fs.open(path, mode=mode, **kwargs)
@@ -354,7 +374,7 @@ class FileSystem:
 
     def put_file(
         self,
-        from_file: Union[AnyFSPath, IO],
+        from_file: Union[AnyFSPath, "BinaryIO"],
         to_info: AnyFSPath,
         callback: FsspecCallback = DEFAULT_CALLBACK,
         size: int = None,
@@ -363,7 +383,7 @@ class FileSystem:
         if size:
             callback.set_size(size)
         if hasattr(from_file, "read"):
-            stream = callback.wrap_attr(cast("IO", from_file))
+            stream = callback.wrap_attr(cast("BinaryIO", from_file))
             self.upload_fobj(stream, to_info, size=size)
         else:
             assert isinstance(from_file, str)

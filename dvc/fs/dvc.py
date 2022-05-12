@@ -41,7 +41,7 @@ def _ls(fs, path):
 
 
 def _merge_info(repo, fs_info, dvc_info):
-    from dvc.utils import is_exec
+    from dvc.fs.utils import is_exec
 
     ret = {"repo": repo}
 

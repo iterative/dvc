@@ -16,10 +16,11 @@ from dvc.exceptions import (
 )
 from dvc.fs import system
 from dvc.fs.local import LocalFileSystem
+from dvc.objects.hash import file_md5
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.utils import file_md5, relpath
+from dvc.utils import relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc

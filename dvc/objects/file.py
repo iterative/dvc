@@ -65,10 +65,10 @@ class HashFile:
         self._check_hash(odb)
 
     def _check_hash(self, odb):
-        from dvc.data.stage import get_file_hash
-        from dvc.objects.errors import ObjectFormatError
+        from .errors import ObjectFormatError
+        from .hash import hash_file
 
-        _, actual = get_file_hash(
+        _, actual = hash_file(
             self.fs_path, self.fs, self.hash_info.name, odb.state
         )
 
