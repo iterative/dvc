@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 
 from dvc.fs.local import LocalFileSystem
 from dvc.utils import relpath
-from dvc.utils.decorators import with_diskcache
 from dvc.utils.fs import get_inode, get_mtime_and_size, remove
 
 from .hash_info import HashInfo
@@ -48,7 +47,7 @@ class StateNoop(StateBase):
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
     def __init__(self, root_dir=None, tmp_dir=None, dvcignore=None):
-        from diskcache import Cache
+        from .cache import Cache
 
         super().__init__()
 
@@ -59,10 +58,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not tmp_dir:
             return
 
-        config = {
-            "eviction_policy": "least-recently-used",
-            "disk_pickle_protocol": 4,
-        }
+        config = {"eviction_policy": "least-recently-used"}
         self.links = Cache(directory=os.path.join(tmp_dir, "links"), **config)
         self.md5s = Cache(directory=os.path.join(tmp_dir, "md5s"), **config)
 
@@ -70,7 +66,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.md5s.close()
         self.links.close()
 
-    @with_diskcache(name="md5s")
     def save(self, path, fs, hash_info):
         """Save hash for the specified path info.
 
@@ -95,7 +90,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         self.md5s[inode] = (mtime, str(size), hash_info.value)
 
-    @with_diskcache(name="md5s")
     def get(self, path, fs):
         """Gets the hash for the specified path info. Hash will be
         retrieved from the state database if available.
@@ -126,7 +120,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         return Meta(size=size), HashInfo("md5", value[2])
 
-    @with_diskcache(name="links")
     def save_link(self, path, fs):
         """Adds the specified path to the list of links created by dvc. This
         list is later used on `dvc checkout` to cleanup old links.
@@ -148,7 +141,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         with self.links as ref:
             ref[relative_path] = (inode, mtime)
 
-    @with_diskcache(name="links")
     def get_unused_links(self, used, fs):
         """Removes all saved links except the ones that are used.
 
@@ -176,7 +168,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         return unused
 
-    @with_diskcache(name="links")
     def remove_links(self, unused, fs):
         if not isinstance(fs, LocalFileSystem):
             return
