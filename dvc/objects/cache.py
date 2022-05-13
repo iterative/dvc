@@ -35,9 +35,8 @@ def translate_pickle_error(fn):
 class Disk(disk):
     """Reraise pickle-related errors as DiskError."""
 
-    def __init__(self, *args, type=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._type = type or os.path.basename(self._directory)
+    # we need type to differentiate cache for better error messages
+    _type: str
 
     put = translate_pickle_error(disk.put)
     get = translate_pickle_error(disk.get)
@@ -53,9 +52,14 @@ class Cache(diskcache.Cache):
         directory: str = None,
         timeout: int = 60,
         disk: disk = Disk,  # pylint: disable=redefined-outer-name
+        type: str = None,
         **settings: Any,
     ) -> None:
         settings.setdefault("disk_pickle_protocol", 4)
         super().__init__(
             directory=directory, timeout=timeout, disk=disk, **settings
         )
+        self.disk._type = self._type = type or os.path.basename(self.directory)
+
+    def __getstate__(self):
+        return (*super().__getstate__(), self._type)

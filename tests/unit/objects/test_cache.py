@@ -17,7 +17,7 @@ def test_pickle_protocol_error(tmp_dir, disk_type):
     cache = Cache(
         directory,
         disk_pickle_protocol=pickle.HIGHEST_PROTOCOL + 1,
-        disk_type=disk_type,
+        type=disk_type,
     )
     with pytest.raises(DiskError) as exc, cache as cache:
         set_value(cache, "key", ("value1", "value2"))
