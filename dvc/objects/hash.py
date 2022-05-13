@@ -80,7 +80,7 @@ def _hash_file(
 
     if hasattr(fs, name):
         func = getattr(fs, name)
-        return func(fs_path), info
+        return f"{func(fs_path):032x}", info
 
     if name == "md5":
         return file_md5(fs_path, fs, callback=callback), info
