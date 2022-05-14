@@ -321,7 +321,7 @@ class FileSystem:
             return False
 
     def iscopy(self, path: AnyFSPath) -> bool:
-        return self.is_symlink(path) or self.is_hardlink(path)
+        return not (self.is_symlink(path) or self.is_hardlink(path))
 
     @overload
     def ls(
