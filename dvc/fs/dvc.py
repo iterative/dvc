@@ -468,7 +468,7 @@ class DvcFileSystem(FileSystem):
         return self.fs.config
 
     def from_os_path(self, path):
-        from dvc.utils import as_posix
+        from .utils import as_posix
 
         if os.path.isabs(path):
             path = os.path.relpath(path, self.repo.root_dir)

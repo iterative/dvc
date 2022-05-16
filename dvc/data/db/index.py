@@ -89,8 +89,8 @@ class ObjectDBIndex(ObjectDBIndexBase):
         name: str,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs.local import LocalFileSystem
+        from dvc.fs.utils import makedirs
         from dvc.objects.cache import Cache, Index
-        from dvc.utils.fs import makedirs
 
         self.index_dir = os.path.join(tmp_dir, self.INDEX_DIR, name)
         makedirs(self.index_dir, exist_ok=True)

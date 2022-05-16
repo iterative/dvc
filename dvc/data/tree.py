@@ -56,7 +56,7 @@ class Tree(HashFile):
 
     def digest(self, hash_info: Optional["HashInfo"] = None):
         from dvc.fs.memory import MemoryFileSystem
-        from dvc.utils import tmp_fname
+        from dvc.fs.utils import tmp_fname
 
         memfs = MemoryFileSystem()
         fs_path = "memory://{}".format(tmp_fname(""))

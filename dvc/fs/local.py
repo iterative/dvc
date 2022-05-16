@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import threading
 
 from fsspec import AbstractFileSystem
@@ -7,10 +8,9 @@ from funcy import cached_property, wrap_prop
 
 from dvc.fs import system
 from dvc.scheme import Schemes
-from dvc.utils import tmp_fname
-from dvc.utils.fs import copy_fobj_to_file, copyfile, makedirs, move, remove
 
 from .base import FileSystem
+from .utils import copyfile, makedirs, move, remove, tmp_fname
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,8 @@ class LocalFileSystem(FileSystem):
         self.makedirs(self.path.parent(to_info))
         tmp_info = self.path.join(self.path.parent(to_info), tmp_fname(""))
         try:
-            copy_fobj_to_file(fobj, tmp_info)
+            with open(tmp_info, "wb+") as fdest:
+                shutil.copyfileobj(fobj, fdest)
             os.rename(tmp_info, to_info)
         except Exception:
             self.remove(tmp_info)
