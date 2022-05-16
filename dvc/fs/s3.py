@@ -38,14 +38,14 @@ class S3FileSystem(ObjectFileSystem):
 
         from boto3.s3.transfer import TransferConfig
 
-        from dvc.utils import conversions
+        from .utils import human_readable_to_bytes
 
         config, transfer_config = {}, {}
         for key, value in s3_config.items():
             if key in self._TRANSFER_CONFIG_ALIASES:
                 if key in {"multipart_chunksize", "multipart_threshold"}:
                     # cast human readable sizes (like 24MiB) to integers
-                    value = conversions.human_readable_to_bytes(value)
+                    value = human_readable_to_bytes(value)
                 else:
                     value = int(value)
                 transfer_config[self._TRANSFER_CONFIG_ALIASES[key]] = value

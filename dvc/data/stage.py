@@ -31,7 +31,7 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
     from dvc.fs._callback import FsspecCallback
-    from dvc.utils import tmp_fname
+    from dvc.fs.utils import tmp_fname
 
     from .stream import HashedStreamReader
 

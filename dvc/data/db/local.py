@@ -7,11 +7,10 @@ from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.fs.system import umask
+from dvc.fs.utils import copyfile, relpath, remove, walk_files
 from dvc.objects.db import ObjectDB, noop, wrap_iter
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.hash_info import HashInfo
-from dvc.utils import relpath
-from dvc.utils.fs import copyfile, remove, walk_files
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ class LocalObjectDB(ObjectDB):
         os.chmod(to_info, self._file_mode)
 
     def makedirs(self, fs_path):
-        from dvc.utils.fs import makedirs
+        from dvc.fs.utils import makedirs
 
         makedirs(fs_path, exist_ok=True, mode=self._dir_mode)
 

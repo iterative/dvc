@@ -3,11 +3,10 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
-from dvc.utils.fs import as_atomic
-
 from ._callback import DEFAULT_CALLBACK
 from .base import RemoteActionNotImplemented
 from .local import LocalFileSystem
+from .utils import as_atomic
 
 if TYPE_CHECKING:
     from ._callback import FsspecCallback
@@ -154,7 +153,7 @@ def test_links(
     to_fs: "FileSystem",
     to_path: "AnyFSPath",
 ) -> List["AnyFSPath"]:
-    from dvc.utils import tmp_fname
+    from .utils import tmp_fname
 
     from_file = from_fs.path.join(from_path, tmp_fname())
     to_file = to_fs.path.join(
