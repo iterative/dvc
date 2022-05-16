@@ -55,7 +55,7 @@ class Tree(HashFile):
         self._dict[key] = (meta, oid)
 
     def digest(self, hash_info: Optional["HashInfo"] = None):
-        from dvc.objects.fs.memory import MemoryFileSystem
+        from dvc.objects.fs import MemoryFileSystem
         from dvc.objects.fs.utils import tmp_fname
 
         memfs = MemoryFileSystem()

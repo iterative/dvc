@@ -10,7 +10,7 @@ from dvc.exceptions import DvcException
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .base import ObjectFileSystem
+from ..base import ObjectFileSystem
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (

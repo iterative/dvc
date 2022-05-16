@@ -4,7 +4,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .base import FileSystem
+from ..base import FileSystem
 
 
 class MemoryFileSystem(FileSystem):  # pylint:disable=abstract-method

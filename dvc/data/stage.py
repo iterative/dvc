@@ -194,7 +194,7 @@ def _get_staging(odb: "ObjectDB") -> "ReferenceObjectDB":
     Staging will be a reference ODB stored in the the global memfs.
     """
 
-    from dvc.objects.fs.memory import MemoryFileSystem
+    from dvc.objects.fs import MemoryFileSystem
 
     fs = MemoryFileSystem()
     fs_path = _make_staging_url(fs, odb, odb.fs_path)

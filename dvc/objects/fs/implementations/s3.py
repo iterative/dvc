@@ -6,7 +6,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .base import ObjectFileSystem
+from ..base import ObjectFileSystem
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
@@ -38,7 +38,7 @@ class S3FileSystem(ObjectFileSystem):
 
         from boto3.s3.transfer import TransferConfig
 
-        from .utils import human_readable_to_bytes
+        from ..utils import human_readable_to_bytes
 
         config, transfer_config = {}, {}
         for key, value in s3_config.items():

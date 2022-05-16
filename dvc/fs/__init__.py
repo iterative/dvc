@@ -4,11 +4,13 @@ from dvc.objects.fs import (  # noqa: F401
     FS_MAP,
     AzureFileSystem,
     GDriveFileSystem,
+    GitFileSystem,
     GSFileSystem,
     HDFSFileSystem,
     HTTPFileSystem,
     HTTPSFileSystem,
     LocalFileSystem,
+    MemoryFileSystem,
     OSSFileSystem,
     S3FileSystem,
     SSHFileSystem,
@@ -22,17 +24,17 @@ from dvc.objects.fs import (  # noqa: F401
     get_fs_config,
     system,
 )
-from dvc.objects.fs.azure import AzureAuthError  # noqa: F401
 from dvc.objects.fs.base import (  # noqa: F401
     AnyFSPath,
     FileSystem,
     RemoteMissingDepsError,
 )
-from dvc.objects.fs.gdrive import GDriveAuthError  # noqa: F401
-from dvc.objects.fs.git import GitFileSystem  # noqa: F401
-from dvc.objects.fs.local import localfs  # noqa: F401
-from dvc.objects.fs.memory import MemoryFileSystem  # noqa: F401
+from dvc.objects.fs.implementations.azure import AzureAuthError  # noqa: F401
+from dvc.objects.fs.implementations.gdrive import GDriveAuthError  # noqa: F401
+from dvc.objects.fs.implementations.local import localfs  # noqa: F401
+from dvc.objects.fs.implementations.ssh import (  # noqa: F401
+    DEFAULT_PORT as DEFAULT_SSH_PORT,
+)
 from dvc.objects.fs.path import Path  # noqa: F401
-from dvc.objects.fs.ssh import DEFAULT_PORT as DEFAULT_SSH_PORT  # noqa: F401
 
 # pylint: enable=unused-import

@@ -8,8 +8,8 @@ from dvc.exceptions import DvcException
 from dvc.scheme import Schemes
 from dvc.utils import format_link
 
-from .base import FileSystem
-from .utils import tmp_fname
+from ..base import FileSystem
+from ..utils import tmp_fname
 
 logger = logging.getLogger(__name__)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
