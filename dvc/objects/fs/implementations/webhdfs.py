@@ -5,7 +5,7 @@ from funcy import cached_property, wrap_prop
 from dvc.scheme import Schemes
 
 # pylint:disable=abstract-method
-from .base import FileSystem
+from ..base import FileSystem
 
 
 class WebHDFSFileSystem(FileSystem):

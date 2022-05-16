@@ -6,8 +6,8 @@ from funcy import cached_property, memoize, wrap_with
 from dvc import prompt
 from dvc.scheme import Schemes
 
-from ._callback import DEFAULT_CALLBACK, FsspecCallback
-from .base import AnyFSPath, FileSystem
+from .._callback import DEFAULT_CALLBACK, FsspecCallback
+from ..base import AnyFSPath, FileSystem
 
 
 @wrap_with(threading.Lock())

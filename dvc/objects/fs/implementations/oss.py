@@ -6,7 +6,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .base import ObjectFileSystem
+from ..base import ObjectFileSystem
 
 logger = logging.getLogger(__name__)
 

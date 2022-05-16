@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from funcy import cached_property, wrap_prop
 
-from .base import FileSystem
+from ..base import FileSystem
 
 if TYPE_CHECKING:
     from scmrepo.fs import GitFileSystem as FsspecGitFileSystem

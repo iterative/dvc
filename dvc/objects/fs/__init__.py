@@ -3,18 +3,20 @@ from urllib.parse import urlparse
 from dvc.scheme import Schemes
 
 from . import generic  # noqa: F401
-from .azure import AzureFileSystem
-from .gdrive import GDriveFileSystem
-from .gs import GSFileSystem
-from .hdfs import HDFSFileSystem
-from .http import HTTPFileSystem
-from .https import HTTPSFileSystem
-from .local import LocalFileSystem
-from .oss import OSSFileSystem
-from .s3 import S3FileSystem
-from .ssh import SSHFileSystem
-from .webdav import WebDAVFileSystem, WebDAVSFileSystem
-from .webhdfs import WebHDFSFileSystem
+from .implementations.azure import AzureFileSystem
+from .implementations.gdrive import GDriveFileSystem
+from .implementations.git import GitFileSystem  # noqa: F401
+from .implementations.gs import GSFileSystem
+from .implementations.hdfs import HDFSFileSystem
+from .implementations.http import HTTPFileSystem
+from .implementations.https import HTTPSFileSystem
+from .implementations.local import LocalFileSystem
+from .implementations.memory import MemoryFileSystem  # noqa: F401
+from .implementations.oss import OSSFileSystem
+from .implementations.s3 import S3FileSystem
+from .implementations.ssh import SSHFileSystem
+from .implementations.webdav import WebDAVFileSystem, WebDAVSFileSystem
+from .implementations.webhdfs import WebHDFSFileSystem
 
 FS_MAP = {
     Schemes.AZURE: AzureFileSystem,

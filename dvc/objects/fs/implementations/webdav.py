@@ -5,7 +5,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.scheme import Schemes
 
-from .base import FileSystem
+from ..base import FileSystem
 from .http import ask_password
 
 logger = logging.getLogger(__name__)

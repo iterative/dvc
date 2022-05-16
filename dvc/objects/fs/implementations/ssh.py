@@ -7,9 +7,9 @@ from funcy import cached_property, memoize, silent, wrap_prop, wrap_with
 from dvc import prompt
 from dvc.scheme import Schemes
 
-from ._callback import DEFAULT_CALLBACK
-from .base import FileSystem
-from .utils import as_atomic
+from .._callback import DEFAULT_CALLBACK
+from ..base import FileSystem
+from ..utils import as_atomic
 
 DEFAULT_PORT = 22
 
