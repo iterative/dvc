@@ -14,8 +14,7 @@ from dvc.exceptions import (
     ReproductionError,
     StagePathAsOutputError,
 )
-from dvc.fs import system
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem, system
 from dvc.objects.hash import file_md5
 from dvc.output import Output
 from dvc.stage import Stage

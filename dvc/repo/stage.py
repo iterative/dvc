@@ -465,7 +465,7 @@ class StageLoad:
                 the collection.
         """
         from dvc.dvcfile import is_valid_filename
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         scm = self.repo.scm
         sep = self.fs.sep

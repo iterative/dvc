@@ -2,9 +2,8 @@ import hashlib
 import logging
 from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Tuple
 
-from dvc.fs._callback import DEFAULT_CALLBACK, FsspecCallback, TqdmCallback
-from dvc.fs.utils import is_exec
-
+from .fs._callback import DEFAULT_CALLBACK, FsspecCallback, TqdmCallback
+from .fs.utils import is_exec
 from .hash_info import HashInfo
 from .istextfile import istextfile
 from .meta import Meta
@@ -13,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    from dvc.fs.base import AnyFSPath, FileSystem
-
+    from .fs.base import AnyFSPath, FileSystem
     from .state import StateBase
 
 

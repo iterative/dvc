@@ -47,14 +47,14 @@ def test_source_change(erepo_dir):
 
 
 def test_cache_reused(erepo_dir, mocker, local_cloud):
-    from dvc import fs
+    from dvc.objects.fs import generic
 
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(fs.generic, "transfer")
+    download_spy = mocker.spy(generic, "transfer")
 
     # Use URL to prevent any fishy optimizations
     url = f"file://{erepo_dir}"

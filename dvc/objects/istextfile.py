@@ -5,7 +5,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dvc.fs.base import AnyFSPath, FileSystem
+    from .fs.base import AnyFSPath, FileSystem
 
 TEXT_CHARS = bytes(range(32, 127)) + b"\n\r\t\f\b"
 DEFAULT_CHUNK_SIZE = 512

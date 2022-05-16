@@ -59,7 +59,7 @@ def is_lock_file(path):
 
 
 def is_git_ignored(repo, path):
-    from dvc.fs.local import LocalFileSystem
+    from dvc.fs import LocalFileSystem
     from dvc.scm import NoSCMError
 
     try:

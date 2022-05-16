@@ -8,8 +8,7 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import Trie
 
-from dvc.fs.base import AnyFSPath, FileSystem
-from dvc.fs.local import localfs
+from dvc.fs import AnyFSPath, FileSystem, localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.scheme import Schemes
 from dvc.types import List, Optional

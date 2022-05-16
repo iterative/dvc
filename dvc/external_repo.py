@@ -33,7 +33,7 @@ def external_repo(
     from scmrepo.git import Git
 
     from dvc.config import NoRemoteError
-    from dvc.fs.git import GitFileSystem
+    from dvc.fs import GitFileSystem
 
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
@@ -95,7 +95,7 @@ def external_repo(
 
 
 def erepo_factory(url, root_dir, cache_config):
-    from dvc.fs.local import localfs
+    from dvc.fs import localfs
 
     def make_repo(path, fs=None, **_kwargs):
         _config = cache_config.copy()

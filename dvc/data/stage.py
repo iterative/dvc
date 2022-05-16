@@ -17,8 +17,8 @@ from dvc.progress import Tqdm
 from .db.reference import ReferenceObjectDB
 
 if TYPE_CHECKING:
-    from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.objects.db import ObjectDB
+    from dvc.objects.fs.base import AnyFSPath, FileSystem
 
     from .tree import Tree
 
@@ -30,8 +30,8 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 
 
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
-    from dvc.fs._callback import FsspecCallback
-    from dvc.fs.utils import tmp_fname
+    from dvc.objects.fs._callback import FsspecCallback
+    from dvc.objects.fs.utils import tmp_fname
 
     from .stream import HashedStreamReader
 
@@ -194,7 +194,7 @@ def _get_staging(odb: "ObjectDB") -> "ReferenceObjectDB":
     Staging will be a reference ODB stored in the the global memfs.
     """
 
-    from dvc.fs.memory import MemoryFileSystem
+    from dvc.objects.fs.memory import MemoryFileSystem
 
     fs = MemoryFileSystem()
     fs_path = _make_staging_url(fs, odb, odb.fs_path)

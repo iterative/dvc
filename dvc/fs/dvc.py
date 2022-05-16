@@ -1,5 +1,7 @@
 import logging
+import ntpath
 import os
+import posixpath
 import threading
 from contextlib import suppress
 from itertools import takewhile
@@ -8,10 +10,11 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
 
-from ._callback import DEFAULT_CALLBACK
-from .base import FileSystem
+from dvc.objects.fs._callback import DEFAULT_CALLBACK
+from dvc.objects.fs.base import FileSystem
+from dvc.objects.fs.path import Path
+
 from .data import DataFileSystem
-from .path import Path
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -19,6 +22,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
+
+
+def as_posix(path: str) -> str:
+    return path.replace(ntpath.sep, posixpath.sep)
 
 
 def _wrap_walk(dvc_fs, *args, **kwargs):
@@ -41,7 +48,7 @@ def _ls(fs, path):
 
 
 def _merge_info(repo, fs_info, dvc_info):
-    from dvc.fs.utils import is_exec
+    from . import utils
 
     ret = {"repo": repo}
 
@@ -57,7 +64,7 @@ def _merge_info(repo, fs_info, dvc_info):
         ret["size"] = fs_info["size"]
         isexec = False
         if fs_info["type"] == "file":
-            isexec = is_exec(fs_info["mode"])
+            isexec = utils.is_exec(fs_info["mode"])
         ret["isexec"] = isexec
 
     return ret
@@ -468,8 +475,6 @@ class DvcFileSystem(FileSystem):
         return self.fs.config
 
     def from_os_path(self, path):
-        from .utils import as_posix
-
         if os.path.isabs(path):
             path = os.path.relpath(path, self.repo.root_dir)
 

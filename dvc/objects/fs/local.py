@@ -6,9 +6,9 @@ import threading
 from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
-from dvc.fs import system
 from dvc.scheme import Schemes
 
+from . import system
 from .base import FileSystem
 from .utils import copyfile, makedirs, move, remove, tmp_fname
 

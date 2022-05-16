@@ -9,7 +9,7 @@ from git import Repo
 from dvc.cli import main
 from dvc.data.db.local import LocalObjectDB
 from dvc.exceptions import CollectCacheError
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
 from tests.basic_env import TestDir, TestDvcGit

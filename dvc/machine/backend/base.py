@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 if TYPE_CHECKING:
-    from dvc.fs.ssh import SSHFileSystem
+    from dvc.fs import SSHFileSystem
     from dvc.types import StrPath
 
 

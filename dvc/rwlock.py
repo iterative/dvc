@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
-from .fs.local import localfs
+from .fs import localfs
 from .utils import relpath
 
 INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}

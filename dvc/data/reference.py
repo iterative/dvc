@@ -8,8 +8,8 @@ from dvc.objects.errors import ObjectFormatError
 from dvc.objects.file import HashFile
 
 if TYPE_CHECKING:
-    from dvc.fs.base import AnyFSPath, FileSystem
     from dvc.objects.db import ObjectDB
+    from dvc.objects.fs.base import AnyFSPath, FileSystem
     from dvc.objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
@@ -70,8 +70,8 @@ class ReferenceHashFile(HashFile):
 
     @classmethod
     def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
-        from dvc.fs import get_fs_cls
         from dvc.fs.dvc import DvcFileSystem, _DvcFileSystem
+        from dvc.objects.fs import get_fs_cls
 
         try:
             dict_ = pickle.loads(data)

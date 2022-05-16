@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.fs.base import FileSystem, RemoteMissingDepsError
+from dvc.fs import FileSystem, RemoteMissingDepsError
 
 
 @pytest.mark.parametrize(

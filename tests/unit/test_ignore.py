@@ -7,7 +7,7 @@ from dvc.ignore import DvcIgnorePatterns
 
 
 def mock_dvcignore(dvcignore_path, patterns):
-    from dvc.fs.local import localfs
+    from dvc.fs import localfs
 
     fs = MagicMock()
     fs.path = localfs.path

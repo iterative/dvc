@@ -3,7 +3,7 @@ from math import pi
 
 import pytest
 
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem
 from dvc.parsing import DEFAULT_PARAMS_FILE
 from dvc.parsing.context import (
     Context,

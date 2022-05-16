@@ -180,7 +180,7 @@ def test_default_cache_type(dvc):
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 @pytest.mark.parametrize("group", [False, True])
 def test_shared_cache(tmp_dir, dvc, group):
-    from dvc.fs.system import umask
+    from dvc.fs import system
 
     if group:
         with dvc.config.edit() as conf:
@@ -201,7 +201,7 @@ def test_shared_cache(tmp_dir, dvc, group):
             actual[path] = oct(stat.S_IMODE(os.stat(path).st_mode))
 
     file_mode = oct(0o444)
-    dir_mode = oct(0o2775 if group else (0o777 & ~umask))
+    dir_mode = oct(0o2775 if group else (0o777 & ~system.umask))
 
     expected = {
         os.path.join(cache_dir, "17"): dir_mode,

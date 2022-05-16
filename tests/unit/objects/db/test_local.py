@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.data.db.local import LocalObjectDB
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem
 from dvc.objects.hash_info import HashInfo
 
 

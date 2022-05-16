@@ -7,8 +7,7 @@ import psutil
 
 from dvc import __version__
 from dvc.exceptions import NotDvcRepoError
-from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
-from dvc.fs.generic import test_links
+from dvc.fs import FS_MAP, generic, get_fs_cls, get_fs_config
 from dvc.repo import Repo
 from dvc.scm import SCMError
 from dvc.utils import error_link
@@ -83,7 +82,7 @@ def _get_remotes(config):
 def _get_linktype_support_info(repo):
     odb = repo.odb.local
 
-    links = test_links(
+    links = generic.test_links(
         ["reflink", "hardlink", "symlink"],
         odb.fs,
         odb.fs_path,

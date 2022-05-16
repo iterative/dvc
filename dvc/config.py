@@ -86,7 +86,7 @@ class Config(dict):
     def __init__(
         self, dvc_dir=None, validate=True, fs=None, config=None
     ):  # pylint: disable=super-init-not-called
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         self.dvc_dir = dvc_dir
         self.wfs = LocalFileSystem()
@@ -227,7 +227,7 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
-        from dvc.fs.local import localfs
+        from dvc.fs import localfs
         from dvc.utils import relpath
 
         from .config_schema import RelPath

@@ -18,8 +18,7 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
-from dvc.fs import system
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem, system
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils import relpath
