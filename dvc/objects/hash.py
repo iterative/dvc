@@ -80,8 +80,7 @@ def _hash_file(
 
     if hasattr(fs, name):
         func = getattr(fs, name)
-        digest = hashlib.md5(bytes(str(func(fs_path)), "utf8")).hexdigest()
-        return digest, info
+        return func(fs_path), info
 
     if name == "md5":
         return file_md5(fs_path, fs, callback=callback), info

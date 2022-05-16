@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import logging
 import os
 import shutil
@@ -273,7 +274,10 @@ class FileSystem:
         return self.fs.touch(path, truncate=truncate, **kwargs)
 
     def checksum(self, path: AnyFSPath) -> str:
-        return self.fs.checksum(path)
+        ret = self.fs.checksum(path)
+        if not isinstance(ret, str):
+            ret = hashlib.md5(bytes(str(ret), "utf8")).hexdigest()
+        return ret
 
     def copy(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
         self.makedirs(self.path.parent(to_info))
