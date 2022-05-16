@@ -18,7 +18,7 @@ def get_odb(fs, fs_path, **config):
 
 
 def _get_odb(repo, settings):
-    from dvc.fs import get_cloud_fs
+    from dvc.objects.fs import get_cloud_fs
 
     if not settings:
         return None

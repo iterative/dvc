@@ -25,11 +25,13 @@ from .data.checkout import checkout
 from .data.stage import stage as ostage
 from .data.transfer import transfer as otransfer
 from .data.tree import Tree
-from .fs import get_cloud_fs
-from .fs.base import RemoteMissingDepsError
-from .fs.hdfs import HDFSFileSystem
-from .fs.local import LocalFileSystem
-from .fs.s3 import S3FileSystem
+from .fs import (
+    HDFSFileSystem,
+    LocalFileSystem,
+    RemoteMissingDepsError,
+    S3FileSystem,
+    get_cloud_fs,
+)
 from .objects.errors import ObjectFormatError
 from .scheme import Schemes
 from .utils import relpath

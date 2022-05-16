@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from ruamel.yaml import StreamMark
     from voluptuous import MultipleInvalid
 
-    from dvc.fs.base import FileSystem
+    from dvc.fs import FileSystem
     from dvc.ui import RichText
 
 

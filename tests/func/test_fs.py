@@ -5,9 +5,8 @@ from os.path import join
 
 import pytest
 
-from dvc.fs import get_cloud_fs
+from dvc.fs import LocalFileSystem, get_cloud_fs
 from dvc.fs._callback import DEFAULT_CALLBACK, FsspecCallback
-from dvc.fs.local import LocalFileSystem
 from dvc.repo import Repo
 
 

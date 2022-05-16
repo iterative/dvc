@@ -21,8 +21,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from dvc.fs import system
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem, system
 from dvc.objects.hash import file_md5
 from dvc.objects.hash_info import HashInfo
 from dvc.output import (

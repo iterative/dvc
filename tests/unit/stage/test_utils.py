@@ -1,6 +1,6 @@
 import os
 
-from dvc.fs.local import localfs
+from dvc.fs import localfs
 from dvc.stage.utils import resolve_paths
 
 

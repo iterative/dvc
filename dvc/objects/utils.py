@@ -4,7 +4,7 @@ import json
 from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
-    from dvc.fs.base import AnyFSPath, FileSystem
+    from .fs.base import AnyFSPath, FileSystem
 
 
 def get_mtime_and_size(

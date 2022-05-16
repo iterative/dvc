@@ -12,9 +12,8 @@ from .file import HashFile
 if TYPE_CHECKING:
     from typing import Tuple
 
-    from dvc.fs._callback import FsspecCallback
-    from dvc.fs.base import AnyFSPath, FileSystem
-
+    from .fs._callback import FsspecCallback
+    from .fs.base import AnyFSPath, FileSystem
     from .hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
@@ -95,11 +94,11 @@ class ObjectDB:
         hardlink: bool = False,
         callback: "FsspecCallback" = None,
     ):
-        from dvc import fs
-        from dvc.fs._callback import FsspecCallback
+        from .fs import generic
+        from .fs._callback import FsspecCallback
 
         self.makedirs(self.fs.path.parent(to_info))
-        return fs.generic.transfer(
+        return generic.transfer(
             from_fs,
             from_info,
             self.fs,
@@ -117,7 +116,7 @@ class ObjectDB:
         verify: Optional[bool] = None,
         callback: "FsspecCallback" = None,
     ):
-        from dvc.fs._callback import FsspecCallback
+        from .fs._callback import FsspecCallback
 
         if self.read_only:
             raise ObjectDBPermissionError("Cannot add to read-only ODB")

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from dvc.data.tree import Tree
     from dvc.dependency import Dependency, ParamsDependency
-    from dvc.fs.base import FileSystem
+    from dvc.fs import FileSystem
     from dvc.objects.db import ObjectDB
     from dvc.objects.hash_info import HashInfo
     from dvc.output import Output
@@ -74,7 +74,7 @@ class Index:
         return self.stage_collector.collect_repo(onerror=onerror)
 
     def __repr__(self) -> str:
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         rev = "workspace"
         if not isinstance(self.fs, LocalFileSystem):

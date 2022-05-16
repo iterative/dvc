@@ -4,10 +4,9 @@ import logging
 import os
 from abc import ABC, abstractmethod
 
-from dvc.fs.local import LocalFileSystem
-from dvc.fs.system import inode as get_inode
-from dvc.fs.utils import relpath
-
+from .fs import LocalFileSystem
+from .fs.system import inode as get_inode
+from .fs.utils import relpath
 from .hash_info import HashInfo
 from .utils import get_mtime_and_size
 

@@ -3,9 +3,7 @@ import os
 import pytest
 
 from dvc.data.db import get_index
-from dvc.fs import get_cloud_fs
-from dvc.fs.gs import GSFileSystem
-from dvc.fs.s3 import S3FileSystem
+from dvc.fs import GSFileSystem, S3FileSystem, get_cloud_fs
 
 
 def test_remote_with_hash_jobs(dvc):

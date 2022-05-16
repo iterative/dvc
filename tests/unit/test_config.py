@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 from dvc.config import Config
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem
 
 
 @pytest.mark.parametrize(

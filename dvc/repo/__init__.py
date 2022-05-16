@@ -15,7 +15,7 @@ from dvc.utils import env2bool
 from dvc.utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc.fs.base import FileSystem
+    from dvc.fs import FileSystem
     from dvc.objects.file import HashFile
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
@@ -88,7 +88,7 @@ class Repo:
         uninitialized: bool = False,
         scm: "Base" = None,
     ):
-        from dvc.fs.local import localfs
+        from dvc.fs import localfs
         from dvc.scm import SCM, SCMError
 
         dvc_dir = None
@@ -157,8 +157,7 @@ class Repo:
         from dvc.config import Config
         from dvc.data.db import ODBManager
         from dvc.data_cloud import DataCloud
-        from dvc.fs.git import GitFileSystem
-        from dvc.fs.local import localfs
+        from dvc.fs import GitFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
         from dvc.objects.state import State, StateNoop
         from dvc.repo.metrics import Metrics
@@ -280,7 +279,7 @@ class Repo:
         return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         assert self.scm
         if isinstance(self.fs, LocalFileSystem):
@@ -323,7 +322,7 @@ class Repo:
 
     @classmethod
     def find_root(cls, root=None, fs=None) -> str:
-        from dvc.fs.local import LocalFileSystem, localfs
+        from dvc.fs import LocalFileSystem, localfs
 
         fs = fs or localfs
         root = root or os.curdir

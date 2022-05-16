@@ -4,8 +4,7 @@ from functools import partial, partialmethod
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from dvc.exceptions import DvcException
-from dvc.fs.ssh import DEFAULT_PORT as DEFAULT_SSH_PORT
-from dvc.fs.ssh import SSHFileSystem
+from dvc.fs import DEFAULT_SSH_PORT, SSHFileSystem
 from dvc.utils.fs import makedirs
 
 from .base import BaseMachineBackend

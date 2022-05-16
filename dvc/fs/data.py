@@ -5,8 +5,8 @@ import typing
 from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
-from ._callback import DEFAULT_CALLBACK
-from .base import FileSystem
+from dvc.objects.fs._callback import DEFAULT_CALLBACK
+from dvc.objects.fs.base import FileSystem
 
 if typing.TYPE_CHECKING:
     from dvc.types import AnyPath
@@ -30,7 +30,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     @cached_property
     def path(self):
-        from .path import Path
+        from . import Path
 
         def _getcwd():
             return self.root_marker

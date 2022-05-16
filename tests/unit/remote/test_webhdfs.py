@@ -3,7 +3,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 import requests
 
-from dvc.fs.webhdfs import WebHDFSFileSystem
+from dvc.fs import WebHDFSFileSystem
 
 host = "host"
 kerberos = False

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import first
 
-from dvc.fs.ssh import SSHFileSystem
+from dvc.fs import SSHFileSystem
 from dvc.repo.experiments.base import (
     EXEC_BRANCH,
     EXEC_CHECKPOINT,

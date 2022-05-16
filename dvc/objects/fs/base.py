@@ -131,9 +131,9 @@ class FileSystem:
         return missing
 
     def _check_requires(self, **kwargs):
-        from ..scheme import Schemes
-        from ..utils import format_link
-        from ..utils.pkg import PKG
+        from dvc.scheme import Schemes
+        from dvc.utils import format_link
+        from dvc.utils.pkg import PKG
 
         missing = self.get_missing_deps()
         if not missing:

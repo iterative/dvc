@@ -3,8 +3,7 @@
 import pytest
 
 from dvc import output
-from dvc.fs.local import LocalFileSystem
-from dvc.fs.s3 import S3FileSystem
+from dvc.fs import LocalFileSystem, S3FileSystem
 from dvc.output import Output
 from dvc.stage import Stage
 

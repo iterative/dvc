@@ -162,7 +162,7 @@ def init_deps(stage: PipelineStage) -> List["Dependency"]:
     from funcy import rpartial
 
     from dvc.dependency import ParamsDependency
-    from dvc.fs.local import localfs
+    from dvc.fs import localfs
 
     new_deps = [dep for dep in stage.deps if not dep.exists]
     params, deps = lsplit(rpartial(isinstance, ParamsDependency), new_deps)

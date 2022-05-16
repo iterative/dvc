@@ -317,7 +317,7 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
-    from dvc.fs.local import localfs
+    from dvc.fs import localfs
 
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException

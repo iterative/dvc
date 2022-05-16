@@ -5,7 +5,7 @@ import pytest
 from funcy import first
 from voluptuous import MultipleInvalid, Schema
 
-from dvc.fs.base import RemoteMissingDepsError
+from dvc.fs import RemoteMissingDepsError
 from dvc.ignore import _no_match
 from dvc.output import CHECKSUM_SCHEMA, Output
 from dvc.stage import Stage

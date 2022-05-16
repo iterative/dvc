@@ -157,7 +157,7 @@ def copyfile(
     try:
         system.reflink(src, dest)
     except OSError:
-        from dvc.fs._callback import FsspecCallback
+        from ._callback import FsspecCallback
 
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
             with FsspecCallback.as_tqdm_callback(
@@ -189,13 +189,6 @@ def tmp_fname(fname: "AnyFSPath" = "") -> "AnyFSPath":
     from shortuuid import uuid
 
     return os.fspath(fname) + "." + uuid() + ".tmp"
-
-
-def as_posix(path: str) -> str:
-    import ntpath
-    import posixpath
-
-    return path.replace(ntpath.sep, posixpath.sep)
 
 
 @contextmanager

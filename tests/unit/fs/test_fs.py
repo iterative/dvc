@@ -1,13 +1,16 @@
 import pytest
 
 from dvc.config import RemoteNotFoundError
-from dvc.fs import get_fs_cls, get_fs_config
-from dvc.fs.hdfs import HDFSFileSystem
-from dvc.fs.http import HTTPFileSystem
-from dvc.fs.https import HTTPSFileSystem
-from dvc.fs.local import LocalFileSystem
-from dvc.fs.s3 import S3FileSystem
-from dvc.fs.ssh import SSHFileSystem
+from dvc.fs import (
+    HDFSFileSystem,
+    HTTPFileSystem,
+    HTTPSFileSystem,
+    LocalFileSystem,
+    S3FileSystem,
+    SSHFileSystem,
+    get_fs_cls,
+    get_fs_config,
+)
 
 
 @pytest.mark.parametrize(
