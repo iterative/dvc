@@ -61,7 +61,7 @@ class CmdExperimentsInit(CmdBase):
             }
         )
 
-        initialized_stage, initialized_deps = init(
+        initialized_stage, initialized_deps, initialized_out_dirs = init(
             self.repo,
             name=self.args.name,
             type=self.args.type,
@@ -70,13 +70,18 @@ class CmdExperimentsInit(CmdBase):
             interactive=self.args.interactive,
             force=self.args.force,
         )
-        self._post_init_display(initialized_stage, initialized_deps)
+        self._post_init_display(
+            initialized_stage, initialized_deps, initialized_out_dirs
+        )
         if self.args.run:
             self.repo.experiments.run(targets=[initialized_stage.addressing])
         return 0
 
     def _post_init_display(
-        self, stage: "PipelineStage", new_deps: List["Dependency"]
+        self,
+        stage: "PipelineStage",
+        new_deps: List["Dependency"],
+        new_out_dirs: List[str],
     ) -> None:
         from dvc.utils import humanize
 
@@ -84,6 +89,12 @@ class CmdExperimentsInit(CmdBase):
         if new_deps:
             deps_paths = humanize.join(map(path_fmt, new_deps))
             ui.write(f"Creating dependencies: {deps_paths}", styled=True)
+
+        if new_out_dirs:
+            out_dirs_paths = humanize.join(map(path_fmt, new_out_dirs))
+            ui.write(
+                f"Creating output directories: {out_dirs_paths}", styled=True
+            )
 
         ui.write(
             f"Creating [b]{self.args.name}[/b] stage in [green]dvc.yaml[/]",

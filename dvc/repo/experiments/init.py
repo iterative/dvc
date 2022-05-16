@@ -180,6 +180,23 @@ def init_deps(stage: PipelineStage) -> List["Dependency"]:
     return new_deps
 
 
+def init_out_dirs(stage: PipelineStage) -> List[str]:
+    from dvc.fs import localfs
+
+    new_dirs = []
+
+    # create dirs for outputs
+    for out in stage.outs:
+        path = out.def_path
+        if is_file(path):
+            path = localfs.path.parent(path)
+        if path and not localfs.exists(path):
+            localfs.makedirs(path)
+            new_dirs.append(path)
+
+    return new_dirs
+
+
 def init(
     repo: "Repo",
     name: str = "train",
@@ -189,7 +206,7 @@ def init(
     interactive: bool = False,
     force: bool = False,
     stream: Optional[TextIO] = None,
-) -> Tuple[PipelineStage, List["Dependency"]]:
+) -> Tuple[PipelineStage, List["Dependency"], List[str]]:
     from dvc.dvcfile import make_dvcfile
 
     dvcfile = make_dvcfile(repo, "dvc.yaml")
@@ -253,10 +270,11 @@ def init(
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
+        initialized_out_dirs = init_out_dirs(stage)
         stage.ignore_outs()
         initialized_deps = init_deps(stage)
         if params:
             repo.scm_context.track_file(params)
 
     assert isinstance(stage, PipelineStage)
-    return stage, initialized_deps
+    return stage, initialized_deps, initialized_out_dirs

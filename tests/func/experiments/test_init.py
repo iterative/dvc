@@ -496,3 +496,24 @@ def test_init_with_live_and_metrics_plots_provided(
     }
     assert (tmp_dir / "src").is_dir()
     assert (tmp_dir / "data").is_dir()
+
+
+def test_gen_output_dirs(tmp_dir, dvc):
+    init(
+        dvc,
+        defaults=CmdExperimentsInit.DEFAULTS,
+        overrides={
+            "cmd": "cmd",
+            "models": "models/predict.h5",
+            "metrics": "eval/scores.json",
+            "plots": "eval/plots",
+            "live": "eval/live",
+        },
+    )
+
+    assert (tmp_dir / "models").is_dir()
+    assert (tmp_dir / "eval").is_dir()
+    assert (tmp_dir / "eval/plots").is_dir()
+    assert (tmp_dir / "eval/live").is_dir()
+    assert not (tmp_dir / "models/predict.h5").exists()
+    assert not (tmp_dir / "eval/scores.json").exists()
