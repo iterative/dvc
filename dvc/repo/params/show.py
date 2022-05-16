@@ -4,6 +4,8 @@ from collections import defaultdict
 from copy import copy
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
+from scmrepo.exceptions import SCMError
+
 from dvc.dependency.param import ParamsDependency
 from dvc.repo import locked
 from dvc.repo.collect import collect
@@ -117,8 +119,8 @@ def show(repo, revs=None, targets=None, deps=False, onerror: Callable = None):
     # Hide workspace params if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except (TypeError, NoSCMError):
-        # TypeError - detached head
+    except (SCMError, NoSCMError):
+        # SCMError - detached head
         # NoSCMError - no repo case
         pass
     else:
