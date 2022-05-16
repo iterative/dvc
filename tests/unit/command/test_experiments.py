@@ -1,4 +1,5 @@
 import csv
+import pathlib
 import textwrap
 from datetime import datetime
 
@@ -671,7 +672,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
 def test_experiments_init(dvc, scm, mocker, capsys, extra_args):
     stage = mocker.Mock(outs=[], addressing="train")
     m = mocker.patch(
-        "dvc.repo.experiments.init.init", return_value=(stage, [])
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     runner = mocker.patch("dvc.repo.experiments.run.run", return_value=0)
     cli_args = parse_args(["exp", "init", *extra_args, "cmd"])
@@ -707,7 +708,7 @@ def test_experiments_init_config(dvc, scm, mocker):
 
     stage = mocker.Mock(outs=[])
     m = mocker.patch(
-        "dvc.repo.experiments.init.init", return_value=(stage, [])
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     cli_args = parse_args(["exp", "init", "cmd"])
     cmd = cli_args.func(cli_args)
@@ -736,7 +737,7 @@ def test_experiments_init_config(dvc, scm, mocker):
 def test_experiments_init_explicit(dvc, mocker):
     stage = mocker.Mock(outs=[])
     m = mocker.patch(
-        "dvc.repo.experiments.init.init", return_value=(stage, [])
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     cli_args = parse_args(["exp", "init", "--explicit", "cmd"])
     cmd = cli_args.func(cli_args)
@@ -770,7 +771,7 @@ def test_experiments_init_cmd_not_required_for_interactive_mode(dvc, mocker):
 
     stage = mocker.Mock(outs=[])
     m = mocker.patch(
-        "dvc.repo.experiments.init.init", return_value=(stage, [])
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     assert cmd.run() == 0
     assert called_once_with_subset(m, ANY(Repo), interactive=True)
@@ -826,7 +827,7 @@ def test_experiments_init_extra_args(extra_args, expected_kw, mocker):
 
     stage = mocker.Mock(outs=[])
     m = mocker.patch(
-        "dvc.repo.experiments.init.init", return_value=(stage, [])
+        "dvc.repo.experiments.init.init", return_value=(stage, [], [])
     )
     assert cmd.run() == 0
     assert called_once_with_subset(m, ANY(Repo), **expected_kw)
@@ -839,15 +840,18 @@ def test_experiments_init_type_invalid_choice():
 
 @pytest.mark.parametrize("args", [[], ["--run"]])
 def test_experiments_init_displays_output_on_no_run(dvc, mocker, capsys, args):
+    model_dir = pathlib.Path("models")
+    model_path = str(model_dir / "predict.h5")
     stage = dvc.stage.create(
         name="train",
         cmd=["cmd"],
         deps=["code", "data"],
         params=["params.yaml"],
-        outs=["metrics.json", "plots", "models"],
+        outs=["metrics.json", "plots", model_path],
     )
     mocker.patch(
-        "dvc.repo.experiments.init.init", return_value=(stage, stage.deps)
+        "dvc.repo.experiments.init.init",
+        return_value=(stage, stage.deps, [model_dir]),
     )
     mocker.patch("dvc.repo.experiments.run.run", return_value=0)
     cli_args = parse_args(["exp", "init", "cmd", *args])
@@ -856,10 +860,11 @@ def test_experiments_init_displays_output_on_no_run(dvc, mocker, capsys, args):
 
     expected_lines = [
         "Creating dependencies: code, data and params.yaml",
+        "Creating output directories: models",
         "Creating train stage in dvc.yaml",
         "",
-        "Ensure your experiment command creates "
-        "metrics.json, plots and models.",
+        "Ensure your experiment command creates metrics.json, plots and ",
+        f"{model_path}.",
     ]
     if not cli_args.run:
         expected_lines += [
