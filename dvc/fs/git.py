@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
-    scheme = "local"
+    protocol = "local"
 
     def __init__(
         self,

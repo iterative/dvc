@@ -55,7 +55,7 @@ class RemoteMissingDepsError(DvcException):
 class FileSystem:
     sep = "/"
 
-    scheme = "base"
+    protocol = "base"
     REQUIRES: ClassVar[Dict[str, str]] = {}
     _JOBS = 4 * cpu_count()
 
@@ -131,17 +131,18 @@ class FileSystem:
         return missing
 
     def _check_requires(self, **kwargs):
-        from dvc.scheme import Schemes
         from dvc.utils import format_link
         from dvc.utils.pkg import PKG
+
+        from .scheme import Schemes
 
         missing = self.get_missing_deps()
         if not missing:
             return
 
-        url = kwargs.get("url", f"{self.scheme}://")
+        url = kwargs.get("url", f"{self.protocol}://")
 
-        scheme = self.scheme
+        scheme = self.protocol
         if scheme == Schemes.WEBDAVS:
             scheme = Schemes.WEBDAV
 
@@ -294,19 +295,19 @@ class FileSystem:
         try:
             return self.fs.symlink(from_info, to_info)
         except AttributeError:
-            raise RemoteActionNotImplemented("symlink", self.scheme)
+            raise RemoteActionNotImplemented("symlink", self.protocol)
 
     def hardlink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
         try:
             return self.fs.hardlink(from_info, to_info)
         except AttributeError:
-            raise RemoteActionNotImplemented("hardlink", self.scheme)
+            raise RemoteActionNotImplemented("hardlink", self.protocol)
 
     def reflink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
         try:
             return self.fs.reflink(from_info, to_info)
         except AttributeError:
-            raise RemoteActionNotImplemented("reflink", self.scheme)
+            raise RemoteActionNotImplemented("reflink", self.protocol)
 
     def is_symlink(self, path: AnyFSPath) -> bool:
         try:

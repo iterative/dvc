@@ -84,14 +84,14 @@ class ReferenceHashFile(HashFile):
         except KeyError as exc:
             raise ObjectFormatError("ReferenceHashFile is corrupted") from exc
 
-        scheme, config_pairs = dict_.get(cls.PARAM_FS_CONFIG)
-        fs = fs_cache.get((scheme, config_pairs)) if fs_cache else None
+        protocol, config_pairs = dict_.get(cls.PARAM_FS_CONFIG)
+        fs = fs_cache.get((protocol, config_pairs)) if fs_cache else None
         if not fs:
             config = dict(config_pairs)
             if _DvcFileSystem.PARAM_REPO_URL in config:
                 fs_cls = DvcFileSystem
             else:
-                fs_cls = get_fs_cls(config, scheme=scheme)
+                fs_cls = get_fs_cls(config, scheme=protocol)
             fs = fs_cls(**config)
         return ReferenceHashFile(
             fs_path,
@@ -103,7 +103,7 @@ class ReferenceHashFile(HashFile):
     @staticmethod
     def config_tuple(fs: "FileSystem"):
         return (
-            fs.scheme,
+            fs.protocol,
             tuple(
                 (key, value)
                 for key, value in sorted(

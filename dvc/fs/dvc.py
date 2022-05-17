@@ -444,7 +444,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
 
 class DvcFileSystem(FileSystem):
-    scheme = "local"
+    protocol = "local"
     PARAM_CHECKSUM = "md5"
 
     def _prepare_credentials(self, **config):

@@ -464,7 +464,7 @@ class Repo:
 
             match = eq if strict else out.fs.path.isin_or_eq
 
-            if out.scheme == "local" and match(fs_path, out.fs_path):
+            if out.protocol == "local" and match(fs_path, out.fs_path):
                 return True
 
             if recursive and out.fs.path.isin(out.fs_path, fs_path):

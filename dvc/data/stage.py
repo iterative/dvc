@@ -170,12 +170,12 @@ _url_cache: Dict[str, str] = {}
 def _make_staging_url(
     fs: "FileSystem", odb: "ObjectDB", fs_path: Optional[str]
 ):
-    from dvc.scheme import Schemes
+    from dvc.objects.fs import Schemes
 
     url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}"
 
     if fs_path is not None:
-        if odb.fs.scheme == Schemes.LOCAL:
+        if odb.fs.protocol == Schemes.LOCAL:
             fs_path = os.path.abspath(fs_path)
 
         if fs_path not in _url_cache:
@@ -330,7 +330,7 @@ def stage(
     than the original source path.
     """
     assert fs_path
-    # assert scheme(fs_path) == fs.scheme
+    # assert protocol(fs_path) == fs.protocol
 
     details = fs.info(fs_path)
     staging = _get_staging(odb)

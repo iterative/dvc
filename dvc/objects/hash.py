@@ -115,7 +115,7 @@ def _hash_file(
     name: str,
     callback: "FsspecCallback" = DEFAULT_CALLBACK,
 ) -> Tuple["str", Dict[str, Any]]:
-    info = _adapt_info(fs.info(fs_path), fs.scheme)
+    info = _adapt_info(fs.info(fs_path), fs.protocol)
 
     if name in info:
         assert not info[name].endswith(".dir")

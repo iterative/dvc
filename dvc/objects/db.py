@@ -66,7 +66,7 @@ class ObjectDB:
         )
 
     def __hash__(self):
-        return hash((self.fs.scheme, self.fs_path))
+        return hash((self.fs.protocol, self.fs_path))
 
     def exists(self, hash_info: "HashInfo"):
         return self.fs.exists(self.hash_to_path(hash_info.value))

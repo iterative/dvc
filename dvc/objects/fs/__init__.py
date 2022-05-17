@@ -1,7 +1,5 @@
 from urllib.parse import urlparse
 
-from dvc.scheme import Schemes
-
 from . import generic  # noqa: F401
 from .implementations.azure import AzureFileSystem
 from .implementations.gdrive import GDriveFileSystem
@@ -16,6 +14,7 @@ from .implementations.s3 import S3FileSystem
 from .implementations.ssh import SSHFileSystem
 from .implementations.webdav import WebDAVFileSystem, WebDAVSFileSystem
 from .implementations.webhdfs import WebHDFSFileSystem
+from .scheme import Schemes
 
 FS_MAP = {
     Schemes.AZURE: AzureFileSystem,

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from dvc.scheme import Schemes
+from dvc.objects.fs import Schemes
 
 if TYPE_CHECKING:
     from .index import ObjectDBIndexBase
@@ -11,7 +11,7 @@ def get_odb(fs, fs_path, **config):
 
     from .local import LocalObjectDB
 
-    if fs.scheme == Schemes.LOCAL:
+    if fs.protocol == Schemes.LOCAL:
         return LocalObjectDB(fs, fs_path, **config)
 
     return ObjectDB(fs, fs_path, **config)

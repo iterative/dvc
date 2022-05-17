@@ -4,8 +4,6 @@ from collections import defaultdict
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 from ..base import ObjectFileSystem
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
@@ -13,7 +11,7 @@ _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
 # pylint:disable=abstract-method
 class S3FileSystem(ObjectFileSystem):
-    scheme = Schemes.S3
+    protocol = "s3"
     REQUIRES = {"s3fs": "s3fs", "boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
 

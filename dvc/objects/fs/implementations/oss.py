@@ -4,8 +4,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 from ..base import ObjectFileSystem
 
 logger = logging.getLogger(__name__)
@@ -13,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # pylint:disable=abstract-method
 class OSSFileSystem(ObjectFileSystem):
-    scheme = Schemes.OSS
+    protocol = "oss"
     REQUIRES = {"ossfs": "ossfs"}
     PARAM_CHECKSUM = "etag"
     LIST_OBJECT_PAGE_SIZE = 100

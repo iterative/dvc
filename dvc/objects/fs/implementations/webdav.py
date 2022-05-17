@@ -3,8 +3,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 from ..base import FileSystem
 from .http import ask_password
 
@@ -12,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebDAVFileSystem(FileSystem):  # pylint:disable=abstract-method
-    scheme = Schemes.WEBDAV
+    protocol = "webdav"
     root_marker = ""
     REQUIRES = {"webdav4": "webdav4"}
     PARAM_CHECKSUM = "etag"
@@ -89,4 +87,4 @@ class WebDAVFileSystem(FileSystem):  # pylint:disable=abstract-method
 
 
 class WebDAVSFileSystem(WebDAVFileSystem):  # pylint:disable=abstract-method
-    scheme = Schemes.WEBDAVS
+    protocol = "webdavs"

@@ -2,7 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import DownloadError, FileTransferError
-from dvc.scheme import Schemes
+from dvc.fs import Schemes
 
 from . import locked
 
@@ -81,7 +81,7 @@ def fetch(
         for src_odb, obj_ids in sorted(
             used.items(),
             key=lambda item: item[0] is not None
-            and item[0].fs.scheme == Schemes.MEMORY,
+            and item[0].fs.protocol == Schemes.MEMORY,
         ):
             d, f = _fetch(
                 self,
