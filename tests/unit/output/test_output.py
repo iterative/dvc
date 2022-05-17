@@ -115,7 +115,7 @@ def test_remote_missing_depenency_on_dir_pull(tmp_dir, scm, dvc, mocker):
 
     with mocker.patch(
         "dvc.data_cloud.DataCloud.get_remote_odb",
-        side_effect=RemoteMissingDepsError("remote missing"),
+        side_effect=RemoteMissingDepsError(dvc.fs, "azure", "azure://", []),
     ):
         with pytest.raises(RemoteMissingDepsError):
             dvc.pull()

@@ -1,9 +1,11 @@
 from argparse import Namespace
 
+import pytest
 from funcy import raiser
 
 from dvc.cli import main
 from dvc.objects.cache import DiskError
+from dvc.objects.fs.base import FileSystem, RemoteMissingDepsError
 
 
 def test_state_pickle_errors_are_correctly_raised(tmp_dir, caplog, mocker):
@@ -24,3 +26,45 @@ def test_state_pickle_errors_are_correctly_raised(tmp_dir, caplog, mocker):
         "and then retry this command.\n"
         "See <https://error.dvc.org/pickle> for more information."
     ) in caplog.text
+
+
+@pytest.mark.parametrize(
+    "pkg, msg",
+    [
+        (None, "Please report this bug to"),
+        ("pip", "pip install 'dvc[proto]'"),
+        ("conda", "conda install -c conda-forge dvc-proto"),
+    ],
+)
+def test_remote_missing_deps_are_correctly_reported(
+    tmp_dir, caplog, mocker, pkg, msg
+):
+    error = RemoteMissingDepsError(FileSystem(), "proto", "proto://", ["deps"])
+    mocker.patch("dvc.utils.pkg.PKG", pkg)
+    mocker.patch(
+        "dvc.cli.parse_args",
+        return_value=Namespace(
+            func=raiser(error),
+            quiet=False,
+            verbose=True,
+        ),
+    )
+
+    assert main() == 255
+    expected = (
+        "URL 'proto://' is supported but requires these missing dependencies: "
+        "['deps']. "
+    )
+    if pkg:
+        expected += (
+            "To install dvc with those dependencies, run:\n\n"
+            f"\t{msg}\n\n"
+            "See <https://dvc.org/doc/install> for more info."
+        )
+    else:
+        expected += (
+            "\nPlease report this bug to "
+            "<https://github.com/iterative/dvc/issues>. "
+            "Thank you!"
+        )
+    assert expected in caplog.text

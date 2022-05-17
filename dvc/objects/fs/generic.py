@@ -4,7 +4,6 @@ import os
 from typing import TYPE_CHECKING, List, Optional
 
 from ._callback import DEFAULT_CALLBACK
-from .base import RemoteActionNotImplemented
 from .implementations.local import LocalFileSystem
 from .utils import as_atomic
 
@@ -25,15 +24,8 @@ def _link(
     if not isinstance(from_fs, type(to_fs)):
         raise OSError(errno.EXDEV, "can't link across filesystems")
 
-    try:
-        func = getattr(to_fs, link)
-        func(from_path, to_path)
-    except (OSError, AttributeError, RemoteActionNotImplemented) as exc:
-        # NOTE: there are so many potential error codes that a link call can
-        # throw, that is safer to just catch them all and try another link.
-        raise OSError(
-            errno.ENOTSUP, f"'{link}' is not supported by {type(from_fs)}"
-        ) from exc
+    func = getattr(to_fs, link)
+    func(from_path, to_path)
 
 
 def copy(
@@ -75,7 +67,7 @@ def _try_links(
         try:
             return _link(link, from_fs, from_path, to_fs, to_path)
         except OSError as exc:
-            if exc.errno not in [errno.ENOTSUP, errno.EXDEV]:
+            if exc.errno not in [errno.EPERM, errno.ENOTSUP, errno.EXDEV]:
                 raise
             error = exc
 

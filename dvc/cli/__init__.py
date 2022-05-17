@@ -39,7 +39,38 @@ def parse_args(argv=None):
 def _log_exceptions(exc: Exception):
     """Try to log some known exceptions, that are not DVCExceptions."""
     from dvc.objects.cache import DiskError
-    from dvc.utils import error_link
+    from dvc.objects.fs.base import RemoteMissingDepsError
+    from dvc.utils import error_link, format_link
+
+    if isinstance(exc, RemoteMissingDepsError):
+        from dvc.utils.pkg import PKG
+
+        proto = exc.protocol
+        by_pkg = {
+            "pip": f"pip install 'dvc[{proto}]'",
+            "conda": f"conda install -c conda-forge dvc-{proto}",
+        }
+
+        cmd = by_pkg.get(PKG)
+        if cmd:
+            link = format_link("https://dvc.org/doc/install")
+            hint = (
+                f"To install dvc with those dependencies, run:\n"
+                "\n"
+                f"\t{cmd}\n"
+                "\n"
+                f"See {link} for more info."
+            )
+        else:
+            link = format_link("https://github.com/iterative/dvc/issues")
+            hint = f"\nPlease report this bug to {link}. Thank you!"
+
+        logger.exception(
+            f"URL '{exc.url}' is supported but requires these missing "
+            f"dependencies: {exc.missing_deps}. {hint}",
+            extra={"tb_only": True},
+        )
+        return
 
     if isinstance(exc, DiskError):
         from dvc.utils import relpath

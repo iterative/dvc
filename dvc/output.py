@@ -893,7 +893,7 @@ class Output:
 
         try:
             self.get_dir_cache(jobs=jobs, remote=remote)
-        except RemoteMissingDepsError:
+        except RemoteMissingDepsError:  # pylint: disable=try-except-raise
             raise
         except DvcException:
             logger.debug(f"failed to pull cache for '{self}'")
