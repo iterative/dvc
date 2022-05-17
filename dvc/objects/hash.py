@@ -1,11 +1,15 @@
 import hashlib
+import io
 import logging
-from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Tuple
+from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Tuple
+
+from funcy import cached_property
 
 from .fs._callback import DEFAULT_CALLBACK, FsspecCallback, TqdmCallback
+from .fs.implementations.local import localfs
 from .fs.utils import is_exec
 from .hash_info import HashInfo
-from .istextfile import istextfile
+from .istextfile import DEFAULT_CHUNK_SIZE, istextblock
 from .meta import Meta
 
 logger = logging.getLogger(__name__)
@@ -14,6 +18,89 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from .fs.base import AnyFSPath, FileSystem
     from .state import StateBase
+
+
+def dos2unix(data: bytes) -> bytes:
+    return data.replace(b"\r\n", b"\n")
+
+
+def get_hasher(name: str) -> "hashlib._Hash":
+    try:
+        return getattr(hashlib, name)()
+    except AttributeError:
+        return hashlib.new(name)
+
+
+class HashedStreamReader(io.IOBase):
+    def __init__(
+        self,
+        fobj: BinaryIO,
+        hash_name: str = "md5",
+        text: Optional[bool] = None,
+    ) -> None:
+        self.fobj = fobj
+        self.total_read = 0
+        self.hasher = get_hasher(hash_name)
+        self.is_text: Optional[bool] = text
+        super().__init__()
+
+    def readable(self) -> bool:
+        return True
+
+    def tell(self) -> int:
+        return self.fobj.tell()
+
+    @cached_property
+    def _reader(self):
+        if hasattr(self.fobj, "read1"):
+            return self.fobj.read1
+        return self.fobj.read
+
+    def read(self, n=-1) -> bytes:
+        chunk = self._reader(n)
+        if self.is_text is None and chunk:
+            # do we need to buffer till the DEFAULT_CHUNK_SIZE?
+            self.is_text = istextblock(chunk[:DEFAULT_CHUNK_SIZE])
+
+        data = dos2unix(chunk) if self.is_text else chunk
+        self.hasher.update(data)
+        self.total_read += len(data)
+        return chunk
+
+    @property
+    def hash_value(self) -> str:
+        return self.hasher.hexdigest()
+
+    @property
+    def hash_name(self) -> str:
+        return self.hasher.name
+
+
+def fobj_md5(
+    fobj: BinaryIO, chunk_size: int = 2**20, text: Optional[bool] = None
+) -> str:
+    # ideally, we want the heuristics to be applied in a similar way,
+    # regardless of the size of the first chunk,
+    # for which we may need to buffer till DEFAULT_CHUNK_SIZE.
+    assert chunk_size >= DEFAULT_CHUNK_SIZE
+    stream = HashedStreamReader(fobj, text=text)
+    while True:
+        data = stream.read(chunk_size)
+        if not data:
+            break
+    return stream.hash_value
+
+
+def file_md5(
+    fname: "AnyFSPath",
+    fs: "FileSystem" = localfs,
+    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    text: Optional[bool] = None,
+) -> str:
+    size = fs.size(fname) or 0
+    callback.set_size(size)
+    with fs.open(fname, "rb") as fobj:
+        return fobj_md5(callback.wrap_attr(fobj), text=text)
 
 
 def _adapt_info(info: Dict[str, Any], scheme: str) -> Dict[str, Any]:
@@ -28,40 +115,6 @@ def _adapt_info(info: Dict[str, Any], scheme: str) -> Dict[str, Any]:
     ):
         info["checksum"] = info.get("ETag") or info.get("Content-MD5")
     return info
-
-
-def dos2unix(data: bytes) -> bytes:
-    return data.replace(b"\r\n", b"\n")
-
-
-def _fobj_md5(
-    fobj: BinaryIO,
-    hash_md5: "hashlib._Hash",
-    binary: bool,
-    chunk_size: int = 2**20,
-) -> None:
-    while True:
-        data = fobj.read(chunk_size)
-        if not data:
-            break
-        chunk = data if binary else dos2unix(data)
-        hash_md5.update(chunk)
-
-
-def file_md5(
-    fname: "AnyFSPath",
-    fs: "FileSystem",
-    callback: "FsspecCallback" = DEFAULT_CALLBACK,
-) -> str:
-    """get the (md5 hexdigest, md5 digest) of a file"""
-
-    hash_md5 = hashlib.md5()
-    binary = not istextfile(fname, fs=fs)
-    size = fs.size(fname) or 0
-    callback.set_size(size)
-    with fs.open(fname, "rb") as fobj:
-        _fobj_md5(callback.wrap_attr(fobj), hash_md5, binary)
-    return hash_md5.hexdigest()
 
 
 def _hash_file(
