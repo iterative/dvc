@@ -138,7 +138,7 @@ def _collect_rows(
         row_dict["Experiment"] = exp.get("name", "")
         row_dict["rev"] = name_rev
         row_dict["typ"] = typ
-        row_dict["Created"] = _format_time(
+        row_dict["Created"] = format_time(
             exp.get("timestamp"), fill_value, iso
         )
         row_dict["parent"] = parent
@@ -218,7 +218,7 @@ def _sort_exp(experiments, sort_path, sort_name, typ, reverse):
     return ret
 
 
-def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
+def format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
     if datetime_obj is None:
         return fill_value
 

@@ -147,6 +147,38 @@ class BaseStashQueue(ABC):
         self._remove_revs(stash_revs)
         return removed
 
+    def status(self) -> List[Mapping[str, Optional[str]]]:
+        """Show the status of exp tasks in queue"""
+        from datetime import datetime
+
+        result: List[Mapping[str, Optional[str]]] = []
+
+        def _get_timestamp(rev):
+            commit = self.scm.resolve_commit(rev)
+            return datetime.fromtimestamp(commit.commit_time)
+
+        for queue_entry in self.iter_active():
+            result.append(
+                {
+                    "rev": queue_entry.stash_rev,
+                    "name": queue_entry.name,
+                    "timestamp": _get_timestamp(queue_entry.stash_rev),
+                    "status": "Running",
+                }
+            )
+
+        for queue_entry in self.iter_queued():
+            result.append(
+                {
+                    "rev": queue_entry.stash_rev,
+                    "name": queue_entry.name,
+                    "timestamp": _get_timestamp(queue_entry.stash_rev),
+                    "status": "Queued",
+                }
+            )
+
+        return result
+
     @abstractmethod
     def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
         """Remove the specified entries from the queue by stash revision."""
@@ -193,6 +225,19 @@ class BaseStashQueue(ABC):
             kill: If True, the any active experiments will be killed and the
                 worker will shutdown immediately. If False, the worker will
                 finish any active experiments before shutting down.
+        """
+
+    def attach(
+        self,
+        rev: str,
+        encoding: Optional[str] = None,
+    ):
+        """Iterate over lines in redirected output for a process.
+
+        Args:
+            rev: Stash rev or running exp name to be attached.
+            encoding: Text encoding for redirected output. Defaults to
+                `locale.getpreferredencoding()`.
         """
 
     def _stash_exp(
@@ -515,13 +560,14 @@ class BaseStashQueue(ABC):
         self,
         exp_names: Collection[str],
     ) -> Dict[str, Optional[QueueEntry]]:
+        from funcy import concat
         from scmrepo.exceptions import RevError as InternalRevError
 
         exp_name_set = set(exp_names)
         result: Dict[str, Optional[QueueEntry]] = {}
         rev_entries = {}
 
-        for entry in self.iter_queued():
+        for entry in concat(self.iter_queued(), self.iter_active()):
             if entry.name in exp_name_set:
                 result[entry.name] = entry
             else:
@@ -534,4 +580,5 @@ class BaseStashQueue(ABC):
                     result[exp_name] = rev_entries[rev]
             except InternalRevError:
                 result[exp_name] = None
+
         return result
