@@ -21,6 +21,7 @@ from funcy import cached_property
 
 from ..executors import ThreadPoolExecutor
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
+from .errors import RemoteMissingDepsError
 
 if TYPE_CHECKING:
     from typing import BinaryIO, TextIO
@@ -48,23 +49,6 @@ class LinkError(OSError):
             errno.EPERM,
             f"{link} is not supported for {fs.protocol} by {type(fs)}",
             path,
-        )
-
-
-class RemoteMissingDepsError(Exception):
-    def __init__(
-        self,
-        fs: "FileSystem",
-        protocol: str,
-        url: str,
-        missing: List[str] = None,
-    ) -> None:
-        self.protocol = protocol
-        self.fs = fs
-        self.url = url
-        self.missing_deps = missing or []
-        super().__init__(
-            f"filesystem for '{protocol}': '{type(fs)}' missing dependencies"
         )
 
 

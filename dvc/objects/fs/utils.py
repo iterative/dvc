@@ -236,3 +236,15 @@ def human_readable_to_bytes(value: str) -> int:
 
     multiplier = MULTIPLIERS.get(suffix, 1)
     return int(value) * multiplier
+
+
+def flatten(d):
+    import flatten_dict
+
+    return flatten_dict.flatten(d, reducer="dot")
+
+
+def unflatten(d):
+    import flatten_dict
+
+    return flatten_dict.unflatten(d, splitter="dot")

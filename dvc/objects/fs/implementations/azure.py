@@ -6,10 +6,8 @@ from fsspec.asyn import fsspec_loop
 from fsspec.utils import infer_storage_options
 from funcy import cached_property, memoize, wrap_prop
 
-from dvc.exceptions import DvcException
-from dvc.utils import format_link
-
 from ..base import ObjectFileSystem
+from ..errors import AuthError
 
 logger = logging.getLogger(__name__)
 _DEFAULT_CREDS_STEPS = (
@@ -19,7 +17,7 @@ _DEFAULT_CREDS_STEPS = (
 )
 
 
-class AzureAuthError(DvcException):
+class AzureAuthError(AuthError):
     pass
 
 
@@ -91,9 +89,7 @@ class AzureFileSystem(ObjectFileSystem):
         if not (login_info["account_name"] or login_info["connection_string"]):
             raise AzureAuthError(
                 "Authentication to Azure Blob Storage requires either "
-                "account_name or connection_string.\nLearn more about "
-                "configuration settings at "
-                + format_link("https://man.dvc.org/remote/modify")
+                "account_name or connection_string."
             )
 
         any_secondary = any(
@@ -154,6 +150,5 @@ class AzureFileSystem(ObjectFileSystem):
         except (ValueError, AzureError) as e:
             raise AzureAuthError(
                 f"Authentication to Azure Blob Storage via {self.login_method}"
-                " failed.\nLearn more about configuration settings at"
-                f" {format_link('https://man.dvc.org/remote/modify')}"
+                " failed."
             ) from e

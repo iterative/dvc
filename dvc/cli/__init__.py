@@ -38,8 +38,7 @@ def parse_args(argv=None):
 
 def _log_exceptions(exc: Exception):
     """Try to log some known exceptions, that are not DVCExceptions."""
-    from dvc.objects.cache import DiskError
-    from dvc.objects.fs.base import RemoteMissingDepsError
+    from dvc.fs import AuthError, ConfigError, RemoteMissingDepsError
     from dvc.utils import error_link, format_link
 
     if isinstance(exc, RemoteMissingDepsError):
@@ -71,6 +70,17 @@ def _log_exceptions(exc: Exception):
             extra={"tb_only": True},
         )
         return
+
+    if isinstance(exc, (AuthError, ConfigError)):
+        link = format_link("https://man.dvc.org/remote/modify")
+        logger.exception("configuration error")
+        logger.exception(
+            f"{exc!s}\nLearn more about configuration settings at {link}.",
+            extra={"tb_only": True},
+        )
+        return 251
+
+    from dvc.objects.cache import DiskError
 
     if isinstance(exc, DiskError):
         from dvc.utils import relpath
@@ -172,8 +182,7 @@ def main(argv=None):  # noqa: C901
         ret = 254
     except Exception as exc:  # noqa, pylint: disable=broad-except
         # pylint: disable=no-member
-        _log_exceptions(exc)
-        ret = 255
+        ret = _log_exceptions(exc) or 255
 
     try:
         from dvc import analytics

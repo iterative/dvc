@@ -24,9 +24,10 @@ from dvc.objects.fs import (  # noqa: F401
     get_fs_config,
     system,
 )
-from dvc.objects.fs.base import (  # noqa: F401
-    AnyFSPath,
-    FileSystem,
+from dvc.objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc.objects.fs.errors import (  # noqa: F401
+    AuthError,
+    ConfigError,
     RemoteMissingDepsError,
 )
 from dvc.objects.fs.implementations.azure import AzureAuthError  # noqa: F401
