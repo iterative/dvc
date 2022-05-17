@@ -4,7 +4,6 @@ import threading
 
 from funcy import cached_property, memoize, silent, wrap_prop, wrap_with
 
-from dvc import prompt
 from dvc.scheme import Schemes
 
 from .._callback import DEFAULT_CALLBACK
@@ -17,11 +16,9 @@ DEFAULT_PORT = 22
 @wrap_with(threading.Lock())
 @memoize
 def ask_password(host, user, port):
-    return prompt.password(
+    return getpass.getpass(
         "Enter a private key passphrase or a password for "
-        "host '{host}' port '{port}' user '{user}'".format(
-            host=host, port=port, user=user
-        )
+        f"host '{host}' port '{port}' user '{user}':\n"
     )
 
 
