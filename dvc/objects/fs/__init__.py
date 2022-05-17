@@ -5,7 +5,6 @@ from dvc.scheme import Schemes
 from . import generic  # noqa: F401
 from .implementations.azure import AzureFileSystem
 from .implementations.gdrive import GDriveFileSystem
-from .implementations.git import GitFileSystem  # noqa: F401
 from .implementations.gs import GSFileSystem
 from .implementations.hdfs import HDFSFileSystem
 from .implementations.http import HTTPFileSystem

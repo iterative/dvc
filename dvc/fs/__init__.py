@@ -4,7 +4,6 @@ from dvc.objects.fs import (  # noqa: F401
     FS_MAP,
     AzureFileSystem,
     GDriveFileSystem,
-    GitFileSystem,
     GSFileSystem,
     HDFSFileSystem,
     HTTPFileSystem,
@@ -36,5 +35,9 @@ from dvc.objects.fs.implementations.ssh import (  # noqa: F401
     DEFAULT_PORT as DEFAULT_SSH_PORT,
 )
 from dvc.objects.fs.path import Path  # noqa: F401
+
+from .data import DataFileSystem  # noqa: F401
+from .dvc import DvcFileSystem  # noqa: F401
+from .git import GitFileSystem  # noqa: F401
 
 # pylint: enable=unused-import
