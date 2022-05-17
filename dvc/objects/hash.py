@@ -29,7 +29,7 @@ def get_hasher(name: str) -> "hashlib._Hash":
         return hashlib.new(name)
 
 
-class HashedStreamReader(io.IOBase):
+class HashStreamFile(io.IOBase):
     def __init__(
         self,
         fobj: BinaryIO,
@@ -75,7 +75,7 @@ def fobj_md5(
     # regardless of the size of the first chunk,
     # for which we may need to buffer till DEFAULT_CHUNK_SIZE.
     assert chunk_size >= DEFAULT_CHUNK_SIZE
-    stream = HashedStreamReader(fobj, text=text)
+    stream = HashStreamFile(fobj, text=text)
     while True:
         data = stream.read(chunk_size)
         if not data:

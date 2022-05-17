@@ -1,7 +1,7 @@
 import pytest
 
 from dvc.objects.fs import LocalFileSystem
-from dvc.objects.hash import HashedStreamReader, file_md5
+from dvc.objects.hash import HashStreamFile, file_md5
 from dvc.objects.istextfile import DEFAULT_CHUNK_SIZE, istextfile
 
 
@@ -10,7 +10,7 @@ def test_hashed_stream_reader(tmp_dir):
 
     foo = tmp_dir / "foo"
     with open(foo, "rb") as fobj:
-        stream_reader = HashedStreamReader(fobj)
+        stream_reader = HashStreamFile(fobj)
 
         assert stream_reader.readable()
         assert not stream_reader.seekable()
@@ -33,7 +33,7 @@ def test_hashed_stream_reader_as_chunks(tmp_dir):
 
     actual_size = len(foo.read_bytes())
     with open(foo, "rb") as fobj:
-        stream_reader = HashedStreamReader(fobj)
+        stream_reader = HashStreamFile(fobj)
 
         total_read = 0
         while True:
@@ -63,7 +63,7 @@ def test_hashed_stream_reader_compatibility(tmp_dir, contents):
     data = tmp_dir / "data"
 
     with open(data, "rb") as fobj:
-        stream_reader = HashedStreamReader(fobj)
+        stream_reader = HashStreamFile(fobj)
         stream_reader.read(chunk_size)
 
     local_fs = LocalFileSystem()
