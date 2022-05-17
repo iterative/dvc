@@ -29,6 +29,9 @@ class Path:
     def split(self, path):
         return self.flavour.split(path)
 
+    def splitext(self, path):
+        return self.flavour.splitext(path)
+
     def normpath(self, path):
         return self.flavour.normpath(path)
 
@@ -42,6 +45,9 @@ class Path:
 
     def commonprefix(self, path):
         return self.flavour.commonprefix(path)
+
+    def commonpath(self, paths):
+        return self.flavour.commonpath(paths)
 
     def parts(self, path):
         drive, path = self.flavour.splitdrive(path.rstrip(self.flavour.sep))
@@ -73,11 +79,12 @@ class Path:
         return self.parent(path)
 
     def parents(self, path):
-        parts = self.parts(path)
-        return tuple(
-            self.join(*parts[:length])
-            for length in range(len(parts) - 1, 0, -1)
-        )
+        while True:
+            parent = self.flavour.dirname(path)
+            if parent == path:
+                break
+            yield parent
+            path = parent
 
     def name(self, path):
         return self.flavour.basename(path)
@@ -88,22 +95,20 @@ class Path:
         return dot + suffix
 
     def with_name(self, path, name):
-        parts = list(self.parts(path))
-        parts[-1] = name
-        return self.join(*parts)
+        return self.join(self.parent(path), name)
 
     def with_suffix(self, path, suffix):
-        parts = list(self.parts(path))
-        real_path, _, _ = parts[-1].partition(".")
-        parts[-1] = real_path + suffix
-        return self.join(*parts)
+        return self.splitext(path)[0] + suffix
 
     def isin(self, left, right):
-        left_parts = self.parts(left)
-        right_parts = self.parts(right)
-        left_len = len(left_parts)
-        right_len = len(right_parts)
-        return left_len > right_len and left_parts[:right_len] == right_parts
+        if left == right:
+            return False
+        try:
+            common = self.commonpath([left, right])
+        except ValueError:
+            # Paths don't have the same drive
+            return False
+        return common == right
 
     def isin_or_eq(self, left, right):
         return left == right or self.isin(left, right)
