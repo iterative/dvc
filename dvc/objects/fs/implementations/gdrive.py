@@ -5,7 +5,6 @@ import threading
 from funcy import cached_property, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.scheme import Schemes
 from dvc.utils import format_link
 
 from ..base import FileSystem
@@ -32,7 +31,7 @@ class GDriveAuthError(DvcException):
 
 
 class GDriveFileSystem(FileSystem):  # pylint:disable=abstract-method
-    scheme = Schemes.GDRIVE
+    protocol = "gdrive"
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"pydrive2": "pydrive2"}
     # Always prefer traverse for GDrive since API usage quotas are a concern.

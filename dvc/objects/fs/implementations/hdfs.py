@@ -5,7 +5,6 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
 from dvc.utils import fix_env
 
 from ..base import FileSystem
@@ -15,7 +14,7 @@ CHECKSUM_REGEX = re.compile(r".*\t.*\t(?P<checksum>.*)")
 
 # pylint: disable=abstract-method
 class HDFSFileSystem(FileSystem):
-    scheme = Schemes.HDFS
+    protocol = "hdfs"
     REQUIRES = {"fsspec": "fsspec", "pyarrow": "pyarrow"}
     PARAM_CHECKSUM = "checksum"
 

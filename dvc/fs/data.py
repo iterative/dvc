@@ -179,7 +179,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
 
 class DataFileSystem(FileSystem):
-    scheme = "local"
+    protocol = "local"
 
     PARAM_CHECKSUM = "md5"
 

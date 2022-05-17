@@ -223,7 +223,7 @@ def checkout(
     dvcignore: Optional[DvcIgnoreFilter] = None,
     state=None,
 ):
-    # if scheme(fs_path) not in ["local", cache.fs.scheme]:
+    # if protocol(fs_path) not in ["local", cache.fs.protocol]:
     #    raise NotImplementedError
 
     diff = _diff(

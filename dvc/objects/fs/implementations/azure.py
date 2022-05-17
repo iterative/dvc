@@ -7,7 +7,6 @@ from fsspec.utils import infer_storage_options
 from funcy import cached_property, memoize, wrap_prop
 
 from dvc.exceptions import DvcException
-from dvc.scheme import Schemes
 from dvc.utils import format_link
 
 from ..base import ObjectFileSystem
@@ -39,7 +38,7 @@ def _az_config():
 
 # pylint:disable=abstract-method
 class AzureFileSystem(ObjectFileSystem):
-    scheme = Schemes.AZURE
+    protocol = "azure"
     PARAM_CHECKSUM = "etag"
     REQUIRES = {
         "adlfs": "adlfs",

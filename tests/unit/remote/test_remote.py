@@ -49,7 +49,7 @@ def test_remote_without_hash_jobs_default(dvc):
 
 @pytest.mark.parametrize("fs_cls", [GSFileSystem, S3FileSystem])
 def test_makedirs_not_create_for_top_level_path(fs_cls, dvc, mocker):
-    url = f"{fs_cls.scheme}://bucket/"
+    url = f"{fs_cls.protocol}://bucket/"
     fs = fs_cls(url=url)
     mocked_client = mocker.PropertyMock()
     mocker.patch.object(fs_cls, "fs", mocked_client)

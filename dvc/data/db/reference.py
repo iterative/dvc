@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Dict
 
 from dvc.objects.db import ObjectDB
 from dvc.objects.errors import ObjectFormatError
-from dvc.scheme import Schemes
+from dvc.objects.fs import Schemes
 
 from ..reference import ReferenceHashFile
 
@@ -84,5 +84,5 @@ class ReferenceObjectDB(ObjectDB):
                 logger.debug("'%s' file already exists, skipping", to_info)
             else:
                 raise
-        if from_fs.scheme != Schemes.LOCAL:
+        if from_fs.protocol != Schemes.LOCAL:
             self._fs_cache[ReferenceHashFile.config_tuple(from_fs)] = from_fs

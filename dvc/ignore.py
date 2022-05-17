@@ -8,9 +8,8 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import Trie
 
-from dvc.fs import AnyFSPath, FileSystem, localfs
+from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
-from dvc.scheme import Schemes
 from dvc.types import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -302,7 +301,7 @@ class DvcIgnoreFilter:
 
     def walk(self, fs: FileSystem, path: AnyFSPath, **kwargs):
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
-        if fs.scheme == Schemes.LOCAL:
+        if fs.protocol == Schemes.LOCAL:
             for root, dirs, files in fs.walk(path, **kwargs):
                 dirs[:], files[:] = self(
                     root, dirs, files, ignore_subrepos=ignore_subrepos
@@ -312,7 +311,7 @@ class DvcIgnoreFilter:
             yield from fs.walk(path, **kwargs)
 
     def find(self, fs: FileSystem, path: AnyFSPath, **kwargs):
-        if fs.scheme == Schemes.LOCAL:
+        if fs.protocol == Schemes.LOCAL:
             for root, _, files in self.walk(fs, path, **kwargs):
                 for file in files:
                     # NOTE: os.path.join is ~5.5 times slower
@@ -405,7 +404,7 @@ class DvcIgnoreFilter:
     ) -> bool:
         # NOTE: can't use self.check_ignore(path).match for now, see
         # https://github.com/iterative/dvc/issues/4555
-        if fs.scheme != Schemes.LOCAL:
+        if fs.protocol != Schemes.LOCAL:
             return False
         if fs.isfile(path):
             return self.is_ignored_file(path, ignore_subrepos)

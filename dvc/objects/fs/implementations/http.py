@@ -4,8 +4,6 @@ from typing import BinaryIO, Union
 
 from funcy import cached_property, memoize, wrap_with
 
-from dvc.scheme import Schemes
-
 from .._callback import DEFAULT_CALLBACK, FsspecCallback
 from ..base import AnyFSPath, FileSystem
 
@@ -31,7 +29,7 @@ def make_context(ssl_verify):
 
 # pylint: disable=abstract-method
 class HTTPFileSystem(FileSystem):
-    scheme = Schemes.HTTP
+    protocol = "http"
     PARAM_CHECKSUM = "checksum"
     REQUIRES = {"aiohttp": "aiohttp", "aiohttp-retry": "aiohttp_retry"}
     CAN_TRAVERSE = False

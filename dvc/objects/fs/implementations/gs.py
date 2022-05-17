@@ -2,14 +2,12 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 # pylint:disable=abstract-method
 from ..base import ObjectFileSystem
 
 
 class GSFileSystem(ObjectFileSystem):
-    scheme = Schemes.GS
+    protocol = "gs"
     REQUIRES = {"gcsfs": "gcsfs"}
     PARAM_CHECKSUM = "etag"
 

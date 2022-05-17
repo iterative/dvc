@@ -184,7 +184,7 @@ class Index:
                     out.fs_path, self.repo.root_dir
                 )
             else:
-                fs_key = out.fs.scheme
+                fs_key = out.fs.protocol
                 key = out.fs.path.parts(out.fs_path)
 
             out.meta.odb = out.odb

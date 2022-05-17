@@ -508,7 +508,7 @@ class StageLoad:
                     out.fspath
                     for stage in new_stages
                     for out in stage.outs
-                    if out.scheme == "local"
+                    if out.protocol == "local"
                 )
             dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 

@@ -6,8 +6,6 @@ import threading
 from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 from .. import system
 from ..base import FileSystem
 from ..utils import copyfile, makedirs, move, remove, tmp_fname
@@ -168,7 +166,7 @@ class FsspecLocalFileSystem(AbstractFileSystem):
 class LocalFileSystem(FileSystem):
     sep = os.sep
 
-    scheme = Schemes.LOCAL
+    protocol = "local"
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
     TRAVERSE_PREFIX_LEN = 2

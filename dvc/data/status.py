@@ -1,8 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
+from dvc.objects.fs import Schemes
 from dvc.objects.hash_info import HashInfo
-from dvc.scheme import Schemes
 
 from .tree import Tree
 
@@ -123,7 +123,7 @@ def status(
                 dir_objs[hash_info.value] = tree
         hash_infos[hash_info.value] = hash_info
 
-    if odb.fs.scheme == Schemes.MEMORY:
+    if odb.fs.protocol == Schemes.MEMORY:
         # assume memfs staged objects already exist
         return StatusResult(set(hash_infos.values()), set())
 

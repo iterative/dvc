@@ -47,7 +47,7 @@ class HashFile:
             (
                 self.hash_info,
                 self.fs_path,
-                self.fs.scheme if self.fs else None,
+                self.fs.protocol if self.fs else None,
             )
         )
 

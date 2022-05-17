@@ -38,11 +38,11 @@ def _can_hash(stage):
         return False
 
     for dep in stage.deps:
-        if not (dep.scheme == "local" and dep.def_path and dep.get_hash()):
+        if not (dep.protocol == "local" and dep.def_path and dep.get_hash()):
             return False
 
     for out in stage.outs:
-        if out.scheme != "local" or not out.def_path or out.persist:
+        if out.protocol != "local" or not out.def_path or out.persist:
             return False
 
     return True

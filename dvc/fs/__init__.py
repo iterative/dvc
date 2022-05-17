@@ -12,6 +12,7 @@ from dvc.objects.fs import (  # noqa: F401
     MemoryFileSystem,
     OSSFileSystem,
     S3FileSystem,
+    Schemes,
     SSHFileSystem,
     WebDAVFileSystem,
     WebDAVSFileSystem,

@@ -2,13 +2,11 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 from ..base import FileSystem
 
 
 class MemoryFileSystem(FileSystem):  # pylint:disable=abstract-method
-    scheme = Schemes.MEMORY
+    protocol = "memory"
     PARAM_CHECKSUM = "md5"
 
     def __eq__(self, other):

@@ -30,10 +30,10 @@ from .fs import (
     LocalFileSystem,
     RemoteMissingDepsError,
     S3FileSystem,
+    Schemes,
     get_cloud_fs,
 )
 from .objects.errors import ObjectFormatError
-from .scheme import Schemes
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -295,7 +295,7 @@ class Output:
         self.fs = fs_cls(**fs_config)
 
         if (
-            self.fs.scheme == "local"
+            self.fs.protocol == "local"
             and stage
             and isinstance(stage.repo.fs, LocalFileSystem)
             and path_isin(path, stage.repo.root_dir)
@@ -307,7 +307,7 @@ class Output:
 
         if (
             self.repo
-            and self.fs.scheme == "local"
+            and self.fs.protocol == "local"
             and not self.fs.path.isabs(self.def_path)
         ):
             self.fs = self.repo.fs
@@ -339,7 +339,7 @@ class Output:
         self.remote = remote
 
     def _parse_path(self, fs, fs_path):
-        if fs.scheme != "local":
+        if fs.protocol != "local":
             return fs_path
 
         parsed = urlparse(self.def_path)
@@ -362,7 +362,7 @@ class Output:
         )
 
     def __str__(self):
-        if self.fs.scheme != "local":
+        if self.fs.protocol != "local":
             return self.def_path
 
         if (
@@ -379,12 +379,12 @@ class Output:
         return self.fs.path.relpath(self.fs_path, self.repo.root_dir)
 
     @property
-    def scheme(self):
-        return self.fs.scheme
+    def protocol(self):
+        return self.fs.protocol
 
     @property
     def is_in_repo(self):
-        if self.fs.scheme != "local":
+        if self.fs.protocol != "local":
             return False
 
         if urlparse(self.def_path).scheme == "remote":
@@ -407,9 +407,9 @@ class Output:
 
     @property
     def odb(self):
-        odb = getattr(self.repo.odb, self.scheme)
+        odb = getattr(self.repo.odb, self.protocol)
         if self.use_cache and odb is None:
-            raise RemoteCacheRequiredError(self.fs.scheme, self.fs_path)
+            raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
         return odb
 
     @property
@@ -494,7 +494,7 @@ class Output:
 
     @property
     def dvcignore(self):
-        if self.fs.scheme == "local":
+        if self.fs.protocol == "local":
             return self.repo.dvcignore
         return None
 
@@ -688,9 +688,9 @@ class Output:
         return ret
 
     def verify_metric(self):
-        if self.fs.scheme != "local":
+        if self.fs.protocol != "local":
             raise DvcException(
-                f"verify metric is not supported for {self.scheme}"
+                f"verify metric is not supported for {self.protocol}"
             )
 
         if not self.metric or self.plot:
@@ -786,7 +786,7 @@ class Output:
 
     def remove(self, ignore_remove=False):
         self.fs.remove(self.fs_path)
-        if self.scheme != Schemes.LOCAL:
+        if self.protocol != Schemes.LOCAL:
             return
 
         if ignore_remove:
@@ -794,7 +794,7 @@ class Output:
 
     def move(self, out):
         # pylint: disable=no-member
-        if self.scheme == "local" and self.use_scm_ignore:
+        if self.protocol == "local" and self.use_scm_ignore:
             self.repo.scm_context.ignore_remove(self.fspath)
 
         self.fs.move(self.fs_path, out.fs_path)
@@ -803,7 +803,7 @@ class Output:
         self.save()
         self.commit()
 
-        if self.scheme == "local" and self.use_scm_ignore:
+        if self.protocol == "local" and self.use_scm_ignore:
             self.repo.scm_context.ignore(self.fspath)
 
     def transfer(
@@ -1000,7 +1000,7 @@ class Output:
                 raise self.IsIgnoredError(check)
 
     def _check_can_merge(self, out):
-        if self.scheme != out.scheme:
+        if self.protocol != out.protocol:
             raise MergeError("unable to auto-merge outputs of different types")
 
         my = self.dumpd()

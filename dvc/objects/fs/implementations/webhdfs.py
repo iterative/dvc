@@ -2,14 +2,12 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.scheme import Schemes
-
 # pylint:disable=abstract-method
 from ..base import FileSystem
 
 
 class WebHDFSFileSystem(FileSystem):
-    scheme = Schemes.WEBHDFS
+    protocol = "webhdfs"
     REQUIRES = {"fsspec": "fsspec"}
     PARAM_CHECKSUM = "checksum"
 
