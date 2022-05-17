@@ -1,9 +1,9 @@
 import threading
+from getpass import getpass
 from typing import BinaryIO, Union
 
 from funcy import cached_property, memoize, wrap_with
 
-from dvc import prompt
 from dvc.scheme import Schemes
 
 from .._callback import DEFAULT_CALLBACK, FsspecCallback
@@ -13,10 +13,7 @@ from ..base import AnyFSPath, FileSystem
 @wrap_with(threading.Lock())
 @memoize
 def ask_password(host, user):
-    return prompt.password(
-        "Enter a password for "
-        "host '{host}' user '{user}'".format(host=host, user=user)
-    )
+    return getpass(f"Enter a password for host '{host}' user '{user}':\n")
 
 
 def make_context(ssl_verify):
