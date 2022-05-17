@@ -1,15 +1,26 @@
 import os
 import re
 import subprocess
+import sys
 import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.utils import fix_env
-
 from ..base import FileSystem
 
 CHECKSUM_REGEX = re.compile(r".*\t.*\t(?P<checksum>.*)")
+
+
+def fix_env():
+    env = os.environ.copy()
+    if getattr(sys, "frozen", False):
+        lp_key = "LD_LIBRARY_PATH"
+        lp_orig = env.get(lp_key + "_ORIG", None)
+        if lp_orig is not None:
+            env[lp_key] = lp_orig
+        else:
+            env.pop(lp_key, None)
+    return env
 
 
 # pylint: disable=abstract-method
@@ -58,7 +69,7 @@ class HDFSFileSystem(FileSystem):
 
         result = self._run_command(
             f"checksum {url}",
-            env=fix_env(os.environ),
+            env=fix_env(),
             user=self.fs_args.get("user"),
         )
         if result is None:

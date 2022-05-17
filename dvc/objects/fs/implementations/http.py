@@ -6,6 +6,7 @@ from funcy import cached_property, memoize, wrap_with
 
 from .._callback import DEFAULT_CALLBACK, FsspecCallback
 from ..base import AnyFSPath, FileSystem
+from ..errors import ConfigError
 
 
 @wrap_with(threading.Lock())
@@ -41,8 +42,6 @@ class HTTPFileSystem(FileSystem):
     def _prepare_credentials(self, **config):
         import aiohttp
         from fsspec.asyn import fsspec_loop
-
-        from dvc.config import ConfigError
 
         credentials = {}
         client_kwargs = credentials.setdefault("client_kwargs", {})

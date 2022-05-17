@@ -5,6 +5,8 @@ from collections import defaultdict
 from funcy import cached_property, wrap_prop
 
 from ..base import ObjectFileSystem
+from ..errors import ConfigError
+from ..utils import flatten, unflatten
 
 _AWS_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".aws", "config")
 
@@ -72,9 +74,6 @@ class S3FileSystem(ObjectFileSystem):
         return self._split_s3_config(s3_config)
 
     def _prepare_credentials(self, **config):
-        from dvc.config import ConfigError
-        from dvc.utils.flatten import flatten, unflatten
-
         login_info = defaultdict(dict)
 
         # credentials
