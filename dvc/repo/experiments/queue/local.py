@@ -260,6 +260,25 @@ class LocalCeleryQueue(BaseStashQueue):
         else:
             self.celery.control.shutdown()
 
+    def attach(
+        self,
+        rev: str,
+        encoding: Optional[str] = None,
+    ):
+        from dvc.ui import ui
+
+        queue_entry: Optional[QueueEntry] = self.get_queue_entry_by_names(
+            {rev}
+        ).get(rev)
+        if queue_entry is None:
+            raise UnresolvedExpNamesError([rev])
+        active_queue_entry = set(self.iter_active())
+        if queue_entry not in active_queue_entry:
+            ui.write("Cannot attach to an unstarted task")
+            return
+        for line in self.proc.follow(queue_entry.stash_rev, encoding):
+            ui.write(line)
+
 
 class WorkspaceQueue(BaseStashQueue):
     def put(self, *args, **kwargs) -> QueueEntry:
@@ -383,4 +402,11 @@ class WorkspaceQueue(BaseStashQueue):
         raise NotImplementedError
 
     def shutdown(self, kill: bool = False):
+        raise NotImplementedError
+
+    def attach(
+        self,
+        rev: str,
+        encoding: Optional[str] = None,
+    ):
         raise NotImplementedError
