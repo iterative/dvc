@@ -3,8 +3,6 @@ import io
 import logging
 from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Tuple
 
-from funcy import cached_property
-
 from .fs._callback import DEFAULT_CALLBACK, FsspecCallback, TqdmCallback
 from .fs.implementations.local import localfs
 from .fs.utils import is_exec
@@ -50,14 +48,8 @@ class HashedStreamReader(io.IOBase):
     def tell(self) -> int:
         return self.fobj.tell()
 
-    @cached_property
-    def _reader(self):
-        if hasattr(self.fobj, "read1"):
-            return self.fobj.read1
-        return self.fobj.read
-
     def read(self, n=-1) -> bytes:
-        chunk = self._reader(n)
+        chunk = self.fobj.read(n)
         if self.is_text is None and chunk:
             # do we need to buffer till the DEFAULT_CHUNK_SIZE?
             self.is_text = istextblock(chunk[:DEFAULT_CHUNK_SIZE])
