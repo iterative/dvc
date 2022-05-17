@@ -32,12 +32,12 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
     from dvc.objects.fs._callback import FsspecCallback
     from dvc.objects.fs.utils import tmp_fname
-    from dvc.objects.hash import HashedStreamReader
+    from dvc.objects.hash import HashStreamFile
 
     fs_path = upload_odb.fs.path
     tmp_info = fs_path.join(upload_odb.fs_path, tmp_fname())
     with fs.open(from_fs_path, mode="rb") as stream:
-        stream = HashedStreamReader(stream)
+        stream = HashStreamFile(stream)
         size = fs.size(from_fs_path)
         with FsspecCallback.as_tqdm_callback(
             callback,
