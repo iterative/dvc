@@ -20,8 +20,8 @@ from typing import (
 from funcy import cached_property
 
 from dvc.exceptions import DvcException
-from dvc.utils.threadpool import ThreadPoolExecutor
 
+from ..executors import ThreadPoolExecutor
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
 
 if TYPE_CHECKING:
