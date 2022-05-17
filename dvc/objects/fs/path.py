@@ -80,7 +80,7 @@ class Path:
         )
 
     def name(self, path):
-        return self.parts(path)[-1]
+        return self.flavour.basename(path)
 
     def suffix(self, path):
         name = self.name(path)
