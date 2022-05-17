@@ -19,8 +19,6 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.exceptions import DvcException
-
 from ..executors import ThreadPoolExecutor
 from ._callback import DEFAULT_CALLBACK, FsspecCallback
 
@@ -42,14 +40,32 @@ AnyFSPath = str
 Entry = Dict[str, Any]
 
 
-class RemoteActionNotImplemented(DvcException):
-    def __init__(self, action, scheme):
-        m = f"{action} is not supported for {scheme} remotes"
-        super().__init__(m)
+class LinkError(OSError):
+    def __init__(self, link: str, fs: "FileSystem", path: str) -> None:
+        import errno
+
+        super().__init__(
+            errno.EPERM,
+            f"{link} is not supported for {fs.protocol} by {type(fs)}",
+            path,
+        )
 
 
-class RemoteMissingDepsError(DvcException):
-    pass
+class RemoteMissingDepsError(Exception):
+    def __init__(
+        self,
+        fs: "FileSystem",
+        protocol: str,
+        url: str,
+        missing: List[str] = None,
+    ) -> None:
+        self.protocol = protocol
+        self.fs = fs
+        self.url = url
+        self.missing_deps = missing or []
+        super().__init__(
+            f"filesystem for '{protocol}': '{type(fs)}' missing dependencies"
+        )
 
 
 class FileSystem:
@@ -131,44 +147,18 @@ class FileSystem:
         return missing
 
     def _check_requires(self, **kwargs):
-        from dvc.utils import format_link
-        from dvc.utils.pkg import PKG
-
         from .scheme import Schemes
 
         missing = self.get_missing_deps()
         if not missing:
             return
 
+        proto = self.protocol
+        if proto == Schemes.WEBDAVS:
+            proto = Schemes.WEBDAV
+
         url = kwargs.get("url", f"{self.protocol}://")
-
-        scheme = self.protocol
-        if scheme == Schemes.WEBDAVS:
-            scheme = Schemes.WEBDAV
-
-        by_pkg = {
-            "pip": f"pip install 'dvc[{scheme}]'",
-            "conda": f"conda install -c conda-forge dvc-{scheme}",
-        }
-
-        cmd = by_pkg.get(PKG)
-        if cmd:
-            link = format_link("https://dvc.org/doc/install")
-            hint = (
-                f"To install dvc with those dependencies, run:\n"
-                "\n"
-                f"\t{cmd}\n"
-                "\n"
-                f"See {link} for more info."
-            )
-        else:
-            link = format_link("https://github.com/iterative/dvc/issues")
-            hint = f"Please report this bug to {link}. Thank you!"
-
-        raise RemoteMissingDepsError(
-            f"URL '{url}' is supported but requires these missing "
-            f"dependencies: {missing}. {hint}"
-        )
+        raise RemoteMissingDepsError(self, proto, url, missing)
 
     def isdir(self, path: AnyFSPath) -> bool:
         return self.fs.isdir(path)
@@ -295,19 +285,19 @@ class FileSystem:
         try:
             return self.fs.symlink(from_info, to_info)
         except AttributeError:
-            raise RemoteActionNotImplemented("symlink", self.protocol)
+            raise LinkError("symlink", self, from_info)
 
     def hardlink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
         try:
             return self.fs.hardlink(from_info, to_info)
         except AttributeError:
-            raise RemoteActionNotImplemented("hardlink", self.protocol)
+            raise LinkError("symlink", self, from_info)
 
     def reflink(self, from_info: AnyFSPath, to_info: AnyFSPath) -> None:
         try:
             return self.fs.reflink(from_info, to_info)
         except AttributeError:
-            raise RemoteActionNotImplemented("reflink", self.protocol)
+            raise LinkError("symlink", self, from_info)
 
     def is_symlink(self, path: AnyFSPath) -> bool:
         try:
