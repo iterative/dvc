@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Iterable, Set
 from dvc.objects.errors import ObjectDBError
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
+    from dvc.objects.fs.base import AnyFSPath
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class ObjectDBIndexBase(ABC):
     @abstractmethod
     def __init__(
         self,
-        tmp_dir: "StrPath",
+        tmp_dir: "AnyFSPath",
         name: str,
     ):
         pass
@@ -53,7 +53,7 @@ class ObjectDBIndexNoop(ObjectDBIndexBase):
 
     def __init__(
         self,
-        tmp_dir: "StrPath",
+        tmp_dir: "AnyFSPath",
         name: str,
     ):  # pylint: disable=super-init-not-called
         pass
@@ -85,7 +85,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def __init__(
         self,
-        tmp_dir: "StrPath",
+        tmp_dir: "AnyFSPath",
         name: str,
     ):  # pylint: disable=super-init-not-called
         from dvc.objects.cache import Cache, Index
