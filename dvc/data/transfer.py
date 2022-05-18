@@ -18,6 +18,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class TransferError(Exception):
+    def __init__(self, fails: int) -> None:
+        self.fails = fails
+        super().__init__(f"{fails} transfer failed")
+
+
 def _log_exceptions(func):
     @wraps(func)
     def wrapper(fs_path, *args, **kwargs):
@@ -64,8 +70,6 @@ def _do_transfer(
     cache_odb: Optional["ObjectDB"] = None,
     **kwargs: Any,
 ):
-    from dvc.exceptions import FileTransferError
-
     dir_ids, file_ids = split(lambda hash_info: hash_info.isdir, obj_ids)
     total_fails = 0
     succeeded_dir_objs = []
@@ -113,7 +117,7 @@ def _do_transfer(
     if total_fails:
         if src_index:
             src_index.clear()
-        raise FileTransferError(total_fails)
+        raise TransferError(total_fails)
 
     # index successfully pushed dirs
     if dest_index:

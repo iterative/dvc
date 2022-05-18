@@ -21,6 +21,10 @@ class TreeError(Exception):
     pass
 
 
+class MergeError(Exception):
+    pass
+
+
 def _try_load(
     odbs: Iterable["ObjectDB"],
     hash_info: "HashInfo",
@@ -231,8 +235,6 @@ def du(odb, tree):
 
 def _diff(ancestor, other, allow_removed=False):
     from dictdiffer import diff
-
-    from dvc.exceptions import MergeError
 
     allowed = ["add"]
     if allow_removed:
