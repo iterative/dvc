@@ -4,11 +4,12 @@ import json
 from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
+    from ._ignore import Ignore
     from .fs.base import AnyFSPath, FileSystem
 
 
 def get_mtime_and_size(
-    path: "AnyFSPath", fs: "FileSystem", dvcignore=None
+    path: "AnyFSPath", fs: "FileSystem", ignore: "Ignore" = None
 ) -> Tuple[str, int]:
     import nanotime
 
@@ -20,8 +21,8 @@ def get_mtime_and_size(
 
     size = 0
     files_mtimes = {}
-    if dvcignore:
-        walk_iterator = dvcignore.find(fs, path)
+    if ignore:
+        walk_iterator = ignore.find(fs, path)
     else:
         walk_iterator = fs.find(path)
     for file_path in walk_iterator:

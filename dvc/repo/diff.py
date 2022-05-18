@@ -142,7 +142,7 @@ def _output_paths(repo, targets):
                     repo.odb.local.fs,
                     "md5",
                     dry_run=True,
-                    dvcignore=output.dvcignore,
+                    ignore=output.dvcignore,
                 )
                 hash_info = obj.hash_info
             else:

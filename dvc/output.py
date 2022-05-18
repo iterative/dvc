@@ -430,7 +430,7 @@ class Output:
             self.fs_path,
             self.fs,
             name,
-            dvcignore=self.dvcignore,
+            ignore=self.dvcignore,
             dry_run=not self.use_cache,
         )
         return obj.hash_info
@@ -552,7 +552,7 @@ class Output:
                 self.fs_path,
                 self.fs,
                 self.fs.PARAM_CHECKSUM,
-                dvcignore=self.dvcignore,
+                ignore=self.dvcignore,
                 dry_run=True,
             )
             self.hash_info = obj.hash_info
@@ -569,7 +569,7 @@ class Output:
             self.fs_path,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
-            dvcignore=self.dvcignore,
+            ignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
 
@@ -597,7 +597,7 @@ class Output:
                     filter_info or self.fs_path,
                     self.fs,
                     self.odb.fs.PARAM_CHECKSUM,
-                    dvcignore=self.dvcignore,
+                    ignore=self.dvcignore,
                 )
                 otransfer(
                     staging,
@@ -612,7 +612,7 @@ class Output:
                 obj,
                 self.odb,
                 relink=True,
-                dvcignore=self.dvcignore,
+                ignore=self.dvcignore,
                 state=self.repo.state,
             )
             self.set_exec()
@@ -626,7 +626,7 @@ class Output:
             self.fs_path,
             self.fs,
             self.odb.fs.PARAM_CHECKSUM,
-            dvcignore=self.dvcignore,
+            ignore=self.dvcignore,
         )
         save_obj = save_obj.filter(prefix)
         checkout_obj = save_obj.get(self.odb, prefix)

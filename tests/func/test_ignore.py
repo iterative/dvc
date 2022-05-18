@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dvc.exceptions import DvcIgnoreInCollectedDirError
+from dvc.data.stage import IgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.objects.utils import get_mtime_and_size
 from dvc.output import OutputIsIgnoredError
@@ -87,7 +87,7 @@ def test_remove_file(tmp_dir, dvc):
 def test_dvcignore_in_out_dir(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", DvcIgnore.DVCIGNORE_FILE: ""}})
 
-    with pytest.raises(DvcIgnoreInCollectedDirError):
+    with pytest.raises(IgnoreInCollectedDirError):
         dvc.add("dir")
 
 
