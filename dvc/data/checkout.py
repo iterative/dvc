@@ -1,12 +1,12 @@
 import logging
 from itertools import chain
+from typing import Optional
 
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.objects.fs._callback import FsspecCallback
 from dvc.objects.fs.generic import test_links, transfer
-from dvc.types import Optional
 
 from .diff import ROOT
 from .diff import diff as odiff
