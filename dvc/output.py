@@ -1027,6 +1027,7 @@ class Output:
             )
 
     def merge(self, ancestor, other):
+        from dvc.data.tree import MergeError as TreeMergeError
         from dvc.data.tree import du, merge
 
         assert other
@@ -1040,9 +1041,13 @@ class Output:
         self._check_can_merge(self)
         self._check_can_merge(other)
 
-        merged = merge(
-            self.odb, ancestor_info, self.hash_info, other.hash_info
-        )
+        try:
+            merged = merge(
+                self.odb, ancestor_info, self.hash_info, other.hash_info
+            )
+        except TreeMergeError as exc:
+            raise MergeError(str(exc)) from exc
+
         self.odb.add(merged.fs_path, merged.fs, merged.hash_info)
 
         self.hash_info = merged.hash_info

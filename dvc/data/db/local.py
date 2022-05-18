@@ -7,7 +7,7 @@ from funcy import cached_property
 from shortuuid import uuid
 
 from dvc.objects.db import ObjectDB, noop, wrap_iter
-from dvc.objects.errors import ObjectFormatError
+from dvc.objects.errors import ObjectDBError, ObjectFormatError
 from dvc.objects.fs.system import umask
 from dvc.objects.fs.utils import copyfile, relpath, remove, walk_files
 from dvc.objects.hash_info import HashInfo
@@ -125,9 +125,7 @@ class LocalObjectDB(ObjectDB):
 
     def unprotect(self, fs_path):
         if not os.path.exists(fs_path):
-            from dvc.exceptions import DvcException
-
-            raise DvcException(
+            raise ObjectDBError(
                 f"can't unprotect non-existing data '{fs_path}'"
             )
 

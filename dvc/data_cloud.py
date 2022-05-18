@@ -62,6 +62,21 @@ class DataCloud:
         config["tmp_dir"] = self.repo.index_db_dir
         return get_odb(cls(**config), fs_path, **config)
 
+    def transfer(
+        self,
+        src_odb: "ObjectDB",
+        dest_odb: "ObjectDB",
+        objs: Iterable["HashInfo"],
+        **kwargs,
+    ):
+        from dvc.data.transfer import TransferError, transfer
+        from dvc.exceptions import FileTransferError
+
+        try:
+            return transfer(src_odb, dest_odb, objs, **kwargs)
+        except TransferError as exc:
+            raise FileTransferError(exc.fails) from exc
+
     def push(
         self,
         objs: Iterable["HashInfo"],
@@ -78,11 +93,8 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to push to. Overrides remote.
         """
-        from dvc.data.transfer import transfer
-
-        if not odb:
-            odb = self.get_remote_odb(remote, "push")
-        return transfer(
+        odb = odb or self.get_remote_odb(remote, "push")
+        return self.transfer(
             self.repo.odb.local,
             odb,
             objs,
@@ -107,11 +119,8 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to pull from. Overrides remote.
         """
-        from dvc.data.transfer import transfer
-
-        if not odb:
-            odb = self.get_remote_odb(remote, "pull")
-        return transfer(
+        odb = odb or self.get_remote_odb(remote, "pull")
+        return self.transfer(
             odb,
             self.repo.odb.local,
             objs,
