@@ -7,10 +7,10 @@ from funcy import first
 from scmrepo.git import Git
 
 from dvc.config import NoRemoteError
-from dvc.data.db import ODBManager
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
 from dvc.fs import system
+from dvc.odbmgr import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
 from dvc.utils.fs import makedirs, remove
 from tests.unit.fs.test_dvc import make_subrepo

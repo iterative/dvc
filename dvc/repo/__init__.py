@@ -155,11 +155,11 @@ class Repo:
         scm=None,
     ):
         from dvc.config import Config
-        from dvc.data.db import ODBManager
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
         from dvc.objects.state import State, StateNoop
+        from dvc.odbmgr import ODBManager
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
         from dvc.repo.plots import Plots
