@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.file import HashFile
+from dvc.objects.fs import FS_MAP, LocalFileSystem
 
 if TYPE_CHECKING:
     from dvc.objects.db import ObjectDB
@@ -20,6 +21,7 @@ class ReferenceHashFile(HashFile):
     PARAM_HASH = "hash"
     PARAM_CHECKSUM = "checksum"
     PARAM_FS_CONFIG = "fs_config"
+    PARAM_FS_CLS = "fs_name"
 
     def __init__(
         self,
@@ -57,11 +59,16 @@ class ReferenceHashFile(HashFile):
         # ReferenceHashFiles should currently only be serialized in
         # memory and not to disk
         fs_path = self.fs_path
+        fs_cls = type(self.fs)
+        mod = None
+        if fs_cls not in FS_MAP.values() and fs_cls != LocalFileSystem:
+            mod = ".".join((fs_cls.__module__, fs_cls.__name__))
         dict_ = {
             self.PARAM_PATH: fs_path,
             self.PARAM_HASH: self.hash_info,
             self.PARAM_CHECKSUM: self.checksum,
             self.PARAM_FS_CONFIG: self.config_tuple(self.fs),
+            self.PARAM_FS_CLS: mod,
         }
         try:
             return pickle.dumps(dict_)
@@ -70,7 +77,6 @@ class ReferenceHashFile(HashFile):
 
     @classmethod
     def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
-        from dvc.fs.dvc import DvcFileSystem, _DvcFileSystem
         from dvc.objects.fs import get_fs_cls
 
         try:
@@ -88,10 +94,8 @@ class ReferenceHashFile(HashFile):
         fs = fs_cache.get((protocol, config_pairs)) if fs_cache else None
         if not fs:
             config = dict(config_pairs)
-            if _DvcFileSystem.PARAM_REPO_URL in config:
-                fs_cls = DvcFileSystem
-            else:
-                fs_cls = get_fs_cls(config, scheme=protocol)
+            mod = dict_.get(cls.PARAM_FS_CLS, None)
+            fs_cls = get_fs_cls(config, cls=mod, scheme=protocol)
             fs = fs_cls(**config)
         return ReferenceHashFile(
             fs_path,

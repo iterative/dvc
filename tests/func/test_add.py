@@ -12,7 +12,6 @@ import pytest
 
 import dvc as dvc_module
 from dvc.cli import main
-from dvc.data.db import ODBManager
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
     DvcException,
@@ -24,6 +23,7 @@ from dvc.exceptions import (
 from dvc.fs import LocalFileSystem, system
 from dvc.objects.hash import file_md5
 from dvc.objects.hash_info import HashInfo
+from dvc.odbmgr import ODBManager
 from dvc.output import (
     OutputAlreadyTrackedError,
     OutputDoesNotExistError,

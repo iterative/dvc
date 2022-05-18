@@ -5,9 +5,9 @@ import configobj
 import pytest
 
 from dvc.cli import main
-from dvc.data.db import ODBManager
 from dvc.objects.errors import ObjectFormatError
 from dvc.objects.hash_info import HashInfo
+from dvc.odbmgr import ODBManager
 from dvc.utils import relpath
 
 

@@ -149,7 +149,7 @@ def local_remote(make_remote):
 @pytest.fixture
 def make_workspace(tmp_dir, dvc, make_cloud):
     def _make_workspace(name, typ="local"):
-        from dvc.data.db import ODBManager
+        from dvc.odbmgr import ODBManager
 
         cloud = make_cloud(typ)  # pylint: disable=W0621
 

@@ -167,7 +167,7 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
 def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     import stat
 
-    from dvc.data.db import ODBManager
+    from dvc.odbmgr import ODBManager
 
     tmp_dir.gen("foo", "foo")
 
