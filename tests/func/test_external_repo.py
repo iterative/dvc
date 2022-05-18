@@ -209,7 +209,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             "dir",
             repo.dvcfs,
             "md5",
-            dvcignore=repo.dvcignore,
+            ignore=repo.dvcignore,
         )
         transfer(
             staging,

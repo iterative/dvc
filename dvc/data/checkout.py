@@ -1,10 +1,9 @@
 import logging
 from itertools import chain
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from dvc import prompt
 from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
-from dvc.ignore import DvcIgnoreFilter
 from dvc.objects.fs._callback import FsspecCallback
 from dvc.objects.fs.generic import test_links, transfer
 
@@ -12,6 +11,9 @@ from .diff import ROOT
 from .diff import diff as odiff
 from .slow_link_detection import slow_link_guard  # type: ignore[attr-defined]
 from .stage import stage
+
+if TYPE_CHECKING:
+    from dvc.objects._ignore import Ignore
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +103,7 @@ def _diff(
     obj,
     cache,
     relink=False,
-    dvcignore: Optional[DvcIgnoreFilter] = None,
+    ignore: Optional["Ignore"] = None,
 ):
     old = None
     try:
@@ -111,7 +113,7 @@ def _diff(
             fs,
             obj.hash_info.name if obj else cache.fs.PARAM_CHECKSUM,
             dry_run=True,
-            dvcignore=dvcignore,
+            ignore=ignore,
         )
     except FileNotFoundError:
         pass
@@ -220,7 +222,7 @@ def checkout(
     progress_callback=None,
     relink=False,
     quiet=False,
-    dvcignore: Optional[DvcIgnoreFilter] = None,
+    ignore: Optional["Ignore"] = None,
     state=None,
 ):
     # if protocol(fs_path) not in ["local", cache.fs.protocol]:
@@ -232,7 +234,7 @@ def checkout(
         obj,
         cache,
         relink=relink,
-        dvcignore=dvcignore,
+        ignore=ignore,
     )
 
     failed = []

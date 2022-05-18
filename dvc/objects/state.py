@@ -3,12 +3,17 @@
 import logging
 import os
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from .fs import LocalFileSystem
 from .fs.system import inode as get_inode
 from .fs.utils import relpath
 from .hash_info import HashInfo
 from .utils import get_mtime_and_size
+
+if TYPE_CHECKING:
+    from ._ignore import Ignore
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +51,22 @@ class StateNoop(StateBase):
 
 
 class State(StateBase):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, root_dir=None, tmp_dir=None, dvcignore=None):
+    def __init__(self, root_dir=None, tmp_dir=None, ignore: "Ignore" = None):
         from .cache import Cache
 
         super().__init__()
 
         self.tmp_dir = tmp_dir
         self.root_dir = root_dir
-        self.dvcignore = dvcignore
+        self.ignore = ignore
 
         if not tmp_dir:
             return
 
-        config = {"eviction_policy": "least-recently-used"}
-        self.links = Cache(directory=os.path.join(tmp_dir, "links"), **config)
-        self.md5s = Cache(directory=os.path.join(tmp_dir, "md5s"), **config)
+        links_dir = os.path.join(tmp_dir, "links")
+        md5s_dir = os.path.join(tmp_dir, "md5s")
+        self.links = Cache(links_dir, eviction_policy="least-recently-used")
+        self.md5s = Cache(md5s_dir, eviction_policy="least-recently-used")
 
     def close(self):
         self.md5s.close()
@@ -77,7 +83,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not isinstance(fs, LocalFileSystem):
             return
 
-        mtime, size = get_mtime_and_size(path, fs, self.dvcignore)
+        mtime, size = get_mtime_and_size(path, fs, self.ignore)
         inode = get_inode(path)
 
         logger.debug(
@@ -107,7 +113,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return None, None
 
         try:
-            mtime, size = get_mtime_and_size(path, fs, self.dvcignore)
+            mtime, size = get_mtime_and_size(path, fs, self.ignore)
         except FileNotFoundError:
             return None, None
 
@@ -131,7 +137,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return
 
         try:
-            mtime, _ = get_mtime_and_size(path, fs, self.dvcignore)
+            mtime, _ = get_mtime_and_size(path, fs, self.ignore)
         except FileNotFoundError:
             return
 
@@ -160,7 +166,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                     continue
 
                 inode = get_inode(path)
-                mtime, _ = get_mtime_and_size(path, fs, self.dvcignore)
+                mtime, _ = get_mtime_and_size(path, fs, self.ignore)
 
                 if ref[relative_path] == (inode, mtime):
                     logger.debug("Removing '%s' as unused link.", path)

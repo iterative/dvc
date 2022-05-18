@@ -72,7 +72,7 @@ class RepoDependency(Dependency):
             to.fs,
             obj,
             self.repo.odb.local,
-            dvcignore=None,
+            ignore=None,
             state=self.repo.state,
         )
 

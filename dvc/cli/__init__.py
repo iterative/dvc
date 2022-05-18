@@ -6,6 +6,7 @@ import sys
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
 # [2] https://bugs.python.org/issue29288
+from typing import Optional
 
 "".encode("idna")
 
@@ -36,10 +37,36 @@ def parse_args(argv=None):
     return args
 
 
-def _log_exceptions(exc: Exception):
+def _log_unknown_exceptions() -> None:
+    from dvc.info import get_dvc_info
+    from dvc.logger import FOOTER
+
+    logger.exception("unexpected error")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Version info for developers:\n%s", get_dvc_info())
+    logger.info(FOOTER)
+    return None
+
+
+def _log_exceptions(exc: Exception) -> Optional[int]:
     """Try to log some known exceptions, that are not DVCExceptions."""
-    from dvc.fs import AuthError, ConfigError, RemoteMissingDepsError
     from dvc.utils import error_link, format_link
+
+    if isinstance(exc, OSError):
+        import errno
+
+        if exc.errno == errno.EMFILE:
+            logger.exception(
+                "too many open files, please visit "
+                "{} to see how to handle this "
+                "problem".format(error_link("many-files")),
+                extra={"tb_only": True},
+            )
+        else:
+            _log_unknown_exceptions()
+        return None
+
+    from dvc.fs import AuthError, ConfigError, RemoteMissingDepsError
 
     if isinstance(exc, RemoteMissingDepsError):
         from dvc.utils.pkg import PKG
@@ -69,7 +96,7 @@ def _log_exceptions(exc: Exception):
             f"dependencies: {exc.missing_deps}. {hint}",
             extra={"tb_only": True},
         )
-        return
+        return None
 
     if isinstance(exc, (AuthError, ConfigError)):
         link = format_link("https://man.dvc.org/remote/modify")
@@ -92,26 +119,16 @@ def _log_exceptions(exc: Exception):
             f"\nSee {error_link('pickle')} for more information.",
             extra={"tb_only": True},
         )
-        return
+        return None
 
-    if isinstance(exc, OSError):
-        import errno
+    from dvc.data.stage import IgnoreInCollectedDirError
 
-        if exc.errno == errno.EMFILE:
-            logger.exception(
-                "too many open files, please visit "
-                "{} to see how to handle this "
-                "problem".format(error_link("many-files")),
-                extra={"tb_only": True},
-            )
-            return
+    if isinstance(exc, IgnoreInCollectedDirError):
+        logger.exception("")
+        return None
 
-    from dvc.info import get_dvc_info
-    from dvc.logger import FOOTER
-
-    logger.exception("unexpected error")
-    logger.debug("Version info for developers:\n%s", get_dvc_info())
-    logger.info(FOOTER)
+    _log_unknown_exceptions()
+    return None
 
 
 def main(argv=None):  # noqa: C901

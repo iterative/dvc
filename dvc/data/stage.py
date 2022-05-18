@@ -6,8 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
-from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore
 from dvc.objects.file import HashFile
 from dvc.objects.hash import hash_file
 from dvc.objects.hash_info import HashInfo
@@ -17,10 +15,22 @@ from dvc.progress import Tqdm
 from .db.reference import ReferenceObjectDB
 
 if TYPE_CHECKING:
+    from dvc.objects._ignore import Ignore
     from dvc.objects.db import ObjectDB
     from dvc.objects.fs.base import AnyFSPath, FileSystem
 
     from .tree import Tree
+
+
+DefaultIgnoreFile = ".dvcignore"
+
+
+class IgnoreInCollectedDirError(Exception):
+    def __init__(self, ignore_file: str, ignore_dirname: str) -> None:
+        super().__init__(
+            f"{ignore_file} file should not be in collected dir path: "
+            f"'{ignore_dirname}'"
+        )
 
 
 logger = logging.getLogger(__name__)
@@ -73,13 +83,13 @@ def _build_objects(
     fs_path,
     fs,
     name,
-    dvcignore=None,
+    ignore: "Ignore" = None,
     jobs=None,
     no_progress_bar=False,
     **kwargs,
 ):
-    if dvcignore:
-        walk_iterator = dvcignore.find(fs, fs_path)
+    if ignore:
+        walk_iterator = ignore.find(fs, fs_path)
     else:
         walk_iterator = fs.find(fs_path)
     with Tqdm(
@@ -109,10 +119,16 @@ def _build_tree(fs_path, fs, name, **kwargs):
     from .tree import Tree
 
     tree_meta = Meta(size=0, nfiles=0)
+    # assuring mypy that they are not None but integer
+    assert tree_meta.size is not None
+    assert tree_meta.nfiles is not None
+
     tree = Tree(None, None, None)
     for file_fs_path, meta, obj in _iter_objects(fs_path, fs, name, **kwargs):
-        if DvcIgnore.DVCIGNORE_FILE == fs.path.name(file_fs_path):
-            raise DvcIgnoreInCollectedDirError(fs.path.parent(file_fs_path))
+        if fs.path.name(file_fs_path) == DefaultIgnoreFile:
+            raise IgnoreInCollectedDirError(
+                DefaultIgnoreFile, fs.path.parent(file_fs_path)
+            )
 
         # NOTE: this is lossy transformation:
         #   "hey\there" -> "hey/there"

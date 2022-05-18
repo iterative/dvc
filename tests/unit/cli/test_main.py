@@ -4,6 +4,7 @@ import pytest
 from funcy import raiser
 
 from dvc.cli import main
+from dvc.data.stage import IgnoreInCollectedDirError
 from dvc.objects.cache import DiskError
 from dvc.objects.fs.base import FileSystem, RemoteMissingDepsError
 
@@ -67,4 +68,19 @@ def test_remote_missing_deps_are_correctly_reported(
             "<https://github.com/iterative/dvc/issues>. "
             "Thank you!"
         )
+    assert expected in caplog.text
+
+
+def test_ignore_in_collected_dir_error_is_logged(tmp_dir, caplog, mocker):
+    error = IgnoreInCollectedDirError(".dvcignore", "dir")
+    mocker.patch(
+        "dvc.cli.parse_args",
+        return_value=Namespace(
+            func=raiser(error),
+            quiet=False,
+            verbose=True,
+        ),
+    )
+    assert main() == 255
+    expected = ".dvcignore file should not be in collected dir path: 'dir'"
     assert expected in caplog.text
