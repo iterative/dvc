@@ -4,7 +4,7 @@ import pytest
 from funcy import raiser
 
 from dvc.cli import main
-from dvc.data.stage import IgnoreInCollectedDirError
+from dvc_data.stage import IgnoreInCollectedDirError
 from dvc_objects.cache import DiskError
 from dvc_objects.fs.base import FileSystem, RemoteMissingDepsError
 

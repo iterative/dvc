@@ -5,8 +5,8 @@ from unittest import mock
 
 import pytest
 
-from dvc.data.stage import stage
 from dvc.fs.dvc import DvcFileSystem
+from dvc_data.stage import stage
 from dvc_objects.hash_info import HashInfo
 from tests.utils import clean_staging
 
@@ -575,7 +575,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
-    from dvc.data import check
+    from dvc_data import check
     from dvc_objects.errors import ObjectFormatError
     from dvc_objects.hash import hash_file
 

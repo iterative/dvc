@@ -414,7 +414,7 @@ class Repo:
         def _add_suffix(objs: Set["HashFile"], suffix: str) -> None:
             from itertools import chain
 
-            from dvc.data import iterobjs
+            from dvc_data import iterobjs
 
             for obj in chain.from_iterable(map(iterobjs, objs)):
                 if obj.name is not None:

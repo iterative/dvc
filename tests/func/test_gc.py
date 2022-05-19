@@ -7,11 +7,11 @@ import pytest
 from git import Repo
 
 from dvc.cli import main
-from dvc.data.db.local import LocalObjectDB
 from dvc.exceptions import CollectCacheError
 from dvc.fs import LocalFileSystem
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
+from dvc_data.db.local import LocalObjectDB
 from tests.basic_env import TestDir, TestDvcGit
 
 

@@ -11,6 +11,7 @@ import colorama
 import pytest
 
 import dvc as dvc_module
+import dvc_data
 import dvc_objects
 from dvc.cli import main
 from dvc.dvcfile import DVC_FILE_SUFFIX
@@ -103,7 +104,7 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
-    from dvc.data import load
+    from dvc_data import load
 
     (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
@@ -457,7 +458,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    counter = mocker.spy(dvc_module.data.stage, "_stage_tree")
+    counter = mocker.spy(dvc_data.stage, "_stage_tree")
     ret = main(["add", "data"])
     assert ret == 0
     assert counter.mock.call_count == 1
@@ -881,7 +882,7 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
     mocker.patch(
-        "dvc.data.checkout.test_links",
+        "dvc_data.checkout.test_links",
         return_value=[],
     )
     dvc.add("foo")

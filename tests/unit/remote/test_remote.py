@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from dvc.data.db import get_index
 from dvc.fs import GSFileSystem, S3FileSystem, get_cloud_fs
+from dvc_data.db import get_index
 
 
 def test_remote_with_hash_jobs(dvc):
