@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from dvc.objects.hash_info import HashInfo
 
     from .db.index import ObjectDBIndexBase
+    from .status import CompareStatusResult
     from .tree import Tree
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def _log_exceptions(func):
             if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
                 raise
 
-            logger.exception("failed to transfer '%s'", fs_path)
+            logger.debug("failed to transfer '%s'", fs_path)
             return 1
 
     return wrapper
@@ -90,7 +91,7 @@ def _do_transfer(
                 "aborting .dir file upload",
                 dir_obj.name,
             )
-            logger.error(
+            logger.debug(
                 "failed to upload '%s' to '%s'",
                 src.get(dir_obj.hash_info).fs_path,
                 dest.get(dir_obj.hash_info).fs_path,
@@ -139,6 +140,7 @@ def transfer(
     jobs: Optional[int] = None,
     verify: bool = False,
     hardlink: bool = False,
+    validate_status: Callable[["CompareStatusResult"], None] = None,
     **kwargs,
 ) -> int:
     """Transfer (copy) the specified objects from one ODB to another.
@@ -158,6 +160,10 @@ def transfer(
     status = compare_status(
         src, dest, obj_ids, check_deleted=False, jobs=jobs, **kwargs
     )
+
+    if validate_status:
+        validate_status(status)
+
     if not status.new:
         return 0
 

@@ -153,7 +153,7 @@ class Tree(HashFile):
             raise ObjectFormatError(f"{obj} is corrupted") from exc
 
         if not isinstance(raw, list):
-            logger.error(
+            logger.debug(
                 "dir cache file format error '%s' [skipping the file]",
                 obj.fs_path,
             )
