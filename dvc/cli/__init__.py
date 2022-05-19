@@ -107,7 +107,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         )
         return 251
 
-    from dvc.objects.cache import DiskError
+    from dvc_objects.cache import DiskError
 
     if isinstance(exc, DiskError):
         from dvc.utils import relpath

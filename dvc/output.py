@@ -17,9 +17,10 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
-from dvc.objects.hash_info import HashInfo
-from dvc.objects.istextfile import istextfile
-from dvc.objects.meta import Meta
+from dvc_objects.errors import ObjectFormatError
+from dvc_objects.hash_info import HashInfo
+from dvc_objects.istextfile import istextfile
+from dvc_objects.meta import Meta
 
 from .data import check as ocheck
 from .data import load as oload
@@ -35,12 +36,11 @@ from .fs import (
     Schemes,
     get_cloud_fs,
 )
-from .objects.errors import ObjectFormatError
 from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from .objects.db import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 

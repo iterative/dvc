@@ -1,5 +1,5 @@
-from dvc.objects.fs import LocalFileSystem
-from dvc.objects.hash import file_md5
+from dvc_objects.fs import LocalFileSystem
+from dvc_objects.hash import file_md5
 
 
 def test_file_md5(tmp_path):

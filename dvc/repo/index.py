@@ -22,12 +22,12 @@ if TYPE_CHECKING:
     from dvc.data.tree import Tree
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs import FileSystem
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.hash_info import HashInfo
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.hash_info import HashInfo
 
 
 ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]

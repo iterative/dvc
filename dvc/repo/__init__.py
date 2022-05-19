@@ -16,9 +16,9 @@ from dvc.utils.fs import path_isin
 
 if TYPE_CHECKING:
     from dvc.fs import FileSystem
-    from dvc.objects.file import HashFile
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
+    from dvc_objects.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +158,6 @@ class Repo:
         from dvc.data_cloud import DataCloud
         from dvc.fs import GitFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
-        from dvc.objects.state import State, StateNoop
         from dvc.odbmgr import ODBManager
         from dvc.repo.metrics import Metrics
         from dvc.repo.params import Params
@@ -166,6 +165,7 @@ class Repo:
         from dvc.repo.stage import StageLoad
         from dvc.scm import SCM
         from dvc.stage.cache import StageCache
+        from dvc_objects.state import State, StateNoop
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}

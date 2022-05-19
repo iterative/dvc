@@ -3,10 +3,10 @@ import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Iterable, Set
 
-from dvc.objects.errors import ObjectDBError
+from dvc_objects.errors import ObjectDBError
 
 if TYPE_CHECKING:
-    from dvc.objects.fs.base import AnyFSPath
+    from dvc_objects.fs.base import AnyFSPath
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +88,9 @@ class ObjectDBIndex(ObjectDBIndexBase):
         tmp_dir: "AnyFSPath",
         name: str,
     ):  # pylint: disable=super-init-not-called
-        from dvc.objects.cache import Cache, Index
-        from dvc.objects.fs import LocalFileSystem
-        from dvc.objects.fs.utils import makedirs
+        from dvc_objects.cache import Cache, Index
+        from dvc_objects.fs import LocalFileSystem
+        from dvc_objects.fs.utils import makedirs
 
         self.index_dir = os.path.join(tmp_dir, self.INDEX_DIR, name)
         makedirs(self.index_dir, exist_ok=True)
@@ -110,7 +110,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def clear(self):
         """Clear this index (to force re-indexing later)."""
-        from dvc.objects.cache import Timeout
+        from dvc_objects.cache import Timeout
 
         try:
             self.index.clear()
@@ -119,7 +119,7 @@ class ObjectDBIndex(ObjectDBIndexBase):
 
     def update(self, dir_hashes: Iterable[str], file_hashes: Iterable[str]):
         """Update this index, adding the specified hashes."""
-        from dvc.objects.cache import Timeout
+        from dvc_objects.cache import Timeout
 
         try:
             with self.index.transact():

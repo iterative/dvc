@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property
 
-from dvc.objects.fs.callbacks import (  # noqa: F401
+from dvc_objects.fs.callbacks import (  # noqa: F401
     DEFAULT_CALLBACK,
     Callback,
     TqdmCallback,

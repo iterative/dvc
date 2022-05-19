@@ -4,9 +4,9 @@ import pytest
 
 from dvc.cli import main
 from dvc.fs import system
-from dvc.objects.errors import ObjectDBError
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.fs import remove
+from dvc_objects.errors import ObjectDBError
 from tests.utils import get_gitignore_content
 
 

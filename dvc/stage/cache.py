@@ -12,7 +12,7 @@ from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
 
 if TYPE_CHECKING:
-    from dvc.objects.db import ObjectDB
+    from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class RunCacheNotFoundError(DvcException):
 
 
 def _get_cache_hash(cache, key=False):
-    from dvc.objects.meta import Meta
+    from dvc_objects.meta import Meta
 
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]

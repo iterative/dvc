@@ -5,7 +5,6 @@ import pytest
 
 import dvc
 from dvc.fs import LocalFileSystem, system
-from dvc.objects.utils import get_mtime_and_size
 from dvc.utils import relpath
 from dvc.utils.fs import (
     BasePathNotInCheckedPathException,
@@ -18,6 +17,7 @@ from dvc.utils.fs import (
     remove,
     walk_files,
 )
+from dvc_objects.utils import get_mtime_and_size
 
 
 def test_mtime_and_size(tmp_dir):

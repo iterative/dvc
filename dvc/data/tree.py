@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
 from funcy import cached_property
 
-from dvc.objects.errors import ObjectFormatError
-from dvc.objects.file import HashFile
-from dvc.objects.hash import hash_file
+from dvc_objects.errors import ObjectFormatError
+from dvc_objects.file import HashFile
+from dvc_objects.hash import hash_file
 
 if TYPE_CHECKING:
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.hash_info import HashInfo
-    from dvc.objects.meta import Meta
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.meta import Meta
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +59,8 @@ class Tree(HashFile):
         self._dict[key] = (meta, oid)
 
     def digest(self, hash_info: Optional["HashInfo"] = None):
-        from dvc.objects.fs import MemoryFileSystem
-        from dvc.objects.fs.utils import tmp_fname
+        from dvc_objects.fs import MemoryFileSystem
+        from dvc_objects.fs.utils import tmp_fname
 
         memfs = MemoryFileSystem()
         fs_path = "memory://{}".format(tmp_fname(""))
@@ -131,7 +131,7 @@ class Tree(HashFile):
 
     @classmethod
     def from_list(cls, lst):
-        from dvc.objects.hash_info import HashInfo
+        from dvc_objects.hash_info import HashInfo
 
         tree = cls(None, None, None)
         for _entry in lst:

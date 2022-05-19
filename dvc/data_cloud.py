@@ -7,8 +7,8 @@ from dvc.data.db import get_index
 
 if TYPE_CHECKING:
     from dvc.data.status import CompareStatusResult
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.hash_info import HashInfo
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

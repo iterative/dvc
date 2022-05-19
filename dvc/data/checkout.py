@@ -2,15 +2,15 @@ import logging
 from itertools import chain
 from typing import TYPE_CHECKING, List, Optional
 
-from dvc.objects.fs.callbacks import Callback
-from dvc.objects.fs.generic import test_links, transfer
+from dvc_objects.fs.callbacks import Callback
+from dvc_objects.fs.generic import test_links, transfer
 
 from .diff import ROOT
 from .diff import diff as odiff
 from .stage import stage
 
 if TYPE_CHECKING:
-    from dvc.objects._ignore import Ignore
+    from dvc_objects._ignore import Ignore
 
 logger = logging.getLogger(__name__)
 

@@ -1,14 +1,14 @@
 import logging
 from typing import TYPE_CHECKING, Dict, Iterable, NamedTuple, Optional, Set
 
-from dvc.objects.fs import Schemes
-from dvc.objects.hash_info import HashInfo
+from dvc_objects.fs import Schemes
+from dvc_objects.hash_info import HashInfo
 
 from .tree import Tree
 
 if TYPE_CHECKING:
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.file import HashFile
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.file import HashFile
 
     from .db.index import ObjectDBIndexBase
 

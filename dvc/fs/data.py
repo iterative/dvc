@@ -5,8 +5,8 @@ import typing
 from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
-from dvc.objects.fs.base import FileSystem
-from dvc.objects.fs.callbacks import DEFAULT_CALLBACK
+from dvc_objects.fs.base import FileSystem
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 if typing.TYPE_CHECKING:
     from dvc.types import AnyPath
@@ -117,7 +117,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return bool(info.get("outs") if recurse else info.get("isout"))
 
     def info(self, path, **kwargs):
-        from dvc.objects.meta import Meta
+        from dvc_objects.meta import Meta
 
         key = self._get_key(path)
 
