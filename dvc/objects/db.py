@@ -197,7 +197,7 @@ class ObjectDB:
         try:
             obj.check(self, check_hash=check_hash)
         except ObjectFormatError:
-            logger.warning("corrupted cache file '%s'.", obj.fs_path)
+            logger.debug("corrupted cache file '%s'.", obj.fs_path)
             with suppress(FileNotFoundError):
                 self.fs.remove(obj.fs_path)
             raise

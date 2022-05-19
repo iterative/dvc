@@ -160,7 +160,6 @@ def compare_status(
     src: "ObjectDB",
     dest: "ObjectDB",
     obj_ids: Iterable["HashInfo"],
-    log_missing: bool = True,
     check_deleted: bool = True,
     src_index: Optional["ObjectDBIndexBase"] = None,
     dest_index: Optional["ObjectDBIndexBase"] = None,
@@ -189,19 +188,9 @@ def compare_status(
     else:
         src_exists = dest_exists
         src_missing = set()
-    result = CompareStatusResult(
+    return CompareStatusResult(
         src_exists & dest_exists,
         src_missing & dest_missing,
         src_exists - dest_exists,
         dest_exists - src_exists,
     )
-    if log_missing and result.missing:
-        missing_desc = "\n".join(
-            f"name: {hash_info.obj_name}, {hash_info}"
-            for hash_info in result.missing
-        )
-        logger.warning(
-            "Some of the cache files do not exist neither locally "
-            f"nor on remote. Missing cache files:\n{missing_desc}"
-        )
-    return result

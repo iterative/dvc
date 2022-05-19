@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from dvc.data.db import get_index
 
 if TYPE_CHECKING:
+    from dvc.data.status import CompareStatusResult
     from dvc.objects.db import ObjectDB
     from dvc.objects.hash_info import HashInfo
 
@@ -62,6 +63,17 @@ class DataCloud:
         config["tmp_dir"] = self.repo.index_db_dir
         return get_odb(cls(**config), fs_path, **config)
 
+    def _log_missing(self, status: "CompareStatusResult"):
+        if status.missing:
+            missing_desc = "\n".join(
+                f"name: {hash_info.obj_name}, {hash_info}"
+                for hash_info in status.missing
+            )
+            logger.warning(
+                "Some of the cache files do not exist neither locally "
+                f"nor on remote. Missing cache files:\n{missing_desc}"
+            )
+
     def transfer(
         self,
         src_odb: "ObjectDB",
@@ -101,6 +113,7 @@ class DataCloud:
             jobs=jobs,
             dest_index=get_index(odb),
             cache_odb=self.repo.odb.local,
+            validate_status=self._log_missing,
         )
 
     def pull(
@@ -128,6 +141,7 @@ class DataCloud:
             src_index=get_index(odb),
             cache_odb=self.repo.odb.local,
             verify=odb.verify,
+            validate_status=self._log_missing,
         )
 
     def status(
