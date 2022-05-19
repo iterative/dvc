@@ -5,7 +5,7 @@ def _revisions(repo, revs, experiment):
         if baseline:
             revisions.append(baseline[:7])
     if len(revisions) <= 1:
-        if len(revisions) == 0 and repo.scm.is_dirty():
+        if len(revisions) == 0 and repo.scm.is_dirty(untracked_files=False):
             revisions.append("HEAD")
         revisions.append("workspace")
     return revisions
