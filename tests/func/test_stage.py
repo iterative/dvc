@@ -342,8 +342,8 @@ def test_stage_run_checkpoint(tmp_dir, dvc, mocker, checkpoint):
 def test_stage_dir_optimization(
     tmp_dir, dvc, mocker, dry_run, expected_staging_contents
 ):
-    from dvc.data import stage
-    from dvc.data.tree import Tree
+    from dvc_data import stage
+    from dvc_data.tree import Tree
 
     tmp_dir.dvc_gen(
         {

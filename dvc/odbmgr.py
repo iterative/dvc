@@ -1,5 +1,5 @@
-from dvc.data.db import get_odb
 from dvc.fs import Schemes
+from dvc_data.db import get_odb
 
 
 def _get_odb(repo, settings):

@@ -43,7 +43,7 @@ def test_cache(tmp_dir, dvc):
 
 
 def test_cache_load_bad_dir_cache(tmp_dir, dvc):
-    from dvc.data import load
+    from dvc_data import load
 
     dir_hash = "123.dir"
     fname = os.fspath(dvc.odb.local.hash_to_path(dir_hash))

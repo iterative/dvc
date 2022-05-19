@@ -3,10 +3,10 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from dvc.data.db import get_index
+from dvc_data.db import get_index
 
 if TYPE_CHECKING:
-    from dvc.data.status import CompareStatusResult
+    from dvc_data.status import CompareStatusResult
     from dvc_objects.db import ObjectDB
     from dvc_objects.hash_info import HashInfo
 
@@ -56,8 +56,8 @@ class DataCloud:
         raise NoRemoteError(error_msg)
 
     def _init_odb(self, name):
-        from dvc.data.db import get_odb
         from dvc.fs import get_cloud_fs
+        from dvc_data.db import get_odb
 
         cls, config, fs_path = get_cloud_fs(self.repo, name=name)
         config["tmp_dir"] = self.repo.index_db_dir
@@ -81,8 +81,8 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         **kwargs,
     ):
-        from dvc.data.transfer import TransferError, transfer
         from dvc.exceptions import FileTransferError
+        from dvc_data.transfer import TransferError, transfer
 
         try:
             return transfer(src_odb, dest_odb, objs, **kwargs)
@@ -164,7 +164,7 @@ class DataCloud:
             log_missing: log warning messages if file doesn't exist
                 neither in cache, neither in cloud.
         """
-        from dvc.data.status import compare_status
+        from dvc_data.status import compare_status
 
         if not odb:
             odb = self.get_remote_odb(remote, "status")

@@ -5,9 +5,9 @@ import pytest
 
 import dvc_objects
 from dvc.config import NoRemoteError
-from dvc.data.stage import stage
 from dvc.fs.data import DataFileSystem
 from dvc.utils.fs import remove
+from dvc_data.stage import stage
 from dvc_objects.hash_info import HashInfo
 
 

@@ -7,13 +7,13 @@ from flaky.flaky_decorator import flaky
 
 import dvc_objects
 from dvc.cli import main
-from dvc.data.db.local import LocalObjectDB
 from dvc.external_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
     TestRemote,
 )
 from dvc.utils.fs import remove
+from dvc_data.db.local import LocalObjectDB
 from dvc_objects.db import ObjectDB
 
 

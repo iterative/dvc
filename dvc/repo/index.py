@@ -19,13 +19,13 @@ if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
-    from dvc.data.tree import Tree
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs import FileSystem
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
+    from dvc_data.tree import Tree
     from dvc_objects.db import ObjectDB
     from dvc_objects.hash_info import HashInfo
 
@@ -170,7 +170,7 @@ class Index:
     @cached_property
     def tree(self) -> "Tree":
         from dvc.config import NoRemoteError
-        from dvc.data.tree import Tree
+        from dvc_data.tree import Tree
 
         tree = Tree(None, None, None)
 

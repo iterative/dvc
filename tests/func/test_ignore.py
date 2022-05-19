@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from dvc.data.stage import IgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.testing.tmp_dir import TmpDir
 from dvc.types import List
+from dvc_data.stage import IgnoreInCollectedDirError
 from dvc_objects.utils import get_mtime_and_size
 
 

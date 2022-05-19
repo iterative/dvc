@@ -17,17 +17,17 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
+from dvc_data import check as ocheck
+from dvc_data import load as oload
+from dvc_data.checkout import checkout
+from dvc_data.stage import stage as ostage
+from dvc_data.transfer import transfer as otransfer
+from dvc_data.tree import Tree
 from dvc_objects.errors import ObjectFormatError
 from dvc_objects.hash_info import HashInfo
 from dvc_objects.istextfile import istextfile
 from dvc_objects.meta import Meta
 
-from .data import check as ocheck
-from .data import load as oload
-from .data.checkout import checkout
-from .data.stage import stage as ostage
-from .data.transfer import transfer as otransfer
-from .data.tree import Tree
 from .fs import (
     HDFSFileSystem,
     LocalFileSystem,
@@ -580,8 +580,8 @@ class Output:
             self.odb.set_exec(self.fs_path)
 
     def _checkout(self, *args, **kwargs):
-        from dvc.data.checkout import CheckoutError as _CheckoutError
-        from dvc.data.checkout import LinkError, PromptError
+        from dvc_data.checkout import CheckoutError as _CheckoutError
+        from dvc_data.checkout import LinkError, PromptError
 
         try:
             return checkout(*args, **kwargs)
@@ -1044,8 +1044,8 @@ class Output:
             )
 
     def merge(self, ancestor, other):
-        from dvc.data.tree import MergeError as TreeMergeError
-        from dvc.data.tree import du, merge
+        from dvc_data.tree import MergeError as TreeMergeError
+        from dvc_data.tree import du, merge
 
         assert other
 
