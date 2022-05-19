@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
 from funcy import split
 
-from dvc.objects._tqdm import Tqdm
-from dvc.objects.executors import ThreadPoolExecutor
+from dvc_objects._tqdm import Tqdm
+from dvc_objects.executors import ThreadPoolExecutor
 
 if TYPE_CHECKING:
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.hash_info import HashInfo
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.hash_info import HashInfo
 
     from .db.index import ObjectDBIndexBase
     from .status import CompareStatusResult
@@ -47,7 +47,7 @@ def _log_exceptions(func):
 def find_tree_by_obj_id(
     odbs: Iterable[Optional["ObjectDB"]], obj_id: "HashInfo"
 ) -> Optional["Tree"]:
-    from dvc.objects.errors import ObjectFormatError
+    from dvc_objects.errors import ObjectFormatError
 
     from .tree import Tree
 

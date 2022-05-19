@@ -47,7 +47,7 @@ def test_source_change(erepo_dir):
 
 
 def test_cache_reused(erepo_dir, mocker, local_cloud):
-    from dvc.objects.fs import generic
+    from dvc_objects.fs import generic
 
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():

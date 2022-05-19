@@ -1,11 +1,11 @@
 import os
 from unittest.mock import patch
 
-from dvc.objects.hash_info import HashInfo
-from dvc.objects.meta import Meta
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.utils import relpath
+from dvc_objects.hash_info import HashInfo
+from dvc_objects.meta import Meta
 from tests.basic_env import TestDvc
 
 

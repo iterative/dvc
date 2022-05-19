@@ -6,18 +6,18 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
-from dvc.objects._tqdm import Tqdm
-from dvc.objects.file import HashFile
-from dvc.objects.hash import hash_file
-from dvc.objects.hash_info import HashInfo
-from dvc.objects.meta import Meta
+from dvc_objects._tqdm import Tqdm
+from dvc_objects.file import HashFile
+from dvc_objects.hash import hash_file
+from dvc_objects.hash_info import HashInfo
+from dvc_objects.meta import Meta
 
 from .db.reference import ReferenceObjectDB
 
 if TYPE_CHECKING:
-    from dvc.objects._ignore import Ignore
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.fs.base import AnyFSPath, FileSystem
+    from dvc_objects._ignore import Ignore
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
 
     from .tree import Tree
 
@@ -40,9 +40,9 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 
 
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
-    from dvc.objects.fs.callbacks import Callback
-    from dvc.objects.fs.utils import tmp_fname
-    from dvc.objects.hash import HashStreamFile
+    from dvc_objects.fs.callbacks import Callback
+    from dvc_objects.fs.utils import tmp_fname
+    from dvc_objects.hash import HashStreamFile
 
     fs_path = upload_odb.fs.path
     tmp_info = fs_path.join(upload_odb.fs_path, tmp_fname())
@@ -186,7 +186,7 @@ _url_cache: Dict[str, str] = {}
 def _make_staging_url(
     fs: "FileSystem", odb: "ObjectDB", fs_path: Optional[str]
 ):
-    from dvc.objects.fs import Schemes
+    from dvc_objects.fs import Schemes
 
     url = f"{Schemes.MEMORY}://{_STAGING_MEMFS_PATH}"
 
@@ -210,7 +210,7 @@ def _get_staging(odb: "ObjectDB") -> "ReferenceObjectDB":
     Staging will be a reference ODB stored in the the global memfs.
     """
 
-    from dvc.objects.fs import MemoryFileSystem
+    from dvc_objects.fs import MemoryFileSystem
 
     fs = MemoryFileSystem()
     fs_path = _make_staging_url(fs, odb, odb.fs_path)
@@ -219,7 +219,7 @@ def _get_staging(odb: "ObjectDB") -> "ReferenceObjectDB":
 
 
 def _load_raw_dir_obj(odb: "ObjectDB", hash_info: "HashInfo") -> "Tree":
-    from dvc.objects.errors import ObjectFormatError
+    from dvc_objects.errors import ObjectFormatError
 
     from .tree import Tree
 
@@ -245,7 +245,7 @@ def _load_from_state(
     name: str,
     dry_run: bool,
 ) -> Tuple["ObjectDB", "Meta", "HashFile"]:
-    from dvc.objects.errors import ObjectFormatError
+    from dvc_objects.errors import ObjectFormatError
 
     from . import check, load
     from .tree import Tree

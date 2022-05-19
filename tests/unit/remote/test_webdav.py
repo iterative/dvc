@@ -65,7 +65,7 @@ def test_token():
     )
 
 
-@patch("dvc.objects.fs.implementations.webdav.ask_password")
+@patch("dvc_objects.fs.implementations.webdav.ask_password")
 def test_ask_password(ask_password_mocked):
     ask_password_mocked.return_value = "pass"
     host = "host"

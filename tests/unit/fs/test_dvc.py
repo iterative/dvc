@@ -7,7 +7,7 @@ import pytest
 
 from dvc.data.stage import stage
 from dvc.fs.dvc import DvcFileSystem
-from dvc.objects.hash_info import HashInfo
+from dvc_objects.hash_info import HashInfo
 from tests.utils import clean_staging
 
 
@@ -576,8 +576,8 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
     from dvc.data import check
-    from dvc.objects.errors import ObjectFormatError
-    from dvc.objects.hash import hash_file
+    from dvc_objects.errors import ObjectFormatError
+    from dvc_objects.hash import hash_file
 
     tmp_dir.dvc_gen("file", "file")
     file_hash_info = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")

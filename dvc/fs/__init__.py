@@ -1,8 +1,8 @@
 from urllib.parse import urlparse
 
 # pylint: disable=unused-import
-from dvc.objects.fs import utils  # noqa: F401
-from dvc.objects.fs import (  # noqa: F401
+from dvc_objects.fs import utils  # noqa: F401
+from dvc_objects.fs import (  # noqa: F401
     FS_MAP,
     AzureFileSystem,
     GDriveFileSystem,
@@ -23,19 +23,19 @@ from dvc.objects.fs import (  # noqa: F401
     get_fs_cls,
     system,
 )
-from dvc.objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
-from dvc.objects.fs.errors import (  # noqa: F401
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc_objects.fs.errors import (  # noqa: F401
     AuthError,
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc.objects.fs.implementations.azure import AzureAuthError  # noqa: F401
-from dvc.objects.fs.implementations.gdrive import GDriveAuthError  # noqa: F401
-from dvc.objects.fs.implementations.local import localfs  # noqa: F401
-from dvc.objects.fs.implementations.ssh import (  # noqa: F401
+from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
+from dvc_objects.fs.implementations.gdrive import GDriveAuthError  # noqa: F401
+from dvc_objects.fs.implementations.local import localfs  # noqa: F401
+from dvc_objects.fs.implementations.ssh import (  # noqa: F401
     DEFAULT_PORT as DEFAULT_SSH_PORT,
 )
-from dvc.objects.fs.path import Path  # noqa: F401
+from dvc_objects.fs.path import Path  # noqa: F401
 
 from .data import DataFileSystem  # noqa: F401
 from .dvc import DvcFileSystem  # noqa: F401

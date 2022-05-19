@@ -20,7 +20,6 @@ from dvc.exceptions import (
     StagePathAsOutputError,
 )
 from dvc.fs import system
-from dvc.objects.hash import file_md5
 from dvc.output import Output, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -32,6 +31,7 @@ from dvc.stage.exceptions import (
     StagePathOutsideError,
 )
 from dvc.utils.serialize import load_yaml
+from dvc_objects.hash import file_md5
 from tests.basic_env import TestDvc, TestDvcGit
 
 

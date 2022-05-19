@@ -4,14 +4,14 @@ import os
 import pickle
 from typing import TYPE_CHECKING, Optional
 
-from dvc.objects.errors import ObjectFormatError
-from dvc.objects.file import HashFile
-from dvc.objects.fs import FS_MAP, LocalFileSystem
+from dvc_objects.errors import ObjectFormatError
+from dvc_objects.file import HashFile
+from dvc_objects.fs import FS_MAP, LocalFileSystem
 
 if TYPE_CHECKING:
-    from dvc.objects.db import ObjectDB
-    from dvc.objects.fs.base import AnyFSPath, FileSystem
-    from dvc.objects.hash_info import HashInfo
+    from dvc_objects.db import ObjectDB
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
+    from dvc_objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class ReferenceHashFile(HashFile):
 
     @classmethod
     def from_bytes(cls, data: bytes, fs_cache: Optional[dict] = None):
-        from dvc.objects.fs import get_fs_cls
+        from dvc_objects.fs import get_fs_cls
 
         try:
             dict_ = pickle.loads(data)

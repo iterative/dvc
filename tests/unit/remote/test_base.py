@@ -3,7 +3,7 @@ import posixpath
 from unittest import mock
 
 from dvc.fs import FileSystem
-from dvc.objects.db import ObjectDB
+from dvc_objects.db import ObjectDB
 
 
 class _CallableOrNone:

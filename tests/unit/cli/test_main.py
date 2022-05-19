@@ -5,8 +5,8 @@ from funcy import raiser
 
 from dvc.cli import main
 from dvc.data.stage import IgnoreInCollectedDirError
-from dvc.objects.cache import DiskError
-from dvc.objects.fs.base import FileSystem, RemoteMissingDepsError
+from dvc_objects.cache import DiskError
+from dvc_objects.fs.base import FileSystem, RemoteMissingDepsError
 
 
 def test_state_pickle_errors_are_correctly_raised(tmp_dir, caplog, mocker):

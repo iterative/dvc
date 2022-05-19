@@ -15,13 +15,13 @@ from dvc.exceptions import (
     StagePathAsOutputError,
 )
 from dvc.fs import LocalFileSystem, system
-from dvc.objects.hash import file_md5
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils import relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
+from dvc_objects.hash import file_md5
 from tests.basic_env import TestDvc
 
 
@@ -817,7 +817,7 @@ class TestReproAllPipelines(SingleStageRun, TestDvc):
             ),
         ]
 
-        from dvc.objects.state import StateNoop
+        from dvc_objects.state import StateNoop
 
         self.dvc.state = StateNoop()
 

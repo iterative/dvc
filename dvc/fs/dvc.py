@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
 
-from dvc.objects.fs.base import FileSystem
-from dvc.objects.fs.callbacks import DEFAULT_CALLBACK
-from dvc.objects.fs.path import Path
+from dvc_objects.fs.base import FileSystem
+from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
+from dvc_objects.fs.path import Path
 
 from .data import DataFileSystem
 
@@ -320,7 +320,9 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
-    def ls(self, path, detail=True, dvc_only=False, **kwargs):
+    def ls(  # pylint: disable=arguments-differ
+        self, path, detail=True, dvc_only=False, **kwargs
+    ):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         repo = dvc_fs.repo if dvc_fs else self.repo

@@ -7,7 +7,7 @@ from dvc.fs import Schemes
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc.objects.db.base import ObjectDB
+    from dvc_objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
 

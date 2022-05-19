@@ -2,16 +2,16 @@ import logging
 import os
 from typing import TYPE_CHECKING, Dict
 
-from dvc.objects.db import ObjectDB
-from dvc.objects.errors import ObjectFormatError
-from dvc.objects.fs import Schemes
+from dvc_objects.db import ObjectDB
+from dvc_objects.errors import ObjectFormatError
+from dvc_objects.fs import Schemes
 
 from ..reference import ReferenceHashFile
 
 if TYPE_CHECKING:
-    from dvc.objects.fs.base import AnyFSPath, FileSystem
-    from dvc.objects.fs.callbacks import Callback
-    from dvc.objects.hash_info import HashInfo
+    from dvc_objects.fs.base import AnyFSPath, FileSystem
+    from dvc_objects.fs.callbacks import Callback
+    from dvc_objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 

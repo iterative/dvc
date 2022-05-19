@@ -1,5 +1,5 @@
 def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
-    from dvc.objects.errors import ObjectDBPermissionError
+    from dvc_objects.errors import ObjectDBPermissionError
 
     from ._progress import QueryingProgress
     from .tree import Tree
@@ -18,7 +18,7 @@ def gc(odb, used, jobs=None, cache_odb=None, shallow=True):
             )
 
     def _is_dir_hash(_hash):
-        from dvc.objects.hash_info import HASH_DIR_SUFFIX
+        from dvc_objects.hash_info import HASH_DIR_SUFFIX
 
         return _hash.endswith(HASH_DIR_SUFFIX)
 
