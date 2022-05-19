@@ -12,10 +12,10 @@ def set_value(cache: Cache, key: str, value: Any) -> Any:
 
 
 @pytest.mark.parametrize("disk_type", [None, "test"])
-def test_pickle_protocol_error(tmp_dir, disk_type):
-    directory = tmp_dir / "test"
+def test_pickle_protocol_error(tmp_path, disk_type):
+    directory = tmp_path / "test"
     cache = Cache(
-        directory,
+        str(directory),
         disk_pickle_protocol=pickle.HIGHEST_PROTOCOL + 1,
         type=disk_type,
     )
@@ -33,14 +33,14 @@ def test_pickle_protocol_error(tmp_dir, disk_type):
         (pickle.HIGHEST_PROTOCOL, pickle.HIGHEST_PROTOCOL - 1),
     ],
 )
-def test_pickle_backwards_compat(tmp_dir, proto_a, proto_b):
+def test_pickle_backwards_compat(tmp_path, proto_a, proto_b):
     with Cache(
-        directory=(tmp_dir / "test"),
+        directory=str(tmp_path / "test"),
         disk_pickle_protocol=proto_a,
     ) as cache:
         set_value(cache, "key", ("value1", "value2"))
     with Cache(
-        directory=(tmp_dir / "test"),
+        directory=str(tmp_path / "test"),
         disk_pickle_protocol=proto_b,
     ) as cache:
         assert ("value1", "value2") == cache["key"]
