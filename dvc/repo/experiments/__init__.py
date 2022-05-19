@@ -196,7 +196,7 @@ class Experiments:
                             branch_name = ExpRefInfo.from_ref(branch).name
                         else:
                             branch_name = f"{resume_rev[:7]}"
-                        if self.scm.is_dirty():
+                        if self.scm.is_dirty(untracked_files=False):
                             logger.info(
                                 "Modified checkpoint experiment based on "
                                 "'%s' will be created",
@@ -398,7 +398,7 @@ class Experiments:
             self.reset_checkpoints()
 
         if not (queue or tmp_dir or machine):
-            staged, _, _ = self.scm.status()
+            staged, _, _ = self.scm.status(untracked_files="no")
             if staged:
                 logger.warning(
                     "Your workspace contains staged Git changes which will be "
