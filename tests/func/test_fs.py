@@ -6,7 +6,7 @@ from os.path import join
 import pytest
 
 from dvc.fs import LocalFileSystem, get_cloud_fs
-from dvc.fs._callback import DEFAULT_CALLBACK, FsspecCallback
+from dvc.fs.callbacks import DEFAULT_CALLBACK, Callback
 from dvc.repo import Repo
 
 
@@ -246,7 +246,7 @@ def test_upload_callback(tmp_dir, dvc, cloud):
     fs = cls(**config)
     expected_size = os.path.getsize(tmp_dir / "foo")
 
-    callback = FsspecCallback()
+    callback = Callback()
     fs.put_file(
         (tmp_dir / "foo").fs_path,
         (cloud / "foo").fs_path,
@@ -262,7 +262,7 @@ def test_get_dir_callback(tmp_dir, dvc, cloud):
     fs = cls(**config)
     cloud.gen({"dir": {"foo": "foo", "bar": "bar"}})
 
-    callback = FsspecCallback()
+    callback = Callback()
     fs.get(
         (cloud / "dir").fs_path, (tmp_dir / "dir").fs_path, callback=callback
     )
@@ -278,7 +278,7 @@ def test_callback_on_dvcfs(tmp_dir, dvc, scm, mocker):
 
     fs = dvc.dvcfs
 
-    callback = FsspecCallback()
+    callback = Callback()
     fs.get(
         "dir",
         (tmp_dir / "dir2").fs_path,
@@ -289,7 +289,7 @@ def test_callback_on_dvcfs(tmp_dir, dvc, scm, mocker):
     assert callback.size == 2
     assert callback.value == 2
 
-    callback = FsspecCallback()
+    callback = Callback()
     branch = mocker.spy(callback, "branch")
     fs.get(
         os.path.join("dir", "foo"),
@@ -308,7 +308,7 @@ def test_callback_on_dvcfs(tmp_dir, dvc, scm, mocker):
 
     branch.reset_mock()
 
-    callback = FsspecCallback()
+    callback = Callback()
     branch = mocker.spy(callback, "branch")
     fs.get(
         os.path.join("dir", "bar"),
@@ -332,9 +332,8 @@ def test_callback_on_dvcfs(tmp_dir, dvc, scm, mocker):
 @pytest.mark.parametrize(
     "callback_factory, kwargs",
     [
-        (FsspecCallback.as_callback, {}),
-        (FsspecCallback.as_tqdm_callback, {"desc": "test"}),
-        (FsspecCallback.as_rich_callback, {"desc": "test"}),
+        (Callback.as_callback, {}),
+        (Callback.as_tqdm_callback, {"desc": "test"}),
     ],
 )
 def test_callback_with_none(request, api, callback_factory, kwargs, mocker):

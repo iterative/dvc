@@ -4,8 +4,8 @@ import threading
 
 from funcy import cached_property, memoize, silent, wrap_prop, wrap_with
 
-from .._callback import DEFAULT_CALLBACK
 from ..base import FileSystem
+from ..callbacks import DEFAULT_CALLBACK
 from ..utils import as_atomic
 
 DEFAULT_PORT = 22

@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
 
-from dvc.objects.fs._callback import DEFAULT_CALLBACK
 from dvc.objects.fs.base import FileSystem
+from dvc.objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc.objects.fs.path import Path
 
 from .data import DataFileSystem

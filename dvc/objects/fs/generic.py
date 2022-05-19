@@ -3,13 +3,13 @@ import logging
 import os
 from typing import TYPE_CHECKING, List, Optional
 
-from ._callback import DEFAULT_CALLBACK
+from .callbacks import DEFAULT_CALLBACK
 from .implementations.local import LocalFileSystem
 from .utils import as_atomic
 
 if TYPE_CHECKING:
-    from ._callback import FsspecCallback
     from .base import AnyFSPath, FileSystem
+    from .callbacks import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def copy(
     from_path: "AnyFSPath",
     to_fs: "FileSystem",
     to_path: "AnyFSPath",
-    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> None:
     if isinstance(from_fs, LocalFileSystem):
         return to_fs.put_file(from_path, to_path, callback=callback)
@@ -55,7 +55,7 @@ def _try_links(
     from_path: "AnyFSPath",
     to_fs: "FileSystem",
     to_path: "AnyFSPath",
-    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> None:
     error = None
     while links:
@@ -85,7 +85,7 @@ def transfer(
     to_path: "AnyFSPath",
     hardlink: bool = False,
     links: Optional[List["str"]] = None,
-    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> None:
     try:
         assert not (hardlink and links)

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
 from funcy import split
 
+from dvc.objects._tqdm import Tqdm
 from dvc.objects.executors import ThreadPoolExecutor
-from dvc.progress import Tqdm
 
 if TYPE_CHECKING:
     from dvc.objects.db import ObjectDB

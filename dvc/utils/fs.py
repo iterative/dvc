@@ -157,10 +157,10 @@ def copyfile(src, dest, callback=None, no_progress_bar=False, name=None):
     try:
         system.reflink(src, dest)
     except OSError:
-        from dvc.fs._callback import FsspecCallback
+        from dvc.fs.callbacks import Callback
 
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
-            with FsspecCallback.as_tqdm_callback(
+            with Callback.as_tqdm_callback(
                 callback,
                 size=total,
                 bytes=True,

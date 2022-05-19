@@ -5,8 +5,8 @@ import typing
 from fsspec import AbstractFileSystem
 from funcy import cached_property, wrap_prop
 
-from dvc.objects.fs._callback import DEFAULT_CALLBACK
 from dvc.objects.fs.base import FileSystem
+from dvc.objects.fs.callbacks import DEFAULT_CALLBACK
 
 if typing.TYPE_CHECKING:
     from dvc.types import AnyPath

@@ -6,11 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
+from dvc.objects._tqdm import Tqdm
 from dvc.objects.file import HashFile
 from dvc.objects.hash import hash_file
 from dvc.objects.hash_info import HashInfo
 from dvc.objects.meta import Meta
-from dvc.progress import Tqdm
 
 from .db.reference import ReferenceObjectDB
 
@@ -40,7 +40,7 @@ _STAGING_MEMFS_PATH = "dvc-staging"
 
 
 def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
-    from dvc.objects.fs._callback import FsspecCallback
+    from dvc.objects.fs.callbacks import Callback
     from dvc.objects.fs.utils import tmp_fname
     from dvc.objects.hash import HashStreamFile
 
@@ -49,7 +49,7 @@ def _upload_file(from_fs_path, fs, odb, upload_odb, callback=None):
     with fs.open(from_fs_path, mode="rb") as stream:
         stream = HashStreamFile(stream)
         size = fs.size(from_fs_path)
-        with FsspecCallback.as_tqdm_callback(
+        with Callback.as_tqdm_callback(
             callback,
             desc=fs_path.name(from_fs_path),
             bytes=True,
