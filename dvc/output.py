@@ -9,8 +9,10 @@ from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
 from dvc.exceptions import (
+    CacheLinkError,
     CheckoutError,
     CollectCacheError,
+    ConfirmRemoveError,
     DvcException,
     MergeError,
     RemoteCacheRequiredError,
@@ -577,6 +579,19 @@ class Output:
         if self.isfile() and self.meta.isexec:
             self.odb.set_exec(self.fs_path)
 
+    def _checkout(self, *args, **kwargs):
+        from dvc.data.checkout import CheckoutError as _CheckoutError
+        from dvc.data.checkout import LinkError, PromptError
+
+        try:
+            return checkout(*args, **kwargs)
+        except PromptError as exc:
+            raise ConfirmRemoveError(exc.path)
+        except LinkError as exc:
+            raise CacheLinkError([exc.path])
+        except _CheckoutError as exc:
+            raise CheckoutError(exc.paths)
+
     def commit(self, filter_info=None):
         if not self.exists:
             raise self.DoesNotExistError(self)
@@ -606,7 +621,7 @@ class Output:
                     shallow=False,
                     hardlink=True,
                 )
-            checkout(
+            self._checkout(
                 filter_info or self.fs_path,
                 self.fs,
                 obj,
@@ -614,6 +629,7 @@ class Output:
                 relink=True,
                 ignore=self.dvcignore,
                 state=self.repo.state,
+                prompt=prompt.confirm,
             )
             self.set_exec()
 
@@ -766,7 +782,7 @@ class Output:
         added = not self.exists
 
         try:
-            modified = checkout(
+            modified = self._checkout(
                 filter_info or self.fs_path,
                 self.fs,
                 obj,
@@ -775,6 +791,7 @@ class Output:
                 progress_callback=progress_callback,
                 relink=relink,
                 state=self.repo.state,
+                prompt=prompt.confirm,
                 **kwargs,
             )
         except CheckoutError:
