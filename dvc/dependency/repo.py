@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
 from voluptuous import Required
 
+from dvc.prompt import confirm
+
 from .base import Dependency
 
 if TYPE_CHECKING:
@@ -74,6 +76,7 @@ class RepoDependency(Dependency):
             self.repo.odb.local,
             ignore=None,
             state=self.repo.state,
+            prompt=confirm,
         )
 
     def update(self, rev=None):

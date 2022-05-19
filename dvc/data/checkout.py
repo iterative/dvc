@@ -1,15 +1,12 @@
 import logging
 from itertools import chain
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
-from dvc import prompt
-from dvc.exceptions import CacheLinkError, CheckoutError, ConfirmRemoveError
 from dvc.objects.fs._callback import FsspecCallback
 from dvc.objects.fs.generic import test_links, transfer
 
 from .diff import ROOT
 from .diff import diff as odiff
-from .slow_link_detection import slow_link_guard  # type: ignore[attr-defined]
 from .stage import stage
 
 if TYPE_CHECKING:
@@ -18,7 +15,25 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _remove(fs_path, fs, in_cache, force=False):
+class PromptError(Exception):
+    def __init__(self, path: str) -> None:
+        self.path = path
+        super().__init__(f"unable to remove '{path}' without a confirmation.")
+
+
+class CheckoutError(Exception):
+    def __init__(self, paths: List[str]) -> None:
+        self.paths = paths
+        super().__init__("Checkout failed")
+
+
+class LinkError(Exception):
+    def __init__(self, path: str) -> None:
+        self.path = path
+        super().__init__("No possible cache link types for '{path}'.")
+
+
+def _remove(fs_path, fs, in_cache, force=False, prompt=None):
     if not fs.exists(fs_path):
         return
 
@@ -32,14 +47,14 @@ def _remove(fs_path, fs, in_cache, force=False):
             "Are you sure you want to proceed?"
         )
 
-        if not prompt.confirm(msg):
-            raise ConfirmRemoveError(fs_path)
+        if prompt is None or not prompt(msg):
+            raise PromptError(fs_path)
 
     fs.remove(fs_path)
 
 
-def _relink(link, cache, cache_info, fs, path, in_cache, force):
-    _remove(path, fs, in_cache, force=force)
+def _relink(link, cache, cache_info, fs, path, in_cache, force, prompt=None):
+    _remove(path, fs, in_cache, force=force, prompt=prompt)
     link(cache, cache_info, fs, path)
     # NOTE: Depending on a file system (e.g. on NTFS), `_remove` might reset
     # read-only permissions in order to delete a hardlink to protected object,
@@ -57,6 +72,7 @@ def _checkout_file(
     force,
     relink=False,
     state=None,
+    prompt=None,
 ):
     """The file is changed we need to checkout a new copy"""
     modified = False
@@ -75,6 +91,7 @@ def _checkout_file(
                     fs_path,
                     change.old.in_cache,
                     force=force,
+                    prompt=prompt,
                 )
         else:
             modified = True
@@ -86,6 +103,7 @@ def _checkout_file(
                 fs_path,
                 change.old.in_cache,
                 force=force,
+                prompt=prompt,
             )
     else:
         link(cache, cache_fs_path, fs, fs_path)
@@ -130,7 +148,6 @@ class Link:
     def __init__(self, links):
         self._links = links
 
-    @slow_link_guard
     def __call__(self, cache, from_path, to_fs, to_path, callback=None):
         if to_fs.exists(to_path):
             to_fs.remove(to_path)  # broken symlink
@@ -153,7 +170,7 @@ class Link:
         except FileNotFoundError as exc:
             raise CheckoutError([to_path]) from exc
         except OSError as exc:
-            raise CacheLinkError([to_path]) from exc
+            raise LinkError(to_path) from exc
 
 
 def _checkout(
@@ -165,22 +182,24 @@ def _checkout(
     progress_callback=None,
     relink=False,
     state=None,
+    prompt=None,
 ):
     if not diff:
         return
 
     links = test_links(cache.cache_types, cache.fs, cache.fs_path, fs, fs_path)
     if not links:
-        raise CacheLinkError([fs_path])
+        raise LinkError(fs_path)
     link = Link(links)
-
     for change in diff.deleted:
         entry_path = (
             fs.path.join(fs_path, *change.old.key)
             if change.old.key != ROOT
             else fs_path
         )
-        _remove(entry_path, fs, change.old.in_cache, force=force)
+        _remove(
+            entry_path, fs, change.old.in_cache, force=force, prompt=prompt
+        )
 
     failed = []
     for change in chain(diff.added, diff.modified):
@@ -203,11 +222,12 @@ def _checkout(
                 force,
                 relink,
                 state=state,
+                prompt=prompt,
             )
             if progress_callback:
                 progress_callback(entry_path)
         except CheckoutError as exc:
-            failed.extend(exc.target_infos)
+            failed.extend(exc.paths)
 
     if failed:
         raise CheckoutError(failed)
@@ -224,6 +244,7 @@ def checkout(
     quiet=False,
     ignore: Optional["Ignore"] = None,
     state=None,
+    prompt=None,
 ):
     # if protocol(fs_path) not in ["local", cache.fs.protocol]:
     #    raise NotImplementedError
@@ -258,9 +279,10 @@ def checkout(
             progress_callback=progress_callback,
             relink=relink,
             state=state,
+            prompt=prompt,
         )
     except CheckoutError as exc:
-        failed.extend(exc.target_infos)
+        failed.extend(exc.paths)
 
     if diff and state:
         state.save_link(fs_path, fs)
