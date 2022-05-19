@@ -4,8 +4,8 @@ from typing import BinaryIO, Union
 
 from funcy import cached_property, memoize, wrap_with
 
-from .._callback import DEFAULT_CALLBACK, FsspecCallback
 from ..base import AnyFSPath, FileSystem
+from ..callbacks import DEFAULT_CALLBACK, Callback
 from ..errors import ConfigError
 
 
@@ -137,7 +137,7 @@ class HTTPFileSystem(FileSystem):
         self,
         from_file: Union[AnyFSPath, BinaryIO],
         to_info: AnyFSPath,
-        callback: FsspecCallback = DEFAULT_CALLBACK,
+        callback: Callback = DEFAULT_CALLBACK,
         size: int = None,
         **kwargs,
     ) -> None:

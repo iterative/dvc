@@ -2,7 +2,7 @@ import logging
 from itertools import chain
 from typing import TYPE_CHECKING, List, Optional
 
-from dvc.objects.fs._callback import FsspecCallback
+from dvc.objects.fs.callbacks import Callback
 from dvc.objects.fs.generic import test_links, transfer
 
 from .diff import ROOT
@@ -154,7 +154,7 @@ class Link:
 
         cache.makedirs(cache.fs.path.parent(to_path))
         try:
-            with FsspecCallback.as_tqdm_callback(
+            with Callback.as_tqdm_callback(
                 callback,
                 desc=cache.fs.path.name(from_path),
                 bytes=True,

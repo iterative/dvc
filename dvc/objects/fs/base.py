@@ -20,7 +20,7 @@ from typing import (
 from funcy import cached_property
 
 from ..executors import ThreadPoolExecutor
-from ._callback import DEFAULT_CALLBACK, FsspecCallback
+from .callbacks import DEFAULT_CALLBACK, Callback
 from .errors import RemoteMissingDepsError
 
 if TYPE_CHECKING:
@@ -351,7 +351,7 @@ class FileSystem:
         self,
         from_file: Union[AnyFSPath, "BinaryIO"],
         to_info: AnyFSPath,
-        callback: FsspecCallback = DEFAULT_CALLBACK,
+        callback: Callback = DEFAULT_CALLBACK,
         size: int = None,
         **kwargs,
     ) -> None:
@@ -371,7 +371,7 @@ class FileSystem:
         self,
         from_info: AnyFSPath,
         to_info: AnyFSPath,
-        callback: FsspecCallback = DEFAULT_CALLBACK,
+        callback: Callback = DEFAULT_CALLBACK,
         **kwargs,
     ) -> None:
         self.fs.get_file(from_info, to_info, callback=callback, **kwargs)
@@ -415,7 +415,7 @@ class FileSystem:
         self,
         from_info: Union[AnyFSPath, List[AnyFSPath]],
         to_info: Union[AnyFSPath, List[AnyFSPath]],
-        callback: "FsspecCallback" = DEFAULT_CALLBACK,
+        callback: "Callback" = DEFAULT_CALLBACK,
         recursive: bool = False,  # pylint: disable=unused-argument
         batch_size: int = None,
     ):
@@ -443,7 +443,7 @@ class FileSystem:
         self,
         from_info: Union[AnyFSPath, List[AnyFSPath]],
         to_info: Union[AnyFSPath, List[AnyFSPath]],
-        callback: "FsspecCallback" = DEFAULT_CALLBACK,
+        callback: "Callback" = DEFAULT_CALLBACK,
         recursive: bool = False,  # pylint: disable=unused-argument
         batch_size: int = None,
     ) -> None:

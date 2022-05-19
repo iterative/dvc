@@ -10,15 +10,14 @@ if TYPE_CHECKING:
 
     from typing_extensions import ParamSpec
 
-    from dvc.progress import Tqdm
-    from dvc.ui._rich_progress import RichTransferProgress
+    from .._tqdm import Tqdm
 
     _P = ParamSpec("_P")
     _R = TypeVar("_R")
 
 
-class FsspecCallback(fsspec.Callback):
-    """FsspecCallback usable as a context manager, and a few helper methods."""
+class Callback(fsspec.Callback):
+    """Callback usable as a context manager, and a few helper methods."""
 
     @overload
     def wrap_attr(self, fobj: "BinaryIO", method: str = "read") -> "BinaryIO":
@@ -79,8 +78,8 @@ class FsspecCallback(fsspec.Callback):
 
     @classmethod
     def as_callback(
-        cls, maybe_callback: Optional["FsspecCallback"] = None
-    ) -> "FsspecCallback":
+        cls, maybe_callback: Optional["Callback"] = None
+    ) -> "Callback":
         if maybe_callback is None:
             return DEFAULT_CALLBACK
         return maybe_callback
@@ -88,33 +87,27 @@ class FsspecCallback(fsspec.Callback):
     @classmethod
     def as_tqdm_callback(
         cls,
-        callback: Optional["FsspecCallback"] = None,
+        callback: Optional["Callback"] = None,
         **tqdm_kwargs: Any,
-    ) -> "FsspecCallback":
+    ) -> "Callback":
         return callback or TqdmCallback(**tqdm_kwargs)
-
-    @classmethod
-    def as_rich_callback(
-        cls, callback: Optional["FsspecCallback"] = None, **rich_kwargs
-    ):
-        return callback or RichCallback(**rich_kwargs)
 
     def branch(
         self,
         path_1: str,
         path_2: str,
         kwargs: Dict[str, Any],
-        child: "FsspecCallback" = None,
-    ) -> "FsspecCallback":
+        child: "Callback" = None,
+    ) -> "Callback":
         child = kwargs["callback"] = child or DEFAULT_CALLBACK
         return child
 
 
-class NoOpCallback(FsspecCallback, fsspec.callbacks.NoOpCallback):
+class NoOpCallback(Callback, fsspec.callbacks.NoOpCallback):
     pass
 
 
-class TqdmCallback(FsspecCallback):
+class TqdmCallback(Callback):
     def __init__(
         self,
         size: Optional[int] = None,
@@ -130,7 +123,7 @@ class TqdmCallback(FsspecCallback):
 
     @cached_property
     def progress_bar(self):
-        from dvc.progress import Tqdm
+        from .._tqdm import Tqdm
 
         progress_bar = (
             self._progress_bar
@@ -159,76 +152,9 @@ class TqdmCallback(FsspecCallback):
         path_1: str,
         path_2: str,
         kwargs,
-        child: Optional[FsspecCallback] = None,
+        child: Optional[Callback] = None,
     ):
         child = child or TqdmCallback(bytes=True, desc=path_1)
-        return super().branch(path_1, path_2, kwargs, child=child)
-
-
-class RichCallback(FsspecCallback):
-    def __init__(
-        self,
-        size: Optional[int] = None,
-        value: int = 0,
-        progress: "RichTransferProgress" = None,
-        desc: str = None,
-        bytes: bool = False,  # pylint: disable=redefined-builtin
-        unit: str = None,
-        disable: bool = False,
-    ) -> None:
-        self._progress = progress
-        self.disable = disable
-        self._task_kwargs = {
-            "description": desc or "",
-            "bytes": bytes,
-            "unit": unit,
-            "total": size or 0,
-            "visible": False,
-            "progress_type": None if bytes else "summary",
-        }
-        self._stack = ExitStack()
-        super().__init__(size=size, value=value)
-
-    @cached_property
-    def progress(self):
-        from dvc.ui import ui
-        from dvc.ui._rich_progress import RichTransferProgress
-
-        if self._progress is not None:
-            return self._progress
-
-        progress = RichTransferProgress(
-            transient=True,
-            disable=self.disable,
-            console=ui.error_console,
-        )
-        return self._stack.enter_context(progress)
-
-    @cached_property
-    def task(self):
-        return self.progress.add_task(**self._task_kwargs)
-
-    def __enter__(self):
-        return self
-
-    def close(self):
-        self.progress.clear_task(self.task)
-        self._stack.close()
-
-    def call(self, hook_name=None, **kwargs):
-        self.progress.update(
-            self.task,
-            completed=self.value,
-            total=self.size,
-            visible=not self.disable,
-        )
-
-    def branch(
-        self, path_1, path_2, kwargs, child: Optional[FsspecCallback] = None
-    ):
-        child = child or RichCallback(
-            progress=self.progress, desc=path_1, bytes=True
-        )
         return super().branch(path_1, path_2, kwargs, child=child)
 
 

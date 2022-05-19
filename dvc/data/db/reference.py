@@ -9,8 +9,8 @@ from dvc.objects.fs import Schemes
 from ..reference import ReferenceHashFile
 
 if TYPE_CHECKING:
-    from dvc.objects.fs._callback import FsspecCallback
     from dvc.objects.fs.base import AnyFSPath, FileSystem
+    from dvc.objects.fs.callbacks import Callback
     from dvc.objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class ReferenceObjectDB(ObjectDB):
         to_info: "AnyFSPath",
         hash_info: "HashInfo",
         hardlink: bool = False,
-        callback: "FsspecCallback" = None,
+        callback: "Callback" = None,
     ):
         if hash_info.isdir:
             return super()._add_file(

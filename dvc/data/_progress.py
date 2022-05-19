@@ -1,4 +1,4 @@
-from dvc.progress import Tqdm
+from dvc.objects._tqdm import Tqdm
 
 
 class QueryingProgress(Tqdm):

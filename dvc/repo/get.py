@@ -21,7 +21,7 @@ def get(url, path, out=None, rev=None, jobs=None):
 
     from dvc.dvcfile import is_valid_filename
     from dvc.external_repo import external_repo
-    from dvc.fs._callback import FsspecCallback
+    from dvc.fs.callbacks import Callback
 
     out = resolve_output(path, out)
 
@@ -60,7 +60,7 @@ def get(url, path, out=None, rev=None, jobs=None):
                 fs = repo.dvcfs
                 fs_path = fs.from_os_path(path)
 
-            with FsspecCallback.as_tqdm_callback(
+            with Callback.as_tqdm_callback(
                 desc=f"Downloading {fs.path.name(path)}",
                 unit="files",
             ) as cb:

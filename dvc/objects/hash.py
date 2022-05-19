@@ -3,7 +3,7 @@ import io
 import logging
 from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Tuple
 
-from .fs._callback import DEFAULT_CALLBACK, FsspecCallback, TqdmCallback
+from .fs.callbacks import DEFAULT_CALLBACK, Callback, TqdmCallback
 from .fs.implementations.local import localfs
 from .fs.utils import is_exec
 from .hash_info import HashInfo
@@ -86,7 +86,7 @@ def fobj_md5(
 def file_md5(
     fname: "AnyFSPath",
     fs: "FileSystem" = localfs,
-    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    callback: "Callback" = DEFAULT_CALLBACK,
     text: Optional[bool] = None,
 ) -> str:
     size = fs.size(fname) or 0
@@ -113,7 +113,7 @@ def _hash_file(
     fs_path: "AnyFSPath",
     fs: "FileSystem",
     name: str,
-    callback: "FsspecCallback" = DEFAULT_CALLBACK,
+    callback: "Callback" = DEFAULT_CALLBACK,
 ) -> Tuple["str", Dict[str, Any]]:
     info = _adapt_info(fs.info(fs_path), fs.protocol)
 
@@ -141,7 +141,7 @@ class LargeFileHashingCallback(TqdmCallback):
         self._logged = False
 
     # TqdmCallback force renders progress bar on `set_size`.
-    set_size = FsspecCallback.set_size
+    set_size = Callback.set_size
 
     def call(self, hook_name=None, **kwargs):
         if self.size and self.size > self.LARGE_FILE_SIZE:
@@ -160,7 +160,7 @@ def hash_file(
     fs: "FileSystem",
     name: str,
     state: "StateBase" = None,
-    callback: "FsspecCallback" = None,
+    callback: "Callback" = None,
 ) -> Tuple["Meta", "HashInfo"]:
     if state:
         meta, hash_info = state.get(fs_path, fs)

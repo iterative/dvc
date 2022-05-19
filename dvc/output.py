@@ -726,9 +726,9 @@ class Output:
             raise DvcException(msg.format(self.fs_path, name))
 
     def download(self, to, jobs=None):
-        from dvc.fs._callback import FsspecCallback
+        from dvc.fs.callbacks import Callback
 
-        with FsspecCallback.as_tqdm_callback(
+        with Callback.as_tqdm_callback(
             desc=f"Downloading {self.fs.path.name(self.fs_path)}",
             unit="files",
         ) as cb:

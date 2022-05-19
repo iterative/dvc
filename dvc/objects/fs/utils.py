@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Iterator
 from . import system
 
 if TYPE_CHECKING:
-    from ._callback import FsspecCallback
     from .base import AnyFSPath, FileSystem
+    from .callbacks import Callback
 
 
 logger = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ def makedirs(path, exist_ok: bool = False, mode: int = None) -> None:
 def copyfile(
     src: "AnyFSPath",
     dest: "AnyFSPath",
-    callback: "FsspecCallback" = None,
+    callback: "Callback" = None,
     no_progress_bar: bool = False,
     name: str = None,
 ) -> None:
@@ -157,10 +157,10 @@ def copyfile(
     try:
         system.reflink(src, dest)
     except OSError:
-        from ._callback import FsspecCallback
+        from .callbacks import Callback
 
         with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
-            with FsspecCallback.as_tqdm_callback(
+            with Callback.as_tqdm_callback(
                 callback,
                 size=total,
                 bytes=True,

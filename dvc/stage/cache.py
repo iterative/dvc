@@ -213,7 +213,7 @@ class StageCache:
         cached_stage.checkout()
 
     def transfer(self, from_odb, to_odb):
-        from dvc.fs._callback import FsspecCallback
+        from dvc.fs.callbacks import Callback
 
         from_fs = from_odb.fs
         to_fs = from_odb.fs
@@ -236,7 +236,7 @@ class StageCache:
 
             src_name = from_fs.path.name(src)
             parent_name = from_fs.path.name(from_fs.path.parent(src))
-            with FsspecCallback.as_tqdm_callback(
+            with Callback.as_tqdm_callback(
                 desc=src_name,
                 bytes=True,
             ) as cb:

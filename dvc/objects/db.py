@@ -12,8 +12,8 @@ from .file import HashFile
 if TYPE_CHECKING:
     from typing import Tuple
 
-    from .fs._callback import FsspecCallback
     from .fs.base import AnyFSPath, FileSystem
+    from .fs.callbacks import Callback
     from .hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
@@ -92,10 +92,10 @@ class ObjectDB:
         to_info: "AnyFSPath",
         _hash_info: "HashInfo",
         hardlink: bool = False,
-        callback: "FsspecCallback" = None,
+        callback: "Callback" = None,
     ):
         from .fs import generic
-        from .fs._callback import FsspecCallback
+        from .fs.callbacks import Callback
 
         self.makedirs(self.fs.path.parent(to_info))
         return generic.transfer(
@@ -104,7 +104,7 @@ class ObjectDB:
             self.fs,
             to_info,
             hardlink=hardlink,
-            callback=FsspecCallback.as_callback(callback),
+            callback=Callback.as_callback(callback),
         )
 
     def add(
@@ -114,9 +114,9 @@ class ObjectDB:
         hash_info: "HashInfo",
         hardlink: bool = False,
         verify: Optional[bool] = None,
-        callback: "FsspecCallback" = None,
+        callback: "Callback" = None,
     ):
-        from .fs._callback import FsspecCallback
+        from .fs.callbacks import Callback
 
         if self.read_only:
             raise ObjectDBPermissionError("Cannot add to read-only ODB")
@@ -130,7 +130,7 @@ class ObjectDB:
             pass
 
         cache_fs_path = self.hash_to_path(hash_info.value)
-        with FsspecCallback.as_tqdm_callback(
+        with Callback.as_tqdm_callback(
             callback,
             desc=fs.path.name(fs_path),
             bytes=True,
