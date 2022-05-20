@@ -143,7 +143,7 @@ def main(argv=None):  # noqa: C901
     from dvc._debug import debugtools
     from dvc.config import ConfigError
     from dvc.exceptions import DvcException, NotDvcRepoError
-    from dvc.logger import disable_other_loggers
+    from dvc.logger import disable_other_loggers, set_loggers_level
 
     # NOTE: stderr/stdout may be closed if we are running from dvc.daemon.
     # On Linux we directly call cli.main after double forking and closing
@@ -171,7 +171,7 @@ def main(argv=None):  # noqa: C901
             level = logging.TRACE
 
         if level is not None:
-            logger.setLevel(level)
+            set_loggers_level(level)
 
         logger.trace(args)
 
