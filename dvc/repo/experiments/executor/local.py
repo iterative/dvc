@@ -5,8 +5,9 @@ from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property
+from scmrepo.exceptions import SCMError as _SCMError
 
-from dvc.scm import SCM
+from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import remove
 
 from ..base import (
@@ -88,7 +89,10 @@ class TempDirExecutor(BaseLocalExecutor):
         head = EXEC_BRANCH if branch else EXEC_HEAD
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
-        self.scm.merge(merge_rev, squash=True, commit=False)
+        try:
+            self.scm.merge(merge_rev, squash=True, commit=False)
+        except _SCMError as exc:
+            raise GitMergeError(str(exc), scm=self.scm)
 
     def _config(self, cache_dir):
         local_config = os.path.join(
@@ -155,7 +159,10 @@ class WorkspaceExecutor(BaseLocalExecutor):
             )
         )
         merge_rev = self.scm.get_ref(EXEC_MERGE)
-        self.scm.merge(merge_rev, squash=True, commit=False)
+        try:
+            self.scm.merge(merge_rev, squash=True, commit=False)
+        except _SCMError as exc:
+            raise GitMergeError(str(exc), scm=self.scm)
         if branch:
             self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
         elif scm.get_ref(EXEC_BRANCH):
