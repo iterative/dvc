@@ -7,7 +7,6 @@ import math
 import os
 import re
 import sys
-import time
 from typing import Dict, List, Optional, Tuple
 
 import colorama
@@ -70,16 +69,6 @@ def _to_chunks_by_chunks_number(list_to_split, num_chunks):
         chunk_size = 1
 
     return _split(list_to_split, chunk_size)
-
-
-def to_chunks(list_to_split, num_chunks=None, chunk_size=None):
-    if (num_chunks and chunk_size) or (not num_chunks and not chunk_size):
-        raise ValueError(
-            "Only one among `num_chunks` or `chunk_size` must be defined."
-        )
-    if chunk_size:
-        return _split(list_to_split, chunk_size)
-    return _to_chunks_by_chunks_number(list_to_split, num_chunks)
 
 
 # NOTE: Check if we are in a bundle
@@ -156,19 +145,6 @@ def fix_env(env=None):
         env["PATH"] = ":".join(parts)
 
     return env
-
-
-def tmp_fname(fname=""):
-    """Temporary name for a partial download"""
-    from shortuuid import uuid
-
-    return os.fspath(fname) + "." + uuid() + ".tmp"
-
-
-def current_timestamp():
-    import nanotime
-
-    return int(nanotime.timestamp(time.time()))
 
 
 def colorize(message, color=None, style=None):

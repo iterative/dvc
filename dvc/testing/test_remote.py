@@ -1,6 +1,7 @@
 import os
+import shutil
 
-from dvc.utils.fs import move, remove
+from dvc.utils.fs import remove
 
 
 class TestRemote:
@@ -41,7 +42,7 @@ class TestRemote:
         # Move cache and check status
         # See issue https://github.com/iterative/dvc/issues/4383 for details
         backup_dir = dvc.odb.local.cache_dir + ".backup"
-        move(dvc.odb.local.cache_dir, backup_dir)
+        shutil.move(dvc.odb.local.cache_dir, backup_dir)
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, missing={foo_hash})
 
@@ -50,7 +51,7 @@ class TestRemote:
 
         # Restore original cache:
         remove(dvc.odb.local.cache_dir)
-        move(backup_dir, dvc.odb.local.cache_dir)
+        shutil.move(backup_dir, dvc.odb.local.cache_dir)
 
         # Push and check status
         dvc.cloud.push(foo_hashes)

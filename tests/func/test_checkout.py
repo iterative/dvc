@@ -22,12 +22,18 @@ from dvc.fs import LocalFileSystem, system
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils import relpath
-from dvc.utils.fs import remove, walk_files
+from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 
 logger = logging.getLogger("dvc")
+
+
+def walk_files(directory):
+    for root, _, files in os.walk(directory):
+        for f in files:
+            yield os.path.join(root, f)
 
 
 class TestCheckout(TestRepro):
