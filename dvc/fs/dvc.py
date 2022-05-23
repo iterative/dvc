@@ -375,22 +375,19 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         return infos
 
-    def get_file(self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs):
+    def get_file(  # pylint: disable=arguments-differ
+        self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(rpath)
 
         if fs:
             try:
-                fs.get_file(  # pylint: disable=protected-access
-                    fs_path, lpath, callback=callback, **kwargs
-                )
+                fs.get_file(fs_path, lpath, callback=callback, **kwargs)
                 return
             except FileNotFoundError:
                 if not dvc_fs:
                     raise
-
-        dvc_fs.get_file(  # pylint: disable=protected-access
-            dvc_path, lpath, callback=callback, **kwargs
-        )
+        dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
 
     def info(self, path, **kwargs):
         fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)

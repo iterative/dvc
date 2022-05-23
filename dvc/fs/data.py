@@ -164,11 +164,11 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             ret["type"] = "directory"
         return ret
 
-    def get_file(self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs):
+    def get_file(  # pylint: disable=arguments-differ
+        self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
+    ):
         fs, path = self._get_fs_path(rpath)
-        fs.get_file(  # pylint: disable=protected-access
-            path, lpath, callback=callback, **kwargs
-        )
+        fs.get_file(path, lpath, callback=callback, **kwargs)
 
     def checksum(self, path):
         info = self.info(path)
