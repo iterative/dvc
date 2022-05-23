@@ -1,4 +1,9 @@
+import time
+
+import pytest
 from celery import shared_task
+
+from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 
 
 def test_shutdown_no_tasks(test_queue, mocker):
@@ -8,8 +13,8 @@ def test_shutdown_no_tasks(test_queue, mocker):
 
 
 @shared_task
-def _foo(arg="foo"):
-    return arg
+def _foo(arg=None):  # pylint: disable=unused-argument
+    return "foo"
 
 
 def test_shutdown_active_tasks(test_queue, mocker):
@@ -37,8 +42,32 @@ def test_shutdown_active_tasks(test_queue, mocker):
     shutdown_spy.assert_called_once()
 
 
-def test_post_run_after_kill(test_queue, mocker):
-    import time
+def test_shutdown_with_kill(test_queue, mocker):
+
+    sig = _foo.s()
+    mock_entry = mocker.Mock(stash_rev=_foo.name)
+
+    result = sig.freeze()
+
+    shutdown_spy = mocker.patch("celery.app.control.Control.shutdown")
+    mocker.patch.object(
+        test_queue,
+        "_iter_active_tasks",
+        return_value=[(result.id, mock_entry)],
+    )
+    kill_spy = mocker.patch.object(test_queue.proc, "kill")
+
+    test_queue.shutdown(kill=True)
+
+    sig.delay()
+
+    assert result.get() == "foo"
+    assert result.id not in test_queue._shutdown_task_ids
+    kill_spy.assert_called_once_with(mock_entry.stash_rev)
+    shutdown_spy.assert_called_once()
+
+
+def test_post_run_after_kill(test_queue):
 
     from celery import chain
 
@@ -62,8 +91,32 @@ def test_post_run_after_kill(test_queue, mocker):
     assert result_foo.status == "PENDING"
     test_queue.proc.kill("bar")
 
-    while True:
-        if result_foo.status == "SUCCESS":
-            break
-        if time.time() > timeout:
-            raise AssertionError()
+    assert result_foo.get(timeout=10) == "foo"
+
+
+def test_celery_queue_kill(test_queue, mocker):
+
+    mock_entry = mocker.Mock(stash_rev=_foo.name)
+
+    mocker.patch.object(
+        test_queue,
+        "iter_active",
+        return_value={mock_entry},
+    )
+    mocker.patch.object(
+        test_queue,
+        "get_queue_entry_by_names",
+        return_value={"bar": None},
+    )
+    with pytest.raises(UnresolvedExpNamesError):
+        test_queue.kill("bar")
+
+    mocker.patch.object(
+        test_queue,
+        "get_queue_entry_by_names",
+        return_value={"bar": mock_entry},
+    )
+
+    spy = mocker.patch.object(test_queue.proc, "kill")
+    test_queue.kill("bar")
+    assert spy.called_once_with(mock_entry.stash_rev)
