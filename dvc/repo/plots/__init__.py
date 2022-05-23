@@ -196,9 +196,8 @@ class Plots:
             out.plot.pop(prop)
 
     def modify(self, path, props=None, unset=None):
-        from dvc_render.vega_templates import get_template
-
         from dvc.dvcfile import Dvcfile
+        from dvc_render.vega_templates import get_template
 
         props = props or {}
         template = props.get("template")
