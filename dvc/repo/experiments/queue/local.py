@@ -238,7 +238,7 @@ class LocalCeleryQueue(BaseStashQueue):
             raise UnresolvedExpNamesError(missing_rev)
 
         for queue_entry in to_kill:
-            self.proc.kill(queue_entry.name)
+            self.proc.kill(queue_entry.stash_rev)
 
     def _shutdown_handler(self, task_id: str = None, **kwargs):
         if task_id in self._shutdown_task_ids:
@@ -249,13 +249,14 @@ class LocalCeleryQueue(BaseStashQueue):
     def shutdown(self, kill: bool = False):
         from celery.signals import task_postrun
 
-        if kill:
-            raise NotImplementedError
         tasks = list(self._iter_active_tasks())
         if tasks:
             for task_id, _ in tasks:
                 self._shutdown_task_ids.add(task_id)
             task_postrun.connect()(self._shutdown_handler)
+            if kill:
+                for _, task_entry in tasks:
+                    self.proc.kill(task_entry.stash_rev)
         else:
             self.celery.control.shutdown()
 
