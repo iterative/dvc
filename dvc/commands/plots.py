@@ -38,9 +38,8 @@ class CmdPlots(CmdBase):
     def run(self):
         from pathlib import Path
 
-        from dvc_render import render_html
-
         from dvc.render.match import match_renderers
+        from dvc_render import render_html
 
         if self.args.show_vega:
             if not self.args.targets:

@@ -25,7 +25,7 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
-known_first_party = ["dvc", "dvc_data", "dvc_objects", "tests"]
+known_first_party = ["dvc", "dvc_data", "dvc_objects", "dvc_render", "tests"]
 line_length = 79
 
 [tool.pytest.ini_options]

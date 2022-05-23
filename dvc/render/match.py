@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import dpath.util
+
 from dvc_render import RENDERERS
 
 from .convert import to_datapoints
