@@ -81,6 +81,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 "dvc_task.proc.tasks",
             ],
         )
+        app.conf.update({"task_acks_late": True})
         return app
 
     @cached_property
