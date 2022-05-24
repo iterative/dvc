@@ -20,7 +20,8 @@ def setup_exp(entry_dict: Dict[str, Any]) -> str:
         entry_dict: Serialized QueueEntry for this experiment.
 
     Returns:
-        Celery task ID for the queued experiment task chain.
+        Celery task ID for the final task in the queued task chain (experiment
+        cleanup task ID).
     """
     from dvc.repo import Repo
     from dvc_task.proc.tasks import run
@@ -43,9 +44,9 @@ def setup_exp(entry_dict: Dict[str, Any]) -> str:
         collect_exp.s(entry.asdict(), infofile),
         cleanup_exp.si(entry.asdict(), executor.root_dir),
     )
-    exp_chain.freeze()
+    cleanup_task = exp_chain.freeze()
     exp_chain.delay()
-    return exp_chain.id
+    return cleanup_task.id
 
 
 @shared_task
@@ -82,7 +83,7 @@ def collect_exp(
         executor_info.dump_json(infofile)
 
 
-@shared_task(ignore_result=True)
+@shared_task
 def cleanup_exp(  # pylint: disable=unused-argument
     entry_dict: Dict[str, Any], tmp_dir: str
 ) -> None:
