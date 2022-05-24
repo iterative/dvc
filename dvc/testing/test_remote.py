@@ -91,3 +91,18 @@ class TestRemote:
 
         status_dir = dvc.cloud.status(dir_hashes)
         _check_status(status_dir, ok=dir_hashes)
+
+    def test_stage_cache_push_pull(self, tmp_dir, dvc, remote):
+        tmp_dir.gen("foo", "foo")
+        stage = dvc.stage.add(
+            deps=["foo"], outs=["bar"], name="copy-foo-bar", cmd="cp foo bar"
+        )
+        dvc.reproduce(stage.addressing)
+        assert dvc.push(run_cache=True) == 2
+
+        stage_cache_dir = tmp_dir / dvc.stage_cache.cache_dir
+        expected = list(stage_cache_dir.rglob("*"))
+        shutil.rmtree(stage_cache_dir)
+
+        dvc.pull(run_cache=True)
+        assert list(stage_cache_dir.rglob("*")) == expected
