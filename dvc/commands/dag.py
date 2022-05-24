@@ -42,7 +42,7 @@ def _show_mermaid(G, markdown: bool = False):
         for node in nodes:
             total_nodes += 1
             node_id = f"node{total_nodes}"
-            graph += f"\n\t{node_id}[{node}]"
+            graph += f'\n\t{node_id}["{node}"]'
             node_ids[node] = node_id
         edges = sorted((str(a), str(b)) for b, a in pipeline.edges)
         for a, b in edges:
