@@ -3,6 +3,7 @@ from textwrap import dedent
 import pytest
 
 from tests.func.test_repro_multistage import COPY_SCRIPT
+from tests.unit.repo.experiments.conftest import test_queue  # noqa
 
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
@@ -105,5 +106,5 @@ def http_auth_patch(mocker):
 
 
 @pytest.fixture(params=[True, False])
-def workspace(request) -> bool:
+def workspace(request, test_queue) -> bool:  # noqa
     return request.param
