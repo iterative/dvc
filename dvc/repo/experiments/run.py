@@ -25,7 +25,8 @@ def run(
     of `repro` for that experiment.
     """
     if run_all:
-        return repo.experiments.reproduce_queued(jobs=jobs)
+        entries = list(repo.experiments.celery_queue.iter_queued())
+        return repo.experiments.reproduce_celery(entries, jobs=jobs)
 
     if params:
         params = loads_param_overrides(params)
