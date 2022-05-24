@@ -168,6 +168,7 @@ class Experiments:
         if not entries:
             return results
 
+        # TODO: re-enable --jobs concurrency
         self.celery_queue.spawn_worker()
         failed = []
         for entry in entries:
