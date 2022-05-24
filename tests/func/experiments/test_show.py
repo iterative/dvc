@@ -13,7 +13,7 @@ from dvc.repo.experiments.executor.base import (
     BaseExecutor,
     ExecutorInfo,
 )
-from dvc.repo.experiments.refs import EXPS_STASH, ExpRefInfo
+from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
@@ -104,14 +104,13 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
 
 
 @pytest.mark.vscode
-@pytest.mark.xfail(reason="celery tests disabled")
 def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     baseline_rev = scm.get_rev()
 
     dvc.experiments.run(
         exp_stage.addressing, params=["foo=2"], queue=True, name="test_name"
     )
-    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
 
     results = dvc.experiments.show()[baseline_rev]
     assert len(results) == 2
@@ -127,7 +126,7 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     new_rev = scm.get_rev()
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
 
     results = dvc.experiments.show()[new_rev]
     assert len(results) == 2
@@ -365,19 +364,20 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     assert info.location in cap.out
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
-def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
+def test_show_running_executor(tmp_dir, scm, dvc, exp_stage, mocker):
     baseline_rev = scm.get_rev()
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
-    exp_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
 
-    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
-    pidfile = os.path.join(
-        pid_dir,
-        exp_rev,
-        f"{exp_rev}{BaseExecutor.INFOFILE_EXT}",
+    queue = dvc.experiments.celery_queue
+    entries = list(queue.iter_queued())
+    mocker.patch.object(
+        dvc.experiments.celery_queue,
+        "iter_active",
+        return_value=entries,
     )
+    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    pidfile = queue.get_infofile_path(entries[0].stash_rev)
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
@@ -390,46 +390,37 @@ def test_show_running_executor(tmp_dir, scm, dvc, exp_stage):
     assert not results["workspace"]["baseline"]["data"]["running"]
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
-def test_show_running_checkpoint(
-    tmp_dir, scm, dvc, checkpoint_stage, workspace, mocker
-):
+def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     from dvc.repo.experiments.executor.local import TempDirExecutor
-    from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_BRANCH
 
     baseline_rev = scm.get_rev()
     dvc.experiments.run(
         checkpoint_stage.addressing, params=["foo=2"], queue=True
     )
-    stash_rev = dvc.experiments.scm.resolve_rev(f"{EXPS_STASH}@{{0}}")
+    queue = dvc.experiments.celery_queue
+    entries = list(queue.iter_queued())
 
     run_results = dvc.experiments.run(run_all=True)
     checkpoint_rev = first(run_results)
     exp_ref = first(exp_refs_by_rev(scm, checkpoint_rev))
 
-    pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-    executor = (
-        BaseExecutor.DEFAULT_LOCATION
-        if workspace
-        else TempDirExecutor.DEFAULT_LOCATION
+    mocker.patch.object(
+        dvc.experiments.celery_queue,
+        "iter_active",
+        return_value=entries,
     )
+    pidfile = queue.get_infofile_path(entries[0].stash_rev)
     info = make_executor_info(
         git_url="foo.git",
         baseline_rev=baseline_rev,
-        location=executor,
+        location=TempDirExecutor.DEFAULT_LOCATION,
     )
-    rev = "workspace" if workspace else stash_rev
-    pidfile = os.path.join(pid_dir, f"{rev}{BaseExecutor.INFOFILE_EXT}")
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
     mocker.patch.object(
         BaseExecutor, "fetch_exps", return_value=[str(exp_ref)]
     )
-    if workspace:
-        scm.set_ref(EXEC_BRANCH, str(exp_ref), symbolic=True)
-        scm.set_ref(EXEC_BASELINE, str(baseline_rev))
-        scm.checkout(str(exp_ref))
 
     results = dvc.experiments.show()
 
