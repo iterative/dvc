@@ -88,19 +88,15 @@ def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
     assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
-def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, caplog):
-    from dvc.exceptions import ReproductionError
-
+def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, capsys, test_queue):
     tmp_dir.gen("params.yaml", "foo: 2")
 
-    mocker.patch(
-        "concurrent.futures.Future.exception",
-        return_value=ReproductionError(exp_stage.addressing),
+    mocker.patch.object(
+        dvc.experiments.celery_queue, "get_result", return_value=None
     )
-    with caplog.at_level(logging.ERROR):
-        dvc.experiments.run(exp_stage.addressing, tmp_dir=True)
-        assert "Failed to reproduce experiment" in caplog.text
+    dvc.experiments.run(exp_stage.addressing, tmp_dir=True)
+    output = capsys.readouterr()
+    assert "Failed to reproduce experiment" in output.err
 
 
 @pytest.mark.parametrize(
@@ -170,7 +166,7 @@ def test_add_params(tmp_dir, scm, dvc, changes):
 
 
 @pytest.mark.parametrize("queue", [True, False])
-def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
+def test_apply(tmp_dir, scm, dvc, exp_stage, queue, test_queue):
     from dvc.exceptions import InvalidArgumentError
     from dvc.repo.experiments.exceptions import ApplyConflictError
 
@@ -215,9 +211,8 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue):
     )
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
 def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
-    from dvc.repo.experiments.refs import EXPS_STASH
+    from dvc.repo.experiments.refs import CELERY_STASH
 
     init_rev = scm.get_rev()
     assert dvc.experiments.get_baseline(init_rev) is None
@@ -227,7 +222,7 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(exp_rev) == init_rev
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
-    assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{0}}") == init_rev
+    assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{0}}") == init_rev
 
     scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
     scm.commit("promote exp")
@@ -239,11 +234,11 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(exp_rev) == promote_rev
 
     dvc.experiments.run(exp_stage.addressing, params=["foo=5"], queue=True)
-    assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{0}}") == promote_rev
-    assert dvc.experiments.get_baseline(f"{EXPS_STASH}@{{1}}") == init_rev
+    assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{0}}") == promote_rev
+    assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{1}}") == init_rev
 
 
-def test_update_py_params(tmp_dir, scm, dvc):
+def test_update_py_params(tmp_dir, scm, dvc, test_queue):
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
@@ -406,8 +401,6 @@ def test_no_scm(tmp_dir):
 
 
 def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
-    if not workspace:
-        pytest.skip("celery tests disabled")
     tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.scm_gen("params.yaml", "foo: 1", commit="track params")
     stage = dvc.run(
