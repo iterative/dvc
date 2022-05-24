@@ -59,6 +59,6 @@ def add_parser(experiments_subparsers, parent_parser):
             "If provided, experiments from the specified Git repository "
             " will be listed instead of local ones."
         ),
-        metavar="[<git_remote>]",
+        metavar="<git_remote>",
     )
     experiments_list_parser.set_defaults(func=CmdExperimentsList)
