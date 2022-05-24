@@ -181,9 +181,24 @@ class LocalCeleryQueue(BaseStashQueue):
             result = AsyncResult(task_id)
             if not result.ready():
                 yield _TaskEntry(task_id, entry)
+                continue
+            cleanup_id = result.get()
+            cleanup_result = AsyncResult(cleanup_id)
+            if not cleanup_result.ready():
+                yield _TaskEntry(task_id, entry)
 
-    def iter_active(self) -> Generator[QueueEntry, None, None]:
+    def iter_active(
+        self, ignore_collected: bool = False
+    ) -> Generator[QueueEntry, None, None]:
         for _, entry in self._iter_active_tasks():
+            if ignore_collected:
+                infofile = self.get_infofile_path(entry.stash_rev)
+                try:
+                    executor_info = ExecutorInfo.load_json(infofile)
+                    if executor_info.collected:
+                        continue
+                except FileNotFoundError:
+                    pass
             yield entry
 
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
@@ -288,7 +303,9 @@ class WorkspaceQueue(BaseStashQueue):
                 entry.name,
             )
 
-    def iter_active(self) -> Generator[QueueEntry, None, None]:
+    def iter_active(
+        self, ignore_collected: bool = False
+    ) -> Generator[QueueEntry, None, None]:
         # Workspace run state is reflected in the workspace itself and does not
         # need to be handled via the queue
         raise NotImplementedError
