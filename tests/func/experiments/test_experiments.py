@@ -558,16 +558,16 @@ def test_subrepo(tmp_dir, scm, workspace):
     assert resolve_rev(scm, ref_info.name) == exp
 
 
-@pytest.mark.xfail(reason="celery tests disabled")
-def test_queue(tmp_dir, scm, dvc, exp_stage, mocker):
+def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
+    """Test running with full (non-pytest-celery) dvc-task queue."""
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
     assert len(dvc.experiments.stash_revs) == 2
 
-    repro_mock = mocker.spy(dvc.experiments, "_reproduce_revs")
+    repro_spy = mocker.spy(dvc.experiments, "reproduce_celery")
     results = dvc.experiments.run(run_all=True)
     assert len(results) == 2
-    repro_mock.assert_called_with(jobs=1)
+    repro_spy.assert_called_once_with(entries=mocker.ANY, jobs=1)
 
     expected = {"foo: 2", "foo: 3"}
     metrics = set()
