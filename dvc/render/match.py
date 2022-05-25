@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 import dpath.util
 
@@ -10,20 +10,18 @@ if TYPE_CHECKING:
     from dvc.types import StrPath
 
 
-def get_files(plots_data: Dict) -> List:
-    files = set()
-    for rev in plots_data.keys():
-        for file in plots_data[rev].get("data", {}).keys():
-            files.add(file)
-    sorted_files = sorted(files)
-    return sorted_files
-
-
 def group_by_filename(plots_data: Dict) -> Dict:
-    files = get_files(plots_data)
-    grouped = {
-        file: dpath.util.search(plots_data, ["*", "*", file]) for file in files
-    }
+    grouped: Dict[str, Dict] = {}
+
+    for revision in plots_data.keys():
+        data = plots_data[revision].get("data", {})
+        for file in data.keys():
+            content = data.get(file)
+            if content:
+                dpath.util.new(
+                    grouped, [file, revision, "data", file], content
+                )
+
     return grouped
 
 

@@ -6,7 +6,6 @@ import pytest
 from funcy import first
 
 from dvc import stage as stage_module
-from dvc.render.match import get_files
 
 pytest.importorskip("dvclive", reason="no dvclive")
 
@@ -122,7 +121,7 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
     assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
-    files = get_files(plots_data)
+    files = list(plots_data["workspace"]["data"])
     assert os.path.join("logs", "scalars", "accuracy.tsv") in files
     assert os.path.join("logs", "scalars", "loss.tsv") in files
     assert os.path.join("logs", "images", "0", "image.jpg") in files
