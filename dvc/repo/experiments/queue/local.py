@@ -219,18 +219,14 @@ class LocalCeleryQueue(BaseStashQueue):
 
     def kill(self, revs: Collection[str]) -> None:
         to_kill: Set[QueueEntry] = set()
-        not_active: List[str] = []
         name_dict: Dict[
             str, Optional[QueueEntry]
-        ] = self.get_queue_entry_by_names(set(revs))
+        ] = self.match_queue_entry_by_name(set(revs), self.iter_active())
 
         missing_rev: List[str] = []
-        active_queue_entry = set(self.iter_active())
         for rev, queue_entry in name_dict.items():
             if queue_entry is None:
                 missing_rev.append(rev)
-            elif queue_entry not in active_queue_entry:
-                not_active.append(rev)
             else:
                 to_kill.add(queue_entry)
 
@@ -267,15 +263,11 @@ class LocalCeleryQueue(BaseStashQueue):
     ):
         from dvc.ui import ui
 
-        queue_entry: Optional[QueueEntry] = self.get_queue_entry_by_names(
-            {rev}
+        queue_entry: Optional[QueueEntry] = self.match_queue_entry_by_name(
+            {rev}, self.iter_active()
         ).get(rev)
         if queue_entry is None:
             raise UnresolvedExpNamesError([rev])
-        active_queue_entry = set(self.iter_active())
-        if queue_entry not in active_queue_entry:
-            ui.write("Cannot attach to an unstarted task")
-            return
         for line in self.proc.follow(queue_entry.stash_rev, encoding):
             ui.write(line)
 
