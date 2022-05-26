@@ -18,6 +18,7 @@ from .utils import (
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.repo.experiments.queue.local import LocalCeleryQueue
     from dvc.scm import Git
 
 
@@ -85,8 +86,10 @@ def _resolve_exp_by_name(
             commit_ref_dict[exp_ref] = exp_name
 
     if not git_remote:
-        _named_entries = (
-            repo.experiments.celery_queue.get_queue_entry_by_names(remained)
+        celery_queue: "LocalCeleryQueue" = repo.experiments.celery_queue
+
+        _named_entries = celery_queue.match_queue_entry_by_name(
+            remained, celery_queue.iter_queued(), celery_queue.iter_active()
         )
         for exp_name, entry in _named_entries.items():
             if entry is not None:
