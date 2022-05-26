@@ -8,10 +8,12 @@ from typing import (
     Collection,
     Dict,
     Generator,
+    Iterable,
     List,
     Mapping,
     NamedTuple,
     Optional,
+    Tuple,
     Type,
 )
 
@@ -556,29 +558,29 @@ class BaseStashQueue(ABC):
 
         return results
 
-    def get_queue_entry_by_names(
+    def match_queue_entry_by_name(
         self,
         exp_names: Collection[str],
+        *entries: Iterable[QueueEntry],
     ) -> Dict[str, Optional[QueueEntry]]:
         from funcy import concat
-        from scmrepo.exceptions import RevError as InternalRevError
 
-        exp_name_set = set(exp_names)
+        entry_name_dict: Dict[str, QueueEntry] = {}
+        entry_rev_list: List[Tuple[str, QueueEntry]] = []
+        for queue_entry in concat(*entries):
+            entry_name_dict[queue_entry.name] = queue_entry
+            entry_rev_list.append((queue_entry.stash_rev, queue_entry))
+
         result: Dict[str, Optional[QueueEntry]] = {}
-        rev_entries = {}
-
-        for entry in concat(self.iter_queued(), self.iter_active()):
-            if entry.name in exp_name_set:
-                result[entry.name] = entry
+        for exp_name in exp_names:
+            if exp_name in entry_name_dict:
+                result[exp_name] = entry_name_dict[exp_name]
+                continue
+            for rev, entry in entry_rev_list:
+                if rev.startswith(exp_name):
+                    result[exp_name] = entry
+                    break
             else:
-                rev_entries[entry.stash_rev] = entry
-
-        for exp_name in exp_name_set.difference(result.keys()):
-            try:
-                rev = self.scm.resolve_rev(exp_name)
-                if rev in rev_entries:
-                    result[exp_name] = rev_entries[rev]
-            except InternalRevError:
                 result[exp_name] = None
 
         return result
