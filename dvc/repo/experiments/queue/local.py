@@ -15,6 +15,8 @@ from typing import (
     Set,
 )
 
+from celery import chain
+from celery.canvas import Signature
 from funcy import cached_property, first
 from kombu.message import Message
 
@@ -33,7 +35,7 @@ from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from ..stash import ExpStashEntry
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
-from .tasks import setup_exp
+from .tasks import cleanup_exp, collect_exp, setup_exp
 
 if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
@@ -134,10 +136,25 @@ class LocalCeleryQueue(BaseStashQueue):
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
         entry = self._stash_exp(*args, **kwargs)
-        # schedule executor setup
-        # TODO: chain separated git/dvc setup tasks
-        self.celery.tasks[setup_exp.name].delay(entry.asdict())
+        task_chain = self._chain_exp(entry)
+        task_chain.freeze()
+        task_chain.delay()
         return entry
+
+    def _chain_exp(self, entry: QueueEntry) -> Signature:
+        """Return a complete experiment chain for this queue entry."""
+        infofile = self.get_infofile_path(entry.stash_rev)
+        cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
+        return self.celery.signature(
+            chain(
+                setup_exp.s(entry.asdict()),
+                self.proc.run_signature(
+                    cmd, name=entry.stash_rev, immutable=True
+                ),
+                collect_exp.s(entry.asdict()),
+                cleanup_exp.s(entry.asdict()),
+            )
+        )
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
     # will automatically consume available experiments.
@@ -319,9 +336,7 @@ class WorkspaceQueue(BaseStashQueue):
                 entry.name,
             )
 
-    def iter_active(
-        self, ignore_collected: bool = False
-    ) -> Generator[QueueEntry, None, None]:
+    def iter_active(self) -> Generator[QueueEntry, None, None]:
         # Workspace run state is reflected in the workspace itself and does not
         # need to be handled via the queue
         raise NotImplementedError

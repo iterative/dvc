@@ -360,7 +360,6 @@ class Experiments:
             return exp_baseline
         raise BaselineMismatchError(exp_baseline, baseline_sha)
 
-    @scm_locked
     def get_baseline(self, rev):
         """Return the baseline rev for an experiment rev."""
         return self._get_baseline(rev)
