@@ -195,7 +195,7 @@ def show(
             )
         # collect celery experiments
         for entry in chain(
-            repo.experiments.celery_queue.iter_active(ignore_collected=True),
+            repo.experiments.celery_queue.iter_active(),
             repo.experiments.celery_queue.iter_queued(),
         ):
             stash_rev = entry.stash_rev
