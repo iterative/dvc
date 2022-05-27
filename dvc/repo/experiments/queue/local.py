@@ -111,6 +111,9 @@ class LocalCeleryQueue(BaseStashQueue):
             pool="threads",
             concurrency=1,
             prefetch_multiplier=1,
+            without_heartbeat=True,
+            without_mingle=True,
+            without_gossip=True,
             timeout=10,
         )
 
