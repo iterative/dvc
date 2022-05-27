@@ -1,6 +1,7 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from celery import chain, shared_task
+from celery import shared_task
+from celery.signals import task_postrun
 from celery.utils.log import get_task_logger
 
 from dvc.utils.fs import remove
@@ -13,18 +14,13 @@ logger = get_task_logger(__name__)
 
 
 @shared_task
-def setup_exp(entry_dict: Dict[str, Any]) -> str:
-    """Setup (queue) an experiment.
+def setup_exp(entry_dict: Dict[str, Any]) -> None:
+    """Setup an experiment.
 
     Arguments:
         entry_dict: Serialized QueueEntry for this experiment.
-
-    Returns:
-        Celery task ID for the final task in the queued task chain (experiment
-        cleanup task ID).
     """
     from dvc.repo import Repo
-    from dvc_task.proc.tasks import run
 
     entry = QueueEntry.from_dict(entry_dict)
     repo = Repo(entry.dvc_root)
@@ -33,28 +29,24 @@ def setup_exp(entry_dict: Dict[str, Any]) -> str:
     executor = BaseStashQueue.setup_executor(
         repo.experiments, entry, TempDirExecutor
     )
-    proc = repo.experiments.celery_queue.proc
     infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
     executor.info.dump_json(infofile)
-    cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
-
-    # schedule execution + cleanup
-    exp_chain = chain(
-        proc.run(cmd, name=entry.stash_rev),
-        collect_exp.s(entry.asdict(), infofile),
-        cleanup_exp.si(entry.asdict(), executor.root_dir),
-    )
-    cleanup_task = exp_chain.freeze()
-    exp_chain.delay()
-    return cleanup_task.id
 
 
 @shared_task
 def collect_exp(
     proc_dict: Dict[str, Any],
     entry_dict: Dict[str, Any],
-    infofile: str,
-) -> None:
+) -> str:
+    """Collect results for an experiment.
+
+    Arguments:
+        proc_dict: Serialized ProcessInfo for experiment executor process.
+        entry_dict: Serialized QueueEntry for this experiment.
+
+    Returns:
+        Directory to be cleaned up after this experiment.
+    """
     from dvc.repo import Repo
     from dvc_task.proc.process import ProcessInfo
 
@@ -65,6 +57,7 @@ def collect_exp(
 
     entry = QueueEntry.from_dict(entry_dict)
     repo = Repo(entry.dvc_root)
+    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
     executor_info = ExecutorInfo.load_json(infofile)
     logger.debug("Collecting experiment info '%s'", str(executor_info))
     executor = TempDirExecutor.from_info(executor_info)
@@ -78,13 +71,38 @@ def collect_exp(
                 logger.debug("Collected experiment '%s'", rev[:7])
         else:
             logger.debug("Exec result was None")
-    finally:
-        executor_info.collected = True
-        executor_info.dump_json(infofile)
+    except Exception:  # pylint: disable=broad-except
+        # Log exceptions but do not re-raise so that task chain execution
+        # continues
+        logger.exception("Failed to collect experiment")
+    return executor.root_dir
 
 
 @shared_task
 def cleanup_exp(  # pylint: disable=unused-argument
-    entry_dict: Dict[str, Any], tmp_dir: str
+    tmp_dir: str, entry_dict: Dict[str, Any]
 ) -> None:
+    """Cleanup after an experiment.
+
+    Arguments:
+        tmp_dir: Temp directory to be removed.
+        entry_dict: Serialized QueueEntry for this experiment.
+    """
     remove(tmp_dir)
+
+
+@task_postrun.connect(sender=cleanup_exp)
+def _cleanup_postrun_handler(
+    args: List[Any] = None,
+    **kwargs,
+):
+    from dvc.repo import Repo
+
+    assert args
+    (_, entry_dict) = args
+    entry = QueueEntry.from_dict(entry_dict)
+    repo = Repo(entry.dvc_root)
+    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
+    executor_info = ExecutorInfo.load_json(infofile)
+    executor_info.collected = True
+    executor_info.dump_json(infofile)
