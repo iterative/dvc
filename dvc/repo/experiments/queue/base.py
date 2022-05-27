@@ -190,15 +190,8 @@ class BaseStashQueue(ABC):
         """Iterate over items in the queue."""
 
     @abstractmethod
-    def iter_active(
-        self, ignore_collected: bool = False
-    ) -> Generator[QueueEntry, None, None]:
-        """Iterate over items which are being actively processed.
-
-        Arguments:
-            ignore_collected: Ignore experiments which have been collected (but
-                not cleaned up).
-        """
+    def iter_active(self) -> Generator[QueueEntry, None, None]:
+        """Iterate over items which are being actively processed."""
 
     @abstractmethod
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
