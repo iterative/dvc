@@ -75,7 +75,9 @@ class CmdPlots(CmdBase):
                 out if self.args.json else os.path.join(out, "static")
             )
             renderers = match_renderers(
-                plots_data=plots_data, out=renderers_out
+                plots_data=plots_data,
+                out=renderers_out,
+                templates_dir=self.repo.plots.templates_dir,
             )
 
             if self.args.show_vega:

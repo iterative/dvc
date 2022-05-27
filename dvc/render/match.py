@@ -49,7 +49,7 @@ def match_renderers(
                 if out is not None:
                     plot_properties["out"] = out
                 if templates_dir is not None:
-                    plot_properties["templates_dir"] = templates_dir
+                    plot_properties["template_dir"] = templates_dir
                 datapoints, plot_properties = to_datapoints(
                     renderer_class, group, plot_properties
                 )

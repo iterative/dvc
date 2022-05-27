@@ -228,7 +228,8 @@ class Plots:
 
     @cached_property
     def templates_dir(self):
-        return os.path.join(self.repo.dvc_dir, "plots")
+        if self.repo.dvc_dir:
+            return os.path.join(self.repo.dvc_dir, "plots")
 
 
 def _is_plot(out: "Output") -> bool:
