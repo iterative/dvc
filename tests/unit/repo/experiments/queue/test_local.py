@@ -105,7 +105,7 @@ def test_celery_queue_kill(test_queue, mocker):
     )
     mocker.patch.object(
         test_queue,
-        "get_queue_entry_by_names",
+        "match_queue_entry_by_name",
         return_value={"bar": None},
     )
     with pytest.raises(UnresolvedExpNamesError):
@@ -113,7 +113,7 @@ def test_celery_queue_kill(test_queue, mocker):
 
     mocker.patch.object(
         test_queue,
-        "get_queue_entry_by_names",
+        "match_queue_entry_by_name",
         return_value={"bar": mock_entry},
     )
 
