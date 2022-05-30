@@ -90,6 +90,7 @@ def open(  # noqa, pylint: disable=redefined-builtin
         mode (str, optional): Specifies the mode in which the file is opened.
             Defaults to "r" (read).
             Mirrors the namesake parameter in builtin `open()`_.
+            Only reading `mode` is supported.
         encoding(str, optional): `Codec`_ used to decode the file contents.
             Defaults to None.
             This should only be used in text mode.
@@ -104,6 +105,7 @@ def open(  # noqa, pylint: disable=redefined-builtin
 
     Raises:
         AttributeError: If this method is not used as a context manager.
+        ValueError: If non-read `mode` is used.
 
     Examples:
 
@@ -178,6 +180,8 @@ def open(  # noqa, pylint: disable=redefined-builtin
         https://docs.python.org/3/glossary.html#term-file-object
 
     """
+    if "r" not in mode:
+        raise ValueError("Only reading `mode` is supported.")
 
     args = (path,)
     kwargs = {
