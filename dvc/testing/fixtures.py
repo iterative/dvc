@@ -27,21 +27,12 @@ __all__ = [
 CACHE = {}  # type: ignore
 
 
-def _fs_copy(src, dst, ignore=None):
-    import shutil
-
-    if os.path.isdir(src):
-        shutil.copytree(src, dst, ignore=ignore)
-    else:
-        shutil.copy2(src, dst)
-
-
 @pytest.fixture(scope="session")
 def make_tmp_dir(tmp_path_factory, request, worker_id):
     def make(
         name, *, scm=False, dvc=False, subdir=False
     ):  # pylint: disable=W0621
-        from shutil import ignore_patterns
+        from shutil import copytree, ignore_patterns
 
         from scmrepo.git import Git
 
@@ -59,12 +50,7 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
         # ignore sqlite files from .dvc/tmp. We might not be closing the cache
         # connection resulting in PermissionErrors in Windows.
         ignore = ignore_patterns("cache.db*")
-        for entry in os.listdir(cache):
-            _fs_copy(
-                os.path.join(cache, entry),
-                os.path.join(path, entry),
-                ignore=ignore,
-            )
+        copytree(cache, path, dirs_exist_ok=True, ignore=ignore)
         new_dir = TmpDir(path)
         str_path = os.fspath(new_dir)
         if dvc:
