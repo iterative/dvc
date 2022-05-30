@@ -71,7 +71,7 @@ def test_post_run_after_kill(test_queue):
 
     from celery import chain
 
-    sig_bar = test_queue.proc.run(
+    sig_bar = test_queue.proc.run_signature(
         ["python3", "-c", "import time; time.sleep(5)"], name="bar"
     )
     result_bar = sig_bar.freeze()
