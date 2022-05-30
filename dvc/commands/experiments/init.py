@@ -80,7 +80,7 @@ class CmdExperimentsInit(CmdBase):
     ) -> None:
         from dvc.utils import humanize
 
-        path_fmt = "[green]{0}[/green]".format
+        path_fmt = "[green]{}[/green]".format
         if new_deps:
             deps_paths = humanize.join(map(path_fmt, new_deps))
             ui.write(f"Creating dependencies: {deps_paths}", styled=True)

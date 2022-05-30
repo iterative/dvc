@@ -659,7 +659,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
     rows = list(csv.reader(cap.out.strip().split("\n")))
     # [3:] To skip header, workspace and baseline(master)
     # which are not affected by order
-    params = tuple([int(row[-1]) for row in rows[3:]])
+    params = tuple(int(row[-1]) for row in rows[3:])
 
     if sort_order == "asc":
         assert params == (0, 1, 2)

@@ -139,10 +139,10 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - name: Set up Python 3.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v3
       with:
-        python-version: 3.7
+        python-version: 3.8
     - name: Install
       run: pip install ".[all,tests]"
     - name: Build packages

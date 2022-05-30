@@ -1,9 +1,9 @@
 # pylint: disable=unidiomatic-typecheck
 import json
 from json import encoder
+from unittest.mock import create_autospec
 
 import pytest
-from mock import create_autospec
 
 from dvc.utils.collections import (
     apply_diff,

@@ -1,6 +1,5 @@
 import ssl
-
-from mock import patch
+from unittest.mock import patch
 
 from dvc.fs import HTTPFileSystem
 

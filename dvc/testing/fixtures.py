@@ -60,7 +60,6 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
         # connection resulting in PermissionErrors in Windows.
         ignore = ignore_patterns("cache.db*")
         for entry in os.listdir(cache):
-            # shutil.copytree's dirs_exist_ok is only available in >=3.8
             _fs_copy(
                 os.path.join(cache, entry),
                 os.path.join(path, entry),

@@ -50,7 +50,7 @@ def filter_fields(datapoints: List[Dict], fields: List[str]):
 
 def verify_image(tmp_dir, version, filename, content, html_path, json_result):
     assert os.path.exists(html_path)
-    with open(html_path, "r", encoding="utf-8") as fd:
+    with open(html_path, encoding="utf-8") as fd:
         html_content = fd.read()
 
     image_data = {}
@@ -92,7 +92,7 @@ def verify_vega(
 ):
 
     assert os.path.exists(html_path)
-    with open(html_path, "r", encoding="utf-8") as fd:
+    with open(html_path, encoding="utf-8") as fd:
         html_content = fd.read()
     assert _remove_blanks(
         json.dumps(dpath.util.get(json_result, [filename, 0, "content"]))
