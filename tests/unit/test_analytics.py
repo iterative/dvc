@@ -1,7 +1,7 @@
 import json
 import platform
+from unittest import mock
 
-import mock
 import pytest
 from voluptuous import Any, Schema
 

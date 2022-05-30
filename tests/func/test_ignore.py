@@ -19,8 +19,7 @@ def _to_pattern_info_list(str_list: List):
 
 
 def walk_files(dvc, *args):
-    for fs_path in dvc.dvcignore.find(*args):
-        yield fs_path
+    yield from dvc.dvcignore.find(*args)
 
 
 @pytest.mark.parametrize("filename", ["ignored", "тест"])

@@ -16,7 +16,7 @@ jobs:
           access_token: ${{ github.token }}
       - uses: actions/setup-python@v3
         with:
-            python-version: 3.7
+            python-version: 3.8
       - uses: iterative/dvc-bench@main
         with:
             pytest_options: "-k 'test_init or test_help'"

@@ -207,7 +207,7 @@ class YAMLValidationError(PrettyDvcException):
         self.path = path or ""
 
         message = f"'{rel}' validation failed"
-        message += " in revision '{}'".format(rev[:7]) if rev else ""
+        message += f" in revision '{rev[:7]}'" if rev else ""
         if len(self.exc.errors) > 1:
             message += f": {len(self.exc.errors)} errors"
         super().__init__(f"{message}")

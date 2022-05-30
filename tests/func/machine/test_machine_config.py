@@ -122,7 +122,7 @@ def test_machine_rename_success(
         return_value=True,
     )
 
-    os.makedirs((tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo"))
+    os.makedirs(tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo")
 
     assert main(["machine", "rename", "foo", "bar"]) == 0
     cap = capsys.readouterr()
@@ -158,7 +158,7 @@ def test_machine_rename_error(
     tmp_dir, scm, dvc, machine_config, caplog, mocker
 ):
     config_file = tmp_dir / ".dvc" / "config"
-    os.makedirs((tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo"))
+    os.makedirs(tmp_dir / ".dvc" / "tmp" / "machine" / "terraform" / "foo")
 
     def cmd_error(self, source, destination, **kwargs):
         raise tpi.TPIError("test error")

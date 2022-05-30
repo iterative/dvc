@@ -2,9 +2,9 @@
 
 import getpass
 import os
+from unittest.mock import mock_open, patch
 
 import pytest
-from mock import mock_open, patch
 
 from dvc.fs import DEFAULT_SSH_PORT, SSHFileSystem
 
