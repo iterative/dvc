@@ -160,7 +160,6 @@ class BaseStashQueue(ABC):
             return datetime.fromtimestamp(commit.commit_time)
 
         for queue_entry in self.iter_active():
-            print(queue_entry, queue_entry.name)
             result.append(
                 {
                     "rev": queue_entry.stash_rev,
