@@ -319,7 +319,7 @@ def test_ls_remote_repo(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url)
     match_files(
         files,
@@ -340,7 +340,7 @@ def test_ls_remote_repo_recursive(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url, recursive=True)
     match_files(
         files,
@@ -369,7 +369,7 @@ def test_ls_remote_git_only_repo_recursive(git_dir):
     with git_dir.chdir():
         git_dir.scm_gen(FS_STRUCTURE, commit="init")
 
-    url = f"file://{git_dir}"
+    url = f"file://{git_dir.as_posix()}"
     files = Repo.ls(url, recursive=True)
     match_files(
         files,
@@ -387,7 +387,7 @@ def test_ls_remote_repo_with_path_dir(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     path = "model"
     files = Repo.ls(url, path)
     match_files(
@@ -408,7 +408,7 @@ def test_ls_remote_repo_with_rev(erepo_dir):
         erepo_dir.dvc_gen(DVC_STRUCTURE, commit="dvc")
 
     rev = erepo_dir.scm.list_all_commits()[1]
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url, rev=rev)
     match_files(
         files,
@@ -427,7 +427,7 @@ def test_ls_remote_repo_with_rev_recursive(erepo_dir):
         erepo_dir.scm_gen(FS_STRUCTURE, commit="init")
 
     rev = erepo_dir.scm.list_all_commits()[1]
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     files = Repo.ls(url, rev=rev, recursive=True)
     match_files(
         files,
