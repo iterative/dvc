@@ -322,6 +322,15 @@ class LocalCeleryQueue(BaseStashQueue):
         for line in self.proc.follow(queue_entry.stash_rev, encoding):
             ui.write(line)
 
+    def status(self) -> List[Dict[str, Optional[str]]]:
+        results = super().status()
+        if not self.celery.control.inspect().active():
+            for result in results:
+                if result["status"] == "Running":
+                    result["status"] = "Pending"
+
+        return results
+
 
 class WorkspaceQueue(BaseStashQueue):
     def put(self, *args, **kwargs) -> QueueEntry:

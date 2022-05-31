@@ -120,3 +120,51 @@ def test_celery_queue_kill(test_queue, mocker):
     spy = mocker.patch.object(test_queue.proc, "kill")
     test_queue.kill("bar")
     assert spy.called_once_with(mock_entry.stash_rev)
+
+
+@pytest.mark.parametrize("running", [True, False])
+def test_celery_queue_status(test_queue, mocker, running):
+    from datetime import datetime
+
+    queued_entry = mocker.Mock(stash_rev="foo")
+    queued_entry.name = None
+    active_entry = mocker.Mock(stash_rev="bar")
+    active_entry.name = "name"
+    commit_mock = mocker.Mock(commit_time=1653980600)
+
+    mocker.patch.object(
+        test_queue.scm,
+        "resolve_commit",
+        return_value=commit_mock,
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_queued",
+        return_value=[queued_entry],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_active",
+        return_value=[active_entry],
+    )
+    mocker.patch.object(
+        test_queue.celery.control.inspect(),
+        "active",
+        return_value=running,
+    )
+
+    result = test_queue.status()
+    assert result == [
+        {
+            "name": "name",
+            "rev": "bar",
+            "status": "Running" if running else "Pending",
+            "timestamp": datetime(2022, 5, 31, 15, 3, 20),
+        },
+        {
+            "name": None,
+            "rev": "foo",
+            "status": "Queued",
+            "timestamp": datetime(2022, 5, 31, 15, 3, 20),
+        },
+    ]

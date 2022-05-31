@@ -149,17 +149,18 @@ class BaseStashQueue(ABC):
         self._remove_revs(stash_revs)
         return removed
 
-    def status(self) -> List[Mapping[str, Optional[str]]]:
+    def status(self) -> List[Dict[str, Optional[str]]]:
         """Show the status of exp tasks in queue"""
         from datetime import datetime
 
-        result: List[Mapping[str, Optional[str]]] = []
+        result: List[Dict[str, Optional[str]]] = []
 
         def _get_timestamp(rev):
             commit = self.scm.resolve_commit(rev)
             return datetime.fromtimestamp(commit.commit_time)
 
         for queue_entry in self.iter_active():
+            print(queue_entry, queue_entry.name)
             result.append(
                 {
                     "rev": queue_entry.stash_rev,
