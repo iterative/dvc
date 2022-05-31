@@ -266,7 +266,7 @@ def test_get_pipeline_tracked_outs(
     dvc.scm.commit("add pipeline stage")
 
     with git_dir.chdir():
-        Repo.get(f"file://{os.fspath(tmp_dir)}", "bar", out="baz")
+        Repo.get(f"file://{tmp_dir.as_posix()}", "bar", out="baz")
         assert (git_dir / "baz").read_text() == "foo"
 
 
