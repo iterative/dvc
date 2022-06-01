@@ -184,14 +184,10 @@ def checkpoints_metric(show_results, metric_file, metric_name):
     tmp.pop("workspace")
     tmp = first(tmp.values())
     tmp.pop("baseline")
-    return list(
-        map(
-            lambda exp: exp["data"]["metrics"][metric_file]["data"][
-                metric_name
-            ],
-            list(tmp.values()),
-        )
-    )
+    return [
+        exp["data"]["metrics"][metric_file]["data"][metric_name]
+        for exp in tmp.values()
+    ]
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
