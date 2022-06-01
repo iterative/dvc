@@ -1,7 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from celery import shared_task
-from celery.signals import task_postrun
 from celery.utils.log import get_task_logger
 
 from dvc.utils.fs import remove
@@ -14,11 +13,14 @@ logger = get_task_logger(__name__)
 
 
 @shared_task
-def setup_exp(entry_dict: Dict[str, Any]) -> None:
+def setup_exp(entry_dict: Dict[str, Any]) -> str:
     """Setup an experiment.
 
     Arguments:
         entry_dict: Serialized QueueEntry for this experiment.
+
+    Returns:
+        Root executor (temp) directory for this experiment.
     """
     from dvc.repo import Repo
 
@@ -31,6 +33,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> None:
     )
     infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
     executor.info.dump_json(infofile)
+    return executor.root_dir
 
 
 @shared_task
@@ -91,18 +94,35 @@ def cleanup_exp(  # pylint: disable=unused-argument
     remove(tmp_dir)
 
 
-@task_postrun.connect(sender=cleanup_exp)
-def _cleanup_postrun_handler(
-    args: List[Any] = None,
-    **kwargs,
-):
+def _set_collected(infofile: str):
+    try:
+        executor_info = ExecutorInfo.load_json(infofile)
+        executor_info.collected = True
+        executor_info.dump_json(infofile)
+    except FileNotFoundError:
+        pass
+
+
+@shared_task
+def run_exp(entry_dict: Dict[str, Any]) -> None:
+    """Run a full experiment.
+
+    Experiment subtasks are executed inline as one atomic operation.
+
+    Arguments:
+        entry_dict: Serialized QueueEntry for this experiment.
+    """
     from dvc.repo import Repo
 
-    assert args
-    (_, entry_dict) = args
     entry = QueueEntry.from_dict(entry_dict)
     repo = Repo(entry.dvc_root)
-    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
-    executor_info = ExecutorInfo.load_json(infofile)
-    executor_info.collected = True
-    executor_info.dump_json(infofile)
+    queue = repo.experiments.celery_queue
+    infofile = queue.get_infofile_path(entry.stash_rev)
+    root_dir = setup_exp.s(entry_dict)()
+    try:
+        cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
+        proc_dict = queue.proc.run_signature(cmd, name=entry.stash_rev)()
+        collect_exp.s(proc_dict, entry_dict)()
+    finally:
+        cleanup_exp.s(root_dir, entry_dict)()
+        _set_collected(infofile)
