@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import os
-import time
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
@@ -15,8 +14,6 @@ from typing import (
     Set,
 )
 
-from celery import chain
-from celery.canvas import Signature
 from funcy import cached_property, first
 from kombu.message import Message
 
@@ -35,7 +32,7 @@ from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from ..stash import ExpStashEntry
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
-from .tasks import cleanup_exp, collect_exp, setup_exp
+from .tasks import run_exp
 
 if TYPE_CHECKING:
     from dvc.repo.experiments import Experiments
@@ -136,25 +133,8 @@ class LocalCeleryQueue(BaseStashQueue):
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
         entry = self._stash_exp(*args, **kwargs)
-        task_chain = self._chain_exp(entry)
-        task_chain.freeze()
-        task_chain.delay()
+        self.celery.signature(run_exp.s(entry.asdict())).delay()
         return entry
-
-    def _chain_exp(self, entry: QueueEntry) -> Signature:
-        """Return a complete experiment chain for this queue entry."""
-        infofile = self.get_infofile_path(entry.stash_rev)
-        cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
-        return self.celery.signature(
-            chain(
-                setup_exp.s(entry.asdict()),
-                self.proc.run_signature(
-                    cmd, name=entry.stash_rev, immutable=True
-                ),
-                collect_exp.s(entry.asdict()),
-                cleanup_exp.s(entry.asdict()),
-            )
-        )
 
     # NOTE: Queue consumption should not be done directly. Celery worker(s)
     # will automatically consume available experiments.
@@ -180,7 +160,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
     def _iter_queued(self) -> Generator[_MessageEntry, None, None]:
         for msg in self.celery.iter_queued():
-            if msg.headers.get("task") != setup_exp.name:
+            if msg.headers.get("task") != run_exp.name:
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
@@ -188,44 +168,20 @@ class LocalCeleryQueue(BaseStashQueue):
 
     def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
         for msg in self.celery.iter_processed():
-            if msg.headers.get("task") != setup_exp.name:
+            if msg.headers.get("task") != run_exp.name:
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_active_tasks(self) -> Generator[_TaskEntry, None, None]:
-        from celery.exceptions import TimeoutError as _CeleryTimeout
-
-        for msg, entry in self._iter_processed():
-            setup_id = msg.headers["id"]
-            try:
-                self._get_cleanup_result(setup_id, timeout=0.0)
-            except _CeleryTimeout:
-                yield _TaskEntry(setup_id, entry)
-
-    @staticmethod
-    def _get_cleanup_result(setup_id: str, timeout: Optional[float] = None):
-        from celery.exceptions import TimeoutError as _CeleryTimeout
         from celery.result import AsyncResult
 
-        def _get(result: AsyncResult, expires: Optional[float]):
-            timeout = None if expires is None else expires - time.time()
-            if timeout is not None and timeout <= 0.0 and not result.ready():
-                raise _CeleryTimeout
-            return result.get(timeout=timeout)
-
-        expires: Optional[float] = (
-            None if timeout is None else time.time() + timeout
-        )
-        setup_result = AsyncResult(setup_id)
-        _get(setup_result, expires)
-        run_result = setup_result.children[0]
-        _get(run_result, expires)
-        collect_result = run_result.children[0]
-        _get(collect_result, expires)
-        cleanup_result = collect_result.children[0]
-        _get(cleanup_result, expires)
+        for msg, entry in self._iter_processed():
+            task_id = msg.headers["id"]
+            result = AsyncResult(task_id)
+            if not result.ready():
+                yield _TaskEntry(task_id, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:
         for _, entry in self._iter_active_tasks():
@@ -238,6 +194,7 @@ class LocalCeleryQueue(BaseStashQueue):
         self, entry: QueueEntry, timeout: Optional[float] = None
     ) -> Optional[ExecutorResult]:
         from celery.exceptions import TimeoutError as _CeleryTimeout
+        from celery.result import AsyncResult
 
         def _load_info(rev: str) -> ExecutorInfo:
             infofile = self.get_infofile_path(rev)
@@ -254,11 +211,12 @@ class LocalCeleryQueue(BaseStashQueue):
         for queue_entry in self.iter_queued():
             if entry.stash_rev == queue_entry.stash_rev:
                 raise DvcException("Experiment has not been started.")
-        for setup_id, active_entry in self._iter_active_tasks():
+        for task_id, active_entry in self._iter_active_tasks():
             if entry.stash_rev == active_entry.stash_rev:
-                logger.debug("Waiting for exp task '%s' to complete", setup_id)
+                logger.debug("Waiting for exp task '%s' to complete", task_id)
                 try:
-                    self._get_cleanup_result(setup_id, timeout=timeout)
+                    result = AsyncResult(task_id)
+                    result.get(timeout=timeout)
                 except _CeleryTimeout as exc:
                     raise DvcException(
                         "Timed out waiting for exp to finish."
