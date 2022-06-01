@@ -83,7 +83,7 @@ def test_post_run_after_kill(test_queue):
     timeout = time.time() + 10
 
     while True:
-        if result_bar.status == "RUNNING":
+        if result_bar.status == "STARTED" or result_bar.ready():
             break
         if time.time() > timeout:
             raise AssertionError()
