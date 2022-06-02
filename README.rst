@@ -178,14 +178,16 @@ Ubuntu / Debian (deb)
 .. code-block:: bash
 
    sudo wget https://dvc.org/deb/dvc.list -O /etc/apt/sources.list.d/dvc.list
-   sudo apt-get update
-   sudo apt-get install dvc
+   wget -qO - https://dvc.org/deb/iterative.asc | sudo apt-key add -
+   sudo apt update
+   sudo apt install dvc
 
 Fedora / CentOS (rpm)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
    sudo wget https://dvc.org/rpm/dvc.repo -O /etc/yum.repos.d/dvc.repo
+   sudo rpm --import https://dvc.org/rpm/iterative.asc
    sudo yum update
    sudo yum install dvc
 
