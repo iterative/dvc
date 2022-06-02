@@ -124,18 +124,21 @@ class LocalCeleryQueue(BaseStashQueue):
         )
 
     def spawn_worker(self):
+        from shortuuid import uuid
+
         from dvc_task.proc.process import ManagedProcess
 
         logger.debug("Spawning exp queue worker")
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
         node_name = f"dvc-exp-{wdir_hash}-1@localhost"
         cmd = ["exp", "queue-worker", node_name]
+        name = "dvc-exp-worker"
+        if logger.getEffectiveLevel() < logging.INFO:
+            name = name + str(uuid())
         if os.name == "nt":
             daemonize(cmd)
         else:
-            ManagedProcess.spawn(
-                ["dvc"] + cmd, wdir=self.wdir, name="dvc-exp-worker"
-            )
+            ManagedProcess.spawn(["dvc"] + cmd, wdir=self.wdir, name=name)
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
