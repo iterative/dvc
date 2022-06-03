@@ -155,6 +155,6 @@ def _remove_commited_exps(
 def _remove_queued_exps(
     repo: "Repo", named_entries: Mapping[str, QueueEntry]
 ) -> List[str]:
-    for entry in named_entries.values():
-        repo.experiments.celery_queue.remove(entry.stash_rev)
+    stash_rev_list = [entry.stash_rev for entry in named_entries.values()]
+    repo.experiments.celery_queue.remove(stash_rev_list)
     return list(named_entries.keys())
