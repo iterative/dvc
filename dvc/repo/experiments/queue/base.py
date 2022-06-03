@@ -13,7 +13,6 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
-    Tuple,
     Type,
     Union,
 )
@@ -141,15 +140,18 @@ class BaseStashQueue(ABC):
         Returns:
             Revisions (or names) which were removed.
         """
-        to_remove = {}
         removed: List[str] = []
-        for stash_rev, stash_entry in self.stash.stash_revs.items():
-            if stash_rev in revs:
-                to_remove[stash_rev] = stash_entry
-                removed.append(stash_rev)
-            elif stash_entry.name in revs:
-                to_remove[stash_rev] = stash_entry
-                removed.append(stash_entry.name)
+        to_remove: Dict[str, ExpStashEntry] = {}
+        queue_entries = self.match_queue_entry_by_name(
+            revs, self.iter_queued()
+        )
+        for name, entry in queue_entries.items():
+            if entry:
+                to_remove[entry.stash_rev] = self.stash.stash_revs[
+                    entry.stash_rev
+                ]
+                removed.append(name)
+
         self._remove_revs(to_remove)
         return removed
 
@@ -216,9 +218,17 @@ class BaseStashQueue(ABC):
         )
         return result
 
-    @abstractmethod
     def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
         """Remove the specified entries from the queue by stash revision."""
+        for index in sorted(
+            (
+                entry.stash_index
+                for entry in stash_revs.values()
+                if entry.stash_index is not None
+            ),
+            reverse=True,
+        ):
+            self.stash.drop(index)
 
     @abstractmethod
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
@@ -601,7 +611,7 @@ class BaseStashQueue(ABC):
         from funcy import concat
 
         entry_name_dict: Dict[str, QueueEntry] = {}
-        entry_rev_list: List[Tuple[str, QueueEntry]] = []
+        entry_rev_dict: Dict[str, QueueEntry] = {}
         for entry in concat(*entries):
             if isinstance(entry, QueueDoneResult):
                 queue_entry: QueueEntry = entry.entry
@@ -617,19 +627,19 @@ class BaseStashQueue(ABC):
                 name = queue_entry.name
             if name:
                 entry_name_dict[name] = queue_entry
-            entry_rev_list.append((queue_entry.stash_rev, queue_entry))
+            entry_rev_dict[queue_entry.stash_rev] = queue_entry
 
         result: Dict[str, Optional[QueueEntry]] = {}
         for exp_name in exp_names:
+            result[exp_name] = None
             if exp_name in entry_name_dict:
                 result[exp_name] = entry_name_dict[exp_name]
                 continue
-            for rev, entry in entry_rev_list:
-                if rev.startswith(exp_name):
-                    result[exp_name] = entry
-                    break
-            else:
-                result[exp_name] = None
+            if self.scm.is_sha(exp_name):
+                for rev in entry_rev_dict:
+                    if rev.startswith(exp_name.lower()):
+                        result[exp_name] = entry_rev_dict[rev]
+                        break
 
         return result
 
