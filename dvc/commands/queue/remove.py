@@ -19,8 +19,13 @@ class CmdQueueRemove(CmdBase):
                 revs=self.args.experiment
             )
 
-        removed = ", ".join(removed_list)
-        ui.write(f"Removed experiments in queue: {removed}")
+        if removed_list:
+            removed = ", ".join(removed_list)
+            ui.write(f"Removed experiments in queue: {removed}")
+        else:
+            ui.write(
+                f"No experiments found in queue named {self.args.experiment}"
+            )
 
         return 0
 
