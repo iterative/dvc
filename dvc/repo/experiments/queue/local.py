@@ -149,17 +149,12 @@ class LocalCeleryQueue(BaseStashQueue):
         raise NotImplementedError
 
     def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
-        to_drop: List[int] = []
         try:
             for msg, queue_entry in self._iter_queued():
                 if queue_entry.stash_rev in stash_revs:
                     self.celery.reject(msg.delivery_tag)
-                    stash_entry = stash_revs[queue_entry.stash_rev]
-                    assert stash_entry.stash_index is not None
-                    to_drop.append(stash_entry.stash_index)
         finally:
-            for index in sorted(to_drop, reverse=True):
-                self.stash.drop(index)
+            super()._remove_revs(stash_revs)
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
         for _, entry in self._iter_queued():
@@ -340,17 +335,6 @@ class WorkspaceQueue(BaseStashQueue):
         )
         executor = self.setup_executor(self.repo.experiments, entry)
         return QueueGetResult(entry, executor)
-
-    def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
-        for index in sorted(
-            (
-                entry.stash_index
-                for entry in stash_revs.values()
-                if entry.stash_index is not None
-            ),
-            reverse=True,
-        ):
-            self.stash.drop(index)
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
         for rev, entry in self.stash.stash_revs:
