@@ -192,3 +192,50 @@ def test_show_without_targets_specified(tmp_dir, dvc, scm, file):
     )
 
     assert dvc.params.show() == {"": {"data": {file: {"data": data}}}}
+
+
+def test_deps_multi_stage(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen(
+        {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
+    )
+    run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
+    run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
+
+    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.commit("add stage")
+
+    assert dvc.params.show(revs=["master"], deps=True) == {
+        "master": {
+            "data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}
+        }
+    }
+
+
+def test_deps_with_targets(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen(
+        {"foo": "foo", "params.yaml": "foo: bar\nxyz: val\nabc: ignore"}
+    )
+    run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
+    run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
+
+    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.commit("add stage")
+
+    assert dvc.params.show(targets=["params.yaml"], deps=True) == {
+        "": {"data": {"params.yaml": {"data": {"foo": "bar", "xyz": "val"}}}}
+    }
+
+
+def test_deps_with_bad_target(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "foobar": "",
+            "params.yaml": "foo: bar\nxyz: val\nabc: ignore",
+        }
+    )
+    run_copy("foo", "bar", name="copy-foo-bar", params=["foo"])
+    run_copy("foo", "bar1", name="copy-foo-bar-1", params=["xyz"])
+    scm.add(["params.yaml", PIPELINE_FILE])
+    scm.commit("add stage")
+    assert dvc.params.show(targets=["foobar"], deps=True) == {}

@@ -27,7 +27,7 @@ def _is_params(dep: "Output"):
 
 
 def _collect_configs(
-    repo: "Repo", rev, targets=None
+    repo: "Repo", rev, targets=None, duplicates=False
 ) -> Tuple[List["Output"], List[str]]:
 
     params, fs_paths = collect(
@@ -36,6 +36,7 @@ def _collect_configs(
         deps=True,
         output_filter=_is_params,
         rev=rev,
+        duplicates=duplicates,
     )
     all_fs_paths = fs_paths + [p.fs_path for p in params]
     if not targets:
@@ -63,7 +64,7 @@ def _read_params(
     deps=False,
     onerror: Optional[Callable] = None,
 ):
-    res: Dict[str, Dict] = defaultdict(dict)
+    res: Dict[str, Dict] = defaultdict(lambda: defaultdict(dict))
     fs_paths = copy(params_fs_paths)
 
     if deps:
@@ -73,7 +74,7 @@ def _read_params(
             )
             if params_dict:
                 name = os.sep.join(repo.fs.path.relparts(param.fs_path))
-                res[name] = params_dict
+                res[name]["data"].update(params_dict["data"])
     else:
         fs_paths += [param.fs_path for param in params]
 
@@ -138,7 +139,9 @@ def show(repo, revs=None, targets=None, deps=False, onerror: Callable = None):
 
 
 def _gather_params(repo, rev, targets=None, deps=False, onerror=None):
-    param_outs, params_fs_paths = _collect_configs(repo, rev, targets=targets)
+    param_outs, params_fs_paths = _collect_configs(
+        repo, rev, targets=targets, duplicates=deps
+    )
     params = _read_params(
         repo,
         params=param_outs,
