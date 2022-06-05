@@ -38,8 +38,10 @@ def brancher(  # noqa: E302
         )
 
     cwd_parts = ()
-    if self.fs.path.isin(self.fs.path.getcwd(), self.root_dir):
-        cwd_parts = self.fs.path.relparts(self.fs.path.getcwd(), self.root_dir)
+    if self.fs.path.isin(self.fs.path.getcwd(), self.scm.root_dir):
+        cwd_parts = self.fs.path.relparts(
+            self.fs.path.getcwd(), self.scm.root_dir
+        )
 
     saved_fs = self.fs
     saved_root = self.root_dir
