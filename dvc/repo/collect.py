@@ -51,8 +51,8 @@ def _collect_paths(
     return target_paths
 
 
-def _filter_duplicates(
-    outs: Outputs, fs_paths: StrPaths
+def _filter_outs(
+    outs: Outputs, fs_paths: StrPaths, duplicates=False
 ) -> Tuple[Outputs, StrPaths]:
     res_outs: Outputs = []
     fs_res_paths = fs_paths
@@ -61,8 +61,9 @@ def _filter_duplicates(
         fs_path = out.repo.dvcfs.from_os_path(out.fs_path)
         if fs_path in fs_paths:
             res_outs.append(out)
-            # MUTATING THE SAME LIST!!
-            fs_res_paths.remove(fs_path)
+            if not duplicates:
+                # MUTATING THE SAME LIST!!
+                fs_res_paths.remove(fs_path)
 
     return res_outs, fs_res_paths
 
@@ -74,6 +75,7 @@ def collect(
     output_filter: FilterFn = None,
     rev: str = None,
     recursive: bool = False,
+    duplicates: bool = False,
 ) -> Tuple[Outputs, StrPaths]:
     assert targets or output_filter
 
@@ -85,4 +87,4 @@ def collect(
 
     target_paths = _collect_paths(repo, targets, recursive=recursive, rev=rev)
 
-    return _filter_duplicates(outs, target_paths)
+    return _filter_outs(outs, target_paths, duplicates=duplicates)
