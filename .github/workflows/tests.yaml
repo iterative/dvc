@@ -34,7 +34,7 @@ jobs:
         pip install ".[dev]" pre-commit
     - name: Check README
       run: python setup.py checkdocs
-    - uses: pre-commit/action@v2.0.3
+    - uses: pre-commit/action@v3.0.0
   tests:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
