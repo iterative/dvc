@@ -54,28 +54,28 @@ def locked(f):
 class Repo:
     DVC_DIR = ".dvc"
 
-    from dvc.repo.add import add
-    from dvc.repo.checkout import checkout
-    from dvc.repo.commit import commit
+    from dvc.repo.add import add  # type: ignore[misc]
+    from dvc.repo.checkout import checkout  # type: ignore[misc]
+    from dvc.repo.commit import commit  # type: ignore[misc]
     from dvc.repo.destroy import destroy  # type: ignore[misc]
-    from dvc.repo.diff import diff
-    from dvc.repo.fetch import fetch
+    from dvc.repo.diff import diff  # type: ignore[misc]
+    from dvc.repo.fetch import fetch  # type: ignore[misc]
     from dvc.repo.freeze import freeze, unfreeze  # type: ignore[misc]
-    from dvc.repo.gc import gc
+    from dvc.repo.gc import gc  # type: ignore[misc]
     from dvc.repo.get import get as _get  # type: ignore[misc]
     from dvc.repo.get_url import get_url as _get_url  # type: ignore[misc]
     from dvc.repo.imp import imp  # type: ignore[misc]
-    from dvc.repo.imp_url import imp_url
+    from dvc.repo.imp_url import imp_url  # type: ignore[misc]
     from dvc.repo.install import install  # type: ignore[misc]
     from dvc.repo.ls import ls as _ls  # type: ignore[misc]
-    from dvc.repo.move import move
-    from dvc.repo.pull import pull
-    from dvc.repo.push import push
-    from dvc.repo.remove import remove
-    from dvc.repo.reproduce import reproduce
-    from dvc.repo.run import run
-    from dvc.repo.status import status
-    from dvc.repo.update import update
+    from dvc.repo.move import move  # type: ignore[misc]
+    from dvc.repo.pull import pull  # type: ignore[misc]
+    from dvc.repo.push import push  # type: ignore[misc]
+    from dvc.repo.remove import remove  # type: ignore[misc]
+    from dvc.repo.reproduce import reproduce  # type: ignore[misc]
+    from dvc.repo.run import run  # type: ignore[misc]
+    from dvc.repo.status import status  # type: ignore[misc]
+    from dvc.repo.update import update  # type: ignore[misc]
 
     ls = staticmethod(_ls)
     get = staticmethod(_get)
