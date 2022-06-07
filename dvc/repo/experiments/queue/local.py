@@ -286,6 +286,7 @@ class WorkspaceQueue(BaseStashQueue):
             stash_entry.baseline_rev,
             stash_entry.branch,
             stash_entry.name,
+            stash_entry.head_rev,
         )
         executor = self.setup_executor(self.repo.experiments, entry)
         return QueueGetResult(entry, executor)
@@ -311,6 +312,7 @@ class WorkspaceQueue(BaseStashQueue):
                 entry.baseline_rev,
                 entry.branch,
                 entry.name,
+                entry.head_rev,
             )
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:

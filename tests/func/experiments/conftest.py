@@ -92,6 +92,31 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.fixture
+def failed_exp_stage(tmp_dir, scm, dvc):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.stage.add(
+        cmd="python -c 'import sys; sys.exit(1)'",
+        metrics_no_cache=["metrics.yaml"],
+        params=["foo"],
+        name="copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+    return stage
+
+
+@pytest.fixture
 def http_auth_patch(mocker):
     from dulwich.client import HTTPUnauthorized
 
