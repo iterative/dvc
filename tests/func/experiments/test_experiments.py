@@ -117,6 +117,9 @@ def test_failed_exp_celery(
     output = capsys.readouterr()
     assert "Failed to reproduce experiment" in output.err
     assert len(dvc.experiments.celery_queue.failed_stash) == 1
+    assert (
+        first(dvc.experiments.celery_queue.status()).get("status") == "Failed"
+    )
 
 
 @pytest.mark.parametrize(
