@@ -54,6 +54,7 @@ class QueueEntry:
     baseline_rev: str
     branch: Optional[str]
     name: Optional[str]
+    head_rev: Optional[str] = None
 
     def __eq__(self, other: object):
         return (
@@ -77,21 +78,30 @@ class QueueGetResult(NamedTuple):
     executor: BaseExecutor
 
 
+class QueueDoneResult(NamedTuple):
+    entry: QueueEntry
+    result: Optional[ExecutorResult]
+
+
 class BaseStashQueue(ABC):
     """Naive Git-stash based experiment queue.
 
     Maps queued experiments to (Git) stash reflog entries.
     """
 
-    def __init__(self, repo: "Repo", ref: str):
+    def __init__(
+        self, repo: "Repo", ref: str, failed_ref: Optional[str] = None
+    ):
         """Construct a queue.
 
         Arguments:
             scm: Git SCM instance for this queue.
             ref: Git stash ref for this queue.
+            failed_ref: Failed run Git stash ref for this queue.
         """
         self.repo = repo
         self.ref = ref
+        self.failed_ref = failed_ref
 
     @property
     def scm(self) -> "Git":
@@ -100,6 +110,10 @@ class BaseStashQueue(ABC):
     @cached_property
     def stash(self) -> ExpStash:
         return ExpStash(self.scm, self.ref)
+
+    @cached_property
+    def failed_stash(self) -> Optional[ExpStash]:
+        return ExpStash(self.scm, self.failed_ref) if self.failed_ref else None
 
     @cached_property
     def pid_dir(self) -> str:
@@ -387,6 +401,7 @@ class BaseStashQueue(ABC):
             baseline_rev,
             branch,
             name,
+            stash_head,
         )
 
     def _stash_commit_deps(self, *args, **kwargs):
@@ -577,3 +592,23 @@ class BaseStashQueue(ABC):
                 result[exp_name] = None
 
         return result
+
+    def stash_failed(self, entry: QueueEntry) -> None:
+        """Add an entry to the failed exp stash.
+
+        Arguments:
+            entry: Failed queue entry to add. ``entry.stash_rev`` must be a
+                valid Git stash commit.
+        """
+        if self.failed_stash is not None:
+            assert entry.head_rev
+            logger.debug("Stashing failed exp '%s'", entry.stash_rev[:7])
+            self.scm.set_ref(
+                self.failed_stash.ref,
+                entry.stash_rev,
+                message=self.failed_stash.format_message(
+                    entry.head_rev,
+                    baseline_rev=entry.baseline_rev,
+                    name=entry.name,
+                ),
+            )
