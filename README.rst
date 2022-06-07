@@ -7,8 +7,9 @@
 • `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+• `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 
-|CI| |Maintainability| |Coverage| |DOI|
+|CI| |Maintainability| |Coverage| |VSCode| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
@@ -23,7 +24,8 @@ learning projects:
 
 #. Modify data, code, or parameters and run your modified pipeline.
 
-#. Iterate and track each experiment.
+#. Iterate and track each experiment from the command line or `VS Code
+   <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
 
 #. Share, compare, and reconstruct experiments.
 
@@ -35,8 +37,9 @@ learning projects:
 #. **Iterate** fast with straightforward YAML pipelines. When you make changes,
    only run the steps impacted by those changes.
 
-#. **Track** experiments in your local Git repo (no servers needed) and choose
-   which to keep and share.
+#. **Track** experiments in your local Git repo (no servers needed) and `VS Code
+   <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
+   Choose which to keep and share.
 
 #. **Compare** any data, code, parameters, metrics, or plots and analyze however
    you want.
@@ -100,6 +103,9 @@ Installation
 
 There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
+
+To use with VS Code, install DVC and then install the `DVC Extension
+<https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
 
 Snap (Snapcraft/Linux)
 ----------------------
@@ -312,3 +318,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Contribs| image:: https://contrib.rocks/image?repo=iterative/dvc
    :target: https://github.com/iterative/dvc/graphs/contributors
    :alt: Contributors
+
+.. |VSCode| image:: https://vsmarketplacebadge.apphb.com/version/Iterative.dvc.svg
+   :target: https://marketplace.visualstudio.com/items?itemName=Iterative.dvc
+   :alt: VS Code Extension
