@@ -49,8 +49,14 @@ class ExpStash(Stash):
 
     @classmethod
     def format_message(
-        cls, rev: str, baseline_rev: str, name: Optional[str] = None
+        cls,
+        rev: str,
+        baseline_rev: str,
+        name: Optional[str] = None,
+        branch: Optional[str] = None,
     ) -> str:
-        return cls.MESSAGE_FORMAT.format(
+        msg = cls.MESSAGE_FORMAT.format(
             rev=rev, baseline_rev=baseline_rev, name=name if name else ""
         )
+        branch_msg = f":{branch}" if branch else ""
+        return f"{msg}{branch_msg}"
