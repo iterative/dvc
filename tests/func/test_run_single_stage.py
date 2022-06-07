@@ -31,7 +31,7 @@ from dvc.stage.exceptions import (
     StagePathOutsideError,
 )
 from dvc.utils.serialize import load_yaml
-from dvc_objects.hash import file_md5
+from dvc_objects.hashfile.hash import file_md5
 from tests.basic_env import TestDvc, TestDvcGit
 
 

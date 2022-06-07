@@ -139,8 +139,8 @@ def test_upper_case_remote(tmp_dir, dvc, local_cloud):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
+    from dvc_data.objects.tree import Tree
     from dvc_data.stage import stage
-    from dvc_data.tree import Tree
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 

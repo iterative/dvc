@@ -258,7 +258,7 @@ def get_index(dvc, rev):
 
 @pytest.mark.parametrize("rev", ["workspace", "HEAD"])
 def test_used_objs(tmp_dir, scm, dvc, run_copy, rev):
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
     dvc.config["core"]["autostage"] = True
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}}, "foo": "foo"})
