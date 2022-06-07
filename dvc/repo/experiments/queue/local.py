@@ -31,7 +31,7 @@ from ..executor.base import (
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from ..stash import ExpStashEntry
-from .base import BaseStashQueue, QueueEntry, QueueGetResult
+from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .tasks import run_exp
 
 if TYPE_CHECKING:
@@ -183,9 +183,22 @@ class LocalCeleryQueue(BaseStashQueue):
             if not result.ready():
                 yield _TaskEntry(task_id, entry)
 
+    def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
+        from celery.result import AsyncResult
+
+        for msg, entry in self._iter_processed():
+            task_id = msg.headers["id"]
+            result = AsyncResult(task_id)
+            if result.ready():
+                yield _TaskEntry(task_id, entry)
+
     def iter_active(self) -> Generator[QueueEntry, None, None]:
         for _, entry in self._iter_active_tasks():
             yield entry
+
+    def iter_done(self) -> Generator[QueueDoneResult, None, None]:
+        for _, entry in self._iter_done_tasks():
+            yield QueueDoneResult(entry, self.get_result(entry))
 
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
@@ -318,6 +331,9 @@ class WorkspaceQueue(BaseStashQueue):
     def iter_active(self) -> Generator[QueueEntry, None, None]:
         # Workspace run state is reflected in the workspace itself and does not
         # need to be handled via the queue
+        raise NotImplementedError
+
+    def iter_done(self) -> Generator[QueueDoneResult, None, None]:
         raise NotImplementedError
 
     def reproduce(self) -> Dict[str, Dict[str, str]]:
