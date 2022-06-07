@@ -11,8 +11,8 @@ from .base import Dependency
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
-    from dvc_objects.file import HashFile
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.file import HashFile
+    from dvc_objects.hashfile.hash_info import HashInfo
 
 
 class RepoDependency(Dependency):
@@ -103,8 +103,8 @@ class RepoDependency(Dependency):
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.utils import as_posix
+        from dvc_data.objects.tree import Tree, TreeError
         from dvc_data.stage import stage
-        from dvc_data.tree import Tree, TreeError
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
@@ -156,7 +156,7 @@ class RepoDependency(Dependency):
         from dvc.exceptions import CircularImportError
         from dvc.fs.dvc import DvcFileSystem
         from dvc_data.db.reference import ReferenceObjectDB
-        from dvc_data.tree import Tree
+        from dvc_data.objects.tree import Tree
 
         if not isinstance(odb, ReferenceObjectDB):
             return

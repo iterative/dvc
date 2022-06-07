@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
-    from dvc_objects.file import HashFile
+    from dvc_objects.hashfile.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ class Repo:
         from dvc.repo.stage import StageLoad
         from dvc.scm import SCM
         from dvc.stage.cache import StageCache
-        from dvc_objects.state import State, StateNoop
+        from dvc_objects.hashfile.state import State, StateNoop
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}
