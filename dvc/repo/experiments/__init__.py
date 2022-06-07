@@ -20,6 +20,7 @@ from .executor.base import BaseExecutor, ExecutorInfo
 from .queue.base import BaseStashQueue, QueueEntry
 from .queue.local import LocalCeleryQueue, WorkspaceQueue
 from .refs import (
+    CELERY_FAILED_STASH,
     CELERY_STASH,
     EXEC_APPLY,
     EXEC_BRANCH,
@@ -79,7 +80,7 @@ class Experiments:
 
     @cached_property
     def celery_queue(self) -> LocalCeleryQueue:
-        return LocalCeleryQueue(self.repo, CELERY_STASH)
+        return LocalCeleryQueue(self.repo, CELERY_STASH, CELERY_FAILED_STASH)
 
     @property
     def stash_revs(self) -> Dict[str, ExpStashEntry]:
