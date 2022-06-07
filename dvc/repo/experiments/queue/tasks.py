@@ -38,7 +38,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> str:
 
 @shared_task
 def collect_exp(
-    proc_dict: Dict[str, Any],
+    proc_dict: Dict[str, Any],  # pylint: disable=unused-argument
     entry_dict: Dict[str, Any],
 ) -> str:
     """Collect results for an experiment.
@@ -51,16 +51,11 @@ def collect_exp(
         Directory to be cleaned up after this experiment.
     """
     from dvc.repo import Repo
-    from dvc_task.proc.process import ProcessInfo
-
-    proc_info = ProcessInfo.from_dict(proc_dict)
-    if proc_info.returncode != 0:
-        # TODO: handle errors, track failed exps separately
-        pass
 
     entry = QueueEntry.from_dict(entry_dict)
     repo = Repo(entry.dvc_root)
-    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
+    celery_queue = repo.experiments.celery_queue
+    infofile = celery_queue.get_infofile_path(entry.stash_rev)
     executor_info = ExecutorInfo.load_json(infofile)
     logger.debug("Collecting experiment info '%s'", str(executor_info))
     executor = TempDirExecutor.from_info(executor_info)
@@ -73,7 +68,8 @@ def collect_exp(
             for rev in results:
                 logger.debug("Collected experiment '%s'", rev[:7])
         else:
-            logger.debug("Exec result was None")
+            logger.debug("Experiment failed (Exec result was None)")
+            celery_queue.stash_failed(entry)
     except Exception:  # pylint: disable=broad-except
         # Log exceptions but do not re-raise so that task chain execution
         # continues
