@@ -163,36 +163,56 @@ class BaseStashQueue(ABC):
         self._remove_revs(stash_revs)
         return removed
 
-    def status(self) -> List[Mapping[str, Optional[str]]]:
+    def status(self) -> List[Dict[str, Any]]:
         """Show the status of exp tasks in queue"""
         from datetime import datetime
 
-        result: List[Mapping[str, Optional[str]]] = []
+        result: List[Dict[str, Optional[str]]] = []
 
-        def _get_timestamp(rev):
+        def _get_timestamp(rev: str) -> datetime:
             commit = self.scm.resolve_commit(rev)
             return datetime.fromtimestamp(commit.commit_time)
 
-        for queue_entry in self.iter_active():
-            result.append(
-                {
-                    "rev": queue_entry.stash_rev,
-                    "name": queue_entry.name,
-                    "timestamp": _get_timestamp(queue_entry.stash_rev),
-                    "status": "Running",
-                }
-            )
+        failed_revs: Dict[str, ExpStashEntry] = (
+            dict(self.failed_stash.stash_revs)
+            if self.failed_stash is not None
+            else {}
+        )
 
-        for queue_entry in self.iter_queued():
-            result.append(
-                {
-                    "rev": queue_entry.stash_rev,
-                    "name": queue_entry.name,
-                    "timestamp": _get_timestamp(queue_entry.stash_rev),
-                    "status": "Queued",
-                }
-            )
+        def _format_entry(
+            entry: QueueEntry,
+            status: str = "Unknown",
+            result: Optional[ExecutorResult] = None,
+        ) -> Dict[str, Any]:
+            name = entry.name
+            # NOTE: We fallback to Unknown status for experiments
+            # generated in prior (incompatible) DVC versions
+            if result is None and entry.stash_rev in failed_revs:
+                status = "Failed"
+            elif result is not None:
+                if result.exp_hash:
+                    if result.ref_info:
+                        status = "Success"
+                        name = result.ref_info.name
+            return {
+                "rev": entry.stash_rev,
+                "name": name,
+                "timestamp": _get_timestamp(entry.stash_rev),
+                "status": status,
+            }
 
+        result.extend(
+            _format_entry(queue_entry, status="Running")
+            for queue_entry in self.iter_active()
+        )
+        result.extend(
+            _format_entry(queue_entry, status="Queued")
+            for queue_entry in self.iter_queued()
+        )
+        result.extend(
+            _format_entry(queue_entry, result=exp_result)
+            for queue_entry, exp_result in self.iter_done()
+        )
         return result
 
     @abstractmethod
@@ -206,6 +226,9 @@ class BaseStashQueue(ABC):
     @abstractmethod
     def iter_active(self) -> Generator[QueueEntry, None, None]:
         """Iterate over items which are being actively processed."""
+
+    def iter_done(self) -> Generator[QueueDoneResult, None, None]:
+        """Iterate over items which been processed."""
 
     @abstractmethod
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
@@ -603,12 +626,14 @@ class BaseStashQueue(ABC):
         if self.failed_stash is not None:
             assert entry.head_rev
             logger.debug("Stashing failed exp '%s'", entry.stash_rev[:7])
+            msg = self.failed_stash.format_message(
+                entry.head_rev,
+                baseline_rev=entry.baseline_rev,
+                name=entry.name,
+                branch=entry.branch,
+            )
             self.scm.set_ref(
                 self.failed_stash.ref,
                 entry.stash_rev,
-                message=self.failed_stash.format_message(
-                    entry.head_rev,
-                    baseline_rev=entry.baseline_rev,
-                    name=entry.name,
-                ),
+                message=f"commit: {msg}",
             )
