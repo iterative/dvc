@@ -7,7 +7,7 @@ import pytest
 from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, ReproductionError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
@@ -88,15 +88,35 @@ def test_file_permissions(tmp_dir, scm, dvc, exp_stage, mocker):
     assert stat.S_IMODE(os.stat(tmp_dir / "copy.py").st_mode) == mode
 
 
-def test_failed_exp(tmp_dir, scm, dvc, exp_stage, mocker, capsys, test_queue):
+def test_failed_exp_workspace(
+    tmp_dir,
+    scm,
+    dvc,
+    failed_exp_stage,
+    mocker,
+    capsys,
+):
+    tmp_dir.gen("params.yaml", "foo: 2")
+    with pytest.raises(ReproductionError):
+        dvc.experiments.run(failed_exp_stage.addressing)
+
+
+def test_failed_exp_celery(
+    tmp_dir,
+    scm,
+    dvc,
+    failed_exp_stage,
+    test_queue,
+    mocker,
+    capsys,
+):
     tmp_dir.gen("params.yaml", "foo: 2")
 
-    mocker.patch.object(
-        dvc.experiments.celery_queue, "get_result", return_value=None
-    )
-    dvc.experiments.run(exp_stage.addressing, tmp_dir=True)
+    dvc.experiments.run(failed_exp_stage.addressing, queue=True)
+    dvc.experiments.run(run_all=True)
     output = capsys.readouterr()
     assert "Failed to reproduce experiment" in output.err
+    assert len(dvc.experiments.celery_queue.failed_stash) == 1
 
 
 @pytest.mark.parametrize(
