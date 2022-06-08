@@ -8,7 +8,7 @@
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-|CI| |Maintainability| |Coverage| |Donate| |DOI|
+|CI| |Maintainability| |Coverage| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
@@ -230,7 +230,7 @@ Comparison to related technologies
 Contributing
 ============
 
-|Maintainability| |Donate|
+|Maintainability|
 
 Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
 details. Thanks to all our contributors!
@@ -276,10 +276,6 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc
    :alt: Codecov
-
-.. |Donate| image:: https://img.shields.io/badge/patreon-donate-green.svg?logo=patreon
-   :target: https://www.patreon.com/DVCorg/overview
-   :alt: Donate
 
 .. |Snap| image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
    :target: https://snapcraft.io/dvc
