@@ -1,4 +1,5 @@
 import hashlib
+import locale
 import logging
 import os
 from collections import defaultdict
@@ -19,8 +20,9 @@ from kombu.message import Message
 
 from dvc.daemon import daemonize
 from dvc.exceptions import DvcException
+from dvc.ui import ui
 
-from ..exceptions import ExpQueueEmptyError, UnresolvedExpNamesError
+from ..exceptions import ExpQueueEmptyError, UnresolvedQueueExpNamesError
 from ..executor.base import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
@@ -252,7 +254,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 to_kill.add(queue_entry)
 
         if missing_rev:
-            raise UnresolvedExpNamesError(missing_rev)
+            raise UnresolvedQueueExpNamesError(missing_rev)
 
         for queue_entry in to_kill:
             self.proc.kill(queue_entry.stash_rev)
@@ -271,15 +273,57 @@ class LocalCeleryQueue(BaseStashQueue):
         rev: str,
         encoding: Optional[str] = None,
     ):
-        from dvc.ui import ui
-
         queue_entry: Optional[QueueEntry] = self.match_queue_entry_by_name(
             {rev}, self.iter_active()
         ).get(rev)
         if queue_entry is None:
-            raise UnresolvedExpNamesError([rev])
-        for line in self.proc.follow(queue_entry.stash_rev, encoding):
-            ui.write(line)
+            raise UnresolvedQueueExpNamesError([rev])
+        return self.follow(queue_entry, encoding=encoding)
+
+    def follow(
+        self,
+        entry: QueueEntry,
+        encoding: Optional[str] = None,
+    ):
+        for line in self.proc.follow(entry.stash_rev, encoding):
+            ui.write(line, end="")
+
+    def logs(
+        self,
+        rev: str,
+        encoding: Optional[str] = None,
+        follow: bool = False,
+    ):
+        queue_entry: Optional[QueueEntry] = self.match_queue_entry_by_name(
+            {rev}, self.iter_active(), self.iter_done()
+        ).get(rev)
+        if queue_entry is None:
+            if rev in self.match_queue_entry_by_name(
+                {rev}, self.iter_queued()
+            ):
+                raise DvcException(
+                    f"Experiment '{rev}' is in queue but has not been started"
+                )
+            raise UnresolvedQueueExpNamesError([rev])
+        if follow:
+            ui.write(
+                f"Following logs for experiment '{rev}'. Use Ctrl+C to stop "
+                "following logs (experiment execution will continue).\n"
+            )
+            try:
+                self.follow(queue_entry)
+            except KeyboardInterrupt:
+                pass
+            return
+        try:
+            proc_info = self.proc[queue_entry.stash_rev]
+        except KeyError:
+            raise DvcException(f"No output logs found for experiment '{rev}'")
+        with open(
+            proc_info.stdout,
+            encoding=encoding or locale.getpreferredencoding(),
+        ) as fobj:
+            ui.write(fobj.read())
 
 
 class WorkspaceQueue(BaseStashQueue):
@@ -413,5 +457,13 @@ class WorkspaceQueue(BaseStashQueue):
         self,
         rev: str,
         encoding: Optional[str] = None,
+    ):
+        raise NotImplementedError
+
+    def logs(
+        self,
+        rev: str,
+        encoding: Optional[str] = None,
+        follow: bool = False,
     ):
         raise NotImplementedError
