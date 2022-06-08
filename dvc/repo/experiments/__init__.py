@@ -176,8 +176,7 @@ class Experiments:
             # wait for task execution to start
             while not self.celery_queue.proc.get(entry.stash_rev):
                 time.sleep(1)
-            for line in self.celery_queue.proc.follow(entry.stash_rev):
-                ui.write(line, end="")
+            self.celery_queue.follow(entry)
             # wait for task collection to complete
             result = self.celery_queue.get_result(entry)
             if result is None or result.exp_hash is None:

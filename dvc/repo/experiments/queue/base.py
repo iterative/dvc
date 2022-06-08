@@ -15,6 +15,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    Union,
 )
 
 from funcy import cached_property
@@ -264,12 +265,28 @@ class BaseStashQueue(ABC):
         rev: str,
         encoding: Optional[str] = None,
     ):
-        """Iterate over lines in redirected output for a process.
+        """Attach to a running exp process and print redirected output.
 
         Args:
             rev: Stash rev or running exp name to be attached.
             encoding: Text encoding for redirected output. Defaults to
                 `locale.getpreferredencoding()`.
+        """
+
+    def logs(
+        self,
+        rev: str,
+        encoding: Optional[str] = None,
+        follow: bool = False,
+    ):
+        """Print redirected output logs for an exp process.
+
+        Args:
+            rev: Stash rev or exp name.
+            encoding: Text encoding for redirected output. Defaults to
+                `locale.getpreferredencoding()`.
+            follow: Attach to running exp process and follow additional
+                output.
         """
 
     def _stash_exp(
@@ -592,14 +609,27 @@ class BaseStashQueue(ABC):
     def match_queue_entry_by_name(
         self,
         exp_names: Collection[str],
-        *entries: Iterable[QueueEntry],
+        *entries: Iterable[Union[QueueEntry, QueueDoneResult]],
     ) -> Dict[str, Optional[QueueEntry]]:
         from funcy import concat
 
         entry_name_dict: Dict[str, QueueEntry] = {}
         entry_rev_list: List[Tuple[str, QueueEntry]] = []
-        for queue_entry in concat(*entries):
-            entry_name_dict[queue_entry.name] = queue_entry
+        for entry in concat(*entries):
+            if isinstance(entry, QueueDoneResult):
+                queue_entry: QueueEntry = entry.entry
+                if (
+                    entry.result is not None
+                    and entry.result.ref_info is not None
+                ):
+                    name: Optional[str] = entry.result.ref_info.name
+                else:
+                    name = queue_entry.name
+            else:
+                queue_entry = entry
+                name = queue_entry.name
+            if name:
+                entry_name_dict[name] = queue_entry
             entry_rev_list.append((queue_entry.stash_rev, queue_entry))
 
         result: Dict[str, Optional[QueueEntry]] = {}
