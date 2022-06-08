@@ -105,24 +105,30 @@ class AmbiguousExpRefInfo(InvalidArgumentError):
 
 
 class UnresolvedExpNamesError(InvalidArgumentError):
+    NAME = "experiment name"
+
     def __init__(
         self, unresolved_list: Collection[str], *args, git_remote: str = None
     ):
-        unresolved_names = ";".join(unresolved_list)
+        unresolved_names = "; ".join(unresolved_list)
         if not git_remote:
-            if len(unresolved_names) > 1:
+            if len(unresolved_list) > 1:
                 super().__init__(
-                    f"'{unresolved_names}' are not valid experiment names"
+                    f"'{unresolved_names}' are not valid {self.NAME}s"
                 )
             else:
                 super().__init__(
-                    f"'{unresolved_names}' is not a valid experiment name"
+                    f"'{unresolved_names}' is not a valid {self.NAME}"
                 )
         else:
             super().__init__(
                 f"Experiment '{unresolved_names}' does not exist "
                 f"in '{git_remote}'"
             )
+
+
+class UnresolvedQueueExpNamesError(UnresolvedExpNamesError):
+    NAME = "queued experiment name"
 
 
 class ExpQueueEmptyError(DvcException):
