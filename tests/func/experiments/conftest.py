@@ -97,9 +97,9 @@ def failed_exp_stage(tmp_dir, scm, dvc):
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.stage.add(
         cmd="python -c 'import sys; sys.exit(1)'",
-        metrics_no_cache=["metrics.yaml"],
+        metrics_no_cache=["failed-metrics.yaml"],
         params=["foo"],
-        name="copy-file",
+        name="failed-copy-file",
         deps=["copy.py"],
     )
     scm.add(
@@ -108,7 +108,7 @@ def failed_exp_stage(tmp_dir, scm, dvc):
             "dvc.lock",
             "copy.py",
             "params.yaml",
-            "metrics.yaml",
+            "failed-metrics.yaml",
             ".gitignore",
         ]
     )
