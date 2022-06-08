@@ -1,7 +1,7 @@
 import argparse
 
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands.queue import attach, kill, remove, start, status, stop
+from dvc.commands.queue import attach, kill, logs, remove, start, status, stop
 
 SUB_COMMANDS = [
     remove,
@@ -10,6 +10,7 @@ SUB_COMMANDS = [
     stop,
     attach,
     status,
+    logs,
 ]
 
 
