@@ -1,6 +1,7 @@
 from dvc.cli import parse_args
 from dvc.commands.queue.attach import CmdQueueAttach
 from dvc.commands.queue.kill import CmdQueueKill
+from dvc.commands.queue.logs import CmdQueueLogs
 from dvc.commands.queue.remove import CmdQueueRemove
 from dvc.commands.queue.start import CmdQueueStart
 from dvc.commands.queue.status import CmdQueueStatus
@@ -137,3 +138,17 @@ def test_experiments_attach(dvc, scm, mocker):
 
     assert cmd.run() == 0
     m.assert_called_once_with(rev="exp1", encoding="utf8")
+
+
+def test_queue_logs(dvc, scm, mocker):
+    cli_args = parse_args(["queue", "logs", "exp1", "-e", "utf8", "-f"])
+    assert cli_args.func == CmdQueueLogs
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch(
+        "dvc.repo.experiments.queue.local.LocalCeleryQueue.logs",
+        return_value={},
+    )
+
+    assert cmd.run() == 0
+    m.assert_called_once_with(rev="exp1", encoding="utf8", follow=True)
