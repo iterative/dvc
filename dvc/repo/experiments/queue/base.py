@@ -260,19 +260,6 @@ class BaseStashQueue(ABC):
                 finish any active experiments before shutting down.
         """
 
-    def attach(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-    ):
-        """Attach to a running exp process and print redirected output.
-
-        Args:
-            rev: Stash rev or running exp name to be attached.
-            encoding: Text encoding for redirected output. Defaults to
-                `locale.getpreferredencoding()`.
-        """
-
     def logs(
         self,
         rev: str,
