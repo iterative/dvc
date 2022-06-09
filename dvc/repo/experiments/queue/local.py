@@ -268,18 +268,6 @@ class LocalCeleryQueue(BaseStashQueue):
                 except ProcessLookupError:
                     continue
 
-    def attach(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-    ):
-        queue_entry: Optional[QueueEntry] = self.match_queue_entry_by_name(
-            {rev}, self.iter_active()
-        ).get(rev)
-        if queue_entry is None:
-            raise UnresolvedQueueExpNamesError([rev])
-        return self.follow(queue_entry, encoding=encoding)
-
     def follow(
         self,
         entry: QueueEntry,
@@ -451,13 +439,6 @@ class WorkspaceQueue(BaseStashQueue):
         raise NotImplementedError
 
     def shutdown(self, kill: bool = False):
-        raise NotImplementedError
-
-    def attach(
-        self,
-        rev: str,
-        encoding: Optional[str] = None,
-    ):
         raise NotImplementedError
 
     def logs(
