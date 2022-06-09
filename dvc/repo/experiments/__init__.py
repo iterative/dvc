@@ -172,19 +172,25 @@ class Experiments:
         # TODO: re-enable --jobs concurrency
         self.celery_queue.spawn_worker()
         failed = []
-        for entry in entries:
-            # wait for task execution to start
-            while not self.celery_queue.proc.get(entry.stash_rev):
-                time.sleep(1)
-            self.celery_queue.follow(entry)
-            # wait for task collection to complete
-            result = self.celery_queue.get_result(entry)
-            if result is None or result.exp_hash is None:
-                name = entry.name or entry.stash_rev[:7]
-                failed.append(name)
-            elif result.ref_info:
-                exp_rev = self.scm.get_ref(str(result.ref_info))
-                results[exp_rev] = result.exp_hash
+        try:
+            for entry in entries:
+                # wait for task execution to start
+                while not self.celery_queue.proc.get(entry.stash_rev):
+                    time.sleep(1)
+                self.celery_queue.follow(entry)
+                # wait for task collection to complete
+                result = self.celery_queue.get_result(entry)
+                if result is None or result.exp_hash is None:
+                    name = entry.name or entry.stash_rev[:7]
+                    failed.append(name)
+                elif result.ref_info:
+                    exp_rev = self.scm.get_ref(str(result.ref_info))
+                    results[exp_rev] = result.exp_hash
+        except KeyboardInterrupt:
+            ui.write(
+                "Experiment(s) are still executing in the background. To "
+                "abort execution use 'dvc queue kill' or 'dvc queue stop'."
+            )
         if failed:
             names = ", ".join(name for name in failed)
             ui.error(f"Failed to reproduce experiment(s) '{names}'")
