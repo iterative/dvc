@@ -8,7 +8,7 @@ from dvc.dvcfile import PIPELINE_FILE, Dvcfile
 from dvc.stage import PipelineStage, create_stage
 from dvc.stage.loader import StageLoader
 from dvc.stage.serialize import split_params_deps
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_objects.hash_info import HashInfo
 
 
 @pytest.fixture

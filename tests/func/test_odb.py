@@ -8,7 +8,7 @@ from dvc.cli import main
 from dvc.odbmgr import ODBManager
 from dvc.utils import relpath
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_objects.hash_info import HashInfo
 
 
 def test_cache(tmp_dir, dvc):

@@ -37,7 +37,7 @@ from .utils import (
 if TYPE_CHECKING:
     from dvc.dvcfile import DVCFile
     from dvc_objects.db.base import ObjectDB
-    from dvc_objects.hashfile.hash_info import HashInfo
+    from dvc_objects.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore

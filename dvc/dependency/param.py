@@ -9,7 +9,7 @@ from voluptuous import Any
 
 from dvc.exceptions import DvcException
 from dvc.utils.serialize import LOADERS, ParseError
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_objects.hash_info import HashInfo
 
 from .base import Dependency
 

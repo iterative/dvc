@@ -17,16 +17,16 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
-from dvc_data import Tree
 from dvc_data import check as ocheck
 from dvc_data import load as oload
 from dvc_data.checkout import checkout
 from dvc_data.stage import stage as ostage
 from dvc_data.transfer import transfer as otransfer
+from dvc_data.tree import Tree
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.hashfile.hash_info import HashInfo
-from dvc_objects.hashfile.istextfile import istextfile
-from dvc_objects.hashfile.meta import Meta
+from dvc_objects.hash_info import HashInfo
+from dvc_objects.istextfile import istextfile
+from dvc_objects.meta import Meta
 
 from .fs import (
     HDFSFileSystem,
@@ -1044,8 +1044,8 @@ class Output:
             )
 
     def merge(self, ancestor, other):
-        from dvc_data.objects.tree import MergeError as TreeMergeError
-        from dvc_data.objects.tree import du, merge
+        from dvc_data.tree import MergeError as TreeMergeError
+        from dvc_data.tree import du, merge
 
         assert other
 
