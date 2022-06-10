@@ -23,7 +23,7 @@ class CmdQueueStatus(CmdBase):
         for exp in result:
             created = format_time(exp.get("timestamp"))
             td.append(
-                [exp["rev"], exp.get("name", ""), created, exp["status"]]
+                [exp["rev"][:7], exp.get("name", ""), created, exp["status"]]
             )
         td.render()
 
