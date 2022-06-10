@@ -99,7 +99,9 @@ def test_experiments_stop(dvc, scm, mocker):
     m.assert_called_once_with(kill=True)
 
 
-def test_experiments_status(dvc, scm, mocker):
+def test_experiments_status(dvc, scm, mocker, capsys, caplog):
+    from datetime import datetime
+
     cli_args = parse_args(
         [
             "queue",
@@ -109,12 +111,31 @@ def test_experiments_status(dvc, scm, mocker):
     assert cli_args.func == CmdQueueStatus
 
     cmd = cli_args.func(cli_args)
+    status_result = [
+        {
+            "rev": "c61a525a4ff39007301b4516fb6e54b323a0587b",
+            "name": "I40",
+            "timestamp": datetime(2022, 6, 9, 20, 49, 48),
+            "status": "Queued",
+        },
+        {
+            "rev": "8da9c339da30636261a3491a90aafdb760a4168f",
+            "name": "I60",
+            "timestamp": datetime(2022, 6, 9, 20, 49, 43),
+            "status": "Running",
+        },
+    ]
     m = mocker.patch(
         "dvc.repo.experiments.queue.local.LocalCeleryQueue.status",
+        return_value=status_result,
     )
 
     assert cmd.run() == 0
     m.assert_called_once_with()
+    log, _ = capsys.readouterr()
+    assert "Rev      Name    Created       Status" in log
+    assert "c61a525  I40     Jun 09, 2022  Queued" in log
+    assert "8da9c33  I60     Jun 09, 2022  Running" in log
 
 
 def test_queue_logs(dvc, scm, mocker):
