@@ -117,7 +117,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return bool(info.get("outs") if recurse else info.get("isout"))
 
     def info(self, path, **kwargs):
-        from dvc_objects.hashfile.meta import Meta
+        from dvc_objects.meta import Meta
 
         key = self._get_key(path)
 
