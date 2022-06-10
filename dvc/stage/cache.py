@@ -213,6 +213,7 @@ class StageCache:
         cached_stage.checkout()
 
     def transfer(self, from_odb, to_odb):
+        from dvc.fs import LocalFileSystem
         from dvc.fs.callbacks import Callback
 
         from_fs = from_odb.fs
@@ -226,6 +227,9 @@ class StageCache:
 
         for src in from_fs.find(runs):
             rel = from_fs.path.relpath(src, from_odb.fs_path)
+            if not isinstance(to_fs, LocalFileSystem):
+                rel = from_fs.path.as_posix(rel)
+
             dst = to_fs.path.join(to_odb.fs_path, rel)
             key = to_fs.path.parent(dst)
             # check if any build cache already exists for this key
