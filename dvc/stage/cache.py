@@ -22,6 +22,10 @@ class RunCacheNotFoundError(DvcException):
         super().__init__(f"No run-cache for {stage.addressing}")
 
 
+class RunCacheNotSupported(DvcException):
+    pass
+
+
 def _get_cache_hash(cache, key=False):
     from dvc_objects.meta import Meta
 
@@ -213,13 +217,26 @@ class StageCache:
         cached_stage.checkout()
 
     def transfer(self, from_odb, to_odb):
-        from dvc.fs import LocalFileSystem
+        from dvc.fs import HTTPFileSystem, LocalFileSystem
         from dvc.fs.callbacks import Callback
 
         from_fs = from_odb.fs
         to_fs = to_odb.fs
         func = _log_exceptions(fs.generic.copy)
         runs = from_fs.path.join(from_odb.fs_path, "runs")
+
+        http_odb = next(
+            (
+                odb
+                for odb in (from_odb, to_odb)
+                if isinstance(odb.fs, HTTPFileSystem)
+            ),
+            None,
+        )
+        if http_odb:
+            path = http_odb.fs_path
+            message = f"run-cache is not supported for http filesystem: {path}"
+            raise RunCacheNotSupported(message)
 
         ret = []
         if not from_fs.exists(runs):
