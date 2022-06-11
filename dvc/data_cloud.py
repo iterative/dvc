@@ -180,5 +180,5 @@ class DataCloud:
 
     def get_url_for(self, remote, checksum):
         odb = self.get_remote_odb(remote)
-        path = odb.hash_to_path(checksum)
+        path = odb.oid_to_path(checksum)
         return odb.fs.unstrip_protocol(path)

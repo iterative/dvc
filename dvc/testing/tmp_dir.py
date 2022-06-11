@@ -239,7 +239,7 @@ class TmpDir(pathlib.Path):
             }
         return super().read_text(*args, encoding="utf-8", **kwargs)
 
-    def hash_to_path(self, hash_):
+    def oid_to_path(self, hash_):
         return str(self / hash_[0:2] / hash_[2:])
 
     def dump(self, *args, **kwargs):

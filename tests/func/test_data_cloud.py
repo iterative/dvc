@@ -13,8 +13,8 @@ from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
     TestRemote,
 )
 from dvc.utils.fs import remove
-from dvc_data.db.local import LocalObjectDB
-from dvc_objects.hashfile.db import ObjectDB
+from dvc_data.db.local import LocalHashFileDB
+from dvc_objects.hashfile.db import HashFileDB
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):
@@ -37,32 +37,32 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     cache_dir = stage_dir.outs[0].cache_path
 
     # FIXME check status output
-    hashes_exist = mocker.spy(LocalObjectDB, "hashes_exist")
+    oids_exist = mocker.spy(LocalHashFileDB, "oids_exist")
 
     assert main(["push"] + args) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     remove(dvc.odb.local.cache_dir)
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
 
     assert main(["fetch"] + args) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
 
     assert main(["pull"] + args) == 0
     assert os.path.exists(cache)
@@ -70,10 +70,10 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isfile(cache_dir)
     assert os.path.isfile("foo")
     assert os.path.isdir("data_dir")
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     with open(cache, encoding="utf-8") as fd:
@@ -84,37 +84,36 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     if remote.url.startswith("http"):
         return
 
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
 
-    _list_hashes_traverse = mocker.spy(ObjectDB, "_list_hashes_traverse")
+    _list_oids_traverse = mocker.spy(HashFileDB, "_list_oids_traverse")
     # NOTE: check if remote gc works correctly on directories
     assert main(["gc", "-cw", "-f"] + args) == 0
-    assert _list_hashes_traverse.called
+    assert _list_oids_traverse.called
     assert all(
-        _kwargs["jobs"] == 2
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        _kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list
     )
     shutil.move(dvc.odb.local.cache_dir, dvc.odb.local.cache_dir + ".back")
 
     assert main(["fetch"] + args) == 0
 
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
     assert main(["pull", "-f"] + args) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
     assert os.path.isfile("foo")
     assert os.path.isdir("data_dir")
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
 

@@ -155,19 +155,19 @@ class RepoDependency(Dependency):
     def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
         from dvc.fs.dvc import DvcFileSystem
-        from dvc_data.db.reference import ReferenceObjectDB
+        from dvc_data.db.reference import ReferenceHashFileDB
         from dvc_data.objects.tree import Tree
 
-        if not isinstance(odb, ReferenceObjectDB):
+        if not isinstance(odb, ReferenceHashFileDB):
             return
 
         def iter_objs():
             for hash_info in obj_ids:
                 if hash_info.isdir:
                     tree = Tree.load(odb, hash_info)
-                    yield from (odb.get(oid) for _, _, oid in tree)
+                    yield from (odb.get(hi.value) for _, _, hi in tree)
                 else:
-                    yield odb.get(hash_info)
+                    yield odb.get(hash_info.value)
 
         checked_urls = set()
         for obj in iter_objs():

@@ -107,7 +107,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # to check if dvc will detect that the cache is corrupted.
         obj = load(self.dvc.odb.local, out.hash_info)
         _, _, entry_oid = list(obj)[0]
-        cache = self.dvc.odb.local.hash_to_path(entry_oid.value)
+        cache = self.dvc.odb.local.oid_to_path(entry_oid.value)
 
         os.chmod(cache, 0o644)
         with open(cache, "w+", encoding="utf-8") as fobj:

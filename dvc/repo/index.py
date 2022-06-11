@@ -172,7 +172,7 @@ class Index:
         from dvc.config import NoRemoteError
         from dvc_data import Tree
 
-        tree = Tree(None, None, None)
+        tree = Tree()
 
         for out in self.outs:
             if not out.use_cache:
