@@ -223,7 +223,7 @@ class StageCache:
         from_fs = from_odb.fs
         to_fs = to_odb.fs
         func = _log_exceptions(fs.generic.copy)
-        runs = from_fs.path.join(from_odb.fs_path, "runs")
+        runs = from_fs.path.join(from_odb.path, "runs")
 
         http_odb = next(
             (
@@ -234,7 +234,7 @@ class StageCache:
             None,
         )
         if http_odb:
-            path = http_odb.fs_path
+            path = http_odb.path
             message = f"run-cache is not supported for http filesystem: {path}"
             raise RunCacheNotSupported(message)
 
@@ -243,11 +243,11 @@ class StageCache:
             return ret
 
         for src in from_fs.find(runs):
-            rel = from_fs.path.relpath(src, from_odb.fs_path)
+            rel = from_fs.path.relpath(src, from_odb.path)
             if not isinstance(to_fs, LocalFileSystem):
                 rel = from_fs.path.as_posix(rel)
 
-            dst = to_fs.path.join(to_odb.fs_path, rel)
+            dst = to_fs.path.join(to_odb.path, rel)
             key = to_fs.path.parent(dst)
             # check if any build cache already exists for this key
             # TODO: check if MaxKeys=1 or something like that applies

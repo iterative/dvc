@@ -957,9 +957,7 @@ def test_add_to_remote(tmp_dir, dvc, remote, workspace):
 
     hash_info = stage.outs[0].hash_info
     meta = stage.outs[0].meta
-    with open(
-        remote.hash_to_path(hash_info.value), encoding="utf-8"
-    ) as stream:
+    with open(remote.oid_to_path(hash_info.value), encoding="utf-8") as stream:
         assert stream.read() == "foo"
 
     assert meta.size == len("foo")

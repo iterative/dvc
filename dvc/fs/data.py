@@ -70,7 +70,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if not value:
             raise FileNotFoundError
 
-        cache_path = self.repo.odb.local.hash_to_path(value)
+        cache_path = self.repo.odb.local.oid_to_path(value)
 
         if self.repo.odb.local.fs.exists(cache_path):
             return self.repo.odb.local.fs, cache_path
@@ -79,7 +79,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             remote_odb = self.repo.cloud.get_remote_odb(remote)
         except NoRemoteError as exc:
             raise FileNotFoundError from exc
-        remote_fs_path = remote_odb.hash_to_path(value)
+        remote_fs_path = remote_odb.oid_to_path(value)
         return remote_odb.fs, remote_fs_path
 
     def open(  # type: ignore

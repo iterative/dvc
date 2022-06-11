@@ -417,7 +417,7 @@ class Output:
     @property
     def cache_path(self):
         return self.odb.fs.unstrip_protocol(
-            self.odb.hash_to_path(self.hash_info.value)
+            self.odb.oid_to_path(self.hash_info.value)
         )
 
     def get_hash(self):
@@ -885,7 +885,7 @@ class Output:
         if not self.is_dir_checksum:
             raise DvcException("cannot get dir cache for file checksum")
 
-        obj = self.odb.get(self.hash_info)
+        obj = self.odb.get(self.hash_info.value)
         try:
             ocheck(self.odb, obj)
         except FileNotFoundError:
@@ -916,7 +916,7 @@ class Output:
             logger.debug(f"failed to pull cache for '{self}'")
 
         try:
-            ocheck(self.odb, self.odb.get(self.hash_info))
+            ocheck(self.odb, self.odb.get(self.hash_info.value))
         except FileNotFoundError:
             msg = (
                 "Missing cache for directory '{}'. "
@@ -973,7 +973,7 @@ class Output:
         else:
             obj = self.get_obj(filter_info=kwargs.get("filter_info"))
             if not obj:
-                obj = self.odb.get(self.hash_info)
+                obj = self.odb.get(self.hash_info.value)
 
         if not obj:
             return {}
@@ -1065,7 +1065,7 @@ class Output:
         except TreeMergeError as exc:
             raise MergeError(str(exc)) from exc
 
-        self.odb.add(merged.fs_path, merged.fs, merged.hash_info)
+        self.odb.add(merged.path, merged.fs, merged.oid)
 
         self.hash_info = merged.hash_info
         self.meta = Meta(
