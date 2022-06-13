@@ -4,17 +4,17 @@ from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.commands.queue import kill, logs, remove, start, status, stop
 
 SUB_COMMANDS = [
-    remove,
-    kill,
     start,
     stop,
     status,
     logs,
+    remove,
+    kill,
 ]
 
 
 def add_parser(subparsers, parent_parser):
-    QUEUE_HELP = "Commands to manage dvc task queue."
+    QUEUE_HELP = "Commands to manage experiments queue."
 
     queue_parser = subparsers.add_parser(
         "queue",
