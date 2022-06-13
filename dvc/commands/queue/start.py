@@ -17,8 +17,7 @@ class CmdQueueStart(CmdBase):
 
         suffix = "s" if self.args.jobs > 1 else ""
         ui.write(
-            f"Start {self.args.jobs} queue worker{suffix} to process "
-            "the queue tasks"
+            f"Start {self.args.jobs} worker{suffix} to process the queue."
         )
 
         return 0
@@ -31,12 +30,12 @@ def job_type(job):
             return job
     except ValueError:
         pass
-    raise argparse.ArgumentTypeError("Worker number must be a natural number")
+    raise argparse.ArgumentTypeError("Worker number must be a natural number.")
 
 
 def add_parser(queue_subparsers, parent_parser):
 
-    QUEUE_START_HELP = "Start experiments queue workers"
+    QUEUE_START_HELP = "Start experiments queue workers."
     queue_start_parser = queue_subparsers.add_parser(
         "start",
         parents=[parent_parser],
@@ -49,6 +48,6 @@ def add_parser(queue_subparsers, parent_parser):
         "--jobs",
         type=job_type,
         default=1,
-        help="Number of queue workers to be started.",
+        help="Number of queue workers to start.",
     )
     queue_start_parser.set_defaults(func=CmdQueueStart)
