@@ -19,7 +19,7 @@ from dvc.repo.experiments.base import (
 from .base import BaseExecutor, ExecutorInfo, ExecutorResult
 
 if TYPE_CHECKING:
-    from multiprocessing import Queue
+    from queue import Queue
 
     from scmrepo.git import Git
 
