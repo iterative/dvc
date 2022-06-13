@@ -343,7 +343,7 @@ def test_stage_dir_optimization(
     tmp_dir, dvc, mocker, dry_run, expected_staging_contents
 ):
     from dvc_data import stage
-    from dvc_data.tree import Tree
+    from dvc_data.objects.tree import Tree
 
     tmp_dir.dvc_gen(
         {

@@ -8,7 +8,7 @@ from dvc_data.db import get_index
 if TYPE_CHECKING:
     from dvc_data.status import CompareStatusResult
     from dvc_objects.db import ObjectDB
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -180,5 +180,5 @@ class DataCloud:
 
     def get_url_for(self, remote, checksum):
         odb = self.get_remote_odb(remote)
-        path = odb.hash_to_path(checksum)
+        path = odb.oid_to_path(checksum)
         return odb.fs.unstrip_protocol(path)

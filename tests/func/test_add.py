@@ -38,8 +38,8 @@ from dvc.testing.test_workspace import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
-from dvc_objects.hash import file_md5
-from dvc_objects.hash_info import HashInfo
+from dvc_objects.hashfile.hash import file_md5
+from dvc_objects.hashfile.hash_info import HashInfo
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 
@@ -380,7 +380,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_objects.hash, "file_md5")
+    file_md5_counter = mocker.spy(dvc_objects.hashfile.hash, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -411,7 +411,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_objects.hash, "file_md5")
+    file_md5_counter = mocker.spy(dvc_objects.hashfile.hash, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 
@@ -957,9 +957,7 @@ def test_add_to_remote(tmp_dir, dvc, remote, workspace):
 
     hash_info = stage.outs[0].hash_info
     meta = stage.outs[0].meta
-    with open(
-        remote.hash_to_path(hash_info.value), encoding="utf-8"
-    ) as stream:
+    with open(remote.oid_to_path(hash_info.value), encoding="utf-8") as stream:
         assert stream.read() == "foo"
 
     assert meta.size == len("foo")

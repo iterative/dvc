@@ -80,7 +80,7 @@ def _get_linktype_support_info(repo):
     links = generic.test_links(
         ["reflink", "hardlink", "symlink"],
         odb.fs,
-        odb.fs_path,
+        odb.path,
         repo.fs,
         repo.root_dir,
     )

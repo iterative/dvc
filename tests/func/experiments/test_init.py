@@ -32,8 +32,8 @@ def test_init_simple(tmp_dir, scm, dvc, capsys):
     assert (
         "Creating train stage in dvc.yaml\n\n"
         "Ensure your experiment command creates metrics.json, plots and models"
-        '.\nYou can now run your experiment using "dvc exp run".'
-    ) in out
+        '.\nYou can now run your experiment using "dvc exp run".' in out
+    )
     assert (tmp_dir / "dvc.yaml").parse() == {
         "stages": {
             "train": {
@@ -209,12 +209,12 @@ def test_init_interactive_params_validation(tmp_dir, dvc, capsys):
         "Path to a parameters file [params.yaml, n to omit]: "
         "'data' is a directory. "
         "Please retry with an existing parameters file.\n"
-        "Path to a parameters file [params.yaml, n to omit]:"
-    ) in err
+        "Path to a parameters file [params.yaml, n to omit]:" in err
+    )
 
 
 def test_init_with_no_defaults_interactive(tmp_dir, dvc):
-    inp = io.StringIO("script.py\n" "data\n" "n\n" "model\n" "metric\n" "n\n")
+    inp = io.StringIO("script.py\ndata\nn\nmodel\nmetric\nn\n")
     init(
         dvc,
         defaults={},
@@ -305,18 +305,13 @@ def test_init_default(tmp_dir, scm, dvc, interactive, overrides, inp, capsys):
             True,
             {},
             io.StringIO(
-                "python script.py\n"
-                "script.py\n"
-                "data\n"
-                "params.yaml\n"
-                "models\n"
-                "y"
+                "python script.py\nscript.py\ndata\nparams.yaml\nmodels\ny"
             ),
         ),
         (
             True,
             {"cmd": "python script.py"},
-            io.StringIO("script.py\n" "data\n" "params.yaml\n" "models\n" "y"),
+            io.StringIO("script.py\ndata\nparams.yaml\nmodels\ny"),
         ),
         (
             True,

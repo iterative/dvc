@@ -4,8 +4,8 @@ import os
 import pytest
 
 from dvc.fs import LocalFileSystem
-from dvc_data.db.local import LocalObjectDB
-from dvc_objects.hash_info import HashInfo
+from dvc_data.db.local import LocalHashFileDB
+from dvc_objects.hashfile.hash_info import HashInfo
 
 
 def test_status_download_optimization(mocker, dvc):
@@ -15,19 +15,19 @@ def test_status_download_optimization(mocker, dvc):
     """
     from dvc_data.status import compare_status
 
-    odb = LocalObjectDB(LocalFileSystem(), os.getcwd())
+    odb = LocalHashFileDB(LocalFileSystem(), os.getcwd())
     obj_ids = {
         HashInfo("md5", "acbd18db4cc2f85cedef654fccc4a4d8"),
         HashInfo("md5", "37b51d194a7513e45b56f6524f2d51f2"),
     }
 
     local_exists = [hash_info.value for hash_info in obj_ids]
-    mocker.patch.object(odb, "hashes_exist", return_value=local_exists)
+    mocker.patch.object(odb, "oids_exist", return_value=local_exists)
 
     src_odb = mocker.Mock()
 
     compare_status(src_odb, odb, obj_ids, check_deleted=False)
-    assert src_odb.hashes_exist.call_count == 0
+    assert src_odb.oids_exist.call_count == 0
 
 
 @pytest.mark.parametrize("link_name", ["hardlink", "symlink"])
@@ -97,8 +97,8 @@ def test_staging_file(tmp_dir, dvc):
         local_odb, (tmp_dir / "foo").fs_path, fs, "md5"
     )
 
-    assert not local_odb.exists(obj.hash_info)
-    assert staging_odb.exists(obj.hash_info)
+    assert not local_odb.exists(obj.hash_info.value)
+    assert staging_odb.exists(obj.hash_info.value)
 
     with pytest.raises(FileNotFoundError):
         check(local_odb, obj)
@@ -108,7 +108,7 @@ def test_staging_file(tmp_dir, dvc):
     check(local_odb, obj)
     check(staging_odb, obj)
 
-    path = local_odb.hash_to_path(obj.hash_info.value)
+    path = local_odb.oid_to_path(obj.hash_info.value)
     assert fs.exists(path)
 
 
@@ -125,8 +125,8 @@ def test_staging_dir(tmp_dir, dvc):
         local_odb, (tmp_dir / "dir").fs_path, fs, "md5"
     )
 
-    assert not local_odb.exists(obj.hash_info)
-    assert staging_odb.exists(obj.hash_info)
+    assert not local_odb.exists(obj.hash_info.value)
+    assert staging_odb.exists(obj.hash_info.value)
 
     with pytest.raises(FileNotFoundError):
         check(local_odb, obj)
@@ -138,5 +138,5 @@ def test_staging_dir(tmp_dir, dvc):
     check(local_odb, obj)
     check(staging_odb, obj)
 
-    path = local_odb.hash_to_path(obj.hash_info.value)
+    path = local_odb.oid_to_path(obj.hash_info.value)
     assert fs.exists(path)

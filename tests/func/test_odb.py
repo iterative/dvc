@@ -8,7 +8,7 @@ from dvc.cli import main
 from dvc.odbmgr import ODBManager
 from dvc.utils import relpath
 from dvc_objects.errors import ObjectFormatError
-from dvc_objects.hash_info import HashInfo
+from dvc_objects.hashfile.hash_info import HashInfo
 
 
 def test_cache(tmp_dir, dvc):
@@ -36,8 +36,8 @@ def test_cache(tmp_dir, dvc):
     assert cache1_md5 in md5_list
     assert cache2_md5 in md5_list
 
-    odb_cache1 = odb.local.hash_to_path(cache1_md5)
-    odb_cache2 = odb.local.hash_to_path(cache2_md5)
+    odb_cache1 = odb.local.oid_to_path(cache1_md5)
+    odb_cache2 = odb.local.oid_to_path(cache2_md5)
     assert os.fspath(odb_cache1) == cache1
     assert os.fspath(odb_cache2) == cache2
 
@@ -46,13 +46,13 @@ def test_cache_load_bad_dir_cache(tmp_dir, dvc):
     from dvc_data import load
 
     dir_hash = "123.dir"
-    fname = os.fspath(dvc.odb.local.hash_to_path(dir_hash))
+    fname = os.fspath(dvc.odb.local.oid_to_path(dir_hash))
     tmp_dir.gen({fname: "<clearly>not,json"})
     with pytest.raises(ObjectFormatError):
         load(dvc.odb.local, HashInfo("md5", dir_hash))
 
     dir_hash = "234.dir"
-    fname = os.fspath(dvc.odb.local.hash_to_path(dir_hash))
+    fname = os.fspath(dvc.odb.local.oid_to_path(dir_hash))
     tmp_dir.gen({fname: '{"a": "b"}'})
     with pytest.raises(ObjectFormatError):
         load(dvc.odb.local, HashInfo("md5", dir_hash))
@@ -89,7 +89,7 @@ def test_remote_cache_references(tmp_dir, dvc):
 
     dvc.odb = ODBManager(dvc)
 
-    assert dvc.odb.ssh.fs_path == "/tmp"
+    assert dvc.odb.ssh.path == "/tmp"
 
 
 def test_shared_cache_dir(tmp_dir):

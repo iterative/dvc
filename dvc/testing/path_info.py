@@ -60,7 +60,7 @@ class PathInfo(pathlib.PurePath, _BasePath):
 
     @property
     def fspath(self):
-        return self.__fspath__()
+        return os.fspath(self)
 
     url = fspath
 

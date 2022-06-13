@@ -25,9 +25,9 @@ if TYPE_CHECKING:
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
-    from dvc_data.tree import Tree
+    from dvc_data import Tree
     from dvc_objects.db import ObjectDB
-    from dvc_objects.hash_info import HashInfo
+    from dvc_objects.hashfile.hash_info import HashInfo
 
 
 ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
@@ -170,9 +170,9 @@ class Index:
     @cached_property
     def tree(self) -> "Tree":
         from dvc.config import NoRemoteError
-        from dvc_data.tree import Tree
+        from dvc_data import Tree
 
-        tree = Tree(None, None, None)
+        tree = Tree()
 
         for out in self.outs:
             if not out.use_cache:
