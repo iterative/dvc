@@ -39,7 +39,7 @@ from ..base import (
 )
 
 if TYPE_CHECKING:
-    from multiprocessing import Queue
+    from queue import Queue
 
     from scmrepo.git import Git
 
