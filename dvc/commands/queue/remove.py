@@ -16,23 +16,21 @@ class CmdQueueRemove(CmdBase):
             removed_list = self.repo.experiments.celery_queue.clear()
         else:
             removed_list = self.repo.experiments.celery_queue.remove(
-                revs=self.args.experiment
+                revs=self.args.task
             )
 
         if removed_list:
             removed = ", ".join(removed_list)
-            ui.write(f"Removed experiments in queue: {removed}")
+            ui.write(f"Removed tasks in queue: {removed}")
         else:
-            ui.write(
-                f"No experiments found in queue named {self.args.experiment}"
-            )
+            ui.write(f"No tasks found in queue named {self.args.task}")
 
         return 0
 
 
 def add_parser(queue_subparsers, parent_parser):
 
-    QUEUE_REMOVE_HELP = "Remove experiments in queue"
+    QUEUE_REMOVE_HELP = "Remove tasks in experiments queue."
     queue_remove_parser = queue_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
@@ -41,12 +39,12 @@ def add_parser(queue_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     queue_remove_parser.add_argument(
-        "--all", action="store_true", help="Remove all experiments in queue."
+        "--all", action="store_true", help="Remove all tasks in queue."
     )
     queue_remove_parser.add_argument(
-        "experiment",
+        "task",
         nargs="*",
-        help="Experiments in queue to remove.",
-        metavar="<experiment>",
+        help="Tasks in queue to remove.",
+        metavar="<task>",
     )
     queue_remove_parser.set_defaults(func=CmdQueueRemove)
