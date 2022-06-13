@@ -71,6 +71,11 @@ class LocalCeleryQueue(BaseStashQueue):
 
     @cached_property
     def celery(self) -> "FSApp":
+        from kombu.transport.filesystem import Channel  # type: ignore
+
+        # related to https://github.com/iterative/dvc-task/issues/61
+        Channel.QoS.restore_at_shutdown = False
+
         from dvc_task.app import FSApp
 
         app = FSApp(
@@ -181,7 +186,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
-            result = AsyncResult(task_id)
+            result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
                 yield _TaskEntry(task_id, entry)
 
@@ -190,7 +195,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
-            result = AsyncResult(task_id)
+            result: AsyncResult = AsyncResult(task_id)
             if result.ready():
                 yield _TaskEntry(task_id, entry)
 
@@ -230,7 +235,7 @@ class LocalCeleryQueue(BaseStashQueue):
             if entry.stash_rev == active_entry.stash_rev:
                 logger.debug("Waiting for exp task '%s' to complete", task_id)
                 try:
-                    result = AsyncResult(task_id)
+                    result: AsyncResult = AsyncResult(task_id)
                     result.get(timeout=timeout)
                 except _CeleryTimeout as exc:
                     raise DvcException(
