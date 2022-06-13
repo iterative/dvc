@@ -16,9 +16,7 @@ class CmdRepro(CmdBase):
         if len(stages) == 0:
             ui.write(CmdDataStatus.UP_TO_DATE_MSG)
         else:
-            ui.write(
-                "Use `dvc push` to send your updates to " "remote storage."
-            )
+            ui.write("Use `dvc push` to send your updates to remote storage.")
 
         if self.args.metrics:
             from dvc.compare import show_metrics
