@@ -12,7 +12,7 @@ class CmdQueueLogs(CmdBase):
 
     def run(self):
         self.repo.experiments.celery_queue.logs(
-            rev=self.args.experiment,
+            rev=self.args.task,
             encoding=self.args.encoding,
             follow=self.args.follow,
         )
@@ -21,7 +21,7 @@ class CmdQueueLogs(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-    QUEUE_LOGS_HELP = "Show output logs for a queued experiment."
+    QUEUE_LOGS_HELP = "Show output logs for a task in the experiments queue."
     queue_logs_parser = queue_subparsers.add_parser(
         "logs",
         parents=[parent_parser],
@@ -40,14 +40,14 @@ def add_parser(queue_subparsers, parent_parser):
         "-f",
         "--follow",
         help=(
-            "Attach to experiment and follow additional live output. Only "
-            "applicable if the experiment is still running."
+            "Attach to task and follow additional live output. Only "
+            "applicable if the task is still running."
         ),
         action="store_true",
     )
     queue_logs_parser.add_argument(
-        "experiment",
-        help="Experiment to show.",
-        metavar="<experiment>",
+        "task",
+        help="Task to show.",
+        metavar="<task>",
     )
     queue_logs_parser.set_defaults(func=CmdQueueLogs)

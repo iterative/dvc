@@ -16,20 +16,18 @@ class CmdQueueStop(CmdBase):
 
         if self.args.kill:
             ui.write(
-                "All of the Queue tasked had already been killed, "
+                "All running tasks in the queue have been killed."
                 "Queue workers are stopping."
             )
         else:
-            ui.write(
-                "Queue workers will be stopped after current tasks finished."
-            )
+            ui.write("Queue workers will stop after running tasks finish.")
 
         return 0
 
 
 def add_parser(queue_subparsers, parent_parser):
 
-    QUEUE_STOP_HELP = "Stop experiment queue workers"
+    QUEUE_STOP_HELP = "Stop experiments queue workers."
     queue_stop_parser = queue_subparsers.add_parser(
         "stop",
         parents=[parent_parser],
@@ -40,7 +38,6 @@ def add_parser(queue_subparsers, parent_parser):
     queue_stop_parser.add_argument(
         "--kill",
         action="store_true",
-        help="Kill the current running experiments in queue "
-        "before shutting down.",
+        help="Kill all running tasks before stopping the queue workers.",
     )
     queue_stop_parser.set_defaults(func=CmdQueueStop)

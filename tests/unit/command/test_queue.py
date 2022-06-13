@@ -133,7 +133,7 @@ def test_experiments_status(dvc, scm, mocker, capsys, caplog):
     assert cmd.run() == 0
     m.assert_called_once_with()
     log, _ = capsys.readouterr()
-    assert "Rev      Name    Created       Status" in log
+    assert "Task     Name    Created       Status" in log
     assert "c61a525  I40     Jun 09, 2022  Queued" in log
     assert "8da9c33  I60     Jun 09, 2022  Running" in log
 

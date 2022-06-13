@@ -18,7 +18,7 @@ class CmdQueueStatus(CmdBase):
         result: List[
             Mapping[str, Optional[str]]
         ] = self.repo.experiments.celery_queue.status()
-        all_headers = ["Rev", "Name", "Created", "Status"]
+        all_headers = ["Task", "Name", "Created", "Status"]
         td = TabularData(all_headers)
         for exp in result:
             created = format_time(exp.get("timestamp"))
@@ -31,7 +31,7 @@ class CmdQueueStatus(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-    QUEUE_STATUS_HELP = "List the status of the queue tasks and workers"
+    QUEUE_STATUS_HELP = "List the status of the queue tasks and workers."
     queue_status_parser = queue_subparsers.add_parser(
         "status",
         parents=[parent_parser],

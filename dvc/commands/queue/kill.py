@@ -11,13 +11,13 @@ class CmdQueueKill(CmdBase):
     """Kill exp task in queue."""
 
     def run(self):
-        self.repo.experiments.celery_queue.kill(revs=self.args.experiment)
+        self.repo.experiments.celery_queue.kill(revs=self.args.task)
 
         return 0
 
 
 def add_parser(queue_subparsers, parent_parser):
-    QUEUE_KILL_HELP = "Kill experiments in queue"
+    QUEUE_KILL_HELP = "Kill tasks in experiments queue."
     queue_kill_parser = queue_subparsers.add_parser(
         "kill",
         parents=[parent_parser],
@@ -26,9 +26,9 @@ def add_parser(queue_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     queue_kill_parser.add_argument(
-        "experiment",
+        "task",
         nargs="*",
-        help="Experiments in queue to kill.",
-        metavar="<experiment>",
+        help="Tasks in queue to kill.",
+        metavar="<task>",
     )
     queue_kill_parser.set_defaults(func=CmdQueueKill)
