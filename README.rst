@@ -9,7 +9,7 @@
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 • `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 
-|CI| |Maintainability| |Coverage| |VSCode| |DOI|
+|CI| |Maintainability| |Coverage| |VS Code| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
@@ -319,6 +319,6 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://github.com/iterative/dvc/graphs/contributors
    :alt: Contributors
 
-.. |VSCode| image:: https://vsmarketplacebadge.apphb.com/version/Iterative.dvc.svg
+.. |VS Code| image:: https://vsmarketplacebadge.apphb.com/version/Iterative.dvc.svg
    :target: https://marketplace.visualstudio.com/items?itemName=Iterative.dvc
    :alt: VS Code Extension
