@@ -21,7 +21,7 @@ def test_experiments_remove(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.clear",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.clear",
         return_value={},
     )
 
@@ -40,7 +40,7 @@ def test_experiments_remove(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.remove",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.remove",
         return_value={},
     )
 
@@ -61,7 +61,7 @@ def test_experiments_kill(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.kill",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.kill",
         return_value={},
     )
 
@@ -75,7 +75,7 @@ def test_experiments_start(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.spawn_worker",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.spawn_worker",
     )
 
     assert cmd.run() == 0
@@ -94,7 +94,7 @@ def test_experiments_stop(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.shutdown",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.shutdown",
     )
 
     assert cmd.run() == 0
@@ -134,11 +134,11 @@ def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
 
     cmd = cli_args.func(cli_args)
     mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.status",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.status",
         return_value=[],
     )
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.worker_status",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.worker_status",
         return_value=worker_status,
     )
 
@@ -176,7 +176,7 @@ def test_experiments_status(dvc, scm, mocker, capsys):
         },
     ]
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.status",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.status",
         return_value=status_result,
     )
 
@@ -194,7 +194,7 @@ def test_queue_logs(dvc, scm, mocker):
 
     cmd = cli_args.func(cli_args)
     m = mocker.patch(
-        "dvc.repo.experiments.queue.local.LocalCeleryQueue.logs",
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.logs",
         return_value={},
     )
 
