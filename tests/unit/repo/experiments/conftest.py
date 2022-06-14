@@ -2,7 +2,7 @@ from contextlib import contextmanager
 
 import pytest
 
-from dvc.repo.experiments.queue.local import LocalCeleryQueue
+from dvc.repo.experiments.queue.celery import LocalCeleryQueue
 
 
 @contextmanager

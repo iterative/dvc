@@ -18,7 +18,8 @@ from .exceptions import (
 )
 from .executor.base import BaseExecutor, ExecutorInfo
 from .queue.base import BaseStashQueue, QueueEntry
-from .queue.local import LocalCeleryQueue, WorkspaceQueue
+from .queue.celery import LocalCeleryQueue
+from .queue.workspace import WorkspaceQueue
 from .refs import (
     CELERY_FAILED_STASH,
     CELERY_STASH,
