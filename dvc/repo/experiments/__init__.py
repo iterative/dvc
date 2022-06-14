@@ -19,6 +19,7 @@ from .exceptions import (
 from .executor.base import BaseExecutor, ExecutorInfo
 from .queue.base import BaseStashQueue, QueueEntry
 from .queue.celery import LocalCeleryQueue
+from .queue.tempdir import TempDirQueue
 from .queue.workspace import WorkspaceQueue
 from .refs import (
     CELERY_FAILED_STASH,
@@ -78,6 +79,12 @@ class Experiments:
     @cached_property
     def workspace_queue(self) -> WorkspaceQueue:
         return WorkspaceQueue(self.repo, WORKSPACE_STASH)
+
+    @cached_property
+    def tempdir_queue(self) -> TempDirQueue:
+        # NOTE: tempdir and workspace stash is shared since both
+        # implementations immediately push -> pop (queue length is only 0 or 1)
+        return TempDirQueue(self.repo, WORKSPACE_STASH)
 
     @cached_property
     def celery_queue(self) -> LocalCeleryQueue:
