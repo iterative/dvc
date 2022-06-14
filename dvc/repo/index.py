@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
     from dvc_data import Tree
+    from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
-    from dvc_objects.hashfile.hash_info import HashInfo
 
 
 ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]

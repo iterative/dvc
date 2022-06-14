@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from dvc_data.db import get_index
 
 if TYPE_CHECKING:
+    from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.status import CompareStatusResult
-    from dvc_objects.db import ObjectDB
-    from dvc_objects.hashfile.hash_info import HashInfo
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class DataCloud:
         self,
         name: Optional[str] = None,
         command: str = "<command>",
-    ) -> "ObjectDB":
+    ) -> "HashFileDB":
         from dvc.config import NoRemoteError
 
         if not name:
@@ -76,8 +76,8 @@ class DataCloud:
 
     def transfer(
         self,
-        src_odb: "ObjectDB",
-        dest_odb: "ObjectDB",
+        src_odb: "HashFileDB",
+        dest_odb: "HashFileDB",
         objs: Iterable["HashInfo"],
         **kwargs,
     ):
@@ -94,7 +94,7 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        odb: Optional["ObjectDB"] = None,
+        odb: Optional["HashFileDB"] = None,
     ):
         """Push data items in a cloud-agnostic way.
 
@@ -121,7 +121,7 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        odb: Optional["ObjectDB"] = None,
+        odb: Optional["HashFileDB"] = None,
     ):
         """Pull data items in a cloud-agnostic way.
 
@@ -149,7 +149,7 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        odb: Optional["ObjectDB"] = None,
+        odb: Optional["HashFileDB"] = None,
         log_missing: bool = True,
     ):
         """Check status of data items in a cloud-agnostic way.

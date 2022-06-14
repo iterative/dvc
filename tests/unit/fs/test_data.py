@@ -3,12 +3,12 @@ import shutil
 
 import pytest
 
-import dvc_objects
+import dvc_data
 from dvc.config import NoRemoteError
 from dvc.fs.data import DataFileSystem
 from dvc.utils.fs import remove
+from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.stage import stage
-from dvc_objects.hashfile.hash_info import HashInfo
 
 
 @pytest.mark.parametrize(
@@ -231,7 +231,7 @@ def test_get_hash_dir(tmp_dir, dvc, mocker):
         {"dir": {"foo": "foo", "bar": "bar", "subdir": {"data": "data"}}}
     )
     fs = DataFileSystem(repo=dvc)
-    hash_file_spy = mocker.spy(dvc_objects.hashfile.hash, "hash_file")
+    hash_file_spy = mocker.spy(dvc_data.hashfile.hash, "hash_file")
     assert fs.info("dir")["md5"] == "8761c4e9acad696bee718615e23e22db.dir"
     assert not hash_file_spy.called
 

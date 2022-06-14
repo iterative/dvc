@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional, Set
+from typing import TYPE_CHECKING, Callable, Optional
 
 from funcy import cached_property
 
@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
-    from dvc_objects.hashfile.file import HashFile
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +164,7 @@ class Repo:
         from dvc.repo.stage import StageLoad
         from dvc.scm import SCM
         from dvc.stage.cache import StageCache
-        from dvc_objects.hashfile.state import State, StateNoop
+        from dvc_data.hashfile.state import State, StateNoop
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}
@@ -411,16 +410,7 @@ class Repo:
         """
         used = defaultdict(set)
 
-        def _add_suffix(objs: Set["HashFile"], suffix: str) -> None:
-            from itertools import chain
-
-            from dvc_data import iterobjs
-
-            for obj in chain.from_iterable(map(iterobjs, objs)):
-                if obj.name is not None:
-                    obj.name += suffix
-
-        for branch in self.brancher(
+        for _ in self.brancher(
             revs=revs,
             all_branches=all_branches,
             all_tags=all_tags,
@@ -435,8 +425,6 @@ class Repo:
                 recursive=recursive,
                 with_deps=with_deps,
             ).items():
-                if branch:
-                    _add_suffix(objs, f" ({branch})")
                 used[odb].update(objs)
 
         if used_run_cache:
