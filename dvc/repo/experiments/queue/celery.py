@@ -22,12 +22,7 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
-    ExecutorInfo,
-    ExecutorResult,
-)
+from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
 from ..stash import ExpStashEntry
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .tasks import run_exp
@@ -89,8 +84,7 @@ class LocalCeleryQueue(BaseStashQueue):
     def proc(self) -> "ProcessManager":
         from dvc_task.proc.manager import ProcessManager
 
-        pid_dir = os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-        return ProcessManager(pid_dir)
+        return ProcessManager(self.pid_dir)
 
     @cached_property
     def worker(self) -> "TemporaryWorker":
