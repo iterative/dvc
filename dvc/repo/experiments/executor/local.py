@@ -120,9 +120,10 @@ class TempDirExecutor(BaseLocalExecutor):
         repo: "Repo",
         stash_rev: str,
         entry: "ExpStashEntry",
+        wdir: Optional[str] = None,
         **kwargs,
     ):
-        tmp_dir = mkdtemp(dir=os.path.join(repo.tmp_dir, EXEC_TMP_DIR))
+        tmp_dir = mkdtemp(dir=wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR))
         try:
             executor = cls._from_stash_entry(repo, stash_rev, entry, tmp_dir)
             logger.debug("Init temp dir executor in '%s'", tmp_dir)
