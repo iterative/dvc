@@ -542,6 +542,7 @@ class BaseStashQueue(ABC):
         exp: "Experiments",
         queue_entry: QueueEntry,
         executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
+        **kwargs,
     ) -> BaseExecutor:
         scm = exp.scm
         stash = ExpStash(scm, queue_entry.stash_ref)
@@ -563,7 +564,9 @@ class BaseStashQueue(ABC):
         #   EXEC_MERGE - the unmerged changes (from our stash)
         #       to be reproduced
         #   EXEC_BASELINE - the baseline commit for this experiment
-        return executor_cls.from_stash_entry(exp.repo, stash_rev, stash_entry)
+        return executor_cls.from_stash_entry(
+            exp.repo, stash_rev, stash_entry, **kwargs
+        )
 
     def get_infofile_path(self, name: str) -> str:
         return os.path.join(
