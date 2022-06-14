@@ -8,8 +8,8 @@ from funcy import cached_property, get_in, lcat, once, project
 from dvc import dependency, output
 from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
-from dvc_objects.hashfile.hash_info import HashInfo
-from dvc_objects.hashfile.meta import Meta
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.meta import Meta
 
 from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound

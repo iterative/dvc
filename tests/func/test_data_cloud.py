@@ -5,7 +5,7 @@ import shutil
 import pytest
 from flaky.flaky_decorator import flaky
 
-import dvc_objects
+import dvc_data
 from dvc.cli import main
 from dvc.external_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
@@ -14,7 +14,7 @@ from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
 )
 from dvc.utils.fs import remove
 from dvc_data.db.local import LocalHashFileDB
-from dvc_objects.hashfile.db import HashFileDB
+from dvc_data.hashfile.db import HashFileDB
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):
@@ -148,7 +148,7 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
 
 def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
-    test_file_md5 = mocker.spy(dvc_objects.hashfile.hash, "file_md5")
+    test_file_md5 = mocker.spy(dvc_data.hashfile.hash, "file_md5")
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])
@@ -210,7 +210,7 @@ def test_verify_hashes(
     remove("dir")
     remove(dvc.odb.local.cache_dir)
 
-    hash_spy = mocker.spy(dvc_objects.hashfile.hash, "file_md5")
+    hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     dvc.pull()
     assert hash_spy.call_count == 0

@@ -1,4 +1,4 @@
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.hash_info import HashInfo
 
 
 def test_as_raw():

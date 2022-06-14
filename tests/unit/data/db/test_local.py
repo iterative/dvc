@@ -5,7 +5,7 @@ import pytest
 
 from dvc.fs import LocalFileSystem
 from dvc_data.db.local import LocalHashFileDB
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.hash_info import HashInfo
 
 
 def test_status_download_optimization(mocker, dvc):

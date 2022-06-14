@@ -3,7 +3,7 @@ import posixpath
 from unittest import mock
 
 from dvc.fs import FileSystem
-from dvc_objects.hashfile.db import ObjectDB
+from dvc_data.hashfile.db import ObjectDB
 
 
 class _CallableOrNone:

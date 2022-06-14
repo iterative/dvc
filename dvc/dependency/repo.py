@@ -10,9 +10,9 @@ from dvc.prompt import confirm
 from .base import Dependency
 
 if TYPE_CHECKING:
+    from dvc_data.hashfile.file import HashFile
+    from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
-    from dvc_objects.hashfile.file import HashFile
-    from dvc_objects.hashfile.hash_info import HashInfo
 
 
 class RepoDependency(Dependency):

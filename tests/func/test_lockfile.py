@@ -10,7 +10,7 @@ from dvc.stage.utils import split_params_deps
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dumps_yaml, parse_yaml_for_update
 from dvc.utils.strictyaml import YAMLValidationError, make_relpath
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.hash_info import HashInfo
 from tests.func.test_run_multistage import supported_params
 
 FS_STRUCTURE = {

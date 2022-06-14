@@ -12,7 +12,6 @@ import pytest
 
 import dvc as dvc_module
 import dvc_data
-import dvc_objects
 from dvc.cli import main
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
@@ -38,8 +37,8 @@ from dvc.testing.test_workspace import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
-from dvc_objects.hashfile.hash import file_md5
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.hash import file_md5
+from dvc_data.hashfile.hash_info import HashInfo
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 
@@ -380,7 +379,7 @@ class TestDoubleAddUnchanged(TestDvc):
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
-    file_md5_counter = mocker.spy(dvc_objects.hashfile.hash, "file_md5")
+    file_md5_counter = mocker.spy(dvc_data.hashfile.hash, "file_md5")
     tmp_dir.gen("foo", "foo")
 
     ret = main(["config", "cache.type", "copy"])
@@ -411,7 +410,7 @@ def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
 def test_should_update_state_entry_for_directory_after_add(
     mocker, dvc, tmp_dir
 ):
-    file_md5_counter = mocker.spy(dvc_objects.hashfile.hash, "file_md5")
+    file_md5_counter = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     tmp_dir.gen({"data/data": "foo", "data/data_sub/sub_data": "foo"})
 

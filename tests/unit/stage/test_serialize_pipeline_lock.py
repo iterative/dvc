@@ -11,7 +11,7 @@ from dvc.stage.serialize import (
     to_single_stage_lockfile as _to_single_stage_lockfile,
 )
 from dvc.stage.utils import split_params_deps
-from dvc_objects.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.hash_info import HashInfo
 
 kwargs = {"name": "something", "cmd": "command", "path": PIPELINE_FILE}
 Schema = _Schema(LOCK_FILE_STAGE_SCHEMA)

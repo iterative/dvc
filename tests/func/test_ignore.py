@@ -10,8 +10,8 @@ from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.testing.tmp_dir import TmpDir
 from dvc.types import List
+from dvc_data.hashfile.utils import get_mtime_and_size
 from dvc_data.stage import IgnoreInCollectedDirError
-from dvc_objects.hashfile.utils import get_mtime_and_size
 
 
 def _to_pattern_info_list(str_list: List):

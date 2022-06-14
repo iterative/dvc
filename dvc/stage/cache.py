@@ -27,7 +27,7 @@ class RunCacheNotSupported(DvcException):
 
 
 def _get_cache_hash(cache, key=False):
-    from dvc_objects.hashfile.meta import Meta
+    from dvc_data.hashfile.meta import Meta
 
     if key:
         cache["outs"] = [out["path"] for out in cache.get("outs", [])]

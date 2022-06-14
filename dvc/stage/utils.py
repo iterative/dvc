@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Union
 from funcy import concat, first, lsplit, rpartial, without
 
 from dvc.exceptions import InvalidArgumentError
-from dvc_objects.hashfile.meta import Meta
+from dvc_data.hashfile.meta import Meta
 
 from .exceptions import (
     MissingDataSource,

@@ -117,12 +117,12 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return bool(info.get("outs") if recurse else info.get("isout"))
 
     def info(self, path, **kwargs):
-        from dvc_objects.hashfile.meta import Meta
+        from dvc_data.hashfile.meta import Meta
 
         key = self._get_key(path)
 
         try:
-            outs = list(self.repo.index.tree.iteritems(key))
+            outs = list(self.repo.index.tree.iteritems(key))  # noqa: B301
         except KeyError as exc:
             raise FileNotFoundError from exc
 
