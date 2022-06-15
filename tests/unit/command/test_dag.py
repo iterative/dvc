@@ -139,24 +139,58 @@ def test_show_dot(repo):
     # output doesn't depend upon order of lines. Use sorted values
     # https://github.com/iterative/dvc/pull/7725
     expected = [
+        "\"stage: '1'\";",
+        "\"stage: '2'\";",
         "\"stage: '3'\" -> \"stage: '4'\";",
+        "\"stage: '3'\";",
+        "\"stage: '4'\";",
         "\"stage: 'a.dvc'\" -> \"stage: '1'\";",
         "\"stage: 'a.dvc'\" -> \"stage: '3'\";",
         "\"stage: 'a.dvc'\" -> \"stage: '4'\";",
+        "\"stage: 'a.dvc'\";",
         "\"stage: 'b.dvc'\" -> \"stage: '2'\";",
         "\"stage: 'b.dvc'\" -> \"stage: '3'\";",
-        "stage;",
-        "stage;",
-        "stage;",
-        "stage;",
-        "stage;",
-        "stage;",
+        "\"stage: 'b.dvc'\";",
         "strict digraph  {",
         "}",
     ]
     actual = sorted(
         line.rstrip() for line in _show_dot(repo.index.graph).splitlines()
     )
+    assert actual == expected
+
+
+def test_show_dot_properly_escapes():
+    graph = nx.DiGraph(
+        [
+            ("evaluate", "train🚄"),  # emoji
+            ("evaluate", "featurize"),
+            ("featurize", "prepare:1"),  # colon
+            ("prepare:1", "data/raw/1.dvc"),  # posix path
+            ("prepare:1", "data\\raw\\2.dvc"),  # windows path
+            ("prepare", "4"),  # just a number
+        ]
+    )
+
+    expected = {
+        "strict digraph  {",
+        '"data\\raw\\2.dvc";',
+        '"prepare";',
+        '"4";',
+        '"data/raw/1.dvc";',
+        '"train🚄";',
+        '"evaluate";',
+        '"prepare:1";',
+        '"featurize";',
+        '"data\\raw\\2.dvc" -> "prepare:1";',
+        '"4" -> "prepare";',
+        '"data/raw/1.dvc" -> "prepare:1";',
+        '"train🚄" -> "evaluate";',
+        '"prepare:1" -> "featurize";',
+        '"featurize" -> "evaluate";',
+        "}",
+    }
+    actual = {line.rstrip() for line in _show_dot(graph).splitlines()}
     assert actual == expected
 
 
