@@ -1,11 +1,15 @@
 import argparse
+from typing import TYPE_CHECKING
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.ui import ui
 
+if TYPE_CHECKING:
+    from networkx import DiGraph
 
-def _show_ascii(G):
+
+def _show_ascii(G: "DiGraph"):
     from dvc.dagascii import draw
     from dvc.repo.graph import get_pipelines
 
@@ -18,12 +22,24 @@ def _show_ascii(G):
     return "\n".join(ret)
 
 
-def _show_dot(G):
+def _quote_label(node):
+    label = str(node)
+    # Node names should not contain ":" unless they are quoted with "".
+    # See: https://github.com/pydot/pydot/issues/258.
+    if label[0] != '"' and label[-1] != '"':
+        return f'"{label}"'
+    return label
+
+
+def _show_dot(G: "DiGraph"):
     import io
 
+    import networkx as nx
     from networkx.drawing.nx_pydot import write_dot
 
     dot_file = io.StringIO()
+
+    nx.relabel_nodes(G, _quote_label, copy=False)
     write_dot(G.reverse(), dot_file)
     return dot_file.getvalue()
 
