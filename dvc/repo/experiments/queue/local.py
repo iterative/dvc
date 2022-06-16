@@ -2,6 +2,7 @@ import hashlib
 import locale
 import logging
 import os
+import time
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
@@ -124,21 +125,30 @@ class LocalCeleryQueue(BaseStashQueue):
         )
 
     def spawn_worker(self):
-        from shortuuid import uuid
-
         from dvc_task.proc.process import ManagedProcess
 
         logger.debug("Spawning exp queue worker")
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
-        node_name = f"dvc-exp-{wdir_hash}-1@localhost"
+        number = 1
+        node_name = f"dvc-exp-{wdir_hash}-{number}@localhost"
+        worker_status = self.active_worker()
+        while node_name in worker_status:
+            number += 1
+            node_name = f"dvc-exp-{wdir_hash}-{number}@localhost"
+
         cmd = ["exp", "queue-worker", node_name]
-        name = "dvc-exp-worker"
-        if logger.getEffectiveLevel() < logging.INFO:
-            name = name + str(uuid())
+        name = f"dvc-exp-worker-{number}"
+        logger.debug(f"start worker: {name}, node: {node_name}")
         if os.name == "nt":
             daemonize(cmd)
         else:
             ManagedProcess.spawn(["dvc"] + cmd, wdir=self.wdir, name=name)
+
+        for _ in range(5):
+            time.sleep(1)
+            if node_name in self.active_worker():
+                return
+        logger.debug(f"worker {name} node {node_name} didn't start in 5 sec")
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
@@ -315,6 +325,12 @@ class LocalCeleryQueue(BaseStashQueue):
             encoding=encoding or locale.getpreferredencoding(),
         ) as fobj:
             ui.write(fobj.read())
+
+    def active_worker(self) -> Set:
+        """Return the current active celery worker"""
+        status = self.celery.control.inspect().active() or {}
+        logger.debug(f"Worker status: {status}")
+        return {name for name in status if status[name]}
 
 
 class WorkspaceQueue(BaseStashQueue):
