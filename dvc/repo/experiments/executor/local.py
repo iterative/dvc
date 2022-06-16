@@ -8,7 +8,7 @@ from funcy import cached_property
 from scmrepo.exceptions import SCMError as _SCMError
 
 from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import remove
+from dvc.utils.fs import makedirs, remove
 
 from ..refs import (
     EXEC_APPLY,
@@ -123,7 +123,9 @@ class TempDirExecutor(BaseLocalExecutor):
         wdir: Optional[str] = None,
         **kwargs,
     ):
-        tmp_dir = mkdtemp(dir=wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR))
+        parent_dir: str = wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
+        makedirs(parent_dir, exist_ok=True)
+        tmp_dir = mkdtemp(dir=parent_dir)
         try:
             executor = cls._from_stash_entry(repo, stash_rev, entry, tmp_dir)
             logger.debug("Init temp dir executor in '%s'", tmp_dir)

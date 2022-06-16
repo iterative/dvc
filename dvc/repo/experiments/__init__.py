@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from funcy import cached_property, first
 
@@ -99,21 +99,12 @@ class Experiments:
 
     def reproduce_one(
         self,
-        queue: bool = False,
         tmp_dir: bool = False,
-        checkpoint_resume: Optional[str] = None,
-        reset: bool = False,
         machine: Optional[str] = None,
         **kwargs,
     ):
-        """Reproduce and checkout a single experiment."""
-        if queue and not checkpoint_resume:
-            reset = True
-
-        if reset:
-            self.reset_checkpoints()
-
-        if not (queue or tmp_dir or machine):
+        """Reproduce and checkout a single (standalone) experiment."""
+        if not (tmp_dir or machine):
             staged, _, _ = self.scm.status(untracked_files="no")
             if staged:
                 logger.warning(
@@ -121,6 +112,30 @@ class Experiments:
                     "unstaged before running this experiment."
                 )
                 self.scm.reset()
+
+        exp_queue: BaseStashQueue = (
+            self.tempdir_queue if tmp_dir else self.workspace_queue
+        )
+        self.queue_one(exp_queue, **kwargs)
+        if machine:
+            # TODO: decide how to handle queued remote execution
+            raise NotImplementedError
+        results = self._reproduce_queue(exp_queue)
+        exp_rev = first(results)
+        if exp_rev is not None:
+            self._log_reproduced(results, tmp_dir=tmp_dir)
+        return results
+
+    def queue_one(
+        self,
+        queue: BaseStashQueue,
+        checkpoint_resume: Optional[str] = None,
+        reset: bool = False,
+        **kwargs,
+    ) -> QueueEntry:
+        """Queue a single experiment."""
+        if reset:
+            self.reset_checkpoints()
 
         if checkpoint_resume:
             from dvc.scm import resolve_rev
@@ -137,29 +152,12 @@ class Experiments:
         else:
             checkpoint_resume = self._workspace_resume_rev()
 
-        exp_queue = (
-            self.celery_queue if (tmp_dir or queue) else self.workspace_queue
-        )
-        entry = self.new(
-            exp_queue,
+        return self.new(
+            queue,
             checkpoint_resume=checkpoint_resume,
             reset=reset,
             **kwargs,
         )
-        if queue:
-            name = entry.name or entry.stash_rev[:7]
-            ui.write(f"Queued experiment '{name}' for future execution.")
-            return [entry.stash_rev]
-        if tmp_dir:
-            return self.reproduce_celery(entries=[entry])
-        if machine:
-            # TODO: decide how to handle queued remote execution
-            raise NotImplementedError
-        results = self._reproduce_queue(exp_queue)
-        exp_rev = first(results)
-        if exp_rev is not None:
-            self._log_reproduced(results, tmp_dir=tmp_dir)
-        return results
 
     def _workspace_resume_rev(self) -> Optional[str]:
         last_checkpoint = self._get_last_checkpoint()
@@ -342,7 +340,7 @@ class Experiments:
     @unlocked_repo
     def _reproduce_queue(
         self, queue: BaseStashQueue, **kwargs
-    ) -> Mapping[str, str]:
+    ) -> Dict[str, str]:
         """Reproduce queued experiments.
 
         Arguments:

@@ -211,19 +211,17 @@ def test_add_params(tmp_dir, scm, dvc, changes):
         dvc.experiments.run(stage.addressing, params=changes)
 
 
-@pytest.mark.parametrize("queue", [True, False])
-def test_apply(tmp_dir, scm, dvc, exp_stage, queue, test_queue):
+def test_apply(tmp_dir, scm, dvc, exp_stage):
     from dvc.exceptions import InvalidArgumentError
     from dvc.repo.experiments.exceptions import ApplyConflictError
 
-    metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
     results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=2"], queue=queue, tmp_dir=True
+        exp_stage.addressing, params=["foo=2"], tmp_dir=True
     )
     exp_a = first(results)
 
     results = dvc.experiments.run(
-        exp_stage.addressing, params=["foo=3"], queue=queue, tmp_dir=True
+        exp_stage.addressing, params=["foo=3"], tmp_dir=True
     )
     exp_b = first(results)
 
@@ -232,29 +230,45 @@ def test_apply(tmp_dir, scm, dvc, exp_stage, queue, test_queue):
 
     dvc.experiments.apply(exp_a)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-    assert (
-        (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
-        if queue
-        else "foo: 2"
-    )
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
     with pytest.raises(ApplyConflictError):
         dvc.experiments.apply(exp_b, force=False)
         # failed apply should revert everything to prior state
         assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
-        assert (
-            (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
-            if queue
-            else "foo: 2"
-        )
+        assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
     dvc.experiments.apply(exp_b)
     assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
-    assert (
-        (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
-        if queue
-        else "foo: 3"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
+
+
+def test_apply_queued(tmp_dir, scm, dvc, exp_stage, test_queue):
+    # from dvc.exceptions import InvalidArgumentError
+    from dvc.repo.experiments.exceptions import ApplyConflictError
+
+    metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], name="exp-a", queue=True
     )
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=3"], name="exp-b", queue=True
+    )
+    queue_revs = {
+        entry.name: entry.stash_rev
+        for entry in dvc.experiments.celery_queue.iter_queued()
+    }
+
+    dvc.experiments.apply(queue_revs["exp-a"])
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 2"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
+
+    with pytest.raises(ApplyConflictError):
+        dvc.experiments.apply(queue_revs["exp-b"], force=False)
+
+    dvc.experiments.apply(queue_revs["exp-b"])
+    assert (tmp_dir / "params.yaml").read_text().strip() == "foo: 3"
+    assert (tmp_dir / "metrics.yaml").read_text().strip() == metrics_original
 
 
 def test_apply_untracked(tmp_dir, scm, dvc, exp_stage):
