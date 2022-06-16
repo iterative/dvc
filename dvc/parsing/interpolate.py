@@ -1,11 +1,12 @@
 import re
 import typing
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from functools import singledispatch
 
 from funcy import memoize, rpartial
 
 from dvc.exceptions import DvcException
+from dvc.utils.flatten import flatten
 
 if typing.TYPE_CHECKING:
     from typing import List, Match
@@ -80,6 +81,45 @@ def _(obj: bool):
     return "true" if obj else "false"
 
 
+@to_str.register(dict)
+def _(obj: dict):
+    from dvc.config import Config
+
+    config = Config().get("parsing", {})
+
+    result = ""
+    for k, v in flatten(obj).items():
+
+        if isinstance(v, bool):
+            if v:
+                result += f"--{k} "
+            else:
+                if config.get("bool", "store_true") == "boolean_optional":
+                    result += f"--no-{k} "
+
+        elif isinstance(v, str):
+            result += f"--{k} '{v}' "
+
+        elif isinstance(v, Iterable):
+            for n, i in enumerate(v):
+                if isinstance(i, str):
+                    i = f"'{i}'"
+                elif isinstance(i, Iterable):
+                    raise ParseError(
+                        f"Cannot interpolate nested iterable in '{k}'"
+                    )
+
+                if config.get("list", "nargs") == "append":
+                    result += f"--{k} {i} "
+                else:
+                    result += f"{i} " if n > 0 else f"--{k} {i} "
+
+        else:
+            result += f"--{k} {v} "
+
+    return result.rstrip()
+
+
 def _format_exc_msg(exc: "ParseException"):
     from pyparsing import ParseException
 
@@ -148,23 +188,33 @@ def get_expression(match: "Match", skip_checks: bool = False):
     return inner if skip_checks else parse_expr(inner)
 
 
+def validate_value(value, key):
+    from .context import PRIMITIVES
+
+    not_primitive = value is not None and not isinstance(value, PRIMITIVES)
+    not_foreach = key is not None and "foreach" not in key
+    if not_primitive and not_foreach:
+        if isinstance(value, dict):
+            if key == "cmd":
+                return True
+        raise ParseError(
+            f"Cannot interpolate data of type '{type(value).__name__}'"
+        )
+
+
 def str_interpolate(
     template: str,
     matches: "List[Match]",
     context: "Context",
     skip_checks: bool = False,
+    key=None,
 ):
-    from .context import PRIMITIVES
-
     index, buf = 0, ""
     for match in matches:
         start, end = match.span(0)
         expr = get_expression(match, skip_checks=skip_checks)
         value = context.select(expr, unwrap=True)
-        if value is not None and not isinstance(value, PRIMITIVES):
-            raise ParseError(
-                f"Cannot interpolate data of type '{type(value).__name__}'"
-            )
+        validate_value(value, key)
         buf += template[index:start] + to_str(value)
         index = end
     buf += template[index:]

@@ -303,7 +303,7 @@ class EntryDefinition:
     ) -> DictStr:
         try:
             return context.resolve(
-                value, skip_interpolation_checks=skip_checks
+                value, skip_interpolation_checks=skip_checks, key=key
             )
         except (ParseError, KeyNotInContext) as exc:
             format_and_raise(
