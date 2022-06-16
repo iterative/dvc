@@ -5,6 +5,7 @@ from typing import List, Mapping, Optional
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 from dvc.compare import TabularData
+from dvc.ui import ui
 
 from ..experiments.show import format_time
 
@@ -26,6 +27,13 @@ class CmdQueueStatus(CmdBase):
                 [exp["rev"][:7], exp.get("name", ""), created, exp["status"]]
             )
         td.render()
+        worker_count = len(self.repo.experiments.celery_queue.active_worker())
+        if worker_count == 1:
+            ui.write("There is 1 worker active at present.")
+        elif worker_count == 0:
+            ui.write("No worker active at present.")
+        else:
+            ui.write(f"There are {worker_count} worker active at present.")
 
         return 0
 
