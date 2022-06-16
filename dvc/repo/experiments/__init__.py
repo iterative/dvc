@@ -179,6 +179,10 @@ class Experiments:
         self.celery_queue.spawn_worker()
         failed = []
         try:
+            ui.write(
+                "Following logs for all queued experiments. Use Ctrl+C to "
+                "stop following logs (experiment execution will continue).\n"
+            )
             for entry in entries:
                 # wait for task execution to start
                 while not self.celery_queue.proc.get(entry.stash_rev):
