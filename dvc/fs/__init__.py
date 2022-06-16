@@ -104,11 +104,6 @@ def get_cloud_fs(repo, **kwargs):
     except Invalid as exc:
         raise RepoConfigError(str(exc)) from None
 
-    if "jobs" not in remote_conf:
-        jobs = core_config.get("jobs")
-        if jobs:
-            remote_conf["jobs"] = jobs
-
     if "checksum_jobs" not in remote_conf:
         checksum_jobs = core_config.get("checksum_jobs")
         if checksum_jobs:
