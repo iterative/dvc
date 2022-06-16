@@ -18,33 +18,19 @@
 **Data Version Control** or **DVC** helps you develop reproducible machine
 learning projects:
 
-#. Version your data and models.
+#. **Version** your data and models. Store them in your cloud storage but keep
+   their version info in your Git repo.
 
-#. Connect them to your code and parameters to form a pipeline.
+#. **Iterate** fast with lightweight pipelines. When you make changes, only run
+   the steps impacted by those changes.
 
-#. Modify data, code, or parameters and run your modified pipeline.
+#. **Track** experiments in your local Git repo (no servers needed).
 
-#. Iterate and track each experiment from the command line or `VS Code
+#. **Compare** any data, code, parameters, metrics, or plots from the command
+   line or in `VS Code
    <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
 
-#. Share, compare, and reconstruct experiments.
-
-**Why DVC?**
-
-#. **Store** data and models (big) in your cloud storage, but keep their version
-   info (small) in your Git repo.
-
-#. **Iterate** fast with straightforward YAML pipelines. When you make changes,
-   only run the steps impacted by those changes.
-
-#. **Track** experiments in your local Git repo (no servers needed) and `VS Code
-   <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
-   Choose which to keep and share.
-
-#. **Compare** any data, code, parameters, metrics, or plots and analyze however
-   you want.
-
-#. **Reconstruct** anyone's experiment with a single command.
+#. **Share** experiments and automatically reproduce anyone's experiment.
 
 .. contents:: **Contents**
   :backlinks: none
