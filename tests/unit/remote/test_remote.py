@@ -23,7 +23,6 @@ def test_remote_with_jobs(dvc):
         "url": "s3://bucket/name",
         "jobs": 100,
     }
-    dvc.config["core"]["jobs"] = 200
 
     cls, config, _ = get_cloud_fs(dvc, name="with_jobs")
     fs = cls(**config)
