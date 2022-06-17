@@ -15,10 +15,7 @@
 
 |
 
-**Data Version Control** or **DVC** is a command line tool and
-`VS Code Extension
-<https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help
-you develop reproducible machine learning projects:
+**Data Version Control** or **DVC** is a command line tool and `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help you develop reproducible machine learning projects:
 
 #. **Version** your data and models. Store them in your cloud storage but keep
    their version info in your Git repo.
@@ -60,13 +57,13 @@ specify all steps required to produce a model: input dependencies including data
 and output information to be saved. See the quick start section below or
 the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 
-Quick start
-===========
+Quick start (CLI)
+=================
 
     Please read our `Command Reference https://dvc.org/doc/command-reference>`_
     for a full reference.
 
-Common workflow commands include:
+A common command-line interface workflow includes:
 
 +-----------------------------------+----------------------------------------------------------------------------+
 | Task                              | Terminal                                                                   |
@@ -91,14 +88,21 @@ Common workflow commands include:
 Installation
 ============
 
-There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
+There are several ways to install DVC: in VS Code; using ``snap``, ``choco``, ``brew``, ``conda``, ``pip``; or with an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
 
-To use with VS Code, install DVC and then install the `DVC Extension
-<https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
+Visual Studio Code Extension
+----------------------------
 
-Snap (Snapcraft/Linux)
-----------------------
+|VS Code|
+
+To get DVC features embedded right into your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
+
+    Note: You'll also have to install core DVC in your system in one of the
+    other ways listed below. The Extension will guide you if needed.
+
+Snapcraft (Linux)
+-----------------
 
 |Snap|
 
@@ -107,11 +111,10 @@ Snap (Snapcraft/Linux)
    snap install dvc --classic
 
 This corresponds to the latest tagged release.
-Add ``--beta`` for the latest tagged release candidate,
-or ``--edge`` for the latest ``main`` version.
+Add ``--beta`` for the latest tagged release candidate, or ``--edge`` for the latest ``main`` version.
 
-Choco (Chocolatey/Windows)
---------------------------
+Chocolatey (Windows)
+--------------------
 
 |Choco|
 
@@ -119,8 +122,8 @@ Choco (Chocolatey/Windows)
 
    choco install dvc
 
-Brew (Homebrew/Mac OS)
-----------------------
+Brew (mac OS)
+-------------
 
 |Brew|
 
@@ -128,8 +131,8 @@ Brew (Homebrew/Mac OS)
 
    brew install dvc
 
-Conda (Anaconda)
-----------------
+Anaconda (Any platform)
+-----------------------
 
 |Conda|
 
@@ -138,11 +141,10 @@ Conda (Anaconda)
    conda install -c conda-forge mamba # installs much faster than conda
    mamba install -c conda-forge dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to
-install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
+Depending on the remote storage type you plan to use to keep and share your data, you might need to install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
 
-pip (PyPI)
-----------
+PyPI (Python)
+-------------
 
 |PyPI|
 
@@ -150,10 +152,8 @@ pip (PyPI)
 
    pip install dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
-one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
-The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3``
-will be installed automatically).
+Depending on the remote storage type you plan to use to keep and share your data, you might need to specify one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
+The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3`` will be installed automatically).
 
 To install the development version, run:
 
@@ -161,13 +161,13 @@ To install the development version, run:
 
    pip install git+git://github.com/iterative/dvc
 
-Package
--------
+Package (Platform-specific)
+---------------------------
 
 |Packages|
 
-Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
-can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+Self-contained packages for Linux, Windows, and Mac are available.
+The latest version of the packages can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
 Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
