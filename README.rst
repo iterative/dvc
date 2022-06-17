@@ -2,12 +2,12 @@
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
+• `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
 • `Twitter <https://twitter.com/DVCorg>`_
 • `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
-• `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 
 |CI| |Maintainability| |Coverage| |VS Code| |DOI|
 
@@ -15,8 +15,10 @@
 
 |
 
-**Data Version Control** or **DVC** helps you develop reproducible machine
-learning projects:
+**Data Version Control** or **DVC** is a command line tool and
+`VS Code Extension
+<https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help
+you develop reproducible machine learning projects:
 
 #. **Version** your data and models. Store them in your cloud storage but keep
    their version info in your Git repo.
@@ -26,9 +28,7 @@ learning projects:
 
 #. **Track** experiments in your local Git repo (no servers needed).
 
-#. **Compare** any data, code, parameters, metrics, or plots from the command
-   line or in `VS Code
-   <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_.
+#. **Compare** any data, code, parameters, modelhttps://www.youtube.com/watch?v=IYhVmD-_wRometrics, or performance plots
 
 #. **Share** experiments and automatically reproduce anyone's experiment.
 
