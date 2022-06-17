@@ -27,13 +27,29 @@ class CmdQueueStatus(CmdBase):
                 [exp["rev"][:7], exp.get("name", ""), created, exp["status"]]
             )
         td.render()
-        worker_count = len(self.repo.experiments.celery_queue.active_worker())
-        if worker_count == 1:
-            ui.write("There is 1 worker active at present.")
-        elif worker_count == 0:
-            ui.write("No worker active at present.")
+
+        if not result:
+            ui.write("No experiments in task queue for now.")
+
+        worker_status = self.repo.experiments.celery_queue.worker_status()
+        active_count = len(
+            [name for name, task in worker_status.items() if task]
+        )
+        idle_count = len(worker_status) - active_count
+
+        if active_count == 1:
+            ui.write("There is 1 worker active", end=", ")
+        elif active_count == 0:
+            ui.write("No worker active", end=", ")
         else:
-            ui.write(f"There are {worker_count} worker active at present.")
+            ui.write(f"There are {active_count} workers active", end=", ")
+
+        if idle_count == 1:
+            ui.write("1 worker idle at present.")
+        elif idle_count == 0:
+            ui.write("no worker idle at present.")
+        else:
+            ui.write(f"{idle_count} workers idle at present.")
 
         return 0
 
