@@ -63,18 +63,18 @@ the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 Quick start
 ===========
 
-    Please read our `Get Started <https://dvc.org/doc/get-started>`_ guides for
-    a full version.
+    Please read our `Command Reference https://dvc.org/doc/command-reference>`_
+    for a full reference.
 
 Common workflow commands include:
 
 +-----------------------------------+----------------------------------------------------------------------------+
-| Step                              | Command                                                                    |
+| Task                              | Terminal                                                                   |
 +===================================+============================================================================+
 | Track data                        | | ``$ git add train.py``                                                   |
 |                                   | | ``$ dvc add images.zip``                                                 |
 +-----------------------------------+----------------------------------------------------------------------------+
-| Connect code and data by commands | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
+| Connect code and data             | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
 |                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
 +-----------------------------------+----------------------------------------------------------------------------+
 | Make changes and reproduce        | | ``$ vi train.py``                                                        |
