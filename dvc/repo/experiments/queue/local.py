@@ -2,7 +2,6 @@ import hashlib
 import locale
 import logging
 import os
-import time
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
@@ -124,31 +123,53 @@ class LocalCeleryQueue(BaseStashQueue):
             timeout=10,
         )
 
-    def spawn_worker(self):
+    def spawn_worker(self, num: int = 1):
+        """spawn one single worker to process to queued tasks.
+
+        Argument:
+            num: serial number of the worker.
+
+        """
         from dvc_task.proc.process import ManagedProcess
 
         logger.debug("Spawning exp queue worker")
         wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[:6]
-        number = 1
-        node_name = f"dvc-exp-{wdir_hash}-{number}@localhost"
-        worker_status = self.active_worker()
-        while node_name in worker_status:
-            number += 1
-            node_name = f"dvc-exp-{wdir_hash}-{number}@localhost"
-
+        node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
         cmd = ["exp", "queue-worker", node_name]
-        name = f"dvc-exp-worker-{number}"
-        logger.debug(f"start worker: {name}, node: {node_name}")
+        name = f"dvc-exp-worker-{num}"
+
+        logger.debug(f"start a new worker: {name}, node: {node_name}")
         if os.name == "nt":
             daemonize(cmd)
         else:
             ManagedProcess.spawn(["dvc"] + cmd, wdir=self.wdir, name=name)
 
-        for _ in range(5):
-            time.sleep(1)
-            if node_name in self.active_worker():
-                return
-        logger.debug(f"worker {name} node {node_name} didn't start in 5 sec")
+    def start_workers(self, count: int) -> int:
+        """start some workers to process the queued tasks.
+
+        Argument:
+            count: worker number to be started.
+
+        Returns:
+            newly spawned worker number.
+        """
+
+        logger.debug(f"Spawning {count} exp queue workers")
+        active_worker: Dict = self.worker_status()
+
+        started = 0
+        for num in range(1, 1 + count):
+            wdir_hash = hashlib.sha256(self.wdir.encode("utf-8")).hexdigest()[
+                :6
+            ]
+            node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
+            if node_name in active_worker:
+                logger.debug(f"Exp queue worker {node_name} already exist")
+                continue
+            self.spawn_worker(num)
+            started += 1
+
+        return started
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
@@ -326,11 +347,11 @@ class LocalCeleryQueue(BaseStashQueue):
         ) as fobj:
             ui.write(fobj.read())
 
-    def active_worker(self) -> Set:
+    def worker_status(self) -> Dict:
         """Return the current active celery worker"""
         status = self.celery.control.inspect().active() or {}
         logger.debug(f"Worker status: {status}")
-        return {name for name in status if status[name]}
+        return status
 
 
 class WorkspaceQueue(BaseStashQueue):
