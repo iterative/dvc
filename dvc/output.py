@@ -849,7 +849,6 @@ class Output:
             from_fs,
             "md5",
             upload=upload,
-            jobs=jobs,
             no_progress_bar=no_progress_bar,
         )
         otransfer(
