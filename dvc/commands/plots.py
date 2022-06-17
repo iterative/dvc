@@ -69,7 +69,9 @@ class CmdPlots(CmdBase):
                     "visualization file will not be created."
                 )
 
-            out: str = self.args.out or "dvc_plots"
+            out: str = self.args.out or self.repo.config.get("plots", {}).get(
+                "out_dir", "dvc_plots"
+            )
 
             renderers_out = (
                 out if self.args.json else os.path.join(out, "static")

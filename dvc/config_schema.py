@@ -269,6 +269,7 @@ SCHEMA = {
     "plots": {
         "html_template": str,
         Optional("auto_open", default=False): Bool,
+        "out_dir": str,
     },
     "exp": {
         "code": str,

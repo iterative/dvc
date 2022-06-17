@@ -252,3 +252,30 @@ def test_repo_with_removed_plots(tmp_dir, capsys, repo_with_plots):
         for p in {"linear.json", "confusion.json", "image.png"}:
             assert json_result[p] == []
             assert split_json_result[p] == []
+
+
+def test_config_output_dir(tmp_dir, dvc, capsys):
+    subdir = tmp_dir / "subdir"
+    ret = main(["config", "plots.out_dir", os.fspath(subdir)])
+    assert ret == 0
+
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    (tmp_dir / "metric.json").dump_json(metric, sort_keys=True)
+
+    assert main(["plots", "show", "metric.json"]) == 0
+
+    out, _ = capsys.readouterr()
+    assert subdir.as_uri() in out
+    assert subdir.is_dir()
+    assert (subdir / "index.html").is_file()
+
+    cli_arg_subdir = tmp_dir / "cli_option"
+    assert (
+        main(["plots", "show", "-o", os.fspath(cli_arg_subdir), "metric.json"])
+        == 0
+    )
+
+    out, _ = capsys.readouterr()
+    assert cli_arg_subdir.as_uri() in out
+    assert cli_arg_subdir.is_dir()
+    assert (cli_arg_subdir / "index.html").is_file()
