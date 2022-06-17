@@ -38,8 +38,9 @@ you develop reproducible machine learning projects:
 How DVC works
 =============
 
-We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ guide to better understand what DVC
-is and how it can fit your scenarios.
+    We encourage you to read our `Get Started
+    <https://dvc.org/doc/get-started>`_ guides to better understand what DVC
+    does and how it can fit your scenarios.
 
 The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-LFS to be precise) & Makefiles
 made right and tailored specifically for ML and Data Science scenarios.
@@ -62,7 +63,10 @@ the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 Quick start
 ===========
 
-Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
+    Please read our `Get Started <https://dvc.org/doc/get-started>`_ guides for
+    a full version.
+
+Common workflow commands include:
 
 +-----------------------------------+----------------------------------------------------------------------------+
 | Step                              | Command                                                                    |
