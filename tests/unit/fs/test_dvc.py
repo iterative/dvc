@@ -8,7 +8,6 @@ import pytest
 from dvc.fs.dvc import DvcFileSystem
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.stage import stage
-from tests.utils import clean_staging
 
 
 def test_exists(tmp_dir, dvc):
@@ -565,7 +564,6 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
         ]
     )
     tmp_dir.scm.commit("add dir")
-    clean_staging()
 
     fs = DvcFileSystem(repo=dvc)
     _, _, obj = stage(dvc.odb.local, "dir", fs, "md5")
@@ -577,15 +575,12 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 def test_get_hash_dirty_file(tmp_dir, dvc):
     from dvc_data import check
     from dvc_data.hashfile.hash import hash_file
-    from dvc_objects.errors import ObjectFormatError
 
     tmp_dir.dvc_gen("file", "file")
     file_hash_info = HashInfo("md5", "8c7dd922ad47494fc02c388e12c00eac")
 
     (tmp_dir / "file").write_text("something")
     something_hash_info = HashInfo("md5", "437b930db84b8079c2dd804a71936b5f")
-
-    clean_staging()
 
     # file is modified in workspace
     # hash_file(file) should return workspace hash, not DVC cached hash
@@ -595,13 +590,8 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
     assert obj.hash_info == something_hash_info
     check(staging, obj)
 
-    # file is removed in workspace
-    # any staged object referring to modified workspace obj is now invalid
-    (tmp_dir / "file").unlink()
-    with pytest.raises(ObjectFormatError):
-        check(staging, obj)
-
     # hash_file(file) should return DVC cached hash
+    (tmp_dir / "file").unlink()
     assert fs.info("file")["md5"] == file_hash_info.value
     _, hash_info = hash_file("file", fs, "md5", state=dvc.state)
     assert hash_info == file_hash_info
@@ -615,7 +605,6 @@ def test_get_hash_dirty_file(tmp_dir, dvc):
 def test_get_hash_dirty_dir(tmp_dir, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}})
     (tmp_dir / "dir" / "baz").write_text("baz")
-    clean_staging()
 
     fs = DvcFileSystem(repo=dvc)
     _, meta, obj = stage(dvc.odb.local, "dir", fs, "md5")

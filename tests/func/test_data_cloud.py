@@ -161,13 +161,10 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
 
 
 def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
-    from tests.utils import clean_staging
-
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     # purge cache
     remove(dvc.odb.local.cache_dir)
-    clean_staging()
 
     header = (
         "Some of the cache files do not exist "
@@ -221,7 +218,7 @@ def test_verify_hashes(
     dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert hash_spy.call_count == 3
+    assert hash_spy.call_count == 4
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -298,8 +295,6 @@ def test_pull_external_dvc_imports_mixed(
 
 
 def clean(outs, dvc=None):
-    from tests.utils import clean_staging
-
     if dvc:
         outs = outs + [dvc.odb.local.cache_dir]
     for path in outs:
@@ -308,7 +303,6 @@ def clean(outs, dvc=None):
     if dvc:
         os.makedirs(dvc.odb.local.cache_dir, exist_ok=True)
         clean_repos()
-        clean_staging()
 
 
 def recurse_list_dir(d):

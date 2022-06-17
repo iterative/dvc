@@ -206,7 +206,7 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
 
-    assert _count_files(dvc.odb.local.cache_dir) == 5
+    assert _count_files(dvc.odb.local.cache_dir) == 4
     dvc.gc(force=True, workspace=True)
     assert _count_files(dvc.odb.local.cache_dir) == 2
 

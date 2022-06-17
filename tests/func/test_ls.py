@@ -537,7 +537,6 @@ def test_ls_target(erepo_dir, use_scm):
 )
 def test_subrepo(dvc_top_level, erepo):
     from tests.func.test_get import make_subrepo
-    from tests.utils import clean_staging
 
     dvc_files = {"foo.txt": "foo.txt", "dvc_dir": {"lorem": "lorem"}}
     scm_files = {"bar.txt": "bar.txt", "scm_dir": {"ipsum": "ipsum"}}
@@ -549,7 +548,6 @@ def test_subrepo(dvc_top_level, erepo):
             repo.scm_gen(scm_files, commit=f"scm track for top {repo}")
             if hasattr(repo, "dvc"):
                 repo.dvc_gen(dvc_files, commit=f"dvc track for {repo}")
-        clean_staging()
 
     def _list_files(repo, path=None):
         return set(map(itemgetter("path"), Repo.ls(os.fspath(repo), path)))

@@ -9,7 +9,6 @@ from dvc.utils.fs import makedirs, remove
 from dvc_data.stage import stage
 from dvc_data.transfer import transfer
 from tests.unit.fs.test_dvc import make_subrepo
-from tests.utils import clean_staging
 
 
 def test_external_repo(erepo_dir, mocker):
@@ -201,7 +200,6 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         # clear cache to test saving to cache
         cache_dir = tmp_dir / repo.odb.local.cache_dir
         remove(cache_dir)
-        clean_staging()
         makedirs(cache_dir)
 
         staging, _, obj = stage(
@@ -219,7 +217,6 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
             hardlink=True,
         )
         assert set(cache_dir.glob("??/*")) == {
-            cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7",
             cache_dir / "e1" / "d9e8eae5374860ae025ec84cfd85c7.dir",
             cache_dir / "37" / "b51d194a7513e45b56f6524f2d51f2",
             cache_dir / "94" / "7d2b84e5aa88170e80dff467a5bfb6",
