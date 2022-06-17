@@ -12,13 +12,12 @@ class CmdQueueStart(CmdBase):
     """Start exp queue workers."""
 
     def run(self):
-        for _ in range(self.args.jobs):
-            self.repo.experiments.celery_queue.spawn_worker()
-
-        suffix = "s" if self.args.jobs > 1 else ""
-        ui.write(
-            f"Start {self.args.jobs} worker{suffix} to process the queue."
+        started = self.repo.experiments.celery_queue.start_workers(
+            self.args.jobs
         )
+
+        suffix = "s" if started > 1 else ""
+        ui.write(f"Start {started} new worker{suffix} to process the queue.")
 
         return 0
 
