@@ -69,8 +69,7 @@ Quick start (Visual Studio Code)
 Quick start (command line)
 ==========================
 
-    Please read our `Command Reference https://dvc.org/doc/command-reference>`_
-    for a full reference.
+    Please read our `Command Reference <https://dvc.org/doc/command-reference>`_ for a complete list.
 
 A common CLI workflow includes:
 
