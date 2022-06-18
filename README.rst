@@ -25,7 +25,7 @@
 
 #. **Track** experiments in your local Git repo (no servers needed).
 
-#. **Compare** any data, code, parameters, modelhttps://www.youtube.com/watch?v=IYhVmD-_wRometrics, or performance plots
+#. **Compare** any data, code, parameters, model, or performance plots
 
 #. **Share** experiments and automatically reproduce anyone's experiment.
 
@@ -54,16 +54,25 @@ Google Cloud, etc) or any on-premise network storage (via SSH, for example).
 
 The DVC pipelines (computational graph) feature connects code and data together. It is possible to explicitly
 specify all steps required to produce a model: input dependencies including data, commands to run,
-and output information to be saved. See the quick start section below or
+and output information to be saved. See the quick start sections below or
 the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 
-Quick start (CLI)
-=================
+Quick start (Visual Studio Code)
+================================
+
+#. `Install DVC <https://dvc.org/doc/install>`_ on your system.
+#. Install the `DVC extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ for VS Code.
+#. Follow the **Get Started** page that pops up!
+
+|VS Code Extension Overview|
+
+Quick start (command line)
+==========================
 
     Please read our `Command Reference https://dvc.org/doc/command-reference>`_
     for a full reference.
 
-A common command-line interface workflow includes:
+A common CLI workflow includes:
 
 +-----------------------------------+----------------------------------------------------------------------------+
 | Task                              | Terminal                                                                   |
@@ -260,6 +269,9 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Banner| image:: https://dvc.org/img/logo-github-readme.png
    :target: https://dvc.org
    :alt: DVC logo
+
+.. |VS Code Extension Overview| image:: https://raw.githubusercontent.com/iterative/vscode-dvc/main/extension/docs/overview.gif
+   :alt: DVC Extension for VS Code
 
 .. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=main
    :target: https://github.com/iterative/dvc/actions
