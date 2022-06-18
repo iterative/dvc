@@ -39,23 +39,21 @@ How DVC works
     <https://dvc.org/doc/get-started>`_ guides to better understand what DVC
     does and how it can fit your scenarios.
 
-The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-LFS to be precise) & Makefiles
-made right and tailored specifically for ML and Data Science scenarios.
+The easiest (but not perfect!) *analogy* to describe it: DVC is Git for data & Makefiles tailored specifically for ML and Data Science scenarios.
 
-#. ``Git/Git-LFS`` part - DVC helps store and share data artifacts and models, connecting them with a Git repository.
-#. ``Makefile``\ s part - DVC describes how one data or model artifact was built from other data and code.
+#. **Git** part - DVC helps store and share data artifacts (like Git-LFS but without a server) and models, connecting them with a Git repository.
+#. **Make** part - DVC describes how data or model artifacts are built from other data and code -- a data pipeline.
 
-DVC usually runs along with Git. Git is used as usual to store and version code (including DVC meta-files). DVC helps
-to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they
-were stored in Git itself. To store and share the data cache, DVC supports multiple remotes - any cloud (S3, Azure,
-Google Cloud, etc) or any on-premise network storage (via SSH, for example).
+DVC usually works on top of Git.
+Git is used as usual to store and version code (including DVC meta-files).
+DVC helps to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they were stored in Git itself.
+
+To store and share the *data cache*, DVC supports multiple remotes - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
 
 |Flowchart|
 
-The DVC pipelines (computational graph) feature connects code and data together. It is possible to explicitly
-specify all steps required to produce a model: input dependencies including data, commands to run,
-and output information to be saved. See the quick start sections below or
-the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
+DVC pipelines (computational graphs) connect code and data together.
+They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
 
 Quick start (Visual Studio Code)
 ================================
