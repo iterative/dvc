@@ -83,13 +83,16 @@ The closest *analogies* to describe the main DVC features are these:
 #. Local **experiment tracking**: Turn your machine into an ML experiment management platform, and collaborate with others using existing Git hosting (Github, Gitlab, etc.).
 
 Git is employed as usual to store and version code (including DVC meta-files as placeholders for data).
-DVC stores data and model files seamlessly in a cache outside of Git, while preserving almost the same user experience as if they were in the repo.
+DVC `stores data and model files <https://dvc.org/doc/start/data-management>`_ seamlessly in a cache outside of Git, while preserving almost the same user experience as if they were in the repo.
 To share and back up the *data cache*, DVC supports multiple remote storage platforms - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
 
 |Flowchart|
 
-DVC pipelines (computational graphs) connect code and data together.
+`DVC pipelines <https://dvc.org/doc/start/data-management/pipelines>`_ (computational graphs) connect code and data together.
 They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
+
+Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
+Their results can be filtered and compared based on hyperparameters and metrics, and visualized with multiple plots.
 
 Installation
 ============
