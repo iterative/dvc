@@ -17,11 +17,11 @@
 
 **Data Version Control** or **DVC** is a command line tool and `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help you develop reproducible machine learning projects:
 
-#. **Version** your data and models. Store them in your cloud storage but keep
-   their version info in your Git repo.
+#. **Version** your data and models.
+   Store them in your cloud storage but keep their version info in your Git repo.
 
-#. **Iterate** fast with lightweight pipelines. When you make changes, only run
-   the steps impacted by those changes.
+#. **Iterate** fast with lightweight pipelines.
+   When you make changes, only run the steps impacted by those changes.
 
 #. **Track** experiments in your local Git repo (no servers needed).
 
@@ -61,19 +61,18 @@ How DVC works
 =============
 
     We encourage you to read our `Get Started
-    <https://dvc.org/doc/get-started>`_ guides to better understand what DVC
+    <https://dvc.org/doc/get-started>`_ docs to better understand what DVC
     does and how it can fit your scenarios.
 
-The easiest (but not perfect!) *analogy* to describe it: DVC is Git for data & Makefiles tailored specifically for ML and Data Science scenarios.
+The closest *analogies* to describe the main DVC features are these:
 
-#. **Git** part - DVC helps store and share data artifacts (like Git-LFS but without a server) and models, connecting them with a Git repository.
-#. **Make** part - DVC describes how data or model artifacts are built from other data and code -- a data pipeline.
+#. **Git for data**: Store and share data artifacts (like Git-LFS but without a server) and models, connecting them with a Git repository. Data management meets GitOps!
+#. **Makefiles** for ML: Describes how data or model artifacts are built from other data and code in a standard format. Now you can version your data pipelines with Git.
+#. Local **experiment tracking**: Turn your machine into an ML experiment management platform, and collaborate with others using existing Git hosting (Github, Gitlab, etc.).
 
-DVC usually works on top of Git.
-Git is used as usual to store and version code (including DVC meta-files).
-DVC helps to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they were stored in Git itself.
-
-To store and share the *data cache*, DVC supports multiple remotes - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
+Git is employed as usual to store and version code (including DVC meta-files as placeholders for data).
+DVC stores data and model files seamlessly in a cache outside of Git, while preserving almost the same user experience as if they were in the repo.
+To share and back up the *data cache*, DVC supports multiple remote storage platforms - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
 
 |Flowchart|
 
@@ -192,37 +191,30 @@ Fedora / CentOS (rpm)
 Comparison to related technologies
 ==================================
 
-#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`_,
-   `Luigi <https://github.com/spotify/luigi>`_, and others - in DVC data,
-   model and ML pipelines represent a single ML project focused on data
-   scientists' experience.  Data engineering tools orchestrate multiple data
-   projects and focus on efficient execution. A DVC project can be used from
-   existing data pipelines as a single execution step.
+#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_, and others - in DVC data, model and ML pipelines represent a single ML project focused on data scientists' experience.
+   Data engineering tools orchestrate multiple data projects and focus on efficient execution.
+   A DVC project can be used from existing data pipelines as a single execution step.
 
-#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (which should
-   not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of
-   copying/duplicating files.
+#. `Git-annex <https://git-annex.branchable.com/>`_:
+   DVC uses the idea of storing the content of large files (which should not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of copying/duplicating files.
 
-#. `Git-LFS <https://git-lfs.github.com/>`_ - DVC is compatible with many
-   remote storage services (S3, Google Cloud, Azure, SSH, etc). DVC also
-   uses reflinks or hardlinks to avoid copy operations on checkouts; thus
-   handling large data files much more efficiently.
+#. `Git-LFS <https://git-lfs.github.com/>`_: DVC is compatible with many remote storage services (S3, Google Cloud, Azure, SSH, etc).
+   DVC also uses reflinks or hardlinks to avoid copy operations on checkouts; thus handling large data
+   files much more efficiently.
 
-#. Makefile (and analogues including ad-hoc scripts) - DVC tracks
-   dependencies (in a directed acyclic graph).
+#. Makefile (and analogues including ad-hoc scripts):
+   DVC tracks dependencies (in a directed acyclic graph).
 
-#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_ - DVC is a workflow
-   management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
+#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_:
+   DVC is a workflow management system designed specifically to manage machine learning experiments.
+   DVC is built on top of Git.
 
-#. `DAGsHub <https://dagshub.com/>`_ - online service to host DVC
-   projects.  It provides a useful UI around DVC repositories and integrates
-   other tools.
+#. `DAGsHub <https://dagshub.com/>`_: Online service to host DVC projects.
+   It provides a useful UI around DVC repositories and integrates other tools.
 
-#. `DVC Studio <https://studio.iterative.ai/>`_ - official online
-   platform for DVC projects.  It can be used to manage data and models, run
-   and track experiments, and visualize and share results.  Also, it
-   integrates with `CML (CI/CD for ML) <https://cml.dev/>`__ for training
-   models in the cloud or Kubernetes.
+#. `Iterative Studio <https://studio.iterative.ai/>`_: Official web platform for DVC projects.
+   It can be used to manage data and models, run and track experiments, and visualize and share results.
+   Also, it integrates with `CML (CI/CD for ML) <https://cml.dev/>`__ for training models in the cloud or Kubernetes.
 
 
 Contributing
@@ -230,23 +222,26 @@ Contributing
 
 |Maintainability|
 
-Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
-details. Thanks to all our contributors!
+Contributions are welcome!
+Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more details.
+Thanks to all our contributors!
 
 |Contribs|
 
 Mailing List
 ============
 
-Want to stay up to date? Want to help improve DVC by participating in our occasional polls? Subscribe to our `mailing list <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_. No spam, really low traffic.
+Want to stay up to date?
+Want to help improve DVC by participating in our occasional polls?
+Subscribe to our `mailing list <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_.
+No spam, really low traffic.
 
 Copyright
 =========
 
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
 
-By submitting a pull request to this project, you agree to license your contribution under the Apache license version
-2.0 to this project.
+By submitting a pull request to this project, you agree to license your contribution under the Apache license version 2.0 to this project.
 
 Citation
 ========
