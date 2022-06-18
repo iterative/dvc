@@ -32,28 +32,6 @@
 .. contents:: **Contents**
   :backlinks: none
 
-How DVC works
-=============
-
-We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ guide to better understand what DVC
-is and how it can fit your scenarios.
-
-The easiest (but not perfect!) *analogy* to describe it: DVC is Git for data & Makefiles tailored specifically for ML and Data Science scenarios.
-
-#. **Git** part - DVC helps store and share data artifacts (like Git-LFS but without a server) and models, connecting them with a Git repository.
-#. **Make** part - DVC describes how data or model artifacts are built from other data and code -- a data pipeline.
-
-DVC usually works on top of Git.
-Git is used as usual to store and version code (including DVC meta-files).
-DVC helps to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they were stored in Git itself.
-
-To store and share the *data cache*, DVC supports multiple remotes - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
-
-|Flowchart|
-
-DVC pipelines (computational graphs) connect code and data together.
-They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
-
 Quick start
 ===========
 
@@ -78,6 +56,29 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full ve
 | Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                 |
 |                                   | | ``$ dvc push``                                                           |
 +-----------------------------------+----------------------------------------------------------------------------+
+
+How DVC works
+=============
+
+    We encourage you to read our `Get Started
+    <https://dvc.org/doc/get-started>`_ guides to better understand what DVC
+    does and how it can fit your scenarios.
+
+The easiest (but not perfect!) *analogy* to describe it: DVC is Git for data & Makefiles tailored specifically for ML and Data Science scenarios.
+
+#. **Git** part - DVC helps store and share data artifacts (like Git-LFS but without a server) and models, connecting them with a Git repository.
+#. **Make** part - DVC describes how data or model artifacts are built from other data and code -- a data pipeline.
+
+DVC usually works on top of Git.
+Git is used as usual to store and version code (including DVC meta-files).
+DVC helps to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they were stored in Git itself.
+
+To store and share the *data cache*, DVC supports multiple remotes - any cloud (S3, Azure, Google Cloud, etc.) or on-premise network storage (via SSH, for example).
+
+|Flowchart|
+
+DVC pipelines (computational graphs) connect code and data together.
+They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
 
 Visual Studio Code Extension
 ============================
