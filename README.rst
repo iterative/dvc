@@ -219,7 +219,7 @@ Comparison to related technologies
 
 #. `Iterative Studio <https://studio.iterative.ai/>`_: Official web platform for DVC projects.
    It can be used to manage data and models, run and track experiments, and visualize and share results.
-   Also, it integrates with `CML (CI/CD for ML) <https://cml.dev/>`__ for training models in the cloud or Kubernetes.
+   Also, it integrates with `CML (CI/CD for ML) <https://cml.dev/>`__ for training models in the cloud or Kubernetes, and with `MLEM <https://mlem.ai/>` for model deployment.
 
 
 Contributing
