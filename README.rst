@@ -153,7 +153,7 @@ PyPI (Python)
    pip install dvc
 
 Depending on the remote storage type you plan to use to keep and share your data, you might need to specify one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
-The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3`` will be installed automatically).
+The command should look like this: ``pip install 'dvc[s3]'`` (in this case AWS S3 dependencies such as ``boto3`` will be installed automatically).
 
 To install the development version, run:
 
