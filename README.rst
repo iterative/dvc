@@ -35,15 +35,17 @@
 Quick start
 ===========
 
-Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
+    Please read our `Command Reference <https://dvc.org/doc/command-reference>`_ for a complete list.
+
+A common CLI workflow includes:
 
 +-----------------------------------+----------------------------------------------------------------------------+
-| Step                              | Command                                                                    |
+| Task                              | Terminal                                                                   |
 +===================================+============================================================================+
 | Track data                        | | ``$ git add train.py``                                                   |
 |                                   | | ``$ dvc add images.zip``                                                 |
 +-----------------------------------+----------------------------------------------------------------------------+
-| Connect code and data by commands | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
+| Connect code and data             | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
 |                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
 +-----------------------------------+----------------------------------------------------------------------------+
 | Make changes and reproduce        | | ``$ vi train.py``                                                        |
@@ -111,11 +113,10 @@ Snapcraft (Linux)
    snap install dvc --classic
 
 This corresponds to the latest tagged release.
-Add ``--beta`` for the latest tagged release candidate,
-or ``--edge`` for the latest ``main`` version.
+Add ``--beta`` for the latest tagged release candidate, or ``--edge`` for the latest ``main`` version.
 
-Choco (Chocolatey/Windows)
---------------------------
+Chocolatey (Windows)
+--------------------
 
 |Choco|
 
@@ -123,8 +124,8 @@ Choco (Chocolatey/Windows)
 
    choco install dvc
 
-Brew (Homebrew/Mac OS)
-----------------------
+Brew (mac OS)
+-------------
 
 |Brew|
 
@@ -132,8 +133,8 @@ Brew (Homebrew/Mac OS)
 
    brew install dvc
 
-Conda (Anaconda)
-----------------
+Anaconda (Any platform)
+-----------------------
 
 |Conda|
 
@@ -142,11 +143,10 @@ Conda (Anaconda)
    conda install -c conda-forge mamba # installs much faster than conda
    mamba install -c conda-forge dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to
-install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
+Depending on the remote storage type you plan to use to keep and share your data, you might need to install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
 
-pip (PyPI)
-----------
+PyPI (Python)
+-------------
 
 |PyPI|
 
@@ -154,10 +154,8 @@ pip (PyPI)
 
    pip install dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
-one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
-The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3``
-will be installed automatically).
+Depending on the remote storage type you plan to use to keep and share your data, you might need to specify one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
+The command should look like this: ``pip install 'dvc[s3]'`` (in this case AWS S3 dependencies such as ``boto3`` will be installed automatically).
 
 To install the development version, run:
 
@@ -165,13 +163,13 @@ To install the development version, run:
 
    pip install git+git://github.com/iterative/dvc
 
-Package
--------
+Package (Platform-specific)
+---------------------------
 
 |Packages|
 
-Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
-can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+Self-contained packages for Linux, Windows, and Mac are available.
+The latest version of the packages can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
 Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
