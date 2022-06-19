@@ -35,9 +35,8 @@
 How DVC works
 =============
 
-    We encourage you to read our `Get Started
-    <https://dvc.org/doc/get-started>`_ guides to better understand what DVC
-    does and how it can fit your scenarios.
+We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ guide to better understand what DVC
+is and how it can fit your scenarios.
 
 The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-LFS to be precise) & Makefiles
 made right and tailored specifically for ML and Data Science scenarios.
@@ -69,17 +68,15 @@ Quick start (Visual Studio Code)
 Quick start (command line)
 ==========================
 
-    Please read our `Command Reference <https://dvc.org/doc/command-reference>`_ for a complete list.
-
-A common CLI workflow includes:
+Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
 
 +-----------------------------------+----------------------------------------------------------------------------+
-| Task                              | Terminal                                                                   |
+| Step                              | Command                                                                    |
 +===================================+============================================================================+
 | Track data                        | | ``$ git add train.py``                                                   |
 |                                   | | ``$ dvc add images.zip``                                                 |
 +-----------------------------------+----------------------------------------------------------------------------+
-| Connect code and data             | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
+| Connect code and data by commands | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
 |                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
 +-----------------------------------+----------------------------------------------------------------------------+
 | Make changes and reproduce        | | ``$ vi train.py``                                                        |
@@ -119,10 +116,11 @@ Snapcraft (Linux)
    snap install dvc --classic
 
 This corresponds to the latest tagged release.
-Add ``--beta`` for the latest tagged release candidate, or ``--edge`` for the latest ``main`` version.
+Add ``--beta`` for the latest tagged release candidate,
+or ``--edge`` for the latest ``main`` version.
 
-Chocolatey (Windows)
---------------------
+Choco (Chocolatey/Windows)
+--------------------------
 
 |Choco|
 
@@ -130,8 +128,8 @@ Chocolatey (Windows)
 
    choco install dvc
 
-Brew (mac OS)
--------------
+Brew (Homebrew/Mac OS)
+----------------------
 
 |Brew|
 
@@ -139,8 +137,8 @@ Brew (mac OS)
 
    brew install dvc
 
-Anaconda (Any platform)
------------------------
+Conda (Anaconda)
+----------------
 
 |Conda|
 
@@ -149,10 +147,11 @@ Anaconda (Any platform)
    conda install -c conda-forge mamba # installs much faster than conda
    mamba install -c conda-forge dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
+Depending on the remote storage type you plan to use to keep and share your data, you might need to
+install optional dependencies: `dvc-s3`, `dvc-azure`, `dvc-gdrive`, `dvc-gs`, `dvc-oss`, `dvc-ssh`.
 
-PyPI (Python)
--------------
+pip (PyPI)
+----------
 
 |PyPI|
 
@@ -160,8 +159,10 @@ PyPI (Python)
 
    pip install dvc
 
-Depending on the remote storage type you plan to use to keep and share your data, you might need to specify one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
-The command should look like this: ``pip install 'dvc[s3]'`` (in this case AWS S3 dependencies such as ``boto3`` will be installed automatically).
+Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
+one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
+The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3``
+will be installed automatically).
 
 To install the development version, run:
 
@@ -169,13 +170,13 @@ To install the development version, run:
 
    pip install git+git://github.com/iterative/dvc
 
-Package (Platform-specific)
----------------------------
+Package
+-------
 
 |Packages|
 
-Self-contained packages for Linux, Windows, and Mac are available.
-The latest version of the packages can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
+can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
 Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
