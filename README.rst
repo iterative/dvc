@@ -56,17 +56,8 @@ specify all steps required to produce a model: input dependencies including data
 and output information to be saved. See the quick start sections below or
 the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 
-Quick start (Visual Studio Code)
-================================
-
-#. `Install DVC <https://dvc.org/doc/install>`_ on your system.
-#. Install the `DVC extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ for VS Code.
-#. Follow the **Get Started** page that pops up!
-
-|VS Code Extension Overview|
-
-Quick start (command line)
-==========================
+Quick start
+===========
 
 Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
 
@@ -105,6 +96,8 @@ To get DVC features embedded right into your VS Code IDE, install the `DVC Exten
 
     Note: You'll also have to install core DVC in your system in one of the
     other ways listed below. The Extension will guide you if needed.
+
+|VS Code Extension Overview|
 
 Snapcraft (Linux)
 -----------------
