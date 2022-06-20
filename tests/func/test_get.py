@@ -8,8 +8,8 @@ from dvc.fs import system
 from dvc.odbmgr import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
+from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import makedirs
-from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):

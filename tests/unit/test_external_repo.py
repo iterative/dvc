@@ -4,7 +4,7 @@ from unittest.mock import call
 import pytest
 
 from dvc.external_repo import external_repo
-from tests.unit.fs.test_dvc import make_subrepo
+from dvc.testing.tmp_dir import make_subrepo
 
 
 def test_hook_is_called(tmp_dir, erepo_dir, mocker):

@@ -12,8 +12,8 @@ from dvc.exceptions import DownloadError, PathMissingError
 from dvc.fs import system
 from dvc.odbmgr import ODBManager
 from dvc.stage.exceptions import StagePathNotFoundError
+from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import makedirs, remove
-from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_import(tmp_dir, scm, dvc, erepo_dir):

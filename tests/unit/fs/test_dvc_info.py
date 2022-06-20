@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.fs.dvc import DvcFileSystem
-from tests.unit.fs.test_dvc import make_subrepo
+from dvc.testing.tmp_dir import make_subrepo
 
 
 @pytest.fixture

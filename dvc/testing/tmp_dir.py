@@ -259,6 +259,15 @@ class TmpDir(pathlib.Path):
     dump_toml = partialmethod(serialize.dump_toml)
 
 
+def make_subrepo(dir_: TmpDir, scm, config=None):
+    dir_.mkdir(parents=True, exist_ok=True)
+    with dir_.chdir():
+        dir_.scm = scm
+        dir_.init(dvc=True, subdir=True)
+        if config:
+            dir_.add_remote(config=config)
+
+
 def _coerce_filenames(filenames):
     if isinstance(filenames, (str, bytes, pathlib.PurePath)):
         filenames = [filenames]
