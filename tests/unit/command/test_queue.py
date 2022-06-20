@@ -1,3 +1,5 @@
+import pytest
+
 from dvc.cli import parse_args
 from dvc.commands.queue.kill import CmdQueueKill
 from dvc.commands.queue.logs import CmdQueueLogs
@@ -99,7 +101,55 @@ def test_experiments_stop(dvc, scm, mocker):
     m.assert_called_once_with(kill=True)
 
 
-def test_experiments_status(dvc, scm, mocker, capsys, caplog):
+@pytest.mark.parametrize(
+    "worker_status, output",
+    [
+        (
+            {"worker1": [], "worker2": []},
+            "No worker active, 2 workers idle at present.",
+        ),
+        (
+            {
+                "worker1": [{"id": "1"}],
+                "worker2": [{"id": "2"}],
+                "worker3": [],
+            },
+            "There are 2 workers active, 1 worker idle at present.",
+        ),
+        (
+            {"worker1": [{"id": "1"}]},
+            "There is 1 worker active, no worker idle at present.",
+        ),
+    ],
+)
+def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
+
+    cli_args = parse_args(
+        [
+            "queue",
+            "status",
+        ]
+    )
+    assert cli_args.func == CmdQueueStatus
+
+    cmd = cli_args.func(cli_args)
+    mocker.patch(
+        "dvc.repo.experiments.queue.local.LocalCeleryQueue.status",
+        return_value=[],
+    )
+    m = mocker.patch(
+        "dvc.repo.experiments.queue.local.LocalCeleryQueue.worker_status",
+        return_value=worker_status,
+    )
+
+    assert cmd.run() == 0
+    m.assert_called_once_with()
+    log, _ = capsys.readouterr()
+    assert "No experiments in task queue for now." in log
+    assert output in log
+
+
+def test_experiments_status(dvc, scm, mocker, capsys):
     from datetime import datetime
 
     cli_args = parse_args(
