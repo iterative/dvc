@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 
 from dvc.fs.dvc import DvcFileSystem
+from dvc.testing.tmp_dir import make_subrepo
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.stage import stage
 
@@ -316,15 +317,6 @@ def test_isdvc(tmp_dir, dvc):
     assert fs.isdvc("dir")
     assert fs.isdvc("dir/baz")
     assert fs.isdvc("dir/baz", recursive=True)
-
-
-def make_subrepo(dir_, scm, config=None):
-    dir_.mkdir(parents=True, exist_ok=True)
-    with dir_.chdir():
-        dir_.scm = scm
-        dir_.init(dvc=True, subdir=True)
-        if config:
-            dir_.add_remote(config=config)
 
 
 def test_subrepos(tmp_dir, scm, dvc, mocker):

@@ -4,11 +4,11 @@ from unittest.mock import ANY
 from scmrepo.git import Git
 
 from dvc.external_repo import CLONES, external_repo
+from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
 from dvc_data.stage import stage
 from dvc_data.transfer import transfer
-from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_external_repo(erepo_dir, mocker):

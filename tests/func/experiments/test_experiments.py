@@ -544,7 +544,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
 
 @pytest.mark.parametrize("workspace", [True, False])
 def test_subrepo(tmp_dir, scm, workspace):
-    from tests.unit.fs.test_dvc import make_subrepo
+    from dvc.testing.tmp_dir import make_subrepo
 
     subrepo = tmp_dir / "dir" / "repo"
     make_subrepo(subrepo, scm)
