@@ -81,23 +81,24 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full ve
 |                                   | | ``$ dvc push``                                                           |
 +-----------------------------------+----------------------------------------------------------------------------+
 
+Visual Studio Code Extension
+============================
+
+|VS Code|
+
+To get use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
+It currently features experiment tracking and data management, and more features (data pipeline support, etc.) are coming soon!
+
+|VS Code Extension Overview|
+
+    Note: You'll have to install core DVC on your system separately (as detailed
+    below). The Extension will guide you if needed.
+
 Installation
 ============
 
 There are several ways to install DVC: in VS Code; using ``snap``, ``choco``, ``brew``, ``conda``, ``pip``; or with an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
-
-Visual Studio Code Extension
-----------------------------
-
-|VS Code|
-
-To get DVC features embedded right into your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
-
-    Note: You'll also have to install core DVC in your system in one of the
-    other ways listed below. The Extension will guide you if needed.
-
-|VS Code Extension Overview|
 
 Snapcraft (Linux)
 -----------------
