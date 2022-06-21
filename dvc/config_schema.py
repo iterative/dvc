@@ -152,6 +152,8 @@ SCHEMA = {
                     "ssl_verify": Any(Bool, str),
                     "sse": str,
                     "sse_kms_key_id": str,
+                    "sse_customer_algorithm": str,
+                    "sse_customer_key": str,
                     "acl": str,
                     "grant_read": str,
                     "grant_read_acp": str,
