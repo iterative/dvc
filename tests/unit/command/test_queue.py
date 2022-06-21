@@ -15,23 +15,9 @@ def test_experiments_remove(dvc, scm, mocker):
             "queue",
             "remove",
             "--all",
-        ]
-    )
-    assert cli_args.func == CmdQueueRemove
-
-    cmd = cli_args.func(cli_args)
-    m = mocker.patch(
-        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.clear",
-        return_value={},
-    )
-
-    assert cmd.run() == 0
-    m.assert_called_once_with()
-
-    cli_args = parse_args(
-        [
-            "queue",
-            "remove",
+            "--queued",
+            "--success",
+            "--failed",
             "exp1",
             "exp2",
         ]
@@ -39,13 +25,19 @@ def test_experiments_remove(dvc, scm, mocker):
     assert cli_args.func == CmdQueueRemove
 
     cmd = cli_args.func(cli_args)
-    m = mocker.patch(
+    remove_mocker = mocker.patch(
         "dvc.repo.experiments.queue.celery.LocalCeleryQueue.remove",
         return_value={},
     )
 
     assert cmd.run() == 0
-    m.assert_called_once_with(revs=["exp1", "exp2"])
+    remove_mocker.assert_called_once_with(
+        revs=["exp1", "exp2"],
+        _all=True,
+        success=True,
+        failed=True,
+        queued=True,
+    )
 
 
 def test_experiments_kill(dvc, scm, mocker):

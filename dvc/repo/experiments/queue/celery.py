@@ -171,14 +171,6 @@ class LocalCeleryQueue(BaseStashQueue):
     def get(self) -> QueueGetResult:
         raise NotImplementedError
 
-    def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
-        try:
-            for msg, queue_entry in self._iter_queued():
-                if queue_entry.stash_rev in stash_revs:
-                    self.celery.reject(msg.delivery_tag)
-        finally:
-            super()._remove_revs(stash_revs)
-
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
         for _, entry in self._iter_queued():
             yield entry
@@ -224,6 +216,22 @@ class LocalCeleryQueue(BaseStashQueue):
     def iter_done(self) -> Generator[QueueDoneResult, None, None]:
         for _, entry in self._iter_done_tasks():
             yield QueueDoneResult(entry, self.get_result(entry))
+
+    def iter_success(self) -> Generator[QueueDoneResult, None, None]:
+        for queue_entry, exp_result in self.iter_done():
+            if exp_result and exp_result.exp_hash and exp_result.ref_info:
+                yield QueueDoneResult(queue_entry, exp_result)
+
+    def iter_failed(self) -> Generator[QueueDoneResult, None, None]:
+        failed_revs: Dict[str, ExpStashEntry] = (
+            dict(self.failed_stash.stash_revs)
+            if self.failed_stash is not None
+            else {}
+        )
+
+        for queue_entry, exp_result in self.iter_done():
+            if exp_result is None and queue_entry.stash_rev in failed_revs:
+                yield QueueDoneResult(queue_entry, exp_result)
 
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
@@ -341,3 +349,13 @@ class LocalCeleryQueue(BaseStashQueue):
         status = self.celery.control.inspect().active() or {}
         logger.debug(f"Worker status: {status}")
         return status
+
+    def clear(self, *args, **kwargs):
+        from .remove import clear
+
+        return clear(self, *args, **kwargs)
+
+    def remove(self, *args, **kwargs):
+        from .remove import remove
+
+        return remove(self, *args, **kwargs)

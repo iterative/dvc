@@ -101,50 +101,6 @@ def test_failed_exp_workspace(
         dvc.experiments.run(failed_exp_stage.addressing)
 
 
-def test_failed_exp_celery(
-    tmp_dir,
-    scm,
-    dvc,
-    failed_exp_stage,
-    test_queue,
-    mocker,
-    capsys,
-):
-    tmp_dir.gen("params.yaml", "foo: 2")
-
-    dvc.experiments.run(failed_exp_stage.addressing, queue=True)
-    dvc.experiments.run(run_all=True)
-    output = capsys.readouterr()
-    assert "Failed to reproduce experiment" in output.err
-    assert len(dvc.experiments.celery_queue.failed_stash) == 1
-    assert (
-        first(dvc.experiments.celery_queue.status()).get("status") == "Failed"
-    )
-
-
-@pytest.mark.parametrize("follow", [True, False])
-def test_celery_logs(
-    tmp_dir,
-    scm,
-    dvc,
-    failed_exp_stage,
-    test_queue,
-    follow,
-    mocker,
-    capsys,
-):
-    dvc.experiments.run(failed_exp_stage.addressing, queue=True)
-    dvc.experiments.run(run_all=True)
-
-    queue = dvc.experiments.celery_queue
-    done_result = first(queue.iter_done())
-    name = done_result.entry.stash_rev
-    captured = capsys.readouterr()
-    queue.logs(name, follow=follow)
-    captured = capsys.readouterr()
-    assert "failed to reproduce 'failed-copy-file'" in captured.out
-
-
 @pytest.mark.parametrize(
     "changes, expected",
     [

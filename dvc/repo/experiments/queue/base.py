@@ -131,15 +131,27 @@ class BaseStashQueue(ABC):
     def get(self) -> QueueGetResult:
         """Pop and return the first item in the queue."""
 
-    def remove(self, revs: Collection[str]) -> List[str]:
+    def remove(
+        self,
+        revs: Collection[str],
+        _all: bool = False,
+        queued: bool = False,
+        **kwargs,
+    ) -> List[str]:
         """Remove the specified entries from the queue.
 
         Arguments:
             revs: Stash revisions or queued exp names to be removed.
+            queued: Remove all queued tasks.
+            all: Remove all tasks.
 
         Returns:
             Revisions (or names) which were removed.
         """
+
+        if _all or queued:
+            return self.clear()
+
         removed: List[str] = []
         to_remove: Dict[str, ExpStashEntry] = {}
         queue_entries = self.match_queue_entry_by_name(
@@ -152,18 +164,15 @@ class BaseStashQueue(ABC):
                 ]
                 removed.append(name)
 
-        self._remove_revs(to_remove)
+        self._remove_revs(to_remove, self.stash)
         return removed
 
-    def clear(self) -> List[str]:
-        """Remove all entries from the queue.
-
-        Returns:
-            Revisions which were removed.
-        """
+    def clear(self, **kwargs) -> List[str]:
+        """Remove all entries from the queue."""
         stash_revs = self.stash.stash_revs
         removed = list(stash_revs)
-        self._remove_revs(stash_revs)
+        self._remove_revs(stash_revs, self.stash)
+
         return removed
 
     def status(self) -> List[Dict[str, Any]]:
@@ -176,27 +185,13 @@ class BaseStashQueue(ABC):
             commit = self.scm.resolve_commit(rev)
             return datetime.fromtimestamp(commit.commit_time)
 
-        failed_revs: Dict[str, ExpStashEntry] = (
-            dict(self.failed_stash.stash_revs)
-            if self.failed_stash is not None
-            else {}
-        )
-
         def _format_entry(
             entry: QueueEntry,
             status: str = "Unknown",
-            result: Optional[ExecutorResult] = None,
         ) -> Dict[str, Any]:
             name = entry.name
             # NOTE: We fallback to Unknown status for experiments
             # generated in prior (incompatible) DVC versions
-            if result is None and entry.stash_rev in failed_revs:
-                status = "Failed"
-            elif result is not None:
-                if result.exp_hash:
-                    if result.ref_info:
-                        status = "Success"
-                        name = result.ref_info.name
             return {
                 "rev": entry.stash_rev,
                 "name": name,
@@ -213,12 +208,17 @@ class BaseStashQueue(ABC):
             for queue_entry in self.iter_queued()
         )
         result.extend(
-            _format_entry(queue_entry, result=exp_result)
-            for queue_entry, exp_result in self.iter_done()
+            _format_entry(queue_entry, status="Failed")
+            for queue_entry, _ in self.iter_failed()
+        )
+        result.extend(
+            _format_entry(queue_entry, status="Success")
+            for queue_entry, _ in self.iter_success()
         )
         return result
 
-    def _remove_revs(self, stash_revs: Mapping[str, ExpStashEntry]):
+    @staticmethod
+    def _remove_revs(stash_revs: Mapping[str, ExpStashEntry], stash: ExpStash):
         """Remove the specified entries from the queue by stash revision."""
         for index in sorted(
             (
@@ -228,7 +228,7 @@ class BaseStashQueue(ABC):
             ),
             reverse=True,
         ):
-            self.stash.drop(index)
+            stash.drop(index)
 
     @abstractmethod
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
@@ -238,8 +238,17 @@ class BaseStashQueue(ABC):
     def iter_active(self) -> Generator[QueueEntry, None, None]:
         """Iterate over items which are being actively processed."""
 
+    @abstractmethod
     def iter_done(self) -> Generator[QueueDoneResult, None, None]:
         """Iterate over items which been processed."""
+
+    @abstractmethod
+    def iter_success(self) -> Generator[QueueDoneResult, None, None]:
+        """Iterate over items which been success."""
+
+    @abstractmethod
+    def iter_failed(self) -> Generator[QueueDoneResult, None, None]:
+        """Iterate over items which been failed."""
 
     @abstractmethod
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
@@ -460,8 +469,8 @@ class BaseStashQueue(ABC):
                 data_only=True,
             )
 
+    @staticmethod
     def _stash_msg(
-        self,
         rev: str,
         baseline_rev: str,
         branch: Optional[str] = None,
@@ -503,7 +512,8 @@ class BaseStashQueue(ABC):
         )
         self.scm.add(self.args_file)
 
-    def _format_new_params_msg(self, new_params, config_path):
+    @staticmethod
+    def _format_new_params_msg(new_params, config_path):
         """Format an error message for when new parameters are identified"""
         new_param_count = len(new_params)
         pluralise = "s are" if new_param_count > 1 else " is"

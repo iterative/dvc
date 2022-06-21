@@ -63,6 +63,12 @@ class WorkspaceQueue(BaseStashQueue):
     def iter_done(self) -> Generator[QueueDoneResult, None, None]:
         raise NotImplementedError
 
+    def iter_failed(self) -> Generator[QueueDoneResult, None, None]:
+        raise NotImplementedError
+
+    def iter_success(self) -> Generator[QueueDoneResult, None, None]:
+        raise NotImplementedError
+
     def reproduce(self) -> Dict[str, Dict[str, str]]:
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
         try:

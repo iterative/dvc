@@ -12,18 +12,19 @@ class CmdQueueRemove(CmdBase):
     """Remove exp in queue."""
 
     def run(self):
-        if self.args.all:
-            removed_list = self.repo.experiments.celery_queue.clear()
-        else:
-            removed_list = self.repo.experiments.celery_queue.remove(
-                revs=self.args.task
-            )
+        removed_list = self.repo.experiments.celery_queue.remove(
+            revs=self.args.task,
+            _all=self.args.all,
+            success=self.args.success,
+            queued=self.args.queued,
+            failed=self.args.failed,
+        )
 
         if removed_list:
             removed = ", ".join(removed_list)
             ui.write(f"Removed tasks in queue: {removed}")
         else:
-            ui.write(f"No tasks found in queue named {self.args.task}")
+            ui.write(f"No tasks found named {self.args.task}")
 
         return 0
 
@@ -39,7 +40,16 @@ def add_parser(queue_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     queue_remove_parser.add_argument(
-        "--all", action="store_true", help="Remove all tasks in queue."
+        "--all", action="store_true", help="Remove all tasks."
+    )
+    queue_remove_parser.add_argument(
+        "--queued", action="store_true", help="Remove all tasks in queue."
+    )
+    queue_remove_parser.add_argument(
+        "--success", action="store_true", help="Remove all successful tasks."
+    )
+    queue_remove_parser.add_argument(
+        "--failed", action="store_true", help="Remove all failed tasks."
     )
     queue_remove_parser.add_argument(
         "task",
