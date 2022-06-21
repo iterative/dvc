@@ -10,8 +10,6 @@ url = f"s3://{bucket_name}/{prefix}"
 key_id = "key-id"
 key_secret = "key-secret"
 session_token = "session-token"
-sse_customer_key = "3v2Q08ia8HOMGi5N21vsXI1fyfGAM6aVkW5pMu0A5dE="
-sse_customer_algorithm = "AES256"
 
 
 @pytest.fixture(autouse=True)
