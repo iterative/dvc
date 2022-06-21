@@ -121,7 +121,7 @@ def _clear_queue(repo: "Repo") -> List[str]:
     removed_name_list = []
     for entry in repo.experiments.celery_queue.iter_queued():
         removed_name_list.append(entry.name or entry.stash_rev[:7])
-    repo.experiments.celery_queue.clear()
+    repo.experiments.celery_queue.clear(queued=True)
     return removed_name_list
 
 
