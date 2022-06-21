@@ -645,7 +645,7 @@ class Output:
             ignore=self.dvcignore,
         )
         save_obj = save_obj.filter(prefix)
-        checkout_obj = save_obj.get(self.odb, prefix)
+        checkout_obj = save_obj.get_obj(self.odb, prefix)
         otransfer(
             staging,
             self.odb,
@@ -748,7 +748,7 @@ class Output:
         fs_path = self.fs.path
         if filter_info and filter_info != self.fs_path:
             prefix = fs_path.relparts(filter_info, self.fs_path)
-            obj = obj.get(self.odb, prefix)
+            obj = obj.get_obj(self.odb, prefix)
 
         return obj
 
