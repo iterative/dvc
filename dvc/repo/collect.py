@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
 
 from dvc.types import AnyPath
@@ -30,26 +29,25 @@ def _collect_paths(
     targets: Iterable[str],
     recursive: bool = False,
     rev: str = None,
-):
-    from dvc.fs.repo import RepoFileSystem
-    from dvc.utils import relpath
+) -> StrPaths:
+    from dvc.fs.dvc import DvcFileSystem
 
-    fs_paths = [os.path.abspath(target) for target in targets]
-    fs = RepoFileSystem(repo)
+    fs = DvcFileSystem(repo=repo)
+    fs_paths = [fs.from_os_path(target) for target in targets]
 
-    target_paths = []
+    target_paths: StrPaths = []
     for fs_path in fs_paths:
-
         if recursive and fs.isdir(fs_path):
-            target_paths.extend(repo.dvcignore.find(fs, fs_path))
+            target_paths.extend(fs.find(fs_path))
 
+        rel = fs.path.relpath(fs_path)
         if not fs.exists(fs_path):
-            rel = relpath(fs_path)
             if rev == "workspace" or rev == "":
                 logger.warning("'%s' was not found in current workspace.", rel)
             else:
                 logger.warning("'%s' was not found at: '%s'.", rel, rev)
         target_paths.append(fs_path)
+
     return target_paths
 
 
@@ -60,10 +58,11 @@ def _filter_duplicates(
     fs_res_paths = fs_paths
 
     for out in outs:
-        if out.fs_path in fs_paths:
+        fs_path = out.repo.dvcfs.from_os_path(out.fs_path)
+        if fs_path in fs_paths:
             res_outs.append(out)
             # MUTATING THE SAME LIST!!
-            fs_res_paths.remove(out.fs_path)
+            fs_res_paths.remove(fs_path)
 
     return res_outs, fs_res_paths
 

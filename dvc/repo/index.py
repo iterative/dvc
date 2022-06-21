@@ -19,15 +19,15 @@ if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
-    from dvc.data.tree import Tree
     from dvc.dependency import Dependency, ParamsDependency
-    from dvc.fs.base import FileSystem
-    from dvc.hash_info import HashInfo
-    from dvc.objects.db import ObjectDB
+    from dvc.fs import FileSystem
     from dvc.output import Output
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
+    from dvc_data import Tree
+    from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_objects.db import ObjectDB
 
 
 ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
@@ -74,7 +74,7 @@ class Index:
         return self.stage_collector.collect_repo(onerror=onerror)
 
     def __repr__(self) -> str:
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         rev = "workspace"
         if not isinstance(self.fs, LocalFileSystem):
@@ -170,9 +170,9 @@ class Index:
     @cached_property
     def tree(self) -> "Tree":
         from dvc.config import NoRemoteError
-        from dvc.data.tree import Tree
+        from dvc_data import Tree
 
-        tree = Tree(None, None, None)
+        tree = Tree()
 
         for out in self.outs:
             if not out.use_cache:
@@ -184,7 +184,7 @@ class Index:
                     out.fs_path, self.repo.root_dir
                 )
             else:
-                fs_key = out.fs.scheme
+                fs_key = out.fs.protocol
                 key = out.fs.path.parts(out.fs_path)
 
             out.meta.odb = out.odb
@@ -298,9 +298,14 @@ class Index:
 
 
 if __name__ == "__main__":
+    import logging
+
     from funcy import log_durations
 
+    from dvc.logger import setup
     from dvc.repo import Repo
+
+    setup(level=logging.TRACE)  # type: ignore[attr-defined]
 
     repo = Repo()
     index = Index(repo, repo.fs)

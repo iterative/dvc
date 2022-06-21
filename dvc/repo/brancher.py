@@ -29,9 +29,22 @@ def brancher(  # noqa: E302
         yield ""
         return
 
-    from dvc.fs.local import LocalFileSystem
+    from dvc.fs import LocalFileSystem
+
+    repo_root_parts = ()
+    if self.fs.path.isin(self.root_dir, self.scm.root_dir):
+        repo_root_parts = self.fs.path.relparts(
+            self.root_dir, self.scm.root_dir
+        )
+
+    cwd_parts = ()
+    if self.fs.path.isin(self.fs.path.getcwd(), self.scm.root_dir):
+        cwd_parts = self.fs.path.relparts(
+            self.fs.path.getcwd(), self.scm.root_dir
+        )
 
     saved_fs = self.fs
+    saved_root = self.root_dir
 
     scm = self.scm
 
@@ -52,13 +65,20 @@ def brancher(  # noqa: E302
     )
 
     try:
-        from dvc.fs.git import GitFileSystem
+        from dvc.fs import GitFileSystem
 
         for sha, names in found_revs.items():
             self.fs = GitFileSystem(scm=scm, rev=sha)
+            self.root_dir = self.fs.path.join("/", *repo_root_parts)
+
+            if cwd_parts:
+                cwd = self.fs.path.join("/", *cwd_parts)
+                self.fs.path.chdir(cwd)
+
             # ignore revs that don't contain repo root
             # (i.e. revs from before a subdir=True repo was init'ed)
             if self.fs.exists(self.root_dir):
                 yield sha if sha_only else ",".join(names)
     finally:
         self.fs = saved_fs
+        self.root_dir = saved_root

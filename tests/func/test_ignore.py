@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.testing.tmp_dir import TmpDir
 from dvc.types import List
-from dvc.utils.fs import get_mtime_and_size
+from dvc_data.hashfile.utils import get_mtime_and_size
+from dvc_data.stage import IgnoreInCollectedDirError
 
 
 def _to_pattern_info_list(str_list: List):
@@ -19,8 +19,7 @@ def _to_pattern_info_list(str_list: List):
 
 
 def walk_files(dvc, *args):
-    for fs_path in dvc.dvcignore.find(*args):
-        yield fs_path
+    yield from dvc.dvcignore.find(*args)
 
 
 @pytest.mark.parametrize("filename", ["ignored", "тест"])
@@ -87,7 +86,7 @@ def test_remove_file(tmp_dir, dvc):
 def test_dvcignore_in_out_dir(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", DvcIgnore.DVCIGNORE_FILE: ""}})
 
-    with pytest.raises(DvcIgnoreInCollectedDirError):
+    with pytest.raises(IgnoreInCollectedDirError):
         dvc.add("dir")
 
 
@@ -111,11 +110,13 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     assert (
         DvcIgnorePatterns(
             *merge_patterns(
+                os.path,
                 _to_pattern_info_list([".hg/", ".git/", ".git", ".dvc/"]),
                 os.fspath(tmp_dir),
                 _to_pattern_info_list([os.path.basename(dname)]),
                 top_ignore_path,
-            )
+            ),
+            os.sep,
         )
         == dvcignore._get_trie_pattern(top_ignore_path)
         == dvcignore._get_trie_pattern(sub_dir_path)
@@ -123,7 +124,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 
 
 def test_ignore_on_branch(tmp_dir, scm, dvc):
-    from dvc.fs.git import GitFileSystem
+    from dvc.fs import GitFileSystem
 
     tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="add files")
 
@@ -140,7 +141,8 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     }
 
     dvc.fs = GitFileSystem(scm=scm, rev="branch")
-    assert dvc.dvcignore.is_ignored_file(tmp_dir / "foo")
+    dvc.root_dir = "/"
+    assert dvc.dvcignore.is_ignored_file("/foo")
 
 
 def test_match_nested(tmp_dir, dvc):
@@ -174,26 +176,6 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     assert (
         dvc.dvcignore.is_ignored_file(os.fspath(ext_dir / "y.backup")) is False
     )
-
-
-def test_ignore_subrepo(tmp_dir, scm, dvc):
-    tmp_dir.gen({".dvcignore": "foo", "subdir": {"foo": "foo"}})
-    scm.add([".dvcignore"])
-    scm.commit("init parent dvcignore")
-    dvc._reset()
-
-    subrepo_dir = tmp_dir / "subdir"
-
-    result = walk_files(dvc, dvc.fs, subrepo_dir)
-    assert set(result) == set()
-
-    with subrepo_dir.chdir():
-        subrepo = Repo.init(subdir=True)
-        scm.add(str(subrepo_dir / "foo"))
-        scm.commit("subrepo init")
-
-    for _ in subrepo.brancher(all_commits=True):
-        assert subrepo.fs.exists(subrepo_dir / "foo")
 
 
 def test_ignore_resurface_subrepo(tmp_dir, scm, dvc):
@@ -357,30 +339,33 @@ def test_pattern_trie_fs(tmp_dir, dvc):
         os.fspath(tmp_dir),
     )
     first_pattern = merge_patterns(
+        os.path,
         *base_pattern,
         _to_pattern_info_list(["a", "b", "c"]),
         os.fspath(tmp_dir / "top" / "first"),
     )
     second_pattern = merge_patterns(
+        os.path,
         *first_pattern,
         _to_pattern_info_list(["d", "e", "f"]),
         os.fspath(tmp_dir / "top" / "first" / "middle" / "second"),
     )
     other_pattern = merge_patterns(
+        os.path,
         *base_pattern,
         _to_pattern_info_list(["1", "2", "3"]),
         os.fspath(tmp_dir / "other"),
     )
 
-    assert DvcIgnorePatterns(*base_pattern) == ignore_pattern_top
-    assert DvcIgnorePatterns(*other_pattern) == ignore_pattern_other
+    assert DvcIgnorePatterns(*base_pattern, os.sep) == ignore_pattern_top
+    assert DvcIgnorePatterns(*other_pattern, os.sep) == ignore_pattern_other
     assert (
-        DvcIgnorePatterns(*first_pattern)
+        DvcIgnorePatterns(*first_pattern, os.sep)
         == ignore_pattern_first
         == ignore_pattern_middle
     )
     assert (
-        DvcIgnorePatterns(*second_pattern)
+        DvcIgnorePatterns(*second_pattern, os.sep)
         == ignore_pattern_second
         == ignore_pattern_bottom
     )

@@ -5,9 +5,9 @@ import os
 
 from funcy import first
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands import completion
 from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import format_link
@@ -38,9 +38,8 @@ class CmdPlots(CmdBase):
     def run(self):
         from pathlib import Path
 
-        from dvc_render import render_html
-
         from dvc.render.match import match_renderers
+        from dvc_render import render_html
 
         if self.args.show_vega:
             if not self.args.targets:
@@ -70,8 +69,17 @@ class CmdPlots(CmdBase):
                     "visualization file will not be created."
                 )
 
+            out: str = self.args.out or self.repo.config.get("plots", {}).get(
+                "out_dir", "dvc_plots"
+            )
+
+            renderers_out = (
+                out if self.args.json else os.path.join(out, "static")
+            )
             renderers = match_renderers(
-                plots_data=plots_data, out=self.args.out
+                plots_data=plots_data,
+                out=renderers_out,
+                templates_dir=self.repo.plots.templates_dir,
             )
 
             if self.args.show_vega:
@@ -95,8 +103,7 @@ class CmdPlots(CmdBase):
                         self.repo.dvc_dir, html_template_path
                     )
 
-            rel: str = self.args.out or "dvc_plots"
-            output_file: Path = (Path.cwd() / rel).resolve() / "index.html"
+            output_file: Path = (Path.cwd() / out).resolve() / "index.html"
 
             render_html(
                 renderers=renderers,

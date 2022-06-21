@@ -6,10 +6,10 @@ from itertools import chain
 from funcy import cached_property, get_in, lcat, once, project
 
 from dvc import dependency, output
-from dvc.data.meta import Meta
-from dvc.hash_info import HashInfo
 from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
 from dvc.parsing.versions import LOCKFILE_VERSION
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.meta import Meta
 
 from . import PipelineStage, Stage, loads_from
 from .exceptions import StageNameUnspecified, StageNotFound
@@ -77,7 +77,7 @@ class StageLoader(Mapping):
         assert stage_data and isinstance(stage_data, dict)
 
         path, wdir = resolve_paths(
-            dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
+            dvcfile.repo.fs, dvcfile.path, stage_data.get(Stage.PARAM_WDIR)
         )
         stage = loads_from(PipelineStage, dvcfile.repo, path, wdir, stage_data)
         stage.name = name
@@ -184,7 +184,9 @@ class SingleStageLoader(Mapping):
 
     @classmethod
     def load_stage(cls, dvcfile, d, stage_text):
-        path, wdir = resolve_paths(dvcfile.path, d.get(Stage.PARAM_WDIR))
+        path, wdir = resolve_paths(
+            dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)
+        )
         stage = loads_from(Stage, dvcfile.repo, path, wdir, d)
         stage._stage_text = stage_text  # noqa, pylint:disable=protected-access
         stage.deps = dependency.loadd_from(

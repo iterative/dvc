@@ -5,16 +5,16 @@ import shutil
 import pytest
 from flaky.flaky_decorator import flaky
 
-import dvc as dvc_module
+import dvc_data
 from dvc.cli import main
-from dvc.data.db.local import LocalObjectDB
 from dvc.external_repo import clean_repos
-from dvc.objects.db import ObjectDB
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
     TestRemote,
 )
 from dvc.utils.fs import remove
+from dvc_data.db.local import LocalHashFileDB
+from dvc_data.hashfile.db import HashFileDB
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):
@@ -37,32 +37,32 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     cache_dir = stage_dir.outs[0].cache_path
 
     # FIXME check status output
-    hashes_exist = mocker.spy(LocalObjectDB, "hashes_exist")
+    oids_exist = mocker.spy(LocalHashFileDB, "oids_exist")
 
     assert main(["push"] + args) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     remove(dvc.odb.local.cache_dir)
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
 
     assert main(["fetch"] + args) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
 
     assert main(["pull"] + args) == 0
     assert os.path.exists(cache)
@@ -70,10 +70,10 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     assert os.path.isfile(cache_dir)
     assert os.path.isfile("foo")
     assert os.path.isdir("data_dir")
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
     with open(cache, encoding="utf-8") as fd:
@@ -84,37 +84,36 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
     if remote.url.startswith("http"):
         return
 
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
 
-    _list_hashes_traverse = mocker.spy(ObjectDB, "_list_hashes_traverse")
+    _list_oids_traverse = mocker.spy(HashFileDB, "_list_oids_traverse")
     # NOTE: check if remote gc works correctly on directories
     assert main(["gc", "-cw", "-f"] + args) == 0
-    assert _list_hashes_traverse.called
+    assert _list_oids_traverse.called
     assert all(
-        _kwargs["jobs"] == 2
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        _kwargs["jobs"] == 2 for (_args, _kwargs) in oids_exist.call_args_list
     )
     shutil.move(dvc.odb.local.cache_dir, dvc.odb.local.cache_dir + ".back")
 
     assert main(["fetch"] + args) == 0
 
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
-    hashes_exist.reset_mock()
+    oids_exist.reset_mock()
     assert main(["pull", "-f"] + args) == 0
     assert os.path.exists(cache)
     assert os.path.isfile(cache)
     assert os.path.isfile(cache_dir)
     assert os.path.isfile("foo")
     assert os.path.isdir("data_dir")
-    assert hashes_exist.called
+    assert oids_exist.called
     assert all(
         _kwargs["jobs"] == jobs
-        for (_args, _kwargs) in hashes_exist.call_args_list
+        for (_args, _kwargs) in oids_exist.call_args_list
     )
 
 
@@ -149,7 +148,7 @@ def test_warn_on_outdated_stage(tmp_dir, dvc, local_remote, caplog):
 
 def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
     tmp_dir.gen({"foo": "foo"})
-    test_file_md5 = mocker.spy(dvc_module.data.stage, "file_md5")
+    test_file_md5 = mocker.spy(dvc_data.hashfile.hash, "file_md5")
     ret = main(["config", "cache.type", "hardlink"])
     assert ret == 0
     ret = main(["add", "foo"])
@@ -162,13 +161,10 @@ def test_hash_recalculation(mocker, dvc, tmp_dir, local_remote):
 
 
 def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
-    from tests.utils import clean_staging
-
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     # purge cache
     remove(dvc.odb.local.cache_dir)
-    clean_staging()
 
     header = (
         "Some of the cache files do not exist "
@@ -211,7 +207,7 @@ def test_verify_hashes(
     remove("dir")
     remove(dvc.odb.local.cache_dir)
 
-    hash_spy = mocker.spy(dvc_module.data.stage, "file_md5")
+    hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
     dvc.pull()
     assert hash_spy.call_count == 0
@@ -222,7 +218,7 @@ def test_verify_hashes(
     dvc.config["remote"]["upstream"]["verify"] = True
 
     dvc.pull()
-    assert hash_spy.call_count == 3
+    assert hash_spy.call_count == 4
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -299,8 +295,6 @@ def test_pull_external_dvc_imports_mixed(
 
 
 def clean(outs, dvc=None):
-    from tests.utils import clean_staging
-
     if dvc:
         outs = outs + [dvc.odb.local.cache_dir]
     for path in outs:
@@ -309,7 +303,6 @@ def clean(outs, dvc=None):
     if dvc:
         os.makedirs(dvc.odb.local.cache_dir, exist_ok=True)
         clean_repos()
-        clean_staging()
 
 
 def recurse_list_dir(d):

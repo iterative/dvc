@@ -4,12 +4,12 @@ import os
 import pytest
 
 from dvc.cli import main
-from dvc.data.db import ODBManager
+from dvc.fs import system
+from dvc.odbmgr import ODBManager
 from dvc.repo import Repo
 from dvc.repo.get import GetDVCFileError
-from dvc.system import System
 from dvc.utils.fs import makedirs
-from tests.unit.fs.test_repo import make_subrepo
+from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_get_repo_file(tmp_dir, erepo_dir):
@@ -86,11 +86,11 @@ def test_cache_type_is_properly_overridden(tmp_dir, erepo_dir):
             [erepo_dir.dvc.config.files["repo"]], "set cache type to symlinks"
         )
         erepo_dir.dvc_gen("file", "contents", "create file")
-    assert System.is_symlink(erepo_dir / "file")
+    assert system.is_symlink(erepo_dir / "file")
 
     Repo.get(os.fspath(erepo_dir), "file", "file_imported")
 
-    assert not System.is_symlink("file_imported")
+    assert not system.is_symlink("file_imported")
     assert (tmp_dir / "file_imported").read_text() == "contents"
 
 
@@ -266,7 +266,7 @@ def test_get_pipeline_tracked_outs(
     dvc.scm.commit("add pipeline stage")
 
     with git_dir.chdir():
-        Repo.get(f"file://{os.fspath(tmp_dir)}", "bar", out="baz")
+        Repo.get(f"file://{tmp_dir.as_posix()}", "bar", out="baz")
         assert (git_dir / "baz").read_text() == "foo"
 
 

@@ -240,6 +240,36 @@ def test_plots_path_is_quoted_and_resolved_properly(
     assert expected_url in out
 
 
+def test_should_pass_template_dir(tmp_dir, dvc, mocker, capsys):
+    cli_args = parse_args(
+        [
+            "plots",
+            "diff",
+            "HEAD~1",
+            "--json",
+            "--targets",
+            "plot.csv",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+
+    data = mocker.MagicMock()
+    mocker.patch("dvc.repo.plots.diff.diff", return_value=data)
+
+    renderers = mocker.MagicMock()
+    match_renderers = mocker.patch(
+        "dvc.render.match.match_renderers", return_value=renderers
+    )
+
+    assert cmd.run() == 0
+
+    match_renderers.assert_called_once_with(
+        plots_data=data,
+        out="dvc_plots",
+        templates_dir=str(tmp_dir / ".dvc/plots"),
+    )
+
+
 @pytest.mark.parametrize(
     "output", ("some_out", os.path.join("to", "subdir"), None)
 )

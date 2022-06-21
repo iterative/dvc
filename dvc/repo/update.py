@@ -34,6 +34,5 @@ def update(
         stage.update(rev, to_remote=to_remote, remote=remote, jobs=jobs)
         dvcfile = Dvcfile(self, stage.path)
         dvcfile.dump(stage)
-        stages.add(stage)
 
     return list(stages)

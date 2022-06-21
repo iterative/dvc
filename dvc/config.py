@@ -86,9 +86,11 @@ class Config(dict):
     def __init__(
         self, dvc_dir=None, validate=True, fs=None, config=None
     ):  # pylint: disable=super-init-not-called
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         self.dvc_dir = dvc_dir
+        self.wfs = LocalFileSystem()
+        self.fs = fs or self.wfs
 
         if not dvc_dir:
             try:
@@ -98,10 +100,7 @@ class Config(dict):
             except NotDvcRepoError:
                 self.dvc_dir = None
         else:
-            self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
-
-        self.wfs = LocalFileSystem(url=self.dvc_dir)
-        self.fs = fs or self.wfs
+            self.dvc_dir = self.fs.path.abspath(self.fs.path.realpath(dvc_dir))
 
         self.load(validate=validate, config=config)
 
@@ -124,8 +123,8 @@ class Config(dict):
         }
 
         if self.dvc_dir is not None:
-            files["repo"] = os.path.join(self.dvc_dir, self.CONFIG)
-            files["local"] = os.path.join(self.dvc_dir, self.CONFIG_LOCAL)
+            files["repo"] = self.fs.path.join(self.dvc_dir, self.CONFIG)
+            files["local"] = self.fs.path.join(self.dvc_dir, self.CONFIG_LOCAL)
 
         return files
 
@@ -228,7 +227,7 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
-        from dvc.fs.local import localfs
+        from dvc.fs import localfs
         from dvc.utils import relpath
 
         from .config_schema import RelPath

@@ -3,13 +3,12 @@ from unittest.mock import ANY
 
 from scmrepo.git import Git
 
-from dvc.data.stage import stage
-from dvc.data.transfer import transfer
 from dvc.external_repo import CLONES, external_repo
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
-from tests.unit.fs.test_repo import make_subrepo
-from tests.utils import clean_staging
+from dvc_data.stage import stage
+from dvc_data.transfer import transfer
+from tests.unit.fs.test_dvc import make_subrepo
 
 
 def test_external_repo(erepo_dir, mocker):
@@ -47,17 +46,17 @@ def test_source_change(erepo_dir):
 
 
 def test_cache_reused(erepo_dir, mocker, local_cloud):
-    import dvc.fs.utils
+    from dvc_objects.fs import generic
 
     erepo_dir.add_remote(config=local_cloud.config)
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("file", "text", commit="add file")
     erepo_dir.dvc.push()
 
-    download_spy = mocker.spy(dvc.fs.utils, "transfer")
+    download_spy = mocker.spy(generic, "transfer")
 
     # Use URL to prevent any fishy optimizations
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     with external_repo(url) as repo:
         repo.fetch()
         assert download_spy.mock.call_count == 1
@@ -72,7 +71,7 @@ def test_cache_reused(erepo_dir, mocker, local_cloud):
 def test_known_sha(erepo_dir):
     erepo_dir.scm.commit("init")
 
-    url = f"file://{erepo_dir}"
+    url = f"file://{erepo_dir.as_posix()}"
     with external_repo(url) as repo:
         rev = repo.scm.get_rev()
         prev_rev = repo.scm.resolve_rev("HEAD^")
@@ -95,8 +94,8 @@ def test_pull_subdir_file(tmp_dir, erepo_dir):
 
     dest = tmp_dir / "file"
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_fs.download(
-            os.path.join(repo.root_dir, "subdir", "file"),
+        repo.dvcfs.get(
+            "subdir/file",
             os.fspath(dest),
         )
 
@@ -191,8 +190,8 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_fs.download(
-            os.path.join(repo.root_dir, "dir"),
+        repo.dvcfs.get(
+            "dir",
             os.fspath(tmp_dir / "out"),
         )
         expected_files = {"foo": "foo", "bar": "bar", ".gitignore": "/foo\n"}
@@ -201,15 +200,14 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         # clear cache to test saving to cache
         cache_dir = tmp_dir / repo.odb.local.cache_dir
         remove(cache_dir)
-        clean_staging()
         makedirs(cache_dir)
 
         staging, _, obj = stage(
             repo.odb.local,
-            os.path.join(repo.root_dir, "dir"),
-            repo.repo_fs,
+            "dir",
+            repo.dvcfs,
             "md5",
-            dvcignore=repo.dvcignore,
+            ignore=repo.dvcignore,
         )
         transfer(
             staging,
@@ -237,8 +235,8 @@ def test_subrepos_are_ignored_for_git_tracked_dirs(tmp_dir, erepo_dir):
         subrepo.dvc_gen({"file": "file"}, commit="add files on subrepo")
 
     with external_repo(os.fspath(erepo_dir)) as repo:
-        repo.repo_fs.download(
-            os.path.join(repo.root_dir, "dir"),
+        repo.dvcfs.get(
+            "dir",
             os.fspath(tmp_dir / "out"),
         )
         # subrepo files should not be here

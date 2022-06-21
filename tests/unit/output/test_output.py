@@ -5,9 +5,11 @@ import pytest
 from funcy import first
 from voluptuous import MultipleInvalid, Schema
 
+from dvc.fs import RemoteMissingDepsError
 from dvc.ignore import _no_match
 from dvc.output import CHECKSUM_SCHEMA, Output
 from dvc.stage import Stage
+from dvc.utils.fs import remove
 
 
 def test_save_missing(dvc, mocker):
@@ -100,3 +102,20 @@ def test_get_used_objs(exists, expected_message, mocker, caplog):
     with caplog.at_level(logging.WARNING, logger="dvc"):
         assert {} == output.get_used_objs()
     assert first(caplog.messages) == expected_message
+
+
+def test_remote_missing_depenency_on_dir_pull(tmp_dir, scm, dvc, mocker):
+    tmp_dir.dvc_gen({"dir": {"subfile": "file2 content"}}, commit="add dir")
+    with dvc.config.edit() as conf:
+        conf["remote"]["s3"] = {"url": "s3://bucket/name"}
+        conf["core"] = {"remote": "s3"}
+
+    remove("dir")
+    remove(dvc.odb.local.cache_dir)
+
+    with mocker.patch(
+        "dvc.data_cloud.DataCloud.get_remote_odb",
+        side_effect=RemoteMissingDepsError(dvc.fs, "azure", "azure://", []),
+    ):
+        with pytest.raises(RemoteMissingDepsError):
+            dvc.pull()

@@ -1,10 +1,9 @@
-import os
 import threading
 from typing import TYPE_CHECKING, Any
 
 from funcy import cached_property, wrap_prop
 
-from .fsspec_wrapper import FSSpecWrapper
+from . import FileSystem
 
 if TYPE_CHECKING:
     from scmrepo.fs import GitFileSystem as FsspecGitFileSystem
@@ -12,11 +11,10 @@ if TYPE_CHECKING:
     from scmrepo.git.objects import GitTrie
 
 
-class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
+class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
-    sep = os.sep
-    scheme = "local"
+    protocol = "local"
 
     def __init__(
         self,
@@ -47,6 +45,13 @@ class GitFileSystem(FSSpecWrapper):  # pylint:disable=abstract-method
 
         return FsspecGitFileSystem(**self.fs_args)
 
+    @cached_property
+    def path(self):
+        return self.fs.path
+
     @property
     def rev(self) -> str:
         return self.fs.rev
+
+    def ls(self, path, detail=True, **kwargs):
+        return self.fs.ls(path, detail=detail, **kwargs) or []

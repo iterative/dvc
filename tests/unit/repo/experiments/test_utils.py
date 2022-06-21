@@ -23,7 +23,7 @@ def test_resolve_exp_ref(tmp_dir, scm, git_upstream, name_only, use_url):
     assert str(result[name]) == ref
     assert result["notexist"] is None
 
-    scm.push_refspec(git_upstream.url, ref, ref)
+    scm.push_refspecs(git_upstream.url, f"{ref}:{ref}")
     remote = git_upstream.url if use_url else git_upstream.remote
     name = "foo" if name_only else ref
     remote_ref_info = resolve_name(scm, [name], remote)[name]

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import first
 
-from dvc.fs.ssh import SSHFileSystem
+from dvc.fs import SSHFileSystem
 from dvc.repo.experiments.base import (
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
@@ -19,7 +19,7 @@ from dvc.repo.experiments.base import (
 from .base import BaseExecutor, ExecutorInfo, ExecutorResult
 
 if TYPE_CHECKING:
-    from multiprocessing import Queue
+    from queue import Queue
 
     from scmrepo.git import Git
 
@@ -174,7 +174,8 @@ class SSHExecutor(BaseExecutor):
         script_path = self._setup_script_path(
             posixpath.join(self._repo_abspath, self.dvc_dir)
         )
-        fs.upload(self._setup_script, script_path)
+        assert self._setup_script
+        fs.put_file(self._setup_script, script_path)
 
     def _ssh_cmd(self, sshfs, cmd, chdir=None, **kwargs):
         working_dir = chdir or self.root_dir
@@ -203,7 +204,7 @@ class SSHExecutor(BaseExecutor):
 
     @contextmanager
     def get_odb(self):
-        from dvc.data.db import ODBManager, get_odb
+        from dvc.odbmgr import ODBManager, get_odb
 
         cache_path = posixpath.join(
             self._repo_abspath,
@@ -256,7 +257,7 @@ class SSHExecutor(BaseExecutor):
             with TemporaryFile(mode="w+", encoding="utf-8") as fobj:
                 json.dump(info.asdict(), fobj)
                 fobj.seek(0)
-                fs.upload_fobj(fobj, infofile)
+                fs.put_file(fobj, infofile)
             cmd = ["source ~/.profile"]
             script_path = cls._setup_script_path(info.dvc_dir)
             if fs.exists(posixpath.join(info.root_dir, script_path)):

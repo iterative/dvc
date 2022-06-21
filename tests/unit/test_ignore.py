@@ -7,7 +7,11 @@ from dvc.ignore import DvcIgnorePatterns
 
 
 def mock_dvcignore(dvcignore_path, patterns):
+    from dvc.fs import localfs
+
     fs = MagicMock()
+    fs.path = localfs.path
+    fs.sep = localfs.sep
     with patch.object(fs, "open", mock_open(read_data="\n".join(patterns))):
         ignore_patterns = DvcIgnorePatterns.from_file(
             dvcignore_path, fs, "mocked"
@@ -195,7 +199,7 @@ def test_match_ignore_from_file(
 @pytest.mark.parametrize("omit_dir", [".git", ".hg", ".dvc"])
 def test_should_ignore_dir(omit_dir, sub_dir):
     root = os.path.join(os.path.sep, "walk", "dir", "root")
-    ignore = DvcIgnorePatterns([".git/", ".hg/", ".dvc/"], root)
+    ignore = DvcIgnorePatterns([".git/", ".hg/", ".dvc/"], root, os.sep)
 
     dirs = [omit_dir, "dir1", "dir2"]
     files = [omit_dir, "file1", "file2"]

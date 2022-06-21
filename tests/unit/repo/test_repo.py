@@ -4,8 +4,8 @@ import shutil
 import pytest
 
 from dvc.exceptions import OutputDuplicationError
-from dvc.hash_info import HashInfo
 from dvc.repo import NotDvcRepoError, Repo, locked
+from dvc_data.hashfile.hash_info import HashInfo
 
 
 def test_is_dvc_internal(dvc):

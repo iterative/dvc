@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 
 from funcy import lmap
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.commands import completion
 from dvc.commands.metrics import DEFAULT_PRECISION
 from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.ui import ui
@@ -480,6 +480,7 @@ class CmdExperimentsShow(CmdBase):
                 num=self.args.num,
                 sha_only=self.args.sha,
                 param_deps=self.args.param_deps,
+                fetch_running=self.args.fetch_running,
             )
         except DvcException:
             logger.exception("failed to show experiments")
@@ -644,5 +645,11 @@ def add_parser(experiments_subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Open the Parallel Coordinates Plot directly in the browser.",
+    )
+    experiments_show_parser.add_argument(
+        "--no-fetch",
+        dest="fetch_running",
+        action="store_false",
+        help=argparse.SUPPRESS,
     )
     experiments_show_parser.set_defaults(func=CmdExperimentsShow)

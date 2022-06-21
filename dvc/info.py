@@ -1,3 +1,4 @@
+import importlib.metadata as importlib_metadata
 import itertools
 import os
 import pathlib
@@ -7,18 +8,11 @@ import psutil
 
 from dvc import __version__
 from dvc.exceptions import NotDvcRepoError
-from dvc.fs import FS_MAP, get_fs_cls, get_fs_config
-from dvc.fs.utils import test_links
+from dvc.fs import FS_MAP, generic, get_fs_cls, get_fs_config
 from dvc.repo import Repo
 from dvc.scm import SCMError
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
-
-try:
-    import importlib.metadata as importlib_metadata
-except ImportError:  # < 3.8
-    import importlib_metadata  # type: ignore[no-redef]
-
 
 package = "" if PKG is None else f"({PKG})"
 
@@ -73,7 +67,7 @@ def _get_caches(cache):
 
 def _get_remotes(config):
     schemes = (
-        get_fs_cls(get_fs_config(None, config, name=remote)).scheme
+        get_fs_cls(get_fs_config(None, config, name=remote)).protocol
         for remote in config["remote"]
     )
 
@@ -83,10 +77,10 @@ def _get_remotes(config):
 def _get_linktype_support_info(repo):
     odb = repo.odb.local
 
-    links = test_links(
+    links = generic.test_links(
         ["reflink", "hardlink", "symlink"],
         odb.fs,
-        odb.fs_path,
+        odb.path,
         repo.fs,
         repo.root_dir,
     )

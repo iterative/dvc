@@ -7,11 +7,11 @@ import pytest
 from git import Repo
 
 from dvc.cli import main
-from dvc.data.db.local import LocalObjectDB
 from dvc.exceptions import CollectCacheError
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
+from dvc_data.db.local import LocalHashFileDB
 from tests.basic_env import TestDir, TestDvcGit
 
 
@@ -20,13 +20,16 @@ class TestGC(TestDvcGit):
         super().setUp()
 
         self.dvc.add(self.FOO)
-        self.dvc.add(self.DATA_DIR)
+        stages = self.dvc.add(self.DATA_DIR)
+        raw_dir_hash = stages[0].outs[0].hash_info.as_raw().value
+
         self.good_cache = [
-            self.dvc.odb.local.hash_to_path(md5)
+            self.dvc.odb.local.oid_to_path(md5)
             for md5 in self.dvc.odb.local.all()
+            if md5 != raw_dir_hash
         ]
 
-        self.bad_cache = []
+        self.bad_cache = [self.dvc.odb.local.oid_to_path(raw_dir_hash)]
         for i in ["123", "234", "345"]:
             path = os.path.join(self.dvc.odb.local.cache_dir, i[0:2], i[2:])
             self.create(path, i)
@@ -218,7 +221,7 @@ def test_gc_no_unpacked_dir(tmp_dir, dvc):
 
     os.remove("dir.dvc")
     unpackeddir = (
-        dir_stages[0].outs[0].cache_path + LocalObjectDB.UNPACKED_DIR_SUFFIX
+        dir_stages[0].outs[0].cache_path + LocalHashFileDB.UNPACKED_DIR_SUFFIX
     )
 
     # older (pre 1.0) versions of dvc used to generate this dir

@@ -1,10 +1,10 @@
 import os
 import re
 
-from dvc.hash_info import HashInfo
 from dvc.repo import Repo
-from dvc.state import State
-from dvc.utils import file_md5
+from dvc_data.hashfile.hash import file_md5
+from dvc_data.hashfile.hash_info import HashInfo
+from dvc_data.hashfile.state import State
 
 
 def test_state(tmp_dir, dvc):

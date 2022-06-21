@@ -1,9 +1,9 @@
 import argparse
 import operator
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
-from dvc.commands import completion
 from dvc.exceptions import CheckoutError
 from dvc.ui import ui
 
@@ -55,6 +55,10 @@ class CmdCheckout(CmdBase):
 
         if exc:
             raise exc
+
+        if self.args.relink:
+            msg = "Relinked successfully"
+            ui.write(msg)
         return 0
 
 

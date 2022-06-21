@@ -2,37 +2,32 @@
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
+• `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
 • `Twitter <https://twitter.com/DVCorg>`_
 • `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
-|CI| |Maintainability| |Coverage| |Donate| |DOI|
+|CI| |Maintainability| |Coverage| |VS Code| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 
-**Data Version Control** or **DVC** is an **open-source** tool for data science and machine
-learning projects. Key features:
+**Data Version Control** or **DVC** is a command line tool and `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help you develop reproducible machine learning projects:
 
-#. Simple **command line** Git-like experience. Does not require installing and maintaining
-   any databases. Does not depend on any proprietary online services.
+#. **Version** your data and models. Store them in your cloud storage but keep
+   their version info in your Git repo.
 
-#. Management and versioning of **datasets** and **machine learning
-   models**. Data can be saved in S3, Google cloud, Azure, Alibaba 
-   cloud, SSH server, HDFS, or even local HDD RAID.
+#. **Iterate** fast with lightweight pipelines. When you make changes, only run
+   the steps impacted by those changes.
 
-#. Makes projects **reproducible** and **shareable**; helping to answer questions about how
-   a model was built.
+#. **Track** experiments in your local Git repo (no servers needed).
 
-#. Helps manage experiments with Git tags/branches and **metrics** tracking.
+#. **Compare** any data, code, parameters, model, or performance plots
 
-**DVC** aims to replace spreadsheet and document sharing tools (such as Excel or Google Docs)
-frequently used as both knowledge repositories and team ledgers.
-DVC also replaces both ad-hoc scripts to track, move, and deploy different model versions
-and ad-hoc data file suffixes and prefixes.
+#. **Share** experiments and automatically reproduce anyone's experiment.
 
 .. contents:: **Contents**
   :backlinks: none
@@ -58,7 +53,7 @@ Google Cloud, etc) or any on-premise network storage (via SSH, for example).
 
 The DVC pipelines (computational graph) feature connects code and data together. It is possible to explicitly
 specify all steps required to produce a model: input dependencies including data, commands to run,
-and output information to be saved. See the quick start section below or
+and output information to be saved. See the quick start sections below or
 the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 
 Quick start
@@ -86,14 +81,27 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full ve
 |                                   | | ``$ dvc push``                                                           |
 +-----------------------------------+----------------------------------------------------------------------------+
 
+Visual Studio Code Extension
+============================
+
+|VS Code|
+
+To get use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
+It currently features experiment tracking and data management, and more features (data pipeline support, etc.) are coming soon!
+
+|VS Code Extension Overview|
+
+    Note: You'll have to install core DVC on your system separately (as detailed
+    below). The Extension will guide you if needed.
+
 Installation
 ============
 
-There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
+There are several ways to install DVC: in VS Code; using ``snap``, ``choco``, ``brew``, ``conda``, ``pip``; or with an OS-specific package.
 Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
 
-Snap (Snapcraft/Linux)
-----------------------
+Snapcraft (Linux)
+-----------------
 
 |Snap|
 
@@ -169,14 +177,16 @@ Ubuntu / Debian (deb)
 .. code-block:: bash
 
    sudo wget https://dvc.org/deb/dvc.list -O /etc/apt/sources.list.d/dvc.list
-   sudo apt-get update
-   sudo apt-get install dvc
+   wget -qO - https://dvc.org/deb/iterative.asc | sudo apt-key add -
+   sudo apt update
+   sudo apt install dvc
 
 Fedora / CentOS (rpm)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
    sudo wget https://dvc.org/rpm/dvc.repo -O /etc/yum.repos.d/dvc.repo
+   sudo rpm --import https://dvc.org/rpm/iterative.asc
    sudo yum update
    sudo yum install dvc
 
@@ -219,7 +229,7 @@ Comparison to related technologies
 Contributing
 ============
 
-|Maintainability| |Donate|
+|Maintainability|
 
 Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
 details. Thanks to all our contributors!
@@ -254,6 +264,9 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://dvc.org
    :alt: DVC logo
 
+.. |VS Code Extension Overview| image:: https://raw.githubusercontent.com/iterative/vscode-dvc/main/extension/docs/overview.gif
+   :alt: DVC Extension for VS Code
+
 .. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=main
    :target: https://github.com/iterative/dvc/actions
    :alt: GHA Tests
@@ -265,10 +278,6 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc
    :alt: Codecov
-
-.. |Donate| image:: https://img.shields.io/badge/patreon-donate-green.svg?logo=patreon
-   :target: https://www.patreon.com/DVCorg/overview
-   :alt: Donate
 
 .. |Snap| image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
    :target: https://snapcraft.io/dvc
@@ -305,3 +314,7 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Contribs| image:: https://contrib.rocks/image?repo=iterative/dvc
    :target: https://github.com/iterative/dvc/graphs/contributors
    :alt: Contributors
+
+.. |VS Code| image:: https://vsmarketplacebadge.apphb.com/version/Iterative.dvc.svg
+   :target: https://marketplace.visualstudio.com/items?itemName=Iterative.dvc
+   :alt: VS Code Extension

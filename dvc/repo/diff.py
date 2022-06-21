@@ -22,9 +22,9 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
-    from dvc.fs.repo import RepoFileSystem
+    from dvc.fs.dvc import DvcFileSystem
 
-    repo_fs = RepoFileSystem(self)
+    dvcfs = DvcFileSystem(repo=self)
 
     b_rev = b_rev if b_rev else "workspace"
     results = {}
@@ -39,7 +39,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
         if targets is not None:
             # convert targets to paths, and capture any missing targets
             targets_paths, missing_targets[rev] = _targets_to_paths(
-                repo_fs, targets
+                dvcfs, targets
             )
 
         results[rev] = _paths_checksums(self, targets_paths)
@@ -61,7 +61,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if b_rev == "workspace":
         # missing status is only applicable when diffing local workspace
         # against a commit
-        missing = sorted(_filter_missing(repo_fs, deleted_or_missing))
+        missing = sorted(_filter_missing(dvcfs, deleted_or_missing))
     else:
         missing = []
     deleted = sorted(deleted_or_missing - set(missing))
@@ -111,8 +111,8 @@ def _paths_checksums(repo, targets):
 
 
 def _output_paths(repo, targets):
-    from dvc.data.stage import stage as ostage
-    from dvc.fs.local import LocalFileSystem
+    from dvc.fs import LocalFileSystem
+    from dvc_data.stage import stage as ostage
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
@@ -122,11 +122,11 @@ def _output_paths(repo, targets):
         return True
 
     def _to_path(output):
-        return (
-            str(output)
-            if not output.is_dir_checksum
-            else os.path.join(str(output), "")
-        )
+        relparts = output.fs.path.relparts(output.fs_path)
+        base = os.path.join(*relparts)
+        if output.is_dir_checksum:
+            return os.path.join(base, "")
+        return base
 
     for output in repo.index.outs:
         if _exists(output):
@@ -142,7 +142,7 @@ def _output_paths(repo, targets):
                     repo.odb.local.fs,
                     "md5",
                     dry_run=True,
-                    dvcignore=output.dvcignore,
+                    ignore=output.dvcignore,
                 )
                 hash_info = obj.hash_info
             else:
@@ -168,43 +168,39 @@ def _output_paths(repo, targets):
 
 
 def _dir_output_paths(fs, fs_path, obj, targets=None):
-    if fs.scheme == "local":
-        # NOTE: workaround for filesystems that are based on full local paths
-        # (e.g. gitfs, dvcfs, repofs). Proper solution is to use upcoming
-        # fsspec's prefixfs to use relpaths as fs_paths.
-        base = fs.path.relpath(fs_path, os.getcwd())
-    else:
-        base = fs_path
+    base = os.path.join(*fs.path.relparts(fs_path))
     for key, _, oid in obj:
         fname = fs.path.join(fs_path, *key)
         if targets is None or any(
             fs.path.isin_or_eq(fname, target) for target in targets
         ):
             # pylint: disable=no-member
-            yield fs.path.join(base, *key), oid.value
+            yield os.path.join(base, *key), oid.value
 
 
-def _filter_missing(repo_fs, paths):
+def _filter_missing(dvcfs, paths):
     for path in paths:
+        fs_path = dvcfs.from_os_path(path)
         try:
-            info = repo_fs.info(path)
+            info = dvcfs.info(fs_path)
+            dvc_info = info.get("dvc_info")
             if (
-                info["isdvc"]
+                dvc_info
                 and info["type"] == "directory"
-                and not info["meta"].obj
+                and not dvc_info["meta"].obj
             ):
                 yield path
         except FileNotFoundError:
             pass
 
 
-def _targets_to_paths(repo_fs, targets):
+def _targets_to_paths(dvcfs, targets):
     paths = []
     missing = []
 
     for target in targets:
-        if repo_fs.exists(target):
-            paths.append(os.path.abspath(target))
+        if dvcfs.exists(target):
+            paths.append(dvcfs.repo.fs.path.abspath(target))
         else:
             missing.append(target)
 

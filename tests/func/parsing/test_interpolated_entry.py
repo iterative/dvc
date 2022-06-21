@@ -160,7 +160,7 @@ def test_with_templated_wdir(tmp_dir, dvc):
             DEFAULT_PARAMS_FILE: {"dict.bar": "bar", "dict.ws": "data"},
         }
     }
-    assert resolver.context.imports == {str(tmp_dir / "params.yaml"): None}
+    assert resolver.context.imports == {"params.yaml": None}
     assert resolver.context == {"dict": {"bar": "bar", "ws": "data"}}
 
 
@@ -236,7 +236,7 @@ def test_vars_relpath_overwrite(tmp_dir, dvc):
     }
     resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()
-    assert resolver.context.imports == {str(tmp_dir / "params.yaml"): None}
+    assert resolver.context.imports == {"params.yaml": None}
 
 
 @pytest.mark.parametrize("local", [True, False])

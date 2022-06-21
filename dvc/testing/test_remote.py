@@ -1,6 +1,10 @@
 import os
+import shutil
 
-from dvc.utils.fs import move, remove
+import pytest
+
+from dvc.stage.cache import RunCacheNotSupported
+from dvc.utils.fs import remove
 
 
 class TestRemote:
@@ -41,7 +45,7 @@ class TestRemote:
         # Move cache and check status
         # See issue https://github.com/iterative/dvc/issues/4383 for details
         backup_dir = dvc.odb.local.cache_dir + ".backup"
-        move(dvc.odb.local.cache_dir, backup_dir)
+        shutil.move(dvc.odb.local.cache_dir, backup_dir)
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, missing={foo_hash})
 
@@ -50,7 +54,7 @@ class TestRemote:
 
         # Restore original cache:
         remove(dvc.odb.local.cache_dir)
-        move(backup_dir, dvc.odb.local.cache_dir)
+        shutil.move(backup_dir, dvc.odb.local.cache_dir)
 
         # Push and check status
         dvc.cloud.push(foo_hashes)
@@ -90,3 +94,19 @@ class TestRemote:
 
         status_dir = dvc.cloud.status(dir_hashes)
         _check_status(status_dir, ok=dir_hashes)
+
+    @pytest.mark.xfail(raises=RunCacheNotSupported, strict=False)
+    def test_stage_cache_push_pull(self, tmp_dir, dvc, remote):
+        tmp_dir.gen("foo", "foo")
+        stage = dvc.stage.add(
+            deps=["foo"], outs=["bar"], name="copy-foo-bar", cmd="cp foo bar"
+        )
+        dvc.reproduce(stage.addressing)
+        assert dvc.push(run_cache=True) == 2
+
+        stage_cache_dir = tmp_dir / dvc.stage_cache.cache_dir
+        expected = list(stage_cache_dir.rglob("*"))
+        shutil.rmtree(stage_cache_dir)
+
+        dvc.pull(run_cache=True)
+        assert list(stage_cache_dir.rglob("*")) == expected

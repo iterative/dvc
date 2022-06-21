@@ -1,14 +1,16 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from dvc.repo import Repo, locked  # pylint: disable=unused-import
 from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
-from dvc.utils import error_handler, onerror_collect
+from dvc.utils import error_handler, onerror_collect, relpath
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ def _collect_experiment_commit(
     param_deps=False,
     running=None,
     onerror: Optional[Callable] = None,
+    is_baseline: bool = False,
 ):
     from dvc.dependency import ParamsDependency, RepoDependency
 
@@ -42,7 +45,7 @@ def _collect_experiment_commit(
             res["params"] = params
 
         res["deps"] = {
-            dep.def_path: {
+            relpath(dep.fs_path, repo.root_dir): {
                 "hash": dep.hash_info.value,
                 "size": dep.meta.size,
                 "nfiles": dep.meta.nfiles,
@@ -50,12 +53,13 @@ def _collect_experiment_commit(
             for dep in repo.index.deps
             if not isinstance(dep, (ParamsDependency, RepoDependency))
         }
-
         res["outs"] = {
-            out.def_path: {
+            relpath(out.fs_path, repo.root_dir): {
                 "hash": out.hash_info.value,
                 "size": out.meta.size,
                 "nfiles": out.meta.nfiles,
+                "use_cache": out.use_cache,
+                "is_data_source": out.stage.is_data_source,
             }
             for out in repo.index.outs
             if not (out.is_metric or out.is_plot)
@@ -75,10 +79,12 @@ def _collect_experiment_commit(
             res["metrics"] = vals
 
         if not sha_only and rev != "workspace":
-            for refspec in ["refs/tags", "refs/heads"]:
-                name = repo.scm.describe(rev, base=refspec)
-                if name:
-                    break
+            name: Optional[str] = None
+            if is_baseline:
+                for refspec in ["refs/tags", "refs/heads"]:
+                    name = repo.scm.describe(rev, base=refspec)
+                    if name:
+                        break
             if not name:
                 name = repo.experiments.get_exact_name(rev)
             if name:
@@ -121,7 +127,6 @@ def _collect_experiment_branch(
     return res
 
 
-@locked
 def show(
     repo: "Repo",
     all_branches=False,
@@ -132,6 +137,7 @@ def show(
     num=1,
     param_deps=False,
     onerror: Optional[Callable] = None,
+    fetch_running: bool = True,
 ):
 
     if onerror is None:
@@ -149,7 +155,7 @@ def show(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
 
-    running = repo.experiments.get_running_exps()
+    running = repo.experiments.get_running_exps(fetch_refs=fetch_running)
 
     for rev in found_revs:
         res[rev]["baseline"] = _collect_experiment_commit(
@@ -159,6 +165,7 @@ def show(
             param_deps=param_deps,
             running=running,
             onerror=onerror,
+            is_baseline=True,
         )
 
         if rev == "workspace":

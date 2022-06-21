@@ -117,7 +117,7 @@ def test_import_url_to_remote(mocker):
     )
 
 
-def test_import_url_to_remote_invalid_combination(mocker, caplog):
+def test_import_url_to_remote_invalid_combination(dvc, mocker, caplog):
     cli_args = parse_args(
         [
             "import-url",

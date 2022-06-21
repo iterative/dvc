@@ -1,4 +1,5 @@
 """Manages source control systems (e.g. Git)."""
+import os
 from contextlib import contextmanager
 from functools import partial
 from typing import TYPE_CHECKING, Iterator, List, Mapping, Optional
@@ -10,6 +11,7 @@ from scmrepo.noscm import NoSCM
 
 from dvc.exceptions import DvcException
 from dvc.progress import Tqdm
+from dvc.utils import format_link
 
 if TYPE_CHECKING:
     from scmrepo.progress import GitProgressEvent
@@ -45,6 +47,25 @@ class GitAuthError(SCMError):
     def __init__(self, reason: str) -> None:
         doc = "See https://dvc.org/doc/user-guide/troubleshooting#git-auth"
         super().__init__(f"{reason}\n{doc}")
+
+
+class GitMergeError(SCMError):
+    def __init__(self, msg: str, scm: Optional["Git"] = None) -> None:
+        if scm and self._is_shallow(scm):
+            url = format_link(
+                "https://dvc.org/doc/user-guide/troubleshooting#git-shallow"
+            )
+            msg = (
+                f"{msg}: `dvc exp` does not work in shallow Git repos. "
+                f"See {url} for more information."
+            )
+        super().__init__(msg)
+
+    @staticmethod
+    def _is_shallow(scm: "Git") -> bool:
+        if os.path.exists(os.path.join(scm.root_dir, Git.GIT_DIR, "shallow")):
+            return True
+        return False
 
 
 @contextmanager
@@ -84,26 +105,47 @@ def SCM(
 
 
 class TqdmGit(Tqdm):
+    BAR_FMT = (
+        "{desc}|{bar}|"
+        "{postfix[info]}{n_fmt}/{total_fmt}"
+        " [{elapsed}, {rate_fmt:>11}]"
+    )
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("unit", "obj")
+        kwargs.setdefault("bar_format", self.BAR_FMT)
         super().__init__(*args, **kwargs)
+        self._last_phase = None
 
     def update_git(self, event: "GitProgressEvent") -> None:
         phase, completed, total, message, *_ = event
         if phase:
             message = (phase + " | " + message) if message else phase
         if message:
-            self.postfix["info"] = f" {message} | "
-        if completed:
+            self.set_msg(message)
+        force_refresh = (  # force-refresh progress bar when:
+            (total and completed and completed >= total)  # the task completes
+            or total != self.total  # the total changes
+            or phase != self._last_phase  # or, the phase changes
+        )
+        if completed is not None:
             self.update_to(completed, total)
+        if force_refresh:
+            self.refresh()
+        self._last_phase = phase
 
 
 def clone(url: str, to_path: str, **kwargs):
     from scmrepo.exceptions import CloneError as InternalCloneError
 
-    with TqdmGit(desc="Cloning") as pbar:
+    from dvc.repo.experiments.utils import fetch_all_exps
+
+    with TqdmGit(desc=f"Cloning {os.path.basename(url)}") as pbar:
         try:
-            return Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
+            git = Git.clone(url, to_path, progress=pbar.update_git, **kwargs)
+            if "shallow_branch" not in kwargs:
+                fetch_all_exps(git, url, progress=pbar.update_git)
+            return git
         except InternalCloneError as exc:
             raise CloneError(str(exc))
 

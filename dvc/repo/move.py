@@ -38,7 +38,7 @@ def move(self, from_path, to_path):
     from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
 
     from_out = Output.loads_from(Stage(self), [from_path])[0]
-    assert from_out.scheme == "local"
+    assert from_out.protocol == "local"
 
     to_path = _expand_target_path(from_path, to_path)
 

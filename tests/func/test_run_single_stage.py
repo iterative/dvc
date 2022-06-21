@@ -19,6 +19,7 @@ from dvc.exceptions import (
     OverlappingOutputPathsError,
     StagePathAsOutputError,
 )
+from dvc.fs import system
 from dvc.output import Output, OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.stage import Stage
@@ -29,9 +30,8 @@ from dvc.stage.exceptions import (
     StagePathNotFoundError,
     StagePathOutsideError,
 )
-from dvc.system import System
-from dvc.utils import file_md5
 from dvc.utils.serialize import load_yaml
+from dvc_data.hashfile.hash import file_md5
 from tests.basic_env import TestDvc, TestDvcGit
 
 
@@ -401,7 +401,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         else:
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -428,7 +428,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         else:
             self.assertFalse(os.access(self.FOO, os.W_OK))
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -460,7 +460,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(System.is_hardlink(self.FOO))
+        self.assertTrue(system.is_hardlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -481,7 +481,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(System.is_hardlink(self.FOO))
+        self.assertTrue(system.is_hardlink(self.FOO))
         with open(self.FOO, encoding="utf-8") as fd:
             self.assertEqual(fd.read(), "foo")
 
@@ -900,13 +900,10 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         self.dvc = DvcRepo(".")
 
     def test(self):
-        from tests.utils import clean_staging
-
         cmd = f"python {self.CODE} {self.FOO} {self.BAR}"
         stage = self.dvc.run(
             deps=[self.FOO], outs=[self.BAR], cmd=cmd, single_stage=True
         )
-        clean_staging()
 
         os.chmod(self.BAR, 0o644)
         with open(self.BAR, "w", encoding="utf-8") as fd:

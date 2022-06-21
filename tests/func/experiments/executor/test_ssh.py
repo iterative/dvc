@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import pytest
 from dvc_ssh.tests.cloud import TEST_SSH_KEY_PATH, TEST_SSH_USER
 
-from dvc.fs.ssh import SSHFileSystem
+from dvc.fs import SSHFileSystem
 from dvc.repo.experiments.base import EXEC_HEAD, EXEC_MERGE
 from dvc.repo.experiments.executor.base import ExecutorInfo, ExecutorResult
 from dvc.repo.experiments.executor.ssh import SSHExecutor

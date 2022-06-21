@@ -24,7 +24,7 @@ def imp_url(
     jobs=None,
 ):
     from dvc.dvcfile import Dvcfile
-    from dvc.stage import Stage, create_stage, restore_meta
+    from dvc.stage import Stage, create_stage, restore_fields
 
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(
@@ -58,7 +58,7 @@ def imp_url(
         outs=[out],
         erepo=erepo,
     )
-    restore_meta(stage)
+    restore_fields(stage)
 
     if desc:
         stage.outs[0].desc = desc

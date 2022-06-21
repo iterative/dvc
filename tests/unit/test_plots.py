@@ -1,8 +1,6 @@
 import json
 import os
 
-from dvc.render.match import get_files
-
 
 def test_plots_order(tmp_dir, dvc):
     tmp_dir.gen(
@@ -28,9 +26,9 @@ def test_plots_order(tmp_dir, dvc):
             name="stage2",
         )
 
-    assert get_files(dvc.plots.show()) == [
+    assert list(dvc.plots.show()["workspace"]["data"]) == [
         "p.json",
+        os.path.join("sub", "p4.json"),
         "p1.json",
         os.path.join("sub", "p3.json"),
-        os.path.join("sub", "p4.json"),
     ]

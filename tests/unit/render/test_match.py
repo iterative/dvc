@@ -166,3 +166,18 @@ def test_match_renderers_with_out(tmp_dir, mocker):
     assert (
         tmp_dir / "foo" / "workspace_other_file.jpg"
     ).read_bytes() == b"content2"
+
+
+def test_match_renderers_template_dir(mocker):
+    from dvc_render import vega
+
+    vega_render = mocker.spy(vega.VegaRenderer, "__init__")
+    data = {
+        "v1": {
+            "data": {"file.json": {"data": [{"y": 4}, {"y": 5}], "props": {}}}
+        },
+    }
+
+    match_renderers(data, templates_dir="foo")
+
+    assert vega_render.call_args[1]["template_dir"] == "foo"

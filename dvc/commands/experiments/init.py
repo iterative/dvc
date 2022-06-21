@@ -25,7 +25,6 @@ class CmdExperimentsInit(CmdBase):
     DEFAULT_METRICS = "metrics.json"
     DEFAULT_PARAMS = "params.yaml"
     PLOTS = "plots"
-    DVCLIVE = "dvclive"
     DEFAULTS = {
         "code": CODE,
         "data": DATA,
@@ -33,7 +32,6 @@ class CmdExperimentsInit(CmdBase):
         "metrics": DEFAULT_METRICS,
         "params": DEFAULT_PARAMS,
         "plots": PLOTS,
-        "live": DVCLIVE,
     }
 
     def run(self):
@@ -63,7 +61,7 @@ class CmdExperimentsInit(CmdBase):
             }
         )
 
-        initialized_stage, initialized_deps = init(
+        initialized_stage, initialized_deps, initialized_out_dirs = init(
             self.repo,
             name=self.args.name,
             type=self.args.type,
@@ -72,20 +70,31 @@ class CmdExperimentsInit(CmdBase):
             interactive=self.args.interactive,
             force=self.args.force,
         )
-        self._post_init_display(initialized_stage, initialized_deps)
+        self._post_init_display(
+            initialized_stage, initialized_deps, initialized_out_dirs
+        )
         if self.args.run:
             self.repo.experiments.run(targets=[initialized_stage.addressing])
         return 0
 
     def _post_init_display(
-        self, stage: "PipelineStage", new_deps: List["Dependency"]
+        self,
+        stage: "PipelineStage",
+        new_deps: List["Dependency"],
+        new_out_dirs: List[str],
     ) -> None:
         from dvc.utils import humanize
 
-        path_fmt = "[green]{0}[/green]".format
+        path_fmt = "[green]{}[/green]".format
         if new_deps:
             deps_paths = humanize.join(map(path_fmt, new_deps))
             ui.write(f"Creating dependencies: {deps_paths}", styled=True)
+
+        if new_out_dirs:
+            out_dirs_paths = humanize.join(map(path_fmt, new_out_dirs))
+            ui.write(
+                f"Creating output directories: {out_dirs_paths}", styled=True
+            )
 
         ui.write(
             f"Creating [b]{self.args.name}[/b] stage in [green]dvc.yaml[/]",
@@ -190,12 +199,11 @@ def add_parser(experiments_subparsers, parent_parser):
     )
     experiments_init_parser.add_argument(
         "--live",
-        help="Path to log dvclive outputs for your experiments"
-        f" (default: {CmdExperimentsInit.DVCLIVE})",
+        help="Path to log dvclive outputs for your experiments",
     )
     experiments_init_parser.add_argument(
         "--type",
-        choices=["default", "dl"],
+        choices=["default", "checkpoint"],
         default="default",
         help="Select type of stage to create (default: %(default)s)",
     )

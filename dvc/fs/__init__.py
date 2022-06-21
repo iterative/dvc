@@ -1,41 +1,47 @@
 from urllib.parse import urlparse
 
-from ..scheme import Schemes
-from . import utils  # noqa: F401
-from .azure import AzureFileSystem
-from .gdrive import GDriveFileSystem
-from .gs import GSFileSystem
-from .hdfs import HDFSFileSystem
-from .http import HTTPFileSystem
-from .https import HTTPSFileSystem
-from .local import LocalFileSystem
-from .oss import OSSFileSystem
-from .s3 import S3FileSystem
-from .ssh import SSHFileSystem
-from .webdav import WebDAVFileSystem, WebDAVSFileSystem
-from .webhdfs import WebHDFSFileSystem
+# pylint: disable=unused-import
+from dvc_objects.fs import utils  # noqa: F401
+from dvc_objects.fs import (  # noqa: F401
+    FS_MAP,
+    AzureFileSystem,
+    GDriveFileSystem,
+    GSFileSystem,
+    HDFSFileSystem,
+    HTTPFileSystem,
+    HTTPSFileSystem,
+    LocalFileSystem,
+    MemoryFileSystem,
+    OSSFileSystem,
+    S3FileSystem,
+    Schemes,
+    SSHFileSystem,
+    WebDAVFileSystem,
+    WebDAVSFileSystem,
+    WebHDFSFileSystem,
+    generic,
+    get_fs_cls,
+    system,
+)
+from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
+from dvc_objects.fs.errors import (  # noqa: F401
+    AuthError,
+    ConfigError,
+    RemoteMissingDepsError,
+)
+from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
+from dvc_objects.fs.implementations.gdrive import GDriveAuthError  # noqa: F401
+from dvc_objects.fs.implementations.local import localfs  # noqa: F401
+from dvc_objects.fs.implementations.ssh import (  # noqa: F401
+    DEFAULT_PORT as DEFAULT_SSH_PORT,
+)
+from dvc_objects.fs.path import Path  # noqa: F401
 
-FS_MAP = {
-    Schemes.AZURE: AzureFileSystem,
-    Schemes.GDRIVE: GDriveFileSystem,
-    Schemes.GS: GSFileSystem,
-    Schemes.HDFS: HDFSFileSystem,
-    Schemes.WEBHDFS: WebHDFSFileSystem,
-    Schemes.HTTP: HTTPFileSystem,
-    Schemes.HTTPS: HTTPSFileSystem,
-    Schemes.S3: S3FileSystem,
-    Schemes.SSH: SSHFileSystem,
-    Schemes.OSS: OSSFileSystem,
-    Schemes.WEBDAV: WebDAVFileSystem,
-    Schemes.WEBDAVS: WebDAVSFileSystem,
-    # NOTE: LocalFileSystem is the default
-}
+from .data import DataFileSystem  # noqa: F401
+from .dvc import DvcFileSystem  # noqa: F401
+from .git import GitFileSystem  # noqa: F401
 
-
-def get_fs_cls(remote_conf, scheme=None):
-    if not scheme:
-        scheme = urlparse(remote_conf["url"]).scheme
-    return FS_MAP.get(scheme, LocalFileSystem)
+# pylint: enable=unused-import
 
 
 def get_fs_config(repo, config, **kwargs):
@@ -86,7 +92,7 @@ def _resolve_remote_refs(repo, config, remote_conf):
 
 
 def get_cloud_fs(repo, **kwargs):
-    from dvc.config import ConfigError
+    from dvc.config import ConfigError as RepoConfigError
     from dvc.config_schema import SCHEMA, Invalid
 
     repo_config = repo.config if repo else {}
@@ -96,7 +102,7 @@ def get_cloud_fs(repo, **kwargs):
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
-        raise ConfigError(str(exc)) from None
+        raise RepoConfigError(str(exc)) from None
 
     if "jobs" not in remote_conf:
         jobs = core_config.get("jobs")

@@ -3,9 +3,9 @@ import logging
 from itertools import chain, filterfalse
 from typing import TYPE_CHECKING, Dict, Iterable, List
 
+from dvc.cli import completion
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands import completion
 from dvc.utils.cli_parse import parse_params
 from dvc.utils.humanize import truncate_text
 
@@ -94,9 +94,7 @@ class CmdStageList(CmdBase):
         self.repo.stage_collection_error_handler = log_error
 
         stages = self._get_stages()
-        names_only = self.args.names_only
-
-        data = prepare_stages_data(stages, description=not names_only)
+        data = prepare_stages_data(stages, description=not self.args.name_only)
         ui.table(data.items())
 
         return 0
@@ -140,12 +138,27 @@ class CmdStageAdd(CmdBase):
 
 def _add_common_args(parser):
     parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Overwrite existing stage",
+    )
+    parser.add_argument(
         "-d",
         "--deps",
         action="append",
         default=[],
         help="Declare dependencies for reproducible cmd.",
         metavar="<path>",
+    ).complete = completion.FILE
+    parser.add_argument(
+        "-p",
+        "--params",
+        action="append",
+        default=[],
+        help="Declare parameter to use as additional dependency.",
+        metavar="[<filename>:]<params_list>",
     ).complete = completion.FILE
     parser.add_argument(
         "-o",
@@ -165,13 +178,36 @@ def _add_common_args(parser):
         metavar="<filename>",
     ).complete = completion.FILE
     parser.add_argument(
-        "-p",
-        "--params",
+        "-c",
+        "--checkpoints",
         action="append",
         default=[],
-        help="Declare parameter to use as additional dependency.",
-        metavar="[<filename>:]<params_list>",
+        help="Declare checkpoint output file or directory for 'dvc exp run'. "
+        "Not compatible with 'dvc repro'.",
+        metavar="<filename>",
     ).complete = completion.FILE
+    parser.add_argument(
+        "--external",
+        action="store_true",
+        default=False,
+        help="Allow outputs that are outside of the DVC repository.",
+    )
+    parser.add_argument(
+        "--outs-persist",
+        action="append",
+        default=[],
+        help="Declare output file or directory that will not be "
+        "removed upon repro.",
+        metavar="<filename>",
+    )
+    parser.add_argument(
+        "--outs-persist-no-cache",
+        action="append",
+        default=[],
+        help="Declare output file or directory that will not be "
+        "removed upon repro (do not put into DVC cache).",
+        metavar="<filename>",
+    )
     parser.add_argument(
         "-m",
         "--metrics",
@@ -229,48 +265,10 @@ def _add_common_args(parser):
         metavar="<path>",
     )
     parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Overwrite existing stage",
-    )
-    parser.add_argument(
-        "--outs-persist",
-        action="append",
-        default=[],
-        help="Declare output file or directory that will not be "
-        "removed upon repro.",
-        metavar="<filename>",
-    )
-    parser.add_argument(
-        "--outs-persist-no-cache",
-        action="append",
-        default=[],
-        help="Declare output file or directory that will not be "
-        "removed upon repro (do not put into DVC cache).",
-        metavar="<filename>",
-    )
-    parser.add_argument(
-        "-c",
-        "--checkpoints",
-        action="append",
-        default=[],
-        help="Declare checkpoint output file or directory for 'dvc exp run'. "
-        "Not compatible with 'dvc repro'.",
-        metavar="<filename>",
-    ).complete = completion.FILE
-    parser.add_argument(
         "--always-changed",
         action="store_true",
         default=False,
         help="Always consider this DVC-file as changed.",
-    )
-    parser.add_argument(
-        "--external",
-        action="store_true",
-        default=False,
-        help="Allow outputs that are outside of the DVC repository.",
     )
     parser.add_argument(
         "--desc",
@@ -358,6 +356,7 @@ def add_parser(subparsers, parent_parser):
         help="List all stages inside the specified directory.",
     )
     stage_list_parser.add_argument(
+        "--name-only",
         "--names-only",
         action="store_true",
         default=False,

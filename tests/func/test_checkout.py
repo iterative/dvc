@@ -18,17 +18,22 @@ from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
 )
-from dvc.fs.local import LocalFileSystem
+from dvc.fs import LocalFileSystem, system
 from dvc.stage import Stage
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils import relpath
-from dvc.utils.fs import remove, walk_files
+from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
 from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 
 logger = logging.getLogger("dvc")
+
+
+def walk_files(directory):
+    for root, _, files in os.walk(directory):
+        for f in files:
+            yield os.path.join(root, f)
 
 
 class TestCheckout(TestRepro):
@@ -85,7 +90,7 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
-        from dvc.data import load
+        from dvc_data import load
 
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(["config", "cache.type", "copy"])
@@ -102,7 +107,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # to check if dvc will detect that the cache is corrupted.
         obj = load(self.dvc.odb.local, out.hash_info)
         _, _, entry_oid = list(obj)[0]
-        cache = self.dvc.odb.local.hash_to_path(entry_oid.value)
+        cache = self.dvc.odb.local.oid_to_path(entry_oid.value)
 
         os.chmod(cache, 0o644)
         with open(cache, "w+", encoding="utf-8") as fobj:
@@ -147,7 +152,7 @@ class CheckoutBase(TestDvcGit):
         ]
 
         return [
-            FileInfo(path=path, inode=System.inode(path)) for path in paths
+            FileInfo(path=path, inode=system.inode(path)) for path in paths
         ]
 
 
@@ -459,10 +464,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         old_foo_link = os.path.realpath(self.FOO)
 
-        self.assertTrue(System.is_symlink(self.DATA))
+        self.assertTrue(system.is_symlink(self.DATA))
         old_data_link = os.path.realpath(self.DATA)
 
         old_cache_dir = self.dvc.odb.local.cache_dir
@@ -475,10 +480,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["checkout", "-f"])
         self.assertEqual(ret, 0)
 
-        self.assertTrue(System.is_symlink(self.FOO))
+        self.assertTrue(system.is_symlink(self.FOO))
         new_foo_link = os.path.realpath(self.FOO)
 
-        self.assertTrue(System.is_symlink(self.DATA))
+        self.assertTrue(system.is_symlink(self.DATA))
         new_data_link = os.path.realpath(self.DATA)
 
         self.assertEqual(
@@ -506,7 +511,7 @@ def test_checkout_no_checksum(tmp_dir, dvc):
 
 @pytest.mark.parametrize(
     "link, link_test_func",
-    [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
+    [("hardlink", system.is_hardlink), ("symlink", system.is_symlink)],
 )
 def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
     dvc.odb.local.cache_types = [link]

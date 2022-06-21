@@ -1,8 +1,7 @@
 import ssl
+from unittest.mock import patch
 
-from mock import patch
-
-from dvc.fs.http import HTTPFileSystem
+from dvc.fs import HTTPFileSystem
 
 
 def test_public_auth_method(dvc):

@@ -394,7 +394,7 @@ def test_on_revision(
     tmp_dir.scm_gen("dvc.yaml", text, commit="add dvc.yaml")
     capsys.readouterr()  # clear outputs
 
-    assert main(["ls", f"file://{tmp_dir}", "--rev", "HEAD"]) != 0
+    assert main(["ls", f"file://{tmp_dir.as_posix()}", "--rev", "HEAD"]) != 0
 
     out, err = capsys.readouterr()
     assert not out

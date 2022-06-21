@@ -31,10 +31,10 @@ def test_new_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -80,10 +80,10 @@ def test_resume_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -111,10 +111,10 @@ def test_reset_checkpoint(
     for rev in dvc.brancher([exp]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     if workspace:
@@ -150,19 +150,19 @@ def test_resume_branch(tmp_dir, scm, dvc, checkpoint_stage, workspace):
     for rev in dvc.brancher([checkpoint_a]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 2"
 
     for rev in dvc.brancher([checkpoint_b]):
         if rev == "workspace":
             continue
-        fs = dvc.repo_fs
-        with fs.open((tmp_dir / "foo").fs_path) as fobj:
+        fs = dvc.dvcfs
+        with fs.open("foo") as fobj:
             assert fobj.read().strip() == str(2 * checkpoint_stage.iterations)
-        with fs.open((tmp_dir / "metrics.yaml").fs_path) as fobj:
+        with fs.open("metrics.yaml") as fobj:
             assert fobj.read().strip() == "foo: 100"
 
     with pytest.raises(MultipleBranchError):

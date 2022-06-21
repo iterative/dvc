@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.fs.path import Path
+from dvc.fs import Path
 
 
 @pytest.mark.parametrize("prefix", ["", "/"])

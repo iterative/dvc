@@ -4,6 +4,8 @@ from collections import defaultdict
 from copy import copy
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
+from scmrepo.exceptions import SCMError
+
 from dvc.dependency.param import ParamsDependency
 from dvc.repo import locked
 from dvc.repo.collect import collect
@@ -37,7 +39,7 @@ def _collect_configs(
     )
     all_fs_paths = fs_paths + [p.fs_path for p in params]
     if not targets:
-        default_params = os.path.join(
+        default_params = repo.fs.path.join(
             repo.root_dir, ParamsDependency.DEFAULT_PARAMS_FILE
         )
         if default_params not in all_fs_paths and repo.fs.exists(
@@ -70,22 +72,23 @@ def _read_params(
                 onerror=onerror, flatten=False
             )
             if params_dict:
-                res[
-                    repo.fs.path.relpath(param.fs_path, os.getcwd())
-                ] = params_dict
+                name = os.sep.join(repo.fs.path.relparts(param.fs_path))
+                res[name] = params_dict
     else:
         fs_paths += [param.fs_path for param in params]
 
     for fs_path in fs_paths:
         from_path = _read_fs_path(repo.fs, fs_path, onerror=onerror)
         if from_path:
-            res[repo.fs.path.relpath(fs_path, os.getcwd())] = from_path
+            name = os.sep.join(repo.fs.path.relparts(fs_path))
+            res[name] = from_path
 
     return res
 
 
 def _collect_vars(repo, params) -> Dict:
     vars_params: Dict[str, Dict] = defaultdict(dict)
+
     for stage in repo.index.stages:
         if isinstance(stage, PipelineStage) and stage.tracked_vars:
             for file, vars_ in stage.tracked_vars.items():
@@ -94,7 +97,8 @@ def _collect_vars(repo, params) -> Dict:
                 if file in params:
                     continue
 
-                vars_params[file].update(vars_)
+                name = os.sep.join(repo.fs.path.parts(file))
+                vars_params[name].update(vars_)
     return vars_params
 
 
@@ -115,8 +119,8 @@ def show(repo, revs=None, targets=None, deps=False, onerror: Callable = None):
     # Hide workspace params if they are the same as in the active branch
     try:
         active_branch = repo.scm.active_branch()
-    except (TypeError, NoSCMError):
-        # TypeError - detached head
+    except (SCMError, NoSCMError):
+        # SCMError - detached head
         # NoSCMError - no repo case
         pass
     else:

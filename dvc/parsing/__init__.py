@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import (
@@ -17,7 +18,6 @@ from funcy import cached_property, collecting, first, isa, join, reraise
 
 from dvc.exceptions import DvcException
 from dvc.parsing.interpolate import ParseError
-from dvc.utils import relpath
 
 from .context import (
     Context,
@@ -135,8 +135,13 @@ def make_definition(
 class DataResolver:
     def __init__(self, repo: "Repo", wdir: str, d: dict):
         self.fs = fs = repo.fs
+
+        if os.path.isabs(wdir):
+            wdir = fs.path.relpath(wdir)
+            wdir = "" if wdir == os.curdir else wdir
+
         self.wdir = wdir
-        self.relpath = relpath(fs.path.join(self.wdir, "dvc.yaml"))
+        self.relpath = fs.path.normpath(fs.path.join(self.wdir, "dvc.yaml"))
 
         vars_ = d.get(VARS_KWD, [])
         check_interpolations(vars_, VARS_KWD, self.relpath)

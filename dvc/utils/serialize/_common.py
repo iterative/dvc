@@ -9,7 +9,7 @@ from typing_extensions import Protocol
 from dvc.exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.fs.base import FileSystem
+    from dvc.fs import FileSystem
     from dvc.types import AnyPath
 
 

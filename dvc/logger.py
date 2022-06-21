@@ -207,7 +207,12 @@ def disable_other_loggers():
             logger.disabled = True
 
 
-def setup(level=logging.INFO):
+def set_loggers_level(level: int = logging.INFO) -> None:
+    for name in ["dvc", "dvc_objects", "dvc_data"]:
+        logging.getLogger(name).setLevel(level)
+
+
+def setup(level: int = logging.INFO) -> None:
     colorama.init()
 
     if level >= logging.DEBUG:
@@ -269,7 +274,25 @@ def setup(level=logging.INFO):
                         "console_trace",
                         "console_errors",
                     ],
-                }
+                },
+                "dvc_objects": {
+                    "level": level,
+                    "handlers": [
+                        "console_info",
+                        "console_debug",
+                        "console_trace",
+                        "console_errors",
+                    ],
+                },
+                "dvc_data": {
+                    "level": level,
+                    "handlers": [
+                        "console_info",
+                        "console_debug",
+                        "console_trace",
+                        "console_errors",
+                    ],
+                },
             },
             "disable_existing_loggers": False,
         }

@@ -1,6 +1,6 @@
 import fnmatch
 import logging
-import os
+import time
 import typing
 from contextlib import suppress
 from functools import partial, wraps
@@ -15,13 +15,15 @@ from typing import (
     Union,
 )
 
+from funcy.debug import format_time
+
 from dvc.exceptions import (
     DvcException,
     NoOutputOrStageError,
     OutputNotFoundError,
 )
 from dvc.repo import lock_repo
-from dvc.utils import parse_target, relpath
+from dvc.utils import as_posix, parse_target, relpath
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,14 @@ if typing.TYPE_CHECKING:
     from dvc.types import OptStr
 
 PIPELINE_FILE = "dvc.yaml"
+
+
+def log_walk(seq):
+    for root, dirs, files in seq:
+        start = time.perf_counter()
+        yield root, dirs, files
+        duration = format_time(time.perf_counter() - start)
+        logger.trace("%s in collecting stages from %s", duration, root)
 
 
 class StageInfo(NamedTuple):
@@ -157,7 +167,12 @@ class StageLoad:
             stage_data: Stage data to create from
                 (see create_stage and loads_from for more information)
         """
-        from dvc.stage import PipelineStage, Stage, create_stage, restore_meta
+        from dvc.stage import (
+            PipelineStage,
+            Stage,
+            create_stage,
+            restore_fields,
+        )
         from dvc.stage.exceptions import InvalidStageName
         from dvc.stage.utils import (
             is_valid_name,
@@ -190,7 +205,7 @@ class StageLoad:
             new_index = self.repo.index.add(stage)
             new_index.check_graph()
 
-        restore_meta(stage)
+        restore_fields(stage)
         return stage
 
     def from_target(
@@ -362,7 +377,7 @@ class StageLoad:
         if recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
-            path = os.path.abspath(target)
+            path = self.fs.path.abspath(target)
             return collect_inside_path(path, graph or self.graph)
 
         stages = self.from_target(target, accept_group=accept_group, glob=glob)
@@ -400,6 +415,8 @@ class StageLoad:
         if not target:
             return [StageInfo(stage) for stage in self.repo.index]
 
+        target = as_posix(target)
+
         stages, file, _ = _collect_specific_target(
             self, target, with_deps, recursive, accept_group
         )
@@ -407,7 +424,7 @@ class StageLoad:
             if not (recursive and self.fs.isdir(target)):
                 try:
                     (out,) = self.repo.find_outs_by_path(target, strict=False)
-                    return [StageInfo(out.stage, os.path.abspath(target))]
+                    return [StageInfo(out.stage, self.fs.path.abspath(target))]
                 except OutputNotFoundError:
                     pass
 
@@ -448,10 +465,10 @@ class StageLoad:
                 the collection.
         """
         from dvc.dvcfile import is_valid_filename
-        from dvc.fs.local import LocalFileSystem
+        from dvc.fs import LocalFileSystem
 
         scm = self.repo.scm
-        sep = os.sep
+        sep = self.fs.sep
         outs: Set[str] = set()
 
         is_local_fs = isinstance(self.fs, LocalFileSystem)
@@ -470,12 +487,14 @@ class StageLoad:
             # trailing slash needed to check if a directory is gitignored
             return dir_path in outs or is_ignored(f"{dir_path}{sep}")
 
-        for root, dirs, files in self.repo.dvcignore.walk(
-            self.fs, self.repo.root_dir
-        ):
+        walk_iter = self.repo.dvcignore.walk(self.fs, self.repo.root_dir)
+        if logger.isEnabledFor(logging.TRACE):  # type: ignore[attr-defined]
+            walk_iter = log_walk(walk_iter)
+
+        for root, dirs, files in walk_iter:
             dvcfile_filter = partial(is_dvcfile_and_not_ignored, root)
             for file in filter(dvcfile_filter, files):
-                file_path = os.path.join(root, file)
+                file_path = self.fs.path.join(root, file)
                 try:
                     new_stages = self.load_file(file_path)
                 except DvcException as exc:
@@ -489,7 +508,7 @@ class StageLoad:
                     out.fspath
                     for stage in new_stages
                     for out in stage.outs
-                    if out.scheme == "local"
+                    if out.protocol == "local"
                 )
             dirs[:] = [d for d in dirs if not is_out_or_ignored(root, d)]
 

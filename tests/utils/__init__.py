@@ -44,18 +44,6 @@ def dump_sv(stream, metrics, delimiter=",", header=True):
             writer.writerow(list(d.values()))
 
 
-def clean_staging():
-    from dvc.data.stage import _STAGING_MEMFS_PATH
-    from dvc.fs.memory import MemoryFileSystem
-
-    try:
-        MemoryFileSystem().fs.rm(
-            f"memory://{_STAGING_MEMFS_PATH}", recursive=True
-        )
-    except FileNotFoundError:
-        pass
-
-
 @contextmanager
 def console_width(console, width):
     console_options = console.options

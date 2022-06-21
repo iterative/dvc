@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Iterator, List, Set
 
-from dvc.fs.local import localfs
+from dvc.fs import localfs
 from dvc.utils.fs import path_isin
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ def get_pipeline(pipelines, node):
     return found[0]
 
 
-def get_pipelines(G):
+def get_pipelines(G: "DiGraph"):
     import networkx as nx
 
     return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]

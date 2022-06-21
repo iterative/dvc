@@ -23,6 +23,7 @@ def _get_converter(
 def to_datapoints(renderer_class, data: Dict, props: Dict):
     converter = _get_converter(renderer_class, props)
     datapoints: List[Dict] = []
+    final_props: Dict = {}
     for revision, rev_data in data.items():
         for filename, file_data in rev_data.get("data", {}).items():
             if "data" in file_data:
@@ -42,20 +43,24 @@ def _group_by_rev(datapoints):
 
 
 def to_json(renderer, split: bool = False) -> List[Dict]:
+    from copy import deepcopy
+
     if renderer.TYPE == "vega":
-        grouped = _group_by_rev(renderer.datapoints)
+        grouped = _group_by_rev(deepcopy(renderer.datapoints))
         if split:
             content = renderer.get_filled_template(skip_anchors=["data"])
         else:
             content = renderer.get_filled_template()
-        return [
-            {
-                TYPE_KEY: renderer.TYPE,
-                REVISIONS_KEY: sorted(grouped.keys()),
-                "content": json.loads(content),
-                "datapoints": grouped,
-            }
-        ]
+        if grouped:
+            return [
+                {
+                    TYPE_KEY: renderer.TYPE,
+                    REVISIONS_KEY: sorted(grouped.keys()),
+                    "content": json.loads(content),
+                    "datapoints": grouped,
+                }
+            ]
+        return []
     if renderer.TYPE == "image":
         return [
             {

@@ -6,6 +6,7 @@ import sys
 # Workaround for CPython bug. See [1] and [2] for more info.
 # [1] https://github.com/aws/aws-cli/blob/1.16.277/awscli/clidriver.py#L55
 # [2] https://bugs.python.org/issue29288
+from typing import Optional
 
 "".encode("idna")
 
@@ -32,7 +33,102 @@ def parse_args(argv=None):
 
     parser = get_main_parser()
     args = parser.parse_args(argv)
+    args.parser = parser
     return args
+
+
+def _log_unknown_exceptions() -> None:
+    from dvc.info import get_dvc_info
+    from dvc.logger import FOOTER
+
+    logger.exception("unexpected error")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Version info for developers:\n%s", get_dvc_info())
+    logger.info(FOOTER)
+    return None
+
+
+def _log_exceptions(exc: Exception) -> Optional[int]:
+    """Try to log some known exceptions, that are not DVCExceptions."""
+    from dvc.utils import error_link, format_link
+
+    if isinstance(exc, OSError):
+        import errno
+
+        if exc.errno == errno.EMFILE:
+            logger.exception(
+                "too many open files, please visit "
+                "{} to see how to handle this "
+                "problem".format(error_link("many-files")),
+                extra={"tb_only": True},
+            )
+        else:
+            _log_unknown_exceptions()
+        return None
+
+    from dvc.fs import AuthError, ConfigError, RemoteMissingDepsError
+
+    if isinstance(exc, RemoteMissingDepsError):
+        from dvc.utils.pkg import PKG
+
+        proto = exc.protocol
+        by_pkg = {
+            "pip": f"pip install 'dvc[{proto}]'",
+            "conda": f"conda install -c conda-forge dvc-{proto}",
+        }
+
+        cmd = by_pkg.get(PKG)
+        if cmd:
+            link = format_link("https://dvc.org/doc/install")
+            hint = (
+                f"To install dvc with those dependencies, run:\n"
+                "\n"
+                f"\t{cmd}\n"
+                "\n"
+                f"See {link} for more info."
+            )
+        else:
+            link = format_link("https://github.com/iterative/dvc/issues")
+            hint = f"\nPlease report this bug to {link}. Thank you!"
+
+        logger.exception(
+            f"URL '{exc.url}' is supported but requires these missing "
+            f"dependencies: {exc.missing_deps}. {hint}",
+            extra={"tb_only": True},
+        )
+        return None
+
+    if isinstance(exc, (AuthError, ConfigError)):
+        link = format_link("https://man.dvc.org/remote/modify")
+        logger.exception("configuration error")
+        logger.exception(
+            f"{exc!s}\nLearn more about configuration settings at {link}.",
+            extra={"tb_only": True},
+        )
+        return 251
+
+    from dvc_data.hashfile.cache import DiskError
+
+    if isinstance(exc, DiskError):
+        from dvc.utils import relpath
+
+        directory = relpath(exc.directory)
+        logger.exception(
+            f"Could not open pickled '{exc.type}' cache.\n"
+            f"Remove the '{directory}' directory and then retry this command."
+            f"\nSee {error_link('pickle')} for more information.",
+            extra={"tb_only": True},
+        )
+        return None
+
+    from dvc_data.stage import IgnoreInCollectedDirError
+
+    if isinstance(exc, IgnoreInCollectedDirError):
+        logger.exception("")
+        return None
+
+    _log_unknown_exceptions()
+    return None
 
 
 def main(argv=None):  # noqa: C901
@@ -47,7 +143,7 @@ def main(argv=None):  # noqa: C901
     from dvc._debug import debugtools
     from dvc.config import ConfigError
     from dvc.exceptions import DvcException, NotDvcRepoError
-    from dvc.logger import FOOTER, disable_other_loggers
+    from dvc.logger import disable_other_loggers, set_loggers_level
 
     # NOTE: stderr/stdout may be closed if we are running from dvc.daemon.
     # On Linux we directly call cli.main after double forking and closing
@@ -75,7 +171,7 @@ def main(argv=None):  # noqa: C901
             level = logging.TRACE
 
         if level is not None:
-            logger.setLevel(level)
+            set_loggers_level(level)
 
         logger.trace(args)
 
@@ -103,27 +199,7 @@ def main(argv=None):  # noqa: C901
         ret = 254
     except Exception as exc:  # noqa, pylint: disable=broad-except
         # pylint: disable=no-member
-        import errno
-
-        if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
-            from dvc.utils import error_link
-
-            logger.exception(
-                "too many open files, please visit "
-                "{} to see how to handle this "
-                "problem".format(error_link("many-files")),
-                extra={"tb_only": True},
-            )
-        else:
-            from dvc.info import get_dvc_info
-
-            logger.exception("unexpected error")
-
-            dvc_info = get_dvc_info()
-            logger.debug("Version info for developers:\n%s", dvc_info)
-
-            logger.info(FOOTER)
-        ret = 255
+        ret = _log_exceptions(exc) or 255
 
     try:
         from dvc import analytics

@@ -3,10 +3,10 @@ import os
 import pytest
 
 from dvc.cli import main
-from dvc.exceptions import DvcException
+from dvc.fs import system
 from dvc.stage.exceptions import StageFileDoesNotExistError
-from dvc.system import System
 from dvc.utils.fs import remove
+from dvc_objects.errors import ObjectDBError
 from tests.utils import get_gitignore_content
 
 
@@ -45,9 +45,9 @@ def test_remove_broken_symlink(tmp_dir, dvc):
 
     (stage,) = dvc.add("foo")
     remove(dvc.odb.local.cache_dir)
-    assert System.is_symlink("foo")
+    assert system.is_symlink("foo")
 
-    with pytest.raises(DvcException):
+    with pytest.raises(ObjectDBError):
         dvc.remove(stage.addressing)
     assert os.path.lexists("foo")
     assert (tmp_dir / stage.relpath).exists()

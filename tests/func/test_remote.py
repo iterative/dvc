@@ -139,8 +139,8 @@ def test_upper_case_remote(tmp_dir, dvc, local_cloud):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
-    from dvc.data.stage import stage
-    from dvc.data.tree import Tree
+    from dvc_data.objects.tree import Tree
+    from dvc_data.stage import stage
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
@@ -150,15 +150,18 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
     tree.digest()
-    with patch("dvc.data.stage._stage_tree", return_value=(None, tree)):
+    with patch("dvc_data.stage._stage_tree", return_value=(None, tree)):
         _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash1 = obj.hash_info
+
+    # remove the raw dir obj to force building the tree on the next stage call
+    dvc.odb.local.fs.remove(dvc.odb.local.oid_to_path(hash1.as_raw().value))
 
     tree = Tree.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
     tree.digest()
-    with patch("dvc.data.stage._stage_tree", return_value=(None, tree)):
+    with patch("dvc_data.stage._stage_tree", return_value=(None, tree)):
         _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash2 = obj.hash_info
 
@@ -166,38 +169,38 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
 
 
 def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
-    import dvc.fs.utils as fs_utils
+    from dvc_objects.fs import generic
 
     foo = tmp_dir.dvc_gen({"foo": "foo content"})[0].outs[0]
     bar = tmp_dir.dvc_gen({"bar": "bar content"})[0].outs[0]
     baz = tmp_dir.dvc_gen({"baz": {"foo": "foo content"}})[0].outs[0]
 
     # Faulty upload version, failing on foo
-    original = fs_utils.transfer
+    original = generic.transfer
     odb = dvc.cloud.get_remote_odb("upstream")
 
     def unreliable_upload(from_fs, from_info, to_fs, to_info, **kwargs):
         if os.path.abspath(to_info) == os.path.abspath(
-            odb.get(foo.hash_info).fs_path
+            odb.get(foo.hash_info.value).path
         ):
             raise Exception("stop foo")
         return original(from_fs, from_info, to_fs, to_info, **kwargs)
 
-    with patch.object(fs_utils, "transfer", unreliable_upload):
+    with patch.object(generic, "transfer", unreliable_upload):
         with pytest.raises(UploadError) as upload_error_info:
             dvc.push()
         assert upload_error_info.value.amount == 2
 
-        assert not odb.exists(foo.hash_info)
-        assert odb.exists(bar.hash_info)
-        assert not odb.exists(baz.hash_info)
+        assert not odb.exists(foo.hash_info.value)
+        assert odb.exists(bar.hash_info.value)
+        assert not odb.exists(baz.hash_info.value)
 
     # Push everything and delete local cache
     dvc.push()
     remove(dvc.odb.local.cache_dir)
 
     baz._collect_used_dir_cache()
-    with patch.object(fs_utils, "transfer", side_effect=Exception):
+    with patch.object(generic, "transfer", side_effect=Exception):
         with pytest.raises(DownloadError) as download_error_info:
             dvc.pull()
         # error count should be len(.dir + standalone file checksums)
@@ -211,7 +214,7 @@ def test_raise_on_too_many_open_files(
     tmp_dir.dvc_gen({"file": "file content"})
 
     mocker.patch(
-        "dvc.fs.utils.transfer",
+        "dvc_objects.fs.generic.transfer",
         side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
@@ -260,18 +263,18 @@ def test_external_dir_resource_on_no_cache(tmp_dir, dvc, tmp_path_factory):
 
 
 def test_push_order(tmp_dir, dvc, tmp_path_factory, mocker, local_remote):
-    import dvc.fs.utils as fs_utils
+    from dvc_objects.fs import generic
 
     foo = tmp_dir.dvc_gen({"foo": {"bar": "bar content"}})[0].outs[0]
     tmp_dir.dvc_gen({"baz": "baz content"})
 
-    mocked_upload = mocker.spy(fs_utils, "transfer")
+    mocked_upload = mocker.spy(generic, "transfer")
     dvc.push()
 
     # foo .dir file should be uploaded after bar
     odb = dvc.cloud.get_remote_odb("upstream")
-    foo_path = odb.hash_to_path(foo.hash_info.value)
-    bar_path = odb.hash_to_path(foo.obj._trie[("bar",)][1].value)
+    foo_path = odb.oid_to_path(foo.hash_info.value)
+    bar_path = odb.oid_to_path(foo.obj._trie[("bar",)][1].value)
     paths = [args[3] for args, _ in mocked_upload.call_args_list]
     assert paths.index(foo_path) > paths.index(bar_path)
 
@@ -409,7 +412,7 @@ def test_protect_local_remote(tmp_dir, dvc, local_remote):
 
     dvc.push()
     odb = dvc.cloud.get_remote_odb("upstream")
-    remote_cache_file = odb.hash_to_path(stage.outs[0].hash_info.value)
+    remote_cache_file = odb.oid_to_path(stage.outs[0].hash_info.value)
 
     assert os.path.exists(remote_cache_file)
     assert stat.S_IMODE(os.stat(remote_cache_file).st_mode) == 0o444
@@ -424,27 +427,9 @@ def test_push_incomplete_dir(tmp_dir, dvc, mocker, local_remote):
     file_objs = [entry_obj for _, _, entry_obj in out.obj]
 
     # remove one of the cache files for directory
-    remove(odb.hash_to_path(file_objs[0].value))
+    remove(odb.oid_to_path(file_objs[0].value))
 
     dvc.push()
-    assert not remote_odb.exists(out.hash_info)
-    assert not remote_odb.exists(file_objs[0])
-    assert remote_odb.exists(file_objs[1])
-
-
-def test_upload_exists(tmp_dir, dvc, local_remote):
-    tmp_dir.gen("foo", "foo")
-    odb = dvc.cloud.get_remote_odb("upstream")
-    # allow uploaded files to be writable for this test,
-    # normally they are set to read-only for DVC remotes
-    odb.fs.CACHE_MODE = 0o644
-
-    from_info = (tmp_dir / "foo").fs_path
-    to_info = odb.fs.path.join(odb.fs_path, "foo")
-    odb.fs.upload(from_info, to_info)
-    assert odb.fs.exists(to_info)
-
-    tmp_dir.gen("foo", "bar")
-    odb.fs.upload(from_info, to_info)
-    with odb.fs.open(to_info) as fobj:
-        assert fobj.read() == "bar"
+    assert not remote_odb.exists(out.hash_info.value)
+    assert not remote_odb.exists(file_objs[0].value)
+    assert remote_odb.exists(file_objs[1].value)

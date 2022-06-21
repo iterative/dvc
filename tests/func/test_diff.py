@@ -117,6 +117,37 @@ def test_modified(tmp_dir, scm, dvc):
     }
 
 
+def test_modified_subrepo(tmp_dir, scm, dvc):
+    from dvc.repo import Repo
+
+    tmp_dir.gen({"subdir": {"file": "first"}})
+    subrepo_dir = tmp_dir / "subdir"
+
+    with subrepo_dir.chdir():
+        subrepo = Repo.init(subdir=True)
+        subrepo.add("file")
+
+    scm.add(os.path.join("subdir", "file.dvc"))
+    scm.commit("init")
+
+    (subrepo_dir / "file").write_text("second")
+
+    with subrepo_dir.chdir():
+        subrepo = Repo()
+        assert subrepo.diff() == {
+            "added": [],
+            "deleted": [],
+            "modified": [
+                {
+                    "path": "file",
+                    "hash": {"old": digest("first"), "new": digest("second")},
+                }
+            ],
+            "not in cache": [],
+            "renamed": [],
+        }
+
+
 def test_refs(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("file", "first", commit="first version")
     tmp_dir.dvc_gen("file", "second", commit="second version")

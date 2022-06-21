@@ -1,10 +1,13 @@
 import logging
-from typing import Iterable, Optional, Set, Union
+from typing import Iterable, List, Mapping, Optional, Set, Union
 
-from dvc.exceptions import DvcException
+from funcy import group_by
+from scmrepo.git.backend.base import SyncStatus
+
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
+from dvc.ui import ui
 
 from .base import ExpRefInfo
 from .exceptions import UnresolvedExpNamesError
@@ -52,39 +55,51 @@ def pull(
             for _, ref_info_list in ref_info_dict.items():
                 exp_ref_set.update(ref_info_list)
 
-    _pull(repo, git_remote, exp_ref_set, force)
+    pull_result = _pull(repo, git_remote, exp_ref_set, force)
+
+    if pull_result[SyncStatus.DIVERGED]:
+        diverged_refs = [ref.name for ref in pull_result[SyncStatus.DIVERGED]]
+        ui.warn(
+            f"Local experiment '{diverged_refs}' has diverged from remote "
+            "experiment with the same name. To override the local experiment "
+            "re-run with '--force'."
+        )
+
     if pull_cache:
-        _pull_cache(repo, exp_ref_set, **kwargs)
-    return [ref.name for ref in exp_ref_set]
+        pull_cache_ref = (
+            pull_result[SyncStatus.UP_TO_DATE]
+            + pull_result[SyncStatus.SUCCESS]
+        )
+        _pull_cache(repo, pull_cache_ref, **kwargs)
+
+    return [ref.name for ref in pull_result[SyncStatus.SUCCESS]]
 
 
 def _pull(
     repo,
     git_remote: str,
-    refs,
+    refs: Iterable["ExpRefInfo"],
     force: bool,
-):
-    def on_diverged(refname: str, rev: str) -> bool:
-        if repo.scm.get_ref(refname) == rev:
-            return True
-        exp_name = refname.split("/")[-1]
-        raise DvcException(
-            f"Local experiment '{exp_name}' has diverged from remote "
-            "experiment with the same name. To override the local experiment "
-            "re-run with '--force'."
-        )
-
+) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
     logger.debug(f"git pull experiment '{git_remote}' -> '{refspec_list}'")
 
     with TqdmGit(desc="Fetching git refs") as pbar:
-        repo.scm.fetch_refspecs(
+        results: Mapping[str, SyncStatus] = repo.scm.fetch_refspecs(
             git_remote,
             refspec_list,
             force=force,
-            on_diverged=on_diverged,
             progress=pbar.update_git,
         )
+
+    def group_result(refspec):
+        return results[str(refspec)]
+
+    pull_result: Mapping[SyncStatus, List["ExpRefInfo"]] = group_by(
+        group_result, refs
+    )
+
+    return pull_result
 
 
 def _pull_cache(

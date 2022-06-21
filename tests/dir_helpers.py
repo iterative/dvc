@@ -148,7 +148,7 @@ class GitRemote:
 @pytest.fixture
 def git_upstream(tmp_dir, erepo_dir, git_dir, request):
     remote = erepo_dir if "dvc" in request.fixturenames else git_dir
-    url = "file://{}".format(remote.resolve().as_posix())
+    url = f"file://{remote.resolve().as_posix()}"
     tmp_dir.scm.gitpython.repo.create_remote("upstream", url)
     return GitRemote(remote, "upstream", url)
 
@@ -156,6 +156,6 @@ def git_upstream(tmp_dir, erepo_dir, git_dir, request):
 @pytest.fixture
 def git_downstream(tmp_dir, erepo_dir, git_dir, request):
     remote = erepo_dir if "dvc" in request.fixturenames else git_dir
-    url = "file://{}".format(tmp_dir.resolve().as_posix())
+    url = f"file://{tmp_dir.resolve().as_posix()}"
     remote.scm.gitpython.repo.create_remote("upstream", url)
     return GitRemote(remote, "upstream", url)

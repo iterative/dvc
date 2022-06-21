@@ -6,7 +6,6 @@ import pytest
 from funcy import first
 
 from dvc import stage as stage_module
-from dvc.render.match import get_files
 
 pytest.importorskip("dvclive", reason="no dvclive")
 
@@ -122,7 +121,7 @@ def test_live_provides_metrics(tmp_dir, dvc, live_stage):
 
     assert (tmp_dir / "logs").is_dir()
     plots_data = dvc.plots.show()
-    files = get_files(plots_data)
+    files = list(plots_data["workspace"]["data"])
     assert os.path.join("logs", "scalars", "accuracy.tsv") in files
     assert os.path.join("logs", "scalars", "loss.tsv") in files
     assert os.path.join("logs", "images", "0", "image.jpg") in files
@@ -184,14 +183,10 @@ def checkpoints_metric(show_results, metric_file, metric_name):
     tmp.pop("workspace")
     tmp = first(tmp.values())
     tmp.pop("baseline")
-    return list(
-        map(
-            lambda exp: exp["data"]["metrics"][metric_file]["data"][
-                metric_name
-            ],
-            list(tmp.values()),
-        )
-    )
+    return [
+        exp["data"]["metrics"][metric_file]["data"][metric_name]
+        for exp in tmp.values()
+    ]
 
 
 @pytest.mark.parametrize("typ", ("live", "live_no_cache"))
@@ -213,40 +208,6 @@ def test_live_checkpoints_resume(
     assert checkpoints_metric(results, "logs.json", "step") == [3, 2, 1, 0]
     assert checkpoints_metric(results, "logs.json", "metric1") == [4, 3, 2, 1]
     assert checkpoints_metric(results, "logs.json", "metric2") == [8, 6, 4, 2]
-
-
-@pytest.mark.parametrize("auto_open", [False, True])
-def test_dvc_generates_html_during_run(
-    tmp_dir, dvc, mocker, live_stage, auto_open
-):
-    if auto_open:
-        with dvc.config.edit() as conf:
-            conf["plots"]["auto_open"] = True
-
-    show_spy = mocker.spy(dvc.live, "show")
-    webbrowser_open = mocker.patch("dvc.repo.live.webbrowser_open")
-
-    # make sure script takes more time to execute than one monitor sleep cycle
-    monitor_await_time = 0.01
-    mocker.patch("dvc.stage.run.Monitor.AWAIT", monitor_await_time)
-
-    script = dedent(
-        """
-        from dvclive import Live
-        import sys
-        import time
-        metrics_logger = Live()
-        metrics_logger.log("loss", 1/2)
-        metrics_logger.log("accuracy", 1/2)
-        metrics_logger.next_step()
-        time.sleep({})""".format(
-            str(monitor_await_time * 10)
-        )
-    )
-    live_stage(live="logs", code=script)
-
-    assert show_spy.call_count == 2
-    assert webbrowser_open.call_count == (2 if auto_open else 0)
 
 
 def test_dvclive_stage_with_different_wdir(tmp_dir, scm, dvc):

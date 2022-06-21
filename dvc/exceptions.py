@@ -202,14 +202,6 @@ class FileMissingError(DvcException):
         )
 
 
-class DvcIgnoreInCollectedDirError(DvcException):
-    def __init__(self, ignore_dirname):
-        super().__init__(
-            ".dvcignore file should not be in collected dir path: "
-            "'{}'".format(ignore_dirname)
-        )
-
-
 class FileTransferError(DvcException):
     _METHOD = "transfer"
 

@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 import dpath.util
+
 from dvc_render import RENDERERS
 
 from .convert import to_datapoints
@@ -9,16 +10,18 @@ if TYPE_CHECKING:
     from dvc.types import StrPath
 
 
-def get_files(plots_data: Dict) -> List:
-    values = dpath.util.values(plots_data, ["*", "*"])
-    return sorted({key for submap in values for key in submap.keys()})
-
-
 def group_by_filename(plots_data: Dict) -> Dict:
-    files = get_files(plots_data)
-    grouped = {
-        file: dpath.util.search(plots_data, ["*", "*", file]) for file in files
-    }
+    grouped: Dict[str, Dict] = {}
+
+    for revision in plots_data.keys():
+        data = plots_data[revision].get("data", {})
+        for file in data.keys():
+            content = data.get(file)
+            if content:
+                dpath.util.new(
+                    grouped, [file, revision, "data", file], content
+                )
+
     return grouped
 
 
@@ -44,7 +47,7 @@ def match_renderers(
                 if out is not None:
                     plot_properties["out"] = out
                 if templates_dir is not None:
-                    plot_properties["templates_dir"] = templates_dir
+                    plot_properties["template_dir"] = templates_dir
                 datapoints, plot_properties = to_datapoints(
                     renderer_class, group, plot_properties
                 )

@@ -187,7 +187,7 @@ def test_import_url_to_remote_single_file(
 
     hash_info = stage.outs[0].hash_info
     with open(
-        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
+        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
     ) as fobj:
         assert fobj.read() == "foo"
     assert stage.outs[0].meta.size == len("foo")
@@ -216,7 +216,7 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
     hash_info = stage.outs[0].hash_info
     with open(
-        local_remote.hash_to_path(hash_info.value), encoding="utf-8"
+        local_remote.oid_to_path(hash_info.value), encoding="utf-8"
     ) as stream:
         file_parts = json.load(stream)
 
@@ -229,7 +229,7 @@ def test_import_url_to_remote_directory(tmp_dir, dvc, workspace, local_remote):
 
     for file_part in file_parts:
         with open(
-            local_remote.hash_to_path(file_part["md5"]), encoding="utf-8"
+            local_remote.oid_to_path(file_part["md5"]), encoding="utf-8"
         ) as fobj:
             assert fobj.read() == file_part["relpath"]
 
@@ -252,11 +252,6 @@ def test_import_url_to_remote_absolute(
 def test_import_url_to_remote_invalid_combinations(dvc):
     with pytest.raises(InvalidArgumentError, match="--no-exec"):
         dvc.imp_url("s3://bucket/foo", no_exec=True, to_remote=True)
-
-
-empty_xfail = pytest.mark.xfail(
-    reason="https://github.com/iterative/dvc/issues/5521"
-)
 
 
 def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):

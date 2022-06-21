@@ -6,69 +6,15 @@ import logging
 import math
 import os
 import re
-import stat
 import sys
-import time
 from typing import Dict, List, Optional, Tuple
 
 import colorama
 
 logger = logging.getLogger(__name__)
 
-LOCAL_CHUNK_SIZE = 2**20  # 1 MB
-LARGE_FILE_SIZE = 2**30  # 1 GB
 LARGE_DIR_SIZE = 100
 TARGET_REGEX = re.compile(r"(?P<path>.*?)(:(?P<name>[^\\/:]*))??$")
-
-
-def dos2unix(data):
-    return data.replace(b"\r\n", b"\n")
-
-
-def _fobj_md5(fobj, hash_md5, binary, progress_func=None):
-    while True:
-        data = fobj.read(LOCAL_CHUNK_SIZE)
-        if not data:
-            break
-
-        if binary:
-            chunk = data
-        else:
-            chunk = dos2unix(data)
-
-        hash_md5.update(chunk)
-        if progress_func:
-            progress_func(len(data))
-
-
-def file_md5(fname, fs):
-    """get the (md5 hexdigest, md5 digest) of a file"""
-    from dvc.istextfile import istextfile
-    from dvc.progress import Tqdm
-
-    hash_md5 = hashlib.md5()
-    binary = not istextfile(fname, fs=fs)
-    size = fs.getsize(fname) or 0
-    no_progress_bar = True
-    if size >= LARGE_FILE_SIZE:
-        no_progress_bar = False
-        msg = (
-            f"Computing md5 for a large file '{fname}'. "
-            "This is only done once."
-        )
-        logger.info(msg)
-
-    with Tqdm(
-        desc=str(fname),
-        disable=no_progress_bar,
-        total=size,
-        bytes=True,
-        leave=False,
-    ) as pbar:
-        with fs.open(fname, "rb") as fobj:
-            _fobj_md5(fobj, hash_md5, binary, pbar.update)
-
-    return hash_md5.hexdigest()
 
 
 def bytes_hash(byts, typ):
@@ -123,16 +69,6 @@ def _to_chunks_by_chunks_number(list_to_split, num_chunks):
         chunk_size = 1
 
     return _split(list_to_split, chunk_size)
-
-
-def to_chunks(list_to_split, num_chunks=None, chunk_size=None):
-    if (num_chunks and chunk_size) or (not num_chunks and not chunk_size):
-        raise ValueError(
-            "Only one among `num_chunks` or `chunk_size` must be defined."
-        )
-    if chunk_size:
-        return _split(list_to_split, chunk_size)
-    return _to_chunks_by_chunks_number(list_to_split, num_chunks)
 
 
 # NOTE: Check if we are in a bundle
@@ -209,19 +145,6 @@ def fix_env(env=None):
         env["PATH"] = ":".join(parts)
 
     return env
-
-
-def tmp_fname(fname=""):
-    """Temporary name for a partial download"""
-    from shortuuid import uuid
-
-    return os.fspath(fname) + "." + uuid() + ".tmp"
-
-
-def current_timestamp():
-    import nanotime
-
-    return int(nanotime.timestamp(time.time()))
 
 
 def colorize(message, color=None, style=None):
@@ -332,6 +255,13 @@ def relpath(path, start=os.curdir):
     return os.path.relpath(path, start)
 
 
+def as_posix(path: str) -> str:
+    import ntpath
+    import posixpath
+
+    return path.replace(ntpath.sep, posixpath.sep)
+
+
 def env2bool(var, undefined=False):
     """
     undefined: return value if env var is unset
@@ -363,11 +293,10 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
-    from dvc.fs.local import localfs
+    from dvc.fs import localfs
 
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
-    from ..system import System
     from .fs import contains_symlink_up_to
 
     abspath = os.path.abspath(out)
@@ -383,7 +312,7 @@ def resolve_paths(repo, out, always_local=False):
     if scheme or not localfs.path.isin_or_eq(abspath, repo.root_dir):
         wdir = os.getcwd()
     elif contains_symlink_up_to(dirname, repo.root_dir) or (
-        os.path.isdir(abspath) and System.is_symlink(abspath)
+        os.path.isdir(abspath) and localfs.is_symlink(abspath)
     ):
         msg = (
             "Cannot add files inside symlinked directories to DVC. "
@@ -464,21 +393,25 @@ def parse_target(
     return path or default, name
 
 
-def is_exec(mode):
-    return bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-
-
 def glob_targets(targets, glob=True, recursive=True):
+    from ..exceptions import DvcException
+
     if not glob:
         return targets
 
     from glob import iglob
 
-    return [
+    results = [
         exp_target
         for target in targets
         for exp_target in iglob(target, recursive=recursive)
     ]
+
+    if not results:
+        msg = f"Glob {targets} has no matches."
+        raise DvcException(msg)
+
+    return results
 
 
 def error_handler(func):

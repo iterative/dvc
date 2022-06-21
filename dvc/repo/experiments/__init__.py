@@ -196,7 +196,7 @@ class Experiments:
                             branch_name = ExpRefInfo.from_ref(branch).name
                         else:
                             branch_name = f"{resume_rev[:7]}"
-                        if self.scm.is_dirty():
+                        if self.scm.is_dirty(untracked_files=False):
                             logger.info(
                                 "Modified checkpoint experiment based on "
                                 "'%s' will be created",
@@ -398,7 +398,7 @@ class Experiments:
             self.reset_checkpoints()
 
         if not (queue or tmp_dir or machine):
-            staged, _, _ = self.scm.status()
+            staged, _, _ = self.scm.status(untracked_files="no")
             if staged:
                 logger.warning(
                     "Your workspace contains staged Git changes which will be "
@@ -742,7 +742,7 @@ class Experiments:
             return self.stash_revs[rev].name
         return None
 
-    def get_running_exps(self) -> Dict[str, int]:
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, int]:
         """Return info for running experiments."""
         from dvc.scm import InvalidRemoteSCMRepo
         from dvc.utils.serialize import load_json
@@ -774,7 +774,7 @@ class Experiments:
                         result[rev] = info.asdict()
                 else:
                     result[rev] = info.asdict()
-                    if info.git_url:
+                    if info.git_url and fetch_refs:
 
                         def on_diverged(_ref: str, _checkpoint: bool):
                             return False

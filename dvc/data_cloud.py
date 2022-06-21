@@ -3,11 +3,12 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from dvc.data.db import get_index
+from dvc_data.db import get_index
 
 if TYPE_CHECKING:
-    from dvc.hash_info import HashInfo
-    from dvc.objects.db import ObjectDB
+    from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.status import CompareStatusResult
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class DataCloud:
         self,
         name: Optional[str] = None,
         command: str = "<command>",
-    ) -> "ObjectDB":
+    ) -> "HashFileDB":
         from dvc.config import NoRemoteError
 
         if not name:
@@ -55,19 +56,45 @@ class DataCloud:
         raise NoRemoteError(error_msg)
 
     def _init_odb(self, name):
-        from dvc.data.db import get_odb
         from dvc.fs import get_cloud_fs
+        from dvc_data.db import get_odb
 
         cls, config, fs_path = get_cloud_fs(self.repo, name=name)
         config["tmp_dir"] = self.repo.index_db_dir
         return get_odb(cls(**config), fs_path, **config)
+
+    def _log_missing(self, status: "CompareStatusResult"):
+        if status.missing:
+            missing_desc = "\n".join(
+                f"name: {hash_info.obj_name}, {hash_info}"
+                for hash_info in status.missing
+            )
+            logger.warning(
+                "Some of the cache files do not exist neither locally "
+                f"nor on remote. Missing cache files:\n{missing_desc}"
+            )
+
+    def transfer(
+        self,
+        src_odb: "HashFileDB",
+        dest_odb: "HashFileDB",
+        objs: Iterable["HashInfo"],
+        **kwargs,
+    ):
+        from dvc.exceptions import FileTransferError
+        from dvc_data.transfer import TransferError, transfer
+
+        try:
+            return transfer(src_odb, dest_odb, objs, **kwargs)
+        except TransferError as exc:
+            raise FileTransferError(exc.fails) from exc
 
     def push(
         self,
         objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        odb: Optional["ObjectDB"] = None,
+        odb: Optional["HashFileDB"] = None,
     ):
         """Push data items in a cloud-agnostic way.
 
@@ -78,17 +105,15 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to push to. Overrides remote.
         """
-        from dvc.data.transfer import transfer
-
-        if not odb:
-            odb = self.get_remote_odb(remote, "push")
-        return transfer(
+        odb = odb or self.get_remote_odb(remote, "push")
+        return self.transfer(
             self.repo.odb.local,
             odb,
             objs,
             jobs=jobs,
             dest_index=get_index(odb),
             cache_odb=self.repo.odb.local,
+            validate_status=self._log_missing,
         )
 
     def pull(
@@ -96,7 +121,7 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        odb: Optional["ObjectDB"] = None,
+        odb: Optional["HashFileDB"] = None,
     ):
         """Pull data items in a cloud-agnostic way.
 
@@ -107,11 +132,8 @@ class DataCloud:
                 By default remote from core.remote config option is used.
             odb: optional ODB to pull from. Overrides remote.
         """
-        from dvc.data.transfer import transfer
-
-        if not odb:
-            odb = self.get_remote_odb(remote, "pull")
-        return transfer(
+        odb = odb or self.get_remote_odb(remote, "pull")
+        return self.transfer(
             odb,
             self.repo.odb.local,
             objs,
@@ -119,6 +141,7 @@ class DataCloud:
             src_index=get_index(odb),
             cache_odb=self.repo.odb.local,
             verify=odb.verify,
+            validate_status=self._log_missing,
         )
 
     def status(
@@ -126,7 +149,7 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
-        odb: Optional["ObjectDB"] = None,
+        odb: Optional["HashFileDB"] = None,
         log_missing: bool = True,
     ):
         """Check status of data items in a cloud-agnostic way.
@@ -141,7 +164,7 @@ class DataCloud:
             log_missing: log warning messages if file doesn't exist
                 neither in cache, neither in cloud.
         """
-        from dvc.data.status import compare_status
+        from dvc_data.status import compare_status
 
         if not odb:
             odb = self.get_remote_odb(remote, "status")
@@ -157,5 +180,5 @@ class DataCloud:
 
     def get_url_for(self, remote, checksum):
         odb = self.get_remote_odb(remote)
-        path = odb.hash_to_path(checksum)
+        path = odb.oid_to_path(checksum)
         return odb.fs.unstrip_protocol(path)
