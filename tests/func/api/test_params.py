@@ -3,6 +3,7 @@ from textwrap import dedent
 import pytest
 
 from dvc import api
+from dvc.exceptions import DvcException
 
 
 @pytest.fixture
@@ -128,3 +129,19 @@ def test_params_show_repo(tmp_dir, erepo_dir):
             params=["foo"],
         )
     assert api.params_show(repo=erepo_dir) == {"foo": 1}
+
+
+def test_params_show_no_params_found(tmp_dir, dvc):
+    # Empty repo
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show()
+
+    # params.yaml but no dvc.yaml
+    (tmp_dir / "params.yaml").dump({"foo": 1})
+    assert api.params_show() == {"foo": 1}
+
+    # dvc.yaml but no params.yaml
+    (tmp_dir / "params.yaml").unlink()
+    dvc.stage.add(name="echo", cmd="echo foo")
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show()

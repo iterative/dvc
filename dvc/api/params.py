@@ -3,6 +3,7 @@ from typing import Dict, Iterable, Optional, Union
 
 from funcy import first
 
+from dvc.exceptions import DvcException
 from dvc.repo import Repo
 
 
@@ -49,6 +50,9 @@ def params_show(
 
     Returns:
         Dict: See Examples below.
+
+    Raises:
+        DvcException: If no params are found in `repo`.
 
     Examples:
 
@@ -252,6 +256,9 @@ def params_show(
 
         if "workspace" in processed:
             del processed["workspace"]
+
+        if not processed:
+            raise DvcException("No params found")
 
         return processed[first(processed)]
 
