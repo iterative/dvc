@@ -20,7 +20,8 @@ class ImageConverter:
         image_data: bytes,
     ) -> "StrPath":
         img_path = os.path.join(
-            path, f"{revision}_{filename.replace(os.sep, '_')}"
+            path,
+            f"{revision}_{filename}".replace(os.sep, "_").replace("/", "_"),
         )
         with open(img_path, "wb") as fd:
             fd.write(image_data)
