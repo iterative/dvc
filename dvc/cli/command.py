@@ -13,7 +13,7 @@ class CmdBase(ABC):
 
         os.chdir(args.cd)
 
-        self.repo = Repo(uninitialized=self.UNINITIALIZED)
+        self.repo: "Repo" = Repo(uninitialized=self.UNINITIALIZED)
         self.config = self.repo.config
         self.args = args
 

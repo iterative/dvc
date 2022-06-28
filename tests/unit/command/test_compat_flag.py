@@ -34,6 +34,7 @@ def _id_gen(val) -> str:
         (["plots", "diff", "--show-json"], "json"),
         (["exp", "list", "--names-only"], "name_only"),
         (["stage", "list", "--names-only"], "name_only"),
+        (["data", "status", "--json"], "json"),
     ],
     ids=_id_gen,
 )

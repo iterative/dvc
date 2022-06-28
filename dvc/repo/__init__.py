@@ -76,6 +76,8 @@ class Repo:
     from dvc.repo.status import status  # type: ignore[misc]
     from dvc.repo.update import update  # type: ignore[misc]
 
+    from .data import status as data_status  # type: ignore[misc]
+
     ls = staticmethod(_ls)
     get = staticmethod(_get)
     get_url = staticmethod(_get_url)
