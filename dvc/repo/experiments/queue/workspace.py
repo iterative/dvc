@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class WorkspaceQueue(BaseStashQueue):
+    _EXEC_NAME: Optional[str] = "workspace"
+
     def put(self, *args, **kwargs) -> QueueEntry:
         return self._stash_exp(*args, **kwargs)
 
@@ -77,7 +79,7 @@ class WorkspaceQueue(BaseStashQueue):
         from dvc.stage.monitor import CheckpointKilledError
 
         results: Dict[str, Dict[str, str]] = defaultdict(dict)
-        exec_name = "workspace"
+        exec_name = self._EXEC_NAME or entry.stash_rev
         infofile = self.get_infofile_path(exec_name)
         try:
             rev = entry.stash_rev

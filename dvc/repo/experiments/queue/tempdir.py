@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Dict, Generator
+from typing import TYPE_CHECKING, Dict, Generator, Optional
 
 from funcy import cached_property, first
 
@@ -28,6 +28,8 @@ _STANDALONE_TMP_DIR = os.path.join(EXEC_TMP_DIR, "standalone")
 
 class TempDirQueue(WorkspaceQueue):
     """Standalone/tempdir exp queue implementation."""
+
+    _EXEC_NAME: Optional[str] = None
 
     @cached_property
     def _standalone_tmp_dir(self) -> str:
@@ -73,16 +75,19 @@ class TempDirQueue(WorkspaceQueue):
         for stash_rev in self.proc:
             infofile = self.get_infofile_path(stash_rev)
             executor_info = ExecutorInfo.load_json(infofile)
-            yield QueueEntry(
-                self.repo.root_dir,
-                self.scm.root_dir,
-                self.ref,
-                stash_rev,
-                executor_info.baseline_rev,
-                None,  # branch unavailable without doing a git-fetch
-                executor_info.name,
-                None,
-            )
+            if not executor_info.collected and os.path.exists(
+                executor_info.root_dir
+            ):
+                yield QueueEntry(
+                    self.repo.root_dir,
+                    self.scm.root_dir,
+                    self.ref,
+                    stash_rev,
+                    executor_info.baseline_rev,
+                    None,  # branch unavailable without doing a git-fetch
+                    executor_info.name,
+                    None,
+                )
 
     @staticmethod
     def collect_executor(
