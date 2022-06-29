@@ -13,6 +13,7 @@ from dvc.repo.experiments.executor.base import (
     BaseExecutor,
     ExecutorInfo,
 )
+from dvc.repo.experiments.queue.base import QueueEntry
 from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils.fs import makedirs
@@ -364,7 +365,55 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     assert info.location in cap.out
 
 
-def test_show_running_executor(tmp_dir, scm, dvc, exp_stage, mocker):
+def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):
+    baseline_rev = scm.get_rev()
+    run_results = dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], tmp_dir=True
+    )
+    exp_rev = first(run_results)
+    exp_ref = first(exp_refs_by_rev(scm, exp_rev))
+
+    queue = dvc.experiments.tempdir_queue
+    stash_rev = "abc123"
+    entries = [
+        QueueEntry(
+            str(tmp_dir / ".dvc" / "tmp" / "foo"),
+            str(tmp_dir / ".dvc" / "tmp" / "foo"),
+            str(exp_ref),
+            stash_rev,
+            exp_ref.baseline_sha,
+            None,
+            exp_ref.name,
+            None,
+        )
+    ]
+    mocker.patch.object(
+        dvc.experiments.tempdir_queue,
+        "iter_active",
+        return_value=entries,
+    )
+    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    pidfile = queue.get_infofile_path(stash_rev)
+    makedirs(os.path.dirname(pidfile), True)
+    (tmp_dir / pidfile).dump_json(info.asdict())
+    mock_fetch = mocker.patch.object(
+        dvc.experiments,
+        "_fetch_running_exp",
+        return_value={exp_rev: info.asdict()},
+    )
+
+    results = dvc.experiments.show()
+    mock_fetch.assert_has_calls(
+        [mocker.call(stash_rev, pidfile, True)],
+    )
+    exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
+    assert exp_data["running"]
+    assert exp_data["executor"] == info.location
+
+    assert not results["workspace"]["baseline"]["data"]["running"]
+
+
+def test_show_running_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     baseline_rev = scm.get_rev()
     dvc.experiments.run(exp_stage.addressing, params=["foo=2"], queue=True)
     exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
