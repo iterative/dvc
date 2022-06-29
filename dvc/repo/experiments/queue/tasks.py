@@ -29,7 +29,10 @@ def setup_exp(entry_dict: Dict[str, Any]) -> str:
     # TODO: split executor.init_cache into separate subtask - we can release
     # exp.scm_lock before DVC push
     executor = BaseStashQueue.setup_executor(
-        repo.experiments, entry, TempDirExecutor
+        repo.experiments,
+        entry,
+        TempDirExecutor,
+        location="dvc-task",
     )
     infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
     executor.info.dump_json(infofile)
