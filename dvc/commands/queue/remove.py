@@ -14,7 +14,7 @@ class CmdQueueRemove(CmdBase):
     def run(self):
         removed_list = self.repo.experiments.celery_queue.remove(
             revs=self.args.task,
-            _all=self.args.all,
+            all_=self.args.all,
             success=self.args.success,
             queued=self.args.queued,
             failed=self.args.failed,

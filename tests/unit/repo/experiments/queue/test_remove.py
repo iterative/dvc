@@ -129,5 +129,5 @@ def test_remove_all(test_queue, mocker):
     clear_mocker = mocker.patch.object(
         test_queue, "clear", return_value=mocker.Mock()
     )
-    test_queue.remove([], _all=True)
+    test_queue.remove([], all_=True)
     assert clear_mocker.called_once_with(queud=True, failed=True, success=True)

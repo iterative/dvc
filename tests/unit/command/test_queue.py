@@ -33,7 +33,7 @@ def test_experiments_remove(dvc, scm, mocker):
     assert cmd.run() == 0
     remove_mocker.assert_called_once_with(
         revs=["exp1", "exp2"],
-        _all=True,
+        all_=True,
         success=True,
         failed=True,
         queued=True,
