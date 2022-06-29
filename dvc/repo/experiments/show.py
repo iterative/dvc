@@ -193,8 +193,10 @@ def show(
                 running=running,
                 onerror=onerror,
             )
-        # collect celery experiments
+
+        # collect standalone & celery experiments
         for entry in chain(
+            repo.experiments.tempdir_queue.iter_active(),
             repo.experiments.celery_queue.iter_active(),
             repo.experiments.celery_queue.iter_queued(),
         ):

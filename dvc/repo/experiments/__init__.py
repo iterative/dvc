@@ -432,15 +432,20 @@ class Experiments:
         """Return info for running experiments."""
         result = {}
         infofile = self.workspace_queue.get_infofile_path("workspace")
-        result.update(self._get_running_exp("workspace", infofile, fetch_refs))
-        for entry in self.celery_queue.iter_active():
-            infofile = self.celery_queue.get_infofile_path(entry.stash_rev)
-            result.update(
-                self._get_running_exp(entry.stash_rev, infofile, fetch_refs)
-            )
+        result.update(
+            self._fetch_running_exp("workspace", infofile, fetch_refs)
+        )
+        for queue in (self.tempdir_queue, self.celery_queue):
+            for entry in queue.iter_active():
+                infofile = queue.get_infofile_path(entry.stash_rev)
+                result.update(
+                    self._fetch_running_exp(
+                        entry.stash_rev, infofile, fetch_refs
+                    )
+                )
         return result
 
-    def _get_running_exp(
+    def _fetch_running_exp(
         self, rev: str, infofile: str, fetch_refs: bool
     ) -> Dict[str, Any]:
         from dvc.scm import InvalidRemoteSCMRepo
