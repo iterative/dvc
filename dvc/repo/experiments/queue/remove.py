@@ -131,7 +131,7 @@ def remove(
     queued: bool = False,
     failed: bool = False,
     success: bool = False,
-    _all: bool = False,
+    all_: bool = False,
 ) -> List[str]:
     """Remove the specified entries from the queue.
 
@@ -145,7 +145,7 @@ def remove(
     Returns:
         Revisions (or names) which were removed.
     """
-    if _all:
+    if all_:
         queued = failed = success = True
     if queued or failed or success:
         return self.clear(failed=failed, success=success, queued=queued)
