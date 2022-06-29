@@ -65,7 +65,7 @@ class TempDirExecutor(BaseLocalExecutor):
     # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
     QUIET = True
-    DEFAULT_LOCATION = "temp"
+    DEFAULT_LOCATION = "tempdir"
 
     def init_git(self, scm: "Git", branch: Optional[str] = None):
         from dulwich.repo import Repo as DulwichRepo
@@ -127,7 +127,9 @@ class TempDirExecutor(BaseLocalExecutor):
         makedirs(parent_dir, exist_ok=True)
         tmp_dir = mkdtemp(dir=parent_dir)
         try:
-            executor = cls._from_stash_entry(repo, stash_rev, entry, tmp_dir)
+            executor = cls._from_stash_entry(
+                repo, stash_rev, entry, tmp_dir, **kwargs
+            )
             logger.debug("Init temp dir executor in '%s'", tmp_dir)
             return executor
         except Exception:
@@ -150,7 +152,9 @@ class WorkspaceExecutor(BaseLocalExecutor):
         **kwargs,
     ):
         root_dir = repo.scm.root_dir
-        executor = cls._from_stash_entry(repo, stash_rev, entry, root_dir)
+        executor = cls._from_stash_entry(
+            repo, stash_rev, entry, root_dir, **kwargs
+        )
         logger.debug("Init workspace executor in '%s'", root_dir)
         return executor
 
