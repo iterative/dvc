@@ -67,7 +67,7 @@ jobs:
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
         pip install --upgrade pip setuptools wheel
-        pip install -e ".[dev]"
+        pip install -e ".[tests]"
     - name: run tests
       timeout-minutes: 40
       run: >-
