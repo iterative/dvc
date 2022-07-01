@@ -20,6 +20,16 @@ def test_show(tmp_dir, dvc):
     }
 
 
+def test_show_targets(tmp_dir, dvc):
+    tmp_dir.gen("params.yaml", "foo: bar")
+    dvc.run(cmd="echo params.yaml", params=["foo"], single_stage=True)
+    expected = {"": {"data": {"params.yaml": {"data": {"foo": "bar"}}}}}
+    assert dvc.params.show(targets=["params.yaml"]) == expected
+    assert (
+        dvc.params.show(targets=(tmp_dir / "params.yaml").fs_path) == expected
+    )
+
+
 def test_show_toml(tmp_dir, dvc):
     tmp_dir.gen("params.toml", "[foo]\nbar = 42\nbaz = [1, 2]\n")
     dvc.run(

@@ -5,6 +5,7 @@ from typing import Dict, List
 
 from dvc.exceptions import PathMissingError
 from dvc.repo import locked
+from dvc.utils.collections import ensure_list
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     from dvc.fs.dvc import DvcFileSystem
 
     dvcfs = DvcFileSystem(repo=self)
+    targets = ensure_list(targets)
+    targets = [dvcfs.from_os_path(target) for target in targets]
 
     b_rev = b_rev if b_rev else "workspace"
     results = {}
@@ -36,7 +39,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
             continue
 
         targets_paths = None
-        if targets is not None:
+        if targets:
             # convert targets to paths, and capture any missing targets
             targets_paths, missing_targets[rev] = _targets_to_paths(
                 dvcfs, targets
@@ -44,7 +47,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
 
         results[rev] = _paths_checksums(self, targets_paths)
 
-    if targets is not None:
+    if targets:
         # check for overlapping missing targets between a_rev and b_rev
         for target in set(missing_targets[a_rev]) & set(
             missing_targets[b_rev]
