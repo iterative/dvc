@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from dvc.exceptions import InvalidArgumentError
 
@@ -11,7 +12,7 @@ def _raise_error_if_all_disabled(**kwargs):
     if not any(kwargs.values()):
         raise InvalidArgumentError(
             "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-            "`--all-experiments` or `--all-commits` needs to be set."
+            "`--all-experiments`, `--all-commits` or `--time` needs to be set."
         )
 
 
@@ -25,6 +26,7 @@ def gc(
     all_tags=False,
     all_commits=False,
     all_experiments=False,
+    commit_time: Optional[str] = None,
     force=False,
     jobs=None,
     repos=None,
@@ -40,6 +42,7 @@ def gc(
         all_commits=all_commits,
         all_branches=all_branches,
         all_experiments=all_experiments,
+        commit_time=commit_time,
     )
 
     from contextlib import ExitStack
