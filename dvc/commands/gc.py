@@ -17,6 +17,8 @@ class CmdGC(CmdBase):
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
+            all_experiments=self.args.all_experiments,
+            commit_time=self.args.commit_time,
             workspace=self.args.workspace,
         )
 
@@ -53,6 +55,7 @@ class CmdGC(CmdBase):
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
             all_experiments=self.args.all_experiments,
+            commit_time=self.args.commit_time,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,
@@ -103,6 +106,18 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Keep data files for all Git commits.",
+    )
+    gc_parser.add_argument(
+        "--time",
+        type=str,
+        dest="commit_time",
+        metavar="<YYYY-MM-DD>",
+        default=None,
+        help=(
+            "Keep cached data referenced in the commits after ( inclusive )"
+            " a certain time. Date must match the extended ISO 8601 format "
+            "(YYYY-MM-DD)."
+        ),
     )
     gc_parser.add_argument(
         "--all-experiments",
