@@ -28,7 +28,10 @@ class CmdUpdate(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    UPDATE_HELP = "Update data artifacts imported from other DVC repositories."
+    UPDATE_HELP = (
+        "Update data artifact imported (via dvc import or dvc import-url) "
+        "from an external DVC repository or URL."
+    )
     update_parser = subparsers.add_parser(
         "update",
         parents=[parent_parser],
