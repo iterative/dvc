@@ -187,7 +187,7 @@ class Config(dict):
         filename = self.files[level]
         fs = self._get_fs(level)
 
-        logger.debug(f"Writing '{filename}'.")
+        logger.debug("Writing %r.", filename)
 
         fs.makedirs(os.path.dirname(filename))
 

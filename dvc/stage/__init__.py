@@ -323,10 +323,10 @@ class Stage(params.StageParams):
             status = dep.status()
             if status:
                 logger.debug(
-                    "Dependency '{dep}' of {stage} changed because it is "
-                    "'{status}'.".format(
-                        dep=dep, stage=self, status=status[str(dep)]
-                    )
+                    "Dependency '%s' of %s changed because it is %r.",
+                    dep,
+                    self,
+                    status[str(dep)],
                 )
                 return True
         return False
@@ -337,10 +337,10 @@ class Stage(params.StageParams):
             status = out.status()
             if status:
                 logger.debug(
-                    "Output '{out}' of {stage} changed because it is "
-                    "'{status}'".format(
-                        out=out, stage=self, status=status[str(out)]
-                    )
+                    "Output '%s' of %s changed because it is %r.",
+                    out,
+                    self,
+                    status[str(out)],
                 )
                 return True
 
@@ -373,7 +373,7 @@ class Stage(params.StageParams):
                 out.unprotect()
                 continue
 
-            logger.debug(f"Removing output '{out}' of {self}.")
+            logger.debug("Removing output '%s' of %s.", out, self)
             out.remove(ignore_remove=ignore_remove)
 
     def unprotect_outs(self):
@@ -429,7 +429,7 @@ class Stage(params.StageParams):
 
         self.run(**kwargs)
 
-        logger.debug(f"{self} was reproduced")
+        logger.debug("%s was reproduced", self)
 
         return self
 
@@ -452,7 +452,7 @@ class Stage(params.StageParams):
             m = None
         else:
             m = compute_md5(self)
-        logger.debug(f"Computed {self} md5: '{m}'")
+        logger.debug("Computed %s md5: %r", self, m)
         return m
 
     def save(self, allow_missing=False):

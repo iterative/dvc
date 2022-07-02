@@ -197,7 +197,7 @@ class SingleStageFile(FileMixin):
         assert not isinstance(stage, PipelineStage)
         if self.verify:
             check_dvcfile_path(self.repo, self.path)
-        logger.debug(f"Saving information to '{relpath(self.path)}'.")
+        logger.debug("Saving information to %r.", relpath(self.path))
         dump_yaml(self.path, serialize.to_single_stage_file(stage))
         self.repo.scm_context.track_file(self.relpath)
 

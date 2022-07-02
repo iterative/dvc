@@ -37,7 +37,7 @@ class Updater:
         ctime = os.path.getmtime(self.updater_file)
         outdated = time.time() - ctime >= self.TIMEOUT
         if outdated:
-            logger.debug(f"'{self.updater_file}' is outdated")
+            logger.debug("%r is outdated", self.updater_file)
         return outdated
 
     def _with_lock(self, func, action):
@@ -47,8 +47,11 @@ class Updater:
             with self.lock:
                 func()
         except LockError:
-            msg = "Failed to acquire '{}' before {} updates"
-            logger.debug(msg.format(self.lock.lockfile, action))
+            logger.debug(
+                "Failed to acquire %r before %s updates",
+                self.lock.lockfile,
+                action,
+            )
 
     def check(self):
         from dvc.utils import env2bool
@@ -75,8 +78,9 @@ class Updater:
                 info = json.load(fobj)
                 latest = info["version"]
             except Exception as exc:  # pylint: disable=broad-except
-                msg = "'{}' is not a valid json: {}"
-                logger.debug(msg.format(self.updater_file, exc))
+                logger.debug(
+                    "%r is not a valid json: %s", self.updater_file, exc
+                )
                 self.fetch()
                 return
 
@@ -101,8 +105,7 @@ class Updater:
             resp = requests.get(self.URL, timeout=self.TIMEOUT_GET)
             info = resp.json()
         except requests.exceptions.RequestException as exc:
-            msg = "Failed to retrieve latest version: {}"
-            logger.debug(msg.format(exc))
+            logger.debug("Failed to retrieve latest version: %s", exc)
             return
 
         with open(self.updater_file, "w+", encoding="utf-8") as fobj:
@@ -171,7 +174,7 @@ class Updater:
             Config(validate=False).get("core", {}).get("check_update", "true")
         )
         logger.debug(
-            "Check for update is {}abled.".format("en" if enabled else "dis")
+            "Check for update is %sabled.", "en" if enabled else "dis"
         )
         return enabled
 

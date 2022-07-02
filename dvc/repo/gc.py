@@ -76,7 +76,7 @@ def gc(
 
         removed = ogc(odb, used_obj_ids, jobs=jobs)
         if not removed:
-            logger.info(f"No unused '{scheme}' cache to remove.")
+            logger.info("No unused %r cache to remove.", scheme)
 
     if not cloud:
         return
