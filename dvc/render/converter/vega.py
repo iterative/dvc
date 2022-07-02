@@ -5,13 +5,7 @@ from typing import Dict, Iterable, List, Optional, Set, Union
 from funcy import first, project
 
 from ...exceptions import DvcException
-from .. import (
-    FILENAME_FIELD,
-    INDEX_FIELD,
-    REVISION_FIELD,
-    VERSION_FIELD,
-)
-
+from .. import FILENAME_FIELD, INDEX_FIELD, REVISION_FIELD, VERSION_FIELD
 from . import Converter
 
 

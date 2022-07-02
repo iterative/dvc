@@ -4,11 +4,10 @@ import signal
 import subprocess
 import threading
 
-from .monitor import Monitor
 from ..utils import fix_env
-
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
+from .monitor import Monitor
 
 logger = logging.getLogger(__name__)
 

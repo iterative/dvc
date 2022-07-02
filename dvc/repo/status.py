@@ -4,7 +4,6 @@ from itertools import compress
 from funcy.py3 import cat
 
 from ..exceptions import InvalidArgumentError
-
 from . import locked
 
 logger = logging.getLogger(__name__)

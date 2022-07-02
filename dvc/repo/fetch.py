@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Optional
 
 from ..exceptions import DownloadError, FileTransferError
 from ..fs import Schemes
-
 from . import locked
 
 if TYPE_CHECKING:

@@ -3,9 +3,8 @@ import logging
 
 from ..cli import completion
 from ..cli.command import CmdBaseNoRepo
-from ..exceptions import DvcException
-
 from ..cli.utils import append_doc_link
+from ..exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 

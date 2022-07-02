@@ -22,18 +22,18 @@ from ..exceptions import (
     NoOutputOrStageError,
     OutputNotFoundError,
 )
-from . import lock_repo
 from ..utils import as_posix, parse_target, relpath
+from . import lock_repo
 
 logger = logging.getLogger(__name__)
 
 if typing.TYPE_CHECKING:
     from networkx import DiGraph
 
-    from . import Repo
     from ..stage import PipelineStage, Stage
     from ..stage.loader import StageLoader
     from ..types import OptStr
+    from . import Repo
 
 PIPELINE_FILE = "dvc.yaml"
 
@@ -167,12 +167,7 @@ class StageLoad:
             stage_data: Stage data to create from
                 (see create_stage and loads_from for more information)
         """
-        from ..stage import (
-            PipelineStage,
-            Stage,
-            create_stage,
-            restore_fields,
-        )
+        from ..stage import PipelineStage, Stage, create_stage, restore_fields
         from ..stage.exceptions import InvalidStageName
         from ..stage.utils import (
             is_valid_name,

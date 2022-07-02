@@ -1,9 +1,8 @@
 import os
 
 from ..exceptions import MoveNotDataSourceError
-from .scm_context import scm_context
-
 from . import locked
+from .scm_context import scm_context
 
 
 def _expand_target_path(from_path, to_path):
@@ -33,9 +32,9 @@ def move(self, from_path, to_path):
     also known as data sources.
     """
     import dvc.output as Output
-    from ..stage import Stage
 
     from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
+    from ..stage import Stage
 
     from_out = Output.loads_from(Stage(self), [from_path])[0]
     assert from_out.protocol == "local"

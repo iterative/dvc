@@ -3,13 +3,11 @@ import typing
 from functools import partial
 
 from ..exceptions import DvcException, ReproductionError
-from .scm_context import scm_context
-
 from . import locked
+from .scm_context import scm_context
 
 if typing.TYPE_CHECKING:
     from ..stage import Stage
-
     from . import Repo
 
 logger = logging.getLogger(__name__)

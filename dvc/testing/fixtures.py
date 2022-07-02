@@ -37,7 +37,6 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
         from scmrepo.git import Git
 
         from ..repo import Repo
-
         from .tmp_dir import TmpDir
 
         cache = CACHE.get((scm, dvc, subdir))

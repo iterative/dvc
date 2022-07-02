@@ -10,7 +10,6 @@ from ...dependency.param import MissingParamsError
 from ...env import DVCLIVE_RESUME
 from ...exceptions import DvcException
 from ...utils import relpath
-
 from .base import (
     EXEC_APPLY,
     EXEC_BRANCH,
@@ -746,7 +745,6 @@ class Experiments:
         """Return info for running experiments."""
         from ...scm import InvalidRemoteSCMRepo
         from ...utils.serialize import load_json
-
         from .executor.local import TempDirExecutor
 
         result = {}

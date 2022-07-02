@@ -6,7 +6,6 @@ from ..exceptions import PathMissingError
 
 if TYPE_CHECKING:
     from ..fs.dvc import DvcFileSystem
-
     from . import Repo
 
 

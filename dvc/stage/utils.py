@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
-from ..exceptions import InvalidArgumentError
 from dvc_data.hashfile.meta import Meta
 
+from ..exceptions import InvalidArgumentError
 from .exceptions import (
     MissingDataSource,
     StageExternalOutputsError,
@@ -17,7 +17,6 @@ from .exceptions import (
 
 if TYPE_CHECKING:
     from ..repo import Repo
-
     from . import PipelineStage, Stage
 
 
@@ -170,7 +169,6 @@ def check_missing_outputs(stage):
 
 def compute_md5(stage):
     from ..output import Output
-
     from ..utils import dict_md5
 
     d = stage.dumpd()
@@ -281,10 +279,7 @@ def check_stage_exists(
 ):
     from ..dvcfile import make_dvcfile
     from . import PipelineStage
-    from .exceptions import (
-        DuplicateStageName,
-        StageFileAlreadyExistsError,
-    )
+    from .exceptions import DuplicateStageName, StageFileAlreadyExistsError
 
     dvcfile = make_dvcfile(repo, path)
     if not dvcfile.exists():

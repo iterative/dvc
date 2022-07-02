@@ -2,12 +2,13 @@ from collections.abc import Mapping
 
 from voluptuous import Any, Optional, Required, Schema
 
+from dvc_data.hashfile.meta import Meta
+
 from . import dependency, output
 from .output import CHECKSUMS_SCHEMA, Output
 from .parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from .parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from .stage.params import StageParams
-from dvc_data.hashfile.meta import Meta
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {

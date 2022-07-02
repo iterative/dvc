@@ -56,8 +56,9 @@ class DataCloud:
         raise NoRemoteError(error_msg)
 
     def _init_odb(self, name):
-        from .fs import get_cloud_fs
         from dvc_data.db import get_odb
+
+        from .fs import get_cloud_fs
 
         cls, config, fs_path = get_cloud_fs(self.repo, name=name)
         config["tmp_dir"] = self.repo.index_db_dir
@@ -81,8 +82,9 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         **kwargs,
     ):
-        from .exceptions import FileTransferError
         from dvc_data.transfer import TransferError, transfer
+
+        from .exceptions import FileTransferError
 
         try:
             return transfer(src_odb, dest_odb, objs, **kwargs)

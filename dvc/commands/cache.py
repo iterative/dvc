@@ -2,8 +2,8 @@ import argparse
 
 from ..cli import completion
 from ..cli.utils import append_doc_link, fix_subparsers
-from .config import CmdConfig
 from ..ui import ui
+from .config import CmdConfig
 
 
 class CmdCacheDir(CmdConfig):

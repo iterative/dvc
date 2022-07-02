@@ -15,7 +15,6 @@ from ..base import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
-
 from .base import BaseExecutor, ExecutorInfo, ExecutorResult
 
 if TYPE_CHECKING:
@@ -24,7 +23,6 @@ if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from ... import Repo
-
     from ..base import ExpRefInfo, ExpStashEntry
 
 logger = logging.getLogger(__name__)

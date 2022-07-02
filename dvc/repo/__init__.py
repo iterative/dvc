@@ -16,8 +16,8 @@ from ..utils.fs import path_isin
 
 if TYPE_CHECKING:
     from ..fs import FileSystem
-    from .scm_context import SCMContext
     from ..scm import Base
+    from .scm_context import SCMContext
 
 logger = logging.getLogger(__name__)
 
@@ -153,18 +153,19 @@ class Repo:
         repo_factory=None,
         scm=None,
     ):
+        from dvc_data.hashfile.state import State, StateNoop
+
         from ..config import Config
         from ..data_cloud import DataCloud
         from ..fs import GitFileSystem, localfs
         from ..lock import LockNoop, make_lock
         from ..odbmgr import ODBManager
+        from ..scm import SCM
+        from ..stage.cache import StageCache
         from .metrics import Metrics
         from .params import Params
         from .plots import Plots
         from .stage import StageLoad
-        from ..scm import SCM
-        from ..stage.cache import StageCache
-        from dvc_data.hashfile.state import State, StateNoop
 
         self.url = url
         self._fs_conf = {"repo_factory": repo_factory}

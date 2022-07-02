@@ -2,13 +2,13 @@ import argparse
 
 from ..cli.command import CmdBase
 from ..cli.utils import append_doc_link, fix_subparsers
-from .config import CmdConfig
 from ..compare import TabularData
 from ..config import ConfigError
 from ..exceptions import DvcException
 from ..types import Dict, List
 from ..ui import ui
 from ..utils import format_link
+from .config import CmdConfig
 
 
 class MachineDisabledError(ConfigError):

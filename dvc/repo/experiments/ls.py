@@ -1,11 +1,10 @@
 import logging
 from collections import defaultdict
 
-from .. import locked
-from ..scm_context import scm_context
 from ...scm import iter_revs
 from ...types import Optional
-
+from .. import locked
+from ..scm_context import scm_context
 from .utils import exp_refs, exp_refs_by_baseline
 
 logger = logging.getLogger(__name__)

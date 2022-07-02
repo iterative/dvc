@@ -1,7 +1,6 @@
 from typing import Collection, Iterable
 
 from ...exceptions import InvalidArgumentError
-
 from .base import ExpRefInfo
 
 

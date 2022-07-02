@@ -25,7 +25,6 @@ def loads_param_overrides(
 
     from ..dependency.param import ParamsDependency
     from ..exceptions import InvalidArgumentError
-
     from .serialize import loads_yaml
 
     ret: Dict[str, Dict[str, Any]] = defaultdict(dict)

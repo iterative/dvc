@@ -227,10 +227,9 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
+        from .config_schema import RelPath
         from .fs import localfs
         from .utils import relpath
-
-        from .config_schema import RelPath
 
         if re.match(r"\w+://", path):
             return path

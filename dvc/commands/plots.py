@@ -25,8 +25,9 @@ def _show_json(renderers, split=False):
 
 
 def _adjust_vega_renderers(renderers):
-    from ..render import VERSION_FIELD
     from dvc_render import VegaRenderer
+
+    from ..render import VERSION_FIELD
 
     for r in renderers:
         if isinstance(r, VegaRenderer):
@@ -110,8 +111,9 @@ class CmdPlots(CmdBase):
     def run(self):
         from pathlib import Path
 
-        from ..render.match import match_defs_renderers
         from dvc_render import render_html
+
+        from ..render.match import match_defs_renderers
 
         if self.args.show_vega:
             if not self.args.targets:

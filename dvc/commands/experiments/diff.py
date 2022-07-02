@@ -4,9 +4,9 @@ import logging
 from ...cli import completion
 from ...cli.command import CmdBase
 from ...cli.utils import append_doc_link
-from ..metrics import DEFAULT_PRECISION
 from ...exceptions import DvcException
 from ...ui import ui
+from ..metrics import DEFAULT_PRECISION
 
 logger = logging.getLogger(__name__)
 

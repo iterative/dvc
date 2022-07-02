@@ -11,11 +11,11 @@ from funcy import lmap
 from ...cli import completion
 from ...cli.command import CmdBase
 from ...cli.utils import append_doc_link
-from ..metrics import DEFAULT_PRECISION
 from ...exceptions import DvcException, InvalidArgumentError
 from ...ui import ui
 from ...utils.flatten import flatten
 from ...utils.serialize import encode_exception
+from ..metrics import DEFAULT_PRECISION
 
 if TYPE_CHECKING:
     from ...compare import TabularData

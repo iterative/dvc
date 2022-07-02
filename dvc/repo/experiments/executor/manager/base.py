@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Deque, Dict, Generator, Optional, Tuple, Type
 
 from .....proc.manager import ProcessManager
-
 from ...base import (
     EXEC_BASELINE,
     EXEC_HEAD,

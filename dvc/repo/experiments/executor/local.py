@@ -9,7 +9,6 @@ from scmrepo.exceptions import SCMError as _SCMError
 
 from ....scm import SCM, GitMergeError
 from ....utils.fs import remove
-
 from ..base import (
     EXEC_APPLY,
     EXEC_BASELINE,
@@ -25,7 +24,6 @@ if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from ... import Repo
-
     from ..base import ExpRefInfo, ExpStashEntry
 
 logger = logging.getLogger(__name__)

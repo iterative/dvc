@@ -9,7 +9,6 @@ from ..dependency import ParamsDependency
 from ..output import Output
 from ..utils.collections import apply_diff
 from ..utils.serialize import parse_yaml_for_update
-
 from .params import StageParams
 from .utils import resolve_wdir, split_params_deps
 

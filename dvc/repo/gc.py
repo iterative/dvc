@@ -1,7 +1,6 @@
 import logging
 
 from ..exceptions import InvalidArgumentError
-
 from . import locked
 
 logger = logging.getLogger(__name__)
@@ -44,9 +43,10 @@ def gc(
 
     from contextlib import ExitStack
 
-    from . import Repo
     from dvc_data.db import get_index
     from dvc_data.gc import gc as ogc
+
+    from . import Repo
 
     if not repos:
         repos = []

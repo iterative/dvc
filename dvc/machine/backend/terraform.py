@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Iterator, Optional
 from ...exceptions import DvcException
 from ...fs import DEFAULT_SSH_PORT, SSHFileSystem
 from ...utils.fs import makedirs
-
 from .base import BaseMachineBackend
 
 if TYPE_CHECKING:

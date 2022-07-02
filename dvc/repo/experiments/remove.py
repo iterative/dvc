@@ -1,10 +1,9 @@
 import logging
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Set, Union
 
+from ...scm import iter_revs
 from .. import locked
 from ..scm_context import scm_context
-from ...scm import iter_revs
-
 from .exceptions import UnresolvedExpNamesError
 from .utils import (
     exp_refs,
@@ -15,9 +14,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from .. import Repo
     from ...scm import Git
-
+    from .. import Repo
     from .base import ExpRefInfo
 
 

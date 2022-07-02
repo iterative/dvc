@@ -3,10 +3,10 @@ import logging
 
 from ...cli import completion
 from ...cli.utils import append_doc_link
-from ..repro import CmdRepro
-from ..repro import add_arguments as add_repro_arguments
 from ...exceptions import InvalidArgumentError
 from ...ui import ui
+from ..repro import CmdRepro
+from ..repro import add_arguments as add_repro_arguments
 
 logger = logging.getLogger(__name__)
 

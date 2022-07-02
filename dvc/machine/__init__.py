@@ -17,7 +17,6 @@ from ..types import StrPath
 
 if TYPE_CHECKING:
     from ..repo import Repo
-
     from .backend.base import BaseMachineBackend
 
     BackendCls = Type[BaseMachineBackend]

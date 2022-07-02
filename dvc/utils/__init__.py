@@ -293,10 +293,9 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
-    from ..fs import localfs
-
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
+    from ..fs import localfs
     from .fs import contains_symlink_up_to
 
     abspath = os.path.abspath(out)

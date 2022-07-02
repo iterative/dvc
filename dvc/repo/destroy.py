@@ -1,6 +1,5 @@
 from ..ignore import destroy as destroy_dvcignore
 from ..utils.fs import remove
-
 from . import locked
 
 

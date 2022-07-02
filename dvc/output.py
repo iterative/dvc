@@ -7,16 +7,6 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-from . import prompt
-from .exceptions import (
-    CacheLinkError,
-    CheckoutError,
-    CollectCacheError,
-    ConfirmRemoveError,
-    DvcException,
-    MergeError,
-    RemoteCacheRequiredError,
-)
 from dvc_data import Tree
 from dvc_data import check as ocheck
 from dvc_data import load as oload
@@ -28,6 +18,16 @@ from dvc_data.stage import stage as ostage
 from dvc_data.transfer import transfer as otransfer
 from dvc_objects.errors import ObjectFormatError
 
+from . import prompt
+from .exceptions import (
+    CacheLinkError,
+    CheckoutError,
+    CollectCacheError,
+    ConfirmRemoveError,
+    DvcException,
+    MergeError,
+    RemoteCacheRequiredError,
+)
 from .fs import (
     HDFSFileSystem,
     LocalFileSystem,

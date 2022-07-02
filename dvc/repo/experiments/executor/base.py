@@ -24,7 +24,6 @@ from ....exceptions import DvcException
 from ....stage.serialize import to_lockfile
 from ....utils import dict_sha256, env2bool, relpath
 from ....utils.fs import remove
-
 from ..base import (
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -43,9 +42,8 @@ if TYPE_CHECKING:
 
     from scmrepo.git import Git
 
-    from ... import Repo
     from ....stage import PipelineStage
-
+    from ... import Repo
     from ..base import ExpStashEntry
 
 logger = logging.getLogger(__name__)
@@ -377,9 +375,9 @@ class BaseExecutor(ABC):
             and force is a bool specifying whether or not this experiment
             should force overwrite any existing duplicates.
         """
+        from ....stage import PipelineStage
         from ...checkout import checkout as dvc_checkout
         from ...reproduce import reproduce as dvc_reproduce
-        from ....stage import PipelineStage
 
         auto_push = env2bool(DVC_EXP_AUTO_PUSH)
         git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
@@ -542,8 +540,8 @@ class BaseExecutor(ABC):
         log_errors: bool = True,
         **kwargs,
     ):
-        from ... import Repo
         from ....stage.monitor import CheckpointKilledError
+        from ... import Repo
 
         dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
         if cls.QUIET:

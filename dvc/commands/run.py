@@ -3,8 +3,8 @@ import logging
 
 from ..cli.command import CmdBase
 from ..cli.utils import append_doc_link
-from .stage import parse_cmd
 from ..exceptions import DvcException
+from .stage import parse_cmd
 
 logger = logging.getLogger(__name__)
 

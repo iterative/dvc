@@ -9,7 +9,6 @@ from ..exceptions import (
 )
 from ..progress import Tqdm
 from ..utils import relpath
-
 from . import locked
 
 if TYPE_CHECKING:

@@ -14,8 +14,6 @@ from typing import (
 from scmrepo.git import Git
 
 from ...exceptions import InvalidArgumentError
-from .exceptions import AmbiguousExpRefInfo
-
 from .base import (
     EXEC_BASELINE,
     EXEC_NAMESPACE,
@@ -23,6 +21,7 @@ from .base import (
     EXPS_STASH,
     ExpRefInfo,
 )
+from .exceptions import AmbiguousExpRefInfo
 
 
 def exp_refs(

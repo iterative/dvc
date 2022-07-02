@@ -2,7 +2,6 @@ import logging
 from typing import Optional
 
 from .. import locked
-
 from .utils import exp_refs, remove_exp_refs
 
 logger = logging.getLogger(__name__)

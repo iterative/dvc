@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING, Any, Iterator, List
 
 import colorama
 
-from ..ui import ui
-
 from ..exceptions import (
     CacheLinkError,
     InvalidArgumentError,
@@ -15,15 +13,16 @@ from ..exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from .scm_context import scm_context
+from ..ui import ui
 from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
 from ..utils.collections import ensure_list, validate
 from . import locked
+from .scm_context import scm_context
 
 if TYPE_CHECKING:
-    from . import Repo
     from ..stage import Stage
     from ..types import TargetType
+    from . import Repo
 
 Stages = List["Stage"]
 logger = logging.getLogger(__name__)

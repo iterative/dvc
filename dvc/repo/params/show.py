@@ -15,13 +15,13 @@ from typing import (
 from scmrepo.exceptions import SCMError
 
 from ...dependency.param import ParamsDependency
-from .. import locked
-from ..collect import collect
 from ...scm import NoSCMError
 from ...stage import PipelineStage
 from ...ui import ui
 from ...utils import error_handler, errored_revisions, onerror_collect
 from ...utils.serialize import LOADERS
+from .. import locked
+from ..collect import collect
 
 if TYPE_CHECKING:
     from ...output import Output

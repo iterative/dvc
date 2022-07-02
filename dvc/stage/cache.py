@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property, first
 
+from dvc_data.transfer import _log_exceptions
+
 from .. import fs
 from ..exceptions import DvcException
 from ..utils import dict_sha256, relpath
-from dvc_data.transfer import _log_exceptions
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB

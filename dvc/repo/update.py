@@ -1,5 +1,4 @@
 from ..exceptions import InvalidArgumentError
-
 from . import locked
 
 

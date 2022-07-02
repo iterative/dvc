@@ -3,10 +3,9 @@ import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
+from ...utils.fs import remove
 from .. import locked
 from ..scm_context import scm_context
-from ...utils.fs import remove
-
 from .base import (
     EXEC_APPLY,
     ApplyConflictError,
@@ -28,8 +27,8 @@ logger = logging.getLogger(__name__)
 def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
     from scmrepo.exceptions import SCMError as _SCMError
 
-    from ..checkout import checkout as dvc_checkout
     from ...scm import GitMergeError, RevError, resolve_rev
+    from ..checkout import checkout as dvc_checkout
 
     exps = repo.experiments
 

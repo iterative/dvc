@@ -19,15 +19,16 @@ if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
-    from ..dependency import Dependency, ParamsDependency
-    from ..fs import FileSystem
-    from ..output import Output
-    from .stage import StageLoad
-    from ..stage import Stage
-    from ..types import StrPath, TargetType
     from dvc_data import Tree
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
+
+    from ..dependency import Dependency, ParamsDependency
+    from ..fs import FileSystem
+    from ..output import Output
+    from ..stage import Stage
+    from ..types import StrPath, TargetType
+    from .stage import StageLoad
 
 
 ObjectContainer = Dict[Optional["ObjectDB"], Set["HashInfo"]]
@@ -169,8 +170,9 @@ class Index:
 
     @cached_property
     def tree(self) -> "Tree":
-        from ..config import NoRemoteError
         from dvc_data import Tree
+
+        from ..config import NoRemoteError
 
         tree = Tree()
 

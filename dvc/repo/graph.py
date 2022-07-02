@@ -94,7 +94,6 @@ def build_graph(stages, outs_trie=None):
     import networkx as nx
 
     from ..exceptions import StagePathAsOutputError
-
     from .trie import build_outs_trie
 
     G = nx.DiGraph()

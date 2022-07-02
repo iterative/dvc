@@ -4,9 +4,9 @@ import logging
 from ...cli import completion
 from ...cli.command import CmdBaseNoRepo
 from ...cli.utils import append_doc_link
-from .ls_colors import LsColors
 from ...exceptions import DvcException
 from ...ui import ui
+from .ls_colors import LsColors
 
 logger = logging.getLogger(__name__)
 

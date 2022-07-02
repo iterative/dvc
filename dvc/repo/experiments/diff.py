@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
-    from .show import _collect_experiment_commit
     from ...scm import resolve_rev
+    from .show import _collect_experiment_commit
 
     if repo.scm.no_commits:
         return {}

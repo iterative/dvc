@@ -4,10 +4,10 @@ import os
 from ..config import Config
 from ..exceptions import InitError, InvalidArgumentError
 from ..ignore import init as init_dvcignore
-from . import Repo
 from ..scm import SCM, SCMError
 from ..utils import relpath
 from ..utils.fs import remove
+from . import Repo
 
 logger = logging.getLogger(__name__)
 

@@ -6,12 +6,12 @@ from scmrepo.exceptions import SCMError
 
 from ...fs.dvc import DvcFileSystem
 from ...output import Output
-from .. import locked
-from ..collect import StrPaths, collect
-from ..live import summary_fs_path
 from ...scm import NoSCMError
 from ...utils import error_handler, errored_revisions, onerror_collect
 from ...utils.serialize import load_yaml
+from .. import locked
+from ..collect import StrPaths, collect
+from ..live import summary_fs_path
 
 logger = logging.getLogger(__name__)
 

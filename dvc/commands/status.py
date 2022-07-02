@@ -1,9 +1,9 @@
 import logging
 
-from .data_sync import CmdDataBase
 from ..exceptions import DvcException
 from ..ui import ui
 from ..utils import format_link
+from .data_sync import CmdDataBase
 
 logger = logging.getLogger(__name__)
 

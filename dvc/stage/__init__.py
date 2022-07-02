@@ -16,7 +16,6 @@ from ..exceptions import (
     MergeError,
 )
 from ..utils import relpath
-
 from . import params
 from .decorators import rwlocked
 from .exceptions import StageUpdateError
@@ -35,9 +34,10 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from ..dvcfile import DVCFile
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db.base import ObjectDB
+
+    from ..dvcfile import DVCFile
 
 logger = logging.getLogger(__name__)
 # Disallow all punctuation characters except hyphen and underscore

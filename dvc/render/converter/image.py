@@ -3,7 +3,6 @@ import os
 from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from .. import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
-
 from . import Converter
 
 if TYPE_CHECKING:

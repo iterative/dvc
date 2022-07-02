@@ -1,13 +1,11 @@
 from typing import TYPE_CHECKING, Union
 
 from ..utils.cli_parse import parse_params
-
 from . import locked
 from .scm_context import scm_context
 
 if TYPE_CHECKING:
     from ..stage import PipelineStage, Stage
-
     from . import Repo
 
 

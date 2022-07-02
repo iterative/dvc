@@ -1,9 +1,9 @@
 import argparse
 
 from ..cli.utils import append_doc_link, fix_subparsers
-from .config import CmdConfig
 from ..ui import ui
 from ..utils import format_link
+from .config import CmdConfig
 
 
 class CmdRemote(CmdConfig):

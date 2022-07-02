@@ -3,11 +3,11 @@ from collections import OrderedDict, defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from .base import ExpRefInfo
-from ..metrics.show import _gather_metrics
-from ..params.show import _gather_params
 from ...scm import iter_revs
 from ...utils import error_handler, onerror_collect, relpath
+from ..metrics.show import _gather_metrics
+from ..params.show import _gather_params
+from .base import ExpRefInfo
 
 if TYPE_CHECKING:
     from .. import Repo

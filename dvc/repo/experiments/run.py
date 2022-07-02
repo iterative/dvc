@@ -1,8 +1,8 @@
 import logging
 from typing import Iterable, Optional
 
-from .. import locked
 from ...utils.cli_parse import loads_param_overrides
+from .. import locked
 
 logger = logging.getLogger(__name__)
 

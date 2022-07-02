@@ -7,7 +7,6 @@ from funcy import last
 
 from ..repo.plots import infer_data_sources
 from ..utils.plots import get_plot_id
-
 from .convert import _get_converter
 
 if TYPE_CHECKING:

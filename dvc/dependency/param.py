@@ -7,10 +7,10 @@ from typing import Dict
 import dpath.util
 from voluptuous import Any
 
-from ..exceptions import DvcException
-from ..utils.serialize import LOADERS, ParseError
 from dvc_data.hashfile.hash_info import HashInfo
 
+from ..exceptions import DvcException
+from ..utils.serialize import LOADERS, ParseError
 from .base import Dependency
 
 logger = logging.getLogger(__name__)

@@ -43,7 +43,6 @@ from ..commands import (
     update,
     version,
 )
-
 from . import DvcParserError
 
 logger = logging.getLogger(__name__)

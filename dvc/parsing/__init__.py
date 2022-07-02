@@ -17,8 +17,6 @@ from typing import (
 from funcy import cached_property, collecting, first, isa, join, reraise
 
 from ..exceptions import DvcException
-from .interpolate import ParseError
-
 from .context import (
     Context,
     ContextError,
@@ -29,6 +27,7 @@ from .context import (
     VarsAlreadyLoaded,
 )
 from .interpolate import (
+    ParseError,
     check_recursive_parse_errors,
     is_interpolated_string,
     recurse,

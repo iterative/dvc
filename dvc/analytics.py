@@ -86,7 +86,6 @@ def _scm_in_use():
 
     from .exceptions import NotDvcRepoError
     from .repo import Repo
-
     from .scm import SCM, SCMError
 
     try:

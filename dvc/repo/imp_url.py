@@ -1,11 +1,10 @@
 import os
 
-from .scm_context import scm_context
+from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from ..utils import relpath, resolve_output, resolve_paths
 from ..utils.fs import path_isin
-
-from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
+from .scm_context import scm_context
 
 
 @locked

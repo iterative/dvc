@@ -1,10 +1,9 @@
 import logging
 
 from ...exceptions import InvalidArgumentError
+from ...scm import RevError
 from .. import locked
 from ..scm_context import scm_context
-from ...scm import RevError
-
 from .base import InvalidExpRevError
 from .utils import exp_refs_by_rev
 
