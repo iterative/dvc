@@ -7,8 +7,8 @@ from typing import Dict
 import dpath.util
 from voluptuous import Any
 
-from dvc.exceptions import DvcException
-from dvc.utils.serialize import LOADERS, ParseError
+from ..exceptions import DvcException
+from ..utils.serialize import LOADERS, ParseError
 from dvc_data.hashfile.hash_info import HashInfo
 
 from .base import Dependency

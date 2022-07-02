@@ -19,9 +19,9 @@ if TYPE_CHECKING:
     from rich.status import Status
     from rich.text import Text as RichText
 
-    from dvc.progress import Tqdm
-    from dvc.types import StrPath
-    from dvc.ui.table import Headers, Styles, TableData
+    from ..progress import Tqdm
+    from ..types import StrPath
+    from .table import Headers, Styles, TableData
 
 
 class Formatter:
@@ -36,7 +36,7 @@ class Formatter:
         self.theme = defaultdict(lambda: defaults or {}, theme)
 
     def format(self, message: str, style: str = None, **kwargs) -> str:
-        from dvc.utils import colorize
+        from ..utils import colorize
 
         return colorize(message, **self.theme[style])
 
@@ -128,7 +128,7 @@ class Console:
     ) -> None:
         import sys
 
-        from dvc.progress import Tqdm
+        from ..progress import Tqdm
 
         sep = " " if sep is None else sep
         end = "\n" if end is None else end
@@ -155,7 +155,7 @@ class Console:
 
     @staticmethod
     def progress(*args, **kwargs) -> "Tqdm":
-        from dvc.progress import Tqdm
+        from ..progress import Tqdm
 
         return Tqdm(*args, **kwargs)
 
@@ -230,7 +230,7 @@ class Console:
         row_styles: Sequence["Styles"] = None,
         borders: Union[bool, str] = False,
     ) -> None:
-        from dvc.ui import table as t
+        from . import table as t
 
         if not data and not markdown:
             return
@@ -266,7 +266,7 @@ class Console:
         from pathlib import Path
         from platform import uname
 
-        from dvc.utils import relpath
+        from ..utils import relpath
 
         path = Path(file).resolve()
         url = (

@@ -12,11 +12,11 @@ from typing import (
     Type,
 )
 
-from dvc.exceptions import DvcException
-from dvc.types import StrPath
+from ..exceptions import DvcException
+from ..types import StrPath
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
+    from ..repo import Repo
 
     from .backend.base import BaseMachineBackend
 
@@ -43,7 +43,7 @@ sudo echo "OK" > /var/log/dvc-machine-init.log
 
 
 def validate_name(name: str):
-    from dvc.exceptions import InvalidArgumentError
+    from ..exceptions import InvalidArgumentError
 
     name = name.lower()
     if name in RESERVED_NAMES:
@@ -134,7 +134,7 @@ class MachineManager:
         self,
         name: Optional[str] = None,
     ) -> Tuple[dict, "BaseMachineBackend"]:
-        from dvc.config import NoMachineError
+        from ..config import NoMachineError
 
         if not name:
             name = self.repo.config["core"].get("machine")
@@ -165,7 +165,7 @@ class MachineManager:
                 conf = config["machine"][name.lower()]
                 conf["name"] = name
             except KeyError:
-                from dvc.config import MachineNotFoundError
+                from ..config import MachineNotFoundError
 
                 raise MachineNotFoundError(f"machine '{name}' doesn't exist")
         else:
@@ -173,7 +173,7 @@ class MachineManager:
         return conf
 
     def _get_backend(self, cloud: str) -> "BaseMachineBackend":
-        from dvc.config import NoMachineError
+        from ..config import NoMachineError
 
         try:
             backend = self.CLOUD_BACKENDS[cloud]

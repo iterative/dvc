@@ -1,17 +1,17 @@
 import argparse
 import logging
 
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
-from dvc.utils import relpath
+from ..cli.command import CmdBaseNoRepo
+from ..cli.utils import append_doc_link
+from ..utils import relpath
 
 logger = logging.getLogger(__name__)
 
 
 class CmdRoot(CmdBaseNoRepo):
     def run(self):
-        from dvc.repo import Repo
-        from dvc.ui import ui
+        from ..repo import Repo
+        from ..ui import ui
 
         ui.write(relpath(Repo.find_root()))
         return 0

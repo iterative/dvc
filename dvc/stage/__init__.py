@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 
 from funcy import cached_property, project
 
-from dvc import prompt
-from dvc.exceptions import (
+from .. import prompt
+from ..exceptions import (
     CacheLinkError,
     CheckoutError,
     DvcException,
     MergeError,
 )
-from dvc.utils import relpath
+from ..utils import relpath
 
 from . import params
 from .decorators import rwlocked
@@ -35,7 +35,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from dvc.dvcfile import DVCFile
+    from ..dvcfile import DVCFile
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db.base import ObjectDB
 
@@ -74,7 +74,7 @@ class RawData:
 
 
 def create_stage(cls, repo, path, external=False, **kwargs):
-    from dvc.dvcfile import check_dvcfile_path
+    from ..dvcfile import check_dvcfile_path
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     path = os.path.abspath(path)
@@ -183,7 +183,7 @@ class Stage(params.StageParams):
                 "and is detached from dvcfile."
             )
 
-        from dvc.dvcfile import make_dvcfile
+        from ..dvcfile import make_dvcfile
 
         self._dvcfile = make_dvcfile(self.repo, self.path)
         return self._dvcfile
@@ -247,7 +247,7 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        from dvc.dependency import RepoDependency
+        from ..dependency import RepoDependency
 
         return isinstance(self.deps[0], RepoDependency)
 
@@ -271,9 +271,9 @@ class Stage(params.StageParams):
     def _read_env(self, out, checkpoint_func=None) -> Env:
         env: Env = {}
         if out.live:
-            from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
-            from dvc.output import Output
-            from dvc.schema import LIVE_PROPS
+            from ..env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
+            from ..output import Output
+            from ..schema import LIVE_PROPS
 
             env[DVCLIVE_PATH] = relpath(out.fs_path, self.wdir)
             if isinstance(out.live, dict):
@@ -286,13 +286,13 @@ class Stage(params.StageParams):
                     int(config.get(Output.PARAM_LIVE_HTML, True))
                 )
         elif out.checkpoint and checkpoint_func:
-            from dvc.env import DVC_CHECKPOINT
+            from ..env import DVC_CHECKPOINT
 
             env.update({DVC_CHECKPOINT: "1"})
         return env
 
     def env(self, checkpoint_func=None) -> Env:
-        from dvc.env import DVC_ROOT
+        from ..env import DVC_ROOT
 
         env: Env = {}
         if self.repo:
@@ -463,7 +463,7 @@ class Stage(params.StageParams):
         self.repo.stage_cache.save(self)
 
     def save_deps(self, allow_missing=False):
-        from dvc.dependency.base import DependencyDoesNotExistError
+        from ..dependency.base import DependencyDoesNotExistError
 
         for dep in self.deps:
             try:
@@ -473,7 +473,7 @@ class Stage(params.StageParams):
                     raise
 
     def save_outs(self, allow_missing=False):
-        from dvc.output import OutputDoesNotExistError
+        from ..output import OutputDoesNotExistError
 
         for out in self.outs:
             try:
@@ -504,7 +504,7 @@ class Stage(params.StageParams):
 
     @rwlocked(write=["outs"])
     def commit(self, allow_missing=False, filter_info=None):
-        from dvc.output import OutputDoesNotExistError
+        from ..output import OutputDoesNotExistError
 
         link_failures = []
         for out in self.filter_outs(filter_info):
@@ -721,7 +721,7 @@ class PipelineStage(Stage):
 
     @property
     def addressing(self):
-        from dvc.dvcfile import PIPELINE_FILE
+        from ..dvcfile import PIPELINE_FILE
 
         if self.path and self.relpath == PIPELINE_FILE:
             return self.name

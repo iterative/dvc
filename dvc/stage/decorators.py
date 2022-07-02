@@ -7,8 +7,8 @@ from funcy import decorator
 def rwlocked(call, read=None, write=None):
     import sys
 
-    from dvc.dependency.repo import RepoDependency
-    from dvc.rwlock import rwlock
+    from ..dependency.repo import RepoDependency
+    from ..rwlock import rwlock
 
     if read is None:
         read = []

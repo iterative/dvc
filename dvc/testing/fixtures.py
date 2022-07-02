@@ -36,7 +36,7 @@ def make_tmp_dir(tmp_path_factory, request, worker_id):
 
         from scmrepo.git import Git
 
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         from .tmp_dir import TmpDir
 
@@ -134,7 +134,7 @@ def local_remote(make_remote):
 @pytest.fixture
 def make_workspace(tmp_dir, dvc, make_cloud):
     def _make_workspace(name, typ="local"):
-        from dvc.odbmgr import ODBManager
+        from ..odbmgr import ODBManager
 
         cloud = make_cloud(typ)  # pylint: disable=W0621
 

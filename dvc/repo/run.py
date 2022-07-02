@@ -1,12 +1,12 @@
 from typing import TYPE_CHECKING, Union
 
-from dvc.utils.cli_parse import parse_params
+from ..utils.cli_parse import parse_params
 
 from . import locked
 from .scm_context import scm_context
 
 if TYPE_CHECKING:
-    from dvc.stage import PipelineStage, Stage
+    from ..stage import PipelineStage, Stage
 
     from . import Repo
 

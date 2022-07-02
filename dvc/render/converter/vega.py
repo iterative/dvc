@@ -4,8 +4,8 @@ from typing import Dict, Iterable, List, Optional, Set, Union
 
 from funcy import first, project
 
-from dvc.exceptions import DvcException
-from dvc.render import (
+from ...exceptions import DvcException
+from .. import (
     FILENAME_FIELD,
     INDEX_FIELD,
     REVISION_FIELD,

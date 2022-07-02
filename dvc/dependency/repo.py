@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 
 from voluptuous import Required
 
-from dvc.prompt import confirm
+from ..prompt import confirm
 
 from .base import Dependency
 
@@ -100,9 +100,9 @@ class RepoDependency(Dependency):
     def _get_used_and_obj(
         self, obj_only=False, **kwargs
     ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "HashFile"]:
-        from dvc.config import NoRemoteError
-        from dvc.exceptions import NoOutputOrStageError, PathMissingError
-        from dvc.utils import as_posix
+        from ..config import NoRemoteError
+        from ..exceptions import NoOutputOrStageError, PathMissingError
+        from ..utils import as_posix
         from dvc_data.objects.tree import Tree, TreeError
         from dvc_data.stage import stage
 
@@ -153,8 +153,8 @@ class RepoDependency(Dependency):
             return used_obj_ids, staged_obj
 
     def _check_circular_import(self, odb, obj_ids):
-        from dvc.exceptions import CircularImportError
-        from dvc.fs.dvc import DvcFileSystem
+        from ..exceptions import CircularImportError
+        from ..fs.dvc import DvcFileSystem
         from dvc_data.db.reference import ReferenceHashFileDB
         from dvc_data.objects.tree import Tree
 
@@ -198,7 +198,7 @@ class RepoDependency(Dependency):
         return obj
 
     def _make_repo(self, locked=True, **kwargs):
-        from dvc.external_repo import external_repo
+        from ..external_repo import external_repo
 
         d = self.def_repo
         rev = self._get_rev(locked=locked)

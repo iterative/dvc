@@ -6,10 +6,10 @@ import stat
 import sys
 from typing import TYPE_CHECKING
 
-from dvc.exceptions import DvcException
+from ..exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
+    from ..types import StrPath
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class BasePathNotInCheckedPathException(DvcException):
 
 
 def contains_symlink_up_to(path: "StrPath", base_path: "StrPath"):
-    from dvc.fs import system
+    from ..fs import system
 
     base_path = os.path.normcase(os.fspath(base_path))
     path = os.path.normcase(os.fspath(path))

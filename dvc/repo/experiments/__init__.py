@@ -6,10 +6,10 @@ from typing import Dict, Iterable, List, Mapping, Optional, Type
 
 from funcy import cached_property, first
 
-from dvc.dependency.param import MissingParamsError
-from dvc.env import DVCLIVE_RESUME
-from dvc.exceptions import DvcException
-from dvc.utils import relpath
+from ...dependency.param import MissingParamsError
+from ...env import DVCLIVE_RESUME
+from ...exceptions import DvcException
+from ...utils import relpath
 
 from .base import (
     EXEC_APPLY,
@@ -47,7 +47,7 @@ def scm_locked(f):
     # different sequences of git operations at once
     @wraps(f)
     def wrapper(exp, *args, **kwargs):
-        from dvc.scm import map_scm_exception
+        from ...scm import map_scm_exception
 
         with map_scm_exception(), exp.scm_lock:
             return f(exp, *args, **kwargs)
@@ -89,8 +89,8 @@ class Experiments:
     )
 
     def __init__(self, repo):
-        from dvc.lock import make_lock
-        from dvc.scm import NoSCMError
+        from ...lock import make_lock
+        from ...scm import NoSCMError
 
         if repo.config["core"].get("no_scm", False):
             raise NoSCMError
@@ -360,8 +360,8 @@ class Experiments:
 
     def _update_params(self, params: dict):
         """Update experiment params files with the specified values."""
-        from dvc.utils.collections import NewParamsFound, merge_params
-        from dvc.utils.serialize import MODIFIERS
+        from ...utils.collections import NewParamsFound, merge_params
+        from ...utils.serialize import MODIFIERS
 
         logger.debug("Using experiment params '%s'", params)
 
@@ -407,7 +407,7 @@ class Experiments:
                 self.scm.reset()
 
         if checkpoint_resume:
-            from dvc.scm import resolve_rev
+            from ...scm import resolve_rev
 
             resume_rev = resolve_rev(self.scm, checkpoint_resume)
             try:
@@ -695,7 +695,7 @@ class Experiments:
         return self._get_baseline(rev)
 
     def _get_baseline(self, rev):
-        from dvc.scm import resolve_rev
+        from ...scm import resolve_rev
 
         rev = resolve_rev(self.scm, rev)
 
@@ -744,8 +744,8 @@ class Experiments:
 
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, int]:
         """Return info for running experiments."""
-        from dvc.scm import InvalidRemoteSCMRepo
-        from dvc.utils.serialize import load_json
+        from ...scm import InvalidRemoteSCMRepo
+        from ...utils.serialize import load_json
 
         from .executor.local import TempDirExecutor
 
@@ -800,51 +800,51 @@ class Experiments:
         return result
 
     def apply(self, *args, **kwargs):
-        from dvc.repo.experiments.apply import apply
+        from .apply import apply
 
         return apply(self.repo, *args, **kwargs)
 
     def branch(self, *args, **kwargs):
-        from dvc.repo.experiments.branch import branch
+        from .branch import branch
 
         return branch(self.repo, *args, **kwargs)
 
     def diff(self, *args, **kwargs):
-        from dvc.repo.experiments.diff import diff
+        from .diff import diff
 
         return diff(self.repo, *args, **kwargs)
 
     def show(self, *args, **kwargs):
-        from dvc.repo.experiments.show import show
+        from .show import show
 
         return show(self.repo, *args, **kwargs)
 
     def run(self, *args, **kwargs):
-        from dvc.repo.experiments.run import run
+        from .run import run
 
         return run(self.repo, *args, **kwargs)
 
     def gc(self, *args, **kwargs):
-        from dvc.repo.experiments.gc import gc
+        from .gc import gc
 
         return gc(self.repo, *args, **kwargs)
 
     def push(self, *args, **kwargs):
-        from dvc.repo.experiments.push import push
+        from .push import push
 
         return push(self.repo, *args, **kwargs)
 
     def pull(self, *args, **kwargs):
-        from dvc.repo.experiments.pull import pull
+        from .pull import pull
 
         return pull(self.repo, *args, **kwargs)
 
     def ls(self, *args, **kwargs):
-        from dvc.repo.experiments.ls import ls
+        from .ls import ls
 
         return ls(self.repo, *args, **kwargs)
 
     def remove(self, *args, **kwargs):
-        from dvc.repo.experiments.remove import remove
+        from .remove import remove
 
         return remove(self.repo, *args, **kwargs)

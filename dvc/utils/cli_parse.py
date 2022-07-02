@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List
 
 def parse_params(path_params: Iterable[str]) -> List[Dict[str, List[str]]]:
     """Normalizes the shape of params from the CLI to dict."""
-    from dvc.dependency.param import ParamsDependency
+    from ..dependency.param import ParamsDependency
 
     ret: Dict[str, List[str]] = defaultdict(list)
     for path_param in path_params:
@@ -23,8 +23,8 @@ def loads_param_overrides(
     """Loads the content of params from the cli as Python object."""
     from ruamel.yaml import YAMLError
 
-    from dvc.dependency.param import ParamsDependency
-    from dvc.exceptions import InvalidArgumentError
+    from ..dependency.param import ParamsDependency
+    from ..exceptions import InvalidArgumentError
 
     from .serialize import loads_yaml
 

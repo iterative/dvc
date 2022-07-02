@@ -1,18 +1,18 @@
 from typing import TYPE_CHECKING, Iterator, List, Set
 
-from dvc.fs import localfs
-from dvc.utils.fs import path_isin
+from ..fs import localfs
+from ..utils.fs import path_isin
 
 if TYPE_CHECKING:
     from networkx import DiGraph
 
-    from dvc.stage import Stage
+    from ..stage import Stage
 
 
 def check_acyclic(graph: "DiGraph") -> None:
     import networkx as nx
 
-    from dvc.exceptions import CyclicGraphError
+    from ..exceptions import CyclicGraphError
 
     try:
         edges = nx.find_cycle(graph, orientation="original")
@@ -93,7 +93,7 @@ def build_graph(stages, outs_trie=None):
     """
     import networkx as nx
 
-    from dvc.exceptions import StagePathAsOutputError
+    from ..exceptions import StagePathAsOutputError
 
     from .trie import build_outs_trie
 

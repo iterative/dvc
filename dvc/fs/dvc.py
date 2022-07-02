@@ -17,7 +17,7 @@ from dvc_objects.fs.path import Path
 from .data import DataFileSystem
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
+    from ..repo import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             )
 
         if not repo_factory:
-            from dvc.repo import Repo
+            from ..repo import Repo
 
             self.repo_factory: RepoFactory = Repo
         else:
@@ -166,8 +166,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def _repo_from_fs_config(
         cls, **config
     ) -> Tuple["Repo", Optional["RepoFactory"]]:
-        from dvc.external_repo import erepo_factory, external_repo
-        from dvc.repo import Repo
+        from ..external_repo import erepo_factory, external_repo
+        from ..repo import Repo
 
         url = config.get(cls.PARAM_REPO_URL)
         root = config.get(cls.PARAM_REPO_ROOT)
@@ -260,7 +260,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if not self._traverse_subrepos:
             return False
 
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
@@ -347,8 +347,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvcfiles = kwargs.get("dvcfiles", False)
 
         def _func(fname):
-            from dvc.dvcfile import is_valid_filename
-            from dvc.ignore import DvcIgnore
+            from ..dvcfile import is_valid_filename
+            from ..ignore import DvcIgnore
 
             if dvcfiles:
                 return True

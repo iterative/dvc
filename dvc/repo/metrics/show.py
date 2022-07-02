@@ -4,14 +4,14 @@ from typing import List
 
 from scmrepo.exceptions import SCMError
 
-from dvc.fs.dvc import DvcFileSystem
-from dvc.output import Output
-from dvc.repo import locked
-from dvc.repo.collect import StrPaths, collect
-from dvc.repo.live import summary_fs_path
-from dvc.scm import NoSCMError
-from dvc.utils import error_handler, errored_revisions, onerror_collect
-from dvc.utils.serialize import load_yaml
+from ...fs.dvc import DvcFileSystem
+from ...output import Output
+from .. import locked
+from ..collect import StrPaths, collect
+from ..live import summary_fs_path
+from ...scm import NoSCMError
+from ...utils import error_handler, errored_revisions, onerror_collect
+from ...utils.serialize import load_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,7 @@ def show(
 
     errored = errored_revisions(res)
     if errored:
-        from dvc.ui import ui
+        from ...ui import ui
 
         ui.error_write(
             "DVC failed to load some metrics for following revisions:"

@@ -2,10 +2,10 @@ import os
 from itertools import chain
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import PathMissingError
+from ..exceptions import PathMissingError
 
 if TYPE_CHECKING:
-    from dvc.fs.dvc import DvcFileSystem
+    from ..fs.dvc import DvcFileSystem
 
     from . import Repo
 

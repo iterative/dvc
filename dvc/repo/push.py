@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import FileTransferError, UploadError
+from ..exceptions import FileTransferError, UploadError
 
 from ..utils import glob_targets
 from . import locked

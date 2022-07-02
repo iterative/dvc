@@ -15,7 +15,7 @@ from .base import BaseExecutorManager
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
+    from .... import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +72,8 @@ class WorkspaceExecutorManager(BaseExecutorManager):
         Workspace execution is done within the main DVC process
         (rather than in multiprocessing context)
         """
-        from dvc.exceptions import DvcException
-        from dvc.stage.monitor import CheckpointKilledError
+        from .....exceptions import DvcException
+        from .....stage.monitor import CheckpointKilledError
 
         assert len(self._queue) == 1
         assert not detach

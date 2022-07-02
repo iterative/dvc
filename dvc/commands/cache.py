@@ -1,9 +1,9 @@
 import argparse
 
-from dvc.cli import completion
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands.config import CmdConfig
-from dvc.ui import ui
+from ..cli import completion
+from ..cli.utils import append_doc_link, fix_subparsers
+from .config import CmdConfig
+from ..ui import ui
 
 
 class CmdCacheDir(CmdConfig):
@@ -28,7 +28,7 @@ class CmdCacheDir(CmdConfig):
 
 
 def add_parser(subparsers, parent_parser):
-    from dvc.commands.config import parent_config_parser
+    from .config import parent_config_parser
 
     CACHE_HELP = "Manage cache settings."
 

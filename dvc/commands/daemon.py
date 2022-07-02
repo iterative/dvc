@@ -1,6 +1,6 @@
-from dvc.cli import completion
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import fix_subparsers
+from ..cli import completion
+from ..cli.command import CmdBaseNoRepo
+from ..cli.utils import fix_subparsers
 
 
 class CmdDaemonBase(CmdBaseNoRepo):
@@ -11,9 +11,9 @@ class CmdDaemonUpdater(CmdDaemonBase):
     def run(self):
         import os
 
-        from dvc.config import Config
-        from dvc.repo import Repo
-        from dvc.updater import Updater
+        from ..config import Config
+        from ..repo import Repo
+        from ..updater import Updater
 
         root_dir = Repo.find_root()
         dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
@@ -28,7 +28,7 @@ class CmdDaemonUpdater(CmdDaemonBase):
 
 class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
-        from dvc import analytics
+        from .. import analytics
 
         analytics.send(self.args.target)
 

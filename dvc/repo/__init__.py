@@ -7,17 +7,17 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 from funcy import cached_property
 
-from dvc.exceptions import FileMissingError
-from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
-from dvc.exceptions import NotDvcRepoError, OutputNotFoundError
-from dvc.ignore import DvcIgnoreFilter
-from dvc.utils import env2bool
-from dvc.utils.fs import path_isin
+from ..exceptions import FileMissingError
+from ..exceptions import IsADirectoryError as DvcIsADirectoryError
+from ..exceptions import NotDvcRepoError, OutputNotFoundError
+from ..ignore import DvcIgnoreFilter
+from ..utils import env2bool
+from ..utils.fs import path_isin
 
 if TYPE_CHECKING:
-    from dvc.fs import FileSystem
-    from dvc.repo.scm_context import SCMContext
-    from dvc.scm import Base
+    from ..fs import FileSystem
+    from .scm_context import SCMContext
+    from ..scm import Base
 
 logger = logging.getLogger(__name__)
 
@@ -53,28 +53,28 @@ def locked(f):
 class Repo:
     DVC_DIR = ".dvc"
 
-    from dvc.repo.add import add  # type: ignore[misc]
-    from dvc.repo.checkout import checkout  # type: ignore[misc]
-    from dvc.repo.commit import commit  # type: ignore[misc]
-    from dvc.repo.destroy import destroy  # type: ignore[misc]
-    from dvc.repo.diff import diff  # type: ignore[misc]
-    from dvc.repo.fetch import fetch  # type: ignore[misc]
-    from dvc.repo.freeze import freeze, unfreeze  # type: ignore[misc]
-    from dvc.repo.gc import gc  # type: ignore[misc]
-    from dvc.repo.get import get as _get  # type: ignore[misc]
-    from dvc.repo.get_url import get_url as _get_url  # type: ignore[misc]
-    from dvc.repo.imp import imp  # type: ignore[misc]
-    from dvc.repo.imp_url import imp_url  # type: ignore[misc]
-    from dvc.repo.install import install  # type: ignore[misc]
-    from dvc.repo.ls import ls as _ls  # type: ignore[misc]
-    from dvc.repo.move import move  # type: ignore[misc]
-    from dvc.repo.pull import pull  # type: ignore[misc]
-    from dvc.repo.push import push  # type: ignore[misc]
-    from dvc.repo.remove import remove  # type: ignore[misc]
-    from dvc.repo.reproduce import reproduce  # type: ignore[misc]
-    from dvc.repo.run import run  # type: ignore[misc]
-    from dvc.repo.status import status  # type: ignore[misc]
-    from dvc.repo.update import update  # type: ignore[misc]
+    from .add import add  # type: ignore[misc]
+    from .checkout import checkout  # type: ignore[misc]
+    from .commit import commit  # type: ignore[misc]
+    from .destroy import destroy  # type: ignore[misc]
+    from .diff import diff  # type: ignore[misc]
+    from .fetch import fetch  # type: ignore[misc]
+    from .freeze import freeze, unfreeze  # type: ignore[misc]
+    from .gc import gc  # type: ignore[misc]
+    from .get import get as _get  # type: ignore[misc]
+    from .get_url import get_url as _get_url  # type: ignore[misc]
+    from .imp import imp  # type: ignore[misc]
+    from .imp_url import imp_url  # type: ignore[misc]
+    from .install import install  # type: ignore[misc]
+    from .ls import ls as _ls  # type: ignore[misc]
+    from .move import move  # type: ignore[misc]
+    from .pull import pull  # type: ignore[misc]
+    from .push import push  # type: ignore[misc]
+    from .remove import remove  # type: ignore[misc]
+    from .reproduce import reproduce  # type: ignore[misc]
+    from .run import run  # type: ignore[misc]
+    from .status import status  # type: ignore[misc]
+    from .update import update  # type: ignore[misc]
 
     ls = staticmethod(_ls)
     get = staticmethod(_get)
@@ -87,8 +87,8 @@ class Repo:
         uninitialized: bool = False,
         scm: "Base" = None,
     ):
-        from dvc.fs import localfs
-        from dvc.scm import SCM, SCMError
+        from ..fs import localfs
+        from ..scm import SCM, SCMError
 
         dvc_dir = None
         tmp_dir = None
@@ -126,7 +126,7 @@ class Repo:
 
         import hashlib
 
-        from dvc.utils.fs import makedirs
+        from ..utils.fs import makedirs
 
         root_dir_hash = hashlib.sha224(
             self.root_dir.encode("utf-8")
@@ -153,17 +153,17 @@ class Repo:
         repo_factory=None,
         scm=None,
     ):
-        from dvc.config import Config
-        from dvc.data_cloud import DataCloud
-        from dvc.fs import GitFileSystem, localfs
-        from dvc.lock import LockNoop, make_lock
-        from dvc.odbmgr import ODBManager
-        from dvc.repo.metrics import Metrics
-        from dvc.repo.params import Params
-        from dvc.repo.plots import Plots
-        from dvc.repo.stage import StageLoad
-        from dvc.scm import SCM
-        from dvc.stage.cache import StageCache
+        from ..config import Config
+        from ..data_cloud import DataCloud
+        from ..fs import GitFileSystem, localfs
+        from ..lock import LockNoop, make_lock
+        from ..odbmgr import ODBManager
+        from .metrics import Metrics
+        from .params import Params
+        from .plots import Plots
+        from .stage import StageLoad
+        from ..scm import SCM
+        from ..stage.cache import StageCache
         from dvc_data.hashfile.state import State, StateNoop
 
         self.url = url
@@ -198,7 +198,7 @@ class Repo:
             self.odb = ODBManager(self)
             self.tmp_dir = None
         else:
-            from dvc.utils.fs import makedirs
+            from ..utils.fs import makedirs
 
             makedirs(self.tmp_dir, exist_ok=True)
             self.lock = make_lock(
@@ -230,7 +230,7 @@ class Repo:
 
     @cached_property
     def index(self):
-        from dvc.repo.index import Index
+        from .index import Index
 
         return Index(self)
 
@@ -245,13 +245,13 @@ class Repo:
             except NotDvcRepoError:
                 pass  # fallthrough to external_repo
 
-        from dvc.external_repo import external_repo
+        from ..external_repo import external_repo
 
         return external_repo(url, *args, **kwargs)
 
     @cached_property
     def scm(self):
-        from dvc.scm import SCM, SCMError
+        from ..scm import SCM, SCMError
 
         if self._scm:
             return self._scm
@@ -268,7 +268,7 @@ class Repo:
 
     @cached_property
     def scm_context(self) -> "SCMContext":
-        from dvc.repo.scm_context import SCMContext
+        from .scm_context import SCMContext
 
         return SCMContext(self.scm, self.config)
 
@@ -278,11 +278,11 @@ class Repo:
         return DvcIgnoreFilter(self.fs, self.root_dir)
 
     def get_rev(self):
-        from dvc.fs import LocalFileSystem
+        from ..fs import LocalFileSystem
 
         assert self.scm
         if isinstance(self.fs, LocalFileSystem):
-            from dvc.scm import map_scm_exception
+            from ..scm import map_scm_exception
 
             with map_scm_exception():
                 return self.scm.get_rev()
@@ -290,13 +290,13 @@ class Repo:
 
     @cached_property
     def experiments(self):
-        from dvc.repo.experiments import Experiments
+        from .experiments import Experiments
 
         return Experiments(self)
 
     @cached_property
     def machine(self):
-        from dvc.machine import MachineManager
+        from ..machine import MachineManager
 
         if self.tmp_dir and (
             self.config["feature"].get("machine", False)
@@ -321,7 +321,7 @@ class Repo:
 
     @classmethod
     def find_root(cls, root=None, fs=None) -> str:
-        from dvc.fs import LocalFileSystem, localfs
+        from ..fs import LocalFileSystem, localfs
 
         fs = fs or localfs
         root = root or os.curdir
@@ -355,7 +355,7 @@ class Repo:
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False, subdir=False):
-        from dvc.repo.init import init
+        from .init import init
 
         return init(
             root_dir=root_dir, no_scm=no_scm, force=force, subdir=subdir
@@ -374,7 +374,7 @@ class Repo:
             self.scm_context.ignore(file)
 
     def brancher(self, *args, **kwargs):
-        from dvc.repo.brancher import brancher
+        from .brancher import brancher
 
         return brancher(self, *args, **kwargs)
 
@@ -472,13 +472,13 @@ class Repo:
 
     @cached_property
     def datafs(self):
-        from dvc.fs.data import DataFileSystem
+        from ..fs.data import DataFileSystem
 
         return DataFileSystem(repo=self)
 
     @cached_property
     def dvcfs(self):
-        from dvc.fs.dvc import DvcFileSystem
+        from ..fs.dvc import DvcFileSystem
 
         return DvcFileSystem(
             repo=self, subrepos=self.subrepos, **self._fs_conf
@@ -491,8 +491,8 @@ class Repo:
     @contextmanager
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
-        from dvc.fs.data import DataFileSystem
-        from dvc.fs.dvc import DvcFileSystem
+        from ..fs.data import DataFileSystem
+        from ..fs.dvc import DvcFileSystem
 
         if os.path.isabs(path):
             fs = DataFileSystem(repo=self, workspace="local")

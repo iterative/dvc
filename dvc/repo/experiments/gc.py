@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from dvc.repo import locked
+from .. import locked
 
 from .utils import exp_refs, remove_exp_refs
 

@@ -5,8 +5,8 @@ from threading import RLock
 
 from tqdm import tqdm
 
-from dvc.env import DVC_IGNORE_ISATTY
-from dvc.utils import env2bool
+from .env import DVC_IGNORE_ISATTY
+from .utils import env2bool
 
 logger = logging.getLogger(__name__)
 tqdm.set_lock(RLock())

@@ -19,11 +19,11 @@ from typing import (
     Union,
 )
 
-from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
-from dvc.exceptions import DvcException
-from dvc.stage.serialize import to_lockfile
-from dvc.utils import dict_sha256, env2bool, relpath
-from dvc.utils.fs import remove
+from ....env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
+from ....exceptions import DvcException
+from ....stage.serialize import to_lockfile
+from ....utils import dict_sha256, env2bool, relpath
+from ....utils.fs import remove
 
 from ..base import (
     EXEC_BASELINE,
@@ -43,8 +43,8 @@ if TYPE_CHECKING:
 
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
-    from dvc.stage import PipelineStage
+    from ... import Repo
+    from ....stage import PipelineStage
 
     from ..base import ExpStashEntry
 
@@ -92,8 +92,8 @@ class ExecutorInfo:
         )
 
     def dump_json(self, filename: str):
-        from dvc.utils.fs import makedirs
-        from dvc.utils.serialize import modify_json
+        from ....utils.fs import makedirs
+        from ....utils.serialize import modify_json
 
         makedirs(os.path.dirname(filename), exist_ok=True)
         with modify_json(filename) as d:
@@ -241,7 +241,7 @@ class BaseExecutor(ABC):
 
     @staticmethod
     def hash_exp(stages: Iterable["PipelineStage"]) -> str:
-        from dvc.stage import PipelineStage
+        from ....stage import PipelineStage
 
         exp_data = {}
         for stage in stages:
@@ -260,7 +260,7 @@ class BaseExecutor(ABC):
             open_func = fs.open
             fs.makedirs(dpath)
         else:
-            from dvc.utils.fs import makedirs
+            from ....utils.fs import makedirs
 
             open_func = open
             makedirs(dpath, exist_ok=True)
@@ -344,7 +344,7 @@ class BaseExecutor(ABC):
     def _validate_remotes(cls, dvc: "Repo", git_remote: Optional[str]):
         from scmrepo.exceptions import InvalidRemote
 
-        from dvc.scm import InvalidRemoteSCMRepo
+        from ....scm import InvalidRemoteSCMRepo
 
         if git_remote == dvc.root_dir:
             logger.warning(
@@ -377,9 +377,9 @@ class BaseExecutor(ABC):
             and force is a bool specifying whether or not this experiment
             should force overwrite any existing duplicates.
         """
-        from dvc.repo.checkout import checkout as dvc_checkout
-        from dvc.repo.reproduce import reproduce as dvc_reproduce
-        from dvc.stage import PipelineStage
+        from ...checkout import checkout as dvc_checkout
+        from ...reproduce import reproduce as dvc_reproduce
+        from ....stage import PipelineStage
 
         auto_push = env2bool(DVC_EXP_AUTO_PUSH)
         git_remote = os.getenv(DVC_EXP_GIT_REMOTE, None)
@@ -542,8 +542,8 @@ class BaseExecutor(ABC):
         log_errors: bool = True,
         **kwargs,
     ):
-        from dvc.repo import Repo
-        from dvc.stage.monitor import CheckpointKilledError
+        from ... import Repo
+        from ....stage.monitor import CheckpointKilledError
 
         dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
         if cls.QUIET:
@@ -692,7 +692,7 @@ class BaseExecutor(ABC):
 
     @staticmethod
     def _set_log_level(level):
-        from dvc.logger import disable_other_loggers
+        from ....logger import disable_other_loggers
 
         # When executor.reproduce is run in a multiprocessing child process,
         # dvc.cli.main will not be called for that child process so we need to

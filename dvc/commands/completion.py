@@ -1,10 +1,10 @@
 import argparse
 import logging
 
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.completion import PREAMBLE
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli.command import CmdBaseNoRepo
+from ..cli.completion import PREAMBLE
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 logger = logging.getLogger(__name__)
 

@@ -3,21 +3,21 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
 
-from dvc.exceptions import DvcException
-from dvc.parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
-from dvc.stage import serialize
-from dvc.stage.exceptions import (
+from .exceptions import DvcException
+from .parsing.versions import LOCKFILE_VERSION, SCHEMA_KWD
+from .stage import serialize
+from .stage.exceptions import (
     StageFileBadNameError,
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
 )
-from dvc.types import AnyPath
-from dvc.utils import relpath
-from dvc.utils.collections import apply_diff
-from dvc.utils.serialize import dump_yaml, modify_yaml
+from .types import AnyPath
+from .utils import relpath
+from .utils.collections import apply_diff
+from .utils.serialize import dump_yaml, modify_yaml
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
+    from .repo import Repo
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -59,8 +59,8 @@ def is_lock_file(path):
 
 
 def is_git_ignored(repo, path):
-    from dvc.fs import LocalFileSystem
-    from dvc.scm import NoSCMError
+    from .fs import LocalFileSystem
+    from .scm import NoSCMError
 
     try:
         return isinstance(repo.fs, LocalFileSystem) and repo.scm.is_ignored(
@@ -151,12 +151,12 @@ class FileMixin:
 
     @classmethod
     def validate(cls, d: _T, fname: str = None) -> _T:
-        from dvc.utils.strictyaml import validate
+        from .utils.strictyaml import validate
 
         return validate(d, cls.SCHEMA, path=fname)  # type: ignore[arg-type]
 
     def _load_yaml(self, **kwargs: Any) -> Tuple[Any, str]:
-        from dvc.utils import strictyaml
+        from .utils import strictyaml
 
         return strictyaml.load(
             self.path,
@@ -177,8 +177,8 @@ class FileMixin:
 
 
 class SingleStageFile(FileMixin):
-    from dvc.schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import SingleStageLoader as LOADER
+    from .schema import COMPILED_SINGLE_STAGE_SCHEMA as SCHEMA
+    from .stage.loader import SingleStageLoader as LOADER
 
     @property
     def stage(self):
@@ -192,7 +192,7 @@ class SingleStageFile(FileMixin):
 
     def dump(self, stage, **kwargs):
         """Dumps given stage appropriately in the dvcfile."""
-        from dvc.stage import PipelineStage
+        from .stage import PipelineStage
 
         assert not isinstance(stage, PipelineStage)
         if self.verify:
@@ -216,8 +216,8 @@ class SingleStageFile(FileMixin):
 class PipelineFile(FileMixin):
     """Abstraction for pipelines file, .yaml + .lock combined."""
 
-    from dvc.schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
-    from dvc.stage.loader import StageLoader as LOADER
+    from .schema import COMPILED_MULTI_STAGE_SCHEMA as SCHEMA
+    from .stage.loader import StageLoader as LOADER
 
     @property
     def _lockfile(self):
@@ -227,7 +227,7 @@ class PipelineFile(FileMixin):
         self, stage, update_pipeline=True, update_lock=True, **kwargs
     ):  # pylint: disable=arguments-differ
         """Dumps given stage appropriately in the dvcfile."""
-        from dvc.stage import PipelineStage
+        from .stage import PipelineStage
 
         assert isinstance(stage, PipelineStage)
         if self.verify:
@@ -312,7 +312,7 @@ class PipelineFile(FileMixin):
 
 
 def get_lockfile_schema(d):
-    from dvc.schema import (
+    from .schema import (
         COMPILED_LOCKFILE_V1_SCHEMA,
         COMPILED_LOCKFILE_V2_SCHEMA,
     )

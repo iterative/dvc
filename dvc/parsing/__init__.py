@@ -16,8 +16,8 @@ from typing import (
 
 from funcy import cached_property, collecting, first, isa, join, reraise
 
-from dvc.exceptions import DvcException
-from dvc.parsing.interpolate import ParseError
+from ..exceptions import DvcException
+from .interpolate import ParseError
 
 from .context import (
     Context,
@@ -38,7 +38,7 @@ from .interpolate import (
 if TYPE_CHECKING:
     from typing_extensions import NoReturn
 
-    from dvc.repo import Repo
+    from ..repo import Repo
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterator, List
 
 import colorama
 
-from dvc.ui import ui
+from ..ui import ui
 
 from ..exceptions import (
     CacheLinkError,
@@ -15,15 +15,15 @@ from ..exceptions import (
     OverlappingOutputPathsError,
     RecursiveAddingWhileUsingFilename,
 )
-from ..repo.scm_context import scm_context
+from .scm_context import scm_context
 from ..utils import LARGE_DIR_SIZE, glob_targets, resolve_output, resolve_paths
 from ..utils.collections import ensure_list, validate
 from . import locked
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
-    from dvc.stage import Stage
-    from dvc.types import TargetType
+    from . import Repo
+    from ..stage import Stage
+    from ..types import TargetType
 
 Stages = List["Stage"]
 logger = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ def collect_targets(
 def _find_all_targets(
     repo: "Repo", target: str, recursive: bool = False
 ) -> Iterator[str]:
-    from dvc.dvcfile import is_dvc_file
+    from ..dvcfile import is_dvc_file
 
     if os.path.isdir(target) and recursive:
         files = repo.dvcignore.find(repo.fs, target)

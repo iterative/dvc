@@ -1,8 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import DownloadError, FileTransferError
-from dvc.fs import Schemes
+from ..exceptions import DownloadError, FileTransferError
+from ..fs import Schemes
 
 from . import locked
 

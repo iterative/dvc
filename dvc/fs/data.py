@@ -9,7 +9,7 @@ from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 
 if typing.TYPE_CHECKING:
-    from dvc.types import AnyPath
+    from ..types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class _DataFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return (self.workspace, *key)
 
     def _get_fs_path(self, path: "AnyPath", remote=None):
-        from dvc.config import NoRemoteError
+        from ..config import NoRemoteError
 
         info = self.info(path)
         if info["type"] == "directory":

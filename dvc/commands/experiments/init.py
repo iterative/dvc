@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING, List
 
 from funcy import compact
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.exceptions import InvalidArgumentError
-from dvc.ui import ui
+from ...cli.command import CmdBase
+from ...cli.utils import append_doc_link
+from ...exceptions import InvalidArgumentError
+from ...ui import ui
 
 if TYPE_CHECKING:
-    from dvc.dependency import Dependency
-    from dvc.stage import PipelineStage
+    from ...dependency import Dependency
+    from ...stage import PipelineStage
 
 
 logger = logging.getLogger(__name__)
@@ -35,13 +35,13 @@ class CmdExperimentsInit(CmdBase):
     }
 
     def run(self):
-        from dvc.commands.stage import parse_cmd
+        from ..stage import parse_cmd
 
         cmd = parse_cmd(self.args.command)
         if not self.args.interactive and not cmd:
             raise InvalidArgumentError("command is not specified")
 
-        from dvc.repo.experiments.init import init
+        from ...repo.experiments.init import init
 
         defaults = {}
         if not self.args.explicit:
@@ -83,7 +83,7 @@ class CmdExperimentsInit(CmdBase):
         new_deps: List["Dependency"],
         new_out_dirs: List[str],
     ) -> None:
-        from dvc.utils import humanize
+        from ...utils import humanize
 
         path_fmt = "[green]{}[/green]".format
         if new_deps:

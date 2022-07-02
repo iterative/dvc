@@ -7,8 +7,8 @@ import sys
 
 from rich.pager import Pager
 
-from dvc.env import DVC_PAGER
-from dvc.utils import format_link
+from ..env import DVC_PAGER
+from ..utils import format_link
 
 logger = logging.getLogger(__name__)
 

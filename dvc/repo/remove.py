@@ -4,7 +4,7 @@ import typing
 from . import locked
 
 if typing.TYPE_CHECKING:
-    from dvc.repo import Repo
+    from . import Repo
 
 logger = logging.getLogger(__name__)
 

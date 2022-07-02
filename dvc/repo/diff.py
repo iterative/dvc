@@ -3,8 +3,8 @@ import os
 from collections import defaultdict
 from typing import Dict, List
 
-from dvc.exceptions import PathMissingError
-from dvc.repo import locked
+from ..exceptions import PathMissingError
+from . import locked
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
-    from dvc.fs.dvc import DvcFileSystem
+    from ..fs.dvc import DvcFileSystem
 
     dvcfs = DvcFileSystem(repo=self)
 
@@ -111,7 +111,7 @@ def _paths_checksums(repo, targets):
 
 
 def _output_paths(repo, targets):
-    from dvc.fs import LocalFileSystem
+    from ..fs import LocalFileSystem
     from dvc_data.stage import stage as ostage
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)

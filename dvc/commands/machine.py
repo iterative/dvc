@@ -1,14 +1,14 @@
 import argparse
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands.config import CmdConfig
-from dvc.compare import TabularData
-from dvc.config import ConfigError
-from dvc.exceptions import DvcException
-from dvc.types import Dict, List
-from dvc.ui import ui
-from dvc.utils import format_link
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link, fix_subparsers
+from .config import CmdConfig
+from ..compare import TabularData
+from ..config import ConfigError
+from ..exceptions import DvcException
+from ..types import Dict, List
+from ..ui import ui
+from ..utils import format_link
 
 
 class MachineDisabledError(ConfigError):
@@ -33,7 +33,7 @@ class CmdMachineConfig(CmdConfig):
 
 class CmdMachineAdd(CmdMachineConfig):
     def run(self):
-        from dvc.machine import validate_name
+        from ..machine import validate_name
 
         validate_name(self.args.name)
 
@@ -129,7 +129,7 @@ class CmdMachineList(CmdMachineConfig):
 
 class CmdMachineModify(CmdMachineConfig):
     def run(self):
-        from dvc.config import merge
+        from ..config import merge
 
         with self.config.edit(self.args.level) as conf:
             merged = self.config.load_config_to_level(self.args.level)
@@ -156,7 +156,7 @@ class CmdMachineRename(CmdBase):
             conf["core"]["machine"] = self.args.new
 
     def _check_before_rename(self):
-        from dvc.machine import validate_name
+        from ..machine import validate_name
 
         validate_name(self.args.new)
 
@@ -310,7 +310,7 @@ class CmdMachineSsh(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    from dvc.commands.config import parent_config_parser
+    from .config import parent_config_parser
 
     machine_HELP = "Set up and manage cloud machines."
     machine_parser = subparsers.add_parser(

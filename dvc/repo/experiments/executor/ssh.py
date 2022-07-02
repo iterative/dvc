@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
 from funcy import first
 
-from dvc.fs import SSHFileSystem
-from dvc.repo.experiments.base import (
+from ....fs import SSHFileSystem
+from ..base import (
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
+    from ... import Repo
 
     from ..base import ExpRefInfo, ExpStashEntry
 
@@ -182,7 +182,7 @@ class SSHExecutor(BaseExecutor):
         return sshfs.fs.execute(f"cd {working_dir};{cmd}", **kwargs)
 
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
-        from dvc.repo.push import push
+        from ...push import push
 
         with self.get_odb() as odb:
             push(
@@ -197,14 +197,14 @@ class SSHExecutor(BaseExecutor):
         self, repo: "Repo", exp_ref: "ExpRefInfo", run_cache: bool = True
     ):
         """Collect DVC cache."""
-        from dvc.repo.experiments.pull import _pull_cache
+        from ..pull import _pull_cache
 
         with self.get_odb() as odb:
             _pull_cache(repo, exp_ref, run_cache=run_cache, odb=odb)
 
     @contextmanager
     def get_odb(self):
-        from dvc.odbmgr import ODBManager, get_odb
+        from ....odbmgr import ODBManager, get_odb
 
         cache_path = posixpath.join(
             self._repo_abspath,

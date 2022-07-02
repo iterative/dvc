@@ -6,11 +6,11 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List
 
-from dvc.stage.decorators import relock_repo
-from dvc.stage.exceptions import StageCmdFailedError
+from .decorators import relock_repo
+from .exceptions import StageCmdFailedError
 
 if TYPE_CHECKING:
-    from dvc.stage import Stage
+    from . import Stage
 
 
 logger = logging.getLogger(__name__)

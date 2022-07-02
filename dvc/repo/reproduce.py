@@ -2,13 +2,13 @@ import logging
 import typing
 from functools import partial
 
-from dvc.exceptions import DvcException, ReproductionError
-from dvc.repo.scm_context import scm_context
+from ..exceptions import DvcException, ReproductionError
+from .scm_context import scm_context
 
 from . import locked
 
 if typing.TYPE_CHECKING:
-    from dvc.stage import Stage
+    from ..stage import Stage
 
     from . import Repo
 
@@ -70,7 +70,7 @@ def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
         if not out.use_scm_ignore and out.is_in_repo:
             yield out.fs_path
         if out.live:
-            from dvc.repo.live import summary_fs_path
+            from .live import summary_fs_path
 
             summary = summary_fs_path(out)
             if summary:
@@ -78,7 +78,7 @@ def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
 
 
 def _track_stage(stage: "Stage") -> None:
-    from dvc.utils import relpath
+    from ..utils import relpath
 
     context = stage.repo.scm_context
     for path in _get_stage_files(stage):
@@ -105,7 +105,7 @@ def reproduce(
         targets = [targets]
 
     if not all_pipelines and not targets:
-        from dvc.dvcfile import PIPELINE_FILE
+        from ..dvcfile import PIPELINE_FILE
 
         targets = [PIPELINE_FILE]
 
@@ -197,7 +197,7 @@ def _reproduce_stages(
                 _repro_callback, checkpoint_func, unchanged
             )
 
-        from dvc.stage.monitor import CheckpointKilledError
+        from ..stage.monitor import CheckpointKilledError
 
         try:
             ret = _reproduce_stage(stage, **kwargs)

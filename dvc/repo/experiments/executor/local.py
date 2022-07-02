@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Optional
 from funcy import cached_property
 from scmrepo.exceptions import SCMError as _SCMError
 
-from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import remove
+from ....scm import SCM, GitMergeError
+from ....utils.fs import remove
 
 from ..base import (
     EXEC_APPLY,
@@ -24,7 +24,7 @@ from .base import EXEC_TMP_DIR, BaseExecutor
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
+    from ... import Repo
 
     from ..base import ExpRefInfo, ExpStashEntry
 

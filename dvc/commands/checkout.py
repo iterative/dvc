@@ -1,11 +1,11 @@
 import argparse
 import operator
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.exceptions import CheckoutError
-from dvc.ui import ui
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from ..exceptions import CheckoutError
+from ..ui import ui
 
 
 def log_changes(stats):
@@ -29,7 +29,7 @@ def log_changes(stats):
 
 class CmdCheckout(CmdBase):
     def run(self):
-        from dvc.utils.humanize import get_summary
+        from ..utils.humanize import get_summary
 
         stats, exc = None, None
         try:

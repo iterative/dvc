@@ -50,7 +50,7 @@ def get_fs_config(repo, config, **kwargs):
         try:
             remote_conf = config["remote"][name.lower()]
         except KeyError:
-            from dvc.config import RemoteNotFoundError
+            from ..config import RemoteNotFoundError
 
             raise RemoteNotFoundError(f"remote '{name}' doesn't exist")
     else:
@@ -92,8 +92,8 @@ def _resolve_remote_refs(repo, config, remote_conf):
 
 
 def get_cloud_fs(repo, **kwargs):
-    from dvc.config import ConfigError as RepoConfigError
-    from dvc.config_schema import SCHEMA, Invalid
+    from ..config import ConfigError as RepoConfigError
+    from ..config_schema import SCHEMA, Invalid
 
     repo_config = repo.config if repo else {}
     core_config = repo_config.get("core", {})

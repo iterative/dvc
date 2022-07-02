@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from dvc.commands import (
+from ..commands import (
     add,
     cache,
     check_ignore,
@@ -127,7 +127,7 @@ class VersionAction(argparse.Action):  # pragma: no cover
     """Shows DVC version and exits."""
 
     def __call__(self, parser, namespace, values, option_string=None):
-        from dvc import __version__
+        from .. import __version__
 
         print(__version__)
         sys.exit(0)
@@ -140,7 +140,7 @@ def get_parent_parser():
     When overwriting `-q` or `-v`, you need to instantiate a new object
     in order to prevent some weird behavior.
     """
-    from dvc._debug import add_debugging_flags
+    from .._debug import add_debugging_flags
 
     parent_parser = argparse.ArgumentParser(add_help=False)
     add_debugging_flags(parent_parser)

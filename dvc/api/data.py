@@ -3,8 +3,8 @@ from typing import Optional
 
 from funcy import reraise
 
-from dvc.exceptions import OutputNotFoundError, PathMissingError
-from dvc.repo import Repo
+from ..exceptions import OutputNotFoundError, PathMissingError
+from ..repo import Repo
 
 
 def get_url(path, repo=None, rev=None, remote=None):

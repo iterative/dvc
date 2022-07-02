@@ -51,8 +51,8 @@ import sys
 from contextlib import contextmanager
 from functools import partialmethod
 
-from dvc.utils import serialize
-from dvc.utils.fs import makedirs
+from ..utils import serialize
+from ..utils.fs import makedirs
 
 
 class TmpDir(pathlib.Path):
@@ -91,7 +91,7 @@ class TmpDir(pathlib.Path):
     def init(self, *, scm=False, dvc=False, subdir=False):
         from scmrepo.git import Git
 
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         assert not scm or not hasattr(self, "scm")
         assert not dvc or not hasattr(self, "dvc")

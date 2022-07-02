@@ -38,8 +38,8 @@ def parse_args(argv=None):
 
 
 def _log_unknown_exceptions() -> None:
-    from dvc.info import get_dvc_info
-    from dvc.logger import FOOTER
+    from ..info import get_dvc_info
+    from ..logger import FOOTER
 
     logger.exception("unexpected error")
     if logger.isEnabledFor(logging.DEBUG):
@@ -50,7 +50,7 @@ def _log_unknown_exceptions() -> None:
 
 def _log_exceptions(exc: Exception) -> Optional[int]:
     """Try to log some known exceptions, that are not DVCExceptions."""
-    from dvc.utils import error_link, format_link
+    from ..utils import error_link, format_link
 
     if isinstance(exc, OSError):
         import errno
@@ -66,10 +66,10 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
             _log_unknown_exceptions()
         return None
 
-    from dvc.fs import AuthError, ConfigError, RemoteMissingDepsError
+    from ..fs import AuthError, ConfigError, RemoteMissingDepsError
 
     if isinstance(exc, RemoteMissingDepsError):
-        from dvc.utils.pkg import PKG
+        from ..utils.pkg import PKG
 
         proto = exc.protocol
         by_pkg = {
@@ -110,7 +110,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
     from dvc_data.hashfile.cache import DiskError
 
     if isinstance(exc, DiskError):
-        from dvc.utils import relpath
+        from ..utils import relpath
 
         directory = relpath(exc.directory)
         logger.exception(
@@ -140,10 +140,10 @@ def main(argv=None):  # noqa: C901
     Returns:
         int: command's return code.
     """
-    from dvc._debug import debugtools
-    from dvc.config import ConfigError
-    from dvc.exceptions import DvcException, NotDvcRepoError
-    from dvc.logger import disable_other_loggers, set_loggers_level
+    from .._debug import debugtools
+    from ..config import ConfigError
+    from ..exceptions import DvcException, NotDvcRepoError
+    from ..logger import disable_other_loggers, set_loggers_level
 
     # NOTE: stderr/stdout may be closed if we are running from dvc.daemon.
     # On Linux we directly call cli.main after double forking and closing
@@ -176,7 +176,7 @@ def main(argv=None):  # noqa: C901
         logger.trace(args)
 
         if not sys.stdout.closed and not args.quiet:
-            from dvc.ui import ui
+            from ..ui import ui
 
             ui.enable()
 
@@ -202,7 +202,7 @@ def main(argv=None):  # noqa: C901
         ret = _log_exceptions(exc) or 255
 
     try:
-        from dvc import analytics
+        from .. import analytics
 
         if analytics.is_enabled():
             analytics.collect_and_send_report(args, ret)
@@ -211,7 +211,7 @@ def main(argv=None):  # noqa: C901
     finally:
         logger.setLevel(outerLogLevel)
 
-        from dvc.external_repo import clean_repos
+        from ..external_repo import clean_repos
 
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.

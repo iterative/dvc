@@ -32,7 +32,7 @@ class DataCloud:
         name: Optional[str] = None,
         command: str = "<command>",
     ) -> "HashFileDB":
-        from dvc.config import NoRemoteError
+        from .config import NoRemoteError
 
         if not name:
             name = self.repo.config["core"].get("remote")
@@ -56,7 +56,7 @@ class DataCloud:
         raise NoRemoteError(error_msg)
 
     def _init_odb(self, name):
-        from dvc.fs import get_cloud_fs
+        from .fs import get_cloud_fs
         from dvc_data.db import get_odb
 
         cls, config, fs_path = get_cloud_fs(self.repo, name=name)
@@ -81,7 +81,7 @@ class DataCloud:
         objs: Iterable["HashInfo"],
         **kwargs,
     ):
-        from dvc.exceptions import FileTransferError
+        from .exceptions import FileTransferError
         from dvc_data.transfer import TransferError, transfer
 
         try:

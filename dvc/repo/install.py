@@ -1,17 +1,17 @@
 from typing import TYPE_CHECKING
 
-from dvc.exceptions import DvcException
+from ..exceptions import DvcException
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
+    from . import Repo
 
 
 def pre_commit_install(scm: "Git") -> None:
     import os
 
-    from dvc.utils.serialize import modify_yaml
+    from ..utils.serialize import modify_yaml
 
     config_path = os.path.join(scm.root_dir, ".pre-commit-config.yaml")
     with modify_yaml(config_path) as config:
@@ -46,7 +46,7 @@ def pre_commit_install(scm: "Git") -> None:
 def install_hooks(scm: "Git") -> None:
     from scmrepo.exceptions import GitHookAlreadyExists
 
-    from dvc.utils import format_link
+    from ..utils import format_link
 
     hooks = ["post-checkout", "pre-commit", "pre-push"]
     for hook in hooks:

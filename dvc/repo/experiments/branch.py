@@ -1,9 +1,9 @@
 import logging
 
-from dvc.exceptions import InvalidArgumentError
-from dvc.repo import locked
-from dvc.repo.scm_context import scm_context
-from dvc.scm import RevError
+from ...exceptions import InvalidArgumentError
+from .. import locked
+from ..scm_context import scm_context
+from ...scm import RevError
 
 from .base import InvalidExpRevError
 from .utils import exp_refs_by_rev
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def branch(repo, exp_rev, branch_name, *args, **kwargs):
-    from dvc.scm import resolve_rev
+    from ...scm import resolve_rev
 
     try:
         rev = resolve_rev(repo.scm, exp_rev)

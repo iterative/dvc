@@ -1,9 +1,9 @@
-from dvc.fs import Schemes
+from .fs import Schemes
 from dvc_data.db import get_odb
 
 
 def _get_odb(repo, settings):
-    from dvc.fs import get_cloud_fs
+    from .fs import get_cloud_fs
 
     if not settings:
         return None
@@ -35,7 +35,7 @@ class ODBManager:
         elif "dir" not in config:
             settings = None
         else:
-            from dvc.config_schema import LOCAL_COMMON
+            from .config_schema import LOCAL_COMMON
 
             settings = {"url": config["dir"]}
             for opt in LOCAL_COMMON.keys():

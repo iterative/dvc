@@ -14,18 +14,18 @@ from typing import (
 
 from scmrepo.exceptions import SCMError
 
-from dvc.dependency.param import ParamsDependency
-from dvc.repo import locked
-from dvc.repo.collect import collect
-from dvc.scm import NoSCMError
-from dvc.stage import PipelineStage
-from dvc.ui import ui
-from dvc.utils import error_handler, errored_revisions, onerror_collect
-from dvc.utils.serialize import LOADERS
+from ...dependency.param import ParamsDependency
+from .. import locked
+from ..collect import collect
+from ...scm import NoSCMError
+from ...stage import PipelineStage
+from ...ui import ui
+from ...utils import error_handler, errored_revisions, onerror_collect
+from ...utils.serialize import LOADERS
 
 if TYPE_CHECKING:
-    from dvc.output import Output
-    from dvc.repo import Repo
+    from ...output import Output
+    from .. import Repo
 
 logger = logging.getLogger(__name__)
 

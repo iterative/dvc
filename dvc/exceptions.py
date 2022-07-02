@@ -1,5 +1,5 @@
 """Exceptions raised by the dvc."""
-from dvc.utils import format_link
+from .utils import format_link
 
 
 class DvcException(Exception):
@@ -50,7 +50,7 @@ class OutputNotFoundError(DvcException):
     """
 
     def __init__(self, output, repo=None):
-        from dvc.utils import relpath
+        from .utils import relpath
 
         self.output = output
         self.repo = repo
@@ -221,7 +221,7 @@ class UploadError(FileTransferError):
 
 class CheckoutError(DvcException):
     def __init__(self, target_infos, stats=None):
-        from dvc.utils import error_link
+        from .utils import error_link
 
         self.target_infos = target_infos
         self.stats = stats
@@ -248,7 +248,7 @@ class NoRemoteInExternalRepoError(DvcException):
 
 class NoOutputInExternalRepoError(DvcException):
     def __init__(self, path, external_repo_path, external_repo_url):
-        from dvc.utils import relpath
+        from .utils import relpath
 
         super().__init__(
             "Output '{}' not found in target repository '{}'".format(

@@ -4,10 +4,10 @@ from typing import Iterable, List, Mapping, Optional, Set, Union
 from funcy import group_by
 from scmrepo.git.backend.base import SyncStatus
 
-from dvc.repo import locked
-from dvc.repo.scm_context import scm_context
-from dvc.scm import TqdmGit, iter_revs
-from dvc.ui import ui
+from .. import locked
+from ..scm_context import scm_context
+from ...scm import TqdmGit, iter_revs
+from ...ui import ui
 
 from .base import ExpRefInfo
 from .exceptions import UnresolvedExpNamesError

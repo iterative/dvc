@@ -1,11 +1,11 @@
 import argparse
 
-from dvc.cli.utils import (
+from ...cli.utils import (
     append_doc_link,
     fix_plumbing_subparsers,
     fix_subparsers,
 )
-from dvc.commands.experiments import (
+from . import (
     apply,
     branch,
     diff,

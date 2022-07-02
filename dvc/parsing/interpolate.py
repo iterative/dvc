@@ -5,7 +5,7 @@ from functools import singledispatch
 
 from funcy import memoize, rpartial
 
-from dvc.exceptions import DvcException
+from ..exceptions import DvcException
 
 if typing.TYPE_CHECKING:
     from typing import List, Match
@@ -83,7 +83,7 @@ def _(obj: bool):
 def _format_exc_msg(exc: "ParseException"):
     from pyparsing import ParseException
 
-    from dvc.utils import colorize
+    from ..utils import colorize
 
     exc.loc += 2  # 2 because we append `${` at the start of expr below
 

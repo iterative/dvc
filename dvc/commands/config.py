@@ -2,9 +2,9 @@ import argparse
 import logging
 import os
 
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli.command import CmdBaseNoRepo
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def _name_type(value):
 
 class CmdConfig(CmdBaseNoRepo):
     def __init__(self, args):
-        from dvc.config import Config
+        from ..config import Config
 
         super().__init__(args)
 
@@ -81,7 +81,7 @@ class CmdConfig(CmdBaseNoRepo):
         return 0
 
     def _get(self, remote, section, opt):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         levels = self._get_appropriate_levels(self.args.level)[::-1]
 
@@ -125,7 +125,7 @@ class CmdConfig(CmdBaseNoRepo):
         return 0
 
     def _check(self, conf, remote, section, opt=None):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         name = "remote" if remote else "section"
         if section not in conf:
@@ -145,21 +145,21 @@ class CmdConfig(CmdBaseNoRepo):
         return self.config.LEVELS
 
     def _validate_level_for_non_repo_operation(self, level):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         if self.config.dvc_dir is None and level in self.config.REPO_LEVELS:
             raise ConfigError("Not inside a DVC repo")
 
     @staticmethod
     def _format_config(config, prefix=""):
-        from dvc.utils.flatten import flatten
+        from ..utils.flatten import flatten
 
         for key, value in flatten(config).items():
             yield f"{prefix}{key}={value}"
 
     @staticmethod
     def _config_file_prefix(show_origin, config, level):
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         if not show_origin:
             return ""

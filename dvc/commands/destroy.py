@@ -1,16 +1,16 @@
 import argparse
 import logging
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
 
 logger = logging.getLogger(__name__)
 
 
 class CmdDestroy(CmdBase):
     def run(self):
-        from dvc.exceptions import DvcException
-        from dvc.ui import ui
+        from ..exceptions import DvcException
+        from ..ui import ui
 
         try:
             statement = (

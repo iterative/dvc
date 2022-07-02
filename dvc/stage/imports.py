@@ -1,6 +1,6 @@
 import logging
 
-from dvc.exceptions import InvalidArgumentError
+from ..exceptions import InvalidArgumentError
 
 logger = logging.getLogger(__name__)
 

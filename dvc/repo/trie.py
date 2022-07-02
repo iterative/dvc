@@ -1,7 +1,7 @@
 from funcy import first
 from pygtrie import Trie
 
-from dvc.exceptions import OutputDuplicationError, OverlappingOutputPathsError
+from ..exceptions import OutputDuplicationError, OverlappingOutputPathsError
 
 
 def build_outs_trie(stages):

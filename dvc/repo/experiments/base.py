@@ -1,6 +1,6 @@
 from typing import NamedTuple, Optional
 
-from dvc.exceptions import DvcException, InvalidArgumentError
+from ...exceptions import DvcException, InvalidArgumentError
 
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>

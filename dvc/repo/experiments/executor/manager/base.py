@@ -5,7 +5,7 @@ from collections import defaultdict, deque
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Deque, Dict, Generator, Optional, Tuple, Type
 
-from dvc.proc.manager import ProcessManager
+from .....proc.manager import ProcessManager
 
 from ...base import (
     EXEC_BASELINE,
@@ -22,7 +22,7 @@ from ..local import TempDirExecutor, WorkspaceExecutor
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
+    from .... import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class BaseExecutorManager(ABC, Mapping):
         wdir: str,
         **kwargs,
     ):
-        from dvc.utils.fs import makedirs
+        from .....utils.fs import makedirs
 
         self.scm = scm
         makedirs(wdir, exist_ok=True)
@@ -167,7 +167,7 @@ class BaseExecutorManager(ABC, Mapping):
         )
         from multiprocessing import Manager
 
-        from dvc.stage.monitor import CheckpointKilledError
+        from .....stage.monitor import CheckpointKilledError
 
         result: Dict[str, Dict[str, str]] = defaultdict(dict)
 
@@ -265,7 +265,7 @@ class BaseExecutorManager(ABC, Mapping):
         return results
 
     def cleanup_executor(self, rev: str, executor: "BaseExecutor"):
-        from dvc.utils.fs import remove
+        from .....utils.fs import remove
 
         executor.cleanup()
         try:

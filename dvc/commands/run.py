@@ -1,10 +1,10 @@
 import argparse
 import logging
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.commands.stage import parse_cmd
-from dvc.exceptions import DvcException
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from .stage import parse_cmd
+from ..exceptions import DvcException
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class CmdRun(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    from dvc.commands.stage import _add_common_args
+    from .stage import _add_common_args
 
     RUN_HELP = (
         "Generate a dvc.yaml file from a command and execute the command."

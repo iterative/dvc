@@ -1,17 +1,17 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
 
 logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
     def log_summary(self, stats):
-        from dvc.ui import ui
-        from dvc.utils.humanize import get_summary
+        from ..ui import ui
+        from ..utils.humanize import get_summary
 
         default_msg = "Everything is up to date."
         ui.write(get_summary(stats.items()) or default_msg)
@@ -19,13 +19,13 @@ class CmdDataBase(CmdBase):
 
 class CmdDataPull(CmdDataBase):
     def log_summary(self, stats):
-        from dvc.commands.checkout import log_changes
+        from .checkout import log_changes
 
         log_changes(stats)
         super().log_summary(stats)
 
     def run(self):
-        from dvc.exceptions import CheckoutError, DvcException
+        from ..exceptions import CheckoutError, DvcException
 
         try:
             stats = self.repo.pull(
@@ -52,7 +52,7 @@ class CmdDataPull(CmdDataBase):
 
 class CmdDataPush(CmdDataBase):
     def run(self):
-        from dvc.exceptions import DvcException
+        from ..exceptions import DvcException
 
         try:
             processed_files_count = self.repo.push(
@@ -76,7 +76,7 @@ class CmdDataPush(CmdDataBase):
 
 class CmdDataFetch(CmdDataBase):
     def run(self):
-        from dvc.exceptions import DvcException
+        from ..exceptions import DvcException
 
         try:
             processed_files_count = self.repo.fetch(
@@ -98,7 +98,7 @@ class CmdDataFetch(CmdDataBase):
 
 
 def shared_parent_parser():
-    from dvc.cli.parser import get_parent_parser
+    from ..cli.parser import get_parent_parser
 
     # Parent parser used in pull/push/status
     parent_parser = argparse.ArgumentParser(
@@ -127,7 +127,7 @@ def shared_parent_parser():
 
 
 def add_parser(subparsers, _parent_parser):
-    from dvc.commands.status import CmdDataStatus
+    from .status import CmdDataStatus
 
     # Pull
     PULL_HELP = "Download tracked files or directories from remote storage."

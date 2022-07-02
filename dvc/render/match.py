@@ -5,13 +5,13 @@ import dpath.options
 import dpath.util
 from funcy import last
 
-from dvc.repo.plots import infer_data_sources
-from dvc.utils.plots import get_plot_id
+from ..repo.plots import infer_data_sources
+from ..utils.plots import get_plot_id
 
 from .convert import _get_converter
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
+    from ..types import StrPath
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 

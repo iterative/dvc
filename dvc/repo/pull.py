@@ -1,8 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from dvc.repo import locked
-from dvc.utils import glob_targets
+from . import locked
+from ..utils import glob_targets
 
 if TYPE_CHECKING:
     from dvc_objects.db.base import ObjectDB

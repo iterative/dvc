@@ -17,16 +17,16 @@ from typing import (
 
 from funcy import compact, lremove, lsplit
 
-from dvc.exceptions import DvcException
-from dvc.stage import PipelineStage
-from dvc.types import OptStr
+from ...exceptions import DvcException
+from ...stage import PipelineStage
+from ...types import OptStr
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
-    from dvc.dvcfile import DVCFile
-    from dvc.dependency import Dependency
+    from .. import Repo
+    from ...dvcfile import DVCFile
+    from ...dependency import Dependency
 
-from dvc.ui import ui
+from ...ui import ui
 
 PROMPTS = {
     "cmd": "[b]Command[/b] to execute",
@@ -46,7 +46,7 @@ def _prompts(
     allow_omission: bool = True,
     stream: Optional[TextIO] = None,
 ) -> Dict[str, OptStr]:
-    from dvc.ui.prompt import Prompt
+    from ...ui.prompt import Prompt
 
     defaults = defaults or {}
     return {
@@ -115,7 +115,7 @@ def _check_stage_exists(
     dvcfile: "DVCFile", name: str, force: bool = False
 ) -> None:
     if not force and dvcfile.exists() and name in dvcfile.stages:
-        from dvc.stage.exceptions import DuplicateStageName
+        from ...stage.exceptions import DuplicateStageName
 
         hint = "Use '--force' to overwrite."
         raise DuplicateStageName(
@@ -126,11 +126,11 @@ def _check_stage_exists(
 def validate_prompts(
     repo: "Repo", key: str, value: str
 ) -> Union[Any, Tuple[Any, str]]:
-    from dvc.ui.prompt import InvalidResponse
+    from ...ui.prompt import InvalidResponse
 
     msg_format = "[yellow]'{0}' does not exist, the {1} will be created.[/]"
     if key == "params":
-        from dvc.dependency.param import (
+        from ...dependency.param import (
             MissingParamsFile,
             ParamsDependency,
             ParamsIsADirectoryError,
@@ -161,8 +161,8 @@ def is_file(path: str) -> bool:
 def init_deps(stage: PipelineStage) -> List["Dependency"]:
     from funcy import rpartial
 
-    from dvc.dependency import ParamsDependency
-    from dvc.fs import localfs
+    from ...dependency import ParamsDependency
+    from ...fs import localfs
 
     new_deps = [dep for dep in stage.deps if not dep.exists]
     params, deps = lsplit(rpartial(isinstance, ParamsDependency), new_deps)
@@ -181,7 +181,7 @@ def init_deps(stage: PipelineStage) -> List["Dependency"]:
 
 
 def init_out_dirs(stage: PipelineStage) -> List[str]:
-    from dvc.fs import localfs
+    from ...fs import localfs
 
     new_dirs = []
 
@@ -207,7 +207,7 @@ def init(
     force: bool = False,
     stream: Optional[TextIO] = None,
 ) -> Tuple[PipelineStage, List["Dependency"], List[str]]:
-    from dvc.dvcfile import make_dvcfile
+    from ...dvcfile import make_dvcfile
 
     dvcfile = make_dvcfile(repo, "dvc.yaml")
     _check_stage_exists(dvcfile, name, force=force)
@@ -235,7 +235,7 @@ def init(
 
     params = context.get("params")
     if params:
-        from dvc.dependency.param import (
+        from ...dependency.param import (
             MissingParamsFile,
             ParamsDependency,
             ParamsIsADirectoryError,

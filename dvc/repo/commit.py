@@ -1,4 +1,4 @@
-from dvc import prompt
+from .. import prompt
 
 from . import locked
 
@@ -26,7 +26,7 @@ def _prepare_message(stage, changes):
 
 
 def prompt_to_commit(stage, changes, force=False):
-    from dvc.stage.exceptions import StageCommitError
+    from ..stage.exceptions import StageCommitError
 
     if not (force or prompt.confirm(_prepare_message(stage, changes))):
         raise StageCommitError(
@@ -45,7 +45,7 @@ def commit(
     allow_missing=False,
     data_only=False,
 ):
-    from dvc.dvcfile import Dvcfile
+    from ..dvcfile import Dvcfile
 
     stages_info = [
         info

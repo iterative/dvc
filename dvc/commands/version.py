@@ -1,17 +1,17 @@
 import argparse
 import logging
 
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli.command import CmdBaseNoRepo
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdVersion(CmdBaseNoRepo):
     def run(self):
-        from dvc.info import get_dvc_info
-        from dvc.updater import notify_updates
+        from ..info import get_dvc_info
+        from ..updater import notify_updates
 
         dvc_info = get_dvc_info()
         ui.write(dvc_info, force=True)

@@ -1,7 +1,7 @@
 from typing import Type
 
-from dvc.exceptions import DvcException
-from dvc.output import Output
+from ..exceptions import DvcException
+from ..output import Output
 
 
 class DependencyDoesNotExistError(DvcException):

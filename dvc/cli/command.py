@@ -9,7 +9,7 @@ class CmdBase(ABC):
     UNINITIALIZED = False
 
     def __init__(self, args):
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         os.chdir(args.cd)
 

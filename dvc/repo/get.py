@@ -1,9 +1,9 @@
 import logging
 import os
 
-from dvc.exceptions import DvcException
-from dvc.utils import resolve_output
-from dvc.utils.fs import remove
+from ..exceptions import DvcException
+from ..utils import resolve_output
+from ..utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,9 @@ class GetDVCFileError(DvcException):
 def get(url, path, out=None, rev=None, jobs=None):
     import shortuuid
 
-    from dvc.dvcfile import is_valid_filename
-    from dvc.external_repo import external_repo
-    from dvc.fs.callbacks import Callback
+    from ..dvcfile import is_valid_filename
+    from ..external_repo import external_repo
+    from ..fs.callbacks import Callback
 
     out = resolve_output(path, out)
 
@@ -52,7 +52,7 @@ def get(url, path, out=None, rev=None, jobs=None):
         ) as repo:
 
             if os.path.isabs(path):
-                from dvc.fs.data import DataFileSystem
+                from ..fs.data import DataFileSystem
 
                 fs = DataFileSystem(repo=repo, workspace="local")
                 fs_path = path

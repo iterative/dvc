@@ -2,12 +2,12 @@ import base64
 import os
 from typing import TYPE_CHECKING, Dict, List, Tuple
 
-from dvc.render import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
+from .. import FILENAME_FIELD, REVISION_FIELD, SRC_FIELD
 
 from . import Converter
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
+    from ...types import StrPath
 
 
 class ImageConverter(Converter):

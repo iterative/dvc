@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict
 
 from funcy import retry, wrap_with
 
-from dvc.exceptions import (
+from .exceptions import (
     FileMissingError,
     NoOutputInExternalRepoError,
     NoRemoteInExternalRepoError,
@@ -15,9 +15,9 @@ from dvc.exceptions import (
     OutputNotFoundError,
     PathMissingError,
 )
-from dvc.repo import Repo
-from dvc.scm import CloneError, map_scm_exception
-from dvc.utils import relpath
+from .repo import Repo
+from .scm import CloneError, map_scm_exception
+from .utils import relpath
 
 if TYPE_CHECKING:
     from scmrepo import Git
@@ -32,8 +32,8 @@ def external_repo(
 ):
     from scmrepo.git import Git
 
-    from dvc.config import NoRemoteError
-    from dvc.fs import GitFileSystem
+    from .config import NoRemoteError
+    from .fs import GitFileSystem
 
     logger.debug("Creating external repo %s@%s", url, rev)
     path = _cached_clone(url, rev, for_write=for_write)
@@ -95,7 +95,7 @@ def external_repo(
 
 
 def erepo_factory(url, root_dir, cache_config):
-    from dvc.fs import localfs
+    from .fs import localfs
 
     def make_repo(path, fs=None, **_kwargs):
         _config = cache_config.copy()
@@ -215,7 +215,7 @@ def _clone_default_branch(url, rev, for_write=False):
                     logger.debug("erepo: git pull '%s'", url)
                     _pull(git)
         else:
-            from dvc.scm import clone
+            from .scm import clone
 
             logger.debug("erepo: git clone '%s' to a temporary dir", url)
             clone_path = tempfile.mkdtemp("dvc-clone")
@@ -247,7 +247,7 @@ def _clone_default_branch(url, rev, for_write=False):
 
 
 def _pull(git: "Git", unshallow: bool = False):
-    from dvc.repo.experiments.utils import fetch_all_exps
+    from .repo.experiments.utils import fetch_all_exps
 
     git.fetch(unshallow=unshallow)
     _merge_upstream(git)
@@ -278,7 +278,7 @@ def _git_checkout(repo_path, rev):
 
 
 def _remove(path):
-    from dvc.utils.fs import remove
+    from .utils.fs import remove
 
     if os.name == "nt":
         # git.exe may hang for a while not permitting to remove temp dir

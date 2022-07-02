@@ -3,13 +3,13 @@ from contextlib import ExitStack, contextmanager
 from itertools import zip_longest
 from typing import TYPE_CHECKING, Dict, Iterator, Sequence, Union
 
-from dvc.types import DictStrAny
+from ..types import DictStrAny
 
 if TYPE_CHECKING:
     from rich.console import Console as RichConsole
     from rich.table import Table
 
-    from dvc.ui import Console, RichText
+    from . import Console, RichText
 
 SHOW_MAX_WIDTH = 1024
 
@@ -84,7 +84,7 @@ def rich_table(
 ) -> None:
     from rich import box
 
-    from dvc.utils.table import Table
+    from ..utils.table import Table
 
     border_style = {
         True: box.HEAVY_HEAD,  # is a default in rich,

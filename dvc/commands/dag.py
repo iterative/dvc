@@ -1,17 +1,17 @@
 import argparse
 from typing import TYPE_CHECKING
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 if TYPE_CHECKING:
     from networkx import DiGraph
 
 
 def _show_ascii(G: "DiGraph"):
-    from dvc.dagascii import draw
-    from dvc.repo.graph import get_pipelines
+    from ..dagascii import draw
+    from ..repo.graph import get_pipelines
 
     pipelines = get_pipelines(G)
 
@@ -45,7 +45,7 @@ def _show_dot(G: "DiGraph"):
 
 
 def _show_mermaid(G, markdown: bool = False):
-    from dvc.repo.graph import get_pipelines
+    from ..repo.graph import get_pipelines
 
     pipelines = get_pipelines(G)
 
@@ -97,7 +97,7 @@ def _collect_targets(repo, target, outs):
 def _transform(index, outs):
     import networkx as nx
 
-    from dvc.stage import Stage
+    from ..stage import Stage
 
     def _relabel(node) -> str:
         return node.addressing if isinstance(node, Stage) else str(node)

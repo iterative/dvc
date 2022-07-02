@@ -1,6 +1,6 @@
 import logging
 
-from dvc.exceptions import InvalidArgumentError
+from ..exceptions import InvalidArgumentError
 
 from . import locked
 
@@ -44,7 +44,7 @@ def gc(
 
     from contextlib import ExitStack
 
-    from dvc.repo import Repo
+    from . import Repo
     from dvc_data.db import get_index
     from dvc_data.gc import gc as ogc
 

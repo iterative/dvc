@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Optional
 
 from funcy import cached_property, first
 
-from dvc import fs
-from dvc.exceptions import DvcException
-from dvc.utils import dict_sha256, relpath
+from .. import fs
+from ..exceptions import DvcException
+from ..utils import dict_sha256, relpath
 from dvc_data.transfer import _log_exceptions
 
 if TYPE_CHECKING:
@@ -76,8 +76,8 @@ class StageCache:
     def _load_cache(self, key, value):
         from voluptuous import Invalid
 
-        from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
-        from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
+        from ..schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
+        from ..utils.serialize import YAMLFileCorruptedError, load_yaml
 
         path = self._get_cache_path(key, value)
 
@@ -166,8 +166,8 @@ class StageCache:
         if existing_cache:
             return
 
-        from dvc.schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
-        from dvc.utils.serialize import dump_yaml
+        from ..schema import COMPILED_LOCK_FILE_STAGE_SCHEMA
+        from ..utils.serialize import dump_yaml
 
         # sanity check
         COMPILED_LOCK_FILE_STAGE_SCHEMA(cache)
@@ -217,8 +217,8 @@ class StageCache:
         cached_stage.checkout()
 
     def transfer(self, from_odb, to_odb):
-        from dvc.fs import HTTPFileSystem, LocalFileSystem
-        from dvc.fs.callbacks import Callback
+        from ..fs import HTTPFileSystem, LocalFileSystem
+        from ..fs.callbacks import Callback
 
         from_fs = from_odb.fs
         to_fs = to_odb.fs

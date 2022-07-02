@@ -1,13 +1,13 @@
 import logging
 import os
 
-from dvc.config import Config
-from dvc.exceptions import InitError, InvalidArgumentError
-from dvc.ignore import init as init_dvcignore
-from dvc.repo import Repo
-from dvc.scm import SCM, SCMError
-from dvc.utils import relpath
-from dvc.utils.fs import remove
+from ..config import Config
+from ..exceptions import InitError, InvalidArgumentError
+from ..ignore import init as init_dvcignore
+from . import Repo
+from ..scm import SCM, SCMError
+from ..utils import relpath
+from ..utils.fs import remove
 
 logger = logging.getLogger(__name__)
 

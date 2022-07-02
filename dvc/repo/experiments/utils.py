@@ -13,8 +13,8 @@ from typing import (
 
 from scmrepo.git import Git
 
-from dvc.exceptions import InvalidArgumentError
-from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
+from ...exceptions import InvalidArgumentError
+from .exceptions import AmbiguousExpRefInfo
 
 from .base import (
     EXEC_BASELINE,
@@ -66,7 +66,7 @@ def iter_remote_refs(
 ):
     from scmrepo.exceptions import AuthError, InvalidRemote
 
-    from dvc.scm import GitAuthError, InvalidRemoteSCMRepo
+    from ...scm import GitAuthError, InvalidRemoteSCMRepo
 
     try:
         yield from scm.iter_remote_refs(url, base=base, **kwargs)

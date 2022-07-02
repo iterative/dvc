@@ -2,13 +2,13 @@ import logging
 import os
 from typing import TYPE_CHECKING, Set
 
-from dvc.exceptions import (
+from ..exceptions import (
     CheckoutError,
     CheckoutErrorSuggestGit,
     NoOutputOrStageError,
 )
-from dvc.progress import Tqdm
-from dvc.utils import relpath
+from ..progress import Tqdm
+from ..utils import relpath
 
 from . import locked
 
@@ -44,7 +44,7 @@ def get_all_files_numbers(pairs):
 def _collect_pairs(
     self: "Repo", targets, with_deps: bool, recursive: bool
 ) -> Set["StageInfo"]:
-    from dvc.stage.exceptions import (
+    from ..stage.exceptions import (
         StageFileBadNameError,
         StageFileDoesNotExistError,
     )

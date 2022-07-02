@@ -13,13 +13,13 @@ from typing import (
     Union,
 )
 
-from dvc.utils import relpath
-from dvc.utils.collections import ensure_list
+from ..utils import relpath
+from ..utils.collections import ensure_list
 
 if TYPE_CHECKING:
     from scmrepo.base import Base
 
-    from dvc.repo import Repo
+    from . import Repo
 
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class SCMContext:
     def ignore(self, path: str) -> None:
         from scmrepo.exceptions import FileNotInRepoError
 
-        from dvc.scm import SCMError
+        from ..scm import SCMError
 
         try:
             gitignore_file = self.scm.ignore(path)
@@ -88,7 +88,7 @@ class SCMContext:
     def ignore_remove(self, path: str) -> None:
         from scmrepo.exceptions import FileNotInRepoError
 
-        from dvc.scm import SCMError
+        from ..scm import SCMError
 
         logger.debug("Removing '%s' from gitignore file.", path)
         try:
@@ -120,7 +120,7 @@ class SCMContext:
         if quiet is None:
             quiet = self.quiet
 
-        from dvc.scm import NoSCM
+        from ..scm import NoSCM
 
         if autostage:
             self.track_changed_files()

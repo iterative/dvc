@@ -1,5 +1,5 @@
-from dvc.utils.diff import diff as _diff
-from dvc.utils.diff import format_dict
+from ...utils.diff import diff as _diff
+from ...utils.diff import format_dict
 
 
 def diff(repo, *args, a_rev=None, b_rev=None, **kwargs):

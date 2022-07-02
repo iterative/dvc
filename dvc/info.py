@@ -6,13 +6,13 @@ import platform
 
 import psutil
 
-from dvc import __version__
-from dvc.exceptions import NotDvcRepoError
-from dvc.fs import FS_MAP, generic, get_fs_cls, get_fs_config
-from dvc.repo import Repo
-from dvc.scm import SCMError
-from dvc.utils import error_link
-from dvc.utils.pkg import PKG
+from . import __version__
+from .exceptions import NotDvcRepoError
+from .fs import FS_MAP, generic, get_fs_cls, get_fs_config
+from .repo import Repo
+from .scm import SCMError
+from .utils import error_link
+from .utils.pkg import PKG
 
 package = "" if PKG is None else f"({PKG})"
 

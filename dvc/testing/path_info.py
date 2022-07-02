@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from funcy import cached_property
 
-from dvc.utils import relpath
+from ..utils import relpath
 
 
 class _BasePath:

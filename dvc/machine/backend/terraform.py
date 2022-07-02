@@ -3,14 +3,14 @@ from contextlib import contextmanager
 from functools import partial, partialmethod
 from typing import TYPE_CHECKING, Iterator, Optional
 
-from dvc.exceptions import DvcException
-from dvc.fs import DEFAULT_SSH_PORT, SSHFileSystem
-from dvc.utils.fs import makedirs
+from ...exceptions import DvcException
+from ...fs import DEFAULT_SSH_PORT, SSHFileSystem
+from ...utils.fs import makedirs
 
 from .base import BaseMachineBackend
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
+    from ...types import StrPath
 
 
 @contextmanager

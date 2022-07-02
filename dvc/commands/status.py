@@ -1,9 +1,9 @@
 import logging
 
-from dvc.commands.data_sync import CmdDataBase
-from dvc.exceptions import DvcException
-from dvc.ui import ui
-from dvc.utils import format_link
+from .data_sync import CmdDataBase
+from ..exceptions import DvcException
+from ..ui import ui
+from ..utils import format_link
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class CmdDataStatus(CmdDataBase):
                 self._show(value, indent + 1)
 
     def run(self):
-        from dvc.repo import lock_repo
+        from ..repo import lock_repo
 
         indent = 1 if self.args.cloud else 0
 

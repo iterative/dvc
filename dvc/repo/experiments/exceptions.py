@@ -1,6 +1,6 @@
 from typing import Collection, Iterable
 
-from dvc.exceptions import InvalidArgumentError
+from ...exceptions import InvalidArgumentError
 
 from .base import ExpRefInfo
 

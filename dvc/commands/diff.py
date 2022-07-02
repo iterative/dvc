@@ -2,10 +2,10 @@ import argparse
 import logging
 import os
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class CmdDiff(CmdBase):
         ui.write("files summary:", states_summary)
 
     def run(self):
-        from dvc.exceptions import DvcException
+        from ..exceptions import DvcException
 
         try:
             diff = self.repo.diff(

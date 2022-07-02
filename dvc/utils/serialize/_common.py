@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, Any, Callable, ContextManager, Dict, Union
 from funcy import reraise
 from typing_extensions import Protocol
 
-from dvc.exceptions import DvcException
+from ...exceptions import DvcException
 
 if TYPE_CHECKING:
-    from dvc.fs import FileSystem
-    from dvc.types import AnyPath
+    from ...fs import FileSystem
+    from ...types import AnyPath
 
 
 class DumperFn(Protocol):
@@ -40,7 +40,7 @@ class ParseError(DvcException):
     """Errors while parsing files"""
 
     def __init__(self, path: "AnyPath", message: str):
-        from dvc.utils import relpath
+        from .. import relpath
 
         path = relpath(path)
         self.path = path

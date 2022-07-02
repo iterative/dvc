@@ -6,7 +6,7 @@ from collections import namedtuple
 
 from pathspec.util import normalize_file
 
-from dvc.utils import relpath
+from .utils import relpath
 
 PatternInfo = namedtuple("PatternInfo", ["patterns", "file_info"])
 

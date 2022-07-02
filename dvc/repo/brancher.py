@@ -1,4 +1,4 @@
-from dvc.scm import iter_revs
+from ..scm import iter_revs
 
 
 def brancher(  # noqa: E302
@@ -29,7 +29,7 @@ def brancher(  # noqa: E302
         yield ""
         return
 
-    from dvc.fs import LocalFileSystem
+    from ..fs import LocalFileSystem
 
     repo_root_parts = ()
     if self.fs.path.isin(self.root_dir, self.scm.root_dir):
@@ -65,7 +65,7 @@ def brancher(  # noqa: E302
     )
 
     try:
-        from dvc.fs import GitFileSystem
+        from ..fs import GitFileSystem
 
         for sha, names in found_revs.items():
             self.fs = GitFileSystem(scm=scm, rev=sha)

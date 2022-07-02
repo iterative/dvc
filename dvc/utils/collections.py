@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from functools import wraps
 from typing import Callable, Dict, Iterable, List, TypeVar, Union
 
-from dvc.exceptions import DvcException
+from ..exceptions import DvcException
 
 
 class NewParamsFound(DvcException):

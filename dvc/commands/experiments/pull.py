@@ -1,10 +1,10 @@
 import argparse
 import logging
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.exceptions import InvalidArgumentError
-from dvc.ui import ui
+from ...cli.command import CmdBase
+from ...cli.utils import append_doc_link
+from ...exceptions import InvalidArgumentError
+from ...ui import ui
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ from typing import Dict, Iterable, Optional, Union
 
 from funcy import first
 
-from dvc.repo import Repo
+from ..repo import Repo
 
 
 def params_show(

@@ -13,18 +13,18 @@ from typing import (
 
 from funcy import cached_property, nullcontext
 
-from dvc.utils import dict_md5
+from ..utils import dict_md5
 
 if TYPE_CHECKING:
     from networkx import DiGraph
     from pygtrie import Trie
 
-    from dvc.dependency import Dependency, ParamsDependency
-    from dvc.fs import FileSystem
-    from dvc.output import Output
-    from dvc.repo.stage import StageLoad
-    from dvc.stage import Stage
-    from dvc.types import StrPath, TargetType
+    from ..dependency import Dependency, ParamsDependency
+    from ..fs import FileSystem
+    from ..output import Output
+    from .stage import StageLoad
+    from ..stage import Stage
+    from ..types import StrPath, TargetType
     from dvc_data import Tree
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_objects.db import ObjectDB
@@ -74,7 +74,7 @@ class Index:
         return self.stage_collector.collect_repo(onerror=onerror)
 
     def __repr__(self) -> str:
-        from dvc.fs import LocalFileSystem
+        from ..fs import LocalFileSystem
 
         rev = "workspace"
         if not isinstance(self.fs, LocalFileSystem):
@@ -103,8 +103,8 @@ class Index:
         return Index(self.repo, self.fs, stages=list(stages_it))
 
     def slice(self, path: "StrPath") -> "Index":
-        from dvc.utils import relpath
-        from dvc.utils.fs import path_isin
+        from ..utils import relpath
+        from ..utils.fs import path_isin
 
         target_path = relpath(path, self.repo.root_dir)
 
@@ -143,7 +143,7 @@ class Index:
 
     @property
     def params(self) -> Iterator["ParamsDependency"]:
-        from dvc.dependency import ParamsDependency
+        from ..dependency import ParamsDependency
 
         for dep in self.deps:
             if isinstance(dep, ParamsDependency):
@@ -151,25 +151,25 @@ class Index:
 
     @cached_property
     def outs_trie(self) -> "Trie":
-        from dvc.repo.trie import build_outs_trie
+        from .trie import build_outs_trie
 
         return build_outs_trie(self.stages)
 
     @cached_property
     def graph(self) -> "DiGraph":
-        from dvc.repo.graph import build_graph
+        from .graph import build_graph
 
         return build_graph(self.stages, self.outs_trie)
 
     @cached_property
     def outs_graph(self) -> "DiGraph":
-        from dvc.repo.graph import build_outs_graph
+        from .graph import build_outs_graph
 
         return build_outs_graph(self.graph, self.outs_trie)
 
     @cached_property
     def tree(self) -> "Tree":
-        from dvc.config import NoRemoteError
+        from ..config import NoRemoteError
         from dvc_data import Tree
 
         tree = Tree()
@@ -208,7 +208,7 @@ class Index:
         from collections import defaultdict
         from itertools import chain
 
-        from dvc.utils.collections import ensure_list
+        from ..utils.collections import ensure_list
 
         used: "ObjectContainer" = defaultdict(set)
         collect_targets: Sequence[Optional[str]] = (None,)
@@ -302,8 +302,8 @@ if __name__ == "__main__":
 
     from funcy import log_durations
 
-    from dvc.logger import setup
-    from dvc.repo import Repo
+    from ..logger import setup
+    from . import Repo
 
     setup(level=logging.TRACE)  # type: ignore[attr-defined]
 

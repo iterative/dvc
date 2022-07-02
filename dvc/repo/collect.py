@@ -1,11 +1,11 @@
 import logging
 from typing import TYPE_CHECKING, Callable, Iterable, List, Tuple
 
-from dvc.types import AnyPath
+from ..types import AnyPath
 
 if TYPE_CHECKING:
-    from dvc.output import Output
-    from dvc.repo import Repo
+    from ..output import Output
+    from . import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def _collect_paths(
     recursive: bool = False,
     rev: str = None,
 ) -> StrPaths:
-    from dvc.fs.dvc import DvcFileSystem
+    from ..fs.dvc import DvcFileSystem
 
     fs = DvcFileSystem(repo=repo)
     fs_paths = [fs.from_os_path(target) for target in targets]

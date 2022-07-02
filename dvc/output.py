@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 from funcy import collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
-from dvc import prompt
-from dvc.exceptions import (
+from . import prompt
+from .exceptions import (
     CacheLinkError,
     CheckoutError,
     CollectCacheError,
@@ -178,11 +178,11 @@ def load_from_pipeline(stage, data, typ="outs"):
     for path, flags in d.items():
         plt_d, live_d = {}, {}
         if plot:
-            from dvc.schema import PLOT_PROPS
+            from .schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
         if live:
-            from dvc.schema import LIVE_PROPS
+            from .schema import LIVE_PROPS
 
             live_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
         extra = project(
@@ -726,7 +726,7 @@ class Output:
             raise DvcException(msg.format(self.fs_path, name))
 
     def download(self, to, jobs=None):
-        from dvc.fs.callbacks import Callback
+        from .fs.callbacks import Callback
 
         with Callback.as_tqdm_callback(
             desc=f"Downloading {self.fs.path.name(self.fs_path)}",
@@ -1004,7 +1004,7 @@ class Output:
         return dep.get_used_objs(**kwargs)
 
     def _validate_output_path(self, path, stage=None):
-        from dvc.dvcfile import is_valid_filename
+        from .dvcfile import is_valid_filename
 
         if is_valid_filename(path):
             raise self.IsStageFileError(path)

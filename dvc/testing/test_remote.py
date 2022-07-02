@@ -3,8 +3,8 @@ import shutil
 
 import pytest
 
-from dvc.stage.cache import RunCacheNotSupported
-from dvc.utils.fs import remove
+from ..stage.cache import RunCacheNotSupported
+from ..utils.fs import remove
 
 
 class TestRemote:

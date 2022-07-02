@@ -8,18 +8,18 @@ from typing import TYPE_CHECKING
 
 from funcy import lmap
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.commands.metrics import DEFAULT_PRECISION
-from dvc.exceptions import DvcException, InvalidArgumentError
-from dvc.ui import ui
-from dvc.utils.flatten import flatten
-from dvc.utils.serialize import encode_exception
+from ...cli import completion
+from ...cli.command import CmdBase
+from ...cli.utils import append_doc_link
+from ..metrics import DEFAULT_PRECISION
+from ...exceptions import DvcException, InvalidArgumentError
+from ...ui import ui
+from ...utils.flatten import flatten
+from ...utils.serialize import encode_exception
 
 if TYPE_CHECKING:
-    from dvc.compare import TabularData
-    from dvc.ui import RichText
+    from ...compare import TabularData
+    from ...ui import RichText
 
 FILL_VALUE = "-"
 FILL_VALUE_ERRORED = "!"
@@ -233,7 +233,7 @@ def _format_time(datetime_obj, fill_value=FILL_VALUE, iso=False):
 
 
 def _extend_row(row, names, headers, items, precision, fill_value=FILL_VALUE):
-    from dvc.compare import _format_field, with_value
+    from ...compare import _format_field, with_value
 
     for fname, data in items:
         item = data.get("data", {})
@@ -269,7 +269,7 @@ def experiments_table(
 ) -> "TabularData":
     from funcy import lconcat
 
-    from dvc.compare import TabularData
+    from ...compare import TabularData
 
     all_headers = lconcat(headers, metric_headers, param_headers, deps_names)
     td = TabularData(all_headers, fill_value=fill_value)

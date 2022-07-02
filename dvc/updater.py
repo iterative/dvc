@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, Optional
 
 from packaging import version
 
-from dvc import __version__
-from dvc.utils.pkg import PKG
+from . import __version__
+from .utils.pkg import PKG
 
 if TYPE_CHECKING:
-    from dvc.ui import RichText
+    from .ui import RichText
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class Updater:
     TIMEOUT_GET = 10
 
     def __init__(self, tmp_dir, friendly=False, hardlink_lock=False):
-        from dvc.lock import make_lock
+        from .lock import make_lock
 
         self.updater_file = os.path.join(tmp_dir, self.UPDATER_FILE)
         self.lock = make_lock(
@@ -41,7 +41,7 @@ class Updater:
         return outdated
 
     def _with_lock(self, func, action):
-        from dvc.lock import LockError
+        from .lock import LockError
 
         try:
             with self.lock:
@@ -51,7 +51,7 @@ class Updater:
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        from dvc.utils import env2bool
+        from .utils import env2bool
 
         if (
             os.getenv("CI")
@@ -84,7 +84,7 @@ class Updater:
             self._notify(latest)
 
     def fetch(self, detach=True):
-        from dvc.daemon import daemon
+        from .daemon import daemon
 
         if detach:
             daemon(["updater"])
@@ -109,7 +109,7 @@ class Updater:
             json.dump(info, fobj)
 
     def _notify(self, latest: str, pkg: Optional[str] = PKG) -> None:
-        from dvc.ui import ui
+        from .ui import ui
 
         if not sys.stdout.isatty():
             return
@@ -124,7 +124,7 @@ class Updater:
         color: str = "yellow",
         pkg: Optional[str] = None,
     ) -> "RichText":
-        from dvc.ui import ui
+        from .ui import ui
 
         current = current or self.current
         update_message = ui.rich_text.from_markup(
@@ -165,7 +165,7 @@ class Updater:
         return f"To upgrade, run '{instruction}'."
 
     def is_enabled(self):
-        from dvc.config import Config, to_bool
+        from .config import Config, to_bool
 
         enabled = to_bool(
             Config(validate=False).get("core", {}).get("check_update", "true")
@@ -179,7 +179,7 @@ class Updater:
 def notify_updates():
     from contextlib import suppress
 
-    from dvc.repo import NotDvcRepoError, Repo
+    from .repo import NotDvcRepoError, Repo
 
     with suppress(NotDvcRepoError), Repo() as repo:
         hardlink_lock = repo.config["core"].get("hardlink_lock", False)

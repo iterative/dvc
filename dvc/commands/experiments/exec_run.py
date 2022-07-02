@@ -1,6 +1,6 @@
 import logging
 
-from dvc.cli.command import CmdBaseNoRepo
+from ...cli.command import CmdBaseNoRepo
 
 logger = logging.getLogger(__name__)
 
@@ -9,11 +9,11 @@ class CmdExecutorRun(CmdBaseNoRepo):
     """Run an experiment executor."""
 
     def run(self):
-        from dvc.repo.experiments.executor.base import (
+        from ...repo.experiments.executor.base import (
             BaseExecutor,
             ExecutorInfo,
         )
-        from dvc.utils.serialize import load_json
+        from ...utils.serialize import load_json
 
         info = ExecutorInfo.from_dict(load_json(self.args.infofile))
         BaseExecutor.reproduce(

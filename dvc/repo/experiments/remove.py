@@ -1,9 +1,9 @@
 import logging
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Set, Union
 
-from dvc.repo import locked
-from dvc.repo.scm_context import scm_context
-from dvc.scm import iter_revs
+from .. import locked
+from ..scm_context import scm_context
+from ...scm import iter_revs
 
 from .exceptions import UnresolvedExpNamesError
 from .utils import (
@@ -15,8 +15,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
-    from dvc.scm import Git
+    from .. import Repo
+    from ...scm import Git
 
     from .base import ExpRefInfo
 
@@ -159,7 +159,7 @@ def _remove_commited_exps(
     scm: "Git", exp_ref_dict: Mapping["ExpRefInfo", str], remote: Optional[str]
 ) -> List[str]:
     if remote:
-        from dvc.scm import TqdmGit
+        from ...scm import TqdmGit
 
         for ref_info in exp_ref_dict:
             with TqdmGit(desc="Pushing git refs") as pbar:

@@ -11,7 +11,7 @@ from dvc_objects.fs.callbacks import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
-    from dvc.ui._rich_progress import RichTransferProgress
+    from ..ui._rich_progress import RichTransferProgress
 
 
 class RichCallback(Callback):
@@ -40,8 +40,8 @@ class RichCallback(Callback):
 
     @cached_property
     def progress(self):
-        from dvc.ui import ui
-        from dvc.ui._rich_progress import RichTransferProgress
+        from ..ui import ui
+        from ..ui._rich_progress import RichTransferProgress
 
         if self._progress is not None:
             return self._progress

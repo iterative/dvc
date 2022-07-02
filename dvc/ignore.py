@@ -8,9 +8,9 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import Trie
 
-from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
-from dvc.pathspec_math import PatternInfo, merge_patterns
-from dvc.types import List, Optional
+from .fs import AnyFSPath, FileSystem, Schemes, localfs
+from .pathspec_math import PatternInfo, merge_patterns
+from .types import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ def _no_match(path):
 
 class DvcIgnoreFilter:
     def __init__(self, fs, root_dir):
-        from dvc.repo import Repo
+        from .repo import Repo
 
         default_ignore_patterns = [
             ".hg/",
@@ -244,7 +244,7 @@ class DvcIgnoreFilter:
                 )
 
     def _update_sub_repo(self, path, ignore_trie: Trie):
-        from dvc.repo import Repo
+        from .repo import Repo
 
         if path == self.root_dir:
             return
@@ -431,7 +431,7 @@ def init(path):
 
 
 def destroy(path):
-    from dvc.utils.fs import remove
+    from .utils.fs import remove
 
     dvcignore = os.path.join(path, DvcIgnore.DVCIGNORE_FILE)
     remove(dvcignore)

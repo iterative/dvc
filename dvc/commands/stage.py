@@ -3,15 +3,15 @@ import logging
 from itertools import chain, filterfalse
 from typing import TYPE_CHECKING, Dict, Iterable, List
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.utils.cli_parse import parse_params
-from dvc.utils.humanize import truncate_text
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link, fix_subparsers
+from ..utils.cli_parse import parse_params
+from ..utils.humanize import truncate_text
 
 if TYPE_CHECKING:
-    from dvc.output import Output
-    from dvc.stage import Stage
+    from ..output import Output
+    from ..stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class CmdStageList(CmdBase):
         return dict.fromkeys(collected).keys()
 
     def run(self):
-        from dvc.ui import ui
+        from ..ui import ui
 
         def log_error(relpath: str, exc: Exception):
             if self.args.fail:

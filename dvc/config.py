@@ -7,7 +7,7 @@ from functools import partial
 
 from funcy import cached_property, compact, memoize, re_find
 
-from dvc.exceptions import DvcException, NotDvcRepoError
+from .exceptions import DvcException, NotDvcRepoError
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class Config(dict):
     def __init__(
         self, dvc_dir=None, validate=True, fs=None, config=None
     ):  # pylint: disable=super-init-not-called
-        from dvc.fs import LocalFileSystem
+        from .fs import LocalFileSystem
 
         self.dvc_dir = dvc_dir
         self.wfs = LocalFileSystem()
@@ -94,7 +94,7 @@ class Config(dict):
 
         if not dvc_dir:
             try:
-                from dvc.repo import Repo
+                from .repo import Repo
 
                 self.dvc_dir = Repo.find_dvc_dir()
             except NotDvcRepoError:
@@ -227,8 +227,8 @@ class Config(dict):
 
     @staticmethod
     def _to_relpath(conf_dir, path):
-        from dvc.fs import localfs
-        from dvc.utils import relpath
+        from .fs import localfs
+        from .utils import relpath
 
         from .config_schema import RelPath
 

@@ -1,12 +1,12 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
-from dvc.commands.ls.ls_colors import LsColors
-from dvc.exceptions import DvcException
-from dvc.ui import ui
+from ...cli import completion
+from ...cli.command import CmdBaseNoRepo
+from ...cli.utils import append_doc_link
+from .ls_colors import LsColors
+from ...exceptions import DvcException
+from ...ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def _prettify(entries, with_color=False):
 
 class CmdList(CmdBaseNoRepo):
     def run(self):
-        from dvc.repo import Repo
+        from ...repo import Repo
 
         try:
             entries = Repo.ls(

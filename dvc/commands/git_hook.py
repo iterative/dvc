@@ -1,16 +1,16 @@
 import logging
 import os
 
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import fix_subparsers
-from dvc.exceptions import NotDvcRepoError
+from ..cli.command import CmdBaseNoRepo
+from ..cli.utils import fix_subparsers
+from ..exceptions import NotDvcRepoError
 
 logger = logging.getLogger(__name__)
 
 
 class CmdHookBase(CmdBaseNoRepo):
     def run(self):
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         try:
             repo = Repo()
@@ -26,7 +26,7 @@ class CmdHookBase(CmdBaseNoRepo):
 
 class CmdPreCommit(CmdHookBase):
     def _run(self):
-        from dvc.cli import main
+        from ..cli import main
 
         return main(["status"])
 
@@ -50,22 +50,22 @@ class CmdPostCheckout(CmdHookBase):
         if os.path.isdir(os.path.join(".git", "rebase-merge")):
             return 0
 
-        from dvc.cli import main
+        from ..cli import main
 
         return main(["checkout"])
 
 
 class CmdPrePush(CmdHookBase):
     def _run(self):
-        from dvc.cli import main
+        from ..cli import main
 
         return main(["push"])
 
 
 class CmdMergeDriver(CmdHookBase):
     def _run(self):
-        from dvc.dvcfile import Dvcfile
-        from dvc.repo import Repo
+        from ..dvcfile import Dvcfile
+        from ..repo import Repo
 
         dvc = Repo()
 

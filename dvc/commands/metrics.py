@@ -1,12 +1,12 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.exceptions import DvcException
-from dvc.ui import ui
-from dvc.utils.serialize import encode_exception
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link, fix_subparsers
+from ..exceptions import DvcException
+from ..ui import ui
+from ..utils.serialize import encode_exception
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class CmdMetricsShow(CmdMetricsBase):
         if self.args.json:
             ui.write_json(metrics, default=encode_exception)
         else:
-            from dvc.compare import show_metrics
+            from ..compare import show_metrics
 
             show_metrics(
                 metrics,
@@ -67,7 +67,7 @@ class CmdMetricsDiff(CmdMetricsBase):
         if self.args.json:
             ui.write_json(diff)
         else:
-            from dvc.compare import show_diff
+            from ..compare import show_diff
 
             show_diff(
                 diff,

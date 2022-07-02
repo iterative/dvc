@@ -22,8 +22,8 @@ from typing import (
 from funcy import reraise
 
 if TYPE_CHECKING:
-    from dvc.types import StrPath
-    from dvc.ui.table import CellT
+    from .types import StrPath
+    from .ui.table import CellT
 
 
 class Column(List["CellT"]):
@@ -200,7 +200,7 @@ class TabularData(MutableSequence[Sequence["CellT"]]):
         self.append(row)
 
     def render(self, **kwargs: Any):
-        from dvc.ui import ui
+        from .ui import ui
 
         if kwargs.pop("csv", False):
             ui.write(self.to_csv(), end="")
@@ -423,8 +423,8 @@ def metrics_table(
     precision: int = None,
     round_digits: bool = False,
 ):
-    from dvc.utils.diff import format_dict
-    from dvc.utils.flatten import flatten
+    from .utils.diff import format_dict
+    from .utils.flatten import flatten
 
     td = TabularData(["Revision", "Path"], fill_value="-")
 

@@ -2,16 +2,16 @@ import argparse
 import logging
 import os
 
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdGC(CmdBase):
     def run(self):
-        from dvc.repo.gc import _raise_error_if_all_disabled
+        from ..repo.gc import _raise_error_if_all_disabled
 
         _raise_error_if_all_disabled(
             all_branches=self.args.all_branches,

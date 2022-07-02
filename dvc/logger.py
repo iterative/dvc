@@ -5,7 +5,7 @@ import logging.handlers
 
 import colorama
 
-from dvc.progress import Tqdm
+from .progress import Tqdm
 
 FOOTER = (
     "\n{yellow}Having any troubles?{nc}"

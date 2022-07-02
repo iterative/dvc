@@ -1,14 +1,14 @@
 import argparse
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.commands.status import CmdDataStatus
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from .status import CmdDataStatus
 
 
 class CmdRepro(CmdBase):
     def run(self):
-        from dvc.ui import ui
+        from ..ui import ui
 
         stages = self.repo.reproduce(
             **self._common_kwargs, **self._repro_kwargs
@@ -19,7 +19,7 @@ class CmdRepro(CmdBase):
             ui.write("Use `dvc push` to send your updates to remote storage.")
 
         if self.args.metrics:
-            from dvc.compare import show_metrics
+            from ..compare import show_metrics
 
             metrics = self.repo.metrics.show()
             show_metrics(metrics)

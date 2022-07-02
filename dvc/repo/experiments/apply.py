@@ -3,9 +3,9 @@ import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
-from dvc.repo import locked
-from dvc.repo.scm_context import scm_context
-from dvc.utils.fs import remove
+from .. import locked
+from ..scm_context import scm_context
+from ...utils.fs import remove
 
 from .base import (
     EXEC_APPLY,
@@ -18,7 +18,7 @@ from .executor.base import BaseExecutor
 if TYPE_CHECKING:
     from scmrepo import Git
 
-    from dvc.repo import Repo
+    from .. import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
     from scmrepo.exceptions import SCMError as _SCMError
 
-    from dvc.repo.checkout import checkout as dvc_checkout
-    from dvc.scm import GitMergeError, RevError, resolve_rev
+    from ..checkout import checkout as dvc_checkout
+    from ...scm import GitMergeError, RevError, resolve_rev
 
     exps = repo.experiments
 

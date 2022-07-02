@@ -1,4 +1,4 @@
-from dvc.exceptions import DvcException
+from ..exceptions import DvcException
 
 
 class StageCmdFailedError(DvcException):
@@ -25,7 +25,7 @@ class StageFileAlreadyExistsError(DvcException):
 
 class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
-        from dvc.dvcfile import DVC_FILE_SUFFIX, is_dvc_file
+        from ..dvcfile import DVC_FILE_SUFFIX, is_dvc_file
 
         msg = f"'{fname}' is not a .dvc file"
 

@@ -24,7 +24,7 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
         trie: "GitTrie" = None,
         **kwargs: Any,
     ) -> None:
-        from dvc.scm import resolve_rev
+        from ..scm import resolve_rev
 
         super().__init__()
         self.fs_args.update(

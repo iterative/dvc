@@ -47,7 +47,7 @@ class ProcessManager:
             return json.dump(value.asdict(), fobj)
 
     def __delitem__(self, key: str) -> None:
-        from dvc.utils.fs import remove
+        from ..utils.fs import remove
 
         path = os.path.join(self.wdir, key)
         if os.path.exists(path):

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
-from dvc.exceptions import InvalidArgumentError
+from ..exceptions import InvalidArgumentError
 from dvc_data.hashfile.meta import Meta
 
 from .exceptions import (
@@ -16,13 +16,13 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
+    from ..repo import Repo
 
     from . import PipelineStage, Stage
 
 
 def check_stage_path(repo, path, is_wdir=False):
-    from dvc.utils.fs import path_isin
+    from ..utils.fs import path_isin
 
     assert repo is not None
 
@@ -43,7 +43,7 @@ def check_stage_path(repo, path, is_wdir=False):
 
 
 def fill_stage_outputs(stage, **kwargs):
-    from dvc.output import loads_from
+    from ..output import loads_from
 
     assert not stage.outs
 
@@ -83,7 +83,7 @@ def _load_live_output(
     live_html=False,
     **kwargs,
 ):
-    from dvc.output import Output, loads_from
+    from ..output import Output, loads_from
 
     outs = []
     if live or live_no_cache:
@@ -104,7 +104,7 @@ def _load_live_output(
 
 
 def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
-    from dvc.dependency import loads_from, loads_params
+    from ..dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
@@ -115,7 +115,7 @@ def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
 def check_no_externals(stage):
     from urllib.parse import urlparse
 
-    from dvc.utils import format_link
+    from ..utils import format_link
 
     # NOTE: preventing users from accidentally using external outputs. See
     # https://github.com/iterative/dvc/issues/1545 for more details.
@@ -140,7 +140,7 @@ def check_no_externals(stage):
 
 
 def check_circular_dependency(stage):
-    from dvc.exceptions import CircularDependencyError
+    from ..exceptions import CircularDependencyError
 
     circular_dependencies = {d.fs_path for d in stage.deps} & {
         o.fs_path for o in stage.outs
@@ -153,7 +153,7 @@ def check_circular_dependency(stage):
 def check_duplicated_arguments(stage):
     from collections import Counter
 
-    from dvc.exceptions import ArgumentDuplicationError
+    from ..exceptions import ArgumentDuplicationError
 
     path_counts = Counter(edge.fs_path for edge in stage.deps + stage.outs)
 
@@ -169,7 +169,7 @@ def check_missing_outputs(stage):
 
 
 def compute_md5(stage):
-    from dvc.output import Output
+    from ..output import Output
 
     from ..utils import dict_md5
 
@@ -252,7 +252,7 @@ def prepare_file_path(kwargs):
 
     Used in creating .dvc files.
     """
-    from dvc.dvcfile import DVC_FILE, DVC_FILE_SUFFIX
+    from ..dvcfile import DVC_FILE, DVC_FILE_SUFFIX
 
     out = first(
         concat(
@@ -279,9 +279,9 @@ def prepare_file_path(kwargs):
 def check_stage_exists(
     repo: "Repo", stage: Union["Stage", "PipelineStage"], path: str
 ):
-    from dvc.dvcfile import make_dvcfile
-    from dvc.stage import PipelineStage
-    from dvc.stage.exceptions import (
+    from ..dvcfile import make_dvcfile
+    from . import PipelineStage
+    from .exceptions import (
         DuplicateStageName,
         StageFileAlreadyExistsError,
     )

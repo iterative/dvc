@@ -7,8 +7,8 @@ import platform
 import sys
 from subprocess import Popen
 
-from dvc.env import DVC_DAEMON
-from dvc.utils import fix_env, is_binary
+from .env import DVC_DAEMON
+from .utils import fix_env, is_binary
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def _spawn_windows(cmd, env):
 
 
 def _spawn_posix(cmd, env):
-    from dvc.cli import main
+    from .cli import main
 
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exception and throws

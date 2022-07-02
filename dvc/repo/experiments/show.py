@@ -3,14 +3,14 @@ from collections import OrderedDict, defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from dvc.repo.experiments.base import ExpRefInfo
-from dvc.repo.metrics.show import _gather_metrics
-from dvc.repo.params.show import _gather_params
-from dvc.scm import iter_revs
-from dvc.utils import error_handler, onerror_collect, relpath
+from .base import ExpRefInfo
+from ..metrics.show import _gather_metrics
+from ..params.show import _gather_params
+from ...scm import iter_revs
+from ...utils import error_handler, onerror_collect, relpath
 
 if TYPE_CHECKING:
-    from dvc.repo import Repo
+    from .. import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def _collect_experiment_commit(
     onerror: Optional[Callable] = None,
     is_baseline: bool = False,
 ):
-    from dvc.dependency import ParamsDependency, RepoDependency
+    from ...dependency import ParamsDependency, RepoDependency
 
     res: Dict[str, Optional[Any]] = defaultdict(dict)
     for rev in repo.brancher(revs=[exp_rev]):
@@ -97,7 +97,7 @@ def _collect_experiment_commit(
 def _collect_experiment_branch(
     res, repo, branch, baseline, onerror: Optional[Callable] = None, **kwargs
 ):
-    from dvc.scm import resolve_rev
+    from ...scm import resolve_rev
 
     exp_rev = resolve_rev(repo.scm, branch)
     prev = None

@@ -3,7 +3,7 @@ class Metrics:
         self.repo = repo
 
     def show(self, *args, **kwargs):
-        from dvc.repo.metrics.show import show
+        from .show import show
 
         return show(self.repo, *args, **kwargs)
 

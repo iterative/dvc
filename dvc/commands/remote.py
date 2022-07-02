@@ -1,9 +1,9 @@
 import argparse
 
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.commands.config import CmdConfig
-from dvc.ui import ui
-from dvc.utils import format_link
+from ..cli.utils import append_doc_link, fix_subparsers
+from .config import CmdConfig
+from ..ui import ui
+from ..utils import format_link
 
 
 class CmdRemote(CmdConfig):
@@ -14,7 +14,7 @@ class CmdRemote(CmdConfig):
             self.args.name = self.args.name.lower()
 
     def _check_exists(self, conf):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         if self.args.name not in conf["remote"]:
             raise ConfigError(f"remote '{self.args.name}' doesn't exist.")
@@ -22,7 +22,7 @@ class CmdRemote(CmdConfig):
 
 class CmdRemoteAdd(CmdRemote):
     def run(self):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         if self.args.default:
             ui.write(f"Setting '{self.args.name}' as a default remote.")
@@ -62,7 +62,7 @@ class CmdRemoteRemove(CmdRemote):
 
 class CmdRemoteModify(CmdRemote):
     def run(self):
-        from dvc.config import merge
+        from ..config import merge
 
         with self.config.edit(self.args.level) as conf:
             merged = self.config.load_config_to_level(self.args.level)
@@ -81,7 +81,7 @@ class CmdRemoteModify(CmdRemote):
 
 class CmdRemoteDefault(CmdRemote):
     def run(self):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         if self.args.name is None and not self.args.unset:
             conf = self.config.read(self.args.level)
@@ -124,7 +124,7 @@ class CmdRemoteRename(CmdRemote):
             conf["core"]["remote"] = self.args.new
 
     def run(self):
-        from dvc.config import ConfigError
+        from ..config import ConfigError
 
         all_config = self.config.load_config_to_level(None)
         if self.args.new in all_config.get("remote", {}):
@@ -151,7 +151,7 @@ class CmdRemoteRename(CmdRemote):
 
 
 def add_parser(subparsers, parent_parser):
-    from dvc.commands.config import parent_config_parser
+    from .config import parent_config_parser
 
     REMOTE_HELP = "Set up and manage data remotes."
     remote_parser = subparsers.add_parser(

@@ -11,7 +11,7 @@ def fix_subparsers(subparsers):
 
 
 def append_doc_link(help_message, path):
-    from dvc.utils import format_link
+    from ..utils import format_link
 
     if not path:
         return help_message

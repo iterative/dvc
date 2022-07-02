@@ -1,7 +1,7 @@
 import os
 
-from dvc.exceptions import MoveNotDataSourceError
-from dvc.repo.scm_context import scm_context
+from ..exceptions import MoveNotDataSourceError
+from .scm_context import scm_context
 
 from . import locked
 
@@ -33,7 +33,7 @@ def move(self, from_path, to_path):
     also known as data sources.
     """
     import dvc.output as Output
-    from dvc.stage import Stage
+    from ..stage import Stage
 
     from ..dvcfile import DVC_FILE_SUFFIX, Dvcfile
 

@@ -293,7 +293,7 @@ def resolve_output(inp, out):
 def resolve_paths(repo, out, always_local=False):
     from urllib.parse import urlparse
 
-    from dvc.fs import localfs
+    from ..fs import localfs
 
     from ..dvcfile import DVC_FILE_SUFFIX
     from ..exceptions import DvcException
@@ -348,9 +348,9 @@ def error_link(name):
 def parse_target(
     target: str, default: str = None, isa_glob: bool = False
 ) -> Tuple[Optional[str], Optional[str]]:
-    from dvc.dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
-    from dvc.exceptions import DvcException
-    from dvc.parsing import JOIN
+    from ..dvcfile import PIPELINE_FILE, PIPELINE_LOCK, is_valid_filename
+    from ..exceptions import DvcException
+    from ..parsing import JOIN
 
     if not target:
         return None, None
@@ -437,7 +437,7 @@ def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
 
 
 def errored_revisions(rev_data: Dict) -> List:
-    from dvc.utils.collections import nested_contains
+    from .collections import nested_contains
 
     result = []
     for revision, data in rev_data.items():

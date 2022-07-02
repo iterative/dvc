@@ -1,12 +1,12 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.commands.metrics import DEFAULT_PRECISION
-from dvc.exceptions import DvcException
-from dvc.ui import ui
+from ...cli import completion
+from ...cli.command import CmdBase
+from ...cli.utils import append_doc_link
+from ..metrics import DEFAULT_PRECISION
+from ...exceptions import DvcException
+from ...ui import ui
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class CmdExperimentsDiff(CmdBase):
         if self.args.json:
             ui.write_json(diff)
         else:
-            from dvc.compare import show_diff
+            from ...compare import show_diff
 
             precision = self.args.precision or DEFAULT_PRECISION
             diffs = [("metrics", "Metric"), ("params", "Param")]

@@ -1,19 +1,19 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.utils import append_doc_link
-from dvc.commands.repro import CmdRepro
-from dvc.commands.repro import add_arguments as add_repro_arguments
-from dvc.exceptions import InvalidArgumentError
-from dvc.ui import ui
+from ...cli import completion
+from ...cli.utils import append_doc_link
+from ..repro import CmdRepro
+from ..repro import add_arguments as add_repro_arguments
+from ...exceptions import InvalidArgumentError
+from ...ui import ui
 
 logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsRun(CmdRepro):
     def run(self):
-        from dvc.compare import show_metrics
+        from ...compare import show_metrics
 
         if self.args.checkpoint_resume:
             if self.args.reset:

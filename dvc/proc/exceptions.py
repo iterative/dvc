@@ -1,4 +1,4 @@
-from dvc.exceptions import DvcException
+from ..exceptions import DvcException
 
 
 class ProcessNotTerminatedError(DvcException):

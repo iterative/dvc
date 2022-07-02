@@ -2,9 +2,9 @@ import builtins
 import os
 from time import sleep
 
-from dvc.env import DVC_CHECKPOINT, DVC_ROOT
-from dvc.repo import Repo
-from dvc.stage.monitor import CheckpointTask
+from ..env import DVC_CHECKPOINT, DVC_ROOT
+from ..repo import Repo
+from ..stage.monitor import CheckpointTask
 
 
 def make_checkpoint():

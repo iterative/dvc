@@ -1,8 +1,8 @@
 import os
 
-from dvc.repo.scm_context import scm_context
-from dvc.utils import relpath, resolve_output, resolve_paths
-from dvc.utils.fs import path_isin
+from .scm_context import scm_context
+from ..utils import relpath, resolve_output, resolve_paths
+from ..utils.fs import path_isin
 
 from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
@@ -23,8 +23,8 @@ def imp_url(
     desc=None,
     jobs=None,
 ):
-    from dvc.dvcfile import Dvcfile
-    from dvc.stage import Stage, create_stage, restore_fields
+    from ..dvcfile import Dvcfile
+    from ..stage import Stage, create_stage, restore_fields
 
     out = resolve_output(url, out)
     path, wdir, out = resolve_paths(

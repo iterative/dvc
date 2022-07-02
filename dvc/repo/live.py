@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Optional
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from dvc.output import Output
+    from ..output import Output
 
 
 def summary_fs_path(out: "Output") -> Optional[str]:
-    from dvc.output import Output
+    from ..output import Output
 
     assert out.live
     has_summary = True

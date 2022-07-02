@@ -1,5 +1,5 @@
-from dvc import api
-from dvc.utils.fs import remove
+from .. import api
+from ..utils.fs import remove
 
 
 class TestAPI:

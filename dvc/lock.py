@@ -9,9 +9,9 @@ import flufl.lock
 import zc.lockfile
 from funcy import retry
 
-from dvc.exceptions import DvcException
-from dvc.progress import Tqdm
-from dvc.utils import format_link
+from .exceptions import DvcException
+from .progress import Tqdm
+from .utils import format_link
 
 DEFAULT_TIMEOUT = 3
 

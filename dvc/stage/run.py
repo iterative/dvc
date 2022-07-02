@@ -4,8 +4,8 @@ import signal
 import subprocess
 import threading
 
-from dvc.stage.monitor import Monitor
-from dvc.utils import fix_env
+from .monitor import Monitor
+from ..utils import fix_env
 
 from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError

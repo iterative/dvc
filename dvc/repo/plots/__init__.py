@@ -20,13 +20,13 @@ import dpath.options
 import dpath.util
 from funcy import cached_property, first, project
 
-from dvc.exceptions import DvcException
-from dvc.utils import error_handler, errored_revisions, onerror_collect
-from dvc.utils.serialize import LOADERS
+from ...exceptions import DvcException
+from ...utils import error_handler, errored_revisions, onerror_collect
+from ...utils.serialize import LOADERS
 
 if TYPE_CHECKING:
-    from dvc.output import Output
-    from dvc.repo import Repo
+    from ...output import Output
+    from .. import Repo
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
@@ -109,7 +109,7 @@ class Plots:
 
             }
         """
-        from dvc.utils.collections import ensure_list
+        from ...utils.collections import ensure_list
 
         targets = ensure_list(targets)
         for rev in self.repo.brancher(revs=revs):
@@ -150,7 +150,7 @@ class Plots:
         props: Optional[Dict] = None,
         onerror: Optional[Callable] = None,
     ):
-        from dvc.fs.dvc import DvcFileSystem
+        from ...fs.dvc import DvcFileSystem
 
         fs = DvcFileSystem(repo=self.repo)
 
@@ -200,7 +200,7 @@ class Plots:
 
         errored = errored_revisions(result)
         if errored:
-            from dvc.ui import ui
+            from ...ui import ui
 
             ui.error_write(
                 "DVC failed to load some plots for following revisions: "
@@ -226,7 +226,7 @@ class Plots:
             out.plot.pop(prop)
 
     def modify(self, path, props=None, unset=None):
-        from dvc.dvcfile import Dvcfile
+        from ...dvcfile import Dvcfile
         from dvc_render.vega_templates import get_template
 
         props = props or {}
@@ -282,7 +282,7 @@ def _collect_plots(
     rev: str = None,
     recursive: bool = False,
 ) -> Dict[str, Dict]:
-    from dvc.repo.collect import collect
+    from ..collect import collect
 
     plots, fs_paths = collect(
         repo,
@@ -326,7 +326,7 @@ def infer_data_sources(plot_id, config=None):
 def _matches(targets, config_file, plot_id):
     import re
 
-    from dvc.utils.plots import get_plot_id
+    from ...utils.plots import get_plot_id
 
     if not targets:
         return True
@@ -411,7 +411,7 @@ def _adjust_definitions_to_cwd(fs, config_relpath, plots_definitions):
 
 
 def _collect_pipeline_files(repo, targets: List[str], props):
-    from dvc.dvcfile import PipelineFile
+    from ...dvcfile import PipelineFile
 
     result: Dict[str, Dict] = {}
     dvcfiles = {stage.dvcfile for stage in repo.index.stages}
@@ -449,7 +449,7 @@ def _collect_definitions(
     result: Dict = defaultdict(dict)
     props = props or {}
 
-    from dvc.fs.dvc import DvcFileSystem
+    from ...fs.dvc import DvcFileSystem
 
     fs = DvcFileSystem(repo=repo)
 
@@ -515,7 +515,7 @@ def parse(fs, path, props=None, **kwargs):
 
 
 def _plot_props(out: "Output") -> Dict:
-    from dvc.schema import PLOT_PROPS
+    from ...schema import PLOT_PROPS
 
     if not (out.plot or out.live):
         raise NotAPlotError(out)

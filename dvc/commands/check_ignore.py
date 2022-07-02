@@ -1,9 +1,9 @@
 import argparse
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
-from dvc.ui import ui
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link
+from ..ui import ui
 
 
 class CmdCheckIgnore(CmdBase):
@@ -53,7 +53,7 @@ class CmdCheckIgnore(CmdBase):
         return ret
 
     def _check_args(self):
-        from dvc.exceptions import DvcException
+        from ..exceptions import DvcException
 
         if not self.args.stdin and not self.args.targets:
             raise DvcException("`targets` or `--stdin` needed")

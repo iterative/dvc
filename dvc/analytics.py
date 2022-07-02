@@ -21,7 +21,7 @@ def collect_and_send_report(args=None, return_code=None):
     """
     import tempfile
 
-    from dvc.daemon import daemon
+    from .daemon import daemon
 
     report = {}
 
@@ -38,8 +38,8 @@ def collect_and_send_report(args=None, return_code=None):
 
 
 def is_enabled():
-    from dvc.config import Config, to_bool
-    from dvc.utils import env2bool
+    from .config import Config, to_bool
+    from .utils import env2bool
 
     if env2bool("DVC_TEST"):
         return False
@@ -84,8 +84,8 @@ def send(path):
 def _scm_in_use():
     from scmrepo.noscm import NoSCM
 
-    from dvc.exceptions import NotDvcRepoError
-    from dvc.repo import Repo
+    from .exceptions import NotDvcRepoError
+    from .repo import Repo
 
     from .scm import SCM, SCMError
 
@@ -102,8 +102,8 @@ def _runtime_info():
     """
     Gather information from the environment where DVC runs to fill a report.
     """
-    from dvc import __version__
-    from dvc.utils import is_binary
+    from . import __version__
+    from .utils import is_binary
 
     return {
         "dvc_version": __version__,
@@ -160,9 +160,9 @@ def _find_or_create_user_id():
     """
     import uuid
 
-    from dvc.config import Config
-    from dvc.lock import Lock, LockError
-    from dvc.utils.fs import makedirs
+    from .config import Config
+    from .lock import Lock, LockError
+    from .utils.fs import makedirs
 
     config_dir = Config.get_dir("global")
     fname = os.path.join(config_dir, "user_id")

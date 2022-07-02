@@ -11,7 +11,7 @@ from .base import BaseExecutorManager
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
-    from dvc.repo import Repo
+    from .... import Repo
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,8 @@ class SSHExecutorManager(BaseExecutorManager):
         return f"{name}{BaseExecutor.INFOFILE_EXT}"
 
     def _exec_attached(self, repo: "Repo", jobs: Optional[int] = 1):
-        from dvc.exceptions import DvcException
-        from dvc.stage.monitor import CheckpointKilledError
+        from .....exceptions import DvcException
+        from .....stage.monitor import CheckpointKilledError
 
         assert len(self._queue) == 1
         result: Dict[str, Dict[str, str]] = defaultdict(dict)

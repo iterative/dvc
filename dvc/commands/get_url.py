@@ -1,9 +1,9 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.exceptions import DvcException
+from ..cli import completion
+from ..cli.command import CmdBaseNoRepo
+from ..exceptions import DvcException
 
 from ..cli.utils import append_doc_link
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class CmdGetUrl(CmdBaseNoRepo):
     def run(self):
-        from dvc.repo import Repo
+        from ..repo import Repo
 
         try:
             Repo.get_url(self.args.url, out=self.args.out, jobs=self.args.jobs)

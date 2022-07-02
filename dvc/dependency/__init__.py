@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Mapping
 
-from dvc.output import ARTIFACT_SCHEMA, Output
+from ..output import ARTIFACT_SCHEMA, Output
 
 from .base import Dependency
 from .param import ParamsDependency

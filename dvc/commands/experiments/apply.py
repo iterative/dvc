@@ -1,9 +1,9 @@
 import argparse
 import logging
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link
+from ...cli import completion
+from ...cli.command import CmdBase
+from ...cli.utils import append_doc_link
 
 logger = logging.getLogger(__name__)
 

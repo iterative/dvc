@@ -20,7 +20,7 @@ class TestImport:
         pytest.skip()
 
     def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
-        from dvc.odbmgr import ODBManager
+        from ..odbmgr import ODBManager
 
         workspace.gen(
             {"dir": {"file": "file", "subdir": {"subfile": "subfile"}}}
@@ -97,7 +97,7 @@ class TestAdd:
         pytest.skip()
 
     def test_add(self, tmp_dir, dvc, workspace, hash_name, hash_value):
-        from dvc.stage.exceptions import StageExternalOutputsError
+        from ..stage.exceptions import StageExternalOutputsError
 
         workspace.gen("file", "file")
 

@@ -11,9 +11,9 @@ import typing
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar
 
-from dvc.exceptions import PrettyDvcException
-from dvc.ui import ui
-from dvc.utils.serialize import (
+from ..exceptions import PrettyDvcException
+from ..ui import ui
+from .serialize import (
     EncodingError,
     YAMLFileCorruptedError,
     parse_yaml,
@@ -25,8 +25,8 @@ if TYPE_CHECKING:
     from ruamel.yaml import StreamMark
     from voluptuous import MultipleInvalid
 
-    from dvc.fs import FileSystem
-    from dvc.ui import RichText
+    from ..fs import FileSystem
+    from ..ui import RichText
 
 
 _T = TypeVar("_T")
@@ -36,7 +36,7 @@ merge_conflict_marker = re.compile("^([<=>]{7}) .*$", re.MULTILINE)
 def make_relpath(path: str) -> str:
     import os
 
-    from dvc.utils import relpath
+    from . import relpath
 
     rel = relpath(path)
     prefix = ""

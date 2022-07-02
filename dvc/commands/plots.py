@@ -5,18 +5,18 @@ import os
 
 from funcy import first
 
-from dvc.cli import completion
-from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
-from dvc.exceptions import DvcException
-from dvc.ui import ui
-from dvc.utils import format_link
+from ..cli import completion
+from ..cli.command import CmdBase
+from ..cli.utils import append_doc_link, fix_subparsers
+from ..exceptions import DvcException
+from ..ui import ui
+from ..utils import format_link
 
 logger = logging.getLogger(__name__)
 
 
 def _show_json(renderers, split=False):
-    from dvc.render.convert import to_json
+    from ..render.convert import to_json
 
     result = {
         renderer.name: to_json(renderer, split) for renderer in renderers
@@ -25,7 +25,7 @@ def _show_json(renderers, split=False):
 
 
 def _adjust_vega_renderers(renderers):
-    from dvc.render import VERSION_FIELD
+    from ..render import VERSION_FIELD
     from dvc_render import VegaRenderer
 
     for r in renderers:
@@ -48,7 +48,7 @@ def _adjust_vega_renderers(renderers):
 def _summarize_version_infos(renderer):
     from collections import defaultdict
 
-    from dvc.render import VERSION_FIELD
+    from ..render import VERSION_FIELD
 
     result = defaultdict(set)
 
@@ -83,7 +83,7 @@ class CmdPlots(CmdBase):
         raise NotImplementedError
 
     def _props(self):
-        from dvc.schema import PLOT_PROPS
+        from ..schema import PLOT_PROPS
 
         # Pass only props specified by user, to not shadow ones from plot def
         props = {p: getattr(self.args, p) for p in PLOT_PROPS}
@@ -110,7 +110,7 @@ class CmdPlots(CmdBase):
     def run(self):
         from pathlib import Path
 
-        from dvc.render.match import match_defs_renderers
+        from ..render.match import match_defs_renderers
         from dvc_render import render_html
 
         if self.args.show_vega:

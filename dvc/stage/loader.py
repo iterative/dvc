@@ -5,9 +5,9 @@ from itertools import chain
 
 from funcy import cached_property, get_in, lcat, once, project
 
-from dvc import dependency, output
-from dvc.parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
-from dvc.parsing.versions import LOCKFILE_VERSION
+from .. import dependency, output
+from ..parsing import FOREACH_KWD, JOIN, DataResolver, EntryNotFound
+from ..parsing.versions import LOCKFILE_VERSION
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
 

@@ -9,9 +9,9 @@ from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
 from scmrepo.git import Git
 from scmrepo.noscm import NoSCM
 
-from dvc.exceptions import DvcException
-from dvc.progress import Tqdm
-from dvc.utils import format_link
+from .exceptions import DvcException
+from .progress import Tqdm
+from .utils import format_link
 
 if TYPE_CHECKING:
     from scmrepo.progress import GitProgressEvent
@@ -138,7 +138,7 @@ class TqdmGit(Tqdm):
 def clone(url: str, to_path: str, **kwargs):
     from scmrepo.exceptions import CloneError as InternalCloneError
 
-    from dvc.repo.experiments.utils import fetch_all_exps
+    from .repo.experiments.utils import fetch_all_exps
 
     with TqdmGit(desc=f"Cloning {os.path.basename(url)}") as pbar:
         try:
@@ -153,7 +153,7 @@ def clone(url: str, to_path: str, **kwargs):
 def resolve_rev(scm: "Git", rev: str) -> str:
     from scmrepo.exceptions import RevError as InternalRevError
 
-    from dvc.repo.experiments.utils import fix_exp_head
+    from .repo.experiments.utils import fix_exp_head
 
     try:
         return scm.resolve_rev(fix_exp_head(scm, rev))
@@ -161,7 +161,7 @@ def resolve_rev(scm: "Git", rev: str) -> str:
         # `scm` will only resolve git branch and tag names,
         # if rev is not a sha it may be an abbreviated experiment name
         if not rev.startswith("refs/"):
-            from dvc.repo.experiments.utils import (
+            from .repo.experiments.utils import (
                 AmbiguousExpRefInfo,
                 resolve_name,
             )
@@ -216,7 +216,7 @@ def iter_revs(
             results.extend(scm.list_tags())
 
     if all_experiments:
-        from dvc.repo.experiments.utils import exp_commits
+        from .repo.experiments.utils import exp_commits
 
         results.extend(exp_commits(scm))
 

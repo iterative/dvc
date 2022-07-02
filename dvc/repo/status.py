@@ -3,7 +3,7 @@ from itertools import compress
 
 from funcy.py3 import cat
 
-from dvc.exceptions import InvalidArgumentError
+from ..exceptions import InvalidArgumentError
 
 from . import locked
 

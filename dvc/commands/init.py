@@ -3,17 +3,17 @@ import logging
 
 import colorama
 
-from dvc import analytics
-from dvc.cli.command import CmdBaseNoRepo
-from dvc.cli.utils import append_doc_link
-from dvc.utils import boxify
-from dvc.utils import format_link as fmt_link
+from .. import analytics
+from ..cli.command import CmdBaseNoRepo
+from ..cli.utils import append_doc_link
+from ..utils import boxify
+from ..utils import format_link as fmt_link
 
 logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
-    from dvc.ui import ui
+    from ..ui import ui
 
     if analytics.is_enabled():
         ui.write(
@@ -38,8 +38,8 @@ def _welcome_message():
 
 class CmdInit(CmdBaseNoRepo):
     def run(self):
-        from dvc.exceptions import InitError
-        from dvc.repo import Repo
+        from ..exceptions import InitError
+        from ..repo import Repo
 
         try:
             with Repo.init(

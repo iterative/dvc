@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING, List, no_type_check
 
 from funcy import post_processing
 
-from dvc.dependency import ParamsDependency
-from dvc.output import Output
-from dvc.utils.collections import apply_diff
-from dvc.utils.serialize import parse_yaml_for_update
+from ..dependency import ParamsDependency
+from ..output import Output
+from ..utils.collections import apply_diff
+from ..utils.serialize import parse_yaml_for_update
 
 from .params import StageParams
 from .utils import resolve_wdir, split_params_deps
 
 if TYPE_CHECKING:
-    from dvc.stage import PipelineStage, Stage
+    from . import PipelineStage, Stage
 
 PARAM_PARAMS = ParamsDependency.PARAM_PARAMS
 PARAM_PATH = ParamsDependency.PARAM_PATH

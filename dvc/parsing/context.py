@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from funcy import identity, lfilter, nullcontext, select
 
-from dvc.exceptions import DvcException
-from dvc.parsing.interpolate import (
+from ..exceptions import DvcException
+from .interpolate import (
     get_expression,
     get_matches,
     is_exact_string,
@@ -31,7 +31,7 @@ class ContextError(DvcException):
 
 class ReservedKeyError(ContextError):
     def __init__(self, keys, path=None):
-        from dvc.utils.humanize import join
+        from ..utils.humanize import join
 
         self.keys = keys
         self.path = path
@@ -356,7 +356,7 @@ class Context(CtxDict):
     def load_from(
         cls, fs, path: str, select_keys: List[str] = None
     ) -> "Context":
-        from dvc.utils.serialize import LOADERS
+        from ..utils.serialize import LOADERS
 
         if not fs.exists(path):
             raise ParamsLoadError(f"'{path}' does not exist")
