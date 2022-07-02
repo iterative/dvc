@@ -541,7 +541,7 @@ class Output:
             raise self.IsNotFileOrDirError(self)
 
         if self.is_empty:
-            logger.warning(f"'{self}' is empty.")
+            logger.warning("'%s' is empty.", self)
 
         self.ignore()
 
@@ -912,7 +912,7 @@ class Output:
         except RemoteMissingDepsError:  # pylint: disable=try-except-raise
             raise
         except DvcException:
-            logger.debug(f"failed to pull cache for '{self}'")
+            logger.debug("failed to pull cache for '%s'", self)
 
         try:
             ocheck(self.odb, self.odb.get(self.hash_info.value))

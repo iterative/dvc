@@ -16,7 +16,7 @@ class CmdFreezeBase(CmdBase):
             try:
                 func(target)
             except DvcException:
-                logger.exception(f"failed to {name} '{target}'")
+                logger.exception("failed to %s %r", name, target)
                 ret = 1
         return ret
 

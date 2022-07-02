@@ -32,11 +32,7 @@ def update_import(stage, rev=None, to_remote=False, remote=None, jobs=None):
 
 def sync_import(stage, dry=False, force=False, jobs=None):
     """Synchronize import's outs to the workspace."""
-    logger.info(
-        "Importing '{dep}' -> '{out}'".format(
-            dep=stage.deps[0], out=stage.outs[0]
-        )
-    )
+    logger.info("Importing '%s' -> '%s'", stage.deps[0], stage.outs[0])
     if dry:
         return
 

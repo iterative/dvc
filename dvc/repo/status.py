@@ -16,8 +16,9 @@ def _joint_status(pairs):
     for stage, filter_info in pairs:
         if stage.frozen and not stage.is_repo_import:
             logger.warning(
-                "{} is frozen. Its dependencies are"
-                " not going to be shown in the status output.".format(stage)
+                "%s is frozen. Its dependencies are"
+                " not going to be shown in the status output.",
+                stage,
             )
         status_info.update(
             stage.status(check_updates=True, filter_info=filter_info)

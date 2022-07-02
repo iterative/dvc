@@ -33,8 +33,9 @@ def _reproduce_stage(stage: "Stage", **kwargs):
 
     if stage.frozen and not stage.is_import:
         logger.warning(
-            "{} is frozen. Its dependencies are"
-            " not going to be reproduced.".format(stage)
+            "%s is frozen. Its dependencies are"
+            " not going to be reproduced.",
+            stage,
         )
 
     stage = stage.reproduce(**kwargs)

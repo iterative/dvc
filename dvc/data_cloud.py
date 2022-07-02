@@ -64,7 +64,7 @@ class DataCloud:
         return get_odb(cls(**config), fs_path, **config)
 
     def _log_missing(self, status: "CompareStatusResult"):
-        if status.missing:
+        if status.missing and logger.isEnabledFor(logging.WARNING):
             missing_desc = "\n".join(
                 f"name: {hash_info.obj_name}, {hash_info}"
                 for hash_info in status.missing
