@@ -112,6 +112,8 @@ class Plots:
         from dvc.utils.collections import ensure_list
 
         targets = ensure_list(targets)
+        targets = [self.repo.dvcfs.from_os_path(target) for target in targets]
+
         for rev in self.repo.brancher(revs=revs):
             # .brancher() adds unwanted workspace
             if revs is not None and rev not in revs:

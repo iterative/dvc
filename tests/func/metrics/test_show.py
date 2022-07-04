@@ -31,6 +31,19 @@ def test_show(tmp_dir, dvc, run_copy_metrics):
     }
 
 
+def test_show_targets(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
+    run_copy_metrics(
+        "metrics_t.yaml", "metrics.yaml", metrics=["metrics.yaml"]
+    )
+    expected = {"": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}}
+    assert dvc.metrics.show(targets=["metrics.yaml"]) == expected
+    assert (
+        dvc.metrics.show(targets=(tmp_dir / "metrics.yaml").fs_path)
+        == expected
+    )
+
+
 def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("foo_temp", "foo: 1\n")
     tmp_dir.gen("baz_temp", "baz: 2\n")

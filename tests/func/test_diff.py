@@ -331,6 +331,18 @@ def test_no_commits(tmp_dir):
     assert Repo.init().diff() == {}
 
 
+def test_abs_target(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("file", "text")
+
+    assert dvc.diff(targets=(tmp_dir / "file").fs_path) == {
+        "added": [{"path": "file", "hash": digest("text")}],
+        "deleted": [],
+        "modified": [],
+        "not in cache": [],
+        "renamed": [],
+    }
+
+
 def setup_targets_test(tmp_dir):
     tmp_dir.dvc_gen("file", "first", commit="add a file")
 
