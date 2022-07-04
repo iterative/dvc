@@ -351,11 +351,11 @@ class LocalCeleryQueue(BaseStashQueue):
         return status
 
     def clear(self, *args, **kwargs):
-        from .remove import clear
+        from .remove import celery_clear
 
-        return clear(self, *args, **kwargs)
+        return celery_clear(self, *args, **kwargs)
 
     def remove(self, *args, **kwargs):
-        from .remove import remove
+        from .remove import celery_remove
 
-        return remove(self, *args, **kwargs)
+        return celery_remove(self, *args, **kwargs)
