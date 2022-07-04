@@ -23,12 +23,17 @@ def _is_metric(out: Output) -> bool:
 def _to_fs_paths(metrics: List[Output]) -> StrPaths:
     result = []
     for out in metrics:
+        fs = out.repo.dvcfs
         if out.metric:
-            result.append(out.repo.dvcfs.from_os_path(out.fs_path))
+            fs_path = fs.from_os_path(out.fs_path)
+            if fs.isdir(fs_path):
+                result.extend(fs.find(fs_path))
+            else:
+                result.append(fs_path)
         elif out.live:
             fs_path = summary_fs_path(out)
             if fs_path:
-                result.append(out.repo.dvcfs.from_os_path(fs_path))
+                result.append(fs.from_os_path(fs_path))
     return result
 
 

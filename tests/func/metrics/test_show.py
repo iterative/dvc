@@ -43,6 +43,19 @@ def test_show_multiple(tmp_dir, dvc, run_copy_metrics):
     }
 
 
+def test_show_dir(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen({"metrics": {"foo.yml": "11", "bar.yml": "22"}})
+    run_copy_metrics("metrics", "metrics_copy", metrics=["metrics_copy"])
+    assert dvc.metrics.show() == {
+        "": {
+            "data": {
+                "metrics_copy/foo.yml": {"data": 11},
+                "metrics_copy/bar.yml": {"data": 22},
+            }
+        }
+    }
+
+
 def test_show_branch(tmp_dir, scm, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_temp.yaml", "foo: 1")
     run_copy_metrics(
