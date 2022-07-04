@@ -67,6 +67,7 @@ def gc(
                 all_tags=all_tags,
                 all_commits=all_commits,
                 all_experiments=all_experiments,
+                commit_time=commit_time,
                 remote=remote,
                 force=force,
                 jobs=jobs,

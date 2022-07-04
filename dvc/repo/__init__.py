@@ -386,6 +386,7 @@ class Repo:
         all_tags=False,
         all_commits=False,
         all_experiments=False,
+        commit_time: Optional[str] = None,
         remote=None,
         force=False,
         jobs=None,
@@ -416,6 +417,7 @@ class Repo:
             all_tags=all_tags,
             all_commits=all_commits,
             all_experiments=all_experiments,
+            commit_time=commit_time,
         ):
             for odb, objs in self.index.used_objs(
                 targets,
