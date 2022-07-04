@@ -152,28 +152,26 @@ class BaseStashQueue(ABC):
         if all_ or queued:
             return self.clear()
 
-        removed: List[str] = []
-        to_remove: Dict[str, ExpStashEntry] = {}
+        name_to_remove: List[str] = []
+        entry_to_remove: List[ExpStashEntry] = []
         queue_entries = self.match_queue_entry_by_name(
             revs, self.iter_queued()
         )
         for name, entry in queue_entries.items():
             if entry:
-                to_remove[entry.stash_rev] = self.stash.stash_revs[
-                    entry.stash_rev
-                ]
-                removed.append(name)
+                entry_to_remove.append(self.stash.stash_revs[entry.stash_rev])
+                name_to_remove.append(name)
 
-        self._remove_revs(to_remove, self.stash)
-        return removed
+        self.stash.remove_revs(entry_to_remove)
+        return name_to_remove
 
     def clear(self, **kwargs) -> List[str]:
         """Remove all entries from the queue."""
         stash_revs = self.stash.stash_revs
-        removed = list(stash_revs)
-        self._remove_revs(stash_revs, self.stash)
+        name_to_remove = list(stash_revs)
+        self.stash.remove_revs(list(stash_revs.values()))
 
-        return removed
+        return name_to_remove
 
     def status(self) -> List[Dict[str, Any]]:
         """Show the status of exp tasks in queue"""
@@ -216,19 +214,6 @@ class BaseStashQueue(ABC):
             for queue_entry, _ in self.iter_success()
         )
         return result
-
-    @staticmethod
-    def _remove_revs(stash_revs: Mapping[str, ExpStashEntry], stash: ExpStash):
-        """Remove the specified entries from the queue by stash revision."""
-        for index in sorted(
-            (
-                entry.stash_index
-                for entry in stash_revs.values()
-                if entry.stash_index is not None
-            ),
-            reverse=True,
-        ):
-            stash.drop(index)
 
     @abstractmethod
     def iter_queued(self) -> Generator[QueueEntry, None, None]:

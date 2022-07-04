@@ -28,20 +28,17 @@ def test_remove_queued(test_queue, mocker):
     mocker.patch.object(test_queue, "_iter_queued", return_value=msg_iter)
     mocker.patch.object(test_queue, "iter_queued", return_value=entry_iter)
 
-    remove_revs_mocker = mocker.patch.object(test_queue, "_remove_revs")
+    remove_revs_mocker = mocker.patch.object(test_queue.stash, "remove_revs")
     reject_mocker = mocker.patch.object(test_queue.celery, "reject")
 
     assert test_queue.remove(["queue2"]) == ["queue2"]
     reject_mocker.assert_called_once_with("msg_queue2")
-    remove_revs_mocker.assert_called_once_with(
-        {"queue2": stash_dict["queue2"]}, test_queue.stash
-    )
-
+    remove_revs_mocker.assert_called_once_with([stash_dict["queue2"]])
     remove_revs_mocker.reset_mock()
     reject_mocker.reset_mock()
 
     assert test_queue.remove([], queued=True) == queued_test
-    remove_revs_mocker.assert_called_once_with(stash_dict, test_queue.stash)
+    remove_revs_mocker.assert_called_once_with(list(stash_dict.values()))
     reject_mocker.assert_has_calls(
         [call("msg_queue1"), call("msg_queue2"), call("msg_queue3")]
     )
@@ -91,16 +88,16 @@ def test_remove_done(test_queue, mocker):
     mocker.patch.object(test_queue, "iter_failed", return_value=failed_iter)
     mocker.patch("celery.result.AsyncResult", return_value=mocker.Mock())
 
-    remove_revs_mocker = mocker.patch.object(test_queue, "_remove_revs")
+    remove_revs_mocker = mocker.patch.object(
+        test_queue.failed_stash, "remove_revs"
+    )
     purge_mocker = mocker.patch.object(test_queue.celery, "purge")
 
     assert test_queue.remove(["failed3", "success2"]) == [
         "failed3",
         "success2",
     ]
-    remove_revs_mocker.assert_called_once_with(
-        {"failed3": stash_dict["failed3"]}, test_queue.failed_stash
-    )
+    remove_revs_mocker.assert_called_once_with([stash_dict["failed3"]])
     purge_mocker.assert_has_calls([call("msg_failed3"), call("msg_success2")])
 
     remove_revs_mocker.reset_mock()
@@ -120,9 +117,7 @@ def test_remove_done(test_queue, mocker):
         ],
         any_order=True,
     )
-    remove_revs_mocker.assert_called_once_with(
-        stash_dict, test_queue.failed_stash
-    )
+    remove_revs_mocker.assert_called_once_with(list(stash_dict.values()))
 
 
 def test_remove_all(test_queue, mocker):
