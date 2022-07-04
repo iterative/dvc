@@ -709,7 +709,7 @@ class Output:
                 f"verify metric is not supported for {self.protocol}"
             )
 
-        if not self.metric or self.plot:
+        if not (self.metric or self.plot):
             return
 
         if not os.path.exists(self.fs_path):
