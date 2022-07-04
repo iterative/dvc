@@ -49,8 +49,8 @@ def test_show_dir(tmp_dir, dvc, run_copy_metrics):
     assert dvc.metrics.show() == {
         "": {
             "data": {
-                "metrics_copy/foo.yml": {"data": 11},
-                "metrics_copy/bar.yml": {"data": 22},
+                os.path.join("metrics_copy", "foo.yml"): {"data": 11},
+                os.path.join("metrics_copy", "bar.yml"): {"data": 22},
             }
         }
     }
