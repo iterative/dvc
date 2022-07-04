@@ -272,8 +272,8 @@ def add_parser(subparsers, parent_parser):
     fix_subparsers(plots_subparsers)
 
     SHOW_HELP = (
-        "Generate plots from target files or plots definitions from "
-        "`dvc.yaml` file."
+        "Generate plots from target files or from `plots`"
+        " definitions in `dvc.yaml`."
     )
     plots_show_parser = plots_subparsers.add_parser(
         "show",
@@ -285,9 +285,10 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Plots to visualize. Supports any file path, or plot name "
-        "defined in `dvc.yaml`. "
-        "Shows all plots by default.",
+        help=(
+            "Plots files or plot IDs from `dvc.yaml` to visualize. "
+            "Shows all plots by default."
+        ),
     ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
     _add_output_argument(plots_show_parser)
@@ -295,8 +296,8 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
-        "Show multiple versions of plot data "
-        "by plotting them in a single image."
+        "Show multiple versions of a plot by overlaying them "
+        "in a single image."
     )
     plots_diff_parser = plots_subparsers.add_parser(
         "diff",
@@ -331,8 +332,8 @@ def add_parser(subparsers, parent_parser):
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
     PLOTS_MODIFY_HELP = (
-        "Modify display properties of data-series plot outputs "
-        "(has no effect on image-type plots)."
+        "Modify display properties of data-series plots "
+        "defined in stages (has no effect on image plots)."
     )
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
@@ -342,7 +343,8 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Plot output to set properties to"
+        "target",
+        help="Plots file to set properties for (defined at the stage level).",
     ).complete = completion.FILE
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
