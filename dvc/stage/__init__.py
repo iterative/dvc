@@ -323,7 +323,7 @@ class Stage(params.StageParams):
             status = dep.status()
             if status:
                 logger.debug(
-                    "Dependency '%s' of %s changed because it is %r.",
+                    "Dependency '%s' of %s changed because it is '%s'.",
                     dep,
                     self,
                     status[str(dep)],
@@ -337,7 +337,7 @@ class Stage(params.StageParams):
             status = out.status()
             if status:
                 logger.debug(
-                    "Output '%s' of %s changed because it is %r.",
+                    "Output '%s' of %s changed because it is '%s'.",
                     out,
                     self,
                     status[str(out)],
@@ -452,7 +452,7 @@ class Stage(params.StageParams):
             m = None
         else:
             m = compute_md5(self)
-        logger.debug("Computed %s md5: %r", self, m)
+        logger.debug("Computed %s md5: '%s'", self, m)
         return m
 
     def save(self, allow_missing=False):

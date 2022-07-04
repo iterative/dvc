@@ -37,7 +37,7 @@ class Updater:
         ctime = os.path.getmtime(self.updater_file)
         outdated = time.time() - ctime >= self.TIMEOUT
         if outdated:
-            logger.debug("%r is outdated", self.updater_file)
+            logger.debug("'%s' is outdated", self.updater_file)
         return outdated
 
     def _with_lock(self, func, action):
@@ -48,7 +48,7 @@ class Updater:
                 func()
         except LockError:
             logger.debug(
-                "Failed to acquire %r before %s updates",
+                "Failed to acquire '%s' before %s updates",
                 self.lock.lockfile,
                 action,
             )
@@ -79,7 +79,7 @@ class Updater:
                 latest = info["version"]
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(
-                    "%r is not a valid json: %s", self.updater_file, exc
+                    "'%s' is not a valid json: %s", self.updater_file, exc
                 )
                 self.fetch()
                 return

@@ -85,7 +85,7 @@ def _push(
     from ...scm import GitAuthError
 
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
-    logger.debug("git push experiment %r -> '%s'", refspec_list, git_remote)
+    logger.debug("git push experiment '%s' -> '%s'", refspec_list, git_remote)
 
     with TqdmGit(desc="Pushing git refs") as pbar:
         try:

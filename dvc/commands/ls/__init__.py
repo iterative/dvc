@@ -42,7 +42,7 @@ class CmdList(CmdBaseNoRepo):
                 ui.write("\n".join(entries))
             return 0
         except DvcException:
-            logger.exception("failed to list %r", self.args.url)
+            logger.exception("failed to list '%s'", self.args.url)
             return 1
 
 

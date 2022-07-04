@@ -82,7 +82,7 @@ def _pull(
     force: bool,
 ) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
-    logger.debug("git pull experiment %r -> '%s'", git_remote, refspec_list)
+    logger.debug("git pull experiment '%s' -> '%s'", git_remote, refspec_list)
 
     with TqdmGit(desc="Fetching git refs") as pbar:
         results: Mapping[str, SyncStatus] = repo.scm.fetch_refspecs(

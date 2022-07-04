@@ -85,7 +85,7 @@ def find_pager():
 
 def pager(text: str) -> None:
     _pager = find_pager()
-    logger.trace("Using pager: %r", _pager)  # type: ignore[attr-defined]
+    logger.trace("Using pager: '%s'", _pager)  # type: ignore[attr-defined]
     make_pager(_pager)(text)
 
 
