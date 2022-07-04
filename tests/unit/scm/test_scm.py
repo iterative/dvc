@@ -1,3 +1,7 @@
+from datetime import datetime
+
+from scmrepo.exceptions import SCMError
+
 from dvc.repo.experiments import ExpRefInfo
 from dvc.scm import GitMergeError, iter_revs
 
@@ -5,6 +9,7 @@ from dvc.scm import GitMergeError, iter_revs
 def test_iter_revs(
     tmp_dir,
     scm,
+    mocker,
 ):
     """
     new         other
@@ -60,6 +65,25 @@ def test_iter_revs(
         rev_new: [rev_new],
         rev_old: [rev_old],
         rev_root: [rev_root],
+    }
+
+    def _func(rev):
+
+        if rev == rev_root:
+            return mocker.Mock(commit_time=datetime(2022, 6, 28).timestamp())
+        if rev == rev_old:
+            raise SCMError
+        return mocker.Mock(commit_time=datetime(2022, 6, 30).timestamp())
+
+    mocker.patch(
+        "scmrepo.git.Git.resolve_commit", mocker.MagicMock(side_effect=_func)
+    )
+
+    gen = iter_revs(scm, commit_time="2022-06-29")
+    assert gen == {
+        rev_new: [rev_new],
+        rev_old: [rev_old],
+        rev_other: [rev_other],
     }
 
 
