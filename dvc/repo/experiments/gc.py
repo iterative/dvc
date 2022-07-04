@@ -15,6 +15,7 @@ def gc(
     all_tags: Optional[bool] = False,
     all_commits: Optional[bool] = False,
     workspace: Optional[bool] = False,
+    commit_date: Optional[str] = None,
     queued: Optional[bool] = False,
 ):
     keep_revs = set(
@@ -22,6 +23,7 @@ def gc(
             all_branches=all_branches,
             all_tags=all_tags,
             all_commits=all_commits,
+            commit_date=commit_date,
             sha_only=True,
         )
     )

@@ -268,23 +268,14 @@ def test_gc_without_workspace_on_tags_branches_commits(tmp_dir, dvc):
     dvc.gc(force=False, all_branches=True, all_commits=False, workspace=False)
 
 
-def test_gc_without_workspace(tmp_dir, dvc, caplog):
+@pytest.mark.parametrize("cloud", ["c", ""])
+def test_gc_without_workspace(tmp_dir, dvc, caplog, cloud):
     with caplog.at_level(logging.WARNING, logger="dvc"):
-        assert main(["gc", "-vf"]) == 255
+        assert main(["gc", f"-{cloud}vf"]) == 255
 
     assert (
         "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-        "`--all-experiments` or `--all-commits` needs to be set."
-    ) in caplog.text
-
-
-def test_gc_cloud_without_any_specifier(tmp_dir, dvc, caplog):
-    with caplog.at_level(logging.WARNING, logger="dvc"):
-        assert main(["gc", "-cvf"]) == 255
-
-    assert (
-        "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-        "`--all-experiments` or `--all-commits` needs to be set."
+        "`--all-experiments`, `--all-commits` or `--date` needs to be set."
     ) in caplog.text
 
 

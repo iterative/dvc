@@ -10,7 +10,7 @@ def brancher(  # noqa: E302
     all_tags=False,
     all_commits=False,
     all_experiments=False,
-    commit_time: Optional[str] = None,
+    commit_date: Optional[str] = None,
     sha_only=False,
 ):
     """Generator that iterates over specified revisions.
@@ -68,7 +68,7 @@ def brancher(  # noqa: E302
         all_tags=all_tags,
         all_commits=all_commits,
         all_experiments=all_experiments,
-        commit_time=commit_time,
+        commit_date=commit_date,
     )
 
     try:

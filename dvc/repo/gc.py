@@ -12,7 +12,7 @@ def _raise_error_if_all_disabled(**kwargs):
     if not any(kwargs.values()):
         raise InvalidArgumentError(
             "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-            "`--all-experiments`, `--all-commits` or `--time` needs to be set."
+            "`--all-experiments`, `--all-commits` or `--date` needs to be set."
         )
 
 
@@ -26,7 +26,7 @@ def gc(
     all_tags=False,
     all_commits=False,
     all_experiments=False,
-    commit_time: Optional[str] = None,
+    commit_date: Optional[str] = None,
     force=False,
     jobs=None,
     repos=None,
@@ -42,7 +42,7 @@ def gc(
         all_commits=all_commits,
         all_branches=all_branches,
         all_experiments=all_experiments,
-        commit_time=commit_time,
+        commit_date=commit_date,
     )
 
     from contextlib import ExitStack
@@ -67,7 +67,7 @@ def gc(
                 all_tags=all_tags,
                 all_commits=all_commits,
                 all_experiments=all_experiments,
-                commit_time=commit_time,
+                commit_date=commit_date,
                 remote=remote,
                 force=force,
                 jobs=jobs,

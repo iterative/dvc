@@ -70,16 +70,16 @@ def test_iter_revs(
     def _func(rev):
 
         if rev == rev_root:
-            return mocker.Mock(commit_time=datetime(2022, 6, 28).timestamp())
+            return mocker.Mock(commit_date=datetime(2022, 6, 28).timestamp())
         if rev == rev_old:
             raise SCMError
-        return mocker.Mock(commit_time=datetime(2022, 6, 30).timestamp())
+        return mocker.Mock(commit_date=datetime(2022, 6, 30).timestamp())
 
     mocker.patch(
         "scmrepo.git.Git.resolve_commit", mocker.MagicMock(side_effect=_func)
     )
 
-    gen = iter_revs(scm, commit_time="2022-06-29")
+    gen = iter_revs(scm, commit_date="2022-06-29")
     assert gen == {
         rev_new: [rev_new],
         rev_old: [rev_old],

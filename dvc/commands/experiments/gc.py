@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 def _raise_error_if_all_disabled(**kwargs):
     if not any(kwargs.values()):
         raise InvalidArgumentError(
-            "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-            "or `--all-commits` needs to be set."
+            "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags`,"
+            " `--all-commits` or `--date` needs to be set."
         )
 
 
@@ -23,6 +23,7 @@ class CmdExperimentsGC(CmdBase):
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
+            commit_date=self.args.commit_date,
             workspace=self.args.workspace,
         )
 
@@ -31,13 +32,21 @@ class CmdExperimentsGC(CmdBase):
         msg += "the workspace"
         if self.args.all_commits:
             msg += " and all git commits"
-        elif self.args.all_branches and self.args.all_tags:
-            msg += " and all git branches and tags"
-        elif self.args.all_branches:
-            msg += " and all git branches"
-        elif self.args.all_tags:
-            msg += " and all git tags"
+        else:
+            if self.args.all_branches and self.args.all_tags:
+                msg += " and all git branches and tags"
+            elif self.args.all_branches:
+                msg += " and all git branches"
+            elif self.args.all_tags:
+                msg += " and all git tags"
+
+            if self.args.commit_date:
+                msg += (
+                    " and all git commits before date "
+                    f"{self.args.commit_date}"
+                )
         msg += " of the current repo."
+
         if self.args.queued:
             msg += " Run queued experiments will be preserved."
         else:
@@ -54,6 +63,7 @@ class CmdExperimentsGC(CmdBase):
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
             workspace=self.args.workspace,
+            commit_date=self.args.commit_date,
             queued=self.args.queued,
         )
 
@@ -109,6 +119,17 @@ def add_parser(experiments_subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Keep experiments derived from all Git commits.",
+    )
+    experiments_gc_parser.add_argument(
+        "--date",
+        type=str,
+        dest="commit_date",
+        metavar="<YYYY-MM-DD>",
+        default=None,
+        help=(
+            "Keep experiments from the commits after (inclusive) a certain "
+            "date. Date must match the extended ISO 8601 format (YYYY-MM-DD)."
+        ),
     )
     experiments_gc_parser.add_argument(
         "--queued",
