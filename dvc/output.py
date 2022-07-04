@@ -715,14 +715,15 @@ class Output:
         if not os.path.exists(self.fs_path):
             return
 
-        name = "metrics" if self.metric else "plot"
         if os.path.isdir(self.fs_path):
-            msg = "directory '%s' cannot be used as %s."
-            logger.debug(msg, str(self), name)
+            if self.plot:
+                logger.debug("directory '%s' cannot be used as plot.", self)
+            # Metrics allow directories, avoid the istextfile check
             return
 
         if not istextfile(self.fs_path, self.fs):
             msg = "binary file '{}' cannot be used as {}."
+            name = "metrics" if self.metric else "plot"
             raise DvcException(msg.format(self.fs_path, name))
 
     def download(self, to, jobs=None):

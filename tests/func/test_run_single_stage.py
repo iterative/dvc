@@ -948,17 +948,6 @@ def test_should_raise_on_stage_output(tmp_dir, dvc, run_copy):
         run_copy("foo", "name.dvc", single_stage=True)
 
 
-@pytest.mark.parametrize("metrics_type", ["metrics", "metrics_no_cache"])
-def test_metrics_dir(tmp_dir, dvc, caplog, run_copy_metrics, metrics_type):
-    copyargs = {metrics_type: ["dir_metric"]}
-    tmp_dir.gen({"dir": {"file": "content"}})
-    with caplog.at_level(logging.DEBUG, "dvc"):
-        run_copy_metrics("dir", "dir_metric", **copyargs)
-    assert (
-        "directory 'dir_metric' cannot be used as metrics." in caplog.messages
-    )
-
-
 def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
     tmp_dir.gen({"foo": "foo", "foo1": "foo1"})
     text = textwrap.dedent(
