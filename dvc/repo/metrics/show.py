@@ -11,6 +11,7 @@ from dvc.repo.collect import StrPaths, collect
 from dvc.repo.live import summary_fs_path
 from dvc.scm import NoSCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_yaml
 
 logger = logging.getLogger(__name__)
@@ -117,6 +118,9 @@ def show(
 ):
     if onerror is None:
         onerror = onerror_collect
+
+    targets = ensure_list(targets)
+    targets = [repo.dvcfs.from_os_path(target) for target in targets]
 
     res = {}
     for rev in repo.brancher(

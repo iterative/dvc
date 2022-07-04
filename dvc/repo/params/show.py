@@ -21,6 +21,7 @@ from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
 from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import LOADERS
 
 if TYPE_CHECKING:
@@ -130,6 +131,9 @@ def show(
     if onerror is None:
         onerror = onerror_collect
     res = {}
+
+    targets = ensure_list(targets)
+    targets = [repo.dvcfs.from_os_path(target) for target in targets]
 
     for branch in repo.brancher(revs=revs):
         params = error_handler(_gather_params)(

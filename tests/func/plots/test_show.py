@@ -13,6 +13,17 @@ from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError
 from tests.utils.plots import get_plot
 
 
+def test_show_targets(tmp_dir, dvc):
+    metric = [{"first_val": 100, "val": 2}, {"first_val": 200, "val": 3}]
+    (tmp_dir / "metric.json").dump_json(metric, sort_keys=True)
+
+    plots = dvc.plots.show(targets=["metric.json"])
+    assert get_plot(plots, "workspace", file="metric.json") == metric
+
+    plots = dvc.plots.show(targets=(tmp_dir / "metric.json").fs_path)
+    assert get_plot(plots, "workspace", file="metric.json") == metric
+
+
 def test_plot_cache_missing(tmp_dir, scm, dvc, caplog, run_copy_metrics):
     metric1 = [{"y": 2}, {"y": 3}]
     (tmp_dir / "metric_t.json").dump_json(metric1, sort_keys=True)
