@@ -134,7 +134,7 @@ class BaseStashQueue(ABC):
     def remove(
         self,
         revs: Collection[str],
-        _all: bool = False,
+        all_: bool = False,
         queued: bool = False,
         **kwargs,
     ) -> List[str]:
@@ -149,7 +149,7 @@ class BaseStashQueue(ABC):
             Revisions (or names) which were removed.
         """
 
-        if _all or queued:
+        if all_ or queued:
             return self.clear()
 
         removed: List[str] = []

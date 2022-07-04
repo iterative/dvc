@@ -92,7 +92,7 @@ def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):
     return names
 
 
-def clear(self: "LocalCeleryQueue", **kwargs) -> List[str]:
+def celery_clear(self: "LocalCeleryQueue", **kwargs) -> List[str]:
     """Remove entries from the queue.
 
     Arguments:
@@ -125,7 +125,7 @@ def clear(self: "LocalCeleryQueue", **kwargs) -> List[str]:
     return removed
 
 
-def remove(
+def celery_remove(
     self: "LocalCeleryQueue",
     revs: Collection[str],
     queued: bool = False,
@@ -140,7 +140,7 @@ def remove(
         queued: Remove all queued tasks.
         failed: Remove all failed tasks.
         success: Remove all success tasks.
-        all: Remove all tasks.
+        all_: Remove all tasks.
 
     Returns:
         Revisions (or names) which were removed.
