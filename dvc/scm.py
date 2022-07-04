@@ -203,7 +203,7 @@ def iter_revs(
     all_tags: bool = False,
     all_commits: bool = False,
     all_experiments: bool = False,
-    commit_time: Optional[str] = None,
+    commit_date: Optional[str] = None,
 ) -> Mapping[str, List[str]]:
     from scmrepo.exceptions import SCMError as _SCMError
 
@@ -216,7 +216,7 @@ def iter_revs(
             all_tags,
             all_commits,
             all_experiments,
-            commit_time,
+            commit_date,
         ]
     ):
         return {}
@@ -233,16 +233,16 @@ def iter_revs(
         if all_tags:
             results.extend(scm.list_tags())
 
-        if commit_time:
+        if commit_date:
             from datetime import datetime
 
-            commit_timestamp = datetime.strptime(
-                commit_time, "%Y-%m-%d"
+            commit_datestamp = datetime.strptime(
+                commit_date, "%Y-%m-%d"
             ).timestamp()
 
             def _time_filter(rev):
                 try:
-                    if scm.resolve_commit(rev).commit_time >= commit_timestamp:
+                    if scm.resolve_commit(rev).commit_date >= commit_datestamp:
                         return True
                     return False
                 except _SCMError:

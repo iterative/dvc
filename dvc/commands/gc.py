@@ -18,7 +18,7 @@ class CmdGC(CmdBase):
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
             all_experiments=self.args.all_experiments,
-            commit_time=self.args.commit_time,
+            commit_date=self.args.commit_date,
             workspace=self.args.workspace,
         )
 
@@ -27,13 +27,20 @@ class CmdGC(CmdBase):
         msg += "the workspace"
         if self.args.all_commits:
             msg += " and all git commits"
-        elif self.args.all_branches and self.args.all_tags:
-            msg += " and all git branches and tags"
-        elif self.args.all_branches:
-            msg += " and all git branches"
-        elif self.args.all_tags:
-            msg += " and all git tags"
-        elif self.args.all_experiments:
+        else:
+            if self.args.all_branches and self.args.all_tags:
+                msg += " and all git branches and tags"
+            elif self.args.all_branches:
+                msg += " and all git branches"
+            elif self.args.all_tags:
+                msg += " and all git tags"
+            if self.args.commit_date:
+                msg += (
+                    " and all git commits before date "
+                    f"{self.args.commit_date}"
+                )
+
+        if self.args.all_experiments:
             msg += " and all experiments"
 
         if self.args.repos:
@@ -55,7 +62,7 @@ class CmdGC(CmdBase):
             all_tags=self.args.all_tags,
             all_commits=self.args.all_commits,
             all_experiments=self.args.all_experiments,
-            commit_time=self.args.commit_time,
+            commit_date=self.args.commit_date,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,
@@ -108,9 +115,9 @@ def add_parser(subparsers, parent_parser):
         help="Keep data files for all Git commits.",
     )
     gc_parser.add_argument(
-        "--time",
+        "--date",
         type=str,
-        dest="commit_time",
+        dest="commit_date",
         metavar="<YYYY-MM-DD>",
         default=None,
         help=(

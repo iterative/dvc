@@ -155,6 +155,8 @@ def test_experiments_gc(dvc, scm, mocker):
             "--all-branches",
             "--all-commits",
             "--queued",
+            "--date",
+            "2022-07-04",
             "--force",
         ]
     )
@@ -171,6 +173,7 @@ def test_experiments_gc(dvc, scm, mocker):
         all_tags=True,
         all_branches=True,
         all_commits=True,
+        commit_date="2022-07-04",
         queued=True,
     )
 
