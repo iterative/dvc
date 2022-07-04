@@ -81,7 +81,7 @@ def _spawn_posix(cmd, env):
 
 
 def _spawn(cmd, env):
-    logger.debug("Trying to spawn %r", cmd)
+    logger.debug("Trying to spawn '%s'", cmd)
 
     if os.name == "nt":
         _spawn_windows(cmd, env)
@@ -90,7 +90,7 @@ def _spawn(cmd, env):
     else:
         raise NotImplementedError
 
-    logger.debug("Spawned %r", cmd)
+    logger.debug("Spawned '%s'", cmd)
 
 
 def daemon(args):

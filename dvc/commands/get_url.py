@@ -18,7 +18,7 @@ class CmdGetUrl(CmdBaseNoRepo):
             Repo.get_url(self.args.url, out=self.args.out, jobs=self.args.jobs)
             return 0
         except DvcException:
-            logger.exception("failed to get %r", self.args.url)
+            logger.exception("failed to get '%s'", self.args.url)
             return 1
 
 

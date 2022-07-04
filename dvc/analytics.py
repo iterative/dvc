@@ -187,4 +187,4 @@ def _find_or_create_user_id():
             return user_id
 
     except LockError:
-        logger.debug("Failed to acquire %r", lockfile)
+        logger.debug("Failed to acquire '%s'", lockfile)

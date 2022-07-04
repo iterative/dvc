@@ -348,7 +348,7 @@ class BaseExecutor(ABC):
 
         if git_remote == dvc.root_dir:
             logger.warning(
-                "%r points to the current Git repo, experiment "
+                "'%s' points to the current Git repo, experiment "
                 "Git refs will not be pushed. But DVC cache and run cache "
                 "will automatically be pushed to the default DVC remote "
                 "(if any) on each experiment commit.",
@@ -604,7 +604,7 @@ class BaseExecutor(ABC):
         except BaseException as exc:  # pylint: disable=broad-except
             logger.warning(
                 "Something went wrong while auto pushing experiment "
-                "to the remote %r: %s",
+                "to the remote '%s': %s",
                 git_remote,
                 exc,
             )
