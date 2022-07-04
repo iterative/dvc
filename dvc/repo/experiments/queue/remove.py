@@ -27,7 +27,6 @@ def _remove_queued_tasks(
     Arguments:
         queue_entries: An iterable list of queued task to remove
     """
-    # pylint: disable=protected-access
     stash_revs: Dict[str, "ExpStashEntry"] = {}
     for entry in queue_entries:
         if entry:
@@ -36,11 +35,14 @@ def _remove_queued_tasks(
             ]
 
     try:
-        for msg, queue_entry in celery_queue._iter_queued():
+        for (
+            msg,
+            queue_entry,
+        ) in celery_queue._iter_queued():  # pylint: disable=protected-access
             if queue_entry.stash_rev in stash_revs:
                 celery_queue.celery.reject(msg.delivery_tag)
     finally:
-        celery_queue._remove_revs(stash_revs, celery_queue.stash)
+        celery_queue.stash.remove_revs(list(stash_revs.values()))
 
 
 def _remove_done_tasks(
@@ -52,21 +54,25 @@ def _remove_done_tasks(
     Arguments:
         queue_entries: An iterable list of done task to remove
     """
-    # pylint: disable=protected-access
     from celery.result import AsyncResult
 
-    failed_stash_revs: Dict[str, "ExpStashEntry"] = {}
+    failed_stash_revs: List["ExpStashEntry"] = []
     queue_entry_set: Set["QueueEntry"] = set()
     for entry in queue_entries:
         if entry:
             queue_entry_set.add(entry)
             if entry.stash_rev in celery_queue.failed_stash.stash_revs:
-                failed_stash_revs[
-                    entry.stash_rev
-                ] = celery_queue.failed_stash.stash_revs[entry.stash_rev]
+                failed_stash_revs.append(
+                    celery_queue.failed_stash.stash_revs[entry.stash_rev]
+                )
 
     try:
-        for msg, queue_entry in celery_queue._iter_processed():
+        for (
+            msg,
+            queue_entry,
+        ) in (
+            celery_queue._iter_processed()  # pylint: disable=protected-access
+        ):
             if queue_entry not in queue_entry_set:
                 continue
             task_id = msg.headers["id"]
@@ -75,7 +81,7 @@ def _remove_done_tasks(
                 result.forget()
             celery_queue.celery.purge(msg.delivery_tag)
     finally:
-        celery_queue._remove_revs(failed_stash_revs, celery_queue.failed_stash)
+        celery_queue.failed_stash.remove_revs(failed_stash_revs)
 
 
 def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):

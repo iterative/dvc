@@ -1,5 +1,5 @@
 import re
-from typing import Dict, NamedTuple, Optional
+from typing import Dict, Iterable, NamedTuple, Optional
 
 from scmrepo.git import Stash
 
@@ -60,3 +60,15 @@ class ExpStash(Stash):
         )
         branch_msg = f":{branch}" if branch else ""
         return f"{msg}{branch_msg}"
+
+    def remove_revs(self, stash_revs: Iterable[ExpStashEntry]):
+        """Remove the specified entries from the queue by stash revision."""
+        for index in sorted(
+            (
+                entry.stash_index
+                for entry in stash_revs
+                if entry.stash_index is not None
+            ),
+            reverse=True,
+        ):
+            self.drop(index)
