@@ -21,7 +21,9 @@ class CmdQueueLogs(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-    QUEUE_LOGS_HELP = "Show output logs for a task in the experiments queue."
+    QUEUE_LOGS_HELP = (
+        "Show output logs for running and completed experiment queue tasks."
+    )
     queue_logs_parser = queue_subparsers.add_parser(
         "logs",
         parents=[parent_parser],
@@ -35,6 +37,7 @@ def add_parser(queue_subparsers, parent_parser):
         help=(
             "Text encoding for log output. Defaults to system locale encoding."
         ),
+        metavar="<encoding>",
     )
     queue_logs_parser.add_argument(
         "-f",

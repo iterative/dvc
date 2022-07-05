@@ -17,7 +17,7 @@ class CmdQueueKill(CmdBase):
 
 
 def add_parser(queue_subparsers, parent_parser):
-    QUEUE_KILL_HELP = "Kill tasks in experiments queue."
+    QUEUE_KILL_HELP = "Kill actively running experiment queue tasks."
     queue_kill_parser = queue_subparsers.add_parser(
         "kill",
         parents=[parent_parser],
