@@ -117,9 +117,6 @@ class Experiments:
             self.tempdir_queue if tmp_dir else self.workspace_queue
         )
         self.queue_one(exp_queue, **kwargs)
-        if machine:
-            # TODO: decide how to handle queued remote execution
-            raise NotImplementedError
         results = self._reproduce_queue(exp_queue)
         exp_rev = first(results)
         if exp_rev is not None:
@@ -136,6 +133,10 @@ class Experiments:
         """Queue a single experiment."""
         if reset:
             self.reset_checkpoints()
+
+        if kwargs.pop("machine", None) is not None:
+            # TODO: decide how to handle queued remote execution
+            raise NotImplementedError
 
         if checkpoint_resume:
             from dvc.scm import resolve_rev
