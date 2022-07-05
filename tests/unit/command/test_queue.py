@@ -98,7 +98,7 @@ def test_experiments_stop(dvc, scm, mocker):
     [
         (
             {"worker1": [], "worker2": []},
-            "No worker active, 2 workers idle at present.",
+            "Worker status: 0 active, 2 idle",
         ),
         (
             {
@@ -106,11 +106,11 @@ def test_experiments_stop(dvc, scm, mocker):
                 "worker2": [{"id": "2"}],
                 "worker3": [],
             },
-            "There are 2 workers active, 1 worker idle at present.",
+            "Worker status: 2 active, 1 idle",
         ),
         (
             {"worker1": [{"id": "1"}]},
-            "There is 1 worker active, no worker idle at present.",
+            "Worker status: 1 active, 0 idle",
         ),
     ],
 )
@@ -137,7 +137,7 @@ def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
     assert cmd.run() == 0
     m.assert_called_once_with()
     log, _ = capsys.readouterr()
-    assert "No experiments in task queue for now." in log
+    assert "No experiment tasks in the queue." in log
     assert output in log
 
 
