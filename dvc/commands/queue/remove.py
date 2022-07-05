@@ -31,7 +31,7 @@ class CmdQueueRemove(CmdBase):
 
 def add_parser(queue_subparsers, parent_parser):
 
-    QUEUE_REMOVE_HELP = "Remove tasks in experiments queue."
+    QUEUE_REMOVE_HELP = "Remove queued and completed tasks from the queue."
     queue_remove_parser = queue_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
@@ -40,21 +40,29 @@ def add_parser(queue_subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     queue_remove_parser.add_argument(
-        "--all", action="store_true", help="Remove all tasks."
+        "--all",
+        action="store_true",
+        help="Remove all queued and completed tasks from the queue.",
     )
     queue_remove_parser.add_argument(
-        "--queued", action="store_true", help="Remove all tasks in queue."
+        "--queued",
+        action="store_true",
+        help="Remove all queued tasks from the queue.",
     )
     queue_remove_parser.add_argument(
-        "--success", action="store_true", help="Remove all successful tasks."
+        "--success",
+        action="store_true",
+        help="Remove all successful tasks from the queue.",
     )
     queue_remove_parser.add_argument(
-        "--failed", action="store_true", help="Remove all failed tasks."
+        "--failed",
+        action="store_true",
+        help="Remove all failed tasks from the queue.",
     )
     queue_remove_parser.add_argument(
         "task",
         nargs="*",
-        help="Tasks in queue to remove.",
+        help="Tasks to remove.",
         metavar="<task>",
     )
     queue_remove_parser.set_defaults(func=CmdQueueRemove)
