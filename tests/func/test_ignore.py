@@ -418,3 +418,27 @@ def test_run_dvcignored_dep(tmp_dir, dvc, run_copy):
     tmp_dir.gen({".dvcignore": "dir\n", "dir": {"foo": "foo"}})
     run_copy(os.path.join("dir", "foo"), "bar", name="copy-foo-to-bar")
     assert (tmp_dir / "bar").read_text() == "foo"
+
+
+def test_pull_ignore(tmp_dir, dvc, local_cloud):
+    from dvc.utils.fs import remove
+
+    tmp_dir.dvc_gen(
+        {
+            ".dvcignore": "data/processed/",
+            "data": {"foo": "foo", "processed": {"bar": "bar"}},
+        }
+    )
+    tmp_dir.add_remote(config=local_cloud.config)
+    dvc.add("data")
+    dvc.push()
+
+    foo_path = tmp_dir / "data" / "foo"
+    foo_path.unlink()
+    assert not foo_path.exists()
+
+    remove(tmp_dir / ".dvc/cache")
+    dvc.pull()
+
+    assert foo_path.exists()
+    assert foo_path.read_text() == "foo"

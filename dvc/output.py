@@ -583,6 +583,7 @@ class Output:
         from dvc_data.checkout import CheckoutError as _CheckoutError
         from dvc_data.checkout import LinkError, PromptError
 
+        kwargs.setdefault("ignore", self.dvcignore)
         try:
             return checkout(*args, **kwargs)
         except PromptError as exc:
@@ -627,7 +628,6 @@ class Output:
                 obj,
                 self.odb,
                 relink=True,
-                ignore=self.dvcignore,
                 state=self.repo.state,
                 prompt=prompt.confirm,
             )
