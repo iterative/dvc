@@ -712,7 +712,7 @@ class Output:
         if not self.metric or self.plot:
             return
 
-        if not os.path.exists(self.fs_path):
+        if not os.path.isfile(self.fs_path):
             return
 
         name = "metrics" if self.metric else "plot"
