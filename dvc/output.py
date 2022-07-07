@@ -709,21 +709,15 @@ class Output:
                 f"verify metric is not supported for {self.protocol}"
             )
 
-        if not (self.metric or self.plot):
+        if not self.metric or self.plot:
             return
 
         if not os.path.exists(self.fs_path):
             return
 
-        if os.path.isdir(self.fs_path):
-            if self.plot:
-                logger.debug("directory '%s' cannot be used as plot.", self)
-            # Metrics allow directories, avoid the istextfile check
-            return
-
+        name = "metrics" if self.metric else "plot"
         if not istextfile(self.fs_path, self.fs):
             msg = "binary file '{}' cannot be used as {}."
-            name = "metrics" if self.metric else "plot"
             raise DvcException(msg.format(self.fs_path, name))
 
     def download(self, to, jobs=None):
