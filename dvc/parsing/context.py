@@ -18,6 +18,7 @@ from dvc.parsing.interpolate import (
     normalize_key,
     recurse,
     str_interpolate,
+    validate_value,
 )
 
 logger = logging.getLogger(__name__)
@@ -506,7 +507,7 @@ class Context(CtxDict):
                 self.data.pop(key, None)
 
     def resolve(
-        self, src, unwrap=True, skip_interpolation_checks=False
+        self, src, unwrap=True, skip_interpolation_checks=False, key=None
     ) -> Any:
         """Recursively resolves interpolation and returns resolved data.
 
@@ -522,10 +523,10 @@ class Context(CtxDict):
         {'lst': [1, 2, 3]}
         """
         func = recurse(self.resolve_str)
-        return func(src, unwrap, skip_interpolation_checks)
+        return func(src, unwrap, skip_interpolation_checks, key)
 
     def resolve_str(
-        self, src: str, unwrap=True, skip_interpolation_checks=False
+        self, src: str, unwrap=True, skip_interpolation_checks=False, key=None
     ) -> str:
         """Resolves interpolated string to it's original value,
         or in case of multiple interpolations, a combined string.
@@ -543,10 +544,12 @@ class Context(CtxDict):
             expr = get_expression(
                 matches[0], skip_checks=skip_interpolation_checks
             )
-            return self.select(expr, unwrap=unwrap)
+            value = self.select(expr, unwrap=unwrap)
+            validate_value(value, key)
+            return value
         # but not "${num} days"
         return str_interpolate(
-            src, matches, self, skip_checks=skip_interpolation_checks
+            src, matches, self, skip_checks=skip_interpolation_checks, key=key
         )
 
 

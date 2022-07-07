@@ -8,7 +8,7 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.utils.fs import remove
-from dvc.utils.serialize import YAMLFileCorruptedError
+from dvc.utils.serialize import JSONFileCorruptedError, YAMLFileCorruptedError
 
 
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
@@ -28,6 +28,16 @@ def test_show(tmp_dir, dvc, run_copy_metrics):
     )
     assert dvc.metrics.show() == {
         "": {"data": {"metrics.yaml": {"data": {"foo": 1.1}}}}
+    }
+
+
+def test_show_toml(tmp_dir, dvc, run_copy_metrics):
+    tmp_dir.gen("metrics_t.toml", "[foo]\nbar = 1.2")
+    run_copy_metrics(
+        "metrics_t.toml", "metrics.toml", metrics=["metrics.toml"]
+    )
+    assert dvc.metrics.show() == {
+        "": {"data": {"metrics.toml": {"data": {"foo": {"bar": 1.2}}}}}
     }
 
 
@@ -231,7 +241,7 @@ def test_show_malformed_metric(tmp_dir, scm, dvc, caplog):
         dvc.metrics.show(targets=["metric.json"])[""]["data"]["metric.json"][
             "error"
         ],
-        YAMLFileCorruptedError,
+        JSONFileCorruptedError,
     )
 
 

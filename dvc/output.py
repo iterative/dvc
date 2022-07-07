@@ -541,7 +541,7 @@ class Output:
             raise self.IsNotFileOrDirError(self)
 
         if self.is_empty:
-            logger.warning(f"'{self}' is empty.")
+            logger.warning("'%s' is empty.", self)
 
         self.ignore()
 
@@ -583,6 +583,7 @@ class Output:
         from dvc_data.checkout import CheckoutError as _CheckoutError
         from dvc_data.checkout import LinkError, PromptError
 
+        kwargs.setdefault("ignore", self.dvcignore)
         try:
             return checkout(*args, **kwargs)
         except PromptError as exc:
@@ -627,7 +628,6 @@ class Output:
                 obj,
                 self.odb,
                 relink=True,
-                ignore=self.dvcignore,
                 state=self.repo.state,
                 prompt=prompt.confirm,
             )
@@ -913,7 +913,7 @@ class Output:
         except RemoteMissingDepsError:  # pylint: disable=try-except-raise
             raise
         except DvcException:
-            logger.debug(f"failed to pull cache for '{self}'")
+            logger.debug("failed to pull cache for '%s'", self)
 
         try:
             ocheck(self.odb, self.odb.get(self.hash_info.value))

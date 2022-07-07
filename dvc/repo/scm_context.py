@@ -124,7 +124,11 @@ class SCMContext:
 
         if autostage:
             self.track_changed_files()
-        elif not quiet and not isinstance(self.scm, NoSCM):
+        elif (
+            not quiet
+            and not isinstance(self.scm, NoSCM)
+            and logger.isEnabledFor(logging.INFO)
+        ):
             add_cmd = self._make_git_add_cmd(self.files_to_track)
             logger.info(
                 f"\nTo track the changes with git, run:\n" f"\n{add_cmd}"

@@ -12,7 +12,7 @@ from dvc.repo.live import summary_fs_path
 from dvc.scm import NoSCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
-from dvc.utils.serialize import load_yaml
+from dvc.utils.serialize import LOADERS
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,9 @@ def _extract_metrics(metrics, path, rev):
 
 @error_handler
 def _read_metric(path, fs, rev, **kwargs):
-    val = load_yaml(path, fs=fs)
+    suffix = fs.path.suffix(path).lower()
+    loader = LOADERS[suffix]
+    val = loader(path, fs=fs)
     val = _extract_metrics(val, path, rev)
     return val or {}
 

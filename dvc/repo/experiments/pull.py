@@ -82,7 +82,7 @@ def _pull(
     force: bool,
 ) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
-    logger.debug(f"git pull experiment '{git_remote}' -> '{refspec_list}'")
+    logger.debug("git pull experiment '%s' -> '%s'", git_remote, refspec_list)
 
     with TqdmGit(desc="Fetching git refs") as pbar:
         results: Mapping[str, SyncStatus] = repo.scm.fetch_refspecs(
@@ -113,7 +113,7 @@ def _pull_cache(
     if isinstance(refs, ExpRefInfo):
         refs = [refs]
     revs = list(exp_commits(repo.scm, refs))
-    logger.debug(f"dvc fetch experiment '{refs}'")
+    logger.debug("dvc fetch experiment '%s'", refs)
     repo.fetch(
         jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs, odb=odb
     )

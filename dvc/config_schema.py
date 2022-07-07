@@ -282,4 +282,8 @@ SCHEMA = {
         "plots": str,
         "live": str,
     },
+    "parsing": {
+        "bool": All(Lower, Choices("store_true", "boolean_optional")),
+        "list": All(Lower, Choices("nargs", "append")),
+    },
 }

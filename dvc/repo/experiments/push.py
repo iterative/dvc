@@ -85,7 +85,7 @@ def _push(
     from ...scm import GitAuthError
 
     refspec_list = [f"{exp_ref}:{exp_ref}" for exp_ref in refs]
-    logger.debug(f"git push experiment '{refs}' -> '{git_remote}'")
+    logger.debug("git push experiment '%s' -> '%s'", refspec_list, git_remote)
 
     with TqdmGit(desc="Pushing git refs") as pbar:
         try:
@@ -118,5 +118,5 @@ def _push_cache(
     if isinstance(refs, ExpRefInfo):
         refs = [refs]
     revs = list(exp_commits(repo.scm, refs))
-    logger.debug(f"dvc push experiment '{refs}'")
+    logger.debug("dvc push experiment '%s'", refs)
     repo.push(jobs=jobs, remote=dvc_remote, run_cache=run_cache, revs=revs)

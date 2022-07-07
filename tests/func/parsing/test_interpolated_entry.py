@@ -259,3 +259,59 @@ def test_vars_load_partial(tmp_dir, dvc, local, vars_):
         d["vars"] = vars_
     resolver = DataResolver(dvc, tmp_dir.fs_path, d)
     resolver.resolve()
+
+
+@pytest.mark.parametrize(
+    "bool_config, list_config",
+    [(None, None), ("store_true", "nargs"), ("boolean_optional", "append")],
+)
+def test_cmd_dict(tmp_dir, dvc, bool_config, list_config):
+    with dvc.config.edit() as conf:
+        if bool_config:
+            conf["parsing"]["bool"] = bool_config
+        if list_config:
+            conf["parsing"]["list"] = list_config
+
+    data = {
+        "dict": {
+            "foo": "foo",
+            "bar": 2,
+            "string": "spaced string",
+            "bool": True,
+            "bool-false": False,
+            "list": [1, 2, "foo"],
+            "nested": {"foo": "foo"},
+        }
+    }
+    (tmp_dir / DEFAULT_PARAMS_FILE).dump(data)
+    resolver = DataResolver(
+        dvc,
+        tmp_dir.fs_path,
+        {"stages": {"stage1": {"cmd": "python script.py ${dict}"}}},
+    )
+
+    if bool_config is None or bool_config == "store_true":
+        bool_resolved = " --bool"
+    else:
+        bool_resolved = " --bool --no-bool-false"
+
+    if list_config is None or list_config == "nargs":
+        list_resolved = " --list 1 2 'foo'"
+    else:
+        list_resolved = " --list 1 --list 2 --list 'foo'"
+
+    assert_stage_equal(
+        resolver.resolve(),
+        {
+            "stages": {
+                "stage1": {
+                    "cmd": "python script.py"
+                    " --foo 'foo' --bar 2"
+                    " --string 'spaced string'"
+                    f"{bool_resolved}"
+                    f"{list_resolved}"
+                    " --nested.foo 'foo'"
+                }
+            }
+        },
+    )

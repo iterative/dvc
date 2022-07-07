@@ -50,7 +50,7 @@ def is_enabled():
             Config(validate=False).get("core", {}).get("analytics", "true")
         )
 
-    logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
+    logger.debug("Analytics is %sabled.", "en" if enabled else "dis")
 
     return enabled
 
@@ -187,4 +187,4 @@ def _find_or_create_user_id():
             return user_id
 
     except LockError:
-        logger.debug(f"Failed to acquire '{lockfile}'")
+        logger.debug("Failed to acquire '%s'", lockfile)
