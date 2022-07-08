@@ -121,7 +121,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         )
         return None
 
-    from dvc_data.stage import IgnoreInCollectedDirError
+    from dvc_data.build import IgnoreInCollectedDirError
 
     if isinstance(exc, IgnoreInCollectedDirError):
         logger.exception("")

@@ -7,7 +7,7 @@ from dvc.external_repo import CLONES, external_repo
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
-from dvc_data.stage import stage
+from dvc_data.build import build
 from dvc_data.transfer import transfer
 
 
@@ -202,7 +202,7 @@ def test_subrepos_are_ignored(tmp_dir, erepo_dir):
         remove(cache_dir)
         makedirs(cache_dir)
 
-        staging, _, obj = stage(
+        staging, _, obj = build(
             repo.odb.local,
             "dir",
             repo.dvcfs,
