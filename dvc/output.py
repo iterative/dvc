@@ -20,11 +20,11 @@ from dvc.exceptions import (
 from dvc_data import Tree
 from dvc_data import check as ocheck
 from dvc_data import load as oload
+from dvc_data.build import build
 from dvc_data.checkout import checkout
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
-from dvc_data.stage import stage as ostage
 from dvc_data.transfer import transfer as otransfer
 from dvc_objects.errors import ObjectFormatError
 
@@ -427,7 +427,7 @@ class Output:
         else:
             odb = self.repo.odb.local
             name = self.fs.PARAM_CHECKSUM
-        _, _, obj = ostage(
+        _, _, obj = build(
             odb,
             self.fs_path,
             self.fs,
@@ -549,7 +549,7 @@ class Output:
             self.verify_metric()
 
         if not self.use_cache:
-            _, self.meta, obj = ostage(
+            _, self.meta, obj = build(
                 self.repo.odb.local,
                 self.fs_path,
                 self.fs,
@@ -566,7 +566,7 @@ class Output:
 
         assert not self.IS_DEPENDENCY
 
-        _, self.meta, self.obj = ostage(
+        _, self.meta, self.obj = build(
             self.odb,
             self.fs_path,
             self.fs,
@@ -608,7 +608,7 @@ class Output:
             if granular:
                 obj = self._commit_granular_dir(filter_info)
             else:
-                staging, _, obj = ostage(
+                staging, _, obj = build(
                     self.odb,
                     filter_info or self.fs_path,
                     self.fs,
@@ -637,7 +637,7 @@ class Output:
         prefix = self.fs.path.parts(
             self.fs.path.relpath(filter_info, self.fs_path)
         )
-        staging, _, save_obj = ostage(
+        staging, _, save_obj = build(
             self.odb,
             self.fs_path,
             self.fs,
@@ -843,7 +843,7 @@ class Output:
 
         upload = not (update and from_fs.isdir(from_info))
         jobs = jobs or min((from_fs.jobs, odb.fs.jobs))
-        staging, self.meta, obj = ostage(
+        staging, self.meta, obj = build(
             odb,
             from_info,
             from_fs,

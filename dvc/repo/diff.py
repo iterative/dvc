@@ -115,7 +115,7 @@ def _paths_checksums(repo, targets):
 
 def _output_paths(repo, targets):
     from dvc.fs import LocalFileSystem
-    from dvc_data.stage import stage as ostage
+    from dvc_data.build import build
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
@@ -139,7 +139,7 @@ def _output_paths(repo, targets):
             )
 
             if on_working_fs:
-                _, _, obj = ostage(
+                _, _, obj = build(
                     repo.odb.local,
                     output.fs_path,
                     repo.odb.local.fs,

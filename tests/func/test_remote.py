@@ -139,8 +139,8 @@ def test_upper_case_remote(tmp_dir, dvc, local_cloud):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
+    from dvc_data.build import build
     from dvc_data.objects.tree import Tree
-    from dvc_data.stage import stage
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
@@ -150,19 +150,19 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
     tree.digest()
-    with patch("dvc_data.stage._stage_tree", return_value=(None, tree)):
-        _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+    with patch("dvc_data.build._build_tree", return_value=(None, tree)):
+        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash1 = obj.hash_info
 
-    # remove the raw dir obj to force building the tree on the next stage call
+    # remove the raw dir obj to force building the tree on the next build call
     dvc.odb.local.fs.remove(dvc.odb.local.oid_to_path(hash1.as_raw().value))
 
     tree = Tree.from_list(
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
     tree.digest()
-    with patch("dvc_data.stage._stage_tree", return_value=(None, tree)):
-        _, _, obj = stage(dvc.odb.local, path, dvc.odb.local.fs, "md5")
+    with patch("dvc_data.build._build_tree", return_value=(None, tree)):
+        _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash2 = obj.hash_info
 
     assert hash1 == hash2

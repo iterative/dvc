@@ -457,7 +457,7 @@ class TestAddCommit(TestDvc):
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    counter = mocker.spy(dvc_data.stage, "_stage_tree")
+    counter = mocker.spy(dvc_data.build, "_build_tree")
     ret = main(["add", "data"])
     assert ret == 0
     assert counter.mock.call_count == 3

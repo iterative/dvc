@@ -86,14 +86,14 @@ def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
 
 def test_staging_file(tmp_dir, dvc):
     from dvc_data import check
-    from dvc_data.stage import stage
+    from dvc_data.build import build
     from dvc_data.transfer import transfer
 
     tmp_dir.gen("foo", "foo")
     fs = LocalFileSystem()
 
     local_odb = dvc.odb.local
-    staging_odb, _, obj = stage(
+    staging_odb, _, obj = build(
         local_odb, (tmp_dir / "foo").fs_path, fs, "md5"
     )
 
@@ -114,14 +114,14 @@ def test_staging_file(tmp_dir, dvc):
 
 def test_staging_dir(tmp_dir, dvc):
     from dvc_data import check
-    from dvc_data.stage import stage
+    from dvc_data.build import build
     from dvc_data.transfer import transfer
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = LocalFileSystem()
     local_odb = dvc.odb.local
 
-    staging_odb, _, obj = stage(
+    staging_odb, _, obj = build(
         local_odb, (tmp_dir / "dir").fs_path, fs, "md5"
     )
 
