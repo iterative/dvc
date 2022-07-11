@@ -246,10 +246,14 @@ class LocalCeleryQueue(BaseStashQueue):
             infofile = self.get_infofile_path(rev)
             return ExecutorInfo.load_json(infofile)
 
-        try:
-            executor_info = _load_info(entry.stash_rev)
+        def _load_collected(rev: str) -> Optional[ExecutorResult]:
+            executor_info = _load_info(rev)
             if executor_info.collected:
                 return executor_info.result
+            raise FileNotFoundError
+
+        try:
+            return _load_collected(entry.stash_rev)
         except FileNotFoundError:
             # Infofile will not be created until execution begins
             pass
@@ -269,7 +273,15 @@ class LocalCeleryQueue(BaseStashQueue):
                     ) from exc
                 executor_info = _load_info(entry.stash_rev)
                 return executor_info.result
-        raise DvcException("Invalid experiment.")
+
+        # NOTE: It's possible for an exp to complete while iterating through
+        # other queued and active tasks, in which case the exp will get moved
+        # out of the active task list, and needs to be loaded here.
+        try:
+            return _load_collected(entry.stash_rev)
+        except FileNotFoundError:
+            pass
+        raise DvcException("Invalid experiment '{entry.stash_rev[:7]}'.")
 
     def kill(self, revs: Collection[str]) -> None:
         to_kill: Set[QueueEntry] = set()

@@ -2,6 +2,7 @@ import time
 
 import pytest
 from celery import shared_task
+from flaky.flaky_decorator import flaky
 
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 
@@ -48,6 +49,8 @@ def test_shutdown_with_kill(test_queue, mocker):
     shutdown_spy.assert_called_once()
 
 
+# pytest-celery worker thread may finish the task before we check for PENDING
+@flaky(max_runs=3, min_passes=1)
 def test_post_run_after_kill(test_queue):
 
     from celery import chain
