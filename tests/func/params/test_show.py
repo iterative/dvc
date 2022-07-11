@@ -44,6 +44,23 @@ def test_show_toml(tmp_dir, dvc):
     }
 
 
+def test_preserve_comments(tmp_dir, dvc):
+    from dvc.utils.serialize import _toml
+
+    contents = "# A Title [foo]\nbar = 42# meaning of life\nbaz = [1, 2]\n"
+    tmp_dir.gen("params_commented.toml", "")
+    path = (tmp_dir / "params_commented.toml").fs_path
+
+    parsed = _toml.parse_toml_for_update(contents, path)
+    with open(path, "w", encoding="utf-8") as fobj:
+        _toml._dump(parsed, fobj)
+
+    with open(path, "r", encoding="utf-8") as fobj:
+        new_contents = fobj.read()
+
+    assert new_contents == contents
+
+
 def test_show_py(tmp_dir, dvc):
     tmp_dir.gen(
         "params.py",
