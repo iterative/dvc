@@ -11,6 +11,7 @@ from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.exceptions import DvcException
 from dvc.ui import ui
 from dvc.utils import format_link
+from dvc_render.vega_templates import TEMPLATES
 
 logger = logging.getLogger(__name__)
 
@@ -222,14 +223,8 @@ class CmdPlotsModify(CmdPlots):
 
 
 class CmdPlotsTemplates(CmdBase):
-    TEMPLATES_CHOICES = [
-        "simple",
-        "linear",
-        "confusion",
-        "confusion_normalized",
-        "scatter",
-        "smooth",
-    ]
+
+    TEMPLATES_CHOICES = [t.DEFAULT_NAME for t in TEMPLATES]
 
     def run(self):
         from dvc_render.vega_templates import dump_templates

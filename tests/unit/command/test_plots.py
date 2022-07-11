@@ -4,7 +4,6 @@ import posixpath
 from pathlib import Path
 
 import pytest
-from funcy import pluck_attr
 
 from dvc.cli import parse_args
 from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow, CmdPlotsTemplates
@@ -373,14 +372,6 @@ def test_plots_templates(tmp_dir, dvc, mocker, capsys, target):
         output=os.path.abspath("output"), targets=[target] if target else None
     )
     assert "Templates have been written into 'output'." in out
-
-
-def test_plots_templates_choices(tmp_dir, dvc):
-    from dvc_render import TEMPLATES
-
-    assert CmdPlotsTemplates.TEMPLATES_CHOICES == list(
-        pluck_attr("DEFAULT_NAME", TEMPLATES)
-    )
 
 
 @pytest.mark.parametrize("split", (True, False))
