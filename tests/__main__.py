@@ -14,7 +14,7 @@ os.putenv(
 )
 os.putenv("DVC_HOME", REPO_ROOT)
 
-opts = "-v -n=auto --dist loadscope --cov=dvc --durations=0"
+opts = "-v -n=auto --dist loadscope --cov=dvc --durations=50"
 params = " ".join(sys.argv[1:])
 cmd = f"{sys.executable} -m pytest {opts} {params}"
 check_call(cmd, shell=True)
