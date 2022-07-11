@@ -199,8 +199,7 @@ def test_apply(tmp_dir, scm, dvc, exp_stage):
     assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 3"
 
 
-def test_apply_queued(tmp_dir, scm, dvc, exp_stage, test_queue):
-    # from dvc.exceptions import InvalidArgumentError
+def test_apply_queued(tmp_dir, scm, dvc, exp_stage):
     from dvc.repo.experiments.exceptions import ApplyConflictError
 
     metrics_original = (tmp_dir / "metrics.yaml").read_text().strip()
