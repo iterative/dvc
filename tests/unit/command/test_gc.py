@@ -46,9 +46,16 @@ def test_(dvc, scm, mocker):
         force=True,
         jobs=3,
         repos=["project1", "project2"],
+        rev=None,
+        num=None,
     )
 
     cli_args = parse_args(["gc"])
+    cmd = cli_args.func(cli_args)
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()
+
+    cli_args = parse_args(["gc", "--num", "2"])
     cmd = cli_args.func(cli_args)
     with pytest.raises(InvalidArgumentError):
         cmd.run()

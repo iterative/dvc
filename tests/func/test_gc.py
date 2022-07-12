@@ -275,7 +275,8 @@ def test_gc_without_workspace(tmp_dir, dvc, caplog, cloud):
 
     assert (
         "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-        "`--all-experiments`, `--all-commits` or `--date` needs to be set."
+        "`--all-experiments`, `--all-commits`, `--date` or `--rev` "
+        "needs to be set."
     ) in caplog.text
 
 
@@ -392,3 +393,22 @@ def test_gc_all_experiments(tmp_dir, scm, dvc):
     assert (
         tmp_dir / ".dvc" / "cache" / baz_hash[:2] / baz_hash[2:]
     ).read_text() == "baz"
+
+
+def test_gc_rev_num(tmp_dir, scm, dvc):
+    num = 2
+
+    hashes = {}
+    for i in range(4):
+        i_str = str(i)
+        f = tmp_dir.dvc_gen("foo", i_str, commit=i_str)
+        hashes[i] = f[0].outs[0].hash_info.value
+
+    dvc.gc(rev="HEAD", num=num, force=True)
+
+    for n, i in enumerate(reversed(range(4))):
+        cache = tmp_dir / ".dvc" / "cache" / hashes[i][:2] / hashes[i][2:]
+        if n >= num:
+            assert not cache.exists()
+        else:
+            assert cache.read_text() == str(i)

@@ -12,6 +12,7 @@ def brancher(  # noqa: E302
     all_experiments=False,
     commit_date: Optional[str] = None,
     sha_only=False,
+    num=1,
 ):
     """Generator that iterates over specified revisions.
 
@@ -69,6 +70,7 @@ def brancher(  # noqa: E302
         all_commits=all_commits,
         all_experiments=all_experiments,
         commit_date=commit_date,
+        num=num,
     )
 
     try:
