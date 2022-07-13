@@ -29,6 +29,17 @@ def test_remote_with_jobs(dvc):
     assert fs.jobs == 100
 
 
+def test_remote_with_core_jobs(dvc):
+    dvc.config["remote"]["with_core_jobs"] = {
+        "url": "s3://bucket/name",
+    }
+    dvc.config["core"]["jobs"] = 1
+
+    cls, config, _ = get_cloud_fs(dvc, name="with_core_jobs")
+    fs = cls(**config)
+    assert fs.jobs == 1
+
+
 def test_remote_without_hash_jobs(dvc):
     dvc.config["remote"]["without_hash_jobs"] = {"url": "s3://bucket/name"}
     dvc.config["core"]["checksum_jobs"] = 200

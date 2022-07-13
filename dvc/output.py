@@ -593,7 +593,7 @@ class Output:
         except _CheckoutError as exc:
             raise CheckoutError(exc.paths)
 
-    def commit(self, filter_info=None):
+    def commit(self, filter_info=None, jobs=None):
         if not self.exists:
             raise self.DoesNotExistError(self)
 
@@ -606,8 +606,9 @@ class Output:
                 and filter_info != self.fs_path
             )
             if granular:
-                obj = self._commit_granular_dir(filter_info)
+                obj = self._commit_granular_dir(filter_info, jobs=jobs)
             else:
+                jobs = jobs or min((self.fs.jobs, self.odb.fs.jobs))
                 staging, _, obj = build(
                     self.odb,
                     filter_info or self.fs_path,
@@ -619,6 +620,7 @@ class Output:
                     staging,
                     self.odb,
                     {obj.hash_info},
+                    jobs=jobs,
                     shallow=False,
                     hardlink=True,
                 )
@@ -633,10 +635,11 @@ class Output:
             )
             self.set_exec()
 
-    def _commit_granular_dir(self, filter_info):
+    def _commit_granular_dir(self, filter_info, jobs=None):
         prefix = self.fs.path.parts(
             self.fs.path.relpath(filter_info, self.fs_path)
         )
+        jobs = jobs or min((self.fs.jobs, self.odb.fs.jobs))
         staging, _, save_obj = build(
             self.odb,
             self.fs_path,
@@ -650,6 +653,7 @@ class Output:
             staging,
             self.odb,
             {save_obj.hash_info} | {oid for _, _, oid in save_obj},
+            jobs=jobs,
             shallow=True,
             hardlink=True,
         )
