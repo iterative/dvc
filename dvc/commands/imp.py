@@ -19,6 +19,7 @@ class CmdImport(CmdBase):
                 fname=self.args.file,
                 rev=self.args.rev,
                 no_exec=self.args.no_exec,
+                no_download=self.args.no_download,
                 desc=self.args.desc,
                 jobs=self.args.jobs,
             )
@@ -69,11 +70,19 @@ def add_parser(subparsers, parent_parser):
         help="Specify name of the .dvc file this command will generate.",
         metavar="<filename>",
     )
-    import_parser.add_argument(
+    no_download_exec_group = import_parser.add_mutually_exclusive_group()
+    no_download_exec_group.add_argument(
         "--no-exec",
         action="store_true",
         default=False,
-        help="Only create .dvc file without actually downloading it.",
+        help="Only create .dvc file without actually importing target data.",
+    )
+    no_download_exec_group.add_argument(
+        "--no-download",
+        action="store_true",
+        default=False,
+        help="Create .dvc file including target data hash value(s)"
+        " but do not actually download the file(s).",
     )
     import_parser.add_argument(
         "--desc",

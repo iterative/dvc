@@ -273,6 +273,20 @@ def test_pull_external_dvc_imports(tmp_dir, dvc, scm, erepo_dir):
     assert (tmp_dir / "new_dir" / "bar").read_text() == "bar"
 
 
+def test_pull_partial_import(tmp_dir, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    stage = dvc.imp_url(
+        "remote://workspace/file", os.fspath(dst), no_download=True
+    )
+
+    result = dvc.pull("file")
+    assert result["fetched"] == 1
+    assert dst.exists()
+
+    assert stage.outs[0].get_hash().value == "d10b4c3ff123b26dc068d43a8bef2d23"
+
+
 def test_pull_external_dvc_imports_mixed(
     tmp_dir, dvc, scm, erepo_dir, local_remote
 ):

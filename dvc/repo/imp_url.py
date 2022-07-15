@@ -17,6 +17,7 @@ def imp_url(
     fname=None,
     erepo=None,
     frozen=True,
+    no_download=False,
     no_exec=False,
     remote=None,
     to_remote=False,
@@ -31,9 +32,9 @@ def imp_url(
         self, out, always_local=to_remote and not out
     )
 
-    if to_remote and no_exec:
+    if to_remote and (no_exec or no_download):
         raise InvalidArgumentError(
-            "--no-exec can't be combined with --to-remote"
+            "--no-exec/--no-download cannot be combined with --to-remote"
         )
 
     if not to_remote and remote:
@@ -80,7 +81,7 @@ def imp_url(
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:
-        stage.run(jobs=jobs)
+        stage.run(jobs=jobs, no_download=no_download)
 
     stage.frozen = frozen
 

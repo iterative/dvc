@@ -93,6 +93,18 @@ def fetch(
             downloaded += d
             failed += f
 
+    d, f = _fetch_partial_imports(
+        self,
+        targets,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+        recursive=recursive,
+        revs=revs,
+    )
+    downloaded += d
+    failed += f
+
     if failed:
         raise DownloadError(failed)
 
@@ -106,4 +118,26 @@ def _fetch(repo, obj_ids, **kwargs):
         downloaded += repo.cloud.pull(obj_ids, **kwargs)
     except FileTransferError as exc:
         failed += exc.amount
+    return downloaded, failed
+
+
+def _fetch_partial_imports(repo, targets, **kwargs):
+    from dvc.stage.exceptions import DataSourceChanged
+
+    downloaded = 0
+    failed = 0
+    for stage in repo.partial_imports(targets, **kwargs):
+        try:
+            stage.run()
+        except DataSourceChanged as exc:
+            logger.warning(f"{exc}")
+            failed += 1
+            continue
+        if not any(
+            kwargs.get(kw, None)
+            for kw in ("all_branches", "all_tags", "all_commits", "revs")
+        ):
+            stage.dump()
+
+        downloaded += 1
     return downloaded, failed
