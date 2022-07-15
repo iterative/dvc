@@ -246,6 +246,28 @@ class Index:
                 used[odb].update(objs)
         return used
 
+    def partial_imports(
+        self,
+        targets: "TargetType" = None,
+        recursive: bool = False,
+    ) -> List["Stage"]:
+        from itertools import chain
+
+        from dvc.utils.collections import ensure_list
+
+        collect_targets: Sequence[Optional[str]] = (None,)
+        if targets:
+            collect_targets = ensure_list(targets)
+
+        pairs = chain.from_iterable(
+            self.stage_collector.collect_granular(
+                target, recursive=recursive, with_deps=True
+            )
+            for target in collect_targets
+        )
+
+        return [stage for stage, _ in pairs if stage.is_partial_import]
+
     # Following methods help us treat the collection as a set-like structure
     # and provides faux-immutability.
     # These methods do not preserve stages order.

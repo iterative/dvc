@@ -375,6 +375,11 @@ class Output:
 
         return self.fs.path.relpath(self.fs_path, self.repo.root_dir)
 
+    def clear(self):
+        self.hash_info = HashInfo.from_dict({})
+        self.meta = Meta.from_dict({})
+        self.obj = None
+
     @property
     def protocol(self):
         return self.fs.protocol

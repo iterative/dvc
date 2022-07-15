@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from funcy import cached_property
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
+    from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -443,6 +444,44 @@ class Repo:
                 used[odb].update(objs)
 
         return used
+
+    def partial_imports(
+        self,
+        targets=None,
+        all_branches=False,
+        all_tags=False,
+        all_commits=False,
+        all_experiments=False,
+        commit_date: Optional[str] = None,
+        recursive=False,
+        revs=None,
+        num=1,
+    ) -> List["Stage"]:
+        """Get the stages related to the given target and collect dependencies
+        which are missing outputs.
+
+        This is useful to retrieve files which have been imported to the repo
+        using --no-download.
+
+        Returns:
+            A list of partially imported stages
+        """
+        from itertools import chain
+
+        partial_imports = chain.from_iterable(
+            self.index.partial_imports(targets, recursive=recursive)
+            for _ in self.brancher(
+                revs=revs,
+                all_branches=all_branches,
+                all_tags=all_tags,
+                all_commits=all_commits,
+                all_experiments=all_experiments,
+                commit_date=commit_date,
+                num=num,
+            )
+        )
+
+        return list(partial_imports)
 
     @property
     def stages(self):  # obsolete, only for backward-compatibility
