@@ -186,7 +186,7 @@ def test_stage_cache_path(tmp_dir, dvc, mocker):
     with dvc.lock:
         stage.remove(remove_outs=True, force=True)
 
-    assert not (tmp_dir/"dvc.yaml").exists()
+    assert not (tmp_dir / "dvc.yaml").exists()
 
     run_spy = mocker.patch("dvc.stage.run.cmd_run")
     checkout_spy = mocker.spy(dvc_output, "checkout")
@@ -197,7 +197,6 @@ def test_stage_cache_path(tmp_dir, dvc, mocker):
     assert checkout_spy.call_count == 4
 
     assert not (tmp_dir / "dvc.yaml").exists()
-
 
 
 def test_shared_stage_cache(tmp_dir, dvc, run_copy):
