@@ -137,7 +137,9 @@ class StageCache:
         # NOTE: using temporary stage to avoid accidentally modifying original
         # stage and to workaround `commit/checkout` not working for uncached
         # outputs.
-        cached_stage = self._create_stage(cache, wdir=stage.wdir, path=stage.path)
+        cached_stage = self._create_stage(
+            cache, wdir=stage.wdir, path=stage.path
+        )
 
         outs_no_cache = [
             out.def_path for out in stage.outs if not out.use_cache
@@ -203,7 +205,9 @@ class StageCache:
             if not cache:
                 raise RunCacheNotFoundError(stage)
 
-        cached_stage = self._create_stage(cache, wdir=stage.wdir, path=stage.path)
+        cached_stage = self._create_stage(
+            cache, wdir=stage.wdir, path=stage.path
+        )
 
         if pull:
             for objs in cached_stage.get_used_objs().values():
