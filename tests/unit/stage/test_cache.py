@@ -164,6 +164,42 @@ def test_stage_cache_wdir(tmp_dir, dvc, mocker):
     assert (tmp_dir / "wdir" / "out_no_cache").read_text() == "out_no_cache"
 
 
+def test_stage_cache_path(tmp_dir, dvc, mocker):
+    tmp_dir.gen("dep", "dep")
+    tmp_dir.gen(
+        "script.py",
+        (
+            'open("out", "w+").write("out"); '
+            'open("out_no_cache", "w+").write("out_no_cache")'
+        ),
+    )
+    tmp_dir.gen({"wdir": {}})
+    stage = dvc.run(
+        cmd="python ../script.py",
+        deps=["../script.py", "../dep"],
+        outs=["out"],
+        outs_no_cache=["out_no_cache"],
+        single_stage=True,
+        wdir="wdir",
+    )
+
+    with dvc.lock:
+        stage.remove(remove_outs=True, force=True)
+
+    assert not (tmp_dir/"dvc.yaml").exists()
+
+    run_spy = mocker.patch("dvc.stage.run.cmd_run")
+    checkout_spy = mocker.spy(dvc_output, "checkout")
+    with dvc.lock:
+        stage.run()
+
+    assert not run_spy.called
+    assert checkout_spy.call_count == 4
+
+    assert not (tmp_dir / "dvc.yaml").exists()
+
+
+
 def test_shared_stage_cache(tmp_dir, dvc, run_copy):
     import stat
 

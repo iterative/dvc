@@ -106,14 +106,14 @@ class StageCache:
 
         return None
 
-    def _create_stage(self, cache, wdir=None):
+    def _create_stage(self, cache, wdir=None, path="dvc.yaml"):
         from . import PipelineStage, create_stage
         from .loader import StageLoader
 
         stage = create_stage(
             PipelineStage,
             repo=self.repo,
-            path="dvc.yaml",
+            path=path,  # File is not created here, but we check that it is consistent. Hardcoded `dvc.yaml` does not work when current directory is not the dvc repo.
             cmd=cache["cmd"],
             wdir=wdir,
             outs=[out["path"] for out in cache["outs"]],
@@ -135,7 +135,7 @@ class StageCache:
         # NOTE: using temporary stage to avoid accidentally modifying original
         # stage and to workaround `commit/checkout` not working for uncached
         # outputs.
-        cached_stage = self._create_stage(cache, wdir=stage.wdir)
+        cached_stage = self._create_stage(cache, wdir=stage.wdir, path=stage.path)
 
         outs_no_cache = [
             out.def_path for out in stage.outs if not out.use_cache
@@ -201,7 +201,7 @@ class StageCache:
             if not cache:
                 raise RunCacheNotFoundError(stage)
 
-        cached_stage = self._create_stage(cache, wdir=stage.wdir)
+        cached_stage = self._create_stage(cache, wdir=stage.wdir, path=stage.path)
 
         if pull:
             for objs in cached_stage.get_used_objs().values():
