@@ -113,7 +113,9 @@ class StageCache:
         stage = create_stage(
             PipelineStage,
             repo=self.repo,
-            path=path,  # File is not created here, but we check that it is consistent. Hardcoded `dvc.yaml` does not work when current directory is not the dvc repo.
+            path=path,  # File is not created here, but we check that it is consistent.
+            # Hardcoded `dvc.yaml` does not work when current directory is not the dvc
+            # repo.
             cmd=cache["cmd"],
             wdir=wdir,
             outs=[out["path"] for out in cache["outs"]],
