@@ -22,7 +22,7 @@ from dvc.stage import PipelineStage
 from dvc.ui import ui
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
-from dvc.utils.serialize import LOADERS
+from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
     from dvc.output import Output
@@ -61,9 +61,7 @@ def _collect_configs(
 
 @error_handler
 def _read_fs_path(fs, fs_path, **kwargs):
-    suffix = fs.path.suffix(fs_path).lower()
-    loader = LOADERS[suffix]
-    return loader(fs_path, fs=fs)
+    return load_path(fs_path, fs)
 
 
 def _read_params(
