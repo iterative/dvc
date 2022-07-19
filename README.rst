@@ -27,7 +27,7 @@
 
 #. **Track** experiments in your local Git repo (no servers needed).
 
-#. **Compare** any data, code, parameters, model, or performance plots
+#. **Compare** any data, code, parameters, model, or performance plots.
 
 #. **Share** experiments and automatically reproduce anyone's experiment.
 
@@ -38,25 +38,30 @@ Quick start
 
 A common CLI workflow includes:
 
-+-----------------------------------+----------------------------------------------------------------------------+
-| Task                              | Terminal                                                                   |
-+===================================+============================================================================+
-| Track data                        | | ``$ git add train.py``                                                   |
-|                                   | | ``$ dvc add images.zip``                                                 |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Connect code and data             | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
-|                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Make changes and reproduce        | | ``$ vi train.py``                                                        |
-|                                   | | ``$ dvc repro model.p.dvc``                                              |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Share code                        | | ``$ git add .``                                                          |
-|                                   | | ``$ git commit -m 'The baseline model'``                                 |
-|                                   | | ``$ git push``                                                           |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                 |
-|                                   | | ``$ dvc push``                                                           |
-+-----------------------------------+----------------------------------------------------------------------------+
+
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Task                              | Terminal                                                                                           |
++===================================+====================================================================================================+
+| Track data                        | | ``$ git add train.py params.yaml``                                                               |
+|                                   | | ``$ dvc add images/``                                                                            |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Connect code and data             | | ``$ dvc stage add -n featurize -d images/ -o features/ python featurize.py``                     |
+|                                   | | ``$ dvc stage add -n train -d features/ -d train.py -o model.p -M metrics.json python train.py`` |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Make changes and experiment       | | ``$ dvc exp run -n exp-baseline``                                                                |
+|                                   | | ``$ vi train.py``                                                                                |
+|                                   | | ``$ dvc exp run -n exp-code-change``                                                             |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Compare and select experiments    | | ``$ dvc exp show``                                                                               |
+|                                   | | ``$ dvc exp apply exp-baseline``                                                                 |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Share code                        | | ``$ git add .``                                                                                  |
+|                                   | | ``$ git commit -m 'The baseline model'``                                                         |
+|                                   | | ``$ git push``                                                                                   |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                                         |
+|                                   | | ``$ dvc push``                                                                                   |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
 
 How DVC works
 =============
