@@ -2,12 +2,14 @@
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
-• `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
-• `Twitter <https://twitter.com/DVCorg>`_
-• `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
-• `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+• `How DVC works`_
+• `VS Code Extension`_
+• `Installation`_
+• `Related Technologies`_
+• `Contributing`_
+• `Community and Support`_
 
 |CI| |Maintainability| |Coverage| |VS Code| |DOI|
 
@@ -15,7 +17,7 @@
 
 |
 
-**Data Version Control** or **DVC** is a command line tool and `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help you develop reproducible machine learning projects:
+**Data Version Control** or **DVC** is a command line tool and `VS Code Extension`_ to help you develop reproducible machine learning projects:
 
 #. **Version** your data and models.
    Store them in your cloud storage but keep their version info in your Git repo.
@@ -28,9 +30,6 @@
 #. **Compare** any data, code, parameters, model, or performance plots
 
 #. **Share** experiments and automatically reproduce anyone's experiment.
-
-.. contents:: **Contents**
-  :backlinks: none
 
 Quick start
 ===========
@@ -84,12 +83,14 @@ They specify all steps required to produce a model: input dependencies including
 Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
 Their results can be filtered and compared based on hyperparameters and metrics, and visualized with multiple plots.
 
+.. _`VS Code Extension`:
+
 Visual Studio Code Extension
 ============================
 
 |VS Code|
 
-To get use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
+To use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
 It currently features experiment tracking and data management, and more features (data pipeline support, etc.) are coming soon!
 
 |VS Code Extension Overview|
@@ -189,6 +190,8 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
+.. _`Related Technologies`:
+
 Comparison to related technologies
 ==================================
 
@@ -229,13 +232,14 @@ Thanks to all our contributors!
 
 |Contribs|
 
-Mailing List
-============
+Community and Support
+=====================
 
-Want to stay up to date?
-Want to help improve DVC by participating in our occasional polls?
-Subscribe to our `mailing list <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_.
-No spam, really low traffic.
+* `Twitter <https://twitter.com/DVCorg>`_
+* `Forum <https://discuss.dvc.org/>`_
+* `Discord Chat <https://dvc.org/chat>`_
+* `Email <mailto:support@dvc.org>`_
+* `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 Copyright
 =========
