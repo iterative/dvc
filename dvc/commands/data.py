@@ -41,7 +41,8 @@ class CmdDataStatus(CmdBase):
         'use "git status" to see',
     }
 
-    def _process_status(self, status: "DataStatus"):
+    @staticmethod
+    def _process_status(status: "DataStatus"):
         """Flatten stage status, and filter empty stage status contents."""
         for stage, stage_status in status.items():
             items = stage_status
@@ -55,9 +56,10 @@ class CmdDataStatus(CmdBase):
                 continue
             yield stage, items
 
-    def _show_status(self, status: "DataStatus") -> int:
+    @classmethod
+    def _show_status(cls, status: "DataStatus") -> int:
         git_info = status.pop("git")  # type: ignore[misc]
-        result = dict(self._process_status(status))
+        result = dict(cls._process_status(status))
         if not result:
             no_changes = "No changes"
             if git_info.get("is_empty", False):
@@ -68,12 +70,12 @@ class CmdDataStatus(CmdBase):
             if idx:
                 ui.write()
 
-            label = self.LABELS.get(stage, stage.capitalize() + " files")
+            label = cls.LABELS.get(stage, stage.capitalize() + " files")
             header = f"{label}:"
-            color = self.COLORS.get(stage, "normal")
+            color = cls.COLORS.get(stage, "normal")
 
             ui.write(header)
-            if hint := self.HINTS.get(stage):
+            if hint := cls.HINTS.get(stage):
                 ui.write(f"  ({hint})")
 
             if isinstance(stage_status, dict):
@@ -87,7 +89,7 @@ class CmdDataStatus(CmdBase):
             for item in items:
                 ui.write(f"\t[{color}]{item}[/]".expandtabs(8), styled=True)
 
-        if (hint := self.HINTS.get("git_dirty")) and git_info.get("is_dirty"):
+        if (hint := cls.HINTS.get("git_dirty")) and git_info.get("is_dirty"):
             message = hint.format("other " if result else "")
             ui.write(f"[blue]({message})[/]", styled=True)
         return 0
@@ -102,6 +104,8 @@ class CmdDataStatus(CmdBase):
 
         if not self.args.unchanged:
             status.pop("unchanged")  # type: ignore[misc]
+        if self.args.untracked_files == "no":
+            status.pop("untracked")
         if self.args.json:
             status.pop("git")  # type: ignore[misc]
             ui.write_json(compact(status))
