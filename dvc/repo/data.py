@@ -235,6 +235,7 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
         unchanged &= set(committed_diff.pop("unchanged", []))
 
     git_info = _git_info(repo.scm, untracked_files=untracked_files)
+    # order matters here
     return Status(
         not_in_cache=not_in_cache,
         committed=committed_diff,
