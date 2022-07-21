@@ -13,7 +13,7 @@ EMPTY_STATUS = {
 }
 
 
-def test_file(matcher, tmp_dir, scm, dvc):
+def test_file(M, tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("foo", "foo", commit="add foo")
     tmp_dir.dvc_gen("foo", "foobar")
     remove(tmp_dir / "foo")
@@ -21,7 +21,7 @@ def test_file(matcher, tmp_dir, scm, dvc):
     expected = {
         "committed": {"modified": ["foo"]},
         "uncommitted": {"deleted": ["foo"]},
-        "git": matcher.instance_of(dict),
+        "git": M.instance_of(dict),
         "not_in_cache": [],
         "unchanged": [],
         "untracked": [],
@@ -30,7 +30,7 @@ def test_file(matcher, tmp_dir, scm, dvc):
     assert dvc.data_status(granular=True) == expected
 
 
-def test_directory(matcher, tmp_dir, scm, dvc):
+def test_directory(M, tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
     tmp_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar", "foobar": "foobar"}})
     remove(tmp_dir / "dir")
@@ -40,7 +40,7 @@ def test_directory(matcher, tmp_dir, scm, dvc):
     assert dvc.data_status() == {
         "committed": {"modified": [join("dir", "")]},
         "uncommitted": {"modified": [join("dir", "")]},
-        "git": matcher.instance_of(dict),
+        "git": M.instance_of(dict),
         "not_in_cache": [],
         "unchanged": [],
         "untracked": [],
@@ -48,7 +48,7 @@ def test_directory(matcher, tmp_dir, scm, dvc):
 
     assert dvc.data_status(granular=True, untracked_files="all") == {
         "committed": {
-            "added": matcher.unordered(
+            "added": M.unordered(
                 join("dir", "bar"),
                 join("dir", "foobar"),
             )
@@ -58,18 +58,18 @@ def test_directory(matcher, tmp_dir, scm, dvc):
             "modified": [join("dir", "bar")],
             "deleted": [join("dir", "foobar")],
         },
-        "git": matcher.instance_of(dict),
+        "git": M.instance_of(dict),
         "not_in_cache": [],
         "unchanged": [join("dir", "foo")],
         "untracked": ["untracked"],
     }
 
 
-def test_new_empty_git_repo(matcher, tmp_dir, scm):
+def test_new_empty_git_repo(M, tmp_dir, scm):
     dvc = Repo.init()
     assert dvc.data_status() == {
         **EMPTY_STATUS,
-        "git": matcher.dict(
+        "git": M.dict(
             is_empty=True,
             is_dirty=True,
         ),
@@ -80,23 +80,23 @@ def test_noscm_repo(dvc):
     assert dvc.data_status() == EMPTY_STATUS
 
 
-def test_unchanged(matcher, tmp_dir, scm, dvc):
+def test_unchanged(M, tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
     tmp_dir.dvc_gen("bar", "bar", commit="add foo")
 
     assert dvc.data_status() == {
         **EMPTY_STATUS,
-        "git": matcher.instance_of(dict),
-        "unchanged": matcher.unordered("bar", join("dir", "")),
+        "git": M.instance_of(dict),
+        "unchanged": M.unordered("bar", join("dir", "")),
     }
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
-        "git": matcher.instance_of(dict),
-        "unchanged": matcher.unordered("bar", join("dir", "foo")),
+        "git": M.instance_of(dict),
+        "unchanged": M.unordered("bar", join("dir", "foo")),
     }
 
 
-def test_not_in_cache(matcher, tmp_dir, scm, dvc):
+def test_not_in_cache(M, tmp_dir, scm, dvc):
     # TODO: investigation required, might return wrong results
     tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
     tmp_dir.dvc_gen("bar", "bar", commit="add foo")
@@ -104,30 +104,28 @@ def test_not_in_cache(matcher, tmp_dir, scm, dvc):
 
     assert dvc.data_status() == {
         **EMPTY_STATUS,
-        "not_in_cache": matcher.unordered("bar", join("dir", "")),
-        "git": matcher.instance_of(dict),
+        "not_in_cache": M.unordered("bar", join("dir", "")),
+        "git": M.instance_of(dict),
         "unchanged": ["bar"],
         "uncommitted": {"added": [join("dir", "")]},
     }
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
-        "not_in_cache": matcher.unordered("bar"),
-        "git": matcher.instance_of(dict),
+        "not_in_cache": M.unordered("bar"),
+        "git": M.instance_of(dict),
         "unchanged": [],
         "committed": {"modified": ["bar"]},
         "uncommitted": {"modified": ["bar"], "added": [join("dir", "foo")]},
     }
 
 
-def test_withdirs(matcher, tmp_dir, scm, dvc):
+def test_withdirs(M, tmp_dir, scm, dvc):
     tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
     tmp_dir.dvc_gen("bar", "bar", commit="add foo")
     assert dvc.data_status(granular=True, with_dirs=True) == {
         **EMPTY_STATUS,
-        "git": matcher.instance_of(dict),
-        "unchanged": matcher.unordered(
-            "bar", join("dir", "foo"), join("dir", "")
-        ),
+        "git": M.instance_of(dict),
+        "unchanged": M.unordered("bar", join("dir", "foo"), join("dir", "")),
     }
 
 
