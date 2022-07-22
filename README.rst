@@ -4,10 +4,10 @@
 • `Docs <https://dvc.org/doc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
+• `Related Technologies <https://dvc.org/doc/user-guide/related-technologies>`_
 • `How DVC works`_
 • `VS Code Extension`_
 • `Installation`_
-• `Related Technologies`_
 • `Contributing`_
 • `Community and Support`_
 
@@ -189,37 +189,6 @@ Fedora / CentOS (rpm)
    sudo rpm --import https://dvc.org/rpm/iterative.asc
    sudo yum update
    sudo yum install dvc
-
-.. _`Related Technologies`:
-
-Comparison to related technologies
-==================================
-
-#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_, and others - in DVC data, model and ML pipelines represent a single ML project focused on data scientists' experience.
-   Data engineering tools orchestrate multiple data projects and focus on efficient execution.
-   A DVC project can be used from existing data pipelines as a single execution step.
-
-#. `Git-annex <https://git-annex.branchable.com/>`_:
-   DVC uses the idea of storing the content of large files (which should not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of copying/duplicating files.
-
-#. `Git-LFS <https://git-lfs.github.com/>`_: DVC is compatible with many remote storage services (S3, Google Cloud, Azure, SSH, etc).
-   DVC also uses reflinks or hardlinks to avoid copy operations on checkouts; thus handling large data
-   files much more efficiently.
-
-#. Makefile (and analogues including ad-hoc scripts):
-   DVC tracks dependencies (in a directed acyclic graph).
-
-#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_:
-   DVC is a workflow management system designed specifically to manage machine learning experiments.
-   DVC is built on top of Git.
-
-#. `DAGsHub <https://dagshub.com/>`_: Online service to host DVC projects.
-   It provides a useful UI around DVC repositories and integrates other tools.
-
-#. `Iterative Studio <https://studio.iterative.ai/>`_: Official web platform for DVC projects.
-   It can be used to manage data and models, run and track experiments, and visualize and share results.
-   Also, it integrates with `CML (CI/CD for ML) <https://cml.dev/>`__ for training models in the cloud or Kubernetes, and with `MLEM <https://mlem.ai/>` for model deployment.
-
 
 Contributing
 ============
