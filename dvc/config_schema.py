@@ -226,6 +226,7 @@ SCHEMA = {
                     "gdrive_service_account_user_email": str,
                     "gdrive_service_account_json_file_path": str,
                     Optional("gdrive_trash_only", default=False): Bool,
+                    Optional("gdrive_acknowledge_abuse", default=False): Bool,
                     Optional("verify", default=True): Bool,
                     **REMOTE_COMMON,
                 },
