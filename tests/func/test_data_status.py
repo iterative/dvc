@@ -1,6 +1,7 @@
 from os.path import join
 
 from dvc.repo import Repo
+from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 
 EMPTY_STATUS = {
@@ -146,3 +147,21 @@ def test_skip_uncached_pipeline_outputs(tmp_dir, dvc, run_copy_metrics):
 def test_output_with_newly_added_stage(tmp_dir, dvc):
     dvc.stage.add(deps=["bar"], outs=["foo"], name="copy", cmd="cp foo bar")
     assert dvc.data_status() == {**EMPTY_STATUS, "not_in_cache": ["foo"]}
+
+
+def test_subdir(M, tmp_dir, scm):
+    subrepo = tmp_dir / "sub"
+    make_subrepo(subrepo, scm)
+
+    with subrepo.chdir():
+        subrepo.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
+        subrepo.dvc_gen("bar", "bar", commit="add foo")
+        subrepo.gen("untracked", "untracked")
+
+        dvc = subrepo.dvc
+        assert dvc.data_status(granular=True, untracked_files="all") == {
+            **EMPTY_STATUS,
+            "git": M.instance_of(dict),
+            "unchanged": M.unordered("bar", join("dir", "foo")),
+            "untracked": ["untracked"],
+        }
