@@ -215,6 +215,17 @@ class Status(TypedDict):
     git: GitInfo
 
 
+def _transform_git_paths_to_dvc(repo: "Repo", files: List[str]):
+    """Transform files rel. to Git root to DVC root, and drop outside files."""
+    rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
+    if rel in (os.curdir, ""):
+        return files
+
+    prefix = rel + os.sep
+    length = len(prefix)
+    return [file[length:] for file in files if file.startswith(prefix)]
+
+
 def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
     from scmrepo.exceptions import SCMError
 
@@ -235,12 +246,14 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
         unchanged &= set(committed_diff.pop("unchanged", []))
 
     git_info = _git_info(repo.scm, untracked_files=untracked_files)
+    untracked = git_info.get("untracked", [])
+    untracked = _transform_git_paths_to_dvc(repo, untracked)
     # order matters here
     return Status(
         not_in_cache=not_in_cache,
         committed=committed_diff,
         uncommitted=uncommitted_diff,
-        untracked=git_info.get("untracked", []),
+        untracked=untracked,
         unchanged=list(unchanged),
         git=git_info,
     )
