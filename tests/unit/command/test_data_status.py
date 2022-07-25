@@ -7,6 +7,7 @@ from dvc.cli import main, parse_args
 from dvc.commands.data import CmdDataStatus
 from dvc.repo import Repo
 from dvc.repo.data import Status
+from tests.func.parsing.test_errors import escape_ansi
 
 
 @pytest.fixture
@@ -135,5 +136,5 @@ DVC unchanged files:
         expected_out += """\
 (there are other changes not tracked by dvc, use "git status" to see)
 """
-    assert out == expected_out
+    assert escape_ansi(out) == expected_out
     assert not err

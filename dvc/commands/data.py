@@ -2,11 +2,12 @@ import argparse
 import logging
 from typing import TYPE_CHECKING
 
-from funcy import compact, log_durations
+from funcy import chunks, compact, log_durations
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
 from dvc.ui import ui
+from dvc.utils import colorize
 
 if TYPE_CHECKING:
     from dvc.repo.data import Status as DataStatus
@@ -72,7 +73,7 @@ class CmdDataStatus(CmdBase):
 
             label = cls.LABELS.get(stage, stage.capitalize() + " files")
             header = f"{label}:"
-            color = cls.COLORS.get(stage, "normal")
+            color = cls.COLORS.get(stage, None)
 
             ui.write(header)
             if hint := cls.HINTS.get(stage):
@@ -86,8 +87,10 @@ class CmdDataStatus(CmdBase):
             else:
                 items = stage_status
 
-            for item in items:
-                ui.write(f"\t[{color}]{item}[/]".expandtabs(8), styled=True)
+            tabs = "\t".expandtabs(8)
+            for chunk in chunks(1000, items):
+                out = "\n".join(tabs + item for item in chunk)
+                ui.write(colorize(out, color))
 
         if (hint := cls.HINTS.get("git_dirty")) and git_info.get("is_dirty"):
             message = hint.format("other " if result else "")
