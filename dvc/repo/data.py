@@ -2,6 +2,8 @@ import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict, cast
 
+from dvc.ui import ui
+
 if TYPE_CHECKING:
     from scmrepo.base import Base
 
@@ -169,7 +171,8 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         cache = repo.odb.local
         root = str(out)
         old = out.get_obj()
-        d = _diff(root, old, new, cache, **kwargs)
+        with ui.status(f"Calculating diff for {root} between index/workspace"):
+            d = _diff(root, old, new, cache, **kwargs)
         for state, items in d.items():
             if not items:
                 continue
@@ -197,7 +200,8 @@ def _diff_head_to_index(
     for root, obj_d in objs.items():
         old = obj_d.get(head, None)
         new = obj_d.get("index", None)
-        d = _diff(root, old, new, cache, **kwargs)
+        with ui.status(f"Calculating diff for {root} between head/index"):
+            d = _diff(root, old, new, cache, **kwargs)
         for state, items in d.items():
             if not items:
                 continue
