@@ -334,10 +334,6 @@ def test_plots_diff_json(dvc, mocker, capsys):
     )
     render_mock = mocker.patch("dvc_render.render_html")
 
-    show_json_mock = mocker.patch(
-        "dvc.commands.plots._filter_unhandled_renderers",
-        return_value=renderers,
-    )
     show_json_mock = mocker.patch("dvc.commands.plots._show_json")
 
     assert cmd.run() == 0
