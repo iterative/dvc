@@ -57,42 +57,53 @@ def test_finding_lists(dictionary, expected_result):
 @pytest.mark.parametrize(
     "input_data,properties,expected_datapoints,expected_properties",
     [
-        (
-            # default x and y
+        pytest.param(
             {"metric": [{"v": 1}, {"v": 2}]},
             {},
             [
                 {
                     "v": 1,
                     "step": 0,
-                    VERSION_FIELD: {"revision": "r", "filename": "f"},
-                    "rev": "r",
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
                 },
                 {
                     "v": 2,
                     "step": 1,
-                    VERSION_FIELD: {"revision": "r", "filename": "f"},
-                    "rev": "r",
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
                 },
             ],
             {"x": "step", "y": "v"},
+            id="default_x_y",
         ),
-        (
-            # filter fields
+        pytest.param(
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"fields": {"v"}},
             [
                 {
                     "v": 1,
                     "step": 0,
-                    VERSION_FIELD: {"revision": "r", "filename": "f"},
-                    "rev": "r",
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
                 },
                 {
                     "v": 2,
                     "step": 1,
-                    VERSION_FIELD: {"revision": "r", "filename": "f"},
-                    "rev": "r",
+                    VERSION_FIELD: {
+                        "revision": "r",
+                        "filename": "f",
+                        "field": "v",
+                    },
                 },
             ],
             {
@@ -100,9 +111,9 @@ def test_finding_lists(dictionary, expected_result):
                 "y": "v",
                 "fields": {"v", "step"},
             },
+            id="filter_fields",
         ),
-        (
-            # choose x and y
+        pytest.param(
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"x": "v", "y": "v2"},
             [
@@ -114,7 +125,6 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v2",
                     },
-                    "rev": "r",
                 },
                 {
                     "v": 2,
@@ -124,13 +134,12 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v2",
                     },
-                    "rev": "r",
                 },
             ],
             {"x": "v", "y": "v2"},
+            id="choose_x_y",
         ),
-        (
-            # append x and y to filtered fields
+        pytest.param(
             {
                 "metric": [
                     {"v": 1, "v2": 0.1, "v3": 0.01, "v4": 0.001},
@@ -148,7 +157,6 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v4",
                     },
-                    "rev": "r",
                 },
                 {
                     "v": 2,
@@ -159,13 +167,12 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v4",
                     },
-                    "rev": "r",
                 },
             ],
             {"x": "v3", "y": "v4", "fields": {"v", "v3", "v4"}},
+            id="append_x_y_to_fields",
         ),
-        (
-            # find metric in nested structure
+        pytest.param(
             {
                 "some": "noise",
                 "very": {
@@ -184,7 +191,6 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v2",
                     },
-                    "rev": "r",
                 },
                 {
                     "v": 2,
@@ -194,13 +200,12 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v2",
                     },
-                    "rev": "r",
                 },
             ],
             {"x": "v", "y": "v2"},
+            id="find_in_nested_structure",
         ),
-        (
-            # provide list of fields in y def
+        pytest.param(
             {"metric": [{"v": 1, "v2": 0.1}, {"v": 2, "v2": 0.2}]},
             {"y": {"f": ["v", "v2"]}},
             [
@@ -212,7 +217,6 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v",
                     },
-                    "rev": "r",
                     "dvc_inferred_y_value": 1,
                     "step": 0,
                 },
@@ -224,7 +228,6 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v2",
                     },
-                    "rev": "r",
                     "dvc_inferred_y_value": 0.1,
                     "step": 0,
                 },
@@ -236,7 +239,6 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v",
                     },
-                    "rev": "r",
                     "dvc_inferred_y_value": 2,
                     "step": 1,
                 },
@@ -248,12 +250,12 @@ def test_finding_lists(dictionary, expected_result):
                         "filename": "f",
                         "field": "v2",
                     },
-                    "rev": "r",
                     "dvc_inferred_y_value": 0.2,
                     "step": 1,
                 },
             ],
             {"x": "step", "y": "dvc_inferred_y_value", "y_label": "y"},
+            id="y_def_list",
         ),
     ],
 )
@@ -275,6 +277,7 @@ def test_convert(
 def test_convert_skip_step():
     converter = VegaConverter()
     converter.skip_step("append_index")
+    converter.skip_step("generate_y")
 
     datapoints, resolved_properties = converter.convert(
         data={"a": "b", "metric": [{"v": 1}, {"v": 2}]},
@@ -285,13 +288,9 @@ def test_convert_skip_step():
     assert datapoints == [
         {
             "v": 1,
-            "rev": "r",
-            VERSION_FIELD: {"revision": "r", "filename": "f"},
         },
         {
             "v": 2,
-            "rev": "r",
-            VERSION_FIELD: {"revision": "r", "filename": "f"},
         },
     ]
     assert resolved_properties == {"x": "step", "y": "v"}

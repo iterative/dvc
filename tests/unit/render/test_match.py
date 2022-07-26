@@ -89,14 +89,20 @@ def test_match_renderers(mocker):
     assert len(renderers) == 1
     assert renderers[0].datapoints == [
         {
-            VERSION_FIELD: {"revision": "v1", "filename": "file.json"},
-            "rev": "v1",
+            VERSION_FIELD: {
+                "revision": "v1",
+                "filename": "file.json",
+                "field": "y",
+            },
             "x": 1,
             "y": 1,
         },
         {
-            VERSION_FIELD: {"revision": "v1", "filename": "file.json"},
-            "rev": "v1",
+            VERSION_FIELD: {
+                "revision": "v1",
+                "filename": "file.json",
+                "field": "y",
+            },
             "x": 2,
             "y": 2,
         },

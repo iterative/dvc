@@ -25,7 +25,7 @@ def _show_json(renderers, split=False):
 
 
 def _adjust_vega_renderers(renderers):
-    from dvc.render import VERSION_FIELD
+    from dvc.render import REVISION_FIELD, VERSION_FIELD
     from dvc_render import VegaRenderer
 
     for r in renderers:
@@ -42,6 +42,7 @@ def _adjust_vega_renderers(renderers):
                         dp["rev"] = "::".join(vi.values())
             else:
                 for dp in r.datapoints:
+                    dp[REVISION_FIELD] = dp[VERSION_FIELD]["revision"]
                     dp.pop(VERSION_FIELD, {})
 
 
@@ -64,18 +65,6 @@ def _data_versions_count(renderer):
     summary = _summarize_version_infos(renderer)
     x = product(summary.get("filename", {None}), summary.get("field", {None}))
     return len(set(x))
-
-
-def _filter_unhandled_renderers(renderers):
-    # filtering out renderers currently unhandled by vscode extension
-    from dvc_render import VegaRenderer
-
-    def _is_json_viable(r):
-        return not (
-            isinstance(r, VegaRenderer) and _data_versions_count(r) > 1
-        )
-
-    return list(filter(_is_json_viable, renderers))
 
 
 class CmdPlots(CmdBase):
@@ -156,12 +145,10 @@ class CmdPlots(CmdBase):
                 templates_dir=self.repo.plots.templates_dir,
             )
             if self.args.json:
-                renderers = _filter_unhandled_renderers(renderers)
                 _show_json(renderers, self.args.split)
                 return 0
 
             _adjust_vega_renderers(renderers)
-
             if self.args.show_vega:
                 renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
                 if renderer:
