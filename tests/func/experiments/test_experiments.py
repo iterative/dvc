@@ -99,6 +99,9 @@ def test_failed_exp_workspace(
     tmp_dir.gen("params.yaml", "foo: 2")
     with pytest.raises(ReproductionError):
         dvc.experiments.run(failed_exp_stage.addressing)
+    assert not dvc.fs.exists(
+        os.path.join(dvc.experiments.workspace_queue.pid_dir, "workspace")
+    )
 
 
 @pytest.mark.parametrize(
