@@ -229,6 +229,8 @@ class CmdPlotsTemplates(CmdBase):
         "confusion_normalized",
         "scatter",
         "smooth",
+        "bar_horizontal_sorted",
+        "bar_horizontal",
     ]
 
     def run(self):
