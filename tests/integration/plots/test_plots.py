@@ -49,8 +49,7 @@ def extract_vega_specs(html_path, plots_ids):
     reader = BeautifulSoup(content, features="html.parser")
     for plot_id in plots_ids:
         clean_id = Renderer.remove_special_chars(plot_id)
-        div_id = f"plot_{clean_id}"
-        script = _remove_blanks(reader.find("div", id=div_id).script.text)
+        script = _remove_blanks(reader.find("div", id=clean_id).script.text)
         result[plot_id] = json.loads(
             script.split("; vegaEmbed")[0].replace("var spec = ", "")
         )
