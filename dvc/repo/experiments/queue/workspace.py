@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Collection, Dict, Generator, Optional
 from funcy import first
 
 from dvc.exceptions import DvcException
-
 from dvc.utils.fs import remove
+
 from ..exceptions import ExpQueueEmptyError
 from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
