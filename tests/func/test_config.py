@@ -279,6 +279,16 @@ def test_load_relative_paths(dvc, field, remote_url):
     )
 
 
+def test_config_gdrive_fields(tmp_dir, dvc):
+    with dvc.config.edit() as conf:
+        conf["remote"]["test"] = {
+            "url": "gdrive://root/test",
+            "profile": "myprofile",
+        }
+
+    Config(validate=True)
+
+
 def test_config_remote(tmp_dir, dvc, capsys):
     (tmp_dir / ".dvc" / "config").write_text(
         "['remote \"myremote\"']\n"

@@ -219,6 +219,7 @@ SCHEMA = {
                     **REMOTE_COMMON,
                 },
                 "gdrive": {
+                    "profile": str,
                     "gdrive_use_service_account": Bool,
                     "gdrive_client_id": str,
                     "gdrive_client_secret": str,
