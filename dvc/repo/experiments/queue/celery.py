@@ -281,7 +281,7 @@ class LocalCeleryQueue(BaseStashQueue):
             return _load_collected(entry.stash_rev)
         except FileNotFoundError:
             pass
-        raise DvcException("Invalid experiment '{entry.stash_rev[:7]}'.")
+        raise DvcException(f"Invalid experiment '{entry.stash_rev[:7]}'.")
 
     def kill(self, revs: Collection[str]) -> None:
         to_kill: Set[QueueEntry] = set()
