@@ -205,6 +205,7 @@ class Index:
                 obj=out.obj,
                 hash_info=out.hash_info,
                 odb=out.odb,
+                cache=out.odb,
                 remote=remote,
             )
 

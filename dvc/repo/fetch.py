@@ -1,6 +1,8 @@
 import logging
+from contextlib import suppress
 from typing import TYPE_CHECKING, Optional
 
+from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, FileTransferError
 from dvc.fs import Schemes
 
@@ -10,6 +12,36 @@ if TYPE_CHECKING:
     from dvc_objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
+
+
+def _fetch_worktree(repo, remote):
+    from dvc_data.index import save
+
+    index = repo.index.data["repo"]
+    for key, entry in index.iteritems():
+        entry.fs = remote.fs
+        entry.path = remote.fs.path.join(
+            remote.path,
+            *key,
+        )
+    save(index)
+
+    for stage in repo.index.stages:
+        for out in stage.outs:
+            if not out.use_cache:
+                continue
+
+            if not out.is_in_repo:
+                continue
+
+            key = repo.fs.path.relparts(out.fs_path, repo.root_dir)
+            entry = repo.index.data["repo"][key]
+            out.hash_info = entry.hash_info
+            out.meta = entry.meta
+
+        stage.dvcfile.dump(stage)
+
+    return len(index)
 
 
 @locked
@@ -41,6 +73,11 @@ def fetch(
     """
     if isinstance(targets, str):
         targets = [targets]
+
+    with suppress(NoRemoteError):
+        _remote = self.cloud.get_remote(name=remote)
+        if _remote.worktree:
+            return _fetch_worktree(self, _remote)
 
     used = self.used_objs(
         targets,

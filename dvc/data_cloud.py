@@ -3,6 +3,8 @@
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
+from funcy import cached_property
+
 from dvc_data.hashfile.db import get_index
 
 if TYPE_CHECKING:
@@ -11,6 +13,25 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.status import CompareStatusResult
 
 logger = logging.getLogger(__name__)
+
+
+class Remote:
+    def __init__(self, path, fs, **config):
+        self.path = path
+        self.fs = fs
+
+        self.worktree = config.pop("worktree", False)
+        self.config = config
+
+    @cached_property
+    def odb(self):
+        from dvc_data.hashfile.db import get_odb
+
+        path = self.path
+        if self.worktree:
+            path = self.fs.path.join(path, ".dvc", "cache")
+
+        return get_odb(self.fs, path, **self.config)
 
 
 class DataCloud:
@@ -27,18 +48,23 @@ class DataCloud:
     def __init__(self, repo):
         self.repo = repo
 
-    def get_remote_odb(
+    def get_remote(
         self,
         name: Optional[str] = None,
         command: str = "<command>",
-    ) -> "HashFileDB":
+    ) -> "Remote":
         from dvc.config import NoRemoteError
 
         if not name:
             name = self.repo.config["core"].get("remote")
 
         if name:
-            return self._init_odb(name)
+            from dvc.fs import get_cloud_fs
+
+            cls, config, fs_path = get_cloud_fs(self.repo, name=name)
+            fs = cls(**config)
+            config["tmp_dir"] = self.repo.index_db_dir
+            return Remote(fs_path, fs, **config)
 
         if bool(self.repo.config["remote"]):
             error_msg = (
@@ -55,13 +81,13 @@ class DataCloud:
 
         raise NoRemoteError(error_msg)
 
-    def _init_odb(self, name):
-        from dvc.fs import get_cloud_fs
-        from dvc_data.hashfile.db import get_odb
-
-        cls, config, fs_path = get_cloud_fs(self.repo, name=name)
-        config["tmp_dir"] = self.repo.index_db_dir
-        return get_odb(cls(**config), fs_path, **config)
+    def get_remote_odb(
+        self,
+        name: Optional[str] = None,
+        command: str = "<command>",
+    ) -> "HashFileDB":
+        remote = self.get_remote(name=name, command=command)
+        return remote.odb
 
     def _log_missing(self, status: "CompareStatusResult"):
         if status.missing:
