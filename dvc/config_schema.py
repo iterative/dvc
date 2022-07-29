@@ -78,6 +78,7 @@ REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
+    Optional("worktree"): Bool,
     Optional("no_traverse"): Bool,  # obsoleted
     Optional("version_aware"): Bool,
 }

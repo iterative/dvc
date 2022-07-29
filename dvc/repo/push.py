@@ -9,6 +9,31 @@ if TYPE_CHECKING:
     from dvc_objects.db.base import ObjectDB
 
 
+def _push_worktree(repo, remote):
+    from dvc_data.index import build, checkout
+
+    index = repo.index.data["repo"]
+    checkout(index, remote.path, remote.fs)
+    build(index, remote.path, remote.fs)
+
+    for stage in repo.index.stages:
+        for out in stage.outs:
+            if not out.use_cache:
+                continue
+
+            if not out.is_in_repo:
+                continue
+
+            key = repo.fs.path.relparts(out.fs_path, repo.root_dir)
+            entry = repo.index.data["repo"][key]
+            out.hash_info = entry.hash_info
+            out.meta = entry.meta
+
+        stage.dvcfile.dump(stage)
+
+    return len(index)
+
+
 @locked
 def push(
     self,
@@ -26,6 +51,10 @@ def push(
     odb: Optional["ObjectDB"] = None,
     include_imports=False,
 ):
+    _remote = self.cloud.get_remote(name=remote)
+    if _remote.worktree:
+        return _push_worktree(self, _remote)
+
     used_run_cache = (
         self.stage_cache.push(remote, odb=odb) if run_cache else []
     )
