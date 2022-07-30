@@ -545,7 +545,7 @@ class Output:
 
         self.ignore()
 
-        if self.metric or self.plot:
+        if self.metric:
             self.verify_metric()
 
         if not self.use_cache:
@@ -708,22 +708,20 @@ class Output:
             raise DvcException(
                 f"verify metric is not supported for {self.protocol}"
             )
-
-        if not self.metric or self.plot:
+        if not self.metric:
             return
 
         if not os.path.exists(self.fs_path):
             return
 
-        name = "metrics" if self.metric else "plot"
         if os.path.isdir(self.fs_path):
-            msg = "directory '%s' cannot be used as %s."
-            logger.debug(msg, str(self), name)
+            logger.debug(f"directory '{self}' cannot be used as metrics.")
             return
 
         if not istextfile(self.fs_path, self.fs):
-            msg = "binary file '{}' cannot be used as {}."
-            raise DvcException(msg.format(self.fs_path, name))
+            raise DvcException(
+                f"binary file '{self.fs_path}' cannot be used as metrics."
+            )
 
     def download(self, to, jobs=None):
         from dvc.fs.callbacks import Callback
