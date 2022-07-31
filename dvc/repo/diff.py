@@ -190,7 +190,7 @@ def _filter_missing(dvcfs, paths):
             if (
                 dvc_info
                 and info["type"] == "directory"
-                and not dvc_info["meta"].obj
+                and not dvc_info["obj"]
             ):
                 yield path
         except FileNotFoundError:

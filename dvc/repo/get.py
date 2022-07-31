@@ -54,8 +54,8 @@ def get(url, path, out=None, rev=None, jobs=None):
             if os.path.isabs(path):
                 from dvc.fs.data import DataFileSystem
 
-                fs = DataFileSystem(repo=repo, workspace="local")
-                fs_path = path
+                fs = DataFileSystem(index=repo.index.data["local"])
+                fs_path = fs.from_os_path(path)
             else:
                 fs = repo.dvcfs
                 fs_path = fs.from_os_path(path)

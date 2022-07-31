@@ -85,7 +85,7 @@ def _ls(
     ret = {}
     for name, info in infos.items():
         dvc_info = info.get("dvc_info", {})
-        if dvc_info.get("outs") or not dvc_only:
+        if dvc_info.get("entries") or not dvc_only:
             ret[name] = {
                 "isout": dvc_info.get("isout", False),
                 "isdir": info["type"] == "directory",
