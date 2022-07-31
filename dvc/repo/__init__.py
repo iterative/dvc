@@ -480,7 +480,7 @@ class Repo:
     def datafs(self):
         from dvc.fs.data import DataFileSystem
 
-        return DataFileSystem(repo=self)
+        return DataFileSystem(index=self.index.data["repo"])
 
     @cached_property
     def dvcfs(self):
@@ -501,18 +501,23 @@ class Repo:
         from dvc.fs.dvc import DvcFileSystem
 
         if os.path.isabs(path):
-            fs = DataFileSystem(repo=self, workspace="local")
+            fs = DataFileSystem(index=self.index.data["local"])
             fs_path = path
         else:
             fs = DvcFileSystem(repo=self, subrepos=True)
             fs_path = fs.from_os_path(path)
 
         try:
+            if remote:
+                remote_odb = self.cloud.get_remote_odb(name=remote)
+                oid = fs.info(fs_path)["dvc_info"]["md5"]
+                fs = remote_odb.fs
+                fs_path = remote_odb.oid_to_path(oid)
+
             with fs.open(
                 fs_path,
                 mode=mode,
                 encoding=encoding,
-                remote=remote,
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:
