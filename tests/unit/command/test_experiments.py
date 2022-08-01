@@ -342,7 +342,7 @@ def test_experiments_pull(dvc, scm, mocker):
     )
 
 
-def test_experiments_remove(dvc, scm, mocker, capsys, caplog):
+def test_experiments_remove_flag(dvc, scm, mocker, capsys, caplog):
     cli_args = parse_args(
         [
             "experiments",
@@ -354,19 +354,15 @@ def test_experiments_remove(dvc, scm, mocker, capsys, caplog):
             "2",
             "--git-remote",
             "myremote",
-            "exp-123",
-            "exp-234",
         ]
     )
     assert cli_args.func == CmdExperimentsRemove
-
     cmd = cli_args.func(cli_args)
     m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
-
     assert cmd.run() == 0
     m.assert_called_once_with(
         cmd.repo,
-        exp_names=["exp-123", "exp-234"],
+        exp_names=[],
         all_commits=True,
         rev="foo",
         num=2,
@@ -374,12 +370,45 @@ def test_experiments_remove(dvc, scm, mocker, capsys, caplog):
         git_remote="myremote",
     )
 
-    cmd = cli_args.func(parse_args(["exp", "remove"]))
+
+def test_experiments_remove_special(dvc, scm, mocker, capsys, caplog):
+    cli_args = parse_args(
+        [
+            "experiments",
+            "remove",
+            "--git-remote",
+            "myremote",
+            "exp-123",
+            "exp-234",
+        ]
+    )
+    assert cli_args.func == CmdExperimentsRemove
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.remove.remove", return_value={})
+    assert cmd.run() == 0
+    m.assert_called_once_with(
+        cmd.repo,
+        exp_names=["exp-123", "exp-234"],
+        all_commits=False,
+        rev=None,
+        num=1,
+        queue=False,
+        git_remote="myremote",
+    )
+
+
+def test_experiments_remove_invalid(dvc, scm, mocker, capsys, caplog):
+    cmd = CmdExperimentsRemove(
+        parse_args(["exp", "remove", "--all-commits", "exp-1", "exp-2"])
+    )
+    with pytest.raises(InvalidArgumentError):
+        cmd.run()
+    cmd = CmdExperimentsRemove(parse_args(["exp", "remove"]))
     with pytest.raises(InvalidArgumentError) as excinfo:
         cmd.run()
     assert (
         str(excinfo.value) == "Either provide an `experiment` argument"
-        ", or use the `--rev` or `--all-commits` flag."
+        ", or use the `--rev` or `--all-commits` or `--queue` flag."
     )
 
 
