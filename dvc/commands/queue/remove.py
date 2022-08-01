@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class CmdQueueRemove(CmdBase):
     """Remove exp in queue."""
 
-    def argument_checking(self):
+    def check_arguments(self):
         clear_flag = any(
             [
                 self.args.all,
@@ -29,7 +29,7 @@ class CmdQueueRemove(CmdBase):
 
     def run(self):
 
-        self.argument_checking()
+        self.check_arguments()
 
         if self.args.all:
             self.args.queued = True
