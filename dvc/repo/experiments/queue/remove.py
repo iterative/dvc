@@ -1,13 +1,4 @@
-from typing import (
-    TYPE_CHECKING,
-    Collection,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Union,
-)
+from typing import TYPE_CHECKING, Collection, Dict, Iterable, List, Set, Union
 
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.queue.base import QueueDoneResult
@@ -18,21 +9,31 @@ if TYPE_CHECKING:
     from dvc.repo.experiments.stash import ExpStashEntry
 
 
-def _remove_queued_tasks(
+def remove_tasks(
     celery_queue: "LocalCeleryQueue",
-    queue_entries: Iterable[Optional["QueueEntry"]],
+    queue_entries: Iterable["QueueEntry"],
 ):
     """Remove tasks from task queue.
 
     Arguments:
-        queue_entries: An iterable list of queued task to remove
+        queue_entries: An iterable list of task to remove
     """
+    from celery.result import AsyncResult
+
     stash_revs: Dict[str, "ExpStashEntry"] = {}
+    failed_stash_revs: List["ExpStashEntry"] = []
+    done_entry_set: Set["QueueEntry"] = set()
     for entry in queue_entries:
-        if entry:
+        if entry.stash_rev in celery_queue.stash.stash_revs:
             stash_revs[entry.stash_rev] = celery_queue.stash.stash_revs[
                 entry.stash_rev
             ]
+        else:
+            done_entry_set.add(entry)
+            if entry.stash_rev in celery_queue.failed_stash.stash_revs:
+                failed_stash_revs.append(
+                    celery_queue.failed_stash.stash_revs[entry.stash_rev]
+                )
 
     try:
         for (
@@ -44,28 +45,6 @@ def _remove_queued_tasks(
     finally:
         celery_queue.stash.remove_revs(list(stash_revs.values()))
 
-
-def _remove_done_tasks(
-    celery_queue: "LocalCeleryQueue",
-    queue_entries: Iterable[Optional["QueueEntry"]],
-):
-    """Remove done tasks.
-
-    Arguments:
-        queue_entries: An iterable list of done task to remove
-    """
-    from celery.result import AsyncResult
-
-    failed_stash_revs: List["ExpStashEntry"] = []
-    queue_entry_set: Set["QueueEntry"] = set()
-    for entry in queue_entries:
-        if entry:
-            queue_entry_set.add(entry)
-            if entry.stash_rev in celery_queue.failed_stash.stash_revs:
-                failed_stash_revs.append(
-                    celery_queue.failed_stash.stash_revs[entry.stash_rev]
-                )
-
     try:
         for (
             msg,
@@ -73,7 +52,7 @@ def _remove_done_tasks(
         ) in (
             celery_queue._iter_processed()  # pylint: disable=protected-access
         ):
-            if queue_entry not in queue_entry_set:
+            if queue_entry not in done_entry_set:
                 continue
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
@@ -98,7 +77,12 @@ def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):
     return names
 
 
-def celery_clear(self: "LocalCeleryQueue", **kwargs) -> List[str]:
+def celery_clear(
+    self: "LocalCeleryQueue",
+    queued: bool = False,
+    failed: bool = False,
+    success: bool = False,
+) -> List[str]:
     """Remove entries from the queue.
 
     Arguments:
@@ -109,24 +93,23 @@ def celery_clear(self: "LocalCeleryQueue", **kwargs) -> List[str]:
     Returns:
         Revisions which were removed.
     """
-    queued = kwargs.pop("queued", False)
-    failed = kwargs.get("failed", False)
-    success = kwargs.get("success", False)
 
-    removed = []
+    removed: List[str] = []
+    entry_list: List["QueueEntry"] = []
     if queued:
-        queue_entries = list(self.iter_queued())
-        _remove_queued_tasks(self, queue_entries)
+        queue_entries: List["QueueEntry"] = list(self.iter_queued())
+        entry_list.extend(queue_entries)
         removed.extend(_get_names(queue_entries))
-    if failed or success:
-        done_tasks: List["QueueDoneResult"] = []
-        if failed:
-            done_tasks.extend(self.iter_failed())
-        if success:
-            done_tasks.extend(self.iter_success())
-        done_entries = [result.entry for result in done_tasks]
-        _remove_done_tasks(self, done_entries)
-        removed.extend(_get_names(done_tasks))
+    if failed:
+        failed_tasks: List["QueueDoneResult"] = list(self.iter_failed())
+        entry_list.extend([result.entry for result in failed_tasks])
+        removed.extend(_get_names(failed_tasks))
+    if success:
+        success_tasks: List["QueueDoneResult"] = list(self.iter_success())
+        entry_list.extend([result.entry for result in success_tasks])
+        removed.extend(_get_names(success_tasks))
+
+    remove_tasks(self, entry_list)
 
     return removed
 
@@ -144,36 +127,24 @@ def celery_remove(
         Revisions (or names) which were removed.
     """
 
-    # match_queued
-    queue_match_results = self.match_queue_entry_by_name(
-        revs, self.iter_queued()
+    match_results = self.match_queue_entry_by_name(
+        revs, self.iter_queued(), self.iter_done()
     )
-
-    done_match_results = self.match_queue_entry_by_name(revs, self.iter_done())
 
     remained: List[str] = []
     removed: List[str] = []
-    queued_to_remove: List["QueueEntry"] = []
-    done_to_remove: List["QueueEntry"] = []
-    for name in revs:
-        done_match = done_match_results[name]
-        if done_match:
-            done_to_remove.append(done_match)
+    entry_to_remove: List["QueueEntry"] = []
+    for name, entry in match_results.items():
+        if entry:
+            entry_to_remove.append(entry)
             removed.append(name)
-            continue
-        queue_match = queue_match_results[name]
-        if queue_match:
-            queued_to_remove.append(queue_match)
-            removed.append(name)
-            continue
-        remained.append(name)
+        else:
+            remained.append(name)
 
     if remained:
         raise UnresolvedExpNamesError(remained)
 
-    if done_to_remove:
-        _remove_done_tasks(self, done_to_remove)
-    if queued_to_remove:
-        _remove_queued_tasks(self, queued_to_remove)
+    if entry_to_remove:
+        remove_tasks(self, entry_to_remove)
 
     return removed
