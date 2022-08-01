@@ -14,7 +14,7 @@ from dvc.repo.experiments.queue.base import QueueDoneResult
 
 if TYPE_CHECKING:
     from dvc.repo.experiments.queue.base import QueueEntry
-    from dvc.repo.experiments.queue.local import LocalCeleryQueue
+    from dvc.repo.experiments.queue.celery import LocalCeleryQueue
     from dvc.repo.experiments.stash import ExpStashEntry
 
 
@@ -134,27 +134,15 @@ def celery_clear(self: "LocalCeleryQueue", **kwargs) -> List[str]:
 def celery_remove(
     self: "LocalCeleryQueue",
     revs: Collection[str],
-    queued: bool = False,
-    failed: bool = False,
-    success: bool = False,
-    all_: bool = False,
 ) -> List[str]:
     """Remove the specified entries from the queue.
 
     Arguments:
         revs: Stash revisions or queued exp names to be removed.
-        queued: Remove all queued tasks.
-        failed: Remove all failed tasks.
-        success: Remove all success tasks.
-        all_: Remove all tasks.
 
     Returns:
         Revisions (or names) which were removed.
     """
-    if all_:
-        queued = failed = success = True
-    if queued or failed or success:
-        return self.clear(failed=failed, success=success, queued=queued)
 
     # match_queued
     queue_match_results = self.match_queue_entry_by_name(
