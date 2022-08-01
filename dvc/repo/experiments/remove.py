@@ -18,7 +18,7 @@ from .utils import (
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
-    from dvc.repo.experiments.queue.local import LocalCeleryQueue
+    from dvc.repo.experiments.queue.celery import LocalCeleryQueue
     from dvc.scm import Git
 
 
@@ -41,7 +41,7 @@ def remove(
         return removed
 
     if queue:
-        removed.extend(_clear_queue(repo))
+        removed.extend(repo.experiments.celery_queue.clear(queued=True))
     if all_commits:
         removed.extend(_clear_all_commits(repo, git_remote))
         return removed
@@ -115,14 +115,6 @@ def _resolve_exp_by_baseline(
         for ref_info in ref_info_list:
             if ref_info not in commit_ref_dict:
                 commit_ref_dict[ref_info] = ref_info.name
-
-
-def _clear_queue(repo: "Repo") -> List[str]:
-    removed_name_list = []
-    for entry in repo.experiments.celery_queue.iter_queued():
-        removed_name_list.append(entry.name or entry.stash_rev[:7])
-    repo.experiments.celery_queue.clear(queued=True)
-    return removed_name_list
 
 
 def _clear_all_commits(repo, git_remote) -> List:
