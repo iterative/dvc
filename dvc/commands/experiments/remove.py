@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsRemove(CmdBase):
-    def argument_checking(self):
+    def check_arguments(self):
         if not any(
             [
                 self.args.all_commits,
@@ -25,7 +25,7 @@ class CmdExperimentsRemove(CmdBase):
 
     def run(self):
 
-        self.argument_checking()
+        self.check_arguments()
 
         removed_list = self.repo.experiments.remove(
             exp_names=self.args.experiment,

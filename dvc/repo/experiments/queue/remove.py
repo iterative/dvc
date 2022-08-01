@@ -23,17 +23,15 @@ def remove_tasks(
     stash_revs: Dict[str, "ExpStashEntry"] = {}
     failed_stash_revs: List["ExpStashEntry"] = []
     done_entry_set: Set["QueueEntry"] = set()
+    stash_rev_all = celery_queue.stash.stash_revs
+    failed_rev_all = celery_queue.failed_stash.stash_revs
     for entry in queue_entries:
-        if entry.stash_rev in celery_queue.stash.stash_revs:
-            stash_revs[entry.stash_rev] = celery_queue.stash.stash_revs[
-                entry.stash_rev
-            ]
+        if entry.stash_rev in stash_rev_all:
+            stash_revs[entry.stash_rev] = stash_rev_all[entry.stash_rev]
         else:
             done_entry_set.add(entry)
-            if entry.stash_rev in celery_queue.failed_stash.stash_revs:
-                failed_stash_revs.append(
-                    celery_queue.failed_stash.stash_revs[entry.stash_rev]
-                )
+            if entry.stash_rev in failed_rev_all:
+                failed_stash_revs.append(failed_rev_all[entry.stash_rev])
 
     try:
         for (
