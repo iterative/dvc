@@ -14,15 +14,8 @@ from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
 from .exceptions import UnresolvedExpNamesError
-from .queue.remove import remove_tasks
 from .refs import ExpRefInfo
-from .utils import (
-    exp_refs,
-    exp_refs_by_baseline,
-    push_refspec,
-    remove_exp_refs,
-    resolve_name,
-)
+from .utils import exp_refs, exp_refs_by_baseline, push_refspec
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -47,6 +40,8 @@ def _get_ref_and_entry_by_names(
     celery_queue: "LocalCeleryQueue",
     git_remote: Optional[str],
 ) -> ExpRefAndQueueEntry:
+    from .utils import resolve_name
+
     exp_ref_list: List["ExpRefInfo"] = []
     queue_entry_list: List["QueueEntry"] = []
     removed: List[str] = []
@@ -59,7 +54,7 @@ def _get_ref_and_entry_by_names(
         queue_entry_match: Dict[
             str, Optional["QueueEntry"]
         ] = celery_queue.match_queue_entry_by_name(
-            exp_names, celery_queue.iter_queued()
+            exp_names, celery_queue.iter_queued(), celery_queue.iter_done()
         )
 
     remained = []
@@ -111,7 +106,7 @@ def remove(
         result = _get_ref_and_entry_by_names(
             exp_names, repo.scm, celery_queue, git_remote
         )
-        removed.extend(exp_names)
+        removed.extend(result.removed)
         exp_ref_list.extend(result.exp_ref_list)
         queue_entry_list.extend(result.queue_entry_list)
     elif rev:
@@ -123,6 +118,8 @@ def remove(
         _remove_commited_exps(repo.scm, exp_ref_list, git_remote)
 
     if queue_entry_list:
+        from .queue.remove import remove_tasks
+
         remove_tasks(celery_queue, queue_entry_list)
 
     return removed
@@ -160,5 +157,7 @@ def _remove_commited_exps(
                     progress=pbar.update_git,
                 )
     else:
+        from .utils import remove_exp_refs
+
         remove_exp_refs(scm, exp_refs_list)
     return [exp_ref.name for exp_ref in exp_refs_list]
