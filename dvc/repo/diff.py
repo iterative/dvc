@@ -186,11 +186,12 @@ def _filter_missing(dvcfs, paths):
         fs_path = dvcfs.from_os_path(path)
         try:
             info = dvcfs.info(fs_path)
-            dvc_info = info.get("dvc_info")
+            dvc_info = info.get("dvc_info", {})
+            entry = dvc_info.get("entry")
             if (
-                dvc_info
+                entry
                 and info["type"] == "directory"
-                and not dvc_info["obj"]
+                and not entry.odb.exists(entry.hash_info.value)
             ):
                 yield path
         except FileNotFoundError:
