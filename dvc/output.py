@@ -715,7 +715,8 @@ class Output:
             return
 
         if os.path.isdir(self.fs_path):
-            logger.debug(f"directory '{self}' cannot be used as metrics.")
+            msg = "directory '%s' cannot be used as %s."
+            logger.debug(msg, str(self), "metrics")
             return
 
         if not istextfile(self.fs_path, self.fs):
