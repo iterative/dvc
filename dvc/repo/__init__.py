@@ -128,19 +128,17 @@ class Repo:
 
         import hashlib
 
-        from dvc.utils.fs import makedirs
-
         root_dir_hash = hashlib.sha224(
             self.root_dir.encode("utf-8")
         ).hexdigest()
 
-        db_dir = os.path.join(
+        db_dir = self.fs.path.join(
             base_db_dir,
             self.DVC_DIR,
-            f"{os.path.basename(self.root_dir)}-{root_dir_hash[0:7]}",
+            f"{self.fs.path.name(self.root_dir)}-{root_dir_hash[0:7]}",
         )
 
-        makedirs(db_dir, exist_ok=True)
+        self.fs.makedirs(db_dir, exist_ok=True)
         return db_dir
 
     def __init__(
@@ -200,9 +198,7 @@ class Repo:
             self.odb = ODBManager(self)
             self.tmp_dir = None
         else:
-            from dvc.utils.fs import makedirs
-
-            makedirs(self.tmp_dir, exist_ok=True)
+            self.fs.makedirs(self.tmp_dir, exist_ok=True)
             self.lock = make_lock(
                 os.path.join(self.tmp_dir, "lock"),
                 tmp_dir=self.tmp_dir,
