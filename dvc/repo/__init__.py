@@ -155,7 +155,7 @@ class Repo:
     ):
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
-        from dvc.fs import GitFileSystem, localfs
+        from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
         from dvc.odbmgr import ODBManager
         from dvc.repo.metrics import Metrics
@@ -199,15 +199,22 @@ class Repo:
             self.tmp_dir = None
         else:
             self.fs.makedirs(self.tmp_dir, exist_ok=True)
-            self.lock = make_lock(
-                os.path.join(self.tmp_dir, "lock"),
-                tmp_dir=self.tmp_dir,
-                hardlink_lock=self.config["core"].get("hardlink_lock", False),
-                friendly=True,
-            )
 
-            state_db_dir = self._get_database_dir("state")
-            self.state = State(self.root_dir, state_db_dir, self.dvcignore)
+            if isinstance(self.fs, LocalFileSystem):
+                self.lock = make_lock(
+                    self.fs.path.join(self.tmp_dir, "lock"),
+                    tmp_dir=self.tmp_dir,
+                    hardlink_lock=self.config["core"].get(
+                        "hardlink_lock", False
+                    ),
+                    friendly=True,
+                )
+                state_db_dir = self._get_database_dir("state")
+                self.state = State(self.root_dir, state_db_dir, self.dvcignore)
+            else:
+                self.lock = LockNoop()
+                self.state = StateNoop()
+
             self.odb = ODBManager(self)
 
             self.stage_cache = StageCache(self)
