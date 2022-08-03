@@ -168,7 +168,7 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         except FileNotFoundError:
             new = None
 
-        cache = repo.odb.local
+        cache = repo.odb.repo
         root = str(out)
         old = out.get_obj()
         with ui.status(f"Calculating diff for {root} between index/workspace"):
@@ -196,7 +196,7 @@ def _diff_head_to_index(
             typ = "index" if rev == "workspace" else head
             objs[root][typ] = out.get_obj()
 
-    cache = repo.odb.local
+    cache = repo.odb.repo
     for root, obj_d in objs.items():
         old = obj_d.get(head, None)
         new = obj_d.get("index", None)

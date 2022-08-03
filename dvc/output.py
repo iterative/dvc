@@ -409,7 +409,8 @@ class Output:
 
     @property
     def odb(self):
-        odb = getattr(self.repo.odb, self.protocol)
+        odb_name = "repo" if self.is_in_repo else self.protocol
+        odb = getattr(self.repo.odb, odb_name)
         if self.use_cache and odb is None:
             raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
         return odb
