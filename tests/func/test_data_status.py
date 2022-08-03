@@ -101,7 +101,7 @@ def test_not_in_cache(M, tmp_dir, scm, dvc):
     # TODO: investigation required, might return wrong results
     tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
     tmp_dir.dvc_gen("bar", "bar", commit="add foo")
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     assert dvc.data_status() == {
         **EMPTY_STATUS,

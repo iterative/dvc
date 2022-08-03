@@ -831,12 +831,12 @@ class TestReproAllPipelines(SingleStageRun, TestDvc):
 
 class TestReproNoCommit(TestRepro):
     def test(self):
-        remove(self.dvc.odb.local.cache_dir)
+        remove(self.dvc.odb.local.path)
         ret = main(
             ["repro", self._get_stage_target(self.stage), "--no-commit"]
         )
         self.assertEqual(ret, 0)
-        self.assertEqual(os.listdir(self.dvc.odb.local.cache_dir), ["runs"])
+        self.assertEqual(os.listdir(self.dvc.odb.local.path), ["runs"])
 
 
 class TestReproAlreadyCached(TestRepro):

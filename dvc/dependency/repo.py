@@ -108,9 +108,7 @@ class RepoDependency(Dependency):
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
-        with self._make_repo(
-            locked=locked, cache_dir=local_odb.cache_dir
-        ) as repo:
+        with self._make_repo(locked=locked, cache_dir=local_odb.path) as repo:
             used_obj_ids = defaultdict(set)
             rev = repo.get_rev()
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:

@@ -32,9 +32,9 @@ def get_dvc_info():
             # can't auto-create it, as it might cause issues if the user
             # later decides to enable shared cache mode with
             # `dvc config cache.shared group`.
-            if os.path.exists(repo.odb.local.cache_dir):
+            if os.path.exists(repo.odb.local.path):
                 info.append(f"Cache types: {_get_linktype_support_info(repo)}")
-                fs_type = get_fs_type(repo.odb.local.cache_dir)
+                fs_type = get_fs_type(repo.odb.local.path)
                 info.append(f"Cache directory: {fs_type}")
             else:
                 info.append("Cache types: " + error_link("no-dvc-cache"))

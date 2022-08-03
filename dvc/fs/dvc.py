@@ -155,9 +155,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self.PARAM_REPO_URL: self.repo_url,
             self.PARAM_REPO_ROOT: self.repo.root_dir,
             self.PARAM_REV: getattr(self.repo.fs, "rev", None),
-            self.PARAM_CACHE_DIR: os.path.abspath(
-                self.repo.odb.local.cache_dir
-            ),
+            self.PARAM_CACHE_DIR: os.path.abspath(self.repo.odb.local.path),
             self.PARAM_CACHE_TYPES: self.repo.odb.local.cache_types,
             self.PARAM_SUBREPOS: self._traverse_subrepos,
         }

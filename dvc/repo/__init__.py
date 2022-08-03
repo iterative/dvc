@@ -369,8 +369,8 @@ class Repo:
     def _ignore(self):
         flist = [self.config.files["local"], self.tmp_dir]
 
-        if path_isin(self.odb.repo.cache_dir, self.root_dir):
-            flist += [self.odb.repo.cache_dir]
+        if path_isin(self.odb.repo.path, self.root_dir):
+            flist += [self.odb.repo.path]
 
         for file in flist:
             self.scm_context.ignore(file)

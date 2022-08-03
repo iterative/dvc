@@ -470,7 +470,7 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         self.assertTrue(system.is_symlink(self.DATA))
         old_data_link = os.path.realpath(self.DATA)
 
-        old_cache_dir = self.dvc.odb.local.cache_dir
+        old_cache_dir = self.dvc.odb.local.path
         new_cache_dir = old_cache_dir + "_new"
         os.rename(old_cache_dir, new_cache_dir)
 
