@@ -341,9 +341,6 @@ class Output:
         self.remote = remote
 
     def _parse_path(self, fs, fs_path):
-        if fs.protocol != "local":
-            return fs_path
-
         parsed = urlparse(self.def_path)
         if parsed.scheme != "remote":
             # NOTE: we can path either from command line or .dvc file,
@@ -386,9 +383,6 @@ class Output:
 
     @property
     def is_in_repo(self):
-        if self.fs.protocol != "local":
-            return False
-
         if urlparse(self.def_path).scheme == "remote":
             return False
 
