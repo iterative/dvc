@@ -1,8 +1,8 @@
-from dvc.fs import Schemes
+from dvc.fs import GitFileSystem, Schemes
 from dvc_data.db import get_odb
 
 
-def _get_odb(repo, settings):
+def _get_odb(repo, settings, fs=None):
     from dvc.fs import get_cloud_fs
 
     if not settings:
@@ -10,7 +10,8 @@ def _get_odb(repo, settings):
 
     cls, config, fs_path = get_cloud_fs(repo, **settings)
     config["tmp_dir"] = repo.tmp_dir
-    return get_odb(cls(**config), fs_path, state=repo.state, **config)
+    fs = fs or cls(**config)
+    return get_odb(fs, fs_path, state=repo.state, **config)
 
 
 class ODBManager:
@@ -42,7 +43,11 @@ class ODBManager:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        odb = _get_odb(repo, settings)
+        kwargs = {}
+        if not isinstance(repo.fs, GitFileSystem):
+            kwargs["fs"] = repo.fs
+
+        odb = _get_odb(repo, settings, **kwargs)
         self._odb["repo"] = odb
         self._odb[Schemes.LOCAL] = odb
 
