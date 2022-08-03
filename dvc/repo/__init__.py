@@ -364,13 +364,13 @@ class Repo:
         )
 
     def unprotect(self, target):
-        return self.odb.local.unprotect(target)
+        return self.odb.repo.unprotect(target)
 
     def _ignore(self):
         flist = [self.config.files["local"], self.tmp_dir]
 
-        if path_isin(self.odb.local.cache_dir, self.root_dir):
-            flist += [self.odb.local.cache_dir]
+        if path_isin(self.odb.repo.cache_dir, self.root_dir):
+            flist += [self.odb.repo.cache_dir]
 
         for file in flist:
             self.scm_context.ignore(file)

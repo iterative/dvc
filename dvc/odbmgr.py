@@ -24,7 +24,7 @@ class ODBManager:
     ]
 
     def __init__(self, repo):
-        self.repo = repo
+        self._repo = repo
         self.config = config = repo.config["cache"]
         self._odb = {}
 
@@ -42,13 +42,15 @@ class ODBManager:
                 if opt in config:
                     settings[str(opt)] = config.get(opt)
 
-        self._odb[Schemes.LOCAL] = _get_odb(repo, settings)
+        odb = _get_odb(repo, settings)
+        self._odb["repo"] = odb
+        self._odb[Schemes.LOCAL] = odb
 
     def _init_odb(self, schemes):
         for scheme in schemes:
             remote = self.config.get(scheme)
             settings = {"name": remote} if remote else None
-            self._odb[scheme] = _get_odb(self.repo, settings)
+            self._odb[scheme] = _get_odb(self._repo, settings)
 
     def __getattr__(self, name):
         if name not in self._odb and name in self.CLOUD_SCHEMES:
