@@ -14,7 +14,7 @@ class TestAPI:
         dvc.push()
 
         # Remove cache to force download
-        remove(dvc.odb.local.cache_dir)
+        remove(dvc.odb.local.path)
 
         with api.open("foo") as fd:
             assert fd.read() == "foo-text"
