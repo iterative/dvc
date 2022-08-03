@@ -22,20 +22,23 @@ from typing import (
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.stage.serialize import to_lockfile
+from dvc.ui import ui
 from dvc.utils import dict_sha256, env2bool, relpath
 from dvc.utils.fs import remove
 
-from ..base import (
+from ..exceptions import (
+    CheckpointExistsError,
+    ExperimentExistsError,
+    UnchangedExperimentError,
+)
+from ..refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
-    CheckpointExistsError,
-    ExperimentExistsError,
     ExpRefInfo,
-    UnchangedExperimentError,
 )
 
 if TYPE_CHECKING:
@@ -70,6 +73,7 @@ class ExecutorInfo:
     dvc_dir: str
     name: Optional[str] = None
     wdir: Optional[str] = None
+    collected: bool = False
     result_hash: Optional[str] = None
     result_ref: Optional[str] = None
     result_force: bool = False
@@ -98,6 +102,12 @@ class ExecutorInfo:
         makedirs(os.path.dirname(filename), exist_ok=True)
         with modify_json(filename) as d:
             d.update(self.asdict())
+
+    @classmethod
+    def load_json(cls, filename: str) -> "ExecutorInfo":
+        from dvc.utils.serialize import load_json
+
+        return cls.from_dict(load_json(filename))
 
 
 _T = TypeVar("_T", bound="BaseExecutor")
@@ -628,7 +638,7 @@ class BaseExecutor(ABC):
             if env2bool(DVC_EXP_AUTO_PUSH):
                 git_remote = os.getenv(DVC_EXP_GIT_REMOTE)
                 cls._auto_push(dvc, scm, git_remote)
-            logger.info("Checkpoint experiment iteration '%s'.", exp_rev[:7])
+            ui.write(f"Checkpoint experiment iteration '{exp_rev[:7]}'.")
         except UnchangedExperimentError:
             pass
 

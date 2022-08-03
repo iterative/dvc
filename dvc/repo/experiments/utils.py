@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import wraps
 from typing import (
     Callable,
     Dict,
@@ -16,13 +17,43 @@ from scmrepo.git import Git
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
 
-from .base import (
+from .refs import (
+    EXEC_APPLY,
     EXEC_BASELINE,
+    EXEC_BRANCH,
+    EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
-    EXPS_STASH,
+    STASHES,
     ExpRefInfo,
 )
+
+
+def scm_locked(f):
+    # Lock the experiments workspace so that we don't try to perform two
+    # different sequences of git operations at once
+    @wraps(f)
+    def wrapper(exp, *args, **kwargs):
+        from dvc.scm import map_scm_exception
+
+        with map_scm_exception(), exp.scm_lock:
+            return f(exp, *args, **kwargs)
+
+    return wrapper
+
+
+def unlocked_repo(f):
+    @wraps(f)
+    def wrapper(exp, *args, **kwargs):
+        exp.repo.lock.unlock()
+        exp.repo._reset()  # pylint: disable=protected-access
+        try:
+            ret = f(exp, *args, **kwargs)
+        finally:
+            exp.repo.lock.lock()
+        return ret
+
+    return wrapper
 
 
 def exp_refs(
@@ -35,17 +66,15 @@ def exp_refs(
         else scm.iter_refs(base=EXPS_NAMESPACE)
     )
     for ref in ref_gen:
-        if ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH:
+        if ref.startswith(EXEC_NAMESPACE) or ref in STASHES:
             continue
         yield ExpRefInfo.from_ref(ref)
 
 
-def exp_refs_by_rev(
-    scm: "Git", rev: str
-) -> Generator["ExpRefInfo", None, None]:
+def exp_refs_by_rev(scm: "Git", rev: str) -> Generator[ExpRefInfo, None, None]:
     """Iterate over all experiment refs pointing to the specified revision."""
     for ref in scm.get_refs_containing(rev, EXPS_NAMESPACE):
-        if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH):
+        if not (ref.startswith(EXEC_NAMESPACE) or ref in STASHES):
             yield ExpRefInfo.from_ref(ref)
 
 
@@ -121,6 +150,14 @@ def push_refspec(
         raise GitAuthError(str(exc))
 
 
+def remote_exp_refs(scm: "Git", url: str) -> Generator[ExpRefInfo, None, None]:
+    """Iterate over all remote experiment refs."""
+    for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE):
+        if ref.startswith(EXEC_NAMESPACE) or ref in STASHES:
+            continue
+        yield ExpRefInfo.from_ref(ref)
+
+
 def exp_refs_by_names(
     scm: "Git", names: Set[str], url: Optional[str] = None
 ) -> Dict[str, List[ExpRefInfo]]:
@@ -134,8 +171,19 @@ def exp_refs_by_names(
     return resolve_results
 
 
+def remote_exp_refs_by_baseline(
+    scm: "Git", url: str, rev: str
+) -> Generator[ExpRefInfo, None, None]:
+    """Iterate over all remote experiment refs with the specified baseline."""
+    ref_info = ExpRefInfo(baseline_sha=rev)
+    for ref in iter_remote_refs(scm, url, base=str(ref_info)):
+        if ref.startswith(EXEC_NAMESPACE) or ref in STASHES:
+            continue
+        yield ExpRefInfo.from_ref(ref)
+
+
 def exp_commits(
-    scm: "Git", ref_infos: Iterable["ExpRefInfo"] = None
+    scm: "Git", ref_infos: Iterable[ExpRefInfo] = None
 ) -> Iterable[str]:
     """Iterate over all experiment commits."""
     shas: Set["str"] = set()
@@ -147,9 +195,7 @@ def exp_commits(
     yield from shas
 
 
-def remove_exp_refs(scm: "Git", ref_infos: Iterable["ExpRefInfo"]):
-    from .base import EXEC_APPLY, EXEC_BRANCH, EXEC_CHECKPOINT
-
+def remove_exp_refs(scm: "Git", ref_infos: Iterable[ExpRefInfo]):
     exec_branch = scm.get_ref(EXEC_BRANCH, follow=False)
     exec_apply = scm.get_ref(EXEC_APPLY)
     exec_checkpoint = scm.get_ref(EXEC_CHECKPOINT)
@@ -221,7 +267,7 @@ def fetch_all_exps(scm: "Git", url: str, progress: Optional[Callable] = None):
     refspecs = [
         f"{ref}:{ref}"
         for ref in iter_remote_refs(scm, url, base=EXPS_NAMESPACE)
-        if not (ref.startswith(EXEC_NAMESPACE) or ref == EXPS_STASH)
+        if not (ref.startswith(EXEC_NAMESPACE) or ref in STASHES)
     ]
     scm.fetch_refspecs(
         url,

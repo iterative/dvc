@@ -253,18 +253,25 @@ def init(
     live_metrics = f"{live_path}.json" if live_path else None
     live_plots = os.path.join(live_path, "scalars") if live_path else None
 
+    if type == "checkpoint":
+        outs_key = "checkpoints"
+        metrics_key = "metrics_persist_no_cache"
+        plots_key = "plots_persist_no_cache"
+    else:
+        outs_key = "outs"
+        metrics_key = "metrics_no_cache"
+        plots_key = "plots_no_cache"
+
     stage = repo.stage.create(
         name=name,
         cmd=context["cmd"],
         deps=compact([context.get("code"), context.get("data")]),
         params=[{params: None}] if params else None,
-        metrics_no_cache=compact([context.get("metrics"), live_metrics]),
-        plots_no_cache=compact([context.get("plots"), live_plots]),
         force=force,
         **{
-            "checkpoints"
-            if type == "checkpoint"
-            else "outs": compact([models])
+            outs_key: compact([models]),
+            metrics_key: compact([context.get("metrics"), live_metrics]),
+            plots_key: compact([context.get("plots"), live_plots]),
         },
     )
 

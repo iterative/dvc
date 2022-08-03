@@ -30,7 +30,6 @@ from dvc_objects.fs.errors import (  # noqa: F401
     RemoteMissingDepsError,
 )
 from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
-from dvc_objects.fs.implementations.gdrive import GDriveAuthError  # noqa: F401
 from dvc_objects.fs.implementations.local import localfs  # noqa: F401
 from dvc_objects.fs.implementations.ssh import (  # noqa: F401
     DEFAULT_PORT as DEFAULT_SSH_PORT,

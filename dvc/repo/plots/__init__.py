@@ -342,16 +342,22 @@ def _matches(targets, config_file, plot_id):
     return False
 
 
-def _dvcfile_relpath(dvcfile):
-    fs = dvcfile.repo.dvcfs
+def _normpath(path):
+    # TODO dvcfs.path.normopath normalizes to windows path on Windows
+    # even though other methods work as expected
+    import posixpath
 
+    return posixpath.normpath(path)
+
+
+def _relpath(fs, path):
     # TODO from_os_path changes abs to relative
     # TODO we should be using `dvcfile.relpath` - in case of GitFS (plots diff)
     # and invoking from some subdir `dvcfile.relpath` returns strange long
     # relative paths
     # ("../../../../../../dvc.yaml") - investigate
     return fs.path.relpath(
-        fs.path.join("/", fs.from_os_path(dvcfile.path)), fs.path.getcwd()
+        fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd()
     )
 
 
@@ -363,12 +369,12 @@ def _collect_output_plots(
     for plot in repo.index.plots:
         plot_props = _plot_props(plot)
         dvcfile = plot.stage.dvcfile
-        config_path = _dvcfile_relpath(dvcfile)
-        config_dirname = os.path.dirname(config_path)
+        config_path = _relpath(fs, dvcfile.path)
+        wdir_relpath = _relpath(fs, plot.stage.wdir)
         if _matches(targets, config_path, str(plot)):
             unpacked = unpack_if_dir(
                 fs,
-                fs.path.join(config_dirname, plot.def_path),
+                _normpath(fs.path.join(wdir_relpath, plot.def_path)),
                 props={**plot_props, **props},
                 onerror=onerror,
             )
@@ -381,11 +387,6 @@ def _collect_output_plots(
 
 
 def _adjust_definitions_to_cwd(fs, config_relpath, plots_definitions):
-    # TODO normopath normalizes to windows path on Windows
-    # investigate
-
-    import posixpath
-
     result = defaultdict(dict)
 
     config_dirname = fs.path.dirname(config_relpath)
@@ -395,18 +396,14 @@ def _adjust_definitions_to_cwd(fs, config_relpath, plots_definitions):
         y_def = plot_def.get("y", None) if plot_def else None
         if y_def is None or not isinstance(y_def, dict):
             # plot_id is filename
-            new_plot_id = posixpath.normpath(
-                fs.path.join(config_dirname, plot_id)
-            )
+            new_plot_id = _normpath(fs.path.join(config_dirname, plot_id))
             result[new_plot_id] = plot_def or {}
         else:
             new_plot_def = deepcopy(plot_def)
             old_y = new_plot_def.pop("y")
             new_y = {}
             for filepath, val in old_y.items():
-                new_y[
-                    posixpath.normpath(fs.path.join(config_dirname, filepath))
-                ] = val
+                new_y[_normpath(fs.path.join(config_dirname, filepath))] = val
             new_plot_def["y"] = new_y
             result[plot_id] = new_plot_def
     return dict(result)
@@ -419,7 +416,7 @@ def _collect_pipeline_files(repo, targets: List[str], props):
     dvcfiles = {stage.dvcfile for stage in repo.index.stages}
     for dvcfile in dvcfiles:
         if isinstance(dvcfile, PipelineFile):
-            dvcfile_path = _dvcfile_relpath(dvcfile)
+            dvcfile_path = _relpath(repo.dvcfs, dvcfile.path)
             dvcfile_defs = _adjust_definitions_to_cwd(
                 repo.fs, dvcfile_path, dvcfile.load().get("plots", {})
             )

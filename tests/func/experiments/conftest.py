@@ -3,6 +3,7 @@ from textwrap import dedent
 import pytest
 
 from tests.func.test_repro_multistage import COPY_SCRIPT
+from tests.unit.repo.experiments.conftest import test_queue  # noqa
 
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
@@ -91,6 +92,31 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.fixture
+def failed_exp_stage(tmp_dir, scm, dvc):
+    tmp_dir.gen("copy.py", COPY_SCRIPT)
+    tmp_dir.gen("params.yaml", "foo: 1")
+    stage = dvc.stage.add(
+        cmd="python -c 'import sys; sys.exit(1)'",
+        metrics_no_cache=["failed-metrics.yaml"],
+        params=["foo"],
+        name="failed-copy-file",
+        deps=["copy.py"],
+    )
+    scm.add(
+        [
+            "dvc.yaml",
+            "dvc.lock",
+            "copy.py",
+            "params.yaml",
+            "failed-metrics.yaml",
+            ".gitignore",
+        ]
+    )
+    scm.commit("init")
+    return stage
+
+
+@pytest.fixture
 def http_auth_patch(mocker):
     from dulwich.client import HTTPUnauthorized
 
@@ -102,3 +128,8 @@ def http_auth_patch(mocker):
     patch = mocker.patch("dulwich.client.get_transport_and_path")
     patch.return_value = (client, url)
     return url
+
+
+@pytest.fixture(params=[True, False])
+def workspace(request, test_queue) -> bool:  # noqa
+    return request.param

@@ -1,0 +1,125 @@
+from typing import Any, Dict
+
+from celery import shared_task
+from celery.utils.log import get_task_logger
+
+from dvc.utils.fs import remove
+
+from ..executor.base import ExecutorInfo
+from ..executor.local import TempDirExecutor
+from .base import BaseStashQueue, QueueEntry
+
+logger = get_task_logger(__name__)
+
+
+@shared_task
+def setup_exp(entry_dict: Dict[str, Any]) -> str:
+    """Setup an experiment.
+
+    Arguments:
+        entry_dict: Serialized QueueEntry for this experiment.
+
+    Returns:
+        Root executor (temp) directory for this experiment.
+    """
+    from dvc.repo import Repo
+
+    entry = QueueEntry.from_dict(entry_dict)
+    repo = Repo(entry.dvc_root)
+    # TODO: split executor.init_cache into separate subtask - we can release
+    # exp.scm_lock before DVC push
+    executor = BaseStashQueue.setup_executor(
+        repo.experiments,
+        entry,
+        TempDirExecutor,
+        location="dvc-task",
+    )
+    infofile = repo.experiments.celery_queue.get_infofile_path(entry.stash_rev)
+    executor.info.dump_json(infofile)
+    return executor.root_dir
+
+
+@shared_task
+def collect_exp(
+    proc_dict: Dict[str, Any],  # pylint: disable=unused-argument
+    entry_dict: Dict[str, Any],
+) -> str:
+    """Collect results for an experiment.
+
+    Arguments:
+        proc_dict: Serialized ProcessInfo for experiment executor process.
+        entry_dict: Serialized QueueEntry for this experiment.
+
+    Returns:
+        Directory to be cleaned up after this experiment.
+    """
+    from dvc.repo import Repo
+
+    entry = QueueEntry.from_dict(entry_dict)
+    repo = Repo(entry.dvc_root)
+    celery_queue = repo.experiments.celery_queue
+    infofile = celery_queue.get_infofile_path(entry.stash_rev)
+    executor_info = ExecutorInfo.load_json(infofile)
+    logger.debug("Collecting experiment info '%s'", str(executor_info))
+    executor = TempDirExecutor.from_info(executor_info)
+    exec_result = executor_info.result
+    try:
+        if exec_result is not None:
+            BaseStashQueue.collect_executor(
+                repo.experiments, executor, exec_result
+            )
+        else:
+            logger.debug("Experiment failed (Exec result was None)")
+            celery_queue.stash_failed(entry)
+    except Exception:  # pylint: disable=broad-except
+        # Log exceptions but do not re-raise so that task chain execution
+        # continues
+        logger.exception("Failed to collect experiment")
+    return executor.root_dir
+
+
+@shared_task
+def cleanup_exp(  # pylint: disable=unused-argument
+    tmp_dir: str, entry_dict: Dict[str, Any]
+) -> None:
+    """Cleanup after an experiment.
+
+    Arguments:
+        tmp_dir: Temp directory to be removed.
+        entry_dict: Serialized QueueEntry for this experiment.
+    """
+    remove(tmp_dir)
+
+
+def _set_collected(infofile: str):
+    try:
+        executor_info = ExecutorInfo.load_json(infofile)
+        executor_info.collected = True
+        executor_info.dump_json(infofile)
+    except FileNotFoundError:
+        pass
+
+
+@shared_task
+def run_exp(entry_dict: Dict[str, Any]) -> None:
+    """Run a full experiment.
+
+    Experiment subtasks are executed inline as one atomic operation.
+
+    Arguments:
+        entry_dict: Serialized QueueEntry for this experiment.
+    """
+    from dvc.repo import Repo
+
+    entry = QueueEntry.from_dict(entry_dict)
+    repo = Repo(entry.dvc_root)
+    queue = repo.experiments.celery_queue
+    infofile = queue.get_infofile_path(entry.stash_rev)
+    root_dir = setup_exp.s(entry_dict)()
+    try:
+        cmd = ["dvc", "exp", "exec-run", "--infofile", infofile]
+        proc_dict = queue.proc.run_signature(cmd, name=entry.stash_rev)()
+        collect_exp.s(proc_dict, entry_dict)()
+    finally:
+        cleanup_exp.s(root_dir, entry_dict)()
+        _set_collected(infofile)

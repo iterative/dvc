@@ -176,20 +176,7 @@ def resolve_rev(scm: "Git", rev: str) -> str:
         raise RevError(str(exc))
 
 
-def iter_revs(
-    scm: "Git",
-    revs: Optional[List[str]] = None,
-    num: int = 1,
-    all_branches: bool = False,
-    all_tags: bool = False,
-    all_commits: bool = False,
-    all_experiments: bool = False,
-) -> Mapping[str, List[str]]:
-
-    if not any([revs, all_branches, all_tags, all_commits, all_experiments]):
-        return {}
-
-    revs = revs or []
+def _get_n_commits(scm: "Git", revs: List[str], num: int) -> List[str]:
     results = []
     for rev in revs:
         if num == 0:
@@ -205,6 +192,37 @@ def iter_revs(
             except RevError:
                 break
             n += 1
+    return results
+
+
+def iter_revs(
+    scm: "Git",
+    revs: Optional[List[str]] = None,
+    num: int = 1,
+    all_branches: bool = False,
+    all_tags: bool = False,
+    all_commits: bool = False,
+    all_experiments: bool = False,
+    commit_date: Optional[str] = None,
+) -> Mapping[str, List[str]]:
+    from scmrepo.exceptions import SCMError as _SCMError
+
+    from dvc.repo.experiments.utils import exp_commits
+
+    if not any(
+        [
+            revs,
+            all_branches,
+            all_tags,
+            all_commits,
+            all_experiments,
+            commit_date,
+        ]
+    ):
+        return {}
+
+    revs = revs or []
+    results: List[str] = _get_n_commits(scm, revs, num)
 
     if all_commits:
         results.extend(scm.list_all_commits())
@@ -215,9 +233,24 @@ def iter_revs(
         if all_tags:
             results.extend(scm.list_tags())
 
-    if all_experiments:
-        from dvc.repo.experiments.utils import exp_commits
+        if commit_date:
+            from datetime import datetime
 
+            commit_datestamp = datetime.strptime(
+                commit_date, "%Y-%m-%d"
+            ).timestamp()
+
+            def _time_filter(rev):
+                try:
+                    if scm.resolve_commit(rev).commit_date >= commit_datestamp:
+                        return True
+                    return False
+                except _SCMError:
+                    return True
+
+            results.extend(filter(_time_filter, scm.list_all_commits()))
+
+    if all_experiments:
         results.extend(exp_commits(scm))
 
     rev_resolver = partial(resolve_rev, scm)

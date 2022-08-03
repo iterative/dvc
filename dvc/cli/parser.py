@@ -14,6 +14,7 @@ from dvc.commands import (
     config,
     daemon,
     dag,
+    data,
     data_sync,
     destroy,
     diff,
@@ -33,6 +34,7 @@ from dvc.commands import (
     move,
     params,
     plots,
+    queue,
     remote,
     remove,
     repro,
@@ -50,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 COMMANDS = [
     init,
+    queue,
     get,
     get_url,
     destroy,
@@ -86,6 +89,7 @@ COMMANDS = [
     experiments,
     check_ignore,
     machine,
+    data,
 ]
 
 

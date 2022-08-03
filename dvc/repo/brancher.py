@@ -1,3 +1,5 @@
+from typing import Optional
+
 from dvc.scm import iter_revs
 
 
@@ -8,7 +10,9 @@ def brancher(  # noqa: E302
     all_tags=False,
     all_commits=False,
     all_experiments=False,
+    commit_date: Optional[str] = None,
     sha_only=False,
+    num=1,
 ):
     """Generator that iterates over specified revisions.
 
@@ -17,6 +21,9 @@ def brancher(  # noqa: E302
         all_branches (bool): iterate over all available branches.
         all_commits (bool): iterate over all commits.
         all_tags (bool): iterate over all available tags.
+        commit_date (str): Keep experiments from the commits after(include)
+                            a certain date. Date must match the extended
+                            ISO 8601 format (YYYY-MM-DD).
         sha_only (bool): only return git SHA for a revision.
 
     Yields:
@@ -62,6 +69,8 @@ def brancher(  # noqa: E302
         all_tags=all_tags,
         all_commits=all_commits,
         all_experiments=all_experiments,
+        commit_date=commit_date,
+        num=num,
     )
 
     try:
@@ -72,7 +81,9 @@ def brancher(  # noqa: E302
             self.root_dir = self.fs.path.join("/", *repo_root_parts)
 
             if cwd_parts:
-                cwd = self.fs.path.join("/", *cwd_parts)
+                cwd = self.fs.path.join(  # type: ignore[unreachable]
+                    "/", *cwd_parts
+                )
                 self.fs.path.chdir(cwd)
 
             # ignore revs that don't contain repo root

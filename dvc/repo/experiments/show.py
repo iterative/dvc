@@ -1,13 +1,15 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from dvc.repo.experiments.base import ExpRefInfo
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
 from dvc.utils import error_handler, onerror_collect, relpath
+
+from .refs import ExpRefInfo
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -191,8 +193,14 @@ def show(
                 running=running,
                 onerror=onerror,
             )
-        # collect queued (not yet reproduced) experiments
-        for stash_rev, entry in repo.experiments.stash_revs.items():
+
+        # collect standalone & celery experiments
+        for entry in chain(
+            repo.experiments.tempdir_queue.iter_active(),
+            repo.experiments.celery_queue.iter_active(),
+            repo.experiments.celery_queue.iter_queued(),
+        ):
+            stash_rev = entry.stash_rev
             if entry.baseline_rev in found_revs:
                 if stash_rev not in running or not running[stash_rev].get(
                     "last"

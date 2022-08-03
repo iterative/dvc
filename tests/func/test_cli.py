@@ -6,7 +6,6 @@ from dvc.commands.add import CmdAdd
 from dvc.commands.checkout import CmdCheckout
 from dvc.commands.config import CmdConfig
 from dvc.commands.data_sync import CmdDataPull, CmdDataPush
-from dvc.commands.gc import CmdGC
 from dvc.commands.init import CmdInit
 from dvc.commands.remove import CmdRemove
 from dvc.commands.repro import CmdRepro
@@ -140,27 +139,6 @@ class TestAdd(TestDvc):
         cmd = args.func(args)
         self.assertIsInstance(cmd, CmdAdd)
         self.assertEqual(args.targets, [target1, target2])
-
-        cmd.repo.close()
-
-
-class TestGC(TestDvc):
-    def test(self):
-        args = parse_args(["gc"])
-        cmd = args.func(args)
-        self.assertIsInstance(cmd, CmdGC)
-
-        cmd.repo.close()
-
-
-class TestGCMultipleDvcRepos(TestDvc):
-    def test(self):
-        args = parse_args(["gc", "-p", "/tmp/asdf", "/tmp/xyz"])
-
-        cmd = args.func(args)
-        self.assertIsInstance(cmd, CmdGC)
-
-        self.assertEqual(args.repos, ["/tmp/asdf", "/tmp/xyz"])
 
         cmd.repo.close()
 

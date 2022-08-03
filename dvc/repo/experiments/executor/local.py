@@ -8,9 +8,9 @@ from funcy import cached_property
 from scmrepo.exceptions import SCMError as _SCMError
 
 from dvc.scm import SCM, GitMergeError
-from dvc.utils.fs import remove
+from dvc.utils.fs import makedirs, remove
 
-from ..base import (
+from ..refs import (
     EXEC_APPLY,
     EXEC_BASELINE,
     EXEC_BRANCH,
@@ -26,7 +26,8 @@ if TYPE_CHECKING:
 
     from dvc.repo import Repo
 
-    from ..base import ExpRefInfo, ExpStashEntry
+    from ..refs import ExpRefInfo
+    from ..stash import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class TempDirExecutor(BaseLocalExecutor):
     # suggestions) that are not applicable outside of workspace runs
     WARN_UNTRACKED = True
     QUIET = True
-    DEFAULT_LOCATION = "temp"
+    DEFAULT_LOCATION = "tempdir"
 
     def init_git(self, scm: "Git", branch: Optional[str] = None):
         from dulwich.repo import Repo as DulwichRepo
@@ -89,6 +90,11 @@ class TempDirExecutor(BaseLocalExecutor):
         head = EXEC_BRANCH if branch else EXEC_HEAD
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
+
+        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            if scm.get_ref(ref):
+                scm.remove_ref(ref)
+
         try:
             self.scm.merge(merge_rev, squash=True, commit=False)
         except _SCMError as exc:
@@ -119,11 +125,16 @@ class TempDirExecutor(BaseLocalExecutor):
         repo: "Repo",
         stash_rev: str,
         entry: "ExpStashEntry",
+        wdir: Optional[str] = None,
         **kwargs,
     ):
-        tmp_dir = mkdtemp(dir=os.path.join(repo.tmp_dir, EXEC_TMP_DIR))
+        parent_dir: str = wdir or os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
+        makedirs(parent_dir, exist_ok=True)
+        tmp_dir = mkdtemp(dir=parent_dir)
         try:
-            executor = cls._from_stash_entry(repo, stash_rev, entry, tmp_dir)
+            executor = cls._from_stash_entry(
+                repo, stash_rev, entry, tmp_dir, **kwargs
+            )
             logger.debug("Init temp dir executor in '%s'", tmp_dir)
             return executor
         except Exception:
@@ -146,7 +157,9 @@ class WorkspaceExecutor(BaseLocalExecutor):
         **kwargs,
     ):
         root_dir = repo.scm.root_dir
-        executor = cls._from_stash_entry(repo, stash_rev, entry, root_dir)
+        executor = cls._from_stash_entry(
+            repo, stash_rev, entry, root_dir, **kwargs
+        )
         logger.debug("Init workspace executor in '%s'", root_dir)
         return executor
 
@@ -174,6 +187,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def cleanup(self):
         with self._detach_stack:
             self.scm.remove_ref(EXEC_BASELINE)
+            self.scm.remove_ref(EXEC_MERGE)
             if self.scm.get_ref(EXEC_BRANCH):
                 self.scm.remove_ref(EXEC_BRANCH)
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)

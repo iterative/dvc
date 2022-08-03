@@ -76,6 +76,8 @@ class Repo:
     from dvc.repo.status import status  # type: ignore[misc]
     from dvc.repo.update import update  # type: ignore[misc]
 
+    from .data import status as data_status  # type: ignore[misc]
+
     ls = staticmethod(_ls)
     get = staticmethod(_get)
     get_url = staticmethod(_get_url)
@@ -386,12 +388,14 @@ class Repo:
         all_tags=False,
         all_commits=False,
         all_experiments=False,
+        commit_date: Optional[str] = None,
         remote=None,
         force=False,
         jobs=None,
         recursive=False,
         used_run_cache=None,
         revs=None,
+        num=1,
     ):
         """Get the stages related to the given target and collect
         the `info` of its outputs.
@@ -416,6 +420,8 @@ class Repo:
             all_tags=all_tags,
             all_commits=all_commits,
             all_experiments=all_experiments,
+            commit_date=commit_date,
+            num=num,
         ):
             for odb, objs in self.index.used_objs(
                 targets,
@@ -474,7 +480,7 @@ class Repo:
     def datafs(self):
         from dvc.fs.data import DataFileSystem
 
-        return DataFileSystem(repo=self)
+        return DataFileSystem(index=self.index.data["repo"])
 
     @cached_property
     def dvcfs(self):
@@ -495,18 +501,23 @@ class Repo:
         from dvc.fs.dvc import DvcFileSystem
 
         if os.path.isabs(path):
-            fs = DataFileSystem(repo=self, workspace="local")
+            fs = DataFileSystem(index=self.index.data["local"])
             fs_path = path
         else:
             fs = DvcFileSystem(repo=self, subrepos=True)
             fs_path = fs.from_os_path(path)
 
         try:
+            if remote:
+                remote_odb = self.cloud.get_remote_odb(name=remote)
+                oid = fs.info(fs_path)["dvc_info"]["md5"]
+                fs = remote_odb.fs
+                fs_path = remote_odb.oid_to_path(oid)
+
             with fs.open(
                 fs_path,
                 mode=mode,
                 encoding=encoding,
-                remote=remote,
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:
