@@ -33,10 +33,10 @@ class RWLockFileFormatError(DvcException):
 
 
 @contextmanager
-def _edit_rwlock(lock_dir):
-    path = os.path.join(lock_dir, "rwlock")
+def _edit_rwlock(lock_dir, fs):
+    path = fs.path.join(lock_dir, "rwlock")
     try:
-        with open(path, encoding="utf-8") as fobj:
+        with fs.open(path, encoding="utf-8") as fobj:
             lock = SCHEMA(json.load(fobj))
     except FileNotFoundError:
         lock = SCHEMA({})
@@ -47,7 +47,7 @@ def _edit_rwlock(lock_dir):
     lock["read"] = defaultdict(list, lock["read"])
     lock["write"] = defaultdict(dict, lock["write"])
     yield lock
-    with open(path, "w+", encoding="utf-8") as fobj:
+    with fs.open(path, "w", encoding="utf-8") as fobj:
         json.dump(lock, fobj)
 
 
@@ -133,11 +133,12 @@ def _release_read(lock, info, changes):
 
 
 @contextmanager
-def rwlock(tmp_dir, cmd, read, write):
+def rwlock(tmp_dir, fs, cmd, read, write):
     """Create non-thread-safe RWLock for file paths.
 
     Args:
         tmp_dir (str): existing directory where to create the rwlock file.
+        fs (FileSystem): fs instance that tmp_dir belongs to.
         cmd (str): command that will be working on these file path.
         read ([str]): file paths that are going to be read.
         write ([str]): file paths that are going to be written.
@@ -152,7 +153,7 @@ def rwlock(tmp_dir, cmd, read, write):
     """
     info = {"pid": os.getpid(), "cmd": cmd}
 
-    with _edit_rwlock(tmp_dir) as lock:
+    with _edit_rwlock(tmp_dir, fs) as lock:
 
         _check_blockers(lock, info, mode="write", waiters=read + write)
         _check_blockers(lock, info, mode="read", waiters=write)
@@ -163,6 +164,6 @@ def rwlock(tmp_dir, cmd, read, write):
     try:
         yield
     finally:
-        with _edit_rwlock(tmp_dir) as lock:
+        with _edit_rwlock(tmp_dir, fs) as lock:
             _release_write(lock, info, wchanges)
             _release_read(lock, info, rchanges)
