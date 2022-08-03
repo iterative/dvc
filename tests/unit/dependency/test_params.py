@@ -9,30 +9,6 @@ PARAMS = {"foo": 1, "bar": 53.135, "baz": "str", "qux": None}
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
 
-def test_parse_toml_type():
-    from tomlkit.toml_document import TOMLDocument
-
-    from dvc.utils.serialize._toml import parse_toml
-
-    contents = "# A Title [foo]\nbar = 42# meaning of life\nbaz = [1, 2]\n"
-
-    parsed = parse_toml(contents, ".")
-    assert not isinstance(parsed, TOMLDocument)
-    assert isinstance(parsed, dict)
-
-
-def test_parse_toml_for_update():
-    from tomlkit.toml_document import TOMLDocument
-
-    from dvc.utils.serialize._toml import parse_toml_for_update
-
-    contents = "# A Title [foo]\nbar = 42# meaning of life\nbaz = [1, 2]\n"
-
-    parsed = parse_toml_for_update(contents, ".")
-    assert isinstance(parsed, TOMLDocument)
-    assert isinstance(parsed, dict)
-
-
 def test_loads_params(dvc):
     stage = Stage(dvc)
     deps = loads_params(
