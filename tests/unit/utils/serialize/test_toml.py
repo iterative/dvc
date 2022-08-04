@@ -1,18 +1,17 @@
-def test_preserve_comments(tmp_dir, dvc):
-    from dvc.utils.serialize import _toml
+def test_preserve_comments(tmp_dir):
+    from dvc.utils.serialize._toml import modify_toml
 
-    contents = "# A Title [foo]\nbar = 42# meaning of life\nbaz = [1, 2]\n"
-    tmp_dir.gen("params_commented.toml", "")
-    path = (tmp_dir / "params_commented.toml").fs_path
+    contents_fmt = """\
+#A Title
+[foo]
+bar = {} # meaning of life
+baz = [1, 2]
+"""
+    tmp_dir.gen("params.toml", contents_fmt.format("42"))
 
-    parsed = _toml.parse_toml_for_update(contents, path)
-    with open(path, "w", encoding="utf-8") as fobj:
-        _toml._dump(parsed, fobj)
-
-    with open(path, "r", encoding="utf-8") as fobj:
-        new_contents = fobj.read()
-
-    assert new_contents == contents
+    with modify_toml("params.toml") as d:
+        d["foo"]["bar"] //= 2
+    assert (tmp_dir / "params.toml").read_text() == contents_fmt.format("21")
 
 
 def test_parse_toml_type():
