@@ -342,18 +342,21 @@ class Output:
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
-        if parsed.scheme != "remote":
+        if (
+            parsed.scheme != "remote"
+            and self.stage
+            and self.stage.repo.fs == fs
+            and not fs.path.isabs(fs_path)
+        ):
             # NOTE: we can path either from command line or .dvc file,
             # so we should expect both posix and windows style paths.
             # paths accepts both, i.e. / works everywhere, \ only on win.
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            if self.stage and not os.path.isabs(fs_path):
-                fs_path = fs.path.join(self.stage.wdir, fs_path)
+            fs_path = fs.path.join(self.stage.wdir, fs_path)
 
-        abs_p = fs.path.abspath(fs.path.normpath(fs_path))
-        return abs_p
+        return fs.path.abspath(fs.path.normpath(fs_path))
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
