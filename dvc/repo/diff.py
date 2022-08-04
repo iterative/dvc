@@ -140,9 +140,9 @@ def _output_paths(repo, targets):
 
             if on_working_fs:
                 _, _, obj = build(
-                    repo.odb.local,
+                    repo.odb.repo,
                     output.fs_path,
-                    repo.odb.local.fs,
+                    repo.odb.repo.fs,
                     "md5",
                     dry_run=True,
                     ignore=output.dvcignore,

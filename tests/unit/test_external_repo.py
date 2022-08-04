@@ -55,7 +55,7 @@ def test_subrepo_is_constructed_properly(
 
     subrepo = tmp_dir / "subrepo"
     make_subrepo(subrepo, scm)
-    local_cache = subrepo.dvc.odb.local.cache_dir
+    local_cache = subrepo.dvc.odb.local.path
 
     tmp_dir.scm_gen("bar", "bar", commit="add bar")
     subrepo.dvc_gen("foo", "foo", commit="add foo")
@@ -72,8 +72,8 @@ def test_subrepo_is_constructed_properly(
 
         assert repo.url == str(tmp_dir)
         assert repo.config["cache"]["dir"] == str(cache_dir)
-        assert repo.odb.local.cache_dir == str(cache_dir)
-        assert subrepo.odb.local.cache_dir == str(cache_dir)
+        assert repo.odb.local.path == str(cache_dir)
+        assert subrepo.odb.local.path == str(cache_dir)
 
         assert repo.config["cache"]["type"] == ["symlink"]
         assert repo.odb.local.cache_types == ["symlink"]
@@ -84,7 +84,7 @@ def test_subrepo_is_constructed_properly(
             == local_cache
         )
         if root_is_dvc:
-            main_cache = tmp_dir.dvc.odb.local.cache_dir
+            main_cache = tmp_dir.dvc.odb.local.path
             assert repo.config["remote"]["auto-generated-upstream"][
                 "url"
             ] == str(main_cache)

@@ -58,7 +58,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
 def test_open_no_remote(tmp_dir, dvc):
     tmp_dir.dvc_gen("file", "file")
     (tmp_dir / "file").unlink()
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     fs = DataFileSystem(index=dvc.index.data["repo"])
     with pytest.raises(FileNotFoundError):

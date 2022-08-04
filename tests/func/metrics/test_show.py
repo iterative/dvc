@@ -272,7 +272,7 @@ def test_metrics_show_overlap(
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.odb.local.cache_dir)
+        remove(dvc.odb.local.path)
 
     dvc._reset()
 

@@ -31,7 +31,7 @@ class TestGC(TestDvcGit):
 
         self.bad_cache = [self.dvc.odb.local.oid_to_path(raw_dir_hash)]
         for i in ["123", "234", "345"]:
-            path = os.path.join(self.dvc.odb.local.cache_dir, i[0:2], i[2:])
+            path = os.path.join(self.dvc.odb.local.path, i[0:2], i[2:])
             self.create(path, i)
             self.bad_cache.append(path)
 
@@ -45,7 +45,7 @@ class TestGC(TestDvcGit):
         self._test_gc()
 
     def _test_gc(self):
-        self.assertTrue(os.path.isdir(self.dvc.odb.local.cache_dir))
+        self.assertTrue(os.path.isdir(self.dvc.odb.local.path))
         for c in self.bad_cache:
             self.assertFalse(os.path.exists(c))
 
@@ -190,11 +190,11 @@ def test_all_commits(tmp_dir, scm, dvc):
     tmp_dir.dvc_gen("testfile", "modified", commit="modified")
     tmp_dir.dvc_gen("testfile", "workspace")
 
-    n = _count_files(dvc.odb.local.cache_dir)
+    n = _count_files(dvc.odb.local.path)
     dvc.gc(all_commits=True)
 
     # Only one uncommitted file should go away
-    assert _count_files(dvc.odb.local.cache_dir) == n - 1
+    assert _count_files(dvc.odb.local.path) == n - 1
 
 
 def test_gc_no_dir_cache(tmp_dir, dvc):
@@ -206,9 +206,9 @@ def test_gc_no_dir_cache(tmp_dir, dvc):
     with pytest.raises(CollectCacheError):
         dvc.gc(workspace=True)
 
-    assert _count_files(dvc.odb.local.cache_dir) == 4
+    assert _count_files(dvc.odb.local.path) == 4
     dvc.gc(force=True, workspace=True)
-    assert _count_files(dvc.odb.local.cache_dir) == 2
+    assert _count_files(dvc.odb.local.path) == 2
 
 
 def _count_files(path):
@@ -328,14 +328,14 @@ def test_gc_not_collect_pipeline_tracked_files(tmp_dir, dvc, run_copy):
 
     run_copy("foo", "foo2", name="copy")
     shutil.rmtree(dvc.stage_cache.cache_dir)
-    assert _count_files(dvc.odb.local.cache_dir) == 1
+    assert _count_files(dvc.odb.local.path) == 1
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.odb.local.cache_dir) == 1
+    assert _count_files(dvc.odb.local.path) == 1
 
     # remove pipeline file and lockfile and check
     Dvcfile(dvc, PIPELINE_FILE).remove(force=True)
     dvc.gc(workspace=True, force=True)
-    assert _count_files(dvc.odb.local.cache_dir) == 0
+    assert _count_files(dvc.odb.local.path) == 0
 
 
 def test_gc_external_output(tmp_dir, dvc, workspace):

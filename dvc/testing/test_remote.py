@@ -44,8 +44,8 @@ class TestRemote:
 
         # Move cache and check status
         # See issue https://github.com/iterative/dvc/issues/4383 for details
-        backup_dir = dvc.odb.local.cache_dir + ".backup"
-        shutil.move(dvc.odb.local.cache_dir, backup_dir)
+        backup_dir = dvc.odb.local.path + ".backup"
+        shutil.move(dvc.odb.local.path, backup_dir)
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, missing={foo_hash})
 
@@ -53,8 +53,8 @@ class TestRemote:
         _check_status(status_dir, missing=dir_hashes)
 
         # Restore original cache:
-        remove(dvc.odb.local.cache_dir)
-        shutil.move(backup_dir, dvc.odb.local.cache_dir)
+        remove(dvc.odb.local.path)
+        shutil.move(backup_dir, dvc.odb.local.path)
 
         # Push and check status
         dvc.cloud.push(foo_hashes)
@@ -71,7 +71,7 @@ class TestRemote:
         _check_status(status_dir, ok=dir_hashes)
 
         # Remove and check status
-        remove(dvc.odb.local.cache_dir)
+        remove(dvc.odb.local.path)
 
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, deleted={foo_hash})

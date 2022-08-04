@@ -65,7 +65,7 @@ class StageCache:
 
     @cached_property
     def cache_dir(self):
-        return os.path.join(self.repo.odb.local.cache_dir, "runs")
+        return os.path.join(self.repo.odb.local.path, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)
