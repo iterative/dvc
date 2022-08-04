@@ -1,11 +1,8 @@
-import logging
 from contextlib import contextmanager
 
 from funcy import reraise
 
 from ._common import ParseError, _dump_data, _load_data, _modify_data
-
-logger = logging.getLogger(__name__)
 
 
 class TOMLFileCorruptedError(ParseError):
