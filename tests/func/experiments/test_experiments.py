@@ -7,7 +7,7 @@ import pytest
 from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
-from dvc.exceptions import DvcException, ReproductionError
+from dvc.exceptions import ReproductionError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
@@ -107,67 +107,15 @@ def test_failed_exp_workspace(
 @pytest.mark.parametrize(
     "changes, expected",
     [
-        [["foo=baz"], "{foo: baz, goo: {bag: 3}, lorem: false}"],
-        [["foo=baz", "goo=bar"], "{foo: baz, goo: bar, lorem: false}"],
-        [
-            ["goo.bag=4"],
-            "{foo: [bar: 1, baz: 2], goo: {bag: 4}, lorem: false}",
-        ],
-        [["foo[0]=bar"], "{foo: [bar, baz: 2], goo: {bag: 3}, lorem: false}"],
-        [
-            ["foo[1].baz=3"],
-            "{foo: [bar: 1, baz: 3], goo: {bag: 3}, lorem: false}",
-        ],
-        [
-            ["foo[1]=[baz, goo]"],
-            "{foo: [bar: 1, [baz, goo]], goo: {bag: 3}, lorem: false}",
-        ],
+        [["foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"],
+        [["params.yaml:foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"],
     ],
 )
-def test_modify_params(tmp_dir, scm, dvc, mocker, changes, expected):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen(
-        "params.yaml", "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: false}"
-    )
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo", "goo", "lorem"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
-
-    new_mock = mocker.spy(dvc.experiments, "new")
-    results = dvc.experiments.run(stage.addressing, params=changes)
-    exp = first(results)
-
-    new_mock.assert_called_once()
-    fs = scm.get_fs(exp)
-    with fs.open("metrics.yaml", mode="r") as fobj:
+def test_modify_params(params_repo, dvc, changes, expected):
+    dvc.experiments.run(params=changes)
+    # pylint: disable=unspecified-encoding
+    with open("params.yaml", mode="r") as fobj:
         assert fobj.read().strip() == expected
-
-
-@pytest.mark.parametrize(
-    "changes",
-    [["lorem.ipsum=3"], ["foo[0].bazar=3"]],
-)
-def test_add_params(tmp_dir, scm, dvc, changes):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
-    tmp_dir.gen(
-        "params.yaml", "{foo: [bar: 1, baz: 2], goo: {bag: 3}, lorem: false}"
-    )
-    stage = dvc.run(
-        cmd="python copy.py params.yaml metrics.yaml",
-        metrics_no_cache=["metrics.yaml"],
-        params=["foo", "goo", "lorem"],
-        name="copy-file",
-    )
-    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml", "metrics.yaml"])
-    scm.commit("init")
-
-    with pytest.raises(DvcException):
-        dvc.experiments.run(stage.addressing, params=changes)
 
 
 def test_apply(tmp_dir, scm, dvc, exp_stage):

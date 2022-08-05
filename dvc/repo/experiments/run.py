@@ -3,7 +3,7 @@ from typing import Dict, Iterable, Optional
 
 from dvc.repo import locked
 from dvc.ui import ui
-from dvc.utils.cli_parse import loads_param_overrides
+from dvc.utils.cli_parse import to_path_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def run(
         return repo.experiments.reproduce_celery(entries, jobs=jobs)
 
     if params:
-        params = loads_param_overrides(params)
+        params = to_path_overrides(params)
 
     if queue:
         if not kwargs.get("checkpoint_resume", None):
