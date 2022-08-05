@@ -4,8 +4,10 @@ import pytest
 from celery import shared_task
 from flaky.flaky_decorator import flaky
 
+from dvc.exceptions import DvcException
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.executor.local import TempDirExecutor
+from dvc.repo.experiments.queue.base import QueueDoneResult
 from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE
 
 
@@ -37,7 +39,7 @@ def test_shutdown_with_kill(test_queue, mocker):
     mocker.patch.object(
         test_queue,
         "_iter_active_tasks",
-        return_value=[(result.id, mock_entry)],
+        return_value=[(result, mock_entry)],
     )
     kill_spy = mocker.patch.object(test_queue.proc, "kill")
 
@@ -120,3 +122,26 @@ def test_queue_clean_workspace_refs(git_dir, tmp_dir):
 
     for ref in exec_heads:
         assert git_dir.scm.get_ref(ref) is None
+
+
+@pytest.mark.parametrize("status", ["FAILURE", "SUCCESS"])
+def test_queue_iter_done_task(test_queue, mocker, status):
+
+    mock_entry = mocker.Mock(stash_rev=_foo.name)
+
+    result = mocker.Mock(status=status)
+
+    mocker.patch.object(
+        test_queue,
+        "_iter_done_tasks",
+        return_value=[(result, mock_entry)],
+    )
+
+    if status == "FAILURE":
+        assert list(test_queue.iter_failed()) == [
+            QueueDoneResult(mock_entry, None)
+        ]
+
+    elif status == "SUCCESS":
+        with pytest.raises(DvcException):
+            assert list(test_queue.iter_success())
