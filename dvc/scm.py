@@ -2,7 +2,7 @@
 import os
 from contextlib import contextmanager
 from functools import partial
-from typing import TYPE_CHECKING, Iterator, List, Mapping, Optional
+from typing import TYPE_CHECKING, Iterator, List, Mapping, Optional, Set
 
 from funcy import group_by
 from scmrepo.base import Base  # noqa: F401, pylint: disable=unused-import
@@ -204,6 +204,7 @@ def iter_revs(
     all_commits: bool = False,
     all_experiments: bool = False,
     commit_date: Optional[str] = None,
+    ignore_revs: Optional[Set[str]] = None,
 ) -> Mapping[str, List[str]]:
     from scmrepo.exceptions import SCMError as _SCMError
 
@@ -222,6 +223,7 @@ def iter_revs(
         return {}
 
     revs = revs or []
+    ignore_revs = ignore_revs or set()
     results: List[str] = _get_n_commits(scm, revs, num)
 
     if all_commits:
@@ -254,4 +256,6 @@ def iter_revs(
         results.extend(exp_commits(scm))
 
     rev_resolver = partial(resolve_rev, scm)
-    return group_by(rev_resolver, results)
+    grouped = group_by(rev_resolver, results)
+
+    return {k: v for k, v in grouped.items() if k not in ignore_revs}
