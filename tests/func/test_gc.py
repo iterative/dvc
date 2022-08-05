@@ -7,7 +7,7 @@ import pytest
 from git import Repo
 
 from dvc.cli import main
-from dvc.exceptions import CollectCacheError
+from dvc.exceptions import CollectCacheError, DvcException
 from dvc.fs import LocalFileSystem
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
@@ -412,3 +412,24 @@ def test_gc_rev_num(tmp_dir, scm, dvc):
             assert not cache.exists()
         else:
             assert cache.read_text() == str(i)
+
+
+def test_gc_ignore_revs(tmp_dir, dvc, broken_rev):
+    """Covers #5037 and #7585"""
+    uncommitted = tmp_dir.dvc_gen("testfile", "uncommitted")
+    uncommitted_hash = uncommitted[0].outs[0].hash_info.value
+    tmp_dir.dvc_gen("testfile", "committed", commit="add testfile")
+
+    cache = tmp_dir / ".dvc" / "cache"
+    uncommitted_cache = cache / uncommitted_hash[:2] / uncommitted_hash[2:]
+
+    with pytest.raises(DvcException, match="Could not find 'foo'"):
+        dvc.gc(all_commits=True)
+
+    assert uncommitted_cache.exists()
+
+    with dvc.fs.open(dvc.ignore_revs_file, "w") as f:
+        f.write(broken_rev)
+    dvc.gc(all_commits=True)
+
+    assert not uncommitted_cache.exists()

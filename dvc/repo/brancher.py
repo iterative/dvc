@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Set
 
 from dvc.scm import iter_revs
 
@@ -13,6 +13,7 @@ def brancher(  # noqa: E302
     commit_date: Optional[str] = None,
     sha_only=False,
     num=1,
+    ignore_revs: Optional[Set[str]] = None,
 ):
     """Generator that iterates over specified revisions.
 
@@ -71,6 +72,7 @@ def brancher(  # noqa: E302
         all_experiments=all_experiments,
         commit_date=commit_date,
         num=num,
+        ignore_revs=ignore_revs,
     )
 
     try:

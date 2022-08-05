@@ -250,3 +250,17 @@ def run_copy_metrics(tmp_dir, run_copy):
         return stage
 
     return run
+
+
+@pytest.fixture
+def broken_rev(tmp_dir, scm, dvc):
+    tmp_dir.gen("params.yaml", "foo: 1")
+    dvc.run(cmd="echo ${foo}", name="foo")
+
+    scm.add(["dvc.yaml", "dvc.lock"])
+    scm.commit("init broken")
+    _broken_rev = scm.get_rev()
+
+    scm.add(["params.yaml"])
+    scm.commit("fixed")
+    return _broken_rev

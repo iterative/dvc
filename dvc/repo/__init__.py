@@ -381,6 +381,7 @@ class Repo:
     def brancher(self, *args, **kwargs):
         from dvc.repo.brancher import brancher
 
+        kwargs["ignore_revs"] = self.ignore_revs
         return brancher(self, *args, **kwargs)
 
     def used_objs(
@@ -447,6 +448,19 @@ class Repo:
     @property
     def stages(self):  # obsolete, only for backward-compatibility
         return self.index.stages
+
+    @property
+    def ignore_revs_file(self):
+        if self.dvc_dir:
+            return self.fs.path.join(self.dvc_dir, "ignore_revs")
+
+    @property
+    def ignore_revs(self):
+        if self.ignore_revs_file is not None:
+            if self.fs.exists(self.ignore_revs_file):
+                with self.fs.open(self.ignore_revs_file) as f:
+                    return set(f.read().strip().splitlines())
+        return set()
 
     def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         # using `outs_graph` to ensure graph checks are run

@@ -59,6 +59,33 @@ def test_used_objs(tmp_dir, dvc, path):
     assert used == expected
 
 
+def test_used_objs_ignore_revs(tmp_dir, scm, dvc):
+    def _get_used_values(dvc):
+        used_obj_ids = list(dvc.used_objs(all_commits=True).values())[0]
+        return {o.value for o in used_obj_ids}
+
+    obj_ids = {}
+    revs = {}
+    for i in range(3):
+        o = tmp_dir.dvc_gen("foo", str(i), commit=str(i))
+        obj_ids[i] = o[0].outs[0].hash_info.value
+        revs[i] = scm.get_rev()
+
+    assert set(obj_ids.values()) == _get_used_values(dvc)
+
+    with dvc.fs.open(dvc.ignore_revs_file, "w") as f:
+        f.write(revs[0])
+
+    expected = {obj_ids[1], obj_ids[2]}
+    assert expected == _get_used_values(dvc)
+
+    with dvc.fs.open(dvc.ignore_revs_file, "w") as f:
+        f.write(f"{revs[0]}\n{revs[1]}")
+
+    expected = {obj_ids[2]}
+    assert expected == _get_used_values(dvc)
+
+
 def test_locked(mocker):
     repo = mocker.MagicMock()
     repo._lock_depth = 0

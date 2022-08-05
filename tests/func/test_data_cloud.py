@@ -7,6 +7,7 @@ from flaky.flaky_decorator import flaky
 
 import dvc_data
 from dvc.cli import main
+from dvc.exceptions import DvcException
 from dvc.external_repo import clean_repos
 from dvc.stage.exceptions import StageNotFound
 from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
@@ -459,6 +460,36 @@ def test_push_pull_all(tmp_dir, scm, dvc, local_remote, key, expected):
 
     clean(["foo", "bar", "baz"], dvc)
     assert dvc.pull(**{key: True})["fetched"] == expected
+
+
+def test_push_pull_ignore_revs(tmp_dir, scm, dvc, local_remote, broken_rev):
+    tmp_dir.dvc_gen({"foo": "foo"}, commit="first")
+    scm.tag("v1")
+    dvc.remove("foo.dvc")
+    tmp_dir.dvc_gen({"bar": "bar"}, commit="second")
+    scm.tag("v2")
+    with tmp_dir.branch("branch", new=True):
+        dvc.remove("bar.dvc")
+        tmp_dir.dvc_gen({"baz": "baz"}, commit="branch")
+
+    with pytest.raises(DvcException):
+        dvc.push(all_commits=True)
+
+    with dvc.fs.open(dvc.ignore_revs_file, "w") as f:
+        f.write(broken_rev)
+
+    assert dvc.push(all_commits=True) == 3
+
+    remove(dvc.ignore_revs_file)
+    clean(["foo", "bar", "baz"], dvc)
+
+    with pytest.raises(DvcException):
+        dvc.pull(all_commits=True)
+
+    with dvc.fs.open(dvc.ignore_revs_file, "w") as f:
+        f.write(broken_rev)
+
+    assert dvc.pull(all_commits=True)["fetched"] == 3
 
 
 def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
