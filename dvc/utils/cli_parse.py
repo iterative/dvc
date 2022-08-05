@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List
+from typing import Dict, Iterable, List
 
 
 def parse_params(path_params: Iterable[str]) -> List[Dict[str, List[str]]]:
@@ -17,35 +17,22 @@ def parse_params(path_params: Iterable[str]) -> List[Dict[str, List[str]]]:
     return [{path: params} for path, params in ret.items()]
 
 
-def loads_param_overrides(
+def to_path_overrides(
     path_params: Iterable[str],
-) -> Dict[str, Dict[str, Any]]:
-    """Loads the content of params from the cli as Python object."""
-    from ruamel.yaml import YAMLError
-
+) -> Dict[str, List[str]]:
+    """Group overrides by path"""
     from dvc.dependency.param import ParamsDependency
-    from dvc.exceptions import InvalidArgumentError
 
-    from .serialize import loads_yaml
-
-    ret: Dict[str, Dict[str, Any]] = defaultdict(dict)
-
+    path_overrides = defaultdict(list)
     for path_param in path_params:
-        param_name, _, param_value = path_param.partition("=")
-        if not param_value:
-            raise InvalidArgumentError(
-                f"Must provide a value for parameter '{param_name}'"
-            )
-        path, _, param_name = param_name.partition(":")
-        if not param_name:
-            param_name = path
+
+        path_and_name = path_param.partition("=")[0]
+        if ":" not in path_and_name:
+            override = path_param
             path = ParamsDependency.DEFAULT_PARAMS_FILE
+        else:
+            path, _, override = path_param.partition(":")
 
-        try:
-            ret[path][param_name] = loads_yaml(param_value)
-        except (ValueError, YAMLError):
-            raise InvalidArgumentError(
-                f"Invalid parameter value for '{param_name}': '{param_value}"
-            )
+        path_overrides[path].append(override)
 
-    return ret
+    return dict(path_overrides)

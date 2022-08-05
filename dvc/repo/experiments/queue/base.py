@@ -19,7 +19,6 @@ from typing import (
 
 from funcy import cached_property
 
-from dvc.dependency.param import MissingParamsError
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.ui import ui
@@ -283,7 +282,7 @@ class BaseStashQueue(ABC):
     def _stash_exp(
         self,
         *args,
-        params: Optional[dict] = None,
+        params: Optional[Dict[str, List[str]]] = None,
         resume_rev: Optional[str] = None,
         baseline_rev: Optional[str] = None,
         branch: Optional[str] = None,
@@ -292,10 +291,9 @@ class BaseStashQueue(ABC):
     ) -> QueueEntry:
         """Stash changes from the workspace as an experiment.
 
-        Arguments:
-            params: Optional dictionary of parameter values to be used.
-                Values take priority over any parameters specified in the
-                user's workspace.
+        Args:
+            params: Dict mapping paths to `Hydra Override`_ patterns,
+                provided via `exp run --set-param`.
             resume_rev: Optional checkpoint resume rev.
             baseline_rev: Optional baseline rev for this experiment, defaults
                 to the current SCM rev.
@@ -305,6 +303,9 @@ class BaseStashQueue(ABC):
             name: Optional experiment name. If specified this will be used as
                 the human-readable name in the experiment branch ref. Has no
                 effect of branch is specified.
+
+        .. _Hydra Override:
+            https://hydra.cc/docs/next/advanced/override_grammar/basic/
         """
         with self.scm.detach_head(client="dvc") as orig_head:
             stash_head = orig_head
@@ -508,22 +509,22 @@ class BaseStashQueue(ABC):
             f"from '{config_path}': {param_list}"
         )
 
-    def _update_params(self, params: dict):
-        """Update experiment params files with the specified values."""
-        from dvc.utils.collections import NewParamsFound, merge_params
-        from dvc.utils.serialize import MODIFIERS
+    def _update_params(self, params: Dict[str, List[str]]):
+        """Update param files with the provided `Hydra Override`_ patterns.
 
+        Args:
+            params: Dict mapping paths to `Hydra Override`_ patterns,
+                provided via `exp run --set-param`.
+
+        .. _Hydra Override:
+            https://hydra.cc/docs/next/advanced/override_grammar/basic/
+        """
         logger.debug("Using experiment params '%s'", params)
 
-        for path in params:
-            suffix = self.repo.fs.path.suffix(path).lower()
-            modify_data = MODIFIERS[suffix]
-            with modify_data(path, fs=self.repo.fs) as data:
-                try:
-                    merge_params(data, params[path], allow_new=False)
-                except NewParamsFound as e:
-                    msg = self._format_new_params_msg(e.new_params, path)
-                    raise MissingParamsError(msg)
+        from dvc.utils.hydra import apply_overrides
+
+        for path, overrides in params.items():
+            apply_overrides(path, overrides)
 
         # Force params file changes to be staged in git
         # Otherwise in certain situations the changes to params file may be
