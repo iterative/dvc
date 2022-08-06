@@ -1,9 +1,9 @@
 import logging
 import os
+import re
 import signal
 import subprocess
 import threading
-import re
 
 from packaging.version import Version
 
@@ -14,6 +14,7 @@ from .decorators import unlocked_repo
 from .exceptions import StageCmdFailedError
 
 logger = logging.getLogger(__name__)
+
 
 def _get_shell_version(executable):
     name = os.path.basename(executable).lower()
@@ -46,6 +47,7 @@ def _make_cmd(executable, cmd):
 
     name = os.path.basename(executable).lower()
     return [executable] + get_opts(name) + ["-c", cmd]
+
 
 def warn_if_fish(executable):
     if (
