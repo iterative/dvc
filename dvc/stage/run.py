@@ -3,6 +3,9 @@ import os
 import signal
 import subprocess
 import threading
+import re
+
+from packaging.version import Version
 
 from dvc.stage.monitor import Monitor
 from dvc.utils import fix_env
@@ -12,20 +15,48 @@ from .exceptions import StageCmdFailedError
 
 logger = logging.getLogger(__name__)
 
+def _get_shell_version(executable):
+    name = os.path.basename(executable).lower()
+    out = subprocess.run(
+        [executable, "-c", f"echo -n ${name.upper()}_VERSION"],
+        stdout=subprocess.PIPE,
+    ).stdout.decode("utf-8")
+
+    return re.match(r"\d+\.\d+\.?\d?", out).group()
+
 
 def _make_cmd(executable, cmd):
     if executable is None:
         return cmd
-    opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
-    name = os.path.basename(executable).lower()
-    return [executable] + opts.get(name, []) + ["-c", cmd]
 
+    def get_opts(name):
+        version = _get_shell_version(executable)
+
+        opts_dict = {
+            "zsh": (Version("0.0.0"), ["--no-rcs"]),
+            "bash": (Version("0.0.0"), ["--noprofile", "--norc"]),
+            "fish": (Version("3.3.0"), ["--no-config"]),
+        }
+
+        opts = opts_dict.get(name, [])
+        if opts == [] or Version(version) < opts[0]:
+            return []
+        else:
+            return opts[1]
+
+    name = os.path.basename(executable).lower()
+    return [executable] + get_opts(name) + ["-c", cmd]
 
 def warn_if_fish(executable):
     if (
         executable is None
         or os.path.basename(os.path.realpath(executable)) != "fish"
     ):
+        return
+
+    version = _get_shell_version(executable)
+
+    if Version(version) > Version("3.3.0"):
         return
 
     logger.warning(
