@@ -64,6 +64,7 @@ def test_celery_logs(
     assert "failed to reproduce 'failed-copy-file'" in captured.out
 
 
+@pytest.mark.flaky(rerun=3)
 def test_queue_remove_done(dvc, failed_tasks, success_tasks):
     assert len(dvc.experiments.celery_queue.failed_stash) == 3
     status = to_dict(dvc.experiments.celery_queue.status())
