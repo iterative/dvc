@@ -184,9 +184,12 @@ class BaseStashQueue(ABC):
 
         def _format_entry(
             entry: QueueEntry,
+            exp_result: Optional[ExecutorResult] = None,
             status: str = "Unknown",
         ) -> Dict[str, Any]:
             name = entry.name
+            if not name and exp_result and exp_result.ref_info:
+                name = exp_result.ref_info.name
             # NOTE: We fallback to Unknown status for experiments
             # generated in prior (incompatible) DVC versions
             return {
@@ -209,8 +212,8 @@ class BaseStashQueue(ABC):
             for queue_entry, _ in self.iter_failed()
         )
         result.extend(
-            _format_entry(queue_entry, status="Success")
-            for queue_entry, _ in self.iter_success()
+            _format_entry(queue_entry, exp_result=exp_result, status="Success")
+            for queue_entry, exp_result in self.iter_success()
         )
         return result
 
