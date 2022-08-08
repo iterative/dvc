@@ -68,13 +68,17 @@ def _granular_diff(
     from dvc_data.diff import diff as odiff
     from dvc_data.objects.tree import Tree
 
+    drop_root = False
+    trees = isinstance(old_obj, Tree) or isinstance(new_obj, Tree)
+    if trees:
+        drop_root = not with_dirs
+
     def path_join(root: str, *paths: str) -> str:
-        if not isinstance(new_obj, Tree):
+        if not trees and paths == ROOT:
             return root
         return os.path.sep.join([root, *paths])
 
     diff_data = odiff(old_obj, new_obj, cache)
-    drop_root = not with_dirs and isinstance(new_obj, Tree)
 
     output: Dict[str, List[str]] = defaultdict(list)
     for state in ("added", "deleted", "modified", "unchanged"):
