@@ -145,3 +145,83 @@ def test_queue_iter_done_task(test_queue, mocker, status):
     elif status == "SUCCESS":
         with pytest.raises(DvcException):
             assert list(test_queue.iter_success())
+
+
+def test_queue_status(test_queue, scm, mocker):
+    from datetime import datetime
+
+    active_entry = mocker.Mock(stash_rev="active")
+    active_entry.name = "foo"
+    queued_entry = mocker.Mock(stash_rev="queued")
+    queued_entry.name = None
+    failed_entry = mocker.Mock(stash_rev="failed")
+    failed_entry.name = "bar"
+    success_entry = mocker.Mock(stash_rev="success")
+    success_entry.name = None
+    success_result = mocker.Mock(ref_info=mocker.Mock())
+    success_result.ref_info.name = "foobar"
+
+    def resolve_commit(rev):
+        if rev == "active":
+            commit_time = datetime(2022, 8, 7).timestamp()
+        elif rev == "queued":
+            commit_time = datetime(2022, 8, 6).timestamp()
+        elif rev == "failed":
+            commit_time = datetime(2022, 8, 5).timestamp()
+        elif rev == "success":
+            commit_time = datetime(2022, 8, 4).timestamp()
+        return mocker.Mock(commit_time=commit_time)
+
+    mocker.patch.object(
+        scm,
+        "resolve_commit",
+        side_effect=mocker.MagicMock(side_effect=resolve_commit),
+    )
+
+    mocker.patch.object(
+        test_queue,
+        "iter_active",
+        return_value=[active_entry],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_queued",
+        return_value=[queued_entry],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_failed",
+        return_value=[(failed_entry, None)],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_success",
+        return_value=[(success_entry, success_result)],
+    )
+
+    assert test_queue.status() == [
+        {
+            "name": "foo",
+            "rev": "active",
+            "status": "Running",
+            "timestamp": datetime(2022, 8, 7, 0, 0, 0),
+        },
+        {
+            "name": None,
+            "rev": "queued",
+            "status": "Queued",
+            "timestamp": datetime(2022, 8, 6, 0, 0, 0),
+        },
+        {
+            "name": "bar",
+            "rev": "failed",
+            "status": "Failed",
+            "timestamp": datetime(2022, 8, 5, 0, 0, 0),
+        },
+        {
+            "name": "foobar",
+            "rev": "success",
+            "status": "Success",
+            "timestamp": datetime(2022, 8, 4, 0, 0, 0),
+        },
+    ]
