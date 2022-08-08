@@ -15,7 +15,7 @@ def test_with(tmp_dir, dvc, mocker):
             pass
 
 
-def test_(tmp_dir, dvc, mocker):
+def test_unlock_lock_failed(tmp_dir, dvc, mocker):
     # patching to speedup tests
     mocker.patch("dvc.lock.DEFAULT_TIMEOUT", 0.01)
 
@@ -27,7 +27,7 @@ def test_(tmp_dir, dvc, mocker):
     # repro of a stage) in with. We should see LockError exception here.
     with pytest.raises(LockError), lock:
         lock.unlock()
-        lock_ext.lock()  # imitate an exernal process has time to lock it
+        lock_ext.lock()  # imitate an exernal process had time to lock it
         lock.lock()
 
 
