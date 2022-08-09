@@ -112,7 +112,7 @@ class TempDirExecutor(BaseLocalExecutor):
 
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         """Initialize DVC cache."""
-        self._config(repo.odb.local.cache_dir)
+        self._config(repo.odb.repo.path)
 
     def cleanup(self):
         super().cleanup()

@@ -4,8 +4,10 @@ import pytest
 from celery import shared_task
 from flaky.flaky_decorator import flaky
 
+from dvc.exceptions import DvcException
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.executor.local import TempDirExecutor
+from dvc.repo.experiments.queue.base import QueueDoneResult
 from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE
 
 
@@ -37,7 +39,7 @@ def test_shutdown_with_kill(test_queue, mocker):
     mocker.patch.object(
         test_queue,
         "_iter_active_tasks",
-        return_value=[(result.id, mock_entry)],
+        return_value=[(result, mock_entry)],
     )
     kill_spy = mocker.patch.object(test_queue.proc, "kill")
 
@@ -120,3 +122,106 @@ def test_queue_clean_workspace_refs(git_dir, tmp_dir):
 
     for ref in exec_heads:
         assert git_dir.scm.get_ref(ref) is None
+
+
+@pytest.mark.parametrize("status", ["FAILURE", "SUCCESS"])
+def test_queue_iter_done_task(test_queue, mocker, status):
+
+    mock_entry = mocker.Mock(stash_rev=_foo.name)
+
+    result = mocker.Mock(status=status)
+
+    mocker.patch.object(
+        test_queue,
+        "_iter_done_tasks",
+        return_value=[(result, mock_entry)],
+    )
+
+    if status == "FAILURE":
+        assert list(test_queue.iter_failed()) == [
+            QueueDoneResult(mock_entry, None)
+        ]
+
+    elif status == "SUCCESS":
+        with pytest.raises(DvcException):
+            assert list(test_queue.iter_success())
+
+
+def test_queue_status(test_queue, scm, mocker):
+    from datetime import datetime
+
+    active_entry = mocker.Mock(stash_rev="active")
+    active_entry.name = "foo"
+    queued_entry = mocker.Mock(stash_rev="queued")
+    queued_entry.name = None
+    failed_entry = mocker.Mock(stash_rev="failed")
+    failed_entry.name = "bar"
+    success_entry = mocker.Mock(stash_rev="success")
+    success_entry.name = None
+    success_result = mocker.Mock(ref_info=mocker.Mock())
+    success_result.ref_info.name = "foobar"
+
+    def resolve_commit(rev):
+        if rev == "active":
+            commit_time = datetime(2022, 8, 7).timestamp()
+        elif rev == "queued":
+            commit_time = datetime(2022, 8, 6).timestamp()
+        elif rev == "failed":
+            commit_time = datetime(2022, 8, 5).timestamp()
+        elif rev == "success":
+            commit_time = datetime(2022, 8, 4).timestamp()
+        return mocker.Mock(commit_time=commit_time)
+
+    mocker.patch.object(
+        scm,
+        "resolve_commit",
+        side_effect=mocker.MagicMock(side_effect=resolve_commit),
+    )
+
+    mocker.patch.object(
+        test_queue,
+        "iter_active",
+        return_value=[active_entry],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_queued",
+        return_value=[queued_entry],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_failed",
+        return_value=[(failed_entry, None)],
+    )
+    mocker.patch.object(
+        test_queue,
+        "iter_success",
+        return_value=[(success_entry, success_result)],
+    )
+
+    assert test_queue.status() == [
+        {
+            "name": "foo",
+            "rev": "active",
+            "status": "Running",
+            "timestamp": datetime(2022, 8, 7, 0, 0, 0),
+        },
+        {
+            "name": None,
+            "rev": "queued",
+            "status": "Queued",
+            "timestamp": datetime(2022, 8, 6, 0, 0, 0),
+        },
+        {
+            "name": "bar",
+            "rev": "failed",
+            "status": "Failed",
+            "timestamp": datetime(2022, 8, 5, 0, 0, 0),
+        },
+        {
+            "name": "foobar",
+            "rev": "success",
+            "status": "Success",
+            "timestamp": datetime(2022, 8, 4, 0, 0, 0),
+        },
+    ]

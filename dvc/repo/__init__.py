@@ -128,19 +128,17 @@ class Repo:
 
         import hashlib
 
-        from dvc.utils.fs import makedirs
-
         root_dir_hash = hashlib.sha224(
             self.root_dir.encode("utf-8")
         ).hexdigest()
 
-        db_dir = os.path.join(
+        db_dir = self.fs.path.join(
             base_db_dir,
             self.DVC_DIR,
-            f"{os.path.basename(self.root_dir)}-{root_dir_hash[0:7]}",
+            f"{self.fs.path.name(self.root_dir)}-{root_dir_hash[0:7]}",
         )
 
-        makedirs(db_dir, exist_ok=True)
+        self.fs.makedirs(db_dir, exist_ok=True)
         return db_dir
 
     def __init__(
@@ -157,7 +155,7 @@ class Repo:
     ):
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
-        from dvc.fs import GitFileSystem, localfs
+        from dvc.fs import GitFileSystem, LocalFileSystem, localfs
         from dvc.lock import LockNoop, make_lock
         from dvc.odbmgr import ODBManager
         from dvc.repo.metrics import Metrics
@@ -200,18 +198,23 @@ class Repo:
             self.odb = ODBManager(self)
             self.tmp_dir = None
         else:
-            from dvc.utils.fs import makedirs
+            self.fs.makedirs(self.tmp_dir, exist_ok=True)
 
-            makedirs(self.tmp_dir, exist_ok=True)
-            self.lock = make_lock(
-                os.path.join(self.tmp_dir, "lock"),
-                tmp_dir=self.tmp_dir,
-                hardlink_lock=self.config["core"].get("hardlink_lock", False),
-                friendly=True,
-            )
+            if isinstance(self.fs, LocalFileSystem):
+                self.lock = make_lock(
+                    self.fs.path.join(self.tmp_dir, "lock"),
+                    tmp_dir=self.tmp_dir,
+                    hardlink_lock=self.config["core"].get(
+                        "hardlink_lock", False
+                    ),
+                    friendly=True,
+                )
+                state_db_dir = self._get_database_dir("state")
+                self.state = State(self.root_dir, state_db_dir, self.dvcignore)
+            else:
+                self.lock = LockNoop()
+                self.state = StateNoop()
 
-            state_db_dir = self._get_database_dir("state")
-            self.state = State(self.root_dir, state_db_dir, self.dvcignore)
             self.odb = ODBManager(self)
 
             self.stage_cache = StageCache(self)
@@ -364,13 +367,13 @@ class Repo:
         )
 
     def unprotect(self, target):
-        return self.odb.local.unprotect(target)
+        return self.odb.repo.unprotect(target)
 
     def _ignore(self):
         flist = [self.config.files["local"], self.tmp_dir]
 
-        if path_isin(self.odb.local.cache_dir, self.root_dir):
-            flist += [self.odb.local.cache_dir]
+        if path_isin(self.odb.repo.path, self.root_dir):
+            flist += [self.odb.repo.path]
 
         for file in flist:
             self.scm_context.ignore(file)
@@ -480,7 +483,7 @@ class Repo:
     def datafs(self):
         from dvc.fs.data import DataFileSystem
 
-        return DataFileSystem(repo=self)
+        return DataFileSystem(index=self.index.data["repo"])
 
     @cached_property
     def dvcfs(self):
@@ -501,18 +504,23 @@ class Repo:
         from dvc.fs.dvc import DvcFileSystem
 
         if os.path.isabs(path):
-            fs = DataFileSystem(repo=self, workspace="local")
+            fs = DataFileSystem(index=self.index.data["local"])
             fs_path = path
         else:
             fs = DvcFileSystem(repo=self, subrepos=True)
             fs_path = fs.from_os_path(path)
 
         try:
+            if remote:
+                remote_odb = self.cloud.get_remote_odb(name=remote)
+                oid = fs.info(fs_path)["dvc_info"]["md5"]
+                fs = remote_odb.fs
+                fs_path = remote_odb.oid_to_path(oid)
+
             with fs.open(
                 fs_path,
                 mode=mode,
                 encoding=encoding,
-                remote=remote,
             ) as fobj:
                 yield fobj
         except FileNotFoundError as exc:

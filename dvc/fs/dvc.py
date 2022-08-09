@@ -135,7 +135,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         """Keep a datafs instance of each repo."""
 
         if hasattr(repo, "dvc_dir"):
-            self._datafss[key] = DataFileSystem(repo=repo)
+            self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
     def _get_key(self, path):
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
@@ -155,9 +155,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             self.PARAM_REPO_URL: self.repo_url,
             self.PARAM_REPO_ROOT: self.repo.root_dir,
             self.PARAM_REV: getattr(self.repo.fs, "rev", None),
-            self.PARAM_CACHE_DIR: os.path.abspath(
-                self.repo.odb.local.cache_dir
-            ),
+            self.PARAM_CACHE_DIR: os.path.abspath(self.repo.odb.local.path),
             self.PARAM_CACHE_TYPES: self.repo.odb.local.cache_types,
             self.PARAM_SUBREPOS: self._traverse_subrepos,
         }
@@ -252,7 +250,9 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                     scm=self.repo.scm,
                     repo_factory=self.repo_factory,
                 )
-                self._datafss[key] = DataFileSystem(repo=repo)
+                self._datafss[key] = DataFileSystem(
+                    index=repo.index.data["repo"]
+                )
             self._subrepos_trie[key] = repo
 
     def _is_dvc_repo(self, dir_path):
@@ -268,6 +268,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def _get_fs_pair(
         self, path
     ) -> Tuple[
+        Optional["Repo"],
         Optional[FileSystem],
         Optional[str],
         Optional[DataFileSystem],
@@ -299,7 +300,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         else:
             dvc_path = None
 
-        return fs, fs_path, dvc_fs, dvc_path
+        return repo, fs, fs_path, dvc_fs, dvc_path
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
@@ -307,7 +308,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if "b" in mode:
             encoding = None
 
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
         try:
             return fs.open(fs_path, mode=mode, encoding=encoding)
         except FileNotFoundError:
@@ -317,15 +318,14 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
 
     def isdvc(self, path, **kwargs):
-        _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
+        _, _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
     def ls(  # pylint: disable=arguments-differ
         self, path, detail=True, dvc_only=False, **kwargs
     ):
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        repo = dvc_fs.repo if dvc_fs else self.repo
         dvcignore = repo.dvcignore
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
@@ -378,7 +378,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def get_file(  # pylint: disable=arguments-differ
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(rpath)
+        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(rpath)
 
         if fs:
             try:
@@ -390,9 +390,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
 
     def info(self, path, **kwargs):
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        repo = dvc_fs.repo if dvc_fs else self.repo
         dvcignore = repo.dvcignore
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
@@ -434,7 +433,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return info
 
     def checksum(self, path):
-        fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
         try:
             return fs.checksum(fs_path)

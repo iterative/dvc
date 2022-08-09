@@ -37,7 +37,7 @@ def test_remove_queued(test_queue, mocker):
     remove_revs_mocker.reset_mock()
     reject_mocker.reset_mock()
 
-    assert test_queue.remove([], queued=True) == queued_test
+    assert test_queue.clear(queued=True) == queued_test
     remove_revs_mocker.assert_called_once_with(list(stash_dict.values()))
     reject_mocker.assert_has_calls(
         [call("msg_queue1"), call("msg_queue2"), call("msg_queue3")]
@@ -103,7 +103,7 @@ def test_remove_done(test_queue, mocker):
     remove_revs_mocker.reset_mock()
     purge_mocker.reset_mock()
 
-    assert set(test_queue.remove([], success=True, failed=True)) == set(
+    assert set(test_queue.clear(success=True, failed=True)) == set(
         failed_test
     ) | set(success_test)
     purge_mocker.assert_has_calls(
@@ -118,11 +118,3 @@ def test_remove_done(test_queue, mocker):
         any_order=True,
     )
     remove_revs_mocker.assert_called_once_with(list(stash_dict.values()))
-
-
-def test_remove_all(test_queue, mocker):
-    clear_mocker = mocker.patch.object(
-        test_queue, "clear", return_value=mocker.Mock()
-    )
-    test_queue.remove([], all_=True)
-    assert clear_mocker.called_once_with(queud=True, failed=True, success=True)

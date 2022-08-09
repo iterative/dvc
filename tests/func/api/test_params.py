@@ -13,6 +13,11 @@ def params_repo(tmp_dir, scm, dvc):
     tmp_dir.gen("other_params.json", '{"foo": {"bar": 4}}')
 
     dvc.run(
+        name="stage-0",
+        cmd="echo stage-0",
+    )
+
+    dvc.run(
         name="stage-1",
         cmd="echo stage-1",
         params=["foo", "params.json:bar"],
@@ -83,6 +88,9 @@ def test_params_show_stages(params_repo):
 
     assert api.params_show("params.json", stages="stage-3") == {"foobar": 3}
 
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show(stages="stage-0")
+
 
 def test_params_show_revs(params_repo):
     assert api.params_show(rev="HEAD~1") == {
@@ -145,3 +153,18 @@ def test_params_show_no_params_found(tmp_dir, dvc):
     dvc.stage.add(name="echo", cmd="echo foo")
     with pytest.raises(DvcException, match="No params found"):
         api.params_show()
+
+
+def test_params_show_stage_without_params(tmp_dir, dvc):
+    tmp_dir.gen("params.yaml", "foo: 1")
+
+    dvc.run(
+        name="stage-0",
+        cmd="echo stage-0",
+    )
+
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show(stages="stage-0")
+
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show(deps=True)

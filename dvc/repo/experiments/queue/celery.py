@@ -14,6 +14,7 @@ from typing import (
     Set,
 )
 
+from celery.result import AsyncResult
 from funcy import cached_property
 from kombu.message import Message
 
@@ -23,7 +24,6 @@ from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
 from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
-from ..stash import ExpStashEntry
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .tasks import run_exp
 
@@ -41,7 +41,7 @@ class _MessageEntry(NamedTuple):
 
 
 class _TaskEntry(NamedTuple):
-    task_id: str
+    async_result: AsyncResult
     entry: QueueEntry
 
 
@@ -192,30 +192,37 @@ class LocalCeleryQueue(BaseStashQueue):
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_active_tasks(self) -> Generator[_TaskEntry, None, None]:
-        from celery.result import AsyncResult
 
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
-                yield _TaskEntry(task_id, entry)
+                yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
-        from celery.result import AsyncResult
 
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result.ready():
-                yield _TaskEntry(task_id, entry)
+                yield _TaskEntry(result, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:
         for _, entry in self._iter_active_tasks():
             yield entry
 
     def iter_done(self) -> Generator[QueueDoneResult, None, None]:
-        for _, entry in self._iter_done_tasks():
-            yield QueueDoneResult(entry, self.get_result(entry))
+        for result, entry in self._iter_done_tasks():
+            try:
+                exp_result = self.get_result(entry)
+            except FileNotFoundError:
+                if result.status == "SUCCESS":
+                    raise DvcException(
+                        f"Invalid experiment '{entry.stash_rev[:7]}'."
+                    )
+                elif result.status == "FAILURE":
+                    exp_result = None
+            yield QueueDoneResult(entry, exp_result)
 
     def iter_success(self) -> Generator[QueueDoneResult, None, None]:
         for queue_entry, exp_result in self.iter_done():
@@ -223,14 +230,8 @@ class LocalCeleryQueue(BaseStashQueue):
                 yield QueueDoneResult(queue_entry, exp_result)
 
     def iter_failed(self) -> Generator[QueueDoneResult, None, None]:
-        failed_revs: Dict[str, ExpStashEntry] = (
-            dict(self.failed_stash.stash_revs)
-            if self.failed_stash is not None
-            else {}
-        )
-
         for queue_entry, exp_result in self.iter_done():
-            if exp_result is None and queue_entry.stash_rev in failed_revs:
+            if exp_result is None:
                 yield QueueDoneResult(queue_entry, exp_result)
 
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
@@ -240,7 +241,6 @@ class LocalCeleryQueue(BaseStashQueue):
         self, entry: QueueEntry, timeout: Optional[float] = None
     ) -> Optional[ExecutorResult]:
         from celery.exceptions import TimeoutError as _CeleryTimeout
-        from celery.result import AsyncResult
 
         def _load_info(rev: str) -> ExecutorInfo:
             infofile = self.get_infofile_path(rev)
@@ -261,11 +261,12 @@ class LocalCeleryQueue(BaseStashQueue):
         for queue_entry in self.iter_queued():
             if entry.stash_rev == queue_entry.stash_rev:
                 raise DvcException("Experiment has not been started.")
-        for task_id, active_entry in self._iter_active_tasks():
+        for result, active_entry in self._iter_active_tasks():
             if entry.stash_rev == active_entry.stash_rev:
-                logger.debug("Waiting for exp task '%s' to complete", task_id)
+                logger.debug(
+                    "Waiting for exp task '%s' to complete", result.id
+                )
                 try:
-                    result: AsyncResult = AsyncResult(task_id)
                     result.get(timeout=timeout)
                 except _CeleryTimeout as exc:
                     raise DvcException(
@@ -277,11 +278,7 @@ class LocalCeleryQueue(BaseStashQueue):
         # NOTE: It's possible for an exp to complete while iterating through
         # other queued and active tasks, in which case the exp will get moved
         # out of the active task list, and needs to be loaded here.
-        try:
-            return _load_collected(entry.stash_rev)
-        except FileNotFoundError:
-            pass
-        raise DvcException(f"Invalid experiment '{entry.stash_rev[:7]}'.")
+        return _load_collected(entry.stash_rev)
 
     def kill(self, revs: Collection[str]) -> None:
         to_kill: Set[QueueEntry] = set()
