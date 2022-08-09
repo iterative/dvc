@@ -155,17 +155,18 @@ class CmdPlots(CmdBase):
                 out=renderers_out,
                 templates_dir=self.repo.plots.templates_dir,
             )
-            if self.args.show_vega:
-                renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
-                if renderer:
-                    ui.write_json(json.loads(renderer.get_filled_template()))
-                return 0
             if self.args.json:
                 renderers = _filter_unhandled_renderers(renderers)
                 _show_json(renderers, self.args.split)
                 return 0
 
             _adjust_vega_renderers(renderers)
+
+            if self.args.show_vega:
+                renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
+                if renderer:
+                    ui.write_json(json.loads(renderer.get_filled_template()))
+                return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
 
