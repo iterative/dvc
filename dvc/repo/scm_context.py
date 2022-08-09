@@ -46,7 +46,7 @@ class SCMContext:
     @staticmethod
     def _make_git_add_cmd(paths: Union[str, Iterable[str]]) -> str:
         files = " ".join(map(shlex.quote, ensure_list(paths)))
-        return f"\tgit add {files}".expandtabs(4)
+        return f"\tgit add {files}"
 
     def add(self, paths: Union[str, Iterable[str]]) -> None:
         from scmrepo.exceptions import UnsupportedIndexFormat
