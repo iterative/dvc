@@ -7,6 +7,7 @@ from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
 from .fs import localfs
+from .lock import make_lock
 from .utils import relpath
 
 INFO_SCHEMA = {Required("pid"): int, Required("cmd"): str}
@@ -33,22 +34,29 @@ class RWLockFileFormatError(DvcException):
 
 
 @contextmanager
-def _edit_rwlock(lock_dir, fs):
+def _edit_rwlock(lock_dir, fs, hardlink):
     path = fs.path.join(lock_dir, "rwlock")
-    try:
-        with fs.open(path, encoding="utf-8") as fobj:
-            lock = SCHEMA(json.load(fobj))
-    except FileNotFoundError:
-        lock = SCHEMA({})
-    except json.JSONDecodeError as exc:
-        raise RWLockFileCorruptedError(path) from exc
-    except Invalid as exc:
-        raise RWLockFileFormatError(path) from exc
-    lock["read"] = defaultdict(list, lock["read"])
-    lock["write"] = defaultdict(dict, lock["write"])
-    yield lock
-    with fs.open(path, "w", encoding="utf-8") as fobj:
-        json.dump(lock, fobj)
+
+    rwlock_guard = make_lock(
+        fs.path.join(lock_dir, "rwlock.lock"),
+        tmp_dir=lock_dir,
+        hardlink_lock=hardlink,
+    )
+    with rwlock_guard:
+        try:
+            with fs.open(path, encoding="utf-8") as fobj:
+                lock = SCHEMA(json.load(fobj))
+        except FileNotFoundError:
+            lock = SCHEMA({})
+        except json.JSONDecodeError as exc:
+            raise RWLockFileCorruptedError(path) from exc
+        except Invalid as exc:
+            raise RWLockFileFormatError(path) from exc
+        lock["read"] = defaultdict(list, lock["read"])
+        lock["write"] = defaultdict(dict, lock["write"])
+        yield lock
+        with fs.open(path, "w", encoding="utf-8") as fobj:
+            json.dump(lock, fobj)
 
 
 def _infos_to_str(infos):
@@ -133,7 +141,7 @@ def _release_read(lock, info, changes):
 
 
 @contextmanager
-def rwlock(tmp_dir, fs, cmd, read, write):
+def rwlock(tmp_dir, fs, cmd, read, write, hardlink):
     """Create non-thread-safe RWLock for file paths.
 
     Args:
@@ -142,6 +150,7 @@ def rwlock(tmp_dir, fs, cmd, read, write):
         cmd (str): command that will be working on these file path.
         read ([str]): file paths that are going to be read.
         write ([str]): file paths that are going to be written.
+        hardlink (bool): use hardlink lock to guard rwlock file when on edit.
 
     Raises:
         LockError: raised if file paths we want to read is being written to by
@@ -153,7 +162,7 @@ def rwlock(tmp_dir, fs, cmd, read, write):
     """
     info = {"pid": os.getpid(), "cmd": cmd}
 
-    with _edit_rwlock(tmp_dir, fs) as lock:
+    with _edit_rwlock(tmp_dir, fs, hardlink) as lock:
 
         _check_blockers(lock, info, mode="write", waiters=read + write)
         _check_blockers(lock, info, mode="read", waiters=write)
@@ -164,6 +173,6 @@ def rwlock(tmp_dir, fs, cmd, read, write):
     try:
         yield
     finally:
-        with _edit_rwlock(tmp_dir, fs) as lock:
+        with _edit_rwlock(tmp_dir, fs, hardlink) as lock:
             _release_write(lock, info, wchanges)
             _release_read(lock, info, rchanges)
