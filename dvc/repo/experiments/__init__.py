@@ -214,7 +214,7 @@ class Experiments:
         for rev in revs:
             name = self.get_exact_name(rev)
             names.append(name if name else rev[:7])
-        ui.write("\nReproduced experiment(s): {}".format(", ".join(names)))
+        ui.write("\nRan experiment(s): {}".format(", ".join(names)))
         if tmp_dir:
             ui.write(
                 "To apply the results of an experiment to your workspace "
