@@ -33,7 +33,12 @@ def rwlocked(call, read=None, write=None):
     cmd = " ".join(sys.argv)
 
     with rwlock(
-        stage.repo.tmp_dir, stage.repo.fs, cmd, _chain(read), _chain(write)
+        stage.repo.tmp_dir,
+        stage.repo.fs,
+        cmd,
+        _chain(read),
+        _chain(write),
+        stage.repo.config["core"].get("hardlink_lock", False),
     ):
         return call()
 
