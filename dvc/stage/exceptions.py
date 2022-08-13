@@ -31,7 +31,7 @@ class StageFileIsNotDvcFileError(DvcException):
 
         sname = fname + DVC_FILE_SUFFIX
         if is_dvc_file(sname):
-            msg += f" Do you mean '{sname}'?"
+            msg += f". Do you mean '{sname}'?"
 
         super().__init__(msg)
 
