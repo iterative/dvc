@@ -8,7 +8,7 @@ import psutil
 
 from dvc import __version__
 from dvc.exceptions import NotDvcRepoError
-from dvc.fs import FS_MAP, generic, get_fs_cls, get_fs_config
+from dvc.fs import Schemes, generic, get_fs_cls, get_fs_config, registry
 from dvc.repo import Repo
 from dvc.scm import SCMError
 from dvc.utils import error_link
@@ -90,7 +90,11 @@ def _get_linktype_support_info(repo):
 
 def _get_supported_remotes():
     supported_remotes = []
-    for scheme, fs_cls in FS_MAP.items():
+    for scheme in registry:
+        if scheme in [Schemes.LOCAL, Schemes.MEMORY]:
+            continue
+
+        fs_cls = registry[scheme]
         if not fs_cls.get_missing_deps():
             dependencies = []
             for requirement in fs_cls.REQUIRES:

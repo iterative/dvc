@@ -141,10 +141,10 @@ def test_fs_info_outside_of_repo(tmp_dir, caplog):
 
 
 def test_plugin_versions(tmp_dir, dvc):
-    from dvc.fs import FS_MAP
+    from dvc.fs import registry
 
     dvc_info = get_dvc_info()
     remotes = find_supported_remotes(dvc_info)
 
     for remote, dependencies in remotes.items():
-        assert dependencies.keys() == FS_MAP[remote].REQUIRES.keys()
+        assert dependencies.keys() == registry[remote].REQUIRES.keys()
