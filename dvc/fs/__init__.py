@@ -1,26 +1,16 @@
 from urllib.parse import urlparse
 
+from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
+
 # pylint: disable=unused-import
 from dvc_objects.fs import utils  # noqa: F401
 from dvc_objects.fs import (  # noqa: F401
-    FS_MAP,
-    AzureFileSystem,
-    GDriveFileSystem,
-    GSFileSystem,
-    HDFSFileSystem,
-    HTTPFileSystem,
-    HTTPSFileSystem,
     LocalFileSystem,
     MemoryFileSystem,
-    OSSFileSystem,
-    S3FileSystem,
     Schemes,
-    SSHFileSystem,
-    WebDAVFileSystem,
-    WebDAVSFileSystem,
-    WebHDFSFileSystem,
     generic,
     get_fs_cls,
+    registry,
     system,
 )
 from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
@@ -30,9 +20,25 @@ from dvc_objects.fs.errors import (  # noqa: F401
     RemoteMissingDepsError,
 )
 from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
+from dvc_objects.fs.implementations.azure import AzureFileSystem  # noqa: F401
+from dvc_objects.fs.implementations.gdrive import (  # noqa: F401
+    GDriveFileSystem,
+)
+from dvc_objects.fs.implementations.gs import GSFileSystem  # noqa: F401
+from dvc_objects.fs.implementations.hdfs import HDFSFileSystem  # noqa: F401
 from dvc_objects.fs.implementations.local import localfs  # noqa: F401
+from dvc_objects.fs.implementations.oss import OSSFileSystem  # noqa: F401
+from dvc_objects.fs.implementations.s3 import S3FileSystem  # noqa: F401
 from dvc_objects.fs.implementations.ssh import (  # noqa: F401
     DEFAULT_PORT as DEFAULT_SSH_PORT,
+)
+from dvc_objects.fs.implementations.ssh import SSHFileSystem  # noqa: F401
+from dvc_objects.fs.implementations.webdav import (  # noqa: F401
+    WebDAVFileSystem,
+    WebDAVSFileSystem,
+)
+from dvc_objects.fs.implementations.webhdfs import (  # noqa: F401
+    WebHDFSFileSystem,
 )
 from dvc_objects.fs.path import Path  # noqa: F401
 
