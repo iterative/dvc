@@ -1,13 +1,14 @@
 import logging
 import typing
 
-from . import locked
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.stage.exceptions import (
-    StageNotFound,
     StageFileDoesNotExistError,
     StageFileIsNotDvcFileError,
+    StageNotFound,
 )
+
+from . import locked
 
 if typing.TYPE_CHECKING:
     from dvc.repo import Repo
