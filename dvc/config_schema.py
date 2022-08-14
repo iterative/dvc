@@ -168,6 +168,7 @@ SCHEMA = {
                 "gs": {
                     "projectname": str,
                     "credentialpath": str,
+                    "endpointurl": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
