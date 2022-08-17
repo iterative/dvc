@@ -1,8 +1,6 @@
 from urllib.parse import urlparse
 
 from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
-from dvc_ssh import DEFAULT_PORT as DEFAULT_SSH_PORT  # noqa: F401
-from dvc_ssh import SSHFileSystem  # noqa: F401
 
 # pylint: disable=unused-import
 from dvc_objects.fs import utils  # noqa: F401

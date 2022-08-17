@@ -5,8 +5,7 @@ import os
 from unittest.mock import mock_open, patch
 
 import pytest
-
-from dvc.fs import DEFAULT_SSH_PORT, SSHFileSystem
+from dvc_ssh import DEFAULT_PORT, SSHFileSystem
 
 
 def test_get_kwargs_from_urls():
@@ -99,7 +98,7 @@ def test_ssh_user(mock_file, config, expected_user):
     [
         ({"host": "example.com"}, 1234),
         ({"host": "example.com", "port": 4321}, 4321),
-        ({"host": "not_in_ssh_config.com"}, DEFAULT_SSH_PORT),
+        ({"host": "not_in_ssh_config.com"}, DEFAULT_PORT),
         ({"host": "not_in_ssh_config.com", "port": 2222}, 2222),
     ],
 )
