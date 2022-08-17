@@ -242,7 +242,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -258,7 +258,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -483,9 +483,9 @@ def test_pull_imported_stage_from_subrepos(
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
     remove("out")
-    makedirs(dvc.odb.local.cache_dir)
+    makedirs(dvc.odb.local.path)
 
     stats = dvc.pull(["out.dvc"])
 
@@ -554,7 +554,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
     erepo_dir.dvc.push()
-    remove(erepo_dir.dvc.odb.local.cache_dir)
+    remove(erepo_dir.dvc.odb.local.path)
     remove(os.fspath(erepo_dir / "dir"))
 
     erepo2 = make_tmp_dir("erepo2", scm=True, dvc=True)
@@ -562,7 +562,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
         erepo2.dvc.imp(os.fspath(erepo_dir), "dir")
         erepo2.scm.add("dir.dvc")
         erepo2.scm.commit("import")
-    remove(erepo2.dvc.odb.local.cache_dir)
+    remove(erepo2.dvc.odb.local.path)
     remove(os.fspath(erepo2 / "dir"))
 
     dvc.imp(os.fspath(erepo2), "dir", "dir_imported")
@@ -570,14 +570,14 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
     remove("dir_imported")
 
     # pulled objects should come from the original upstream repo's remote,
     # no cache or remote should be needed from the intermediate repo
     dvc.pull(["dir_imported.dvc"])
-    assert not os.path.exists(erepo_dir.dvc.odb.local.cache_dir)
-    assert not os.path.exists(erepo2.dvc.odb.local.cache_dir)
+    assert not os.path.exists(erepo_dir.dvc.odb.local.path)
+    assert not os.path.exists(erepo2.dvc.odb.local.path)
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 

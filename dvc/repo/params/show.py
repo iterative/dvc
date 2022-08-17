@@ -22,7 +22,7 @@ from dvc.stage import PipelineStage
 from dvc.ui import ui
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
-from dvc.utils.serialize import LOADERS
+from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
     from dvc.output import Output
@@ -36,7 +36,7 @@ def _is_params(dep: "Output"):
 
 
 def _collect_configs(
-    repo: "Repo", rev, targets=None, duplicates=False
+    repo: "Repo", rev, targets=None, deps=False, stages=None
 ) -> Tuple[List["Output"], List[str]]:
 
     params, fs_paths = collect(
@@ -45,10 +45,10 @@ def _collect_configs(
         deps=True,
         output_filter=_is_params,
         rev=rev,
-        duplicates=duplicates,
+        duplicates=deps or stages is not None,
     )
     all_fs_paths = fs_paths + [p.fs_path for p in params]
-    if not targets:
+    if not any([deps, targets, stages]):
         default_params = repo.fs.path.join(
             repo.root_dir, ParamsDependency.DEFAULT_PARAMS_FILE
         )
@@ -56,14 +56,13 @@ def _collect_configs(
             default_params
         ):
             fs_paths.append(default_params)
+
     return params, fs_paths
 
 
 @error_handler
 def _read_fs_path(fs, fs_path, **kwargs):
-    suffix = fs.path.suffix(fs_path).lower()
-    loader = LOADERS[suffix]
-    return loader(fs_path, fs=fs)
+    return load_path(fs_path, fs)
 
 
 def _read_params(
@@ -173,7 +172,7 @@ def _gather_params(
     repo, rev, targets=None, deps=False, onerror=None, stages=None
 ):
     param_outs, params_fs_paths = _collect_configs(
-        repo, rev, targets=targets, duplicates=deps or stages
+        repo, rev, targets=targets, deps=deps, stages=stages
     )
     params = _read_params(
         repo,

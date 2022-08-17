@@ -7,36 +7,83 @@ from dvc.commands.queue.remove import CmdQueueRemove
 from dvc.commands.queue.start import CmdQueueStart
 from dvc.commands.queue.status import CmdQueueStatus
 from dvc.commands.queue.stop import CmdQueueStop
+from dvc.exceptions import InvalidArgumentError
 
 
-def test_experiments_remove(dvc, scm, mocker):
+def test_experiments_remove_flags(dvc, scm, mocker):
+    cli_args = parse_args(
+        [
+            "queue",
+            "remove",
+            "--queued",
+            "--success",
+            "--failed",
+        ]
+    )
+    assert cli_args.func == CmdQueueRemove
+    cmd = cli_args.func(cli_args)
+    remove_mocker = mocker.patch(
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.clear",
+        return_value={},
+    )
+    assert cmd.run() == 0
+    remove_mocker.assert_called_once_with(
+        success=True,
+        failed=True,
+        queued=True,
+    )
     cli_args = parse_args(
         [
             "queue",
             "remove",
             "--all",
-            "--queued",
-            "--success",
-            "--failed",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+    remove_mocker.reset_mock()
+    assert cmd.run() == 0
+    remove_mocker.assert_called_once_with(
+        success=True,
+        failed=True,
+        queued=True,
+    )
+
+
+def test_experiments_remove_invalid(dvc, scm, mocker):
+    cli_args = parse_args(["queue", "remove", "--queued", ["exp1", "exp2"]])
+    cmd = cli_args.func(cli_args)
+    with pytest.raises(InvalidArgumentError):
+        assert cmd.run() == 0
+
+    cli_args = parse_args(
+        [
+            "queue",
+            "remove",
+        ]
+    )
+    cmd = cli_args.func(cli_args)
+    with pytest.raises(InvalidArgumentError):
+        assert cmd.run() == 0
+
+
+def test_experiments_remove_name(dvc, scm, mocker):
+    cli_args = parse_args(
+        [
+            "queue",
+            "remove",
             "exp1",
             "exp2",
         ]
     )
     assert cli_args.func == CmdQueueRemove
-
     cmd = cli_args.func(cli_args)
     remove_mocker = mocker.patch(
         "dvc.repo.experiments.queue.celery.LocalCeleryQueue.remove",
         return_value={},
     )
-
     assert cmd.run() == 0
     remove_mocker.assert_called_once_with(
         revs=["exp1", "exp2"],
-        all_=True,
-        success=True,
-        failed=True,
-        queued=True,
     )
 
 

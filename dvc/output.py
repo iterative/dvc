@@ -341,22 +341,22 @@ class Output:
         self.remote = remote
 
     def _parse_path(self, fs, fs_path):
-        if fs.protocol != "local":
-            return fs_path
-
         parsed = urlparse(self.def_path)
-        if parsed.scheme != "remote":
+        if (
+            parsed.scheme != "remote"
+            and self.stage
+            and self.stage.repo.fs == fs
+            and not fs.path.isabs(fs_path)
+        ):
             # NOTE: we can path either from command line or .dvc file,
             # so we should expect both posix and windows style paths.
             # paths accepts both, i.e. / works everywhere, \ only on win.
             #
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
-            if self.stage and not os.path.isabs(fs_path):
-                fs_path = fs.path.join(self.stage.wdir, fs_path)
+            fs_path = fs.path.join(self.stage.wdir, fs_path)
 
-        abs_p = fs.path.abspath(fs.path.normpath(fs_path))
-        return abs_p
+        return fs.path.abspath(fs.path.normpath(fs_path))
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
@@ -386,9 +386,6 @@ class Output:
 
     @property
     def is_in_repo(self):
-        if self.fs.protocol != "local":
-            return False
-
         if urlparse(self.def_path).scheme == "remote":
             return False
 
@@ -409,7 +406,8 @@ class Output:
 
     @property
     def odb(self):
-        odb = getattr(self.repo.odb, self.protocol)
+        odb_name = "repo" if self.is_in_repo else self.protocol
+        odb = getattr(self.repo.odb, odb_name)
         if self.use_cache and odb is None:
             raise RemoteCacheRequiredError(self.fs.protocol, self.fs_path)
         return odb
@@ -545,7 +543,7 @@ class Output:
 
         self.ignore()
 
-        if self.metric or self.plot:
+        if self.metric:
             self.verify_metric()
 
         if not self.use_cache:
@@ -708,22 +706,21 @@ class Output:
             raise DvcException(
                 f"verify metric is not supported for {self.protocol}"
             )
-
-        if not self.metric or self.plot:
+        if not self.metric:
             return
 
         if not os.path.exists(self.fs_path):
             return
 
-        name = "metrics" if self.metric else "plot"
         if os.path.isdir(self.fs_path):
             msg = "directory '%s' cannot be used as %s."
-            logger.debug(msg, str(self), name)
+            logger.debug(msg, str(self), "metrics")
             return
 
         if not istextfile(self.fs_path, self.fs):
-            msg = "binary file '{}' cannot be used as {}."
-            raise DvcException(msg.format(self.fs_path, name))
+            raise DvcException(
+                f"binary file '{self.fs_path}' cannot be used as metrics."
+            )
 
     def download(self, to, jobs=None):
         from dvc.fs.callbacks import Callback

@@ -107,6 +107,7 @@ def test_isdir_isfile(tmp_dir, dvc):
     (tmp_dir / "datafile").unlink()
     (tmp_dir / "subdir" / "baz").unlink()
 
+    fs = DvcFileSystem(repo=dvc)
     assert fs.isdir("datadir")
     assert not fs.isfile("datadir")
     assert fs.isdvc("datadir")

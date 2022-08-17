@@ -1,5 +1,4 @@
 import logging
-import os
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -357,17 +356,14 @@ class Context(CtxDict):
     def load_from(
         cls, fs, path: str, select_keys: List[str] = None
     ) -> "Context":
-        from dvc.utils.serialize import LOADERS
+        from dvc.utils.serialize import load_path
 
         if not fs.exists(path):
             raise ParamsLoadError(f"'{path}' does not exist")
         if fs.isdir(path):
             raise ParamsLoadError(f"'{path}' is a directory")
 
-        _, ext = os.path.splitext(path)
-        loader = LOADERS[ext]
-
-        data = loader(path, fs=fs)
+        data = load_path(path, fs)
         if not isinstance(data, Mapping):
             typ = type(data).__name__
             raise ParamsLoadError(

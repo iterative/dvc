@@ -447,12 +447,12 @@ class TestAddCommit(TestDvc):
         ret = main(["add", self.FOO, "--no-commit"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertFalse(os.path.exists(self.dvc.odb.local.cache_dir))
+        self.assertFalse(os.path.exists(self.dvc.odb.local.path))
 
         ret = main(["commit", self.FOO + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.odb.local.cache_dir)), 1)
+        self.assertEqual(len(os.listdir(self.dvc.odb.local.path)), 1)
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):

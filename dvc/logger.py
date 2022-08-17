@@ -163,7 +163,7 @@ class LoggerHandler(logging.StreamHandler):
                 msg, file=self.stream, end=getattr(self, "terminator", "\n")
             )
             self.flush()
-        except RecursionError:
+        except (BrokenPipeError, RecursionError):
             raise
         except Exception:  # noqa, pylint: disable=broad-except
             self.handleError(record)

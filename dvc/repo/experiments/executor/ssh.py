@@ -5,9 +5,8 @@ import sys
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Iterable, Optional
 
+from dvc_ssh import SSHFileSystem
 from funcy import first
-
-from dvc.fs import SSHFileSystem
 
 from ..refs import (
     EXEC_BRANCH,

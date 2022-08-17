@@ -1,48 +1,60 @@
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from dvc.exceptions import InvalidArgumentError
 
 from . import locked
 
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+
 logger = logging.getLogger(__name__)
 
 
-def _raise_error_if_all_disabled(**kwargs):
+def _validate_args(**kwargs):
     if not any(kwargs.values()):
         raise InvalidArgumentError(
             "Either of `-w|--workspace`, `-a|--all-branches`, `-T|--all-tags` "
-            "`--all-experiments`, `--all-commits` or `--date` needs to be set."
+            "`--all-experiments`, `--all-commits`, `--date` or `--rev` "
+            "needs to be set."
+        )
+    if kwargs.get("num") and not kwargs.get("rev"):
+        raise InvalidArgumentError(
+            "`--num` can only be used alongside `--rev`"
         )
 
 
 @locked
 def gc(
-    self,
-    all_branches=False,
-    cloud=False,
-    remote=None,
-    with_deps=False,
-    all_tags=False,
-    all_commits=False,
-    all_experiments=False,
+    self: "Repo",
+    all_branches: bool = False,
+    cloud: bool = False,
+    remote: Optional[str] = None,
+    with_deps: bool = False,
+    all_tags: bool = False,
+    all_commits: bool = False,
+    all_experiments: bool = False,
+    force: bool = False,
+    jobs: int = None,
+    repos: Optional[List[str]] = None,
+    workspace: bool = False,
     commit_date: Optional[str] = None,
-    force=False,
-    jobs=None,
-    repos=None,
-    workspace=False,
+    rev: Optional[str] = None,
+    num: Optional[int] = None,
 ):
 
     # require `workspace` to be true to come into effect.
     # assume `workspace` to be enabled if any of `all_tags`, `all_commits`,
     # `all_experiments` or `all_branches` are enabled.
-    _raise_error_if_all_disabled(
+    _validate_args(
         workspace=workspace,
         all_tags=all_tags,
         all_commits=all_commits,
         all_branches=all_branches,
         all_experiments=all_experiments,
         commit_date=commit_date,
+        rev=rev,
+        num=num,
     )
 
     from contextlib import ExitStack
@@ -71,6 +83,8 @@ def gc(
                 remote=remote,
                 force=force,
                 jobs=jobs,
+                revs=[rev] if rev else None,
+                num=num or 1,
             ).values():
                 used_obj_ids.update(obj_ids)
 

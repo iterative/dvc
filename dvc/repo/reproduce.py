@@ -64,7 +64,9 @@ def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
         if (
             not dep.use_scm_ignore
             and dep.is_in_repo
-            and not stage.repo.dvcfs.isdvc(dep.fs_path)
+            and not stage.repo.dvcfs.isdvc(
+                stage.repo.dvcfs.from_os_path(str(dep))
+            )
         ):
             yield dep.fs_path
     for out in stage.outs:

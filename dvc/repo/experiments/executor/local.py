@@ -90,6 +90,11 @@ class TempDirExecutor(BaseLocalExecutor):
         head = EXEC_BRANCH if branch else EXEC_HEAD
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
+
+        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            if scm.get_ref(ref):
+                scm.remove_ref(ref)
+
         try:
             self.scm.merge(merge_rev, squash=True, commit=False)
         except _SCMError as exc:
@@ -107,7 +112,7 @@ class TempDirExecutor(BaseLocalExecutor):
 
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         """Initialize DVC cache."""
-        self._config(repo.odb.local.cache_dir)
+        self._config(repo.odb.repo.path)
 
     def cleanup(self):
         super().cleanup()

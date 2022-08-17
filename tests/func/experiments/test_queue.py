@@ -64,6 +64,7 @@ def test_celery_logs(
     assert "failed to reproduce 'failed-copy-file'" in captured.out
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_queue_remove_done(dvc, failed_tasks, success_tasks):
     assert len(dvc.experiments.celery_queue.failed_stash) == 3
     status = to_dict(dvc.experiments.celery_queue.status())
@@ -86,10 +87,7 @@ def test_queue_remove_done(dvc, failed_tasks, success_tasks):
     status = to_dict(dvc.experiments.celery_queue.status())
     assert set(status) == set(failed_tasks[1:] + success_tasks[:2])
 
-    assert (
-        dvc.experiments.celery_queue.remove([], failed=True)
-        == failed_tasks[1:]
-    )
+    assert dvc.experiments.celery_queue.clear(failed=True) == failed_tasks[1:]
 
     assert len(dvc.experiments.celery_queue.failed_stash) == 0
     assert set(to_dict(dvc.experiments.celery_queue.status())) == set(
@@ -97,8 +95,7 @@ def test_queue_remove_done(dvc, failed_tasks, success_tasks):
     )
 
     assert (
-        dvc.experiments.celery_queue.remove([], success=True)
-        == success_tasks[:2]
+        dvc.experiments.celery_queue.clear(success=True) == success_tasks[:2]
     )
 
     assert dvc.experiments.celery_queue.status() == []

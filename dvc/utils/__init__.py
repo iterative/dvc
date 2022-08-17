@@ -3,7 +3,6 @@
 import hashlib
 import json
 import logging
-import math
 import os
 import re
 import sys
@@ -57,18 +56,6 @@ def _split(list_to_split, chunk_size):
         list_to_split[i : i + chunk_size]
         for i in range(0, len(list_to_split), chunk_size)
     ]
-
-
-def _to_chunks_by_chunks_number(list_to_split, num_chunks):
-    chunk_size = int(math.ceil(float(len(list_to_split)) / num_chunks))
-
-    if len(list_to_split) == 1:
-        return [list_to_split]
-
-    if chunk_size == 0:
-        chunk_size = 1
-
-    return _split(list_to_split, chunk_size)
 
 
 # NOTE: Check if we are in a bundle

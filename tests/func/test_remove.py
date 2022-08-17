@@ -44,7 +44,7 @@ def test_remove_broken_symlink(tmp_dir, dvc):
     dvc.odb.local.cache_types = ["symlink"]
 
     (stage,) = dvc.add("foo")
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
     assert system.is_symlink("foo")
 
     with pytest.raises(ObjectDBError):
