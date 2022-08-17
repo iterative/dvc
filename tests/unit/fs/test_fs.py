@@ -1,13 +1,12 @@
 import pytest
+from dvc_http import HTTPFileSystem, HTTPSFileSystem
+from dvc_ssh import SSHFileSystem
 
 from dvc.config import RemoteNotFoundError
 from dvc.fs import (
     HDFSFileSystem,
-    HTTPFileSystem,
-    HTTPSFileSystem,
     LocalFileSystem,
     S3FileSystem,
-    SSHFileSystem,
     get_fs_cls,
     get_fs_config,
 )
