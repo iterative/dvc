@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
-
-    from ..base import ExpRefInfo, ExpStashEntry
+    from dvc.repo.experiments.refs import ExpRefInfo
+    from dvc.repo.experiments.stash import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -75,14 +75,12 @@ class SSHExecutor(BaseExecutor):
     def from_stash_entry(
         cls,
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         **kwargs,
     ):
         machine_name: Optional[str] = kwargs.pop("machine_name", None)
         executor = cls._from_stash_entry(
             repo,
-            stash_rev,
             entry,
             cls.gen_dirname(entry.name),
             location=machine_name,
@@ -119,7 +117,13 @@ class SSHExecutor(BaseExecutor):
         }
         return kwargs
 
-    def init_git(self, scm: "Git", branch: Optional[str] = None):
+    def init_git(
+        self,
+        scm: "Git",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        branch: Optional[str] = None,
+    ):
         from ..utils import push_refspec
 
         with self.sshfs() as fs:
@@ -137,8 +141,11 @@ class SSHExecutor(BaseExecutor):
             # TODO: support multiple client key retries in git backends
             # (see https://github.com/iterative/dvc/issues/6508)
             kwargs = self._git_client_args(fs)
-            refspec = f"{EXEC_NAMESPACE}/"
-            push_refspec(scm, self.git_url, refspec, refspec, **kwargs)
+
+            with self.set_exec_refs(scm, stash_rev, entry):
+                refspec = f"{EXEC_NAMESPACE}/"
+                push_refspec(scm, self.git_url, refspec, refspec, **kwargs)
+
             if branch:
                 push_refspec(scm, self.git_url, branch, branch, **kwargs)
                 self._ssh_cmd(fs, f"git symbolic-ref {EXEC_BRANCH} {branch}")

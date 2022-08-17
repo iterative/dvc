@@ -67,15 +67,23 @@ class TempDirExecutor(BaseLocalExecutor):
     QUIET = True
     DEFAULT_LOCATION = "tempdir"
 
-    def init_git(self, scm: "Git", branch: Optional[str] = None):
+    def init_git(
+        self,
+        scm: "Git",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        branch: Optional[str] = None,
+    ):
         from dulwich.repo import Repo as DulwichRepo
 
         from ..utils import push_refspec
 
         DulwichRepo.init(os.fspath(self.root_dir))
 
-        refspec = f"{EXEC_NAMESPACE}/"
-        push_refspec(scm, self.git_url, refspec, refspec)
+        with self.set_exec_refs(scm, stash_rev, entry):
+            refspec = f"{EXEC_NAMESPACE}/"
+            push_refspec(scm, self.git_url, refspec, refspec)
+
         if branch:
             push_refspec(scm, self.git_url, branch, branch)
             self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
@@ -84,16 +92,11 @@ class TempDirExecutor(BaseLocalExecutor):
 
         if self.scm.get_ref(EXEC_CHECKPOINT):
             self.scm.remove_ref(EXEC_CHECKPOINT)
-
         # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
         # committing
         head = EXEC_BRANCH if branch else EXEC_HEAD
         self.scm.checkout(head, detach=True)
         merge_rev = self.scm.get_ref(EXEC_MERGE)
-
-        for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
-            if scm.get_ref(ref):
-                scm.remove_ref(ref)
 
         try:
             self.scm.merge(merge_rev, squash=True, commit=False)
@@ -123,7 +126,6 @@ class TempDirExecutor(BaseLocalExecutor):
     def from_stash_entry(
         cls,
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         wdir: Optional[str] = None,
         **kwargs,
@@ -132,9 +134,7 @@ class TempDirExecutor(BaseLocalExecutor):
         makedirs(parent_dir, exist_ok=True)
         tmp_dir = mkdtemp(dir=parent_dir)
         try:
-            executor = cls._from_stash_entry(
-                repo, stash_rev, entry, tmp_dir, **kwargs
-            )
+            executor = cls._from_stash_entry(repo, entry, tmp_dir, **kwargs)
             logger.debug("Init temp dir executor in '%s'", tmp_dir)
             return executor
         except Exception:
@@ -152,18 +152,26 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def from_stash_entry(
         cls,
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         **kwargs,
     ):
         root_dir = repo.scm.root_dir
-        executor = cls._from_stash_entry(
-            repo, stash_rev, entry, root_dir, **kwargs
+        executor: "WorkspaceExecutor" = cls._from_stash_entry(
+            repo, entry, root_dir, **kwargs
         )
         logger.debug("Init workspace executor in '%s'", root_dir)
         return executor
 
-    def init_git(self, scm: "Git", branch: Optional[str] = None):
+    def init_git(
+        self,
+        scm: "Git",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        branch: Optional[str] = None,
+    ):
+        scm.set_ref(EXEC_HEAD, entry.head_rev)
+        scm.set_ref(EXEC_MERGE, stash_rev)
+        scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
         self._detach_stack.enter_context(
             self.scm.detach_head(
                 self.scm.get_ref(EXEC_HEAD),

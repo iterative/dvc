@@ -33,7 +33,7 @@ from ..executor.base import (
     ExecutorResult,
 )
 from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpRefInfo
+from ..refs import ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
 from ..utils import exp_refs_by_rev, scm_locked
 
@@ -561,7 +561,7 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @scm_locked
-    def setup_executor(
+    def init_executor(
         exp: "Experiments",
         queue_entry: QueueEntry,
         executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
@@ -576,20 +576,16 @@ class BaseStashQueue(ABC):
         )
         if stash_entry.stash_index is not None:
             stash.drop(stash_entry.stash_index)
-
-        scm.set_ref(EXEC_HEAD, stash_entry.head_rev)
-        scm.set_ref(EXEC_MERGE, stash_rev)
-        scm.set_ref(EXEC_BASELINE, stash_entry.baseline_rev)
-
-        # Executor will be initialized with an empty git repo that
-        # we populate by pushing:
-        #   EXEC_HEAD - the base commit for this experiment
-        #   EXEC_MERGE - the unmerged changes (from our stash)
-        #       to be reproduced
-        #   EXEC_BASELINE - the baseline commit for this experiment
-        return executor_cls.from_stash_entry(
-            exp.repo, stash_rev, stash_entry, **kwargs
+        executor = executor_cls.from_stash_entry(
+            exp.repo, stash_entry, **kwargs
         )
+
+        executor.init_git(
+            exp.repo.scm, stash_rev, stash_entry, branch=stash_entry.branch
+        )
+        executor.init_cache(exp.repo, stash_rev)
+
+        return executor
 
     def get_infofile_path(self, name: str) -> str:
         return os.path.join(

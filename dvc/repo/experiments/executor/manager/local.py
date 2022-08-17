@@ -2,7 +2,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Optional
 
-from ...refs import EXEC_BASELINE, EXEC_BRANCH, EXEC_HEAD, EXEC_MERGE
+from ...refs import EXEC_BRANCH
 from ...stash import ExpStashEntry
 from ..local import TempDirExecutor, WorkspaceExecutor
 from .base import BaseExecutorManager
@@ -32,23 +32,17 @@ class WorkspaceExecutorManager(BaseExecutorManager):
         **kwargs,
     ):
         manager = cls(scm, wdir)
-        try:
-            assert len(to_run) == 1
-            for stash_rev, entry in to_run.items():
-                scm.set_ref(EXEC_HEAD, entry.head_rev)
-                scm.set_ref(EXEC_MERGE, stash_rev)
-                scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+        assert len(to_run) == 1
+        for stash_rev, entry in to_run.items():
+            executor = cls.EXECUTOR_CLS.from_stash_entry(
+                repo,
+                entry,
+                **kwargs,
+            )
+            executor.init_git(repo.scm, stash_rev, entry, branch=entry.branch)
+            executor.init_cache(repo, stash_rev)
 
-                executor = cls.EXECUTOR_CLS.from_stash_entry(
-                    repo,
-                    stash_rev,
-                    entry,
-                    **kwargs,
-                )
-                manager.enqueue(stash_rev, executor)
-        finally:
-            for ref in (EXEC_MERGE,):
-                scm.remove_ref(ref)
+            manager.enqueue(stash_rev, executor)
         return manager
 
     def _collect_executor(self, repo, executor, exec_result) -> Dict[str, str]:

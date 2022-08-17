@@ -28,7 +28,7 @@ def setup_exp(entry_dict: Dict[str, Any]) -> str:
     repo = Repo(entry.dvc_root)
     # TODO: split executor.init_cache into separate subtask - we can release
     # exp.scm_lock before DVC push
-    executor = BaseStashQueue.setup_executor(
+    executor = BaseStashQueue.init_executor(
         repo.experiments,
         entry,
         TempDirExecutor,
