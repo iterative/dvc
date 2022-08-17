@@ -85,7 +85,7 @@ def _granular_diff(
         items = getattr(diff_data, state)
         output[state].extend(
             path_join(root, *item.new.key)
-            for item in items
+            for item in items  # pylint: disable=not-an-iterable
             if not (drop_root and item.new.key == ROOT)
         )
         # TODO: PERF: diff is checking not_in_cache for each even if we only
@@ -94,7 +94,7 @@ def _granular_diff(
         # unstaged. We currently don't know if it is really modified.
         output["not_in_cache"].extend(
             path_join(root, *item.new.key)
-            for item in items
+            for item in items  # pylint: disable=not-an-iterable
             if not item.old.in_cache
             and not (drop_root and item.new.key == ROOT)
             and state != "added"
