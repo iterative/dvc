@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Deque, Dict, Generator, Optional, Tuple, Type
 from dvc.proc.manager import ProcessManager
 
 from ...exceptions import CheckpointExistsError, ExperimentExistsError
-from ...refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpRefInfo
+from ...refs import ExpRefInfo
 from ...stash import ExpStashEntry
 from ..base import EXEC_PID_DIR, BaseExecutor
 from ..local import TempDirExecutor, WorkspaceExecutor
@@ -120,28 +120,17 @@ class BaseExecutorManager(ABC, Mapping):  # noqa: B024
         to_run: Dict[str, ExpStashEntry],
         **kwargs,
     ):
-        try:
-            for stash_rev, entry in to_run.items():
-                scm.set_ref(EXEC_HEAD, entry.head_rev)
-                scm.set_ref(EXEC_MERGE, stash_rev)
-                scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+        for stash_rev, entry in to_run.items():
+            executor = self.EXECUTOR_CLS.from_stash_entry(
+                repo,
+                entry,
+                **kwargs,
+            )
 
-                # Executor will be initialized with an empty git repo that
-                # we populate by pushing:
-                #   EXEC_HEAD - the base commit for this experiment
-                #   EXEC_MERGE - the unmerged changes (from our stash)
-                #       to be reproduced
-                #   EXEC_BASELINE - the baseline commit for this experiment
-                executor = self.EXECUTOR_CLS.from_stash_entry(
-                    repo,
-                    stash_rev,
-                    entry,
-                    **kwargs,
-                )
-                self.enqueue(stash_rev, executor)
-        finally:
-            for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
-                scm.remove_ref(ref)
+            executor.init_git(scm, stash_rev, entry, branch=entry.branch)
+            executor.init_cache(repo, stash_rev)
+
+            self.enqueue(stash_rev, executor)
 
     def exec_queue(
         self, repo: "Repo", jobs: Optional[int] = 1, detach: bool = False

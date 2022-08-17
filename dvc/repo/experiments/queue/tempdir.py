@@ -60,7 +60,7 @@ class TempDirQueue(WorkspaceQueue):
             stash_entry.name,
             stash_entry.head_rev,
         )
-        executor = self.setup_executor(
+        executor = self.init_executor(
             self.repo.experiments,
             entry,
             TempDirExecutor,

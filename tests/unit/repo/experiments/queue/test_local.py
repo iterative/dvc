@@ -6,9 +6,7 @@ from flaky.flaky_decorator import flaky
 
 from dvc.exceptions import DvcException
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
-from dvc.repo.experiments.executor.local import TempDirExecutor
 from dvc.repo.experiments.queue.base import QueueDoneResult
-from dvc.repo.experiments.refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE
 
 
 def test_shutdown_no_tasks(test_queue, mocker):
@@ -108,20 +106,6 @@ def test_celery_queue_kill(test_queue, mocker):
     spy = mocker.patch.object(test_queue.proc, "kill")
     test_queue.kill("bar")
     assert spy.called_once_with(mock_entry.stash_rev)
-
-
-def test_queue_clean_workspace_refs(git_dir, tmp_dir):
-
-    rev = git_dir.scm.get_rev()
-    exec_heads = (EXEC_MERGE, EXEC_BASELINE, EXEC_HEAD)
-    for ref in exec_heads:
-        git_dir.scm.set_ref(ref, rev)
-
-    temp_dir_executor = TempDirExecutor(str(tmp_dir), str(tmp_dir), rev)
-    temp_dir_executor.init_git(git_dir.scm)
-
-    for ref in exec_heads:
-        assert git_dir.scm.get_ref(ref) is None
 
 
 @pytest.mark.parametrize("status", ["FAILURE", "SUCCESS"])

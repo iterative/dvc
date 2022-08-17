@@ -35,6 +35,8 @@ from ..refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
+    EXEC_HEAD,
+    EXEC_MERGE,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
@@ -151,7 +153,13 @@ class BaseExecutor(ABC):
         self.result = result
 
     @abstractmethod
-    def init_git(self, scm: "Git", branch: Optional[str] = None):
+    def init_git(
+        self,
+        scm: "Git",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        branch: Optional[str] = None,
+    ):
         """Init git repo and populate it using exp refs from the specified
         SCM instance.
         """
@@ -222,7 +230,6 @@ class BaseExecutor(ABC):
     def from_stash_entry(
         cls: Type[_T],
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         **kwargs,
     ) -> _T:
@@ -232,7 +239,6 @@ class BaseExecutor(ABC):
     def _from_stash_entry(
         cls: Type[_T],
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         root_dir: str,
         **kwargs,
@@ -245,8 +251,6 @@ class BaseExecutor(ABC):
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
-        executor.init_git(repo.scm, branch=entry.branch)
-        executor.init_cache(repo, stash_rev)
         return executor
 
     @staticmethod
@@ -715,3 +719,23 @@ class BaseExecutor(ABC):
         disable_other_loggers()
         if level is not None:
             dvc_logger.setLevel(level)
+
+    @contextmanager
+    def set_exec_refs(
+        self, scm: "Git", stash_rev: str, entry: "ExpStashEntry"
+    ):
+        try:
+            # Executor will be initialized with an empty git repo that
+            # we populate by pushing:
+            #   EXEC_HEAD - the base commit for this experiment
+            #   EXEC_MERGE - the unmerged changes (from our stash)
+            #       to be reproduced
+            #   EXEC_BASELINE - the baseline commit for this experiment
+            scm.set_ref(EXEC_HEAD, entry.head_rev)
+            scm.set_ref(EXEC_MERGE, stash_rev)
+            scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+            yield
+        finally:
+            for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+                if scm.get_ref(ref):
+                    scm.remove_ref(ref)

@@ -29,7 +29,6 @@ def test_init_from_stash(tmp_dir, scm, dvc, machine_instance, mocker):
     mock_entry.name = ""
     SSHExecutor.from_stash_entry(
         dvc,
-        "abc123",
         mock_entry,
         machine_name="foo",
     )
