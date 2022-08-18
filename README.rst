@@ -198,8 +198,6 @@ Fedora / CentOS (rpm)
 Contributing
 ============
 
-|Maintainability|
-
 Contributions are welcome!
 Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more details.
 Thanks to all our contributors!
