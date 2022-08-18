@@ -15,8 +15,8 @@ use_https = True
 user = "test"
 
 
-@pytest.fixture()
-def webhdfs_config():
+@pytest.fixture(name="webhdfs_config")
+def fixture_webhdfs_config():
     url = f"webhdfs://{user}@{host}:{port}"
     url_config = WebHDFSFileSystem._get_kwargs_from_urls(url)
     return {
