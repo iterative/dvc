@@ -1,4 +1,4 @@
-from dvc.fs import OSSFileSystem
+from dvc_oss import OSSFileSystem
 
 bucket_name = "bucket-name"
 endpoint = "endpoint"

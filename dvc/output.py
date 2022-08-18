@@ -28,14 +28,7 @@ from dvc_data.hashfile.meta import Meta
 from dvc_data.transfer import transfer as otransfer
 from dvc_objects.errors import ObjectFormatError
 
-from .fs import (
-    HDFSFileSystem,
-    LocalFileSystem,
-    RemoteMissingDepsError,
-    S3FileSystem,
-    Schemes,
-    get_cloud_fs,
-)
+from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -65,10 +58,12 @@ CASE_SENSITIVE_CHECKSUM_SCHEMA = Any(
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
+HDFS_PARAM_CHECKSUM = "checksum"
+S3_PARAM_CHECKSUM = "etag"
 CHECKSUMS_SCHEMA = {
     LocalFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    HDFSFileSystem.PARAM_CHECKSUM: CHECKSUM_SCHEMA,
-    S3FileSystem.PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
+    HDFS_PARAM_CHECKSUM: CHECKSUM_SCHEMA,
+    S3_PARAM_CHECKSUM: CASE_SENSITIVE_CHECKSUM_SCHEMA,
 }
 
 

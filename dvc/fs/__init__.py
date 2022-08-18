@@ -19,23 +19,7 @@ from dvc_objects.fs.errors import (  # noqa: F401
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
-from dvc_objects.fs.implementations.azure import AzureFileSystem  # noqa: F401
-from dvc_objects.fs.implementations.gdrive import (  # noqa: F401
-    GDriveFileSystem,
-)
-from dvc_objects.fs.implementations.gs import GSFileSystem  # noqa: F401
-from dvc_objects.fs.implementations.hdfs import HDFSFileSystem  # noqa: F401
 from dvc_objects.fs.implementations.local import localfs  # noqa: F401
-from dvc_objects.fs.implementations.oss import OSSFileSystem  # noqa: F401
-from dvc_objects.fs.implementations.s3 import S3FileSystem  # noqa: F401
-from dvc_objects.fs.implementations.webdav import (  # noqa: F401
-    WebDAVFileSystem,
-    WebDAVSFileSystem,
-)
-from dvc_objects.fs.implementations.webhdfs import (  # noqa: F401
-    WebHDFSFileSystem,
-)
 from dvc_objects.fs.path import Path  # noqa: F401
 
 from .data import DataFileSystem  # noqa: F401
@@ -112,11 +96,8 @@ def get_cloud_fs(repo, **kwargs):
 
     cls = get_fs_cls(remote_conf)
 
-    if cls == GDriveFileSystem and repo:
-        remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
-
     url = remote_conf.pop("url")
-    if issubclass(cls, WebDAVFileSystem):
+    if cls.protocol in ["webdav", "webdavs"]:
         # For WebDAVFileSystem, provided url is the base path itself, so it
         # should be treated as being a root path.
         fs_path = cls.root_marker
