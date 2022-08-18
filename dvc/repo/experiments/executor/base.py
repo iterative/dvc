@@ -4,6 +4,7 @@ import pickle
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from enum import IntEnum
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -49,9 +50,8 @@ if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
+    from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.stage import PipelineStage
-
-    from ..base import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,15 @@ class ExecutorResult(NamedTuple):
     exp_hash: Optional[str]
     ref_info: Optional["ExpRefInfo"]
     force: bool
+
+
+class TaskStatus(IntEnum):
+    PENDING = 0
+    PREPARING = 1
+    RUNNING = 2
+    SUCCESS = 3
+    FAILED = 4
+    REVOKED = 5
 
 
 @dataclass
@@ -79,6 +88,7 @@ class ExecutorInfo:
     result_hash: Optional[str] = None
     result_ref: Optional[str] = None
     result_force: bool = False
+    status: TaskStatus = TaskStatus.PENDING
 
     @classmethod
     def from_dict(cls, d):
@@ -138,6 +148,7 @@ class BaseExecutor(ABC):
         root_dir: str,
         dvc_dir: str,
         baseline_rev: str,
+        status: TaskStatus,
         wdir: Optional[str] = None,
         name: Optional[str] = None,
         location: Optional[str] = None,
@@ -151,6 +162,7 @@ class BaseExecutor(ABC):
         self.baseline_rev = baseline_rev
         self.location: str = location or self.DEFAULT_LOCATION
         self.result = result
+        self.status = status
 
     @abstractmethod
     def init_git(
@@ -199,6 +211,7 @@ class BaseExecutor(ABC):
             dvc_dir=self.dvc_dir,
             name=self.name,
             wdir=self.wdir,
+            status=self.status,
             **result_dict,
         )
 
@@ -220,6 +233,7 @@ class BaseExecutor(ABC):
             root_dir=info.root_dir,
             dvc_dir=info.dvc_dir,
             baseline_rev=info.baseline_rev,
+            status=info.status,
             name=info.name,
             wdir=info.wdir,
             result=result,
@@ -247,6 +261,7 @@ class BaseExecutor(ABC):
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
             baseline_rev=entry.baseline_rev,
+            status=TaskStatus.PREPARING,
             name=entry.name,
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
@@ -416,6 +431,7 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
+        info.status = TaskStatus.PREPARING
         if infofile is not None:
             info.dump_json(infofile)
 
@@ -472,6 +488,9 @@ class BaseExecutor(ABC):
                 info.name,
                 repro_force or checkpoint_reset,
             )
+            info.status = TaskStatus.RUNNING
+            if infofile is not None:
+                info.dump_json(infofile)
             stages = dvc_reproduce(
                 dvc,
                 *args,
@@ -495,6 +514,7 @@ class BaseExecutor(ABC):
             info.result_hash = exp_hash
             info.result_ref = ref
             info.result_force = repro_force
+            info.status = TaskStatus.SUCCESS
 
         if infofile is not None:
             info.dump_json(infofile)
