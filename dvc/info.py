@@ -91,7 +91,7 @@ def _get_linktype_support_info(repo):
 def _get_supported_remotes():
     supported_remotes = []
     for scheme in registry:
-        if scheme in [Schemes.LOCAL, Schemes.MEMORY]:
+        if scheme in [Schemes.LOCAL, Schemes.MEMORY, "dvc", "git"]:
             continue
 
         try:

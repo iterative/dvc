@@ -10,6 +10,8 @@ from dvc_objects.fs import (  # noqa: F401
     Schemes,
     generic,
     get_fs_cls,
+    known_implementations,
+    localfs,
     registry,
     system,
 )
@@ -19,12 +21,25 @@ from dvc_objects.fs.errors import (  # noqa: F401
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.implementations.local import localfs  # noqa: F401
 from dvc_objects.fs.path import Path  # noqa: F401
 
 from .data import DataFileSystem  # noqa: F401
 from .dvc import DvcFileSystem  # noqa: F401
 from .git import GitFileSystem  # noqa: F401
+
+known_implementations.update(
+    {
+        "dvc": {
+            "class": "dvc.fs.dvc.DvcFileSystem",
+            "err": "dvc is supported, but requires 'dvc' to be installed",
+        },
+        "git": {
+            "class": "dvc.fs.git.GitFileSystem",
+            "err": "git is supported, but requires 'dvc' to be installed",
+        },
+    }
+)
+
 
 # pylint: enable=unused-import
 
