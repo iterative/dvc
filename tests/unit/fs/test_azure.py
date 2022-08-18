@@ -1,6 +1,5 @@
 import pytest
-
-from dvc.fs import AzureAuthError, AzureFileSystem
+from dvc_azure import AzureAuthError, AzureFileSystem
 
 container_name = "container-name"
 connection_string = (
