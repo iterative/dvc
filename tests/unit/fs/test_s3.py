@@ -1,8 +1,9 @@
 import os
 
 import pytest
+from dvc_s3 import S3FileSystem
 
-from dvc.fs import ConfigError, S3FileSystem
+from dvc.fs import ConfigError
 
 bucket_name = "bucket-name"
 prefix = "some/prefix"
