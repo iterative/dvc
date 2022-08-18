@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
+Key = Tuple[str]
 
 
 def as_posix(path: str) -> str:
@@ -137,11 +138,20 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
-    def _get_key(self, path):
+    def _get_key(self, path) -> Key:
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (".",):
             parts = ()
         return parts
+
+    def _get_key_from_relative(self, path) -> Key:
+        parts = self.path.relparts(path, self.root_marker)
+        if parts and parts[0] == os.curdir:
+            parts = parts[1:]
+        return parts
+
+    def _from_key(self, parts: Key) -> str:
+        return self.repo.fs.path.join(self.repo.root_dir, *parts)
 
     @property
     def repo_url(self):
@@ -208,7 +218,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         ) as repo:
             return repo, factory
 
-    def _get_repo(self, path: str) -> "Repo":
+    def _get_repo(self, key: Key) -> "Repo":
         """Returns repo that the path falls in, using prefix.
 
         If the path is already tracked/collected, it just returns the repo.
@@ -216,11 +226,6 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         Otherwise, it collects the repos that might be in the path's parents
         and then returns the appropriate one.
         """
-        if not self.repo.fs.path.isin_or_eq(path, self.repo.root_dir):
-            # outside of repo
-            return self.repo
-
-        key = self._get_key(path)
         repo = self._subrepos_trie.get(key)
         if repo:
             return repo
@@ -231,6 +236,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             *prefix_key,  # pylint: disable=not-an-iterable
         )
 
+        path = self._from_key(key)
         parents = (parent for parent in self.repo.fs.path.parents(path))
         dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
         dirs.reverse()
@@ -277,19 +283,17 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         """
         Returns a pair of fss based on repo the path falls in, using prefix.
         """
-        parts = self.path.relparts(path, self.root_marker)
-        if parts and parts[0] == os.curdir:
-            parts = parts[1:]
+        key = self._get_key_from_relative(path)
 
-        fs_path = self.repo.fs.path.join(self.repo.root_dir, *parts)
-        repo = self._get_repo(fs_path)
+        fs_path = self._from_key(key)
+        repo = self._get_repo(key)
         fs = repo.fs
 
         repo_parts = fs.path.relparts(repo.root_dir, self.repo.root_dir)
         if repo_parts[0] == os.curdir:
             repo_parts = repo_parts[1:]
 
-        dvc_parts = parts[len(repo_parts) :]
+        dvc_parts = key[len(repo_parts) :]
         if dvc_parts and dvc_parts[0] == os.curdir:
             dvc_parts = dvc_parts[1:]
 
