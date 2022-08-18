@@ -11,7 +11,7 @@
 • `Contributing`_
 • `Community and Support`_
 
-|CI| |Maintainability| |Coverage| |VS Code| |DOI|
+|CI| |Python Version| |Coverage| |VS Code| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
@@ -244,9 +244,9 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
    :target: https://github.com/iterative/dvc/actions
    :alt: GHA Tests
 
-.. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
-   :target: https://codeclimate.com/github/iterative/dvc
-   :alt: Code Climate
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/dvc
+   :target: https://pypi.org/project/dvc
+   :alt: Python Version
 
 .. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc
