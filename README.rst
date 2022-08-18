@@ -198,6 +198,8 @@ Fedora / CentOS (rpm)
 Contributing
 ============
 
+|Maintainability|
+
 Contributions are welcome!
 Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more details.
 Thanks to all our contributors!
@@ -241,6 +243,10 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |CI| image:: https://github.com/iterative/dvc/workflows/Tests/badge.svg?branch=main
    :target: https://github.com/iterative/dvc/actions
    :alt: GHA Tests
+
+.. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
+   :target: https://codeclimate.com/github/iterative/dvc
+   :alt: Code Climate
 
 .. |Python Version| image:: https://img.shields.io/pypi/pyversions/dvc
    :target: https://pypi.org/project/dvc
