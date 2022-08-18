@@ -94,7 +94,11 @@ def _get_supported_remotes():
         if scheme in [Schemes.LOCAL, Schemes.MEMORY]:
             continue
 
-        fs_cls = registry[scheme]
+        try:
+            fs_cls = registry[scheme]
+        except ImportError:
+            continue
+
         if not fs_cls.get_missing_deps():
             dependencies = []
             for requirement in fs_cls.REQUIRES:
