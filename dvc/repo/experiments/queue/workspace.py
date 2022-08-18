@@ -9,7 +9,7 @@ from dvc.exceptions import DvcException
 from dvc.utils.fs import remove
 
 from ..exceptions import ExpQueueEmptyError
-from ..executor.base import BaseExecutor, ExecutorResult
+from ..executor.base import BaseExecutor, ExecutorResult, TaskStatus
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
@@ -110,10 +110,13 @@ class WorkspaceQueue(BaseStashQueue):
                 )
         except CheckpointKilledError:
             # Checkpoint errors have already been logged
+            executor.status = TaskStatus.FAILED
             return {}
         except DvcException:
+            executor.status = TaskStatus.FAILED
             raise
         except Exception as exc:
+            executor.status = TaskStatus.FAILED
             raise DvcException(
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc

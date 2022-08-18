@@ -19,7 +19,7 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
-from .base import EXEC_TMP_DIR, BaseExecutor
+from .base import EXEC_TMP_DIR, BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
@@ -79,6 +79,8 @@ class TempDirExecutor(BaseLocalExecutor):
         from ..utils import push_refspec
 
         DulwichRepo.init(os.fspath(self.root_dir))
+
+        self.status = TaskStatus.PREPARING
 
         with self.set_exec_refs(scm, stash_rev, entry):
             refspec = f"{EXEC_NAMESPACE}/"

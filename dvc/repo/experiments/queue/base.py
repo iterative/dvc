@@ -580,9 +580,16 @@ class BaseStashQueue(ABC):
             exp.repo, stash_entry, **kwargs
         )
 
+        infofile = exp.celery_queue.get_infofile_path(stash_rev)
+        executor.info.dump_json(infofile)
+
         executor.init_git(
             exp.repo.scm, stash_rev, stash_entry, branch=stash_entry.branch
         )
+
+        infofile = exp.celery_queue.get_infofile_path(stash_rev)
+        executor.info.dump_json(infofile)
+
         executor.init_cache(exp.repo, stash_rev)
 
         return executor
