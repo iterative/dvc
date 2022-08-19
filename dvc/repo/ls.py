@@ -85,11 +85,10 @@ def _ls(
     ret = {}
     for name, info in infos.items():
         dvc_info = info.get("dvc_info", {})
-        if fs.isdvc(info["name"], recursive=True) or not dvc_only:
-            ret[name] = {
-                "isout": dvc_info.get("isout", False),
-                "isdir": info["type"] == "directory",
-                "isexec": info.get("isexec", False),
-            }
+        ret[name] = {
+            "isout": dvc_info.get("isout", False),
+            "isdir": info["type"] == "directory",
+            "isexec": info.get("isexec", False),
+        }
 
     return ret
