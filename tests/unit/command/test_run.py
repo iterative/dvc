@@ -8,7 +8,7 @@ def test_run(mocker, dvc):
         [
             "run",
             "--name",
-            "nam",
+            "name",
             "--deps",
             "deps",
             "--outs",
@@ -86,7 +86,7 @@ def test_run(mocker, dvc):
         no_commit=True,
         always_changed=True,
         cmd="command",
-        name="nam",
+        name="name",
         single_stage=False,
         external=True,
         desc="description",
