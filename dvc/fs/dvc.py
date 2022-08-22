@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
-Key = Tuple[str]
+Key = Tuple[str, ...]
 
 
 def as_posix(path: str) -> str:
@@ -288,17 +288,21 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         fs_path = self._from_key(key)
         repo = self._get_repo(key)
         fs = repo.fs
+        if repo is self.repo:
+            dvc_parts = key
+            dvc_fs = self._datafss.get(())
+        else:
+            repo_parts = fs.path.relparts(repo.root_dir, self.repo.root_dir)
+            if repo_parts[0] == os.curdir:
+                repo_parts = repo_parts[1:]
 
-        repo_parts = fs.path.relparts(repo.root_dir, self.repo.root_dir)
-        if repo_parts[0] == os.curdir:
-            repo_parts = repo_parts[1:]
+            dvc_parts = key[len(repo_parts) :]
+            if dvc_parts and dvc_parts[0] == os.curdir:
+                dvc_parts = dvc_parts[1:]
 
-        dvc_parts = key[len(repo_parts) :]
-        if dvc_parts and dvc_parts[0] == os.curdir:
-            dvc_parts = dvc_parts[1:]
+            key = self._get_key(repo.root_dir)
+            dvc_fs = self._datafss.get(key)
 
-        key = self._get_key(repo.root_dir)
-        dvc_fs = self._datafss.get(key)
         if dvc_fs:
             dvc_path = dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
         else:
