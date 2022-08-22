@@ -105,18 +105,15 @@ class WorkspaceQueue(BaseStashQueue):
             if exec_result.ref_info:
                 results[rev].update(
                     self.collect_executor(
-                        self.repo.experiments, executor, exec_result
+                        self.repo.experiments, executor, exec_result, infofile
                     )
                 )
         except CheckpointKilledError:
             # Checkpoint errors have already been logged
-            executor.status = TaskStatus.FAILED
             return {}
         except DvcException:
-            executor.status = TaskStatus.FAILED
             raise
         except Exception as exc:
-            executor.status = TaskStatus.FAILED
             raise DvcException(
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
@@ -131,6 +128,7 @@ class WorkspaceQueue(BaseStashQueue):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: ExecutorResult,
+        infofile: str,
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}
         exp_rev = exp.scm.get_ref(EXEC_BRANCH)
@@ -138,6 +136,11 @@ class WorkspaceQueue(BaseStashQueue):
             assert exec_result.exp_hash
             logger.debug("Collected experiment '%s'.", exp_rev[:7])
             results[exp_rev] = exec_result.exp_hash
+
+        executor.status = TaskStatus.FINISHED
+        if infofile is not None:
+            executor.info.dump_json(infofile)
+
         return results
 
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:

@@ -66,7 +66,7 @@ def collect_exp(
     try:
         if exec_result is not None:
             BaseStashQueue.collect_executor(
-                repo.experiments, executor, exec_result
+                repo.experiments, executor, exec_result, infofile
             )
         else:
             logger.debug("Experiment failed (Exec result was None)")
@@ -91,15 +91,6 @@ def cleanup_exp(  # pylint: disable=unused-argument
     remove(tmp_dir)
 
 
-def _set_collected(infofile: str):
-    try:
-        executor_info = ExecutorInfo.load_json(infofile)
-        executor_info.collected = True
-        executor_info.dump_json(infofile)
-    except FileNotFoundError:
-        pass
-
-
 @shared_task
 def run_exp(entry_dict: Dict[str, Any]) -> None:
     """Run a full experiment.
@@ -122,4 +113,3 @@ def run_exp(entry_dict: Dict[str, Any]) -> None:
         collect_exp.s(proc_dict, entry_dict)()
     finally:
         cleanup_exp.s(root_dir, entry_dict)()
-        _set_collected(infofile)
