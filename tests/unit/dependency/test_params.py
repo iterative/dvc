@@ -222,7 +222,9 @@ def test_get_hash_missing_param(tmp_dir, dvc):
 
 @pytest.mark.parametrize("param_value", ["", "false", "[]", "{}", "null"])
 def test_params_with_false_values(tmp_dir, dvc, param_value):
-    """These falsy params values should not ignored by `status` on loading."""
+    """
+    These false params values should not be ignored by `status` on loading.
+    """
     key = "param"
     dep = ParamsDependency(Stage(dvc), DEFAULT_PARAMS_FILE, [key])
     (tmp_dir / DEFAULT_PARAMS_FILE).write_text(f"{key}: {param_value}")
