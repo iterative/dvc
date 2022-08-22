@@ -79,6 +79,7 @@ REMOTE_COMMON = {
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
     Optional("no_traverse"): Bool,  # obsoleted
+    Optional("version_aware", default=False): Bool,
 }
 LOCAL_COMMON = {
     "type": supported_cache_type,
