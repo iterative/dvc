@@ -73,6 +73,7 @@ class TaskStatus(IntEnum):
     SUCCESS = 3
     FAILED = 4
     REVOKED = 5
+    FINISHED = 6
 
 
 @dataclass
@@ -84,7 +85,6 @@ class ExecutorInfo:
     dvc_dir: str
     name: Optional[str] = None
     wdir: Optional[str] = None
-    collected: bool = False
     result_hash: Optional[str] = None
     result_ref: Optional[str] = None
     result_force: bool = False
@@ -430,12 +430,9 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
-        info.status = TaskStatus.PREPARING
-        if infofile is not None:
-            info.dump_json(infofile)
-
         with cls._repro_dvc(
             info,
+            infofile,
             log_errors=log_errors,
             **kwargs,
         ) as dvc:
@@ -487,9 +484,6 @@ class BaseExecutor(ABC):
                 info.name,
                 repro_force or checkpoint_reset,
             )
-            info.status = TaskStatus.RUNNING
-            if infofile is not None:
-                info.dump_json(infofile)
             stages = dvc_reproduce(
                 dvc,
                 *args,
@@ -513,10 +507,6 @@ class BaseExecutor(ABC):
             info.result_hash = exp_hash
             info.result_ref = ref
             info.result_force = repro_force
-            info.status = TaskStatus.SUCCESS
-
-        if infofile is not None:
-            info.dump_json(infofile)
 
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
@@ -574,6 +564,7 @@ class BaseExecutor(ABC):
     def _repro_dvc(
         cls,
         info: "ExecutorInfo",
+        infofile: str = None,
         log_errors: bool = True,
         **kwargs,
     ):
@@ -581,6 +572,9 @@ class BaseExecutor(ABC):
         from dvc.stage.monitor import CheckpointKilledError
 
         dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
+        info.status = TaskStatus.RUNNING
+        if infofile is not None:
+            info.dump_json(infofile)
         if cls.QUIET:
             dvc.scm_context.quiet = cls.QUIET
         old_cwd = os.getcwd()
@@ -592,15 +586,28 @@ class BaseExecutor(ABC):
         try:
             logger.debug("Running repro in '%s'", os.getcwd())
             yield dvc
+            info.status = TaskStatus.SUCCESS
+            if infofile is not None:
+                info.dump_json(infofile)
+
         except CheckpointKilledError:
+            info.status = TaskStatus.FAILED
+            if infofile is not None:
+                info.dump_json(infofile)
             raise
         except DvcException:
             if log_errors:
                 logger.exception("")
+            info.status = TaskStatus.FAILED
+            if infofile is not None:
+                info.dump_json(infofile)
             raise
         except Exception:
             if log_errors:
                 logger.exception("unexpected error")
+            info.status = TaskStatus.FAILED
+            if infofile is not None:
+                info.dump_json(infofile)
             raise
         finally:
             dvc.close()
