@@ -232,7 +232,7 @@ class CmdPlotsTemplates(CmdBase):
             if target:
                 for template in TEMPLATES:
                     if target == template.DEFAULT_NAME:
-                        ui.write(json.dumps(template.DEFAULT_CONTENT))
+                        ui.write_json(template.DEFAULT_CONTENT)
                         return 0
                 raise InvalidArgumentError(f"Unexpected template: {target}.")
 
