@@ -301,13 +301,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             dvc_fs = self._datafss.get(())
         else:
             repo_parts = fs.path.relparts(repo.root_dir, self.repo.root_dir)
-            if repo_parts[0] == os.curdir:
-                repo_parts = repo_parts[1:]
-
             dvc_parts = key[len(repo_parts) :]
-            if dvc_parts and dvc_parts[0] == os.curdir:
-                dvc_parts = dvc_parts[1:]
-
             key = self._get_key(repo.root_dir)
             dvc_fs = self._datafss.get(key)
 
