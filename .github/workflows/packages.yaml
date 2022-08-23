@@ -24,9 +24,6 @@ jobs:
       with:
         python-version: 3.9
         cache: pip
-        cache-dependency-path: |
-          setup.cfg
-          scripts/build-requirements.txt
 
     - name: Set up Ruby 2.6
       uses: ruby/setup-ruby@v1
