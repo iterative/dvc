@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-          fetch-depth: 0
+        fetch-depth: 0
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -30,26 +30,24 @@ jobs:
 
     - name: Set up Ruby 2.6
       uses: ruby/setup-ruby@v1
+      if: matrix.pkg != 'exe'
       with:
         ruby-version: '2.6'
+
+    - name: Install fpm
+      if: matrix.pkg != 'exe'
+      run: gem install --no-document fpm
 
     - name: Install deps
       run: |
         pip install -U wheel pip setuptools
         pip install .[all]
         pip install -r scripts/build-requirements.txt
-        gem install --no-document fpm
 
     - name: Pull images
       run: dvc pull
 
     - name: Build ${{ matrix.pkg }}
-      if: matrix.pkg == 'exe'
-      run: python scripts\build.py ${{ matrix.pkg}}
-      shell: cmd
-
-    - name: Build ${{ matrix.pkg }}
-      if: matrix.pkg != 'exe'
       run: python scripts/build.py ${{ matrix.pkg }}
 
     - name: Publish ${{ matrix.pkg }}
@@ -80,11 +78,10 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.9
-
-    - name: Set up Ruby 2.6
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '2.6'
+        cache: pip
+        cache-dependency-path: |
+          setup.cfg
+          scripts/build-requirements.txt
 
     - name: Install deps
       run: |
