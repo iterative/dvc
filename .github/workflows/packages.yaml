@@ -30,7 +30,6 @@ jobs:
 
     - name: Set up Ruby 2.6
       uses: ruby/setup-ruby@v1
-      if: matrix.pkg != 'exe'
       with:
         ruby-version: '2.6'
 
