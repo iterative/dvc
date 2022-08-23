@@ -44,20 +44,13 @@ def _shallow_diff(
 
     if not old and not new:
         return d
-
     if not new:
         return {"deleted": [old_root], **d}
     if not old:
         return {"added": [new_root], **d}
-    if old.isdir != new.isdir:
-        return {"deleted": [old_root], "added": [new_root], **d}
-
-    assert old_root == new_root
-    root = old_root  # the root are the same
     if old != new:
-        assert old.isdir == new.isdir
-        return {"modified": [root], **d}
-    return {"unchanged": [root], **d}
+        return {"modified": [new_root], **d}
+    return {"unchanged": [new_root], **d}
 
 
 def _granular_diff(
@@ -69,53 +62,57 @@ def _granular_diff(
 ) -> Dict[str, List[str]]:
     from dvc_data.diff import ROOT
     from dvc_data.diff import diff as odiff
-    from dvc_data.objects.tree import Tree
 
-    drop_root = False
-    trees = isinstance(old_obj, Tree) or isinstance(new_obj, Tree)
-    if trees:
-        drop_root = not with_dirs
-
-    def path_join(root: str, *paths: str) -> str:
-        if not trees and paths == ROOT:
+    def path_join(root: str, *paths: str, isdir: bool = False) -> str:
+        if not isdir and paths == ROOT:
             return root
         return os.path.sep.join([root, *paths])
+
+    def type_changed(old, new):
+        if old.oid and new.oid:
+            return old.oid.isdir != new.oid.isdir
+        return False
 
     diff_data = odiff(old_obj, new_obj, cache)
 
     output: Dict[str, List[str]] = defaultdict(list)
     for state in ("added", "deleted", "modified", "unchanged"):
         items = getattr(diff_data, state)
-        output[state].extend(
-            path_join(root, *item.new.key)
-            for item in items  # pylint: disable=not-an-iterable
-            if not (drop_root and item.new.key == ROOT)
-        )
-        # TODO: PERF: diff is checking not_in_cache for each even if we only
-        # need it for the index.
-        # BUG: not_in_cache file also shows up as modified in staged and
-        # unstaged. We currently don't know if it is really modified.
-        output["not_in_cache"].extend(
-            path_join(root, *item.new.key)
-            for item in items  # pylint: disable=not-an-iterable
-            if not item.old.in_cache
-            and not (drop_root and item.new.key == ROOT)
-            and state != "added"
-        )
-    return output
+        for item in items:  # pylint: disable=not-an-iterable
+            old = item.old
+            new = item.new
+            entry = old if state == "deleted" else new
+            isdir = entry.oid.isdir if entry.oid else False
+            obj_type_changed = type_changed(old, new)
+            if (
+                not with_dirs
+                and isdir
+                and entry.key == ROOT
+                and not obj_type_changed
+            ):
+                continue
+
+            path = path_join(root, *entry.key, isdir=isdir)
+            output[state].append(path)
+            if not item.old.in_cache and state != "added":
+                output["not_in_cache"].append(path)
+    return dict(output)
 
 
-def _granular_diff_oid(
+def _diff(
     root,
     old_oid: Optional["HashInfo"],
     old_obj: Optional["HashFile"],
     new_oid: Optional["HashInfo"],
     new_obj: Optional["HashFile"],
-    cache: "HashFileDB",
+    odb: "HashFileDB",
     with_dirs: bool = False,
-    **kwargs: Any,
+    granular: bool = False,
 ):
-    return _granular_diff(root, old_obj, new_obj, cache, with_dirs=with_dirs)
+    if not granular or not (old_obj or new_obj):
+        # we don't have enough information to give full details
+        return _shallow_diff(root, old_oid, new_oid, odb)
+    return _granular_diff(root, old_obj, new_obj, odb, with_dirs=with_dirs)
 
 
 class GitInfo(TypedDict, total=False):
@@ -177,21 +174,19 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         cache = repo.odb.repo
         root = str(out)
         old = out.get_obj()
+        if not old and new and out.hash_info == new.hash_info:
+            old = new
+
         with ui.status(f"Calculating diff for {root} between index/workspace"):
-            if kwargs.get("granular", False):
-                d = _granular_diff_oid(
-                    root,
-                    old.hash_info if old else None,
-                    old,
-                    new.hash_info if new else None,
-                    new,
-                    cache,
-                    **kwargs,
-                )
-            else:
-                d = _shallow_diff(
-                    root, out.hash_info, new.hash_info if new else None, cache
-                )
+            d = _diff(
+                root,
+                out.hash_info,
+                old,
+                new.hash_info if new else None,
+                new,
+                cache,
+                **kwargs,
+            )
 
         for state, items in d.items():
             if not items:
@@ -221,12 +216,9 @@ def _diff_head_to_index(
         old_obj, old_oid = obj_d.get(head, (None, None))
         new_obj, new_oid = obj_d.get("index", (None, None))
         with ui.status(f"Calculating diff for {root} between head/index"):
-            if kwargs.get("granular", False):
-                d = _granular_diff_oid(
-                    root, old_oid, old_obj, new_oid, new_obj, cache, **kwargs
-                )
-            else:
-                d = _shallow_diff(root, old_oid, new_oid, cache)
+            d = _diff(
+                root, old_oid, old_obj, new_oid, new_obj, cache, **kwargs
+            )
 
         for state, items in d.items():
             if not items:
