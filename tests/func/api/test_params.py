@@ -67,6 +67,9 @@ def test_params_show_targets(params_repo):
         "bar": 2,
         "foobar": 3,
     }
+    assert api.params_show("params.yaml", stages="stage-1") == {
+        "foo": 5,
+    }
 
 
 def test_params_show_deps(params_repo):
@@ -168,3 +171,15 @@ def test_params_show_stage_without_params(tmp_dir, dvc):
 
     with pytest.raises(DvcException, match="No params found"):
         api.params_show(deps=True)
+
+
+def test_params_show_untracked_target(params_repo, tmp_dir):
+    tmp_dir.gen("params_foo.yaml", "foo: 1")
+
+    assert api.params_show("params_foo.yaml") == {"foo": 1}
+
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show("params_foo.yaml", stages="stage-0")
+
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show("params_foo.yaml", deps=True)
