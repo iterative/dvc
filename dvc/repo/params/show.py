@@ -56,7 +56,9 @@ def _collect_configs(
             default_params
         ):
             fs_paths.append(default_params)
-
+    if targets and (deps or stages) and not params:
+        # A target has been provided but it is not used in the stages
+        fs_paths = []
     return params, fs_paths
 
 
