@@ -10,19 +10,16 @@ if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.obj import HashFile
 
 
-def _in_cache(obj: Optional["HashFile"], cache: "HashFileDB") -> bool:
+def _in_cache(obj: "HashInfo", cache: "HashFileDB") -> bool:
     from dvc_objects.errors import ObjectFormatError
 
-    if not obj:
-        return False
-    if not obj.hash_info.value:
-        return False
-
+    assert obj.value
     try:
-        cache.check(obj.hash_info.value)
+        cache.check(obj.value)
         return True
     except (FileNotFoundError, ObjectFormatError):
         return False
@@ -30,29 +27,35 @@ def _in_cache(obj: Optional["HashFile"], cache: "HashFileDB") -> bool:
 
 def _shallow_diff(
     root: str,
-    old_obj: Optional["HashFile"],
-    new_obj: Optional["HashFile"],
+    old: Optional["HashInfo"],
+    new: Optional["HashInfo"],
     cache: "HashFileDB",
 ) -> Dict[str, List[str]]:
-    # TODO: add support for shallow diff in dvc-data
-    # TODO: we may want to recursively do in_cache check
     d = {}
 
-    from dvc_data.objects.tree import Tree
+    old_root = new_root = root
+    if old and old.isdir:
+        old_root = os.path.sep.join([root, ""])
+    if new and new.isdir:
+        new_root = os.path.sep.join([root, ""])
 
-    if isinstance(new_obj, Tree):
-        root = os.path.sep.join([root, ""])
+    if old and not _in_cache(old, cache):
+        d["not_in_cache"] = [old_root]
 
-    if not _in_cache(old_obj, cache):
-        d["not_in_cache"] = [root]
-
-    if old_obj is None and new_obj is None:
+    if not old and not new:
         return d
-    if old_obj is None:
-        return {"added": [root], **d}
-    if new_obj is None:
-        return {"deleted": [root], **d}
-    if old_obj.hash_info != new_obj.hash_info:
+
+    if not new:
+        return {"deleted": [old_root], **d}
+    if not old:
+        return {"added": [new_root], **d}
+    if old.isdir != new.isdir:
+        return {"deleted": [old_root], "added": [new_root], **d}
+
+    assert old_root == new_root
+    root = old_root  # the root are the same
+    if old != new:
+        assert old.isdir == new.isdir
         return {"modified": [root], **d}
     return {"unchanged": [root], **d}
 
@@ -102,19 +105,17 @@ def _granular_diff(
     return output
 
 
-def _diff(
-    root: str,
+def _granular_diff_oid(
+    root,
+    old_oid: Optional["HashInfo"],
     old_obj: Optional["HashFile"],
+    new_oid: Optional["HashInfo"],
     new_obj: Optional["HashFile"],
     cache: "HashFileDB",
-    granular: bool = False,
     with_dirs: bool = False,
-) -> Dict[str, List[str]]:
-    if granular:
-        return _granular_diff(
-            root, old_obj, new_obj, cache, with_dirs=with_dirs
-        )
-    return _shallow_diff(root, old_obj, new_obj, cache)
+    **kwargs: Any,
+):
+    return _granular_diff(root, old_obj, new_obj, cache, with_dirs=with_dirs)
 
 
 class GitInfo(TypedDict, total=False):
@@ -147,6 +148,7 @@ def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
         unstaged=unstaged,
         untracked=untracked,
         is_empty=empty_repo,
+        # TODO: fix is_dirty when untracked_files="no"
         is_dirty=any([staged, unstaged, untracked]),
     )
 
@@ -176,7 +178,21 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         root = str(out)
         old = out.get_obj()
         with ui.status(f"Calculating diff for {root} between index/workspace"):
-            d = _diff(root, old, new, cache, **kwargs)
+            if kwargs.get("granular", False):
+                d = _granular_diff_oid(
+                    root,
+                    old.hash_info if old else None,
+                    old,
+                    new.hash_info if new else None,
+                    new,
+                    cache,
+                    **kwargs,
+                )
+            else:
+                d = _shallow_diff(
+                    root, out.hash_info, new.hash_info if new else None, cache
+                )
+
         for state, items in d.items():
             if not items:
                 continue
@@ -198,14 +214,20 @@ def _diff_head_to_index(
 
             root = str(out)
             typ = "index" if rev == "workspace" else head
-            objs[root][typ] = out.get_obj()
+            objs[root][typ] = (out.get_obj(), out.hash_info)
 
     cache = repo.odb.repo
     for root, obj_d in objs.items():
-        old = obj_d.get(head, None)
-        new = obj_d.get("index", None)
+        old_obj, old_oid = obj_d.get(head, (None, None))
+        new_obj, new_oid = obj_d.get("index", (None, None))
         with ui.status(f"Calculating diff for {root} between head/index"):
-            d = _diff(root, old, new, cache, **kwargs)
+            if kwargs.get("granular", False):
+                d = _granular_diff_oid(
+                    root, old_oid, old_obj, new_oid, new_obj, cache, **kwargs
+                )
+            else:
+                d = _shallow_diff(root, old_oid, new_oid, cache)
+
         for state, items in d.items():
             if not items:
                 continue
