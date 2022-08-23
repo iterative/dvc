@@ -49,6 +49,12 @@ jobs:
       run: dvc pull
 
     - name: Build ${{ matrix.pkg }}
+      if: matrix.pkg == 'exe'
+      run: python scripts\build.py ${{ matrix.pkg}}
+      shell: cmd
+
+    - name: Build ${{ matrix.pkg }}
+      if: matrix.pkg != 'exe'
       run: python scripts/build.py ${{ matrix.pkg }}
 
     - name: Publish ${{ matrix.pkg }}
