@@ -942,7 +942,7 @@ class Output:
         if not self.use_cache:
             return {}
 
-        if self.stage.is_repo_import:
+        if self.stage.is_repo_import or self.stage.is_versioned_import:
             return self.get_used_external(**kwargs)
 
         if not self.hash_info:
@@ -994,7 +994,9 @@ class Output:
     def get_used_external(
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
-        if not self.use_cache or not self.stage.is_repo_import:
+        if not self.use_cache or not (
+            self.stage.is_repo_import or self.stage.is_versioned_import
+        ):
             return {}
 
         (dep,) = self.stage.deps
