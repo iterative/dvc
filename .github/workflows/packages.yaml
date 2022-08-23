@@ -29,6 +29,7 @@ jobs:
           scripts/build-requirements.txt
 
     - name: Set up Ruby 2.6
+      if: matrix.pkg != 'exe'
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: '2.6'
