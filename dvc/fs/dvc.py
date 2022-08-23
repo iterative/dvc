@@ -34,6 +34,14 @@ def _wrap_walk(dvc_fs, *args, **kwargs):
         yield dvc_fs.path.join(dvc_fs.repo.root_dir, root), dnames, fnames
 
 
+# NOT the same as dvc.dvcfile.is_dvc_file()!
+def _is_dvc_file(fname):
+    from dvc.dvcfile import is_valid_filename
+    from dvc.ignore import DvcIgnore
+
+    return is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
+
+
 def _ls(fs, path):
     dnames = []
     fnames = []
@@ -353,19 +361,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 pass
 
         dvcfiles = kwargs.get("dvcfiles", False)
-
-        def _func(fname):
-            from dvc.dvcfile import is_valid_filename
-            from dvc.ignore import DvcIgnore
-
-            if dvcfiles:
-                return True
-
-            return not (
-                is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
-            )
-
-        names = filter(_func, names)
+        if not dvcfiles:
+            names = (name for name in names if not _is_dvc_file(name))
 
         infos = []
         paths = []
