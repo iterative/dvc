@@ -37,6 +37,10 @@ def params_show(
             stages to retrieve parameters from.
             Defaults to `None`.
             If `None`, all parameters from all stages will be retrieved.
+            If this method is called from a different location to the one where
+            the `dvc.yaml` is found, the relative path to the `dvc.yaml` must
+            be provided as a prefix with the syntax `{relpath}:{stage}`.
+            For example: `subdir/dvc.yaml:stage-0` or `../dvc.yaml:stage-1`.
         rev (str, optional): Name of the `Git revision`_ to retrieve parameters
             from.
             Defaults to `None`.
