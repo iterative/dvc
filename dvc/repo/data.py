@@ -109,7 +109,9 @@ def _diff(
     with_dirs: bool = False,
     granular: bool = False,
 ):
-    if not granular or not (old_obj or new_obj):
+    if not granular:
+        return _shallow_diff(root, old_oid, new_oid, odb)
+    if (old_oid and not old_obj) or (new_oid and not new_obj):
         # we don't have enough information to give full details
         return _shallow_diff(root, old_oid, new_oid, odb)
     return _granular_diff(root, old_obj, new_obj, odb, with_dirs=with_dirs)
@@ -174,8 +176,6 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         cache = repo.odb.repo
         root = str(out)
         old = out.get_obj()
-        if not old and new and out.hash_info == new.hash_info:
-            old = new
 
         with ui.status(f"Calculating diff for {root} between index/workspace"):
             d = _diff(

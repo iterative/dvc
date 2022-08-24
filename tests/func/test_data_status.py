@@ -153,7 +153,9 @@ def test_untracked_newly_added_files(M, tmp_dir, dvc, scm):
 
     expected = {
         **EMPTY_STATUS,
-        "untracked": M.unordered("dir/foo", "dir/bar", "foobar"),
+        "untracked": M.unordered(
+            join("dir", "foo"), join("dir", "bar"), "foobar"
+        ),
         "git": M.dict(),
     }
     assert dvc.data_status(untracked_files="all") == expected
@@ -186,7 +188,8 @@ def test_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
         # even though we don't have cache obj, we can repurpose
         # what we have in the workspace
         "not_in_cache": M.unordered(
-            "foobar", join("dir", "bar"), join("dir", "foo")
+            "foobar",
+            join("dir", ""),
         ),
         "git": M.dict(),
     }
@@ -200,19 +203,19 @@ def test_missing_cache_missing_workspace(M, tmp_dir, dvc, scm):
 
     assert dvc.data_status(untracked_files="all") == {
         **EMPTY_STATUS,
-        "untracked": ["foobar.dvc", "dir.dvc", ".gitignore"],
-        "uncommitted": {"deleted": ["foobar", join("dir", "")]},
-        "committed": {"added": ["foobar", join("dir", "")]},
-        "not_in_cache": ["foobar", join("dir", "")],
+        "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
+        "uncommitted": {"deleted": M.unordered("foobar", join("dir", ""))},
+        "committed": {"added": M.unordered("foobar", join("dir", ""))},
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
         "git": M.dict(),
     }
 
     assert dvc.data_status(granular=True, untracked_files="all") == {
         **EMPTY_STATUS,
-        "untracked": ["foobar.dvc", "dir.dvc", ".gitignore"],
-        "uncommitted": {"deleted": ["foobar", join("dir", "")]},
-        "committed": {"added": ["foobar", join("dir", "")]},
-        "not_in_cache": ["foobar", join("dir", "")],
+        "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
+        "uncommitted": {"deleted": M.unordered("foobar", join("dir", ""))},
+        "committed": {"added": M.unordered("foobar", join("dir", ""))},
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
         "git": M.dict(),
     }
 
@@ -224,7 +227,7 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
 
     assert dvc.data_status(untracked_files="all") == {
         **EMPTY_STATUS,
-        "not_in_cache": ["foobar", join("dir", "")],
+        "not_in_cache": M.unordered("foobar", join("dir", "")),
         "git": M.dict(),
         # TODO: clarify what is unchanged
         "unchanged": M.unordered("foobar", join("dir", "")),
@@ -232,11 +235,12 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
         "not_in_cache": M.unordered(
-            "foobar", join("dir", "foo"), join("dir", "bar")
+            "foobar",
+            join("dir", ""),
         ),
         "git": M.dict(),
         # TODO: clarify what is unchanged
-        "unchanged": M.unordered("foobar"),
+        "unchanged": M.unordered("foobar", join("dir", "")),
     }
 
 
@@ -299,7 +303,7 @@ def test_missing_dir_object_from_head(M, tmp_dir, dvc, scm):
     }
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
-        "committed": {"added": [join("dir", "foobar")]},
+        "committed": {"modified": [join("dir", "")]},
         "git": M.dict(),
     }
 
