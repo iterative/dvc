@@ -114,9 +114,9 @@ def test_not_in_cache(M, tmp_dir, scm, dvc):
         **EMPTY_STATUS,
         "not_in_cache": M.unordered("bar"),
         "git": M.instance_of(dict),
-        "unchanged": [],
-        "committed": {"modified": ["bar"]},
-        "uncommitted": {"modified": ["bar"], "added": [join("dir", "foo")]},
+        "unchanged": ["bar"],
+        "committed": {},
+        "uncommitted": {"added": [join("dir", "foo")]},
     }
 
 
