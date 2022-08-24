@@ -99,8 +99,20 @@ def _granular_diff(
     return dict(output)
 
 
+def _get_obj_items(root: str, obj: Optional["HashFile"]) -> List[str]:
+    if not obj:
+        return []
+
+    from dvc_data.objects.tree import Tree
+
+    sep = os.path.sep
+    if isinstance(obj, Tree):
+        return [sep.join([root, *key]) for key, _, _ in obj]
+    return [root]
+
+
 def _diff(
-    root,
+    root: str,
     old_oid: Optional["HashInfo"],
     old_obj: Optional["HashFile"],
     new_oid: Optional["HashInfo"],
@@ -108,12 +120,14 @@ def _diff(
     odb: "HashFileDB",
     with_dirs: bool = False,
     granular: bool = False,
-):
+) -> Dict[str, List[str]]:
     if not granular:
         return _shallow_diff(root, old_oid, new_oid, odb)
     if (old_oid and not old_obj) or (new_oid and not new_obj):
         # we don't have enough information to give full details
-        return _shallow_diff(root, old_oid, new_oid, odb)
+        unknown = _get_obj_items(root, new_obj or old_obj)
+        shallow_diff = _shallow_diff(root, old_oid, new_oid, odb)
+        return {**shallow_diff, "unknown": unknown}
     return _granular_diff(root, old_obj, new_obj, odb, with_dirs=with_dirs)
 
 

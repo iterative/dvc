@@ -52,6 +52,7 @@ class CmdDataStatus(CmdBase):
                     file: state
                     for state, files in stage_status.items()
                     for file in files
+                    if state != "unknown"
                 }
             if not items:
                 continue
