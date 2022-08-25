@@ -161,7 +161,6 @@ def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
         unstaged=unstaged,
         untracked=untracked,
         is_empty=empty_repo,
-        # TODO: fix is_dirty when untracked_files="no"
         is_dirty=any([staged, unstaged, untracked]),
     )
 
@@ -244,8 +243,8 @@ def _diff_head_to_index(
 
 class Status(TypedDict):
     not_in_cache: List[str]
-    committed: Dict[str, Any]
-    uncommitted: Dict[str, Any]
+    committed: Dict[str, List[str]]
+    uncommitted: Dict[str, List[str]]
     untracked: List[str]
     unchanged: List[str]
     git: GitInfo
