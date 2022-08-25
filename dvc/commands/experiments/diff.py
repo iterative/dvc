@@ -27,7 +27,7 @@ class CmdExperimentsDiff(CmdBase):
 
         if self.args.json:
             ui.write_json(diff)
-        else:
+        elif diff:
             from dvc.compare import show_diff
 
             precision = self.args.precision or DEFAULT_PRECISION

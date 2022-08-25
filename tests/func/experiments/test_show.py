@@ -36,6 +36,18 @@ def make_executor_info(**kwargs):
 
 
 @pytest.mark.vscode
+def test_show_no_commits(tmp_dir):
+    from scmrepo.git import Git
+
+    from dvc.repo import Repo
+
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
+
+    assert Repo.init().experiments.show() == {}
+
+
+@pytest.mark.vscode
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
