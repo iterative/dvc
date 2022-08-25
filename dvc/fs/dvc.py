@@ -349,7 +349,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def ls(  # pylint: disable=arguments-differ
         self, path, detail=True, dvc_only=False, **kwargs
     ):
-        repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        key = self._get_key_from_relative(path)
+        repo, fs, fs_path, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
 
         dvcignore = repo.dvcignore
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
@@ -357,6 +358,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         names = set()
         if dvc_fs:
             with suppress(FileNotFoundError):
+                dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
                 for entry in dvc_fs.ls(dvc_path, detail=False):
                     names.add(dvc_fs.path.name(entry))
 
@@ -377,8 +379,11 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         paths = []
         for name in names:
             entry_path = self.path.join(path, name)
+            entry_key = key + (name,)
             try:
-                info = self.info(entry_path, ignore_subrepos=ignore_subrepos)
+                info = self._info(
+                    entry_key, entry_path, ignore_subrepos=ignore_subrepos
+                )
             except FileNotFoundError:
                 continue
             infos.append(info)
@@ -404,15 +409,21 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
 
     def info(self, path, **kwargs):
-        repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        key = self._get_key_from_relative(path)
+        ignore_subrepos = kwargs.get("ignore_subrepos", True)
+        return self._info(key, path, ignore_subrepos=ignore_subrepos)
+
+    def _info(self, key, path, ignore_subrepos=True):
+        repo, fs, fs_path, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
 
         dvcignore = repo.dvcignore
-        ignore_subrepos = kwargs.get("ignore_subrepos", True)
 
         dvc_info = None
         if dvc_fs:
             try:
-                dvc_info = dvc_fs.info(dvc_path)
+                dvc_info = dvc_fs.fs.index.info(dvc_parts)
+                dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+                dvc_info["name"] = dvc_path
             except FileNotFoundError:
                 pass
 
