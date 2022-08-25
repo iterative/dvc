@@ -85,12 +85,14 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
     res = {}
     for metric in metrics:
+        rel_metric_path = os.path.join(relpath, *fs.path.parts(metric))
         if not fs.isfile(metric):
-            continue
+            if fs.isfile(rel_metric_path):
+                metric = rel_metric_path
+            else:
+                continue
 
-        res[os.path.join(relpath, *fs.path.parts(metric))] = _read_metric(
-            metric, fs, rev, onerror=onerror
-        )
+        res[rel_metric_path] = _read_metric(metric, fs, rev, onerror=onerror)
 
     return res
 
