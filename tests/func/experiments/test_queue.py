@@ -42,6 +42,7 @@ def failed_tasks(tmp_dir, dvc, scm, test_queue, failed_exp_stage):
     return name_list
 
 
+@pytest.mark.xfail(strict=False, reason="pytest-celery flaky")
 @pytest.mark.parametrize("follow", [True, False])
 def test_celery_logs(
     tmp_dir,
@@ -64,7 +65,7 @@ def test_celery_logs(
     assert "failed to reproduce 'failed-copy-file'" in captured.out
 
 
-@pytest.mark.flaky(max_runs=3, min_passes=1)
+@pytest.mark.xfail(strict=False, reason="pytest-celery flaky")
 def test_queue_remove_done(dvc, failed_tasks, success_tasks):
     assert len(dvc.experiments.celery_queue.failed_stash) == 3
     status = to_dict(dvc.experiments.celery_queue.status())
