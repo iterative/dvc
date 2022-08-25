@@ -31,8 +31,7 @@ class CmdDataStatus(CmdBase):
         "unchanged": "DVC unchanged files",
     }
     HINTS = {
-        "not_in_cache": 'use "dvc pull <file>..." '
-        "to update your local storage",
+        "not_in_cache": 'use "dvc pull <file>..." to download files',
         "committed": "git commit the corresponding dvc files "
         "to update the repo",
         "uncommitted": 'use "dvc commit <file>..." to track changes',

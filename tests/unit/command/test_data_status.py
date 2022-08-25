@@ -106,7 +106,7 @@ def test_show_status(dvc, scm, mocker, capsys, mocked_status, args, is_dirty):
     out, err = capsys.readouterr()
     expected_out = """\
 Not in cache:
-  (use "dvc pull <file>..." to update your local storage)
+  (use "dvc pull <file>..." to download files)
         notincache
 
 DVC committed changes:
