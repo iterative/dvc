@@ -1,3 +1,5 @@
+import pytest
+
 from tests.utils.plots import get_plot
 
 
@@ -46,3 +48,15 @@ def test_diff_dirty(tmp_dir, scm, dvc, run_copy_metrics):
     assert get_plot(
         diff_result, "workspace", "definitions", file="", endkey="data"
     ) == {"metric.json": props}
+
+
+@pytest.mark.vscode
+def test_no_commits(tmp_dir):
+    from scmrepo.git import Git
+
+    from dvc.repo import Repo
+
+    git = Git.init(tmp_dir.fs_path)
+    assert git.no_commits
+
+    assert Repo.init().plots.diff() == {}
