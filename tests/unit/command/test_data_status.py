@@ -44,7 +44,6 @@ def test_cli(dvc, mocker, mocked_status):
             "--json",
             "--unchanged",
             "--untracked-files",
-            "--with-dirs",
             "--granular",
         ]
     )
@@ -55,7 +54,6 @@ def test_cli(dvc, mocker, mocked_status):
     status.assert_called_once_with(
         untracked_files="all",
         granular=True,
-        with_dirs=True,
     )
 
 
@@ -121,12 +119,14 @@ DVC committed changes:
         added: dir/foo
         deleted: dir/baz
         modified: dir/foobar
+        unknown: dir/unknown1
 
 DVC uncommitted changes:
   (use "dvc commit <file>..." to track changes)
         added: dir/baz
         modified: dir/bar
         deleted: dir/foobar
+        unknown: dir2/unknown2
 """
     if "--untracked-files" in args:
         expected_out += """

@@ -83,11 +83,12 @@ def test_directory(M, tmp_dir, dvc, scm):
             "added": M.unordered(
                 join("dir", "bar"),
                 join("dir", "foobar"),
-            )
+            ),
+            "modified": [join("dir", "")],
         },
         "uncommitted": {
             "added": [join("dir", "baz")],
-            "modified": [join("dir", "bar")],
+            "modified": M.unordered(join("dir", ""), join("dir", "bar")),
             "deleted": [join("dir", "foobar")],
         },
         "git": M.dict(),
@@ -124,17 +125,7 @@ def test_unchanged(M, tmp_dir, dvc, scm):
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
         "git": M.dict(),
-        "unchanged": M.unordered("bar", join("dir", "foo")),
-    }
-
-
-def test_withdirs(M, tmp_dir, dvc, scm):
-    tmp_dir.dvc_gen({"dir": {"foo": "foo"}}, commit="add dir")
-    tmp_dir.dvc_gen("bar", "bar", commit="add foo")
-    assert dvc.data_status(granular=True, with_dirs=True) == {
-        **EMPTY_STATUS,
-        "git": M.dict(),
-        "unchanged": M.unordered("bar", join("dir", "foo"), join("dir", "")),
+        "unchanged": M.unordered("bar", join("dir", ""), join("dir", "foo")),
     }
 
 
@@ -171,7 +162,9 @@ def test_subdir(M, tmp_dir, scm):
         assert dvc.data_status(granular=True, untracked_files="all") == {
             **EMPTY_STATUS,
             "git": M.dict(),
-            "unchanged": M.unordered("bar", join("dir", "foo")),
+            "unchanged": M.unordered(
+                "bar", join("dir", ""), join("dir", "foo")
+            ),
             "untracked": ["untracked"],
         }
 
@@ -305,7 +298,9 @@ def test_partial_missing_cache(M, tmp_dir, dvc, scm):
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
         "committed": {
-            "added": M.unordered(join("dir", "foo"), join("dir", "bar"))
+            "added": M.unordered(
+                join("dir", ""), join("dir", "foo"), join("dir", "bar")
+            )
         },
         "not_in_cache": [join("dir", "foo")],
         "git": M.dict(),
@@ -350,7 +345,9 @@ def test_root_from_dir_to_file(M, tmp_dir, dvc, scm):
     assert dvc.data_status(granular=True) == {
         **EMPTY_STATUS,
         "committed": {
-            "added": M.unordered(join("data", "foo"), join("data", "bar"))
+            "added": M.unordered(
+                join("data", ""), join("data", "foo"), join("data", "bar")
+            )
         },
         "uncommitted": {
             "deleted": M.unordered(join("data", "foo"), join("data", "bar")),
