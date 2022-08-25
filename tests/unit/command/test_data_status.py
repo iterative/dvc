@@ -14,15 +14,21 @@ from tests.func.parsing.test_errors import escape_ansi
 def mocked_status():
     yield Status(
         not_in_cache=["notincache"],
-        committed={"added": ["dir/bar", "dir/foo"]},
+        committed={
+            "added": ["dir/bar", "dir/foo"],
+            "deleted": ["dir/baz"],
+            "modified": ["dir/foobar"],
+            "unknown": ["dir/unknown1"],
+        },
         uncommitted={
             "added": ["dir/baz"],
             "modified": ["dir/bar"],
             "deleted": ["dir/foobar"],
+            "unknown": ["dir2/unknown2"],
         },
         untracked=["untracked"],
         unchanged=["dir/foo"],
-        git={"is_dirty": True},
+        git={"is_dirty": True, "is_empty": False},
     )
 
 
@@ -113,6 +119,8 @@ DVC committed changes:
   (git commit the corresponding dvc files to update the repo)
         added: dir/bar
         added: dir/foo
+        deleted: dir/baz
+        modified: dir/foobar
 
 DVC uncommitted changes:
   (use "dvc commit <file>..." to track changes)

@@ -20,12 +20,10 @@ def test_file(M, tmp_dir, dvc, scm):
     remove(tmp_dir / "foo")
 
     expected = {
+        **EMPTY_STATUS,
         "committed": {"modified": ["foo"]},
         "uncommitted": {"deleted": ["foo"]},
         "git": M.dict(),
-        "not_in_cache": [],
-        "unchanged": [],
-        "untracked": [],
     }
     assert dvc.data_status() == expected
     assert dvc.data_status(granular=True) == expected
@@ -39,12 +37,10 @@ def test_directory(M, tmp_dir, dvc, scm):
     tmp_dir.gen("untracked", "untracked")
 
     assert dvc.data_status() == {
+        **EMPTY_STATUS,
         "committed": {"modified": [join("dir", "")]},
         "uncommitted": {"modified": [join("dir", "")]},
         "git": M.dict(),
-        "not_in_cache": [],
-        "unchanged": [],
-        "untracked": [],
     }
 
     assert dvc.data_status(granular=True, untracked_files="all") == {
@@ -123,8 +119,6 @@ def test_skip_uncached_pipeline_outputs(tmp_dir, dvc, run_copy_metrics):
 
 def test_output_with_newly_added_stage(tmp_dir, dvc):
     dvc.stage.add(deps=["bar"], outs=["foo"], name="copy", cmd="cp foo bar")
-    # assert dvc.data_status() == {**EMPTY_STATUS, "not_in_cache": ["foo"]}
-    # TODO: discuss what the output should be
     assert dvc.data_status() == EMPTY_STATUS
     assert dvc.data_status(granular=True) == EMPTY_STATUS
 
@@ -178,16 +172,10 @@ def test_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
     assert dvc.data_status(granular=True, untracked_files="all") == {
         **EMPTY_STATUS,
         "untracked": M.unordered("foobar.dvc", "dir.dvc", ".gitignore"),
-        # "committed": {
-        #   "added": M.unordered(
-        #       "foobar", join("dir", "foo"), join("dir", "bar")
-        # )},
         "committed": {"added": M.unordered("foobar", join("dir", ""))},
         "uncommitted": {
             "unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))
         },
-        # even though we don't have cache obj, we can repurpose
-        # what we have in the workspace
         "not_in_cache": M.unordered(
             "foobar",
             join("dir", ""),
@@ -230,7 +218,6 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
         **EMPTY_STATUS,
         "not_in_cache": M.unordered("foobar", join("dir", "")),
         "git": M.dict(),
-        # TODO: clarify what is unchanged
         "unchanged": M.unordered("foobar", join("dir", "")),
     }
     assert dvc.data_status(granular=True) == {
@@ -243,7 +230,6 @@ def test_git_committed_missing_cache_workspace_exists(M, tmp_dir, dvc, scm):
             "unknown": M.unordered(join("dir", "foo"), join("dir", "bar"))
         },
         "git": M.dict(),
-        # TODO: clarify what is unchanged
         "unchanged": M.unordered("foobar", join("dir", "")),
     }
 
