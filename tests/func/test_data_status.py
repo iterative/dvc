@@ -1,6 +1,9 @@
 from os.path import join
 
+import pytest
+
 from dvc.repo import Repo
+from dvc.repo.data import _transform_git_paths_to_dvc
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 
@@ -12,6 +15,38 @@ EMPTY_STATUS = {
     "unchanged": [],
     "untracked": [],
 }
+
+
+@pytest.mark.parametrize("path", [None, ("sub", "repo")])
+def test_git_to_dvc_path_wdir_transformation(tmp_dir, scm, path):
+    struct = {"dir": {"foo": "foo", "bar": "bar"}, "file": "file", "dir2": {}}
+    tmp_dir.gen(struct)
+
+    subdir = tmp_dir.joinpath(*path) if path else tmp_dir
+    make_subrepo(subdir, scm)
+    dvc = subdir.dvc
+
+    with subdir.chdir():
+        subdir.gen(struct)
+        _, _, untracked = scm.status(untracked_files="all")
+        untracked = sorted(untracked, reverse=True)
+        assert _transform_git_paths_to_dvc(dvc, untracked) == [
+            "file",
+            join("dir", "foo"),
+            join("dir", "bar"),
+        ]
+        with (subdir / "dir").chdir():
+            assert _transform_git_paths_to_dvc(dvc, untracked) == [
+                join("..", "file"),
+                "foo",
+                "bar",
+            ]
+        with (subdir / "dir2").chdir():
+            assert _transform_git_paths_to_dvc(dvc, untracked) == [
+                join("..", "file"),
+                join("..", "dir", "foo"),
+                join("..", "dir", "bar"),
+            ]
 
 
 def test_file(M, tmp_dir, dvc, scm):
