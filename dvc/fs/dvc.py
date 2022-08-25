@@ -79,6 +79,11 @@ def _merge_info(repo, fs_info, dvc_info):
     return ret
 
 
+def _get_dvc_path(dvc_fs, dvc_parts):
+    if dvc_fs:
+        return dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
+
+
 class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     """DVC + git-tracked files fs.
 
@@ -292,7 +297,22 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         Returns a pair of fss based on repo the path falls in, using prefix.
         """
         key = self._get_key_from_relative(path)
+        repo, fs, fs_path, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
+        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+        return repo, fs, fs_path, dvc_fs, dvc_path
 
+    def _get_fs_pair_2(
+        self, key: Key
+    ) -> Tuple[
+        Optional["Repo"],
+        Optional[FileSystem],
+        Optional[str],
+        Optional[DataFileSystem],
+        Key,
+    ]:
+        """
+        Returns a pair of fss based on repo the path falls in, using prefix.
+        """
         fs_path = self._from_key(key)
         repo = self._get_repo(key)
         fs = repo.fs
@@ -305,12 +325,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             key = self._get_key(repo.root_dir)
             dvc_fs = self._datafss.get(key)
 
-        if dvc_fs:
-            dvc_path = dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
-        else:
-            dvc_path = None
-
-        return repo, fs, fs_path, dvc_fs, dvc_path
+        return repo, fs, fs_path, dvc_fs, dvc_parts
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
