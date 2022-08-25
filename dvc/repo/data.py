@@ -1,6 +1,15 @@
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    TypedDict,
+    cast,
+)
 
 from dvc.ui import ui
 
@@ -250,15 +259,23 @@ class Status(TypedDict):
     git: GitInfo
 
 
-def _transform_git_paths_to_dvc(repo: "Repo", files: List[str]):
+def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]):
     """Transform files rel. to Git root to DVC root, and drop outside files."""
     rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
-    if rel in (os.curdir, ""):
-        return files
 
-    prefix = rel + os.sep
-    length = len(prefix)
-    return [file[length:] for file in files if file.startswith(prefix)]
+    # if we have repo root in a different location than scm's root,
+    # i.e. subdir repo, all git_paths need to be transformed rel. to the DVC
+    # repo root and anything outside need to be filtered out.
+    if rel not in (os.curdir, ""):
+        prefix = rel + os.sep
+        length = len(prefix)
+        files = (file[length:] for file in files if file.startswith(prefix))
+
+    start = repo.fs.path.relpath(repo.fs.path.getcwd(), repo.root_dir)
+    if start in (os.curdir, ""):
+        return list(files)
+    # we need to convert repo relative paths to curdir relative.
+    return [repo.fs.path.relpath(file, start) for file in files]
 
 
 def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
