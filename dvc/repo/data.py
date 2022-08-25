@@ -279,9 +279,7 @@ def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]):
 
 
 def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
-    from scmrepo.exceptions import SCMError
-
-    from dvc.scm import NoSCMError
+    from dvc.scm import NoSCMError, SCMError
 
     head = kwargs.pop("head", "HEAD")
     uncommitted_diff = _diff_index_to_wtree(repo, **kwargs)
