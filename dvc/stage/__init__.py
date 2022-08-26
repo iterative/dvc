@@ -265,9 +265,7 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        from dvc.dependency import VersionedDependency
-
-        return isinstance(self.deps[0], VersionedDependency)
+        return self.deps[0].version_id is not None
 
     @property
     def is_checkpoint(self):

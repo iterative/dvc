@@ -1,13 +1,11 @@
 from collections import defaultdict
 from typing import Any, Mapping
 
-from dvc.fs import get_cloud_fs
 from dvc.output import ARTIFACT_SCHEMA, Output
 
 from .base import Dependency
 from .param import ParamsDependency
 from .repo import RepoDependency
-from .versioned import VersionedDependency
 
 # NOTE: schema for dependencies is basically the same as for outputs, but
 # without output-specific entries like 'cache' (whether or not output is
@@ -29,11 +27,8 @@ def _get(stage, p, info):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    _, fs_config, _ = get_cloud_fs(stage.repo, url=p)
-    if fs_config.get("version_aware") or info.get(Output.PARAM_VERSION_ID):
-        version_id = info.pop("version_id", None)
-        return VersionedDependency(stage, p, info=info, version_id=version_id)
-    return Dependency(stage, p, info)
+    version_id = info.pop(Output.PARAM_VERSION_ID, None)
+    return Dependency(stage, p, info, version_id=version_id)
 
 
 def loadd_from(stage, d_list):
