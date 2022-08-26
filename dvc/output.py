@@ -83,6 +83,7 @@ def loadd_from(stage, d_list):
         desc = d.pop(Output.PARAM_DESC, False)
         live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
+        version_id = d.pop(Output.PARAM_VERSION_ID, None)
         ret.append(
             _get(
                 stage,
@@ -96,6 +97,7 @@ def loadd_from(stage, d_list):
                 desc=desc,
                 live=live,
                 remote=remote,
+                version_id=version_id,
             )
         )
     return ret
@@ -257,6 +259,7 @@ class Output:
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
     PARAM_REMOTE = "remote"
+    PARAM_VERSION_ID = "version_id"
 
     METRIC_SCHEMA = Any(
         None,
@@ -286,9 +289,12 @@ class Output:
         desc=None,
         remote=None,
         repo=None,
+        version_id: Optional[str] = None,
     ):
         self.repo = stage.repo if not repo and stage else repo
-        fs_cls, fs_config, fs_path = get_cloud_fs(self.repo, url=path)
+        fs_cls, fs_config, fs_path = get_cloud_fs(
+            self.repo, url=path, version_aware=version_id is not None
+        )
         self.fs = fs_cls(**fs_config)
 
         if (
@@ -335,6 +341,20 @@ class Output:
 
         self.remote = remote
 
+        if self.fs.version_aware:
+            self.def_path, self.version_id = self.fs.path.coalesce_version(
+                self.def_path, version_id
+            )
+            self.fs_path = self.fs.path.version_path(
+                self.fs_path, self.version_id
+            )
+        else:
+            if version_id:
+                raise DvcException(
+                    "Version ID unsupported for non-versioned filesystem"
+                )
+            self.version_id = None
+
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
         if (
@@ -360,6 +380,10 @@ class Output:
 
     def __str__(self):
         if self.fs.protocol != "local":
+            if self.version_id:
+                return self.fs.path.version_path(
+                    self.def_path, self.version_id
+                )
             return self.def_path
 
         if (
@@ -664,6 +688,8 @@ class Output:
             path = self.def_path
 
         ret[self.PARAM_PATH] = path
+        if self.version_id:
+            ret[self.PARAM_VERSION_ID] = self.version_id
 
         if self.IS_DEPENDENCY:
             return ret
@@ -1094,6 +1120,7 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CHECKPOINT: bool,
+    Output.PARAM_VERSION_ID: str,
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
     Meta.PARAM_ISEXEC: bool,

@@ -17,7 +17,6 @@ SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
     **ParamsDependency.PARAM_SCHEMA,
-    **VersionedDependency.VERSION_SCHEMA,
 }
 
 
@@ -31,11 +30,9 @@ def _get(stage, p, info):
         return ParamsDependency(stage, p, params)
 
     _, fs_config, _ = get_cloud_fs(stage.repo, url=p)
-    if fs_config.get("version_aware") or info.get(
-        VersionedDependency.PARAM_VERSION_ID
-    ):
-        version_id = info.pop(VersionedDependency.PARAM_VERSION_ID, None)
-        return VersionedDependency(stage, p, version_id)
+    if fs_config.get("version_aware") or info.get(Output.PARAM_VERSION_ID):
+        version_id = info.pop("version_id", None)
+        return VersionedDependency(stage, p, info=info, version_id=version_id)
     return Dependency(stage, p, info)
 
 
