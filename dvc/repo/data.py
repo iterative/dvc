@@ -7,6 +7,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
     TypedDict,
     cast,
 )
@@ -204,7 +205,9 @@ def _diff_head_to_index(
     repo: "Repo", head: str = "HEAD", **kwargs: Any
 ) -> Dict[str, List[str]]:
     # we need to store objects from index and the HEAD to diff later
-    objs: Dict[str, Dict[str, "HashFile"]] = defaultdict(dict)
+    objs: Dict[str, Dict[str, Tuple["HashFile", "HashInfo"]]] = defaultdict(
+        dict
+    )
     staged_diff = defaultdict(list)
     for rev in repo.brancher(revs=[head]):
         for out in repo.index.outs:
