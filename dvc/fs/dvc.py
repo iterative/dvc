@@ -322,7 +322,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
     def ls(  # pylint: disable=arguments-differ
-        self, path, detail=True, dvc_only=False, **kwargs
+        self, path, detail=True, dvc_only=False, dvc_as_dir=True, **kwargs
     ):
         repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
@@ -367,6 +367,10 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 info = self.info(entry_path, ignore_subrepos=ignore_subrepos)
             except FileNotFoundError:
                 continue
+            isdvc = "dvc_info" in info and info["dvc_info"]["isdvc"]
+            if not dvc_as_dir and isdvc and info["type"] == "directory":
+                # FIXME: Maybe consider alternate checks (e.g. size != 0).
+                info["type"] = "file"
             infos.append(info)
             paths.append(entry_path)
 

@@ -569,6 +569,39 @@ def test_subrepo(dvc_top_level, erepo):
     assert _list_files(subrepo, "scm_dir") == {"ipsum"}
     assert _list_files(subrepo, "dvc_dir") == {"lorem"}
 
+    # TODO: Maybe factor out to an independent test.
+    if not dvc_top_level:
+        return
+
+    recursive_ls = sorted(
+        map(
+            itemgetter("path"),
+            Repo.ls(os.fspath(erepo), ".", recursive=True, dvc_as_dir=False),
+        )
+    )
+    expected_recursive_ls = {
+        ".dvcignore",
+        ".gitignore",
+        "bar.txt",
+        "dvc_dir",
+        "dvc_dir.dvc",
+        "foo.txt",
+        "foo.txt.dvc",
+        "scm_dir/ipsum",
+    }
+    assert recursive_ls == sorted(expected_recursive_ls)
+
+    recursive_ls_expand_dvc = sorted(
+        map(
+            itemgetter("path"),
+            Repo.ls(os.fspath(erepo), ".", recursive=True, dvc_as_dir=True),
+        )
+    )
+    expected_recursive_ls_expand_dvc = expected_recursive_ls
+    expected_recursive_ls.remove("dvc_dir")
+    expected_recursive_ls.add("dvc_dir/lorem")
+    assert recursive_ls_expand_dvc == sorted(expected_recursive_ls_expand_dvc)
+
 
 def test_broken_symlink(tmp_dir, dvc):
     from dvc.fs import system

@@ -16,6 +16,8 @@ def ls(
     rev: str = None,
     recursive: bool = None,
     dvc_only: bool = False,
+    dvc_as_dir: bool = True,
+    return_sizes: bool = False,
 ):
     """Methods for getting files and outputs for the repo.
 
@@ -25,6 +27,8 @@ def ls(
         rev (str, optional): SHA commit, branch or tag name
         recursive (bool, optional): recursively walk the repo
         dvc_only (bool, optional): show only DVC-artifacts
+        dvc_as_dir (bool, optional): return .dvc files as directories in infos
+        return_sizes (bool, optional): include sizes (from metadata) in infos
 
     Returns:
         list of `entry`
@@ -36,6 +40,7 @@ def ls(
             "isout": bool,
             "isdir": bool,
             "isexec": bool,
+            "size": int,  # If return_sizes is True.
         }
     """
     from . import Repo
@@ -43,7 +48,7 @@ def ls(
     with Repo.open(url, rev=rev, subrepos=True, uninitialized=True) as repo:
         path = path or ""
 
-        ret = _ls(repo, path, recursive, dvc_only)
+        ret = _ls(repo, path, recursive, dvc_only, dvc_as_dir, return_sizes)
 
         ret_list = []
         for path, info in ret.items():
@@ -54,7 +59,13 @@ def ls(
 
 
 def _ls(
-    repo: "Repo", path: str, recursive: bool = None, dvc_only: bool = False
+    repo: "Repo",
+    path: str,
+    recursive: bool = None,
+    dvc_only: bool = False,
+    # FIXME: Maybe consolidate into 'for_diskusage: bool = True'
+    dvc_as_dir: bool = True,
+    return_sizes: bool = False,
 ):
     fs: "DvcFileSystem" = repo.dvcfs
     fs_path = fs.from_os_path(path)
@@ -66,7 +77,10 @@ def _ls(
 
     infos = {}
     for root, dirs, files in fs.walk(
-        fs_path, dvcfiles=True, dvc_only=dvc_only
+        fs_path,
+        dvcfiles=True,
+        dvc_only=dvc_only,
+        dvc_as_dir=dvc_as_dir,
     ):
         entries = chain(files, dirs) if not recursive else files
 
@@ -91,5 +105,8 @@ def _ls(
                 "isdir": info["type"] == "directory",
                 "isexec": info.get("isexec", False),
             }
+            # TODO: Unit test for return_sizes.
+            if return_sizes:
+                ret[name]["size"] = info.get("size", None)
 
     return ret
