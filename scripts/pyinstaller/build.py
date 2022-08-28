@@ -1,6 +1,6 @@
 import os
 import pathlib
-from subprocess import STDOUT, check_call
+from subprocess import STDOUT, check_call, check_output
 
 path = pathlib.Path(__file__).parent.absolute()
 hooks = path / "hooks"
@@ -21,10 +21,27 @@ check_call(
     stderr=STDOUT,
 )
 
-check_call(
+out = check_output(
     [
         path / "dist" / "dvc" / "dvc",
         "doctor",
     ],
     stderr=STDOUT,
-)
+).decode()
+
+remotes = [
+    "s3",
+    "oss",
+    "gdrive",
+    "gs",
+    "hdfs",
+    "http",
+    "webhdfs",
+    "azure",
+    "ssh",
+    "webdav",
+]
+
+print(out)
+for remote in remotes:
+    assert f"\t{remote}" in out, f"Missing support for {remote}"
