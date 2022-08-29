@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from ..utils.test_hydra import hydra_setup
@@ -17,7 +19,18 @@ def test_modify_params(params_repo, dvc, changes, expected):
         assert fobj.read().strip() == expected
 
 
-@pytest.mark.parametrize("hydra_enabled", [True, False])
+@pytest.mark.parametrize(
+    "hydra_enabled",
+    [
+        pytest.param(
+            True,
+            marks=pytest.mark.skipif(
+                sys.version_info >= (3, 11), reason="unsupported on 3.11"
+            ),
+        ),
+        False,
+    ],
+)
 @pytest.mark.parametrize(
     "config_dir,config_name",
     [
