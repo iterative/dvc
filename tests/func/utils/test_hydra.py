@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
@@ -138,6 +140,7 @@ def hydra_setup(tmp_dir, config_dir, config_name):
     return str(config_dir)
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 11), reason="unsupported on 3.11")
 @pytest.mark.parametrize("suffix", ["yaml", "toml", "json"])
 @pytest.mark.parametrize(
     "overrides,expected",
