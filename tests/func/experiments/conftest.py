@@ -3,7 +3,9 @@ from textwrap import dedent
 import pytest
 
 from tests.func.test_repro_multistage import COPY_SCRIPT
-from tests.unit.repo.experiments.conftest import test_queue  # noqa
+from tests.unit.repo.experiments.conftest import (  # noqa pylint disable=unused-argument
+    test_queue,
+)
 
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
