@@ -289,4 +289,9 @@ SCHEMA = {
         "bool": All(Lower, Choices("store_true", "boolean_optional")),
         "list": All(Lower, Choices("nargs", "append")),
     },
+    "hydra": {
+        Optional("enabled", default=False): Bool,
+        "config_dir": str,
+        "config_name": str,
+    },
 }

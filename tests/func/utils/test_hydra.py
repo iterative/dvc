@@ -123,3 +123,55 @@ def test_invalid_overrides(tmp_dir, overrides):
     )
     with pytest.raises(InvalidArgumentError):
         apply_overrides(path=params_file.name, overrides=overrides)
+
+
+def hydra_setup(tmp_dir, config_dir, config_name):
+    config_dir = tmp_dir / config_dir
+    (config_dir / "db").mkdir(parents=True)
+    (config_dir / f"{config_name}.yaml").dump({"defaults": [{"db": "mysql"}]})
+    (config_dir / "db" / "mysql.yaml").dump(
+        {"driver": "mysql", "user": "omry", "pass": "secret"}
+    )
+    (config_dir / "db" / "postgresql.yaml").dump(
+        {"driver": "postgresql", "user": "foo", "pass": "bar", "timeout": 10}
+    )
+    return str(config_dir)
+
+
+@pytest.mark.parametrize("suffix", ["yaml", "toml", "json"])
+@pytest.mark.parametrize(
+    "overrides,expected",
+    [
+        ([], {"db": {"driver": "mysql", "user": "omry", "pass": "secret"}}),
+        (
+            ["db=postgresql"],
+            {
+                "db": {
+                    "driver": "postgresql",
+                    "user": "foo",
+                    "pass": "bar",
+                    "timeout": 10,
+                }
+            },
+        ),
+        (
+            ["db=postgresql", "db.timeout=20"],
+            {
+                "db": {
+                    "driver": "postgresql",
+                    "user": "foo",
+                    "pass": "bar",
+                    "timeout": 20,
+                }
+            },
+        ),
+    ],
+)
+def test_compose_and_dump(tmp_dir, suffix, overrides, expected):
+    from dvc.utils.hydra import compose_and_dump
+
+    config_name = "config"
+    config_dir = hydra_setup(tmp_dir, "conf", "config")
+    output_file = tmp_dir / f"params.{suffix}"
+    compose_and_dump(output_file, config_dir, config_name, overrides)
+    assert output_file.parse() == expected
