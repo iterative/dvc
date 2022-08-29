@@ -14,6 +14,14 @@ from dvc.scm import SCMError
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 
+SUBPROJECTS = (
+    "dvc_data",
+    "dvc_objects",
+    "dvc_render",
+    "dvc_task",
+    "dvclive",
+    "scmrepo",
+)
 package = "" if PKG is None else f"({PKG})"
 
 
@@ -23,6 +31,7 @@ def get_dvc_info():
         "---------------------------------",
         f"Platform: Python {platform.python_version()} on "
         f"{platform.platform()}",
+        f"Subprojects:{_get_subprojects()}",
         f"Supports:{_get_supported_remotes()}",
     ]
 
@@ -86,6 +95,16 @@ def _get_linktype_support_info(repo):
     )
 
     return ", ".join(links)
+
+
+def _get_subprojects():
+    subprojects = []
+    for subproject in SUBPROJECTS:
+        subprojects.append(
+            f"{subproject} = " f"{importlib_metadata.version(subproject)}"
+        )
+
+    return "\n\t" + "\n\t".join(subprojects)
 
 
 def _get_supported_remotes():
