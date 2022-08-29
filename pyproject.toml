@@ -30,11 +30,11 @@ line_length = 79
 
 [tool.pytest.ini_options]
 log_level = "debug"
-addopts = "-ra"
+addopts = "-ra -p no:hydra_pytest"
 markers = [
     "needs_internet: Might need network access for the tests",
-"vscode: Tests verifying contract between DVC and VSCode plugin",
-"studio: Tests verifying contract between DVC and Studio"
+    "vscode: Tests verifying contract between DVC and VSCode plugin",
+    "studio: Tests verifying contract between DVC and Studio",
 ]
 xfail_strict = true
 

@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from typing import (
@@ -524,7 +525,14 @@ class BaseStashQueue(ABC):
         """
         logger.debug("Using experiment params '%s'", params)
 
-        from dvc.utils.hydra import apply_overrides
+        try:
+            from dvc.utils.hydra import apply_overrides
+        except ValueError:
+            if sys.version_info >= (3, 11):
+                raise DvcException(
+                    "--set-param is not supported in Python >= 3.11"
+                )
+            raise
 
         for path, overrides in params.items():
             apply_overrides(path, overrides)

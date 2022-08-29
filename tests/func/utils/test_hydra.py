@@ -1,7 +1,6 @@
 import pytest
 
 from dvc.exceptions import InvalidArgumentError
-from dvc.utils.hydra import apply_overrides
 
 
 @pytest.mark.parametrize("suffix", ["yaml", "toml", "json"])
@@ -90,6 +89,8 @@ from dvc.utils.hydra import apply_overrides
     ],
 )
 def test_apply_overrides(tmp_dir, suffix, overrides, expected):
+    from dvc.utils.hydra import apply_overrides
+
     if suffix == "toml":
         if overrides in [
             ["foo=baz"],
@@ -114,6 +115,8 @@ def test_apply_overrides(tmp_dir, suffix, overrides, expected):
     [["foobar=2"], ["lorem=3,2"], ["+lorem=3"], ["foo[0]=bar"]],
 )
 def test_invalid_overrides(tmp_dir, overrides):
+    from dvc.utils.hydra import apply_overrides
+
     params_file = tmp_dir / "params.yaml"
     params_file.dump(
         {"foo": [{"bar": 1}, {"baz": 2}], "goo": {"bag": 3.0}, "lorem": False}
