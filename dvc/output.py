@@ -83,7 +83,6 @@ def loadd_from(stage, d_list):
         desc = d.pop(Output.PARAM_DESC, False)
         live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
-        version_id = d.pop(Output.PARAM_VERSION_ID, None)
         ret.append(
             _get(
                 stage,
@@ -97,7 +96,6 @@ def loadd_from(stage, d_list):
                 desc=desc,
                 live=live,
                 remote=remote,
-                version_id=version_id,
             )
         )
     return ret
@@ -259,7 +257,6 @@ class Output:
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
     PARAM_REMOTE = "remote"
-    PARAM_VERSION_ID = "version_id"
 
     METRIC_SCHEMA = Any(
         None,
@@ -289,11 +286,16 @@ class Output:
         desc=None,
         remote=None,
         repo=None,
-        version_id: Optional[str] = None,
     ):
         self.repo = stage.repo if not repo and stage else repo
+        meta = Meta.from_dict(info)
+        # NOTE: when version_aware is not passed into get_cloud_fs, it will be
+        # set based on whether or not path is versioned
+        fs_kwargs = {"version_aware": True} if meta.version_id else {}
         fs_cls, fs_config, fs_path = get_cloud_fs(
-            self.repo, url=path, version_aware=version_id is not None
+            self.repo,
+            url=path,
+            **fs_kwargs,
         )
         self.fs = fs_cls(**fs_config)
 
@@ -326,7 +328,7 @@ class Output:
         # By resolved path, which contains actual location,
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
-        self.meta = Meta.from_dict(info)
+        self.meta = meta
         self.hash_info = HashInfo.from_dict(info)
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
@@ -342,18 +344,15 @@ class Output:
         self.remote = remote
 
         if self.fs.version_aware:
-            self.def_path, self.version_id = self.fs.path.coalesce_version(
-                self.def_path, version_id
+            self.def_path, version_id = self.fs.path.coalesce_version(
+                self.def_path, self.meta.version_id
             )
-            self.fs_path = self.fs.path.version_path(
-                self.fs_path, self.version_id
+            self.fs_path = self.fs.path.version_path(self.fs_path, version_id)
+            self.meta.version_id = version_id
+        elif self.meta.version_id:
+            raise DvcException(
+                "Version ID unsupported for non-versioned filesystem"
             )
-        else:
-            if version_id:
-                raise DvcException(
-                    "Version ID unsupported for non-versioned filesystem"
-                )
-            self.version_id = None
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -380,9 +379,9 @@ class Output:
 
     def __str__(self):
         if self.fs.protocol != "local":
-            if self.version_id:
+            if self.meta.version_id:
                 return self.fs.path.version_path(
-                    self.def_path, self.version_id
+                    self.def_path, self.meta.version_id
                 )
             return self.def_path
 
@@ -688,8 +687,6 @@ class Output:
             path = self.def_path
 
         ret[self.PARAM_PATH] = path
-        if self.version_id:
-            ret[self.PARAM_VERSION_ID] = self.version_id
 
         if self.IS_DEPENDENCY:
             return ret
@@ -1120,10 +1117,10 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_PLOT: bool,
     Output.PARAM_PERSIST: bool,
     Output.PARAM_CHECKPOINT: bool,
-    Output.PARAM_VERSION_ID: str,
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
     Meta.PARAM_ISEXEC: bool,
+    Meta.PARAM_VERSION_ID: str,
 }
 
 SCHEMA = {

@@ -27,8 +27,7 @@ def _get(stage, p, info):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    version_id = info.pop(Output.PARAM_VERSION_ID, None)
-    return Dependency(stage, p, info, version_id=version_id)
+    return Dependency(stage, p, info)
 
 
 def loadd_from(stage, d_list):

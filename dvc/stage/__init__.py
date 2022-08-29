@@ -265,7 +265,7 @@ class Stage(params.StageParams):
         if not self.is_import:
             return False
 
-        return self.deps[0].version_id is not None
+        return self.deps[0].meta.version_id is not None
 
     @property
     def is_checkpoint(self):

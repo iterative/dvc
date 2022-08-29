@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Set, Type
 
 from dvc.exceptions import DvcException
 from dvc.output import Output
+from dvc_data.hashfile.meta import Meta
 
 if TYPE_CHECKING:
     from dvc_data.hashfile.hash_info import HashInfo
@@ -42,7 +43,7 @@ class Dependency(Output):
         from dvc_data.build import build
         from dvc_data.objects.tree import Tree, TreeError
 
-        if not self.version_id:
+        if not self.meta.version_id:
             return super().get_used_objs(**kwargs)
 
         used_obj_ids: Dict[
@@ -70,12 +71,12 @@ class Dependency(Output):
         return used_obj_ids
 
     def workspace_status(self):
-        if not self.version_id:
+        if not self.meta.version_id:
             return super().workspace_status()
 
-        current = self.version_id
+        current = self.meta.version_id
         fs_path = self.fs.path.version_path(self.fs_path, None)
-        updated = self.fs.info(fs_path)["version_id"]
+        updated = self.fs.info(fs_path)[Meta.PARAM_VERSION_ID]
 
         if current != updated:
             return {str(self): "update available"}
@@ -83,19 +84,21 @@ class Dependency(Output):
         return {}
 
     def status(self):
-        if not self.version_id:
+        if not self.meta.version_id:
             return super().status()
 
         return self.workspace_status()
 
     def update(self, rev: Optional[str] = None):
-        if not self.version_id:
+        if not self.meta.version_id:
             return
 
         if rev:
-            self.version_id = rev
+            self.meta.version_id = rev
         else:
             fs_path = self.fs.path.version_path(self.fs_path, rev)
             details = self.fs.info(fs_path)
-            self.version_id = details["version_id"]
-        self.fs_path = self.fs.path.version_path(self.fs_path, self.version_id)
+            self.meta.version_id = details[Meta.PARAM_VERSION_ID]
+        self.fs_path = self.fs.path.version_path(
+            self.fs_path, self.meta.version_id
+        )
