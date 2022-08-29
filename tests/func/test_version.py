@@ -4,6 +4,7 @@ from dvc.cli import main
 from tests.unit.test_info import (
     DVC_VERSION_REGEX,
     PYTHON_VERSION_REGEX,
+    SUBPROJECTS,
     find_supported_remotes,
 )
 
@@ -14,6 +15,9 @@ def test_(tmp_dir, dvc, scm, capsys):
     out, _ = capsys.readouterr()
     assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", out)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", out)
+    for subproject in SUBPROJECTS:
+        assert re.search(rf"{subproject} = {DVC_VERSION_REGEX}", out)
+
     assert find_supported_remotes(out)
     assert re.search(r"Cache types: .*", out)
     assert re.search(r"Caches: local", out)
