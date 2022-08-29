@@ -104,20 +104,6 @@ def test_failed_exp_workspace(
     )
 
 
-@pytest.mark.parametrize(
-    "changes, expected",
-    [
-        [["foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"],
-        [["params.yaml:foo=baz"], "foo: baz\ngoo:\n  bag: 3.0\nlorem: false"],
-    ],
-)
-def test_modify_params(params_repo, dvc, changes, expected):
-    dvc.experiments.run(params=changes)
-    # pylint: disable=unspecified-encoding
-    with open("params.yaml", mode="r") as fobj:
-        assert fobj.read().strip() == expected
-
-
 def test_apply(tmp_dir, scm, dvc, exp_stage):
     from dvc.exceptions import InvalidArgumentError
     from dvc.repo.experiments.exceptions import ApplyConflictError

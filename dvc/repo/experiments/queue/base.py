@@ -20,6 +20,7 @@ from typing import (
 
 from funcy import cached_property
 
+from dvc.dependency import ParamsDependency
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.ui import ui
@@ -521,12 +522,12 @@ class BaseStashQueue(ABC):
                 provided via `exp run --set-param`.
 
         .. _Hydra Override:
-            https://hydra.cc/docs/next/advanced/override_grammar/basic/
+            https://hydra.cc/docs/advanced/override_grammar/basic/
         """
         logger.debug("Using experiment params '%s'", params)
 
         try:
-            from dvc.utils.hydra import apply_overrides
+            from dvc.utils.hydra import apply_overrides, compose_and_dump
         except ValueError:
             if sys.version_info >= (3, 11):
                 raise DvcException(
@@ -534,8 +535,23 @@ class BaseStashQueue(ABC):
                 )
             raise
 
+        hydra_config = self.repo.config.get("hydra", {})
+        hydra_enabled = hydra_config.get("enabled", False)
+        hydra_output_file = ParamsDependency.DEFAULT_PARAMS_FILE
         for path, overrides in params.items():
-            apply_overrides(path, overrides)
+            if hydra_enabled and path == hydra_output_file:
+                config_dir = os.path.join(
+                    self.repo.root_dir, hydra_config.get("config_dir", "conf")
+                )
+                config_name = hydra_config.get("config_name", "config")
+                compose_and_dump(
+                    path,
+                    config_dir,
+                    config_name,
+                    overrides,
+                )
+            else:
+                apply_overrides(path, overrides)
 
         # Force params file changes to be staged in git
         # Otherwise in certain situations the changes to params file may be
