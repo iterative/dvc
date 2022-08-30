@@ -127,8 +127,16 @@ def _fetch_partial_imports(repo, targets, **kwargs):
     downloaded = 0
     failed = 0
     for stage in repo.partial_imports(targets, **kwargs):
+        dep = stage.deps[0]
+        out = stage.outs[0]
         try:
-            stage.run()
+            if dep.changed_checksum():
+                raise DataSourceChanged(f"{stage} ({dep})")
+
+            logger.info("Importing '%s' -> '%s'", dep, out)
+            out.transfer(
+                dep.def_path, jobs=kwargs.get("jobs"), odb=repo.odb.local
+            )
         except DataSourceChanged as exc:
             logger.warning(f"{exc}")
             failed += 1

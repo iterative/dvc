@@ -554,9 +554,8 @@ class Stage(params.StageParams):
             self.remove_outs(ignore_remove=False, force=False)
 
         if (not self.frozen and self.is_import) or self.is_partial_import:
-            jobs = kwargs.get("jobs", None)
             self._sync_import(
-                dry, force, jobs, no_download, check_changed=self.frozen
+                dry, force, kwargs.get("jobs", None), no_download
             )
         elif not self.frozen and self.cmd:
             self._run_stage(dry, force, **kwargs)
@@ -580,10 +579,8 @@ class Stage(params.StageParams):
         return run_stage(self, dry, force, **kwargs)
 
     @rwlocked(read=["deps"], write=["outs"])
-    def _sync_import(
-        self, dry, force, jobs, no_download, check_changed: bool = False
-    ):
-        sync_import(self, dry, force, jobs, no_download, check_changed)
+    def _sync_import(self, dry, force, jobs, no_download):
+        sync_import(self, dry, force, jobs, no_download)
 
     @rwlocked(read=["outs"])
     def _check_missing_outputs(self):
