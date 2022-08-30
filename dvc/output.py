@@ -737,7 +737,7 @@ class Output:
         elif self.hash_info:
             try:
                 obj = oload(self.odb, self.hash_info)
-            except FileNotFoundError:
+            except (FileNotFoundError, ObjectFormatError):
                 return None
         else:
             return None
