@@ -132,7 +132,7 @@ DVC uncommitted changes:
     if "--untracked-files" in args:
         expected_out += """
 Untracked files:
-  (use "git add <file> ..." or dvc add <file>..." to commit to git or to dvc)
+  (use "git add <file> ..." or "dvc add <file>..." to commit to git or to dvc)
         untracked
 """
     if "--unchanged" in args:

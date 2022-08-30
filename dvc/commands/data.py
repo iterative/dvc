@@ -41,7 +41,7 @@ class CmdDataStatus(CmdBase):
         ),
         "untracked": (
             'use "git add <file> ..." or '
-            'dvc add <file>..." to commit to git or to dvc',
+            '"dvc add <file>..." to commit to git or to dvc',
         ),
         "git_dirty": (
             "there are {}changes not tracked by dvc, "
