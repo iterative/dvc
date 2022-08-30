@@ -46,7 +46,6 @@ def sync_import(
     force=False,
     jobs=None,
     no_download=False,
-    check_changed=False,
 ):
     """Synchronize import's outs to the workspace."""
     logger.info("Importing '%s' -> '%s'", stage.deps[0], stage.outs[0])
@@ -56,13 +55,9 @@ def sync_import(
     if not force and stage.already_cached():
         stage.outs[0].checkout()
     else:
-        if check_changed:
-            old_hash_info = stage.deps[0].hash_info
         stage.save_deps()
-        if check_changed and not old_hash_info == stage.deps[0].hash_info:
-            from dvc.stage.exceptions import DataSourceChanged
-
-            raise DataSourceChanged(f"{stage} ({stage.deps[0]})")
-
         if not no_download:
-            stage.deps[0].download(stage.outs[0], jobs=jobs)
+            stage.deps[0].download(
+                stage.outs[0],
+                jobs=jobs,
+            )
