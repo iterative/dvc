@@ -116,23 +116,19 @@ def stages(tmp_dir, run_copy):
 
 
 def test_collect_not_a_group_stage_with_group_flag(tmp_dir, dvc, stages):
-    assert set(dvc.stage.collect("copy-bar-foobar", accept_group=True)) == {
+    assert set(dvc.stage.collect("copy-bar-foobar")) == {
         stages["copy-bar-foobar"]
     }
-    assert set(
-        dvc.stage.collect("copy-bar-foobar", accept_group=True, with_deps=True)
-    ) == {
+    assert set(dvc.stage.collect("copy-bar-foobar", with_deps=True)) == {
         stages["copy-bar-foobar"],
         stages["copy-foo-bar"],
         stages["foo-generate"],
     }
+    assert set(dvc.stage.collect_granular("copy-bar-foobar")) == {
+        (stages["copy-bar-foobar"], None)
+    }
     assert set(
-        dvc.stage.collect_granular("copy-bar-foobar", accept_group=True)
-    ) == {(stages["copy-bar-foobar"], None)}
-    assert set(
-        dvc.stage.collect_granular(
-            "copy-bar-foobar", accept_group=True, with_deps=True
-        )
+        dvc.stage.collect_granular("copy-bar-foobar", with_deps=True)
     ) == {
         (stages["copy-bar-foobar"], None),
         (stages["copy-foo-bar"], None),
@@ -153,11 +149,8 @@ def test_collect_generated(tmp_dir, dvc):
     assert len(all_stages) == 5
 
     assert set(dvc.stage.collect()) == all_stages
-    assert set(dvc.stage.collect("build", accept_group=True)) == all_stages
-    assert (
-        set(dvc.stage.collect("build", accept_group=True, with_deps=True))
-        == all_stages
-    )
+    assert set(dvc.stage.collect("build")) == all_stages
+    assert set(dvc.stage.collect("build", with_deps=True)) == all_stages
     assert set(dvc.stage.collect("build*", glob=True)) == all_stages
     assert (
         set(dvc.stage.collect("build*", glob=True, with_deps=True))
@@ -165,17 +158,9 @@ def test_collect_generated(tmp_dir, dvc):
     )
 
     stages_info = {(stage, None) for stage in all_stages}
+    assert set(dvc.stage.collect_granular("build")) == stages_info
     assert (
-        set(dvc.stage.collect_granular("build", accept_group=True))
-        == stages_info
-    )
-    assert (
-        set(
-            dvc.stage.collect_granular(
-                "build", accept_group=True, with_deps=True
-            )
-        )
-        == stages_info
+        set(dvc.stage.collect_granular("build", with_deps=True)) == stages_info
     )
 
 

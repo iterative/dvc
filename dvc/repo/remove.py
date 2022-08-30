@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @locked
 def remove(self: "Repo", target: str, outs: bool = False):
     try:
-        stages = self.stage.from_target(target)
+        stages = self.stage.from_target(target, accept_group=False)
     except (StageNotFound, StageFileDoesNotExistError) as e:
         # If the user specified a tracked file as a target instead of a stage,
         # e.g. `data.csv` instead of `data.csv.dvc`,
