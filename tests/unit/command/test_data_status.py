@@ -110,7 +110,7 @@ def test_show_status(dvc, scm, mocker, capsys, mocked_status, args, is_dirty):
     out, err = capsys.readouterr()
     expected_out = """\
 Not in cache:
-  (use "dvc pull <file>..." to download files)
+  (use "dvc fetch <file>..." to download files)
         notincache
 
 DVC committed changes:
@@ -123,6 +123,7 @@ DVC committed changes:
 
 DVC uncommitted changes:
   (use "dvc commit <file>..." to track changes)
+  (use "dvc checkout <file>..." to discard changes)
         added: dir/baz
         modified: dir/bar
         deleted: dir/foobar
