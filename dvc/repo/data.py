@@ -67,7 +67,6 @@ def _granular_diff(
     old_obj: Optional["HashFile"],
     new_obj: Optional["HashFile"],
     cache: "HashFileDB",
-    with_dirs: bool = False,
 ) -> Dict[str, List[str]]:
     from dvc_data.diff import ROOT
     from dvc_data.diff import diff as odiff
@@ -77,29 +76,14 @@ def _granular_diff(
             return root
         return os.path.sep.join([root, *paths])
 
-    def type_changed(old, new):
-        if old.oid and new.oid:
-            return old.oid.isdir != new.oid.isdir
-        return False
-
     diff_data = odiff(old_obj, new_obj, cache)
 
     output: Dict[str, List[str]] = defaultdict(list)
     for state in ("added", "deleted", "modified", "unchanged"):
         items = getattr(diff_data, state)
         for item in items:  # pylint: disable=not-an-iterable
-            old = item.old
-            new = item.new
-            entry = old if state == "deleted" else new
+            entry = item.old if state == "deleted" else item.new
             isdir = entry.oid.isdir if entry.oid else False
-            obj_type_changed = type_changed(old, new)
-            if (
-                not with_dirs
-                and isdir
-                and entry.key == ROOT
-                and not obj_type_changed
-            ):
-                continue
 
             path = path_join(root, *entry.key, isdir=isdir)
             output[state].append(path)
@@ -127,17 +111,16 @@ def _diff(
     new_oid: Optional["HashInfo"],
     new_obj: Optional["HashFile"],
     odb: "HashFileDB",
-    with_dirs: bool = False,
     granular: bool = False,
 ) -> Dict[str, List[str]]:
     if not granular:
         return _shallow_diff(root, old_oid, new_oid, odb)
     if (old_oid and not old_obj) or (new_oid and not new_obj):
         # we don't have enough information to give full details
-        unknown = _get_obj_items(root, new_obj or old_obj)
+        unknown = _get_obj_items(root, new_obj)
         shallow_diff = _shallow_diff(root, old_oid, new_oid, odb)
         return {**shallow_diff, "unknown": unknown}
-    return _granular_diff(root, old_obj, new_obj, odb, with_dirs=with_dirs)
+    return _granular_diff(root, old_obj, new_obj, odb)
 
 
 class GitInfo(TypedDict, total=False):

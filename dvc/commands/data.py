@@ -51,7 +51,6 @@ class CmdDataStatus(CmdBase):
                     file: state
                     for state, files in stage_status.items()
                     for file in files
-                    if state != "unknown"
                 }
             if not items:
                 continue
@@ -102,7 +101,6 @@ class CmdDataStatus(CmdBase):
             status = self.repo.data_status(
                 granular=self.args.granular,
                 untracked_files=self.args.untracked_files,
-                with_dirs=self.args.with_dirs,
             )
 
         if not self.args.unchanged:
@@ -171,11 +169,5 @@ def add_parser(subparsers, parent_parser):
         const="all",
         nargs="?",
         help="Show untracked files.",
-    )
-    data_status_parser.add_argument(
-        "--with-dirs",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
     )
     data_status_parser.set_defaults(func=CmdDataStatus)
