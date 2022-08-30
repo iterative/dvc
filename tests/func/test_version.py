@@ -23,3 +23,26 @@ def test_(tmp_dir, dvc, scm, capsys):
     assert re.search(r"Caches: local", out)
     assert re.search(r"Remotes: None", out)
     assert "Repo: dvc, git" in out
+
+
+def test_import_error(tmp_dir, dvc, scm, capsys, monkeypatch):
+    import importlib.metadata as importlib_metadata
+
+    original = importlib_metadata.version
+
+    def _import_error(name):
+        if name == "dvclive":
+            raise ImportError
+        return original(name)
+
+    monkeypatch.setattr(importlib_metadata, "version", _import_error)
+    assert main(["version"]) == 0
+
+    out, _ = capsys.readouterr()
+
+    for subproject in SUBPROJECTS:
+        match = re.search(rf"{subproject} = {DVC_VERSION_REGEX}", out)
+        if subproject != "dvclive":
+            assert match
+        else:
+            assert match is None

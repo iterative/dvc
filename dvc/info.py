@@ -100,9 +100,11 @@ def _get_linktype_support_info(repo):
 def _get_subprojects():
     subprojects = []
     for subproject in SUBPROJECTS:
-        subprojects.append(
-            f"{subproject} = " f"{importlib_metadata.version(subproject)}"
-        )
+        try:
+            version = importlib_metadata.version(subproject)
+            subprojects.append(f"{subproject} = {version}")
+        except ImportError:
+            pass
 
     return "\n\t" + "\n\t".join(subprojects)
 
