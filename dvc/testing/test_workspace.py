@@ -19,7 +19,7 @@ class TestImport:
     def dir_md5(self):
         pytest.skip()
 
-    def test_import_dir(self, tmp_dir, dvc, workspace, stage_md5, dir_md5):
+    def test_import_dir(self, tmp_dir, dvc, workspace):
         from dvc.odbmgr import ODBManager
 
         workspace.gen(
@@ -33,7 +33,7 @@ class TestImport:
         dvc.odb = ODBManager(dvc)
 
         assert not (tmp_dir / "dir").exists()  # sanity check
-        dvc.imp_url("remote://workspace/dir")
+        imported = dvc.imp_url("remote://workspace/dir")
         assert set(os.listdir(tmp_dir / "dir")) == {"file", "subdir"}
         assert (tmp_dir / "dir" / "file").read_text() == "file"
         assert list(os.listdir(tmp_dir / "dir" / "subdir")) == ["subfile"]
@@ -43,21 +43,19 @@ class TestImport:
 
         assert dvc.status() == {}
 
-        if stage_md5 is not None and dir_md5 is not None:
-            assert (tmp_dir / "dir.dvc").read_text() == (
-                f"md5: {stage_md5}\n"
-                "frozen: true\n"
-                "deps:\n"
-                f"- md5: {dir_md5}\n"
-                "  size: 11\n"
-                "  nfiles: 2\n"
-                "  path: remote://workspace/dir\n"
-                "outs:\n"
-                "- md5: b6dcab6ccd17ca0a8bf4a215a37d14cc.dir\n"
-                "  size: 11\n"
-                "  nfiles: 2\n"
-                "  path: dir\n"
-            )
+        assert (tmp_dir / "dir.dvc").exists()
+        assert imported.frozen
+        assert imported.outs[0].hash_info.name == "md5"
+        assert (
+            imported.outs[0].hash_info.value
+            == "b6dcab6ccd17ca0a8bf4a215a37d14cc.dir"
+        )
+        assert imported.deps[0].meta.size == 11
+        assert imported.deps[0].meta.nfiles == 2
+        assert imported.deps[0].def_path == "remote://workspace/dir"
+
+        assert imported.outs[0].meta.size == 11
+        assert imported.outs[0].meta.nfiles == 2
 
     @pytest.fixture
     def is_object_storage(self):
