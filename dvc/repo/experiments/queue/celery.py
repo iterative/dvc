@@ -253,7 +253,6 @@ class LocalCeleryQueue(BaseStashQueue):
 
         def _load_collected(rev: str) -> Optional[ExecutorResult]:
             executor_info = _load_info(rev)
-            print("executor_info is", executor_info.status)
             if executor_info.status > TaskStatus.SUCCESS:
                 return executor_info.result
             raise FileNotFoundError
