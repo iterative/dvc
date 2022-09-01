@@ -1,4 +1,5 @@
 import os
+import posixpath
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
@@ -11,6 +12,7 @@ from typing import (
     cast,
 )
 
+from dvc.fs.git import GitFileSystem
 from dvc.ui import ui
 
 if TYPE_CHECKING:
@@ -21,6 +23,10 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.obj import HashFile
+
+
+def posixpath_to_os_path(path: str) -> str:
+    return path.replace(posixpath.sep, os.path.sep)
 
 
 def _in_cache(obj: "HashInfo", cache: "HashFileDB") -> bool:
@@ -213,6 +219,8 @@ def _diff_head_to_index(
                 continue
 
             root = str(out)
+            if isinstance(out.fs, GitFileSystem):
+                root = posixpath_to_os_path(root)
             typ = "index" if rev == "workspace" else head
             objs[root][typ] = (out.get_obj(), out.hash_info)
 
