@@ -288,7 +288,15 @@ class Output:
         repo=None,
     ):
         self.repo = stage.repo if not repo and stage else repo
-        fs_cls, fs_config, fs_path = get_cloud_fs(self.repo, url=path)
+        meta = Meta.from_dict(info)
+        # NOTE: when version_aware is not passed into get_cloud_fs, it will be
+        # set based on whether or not path is versioned
+        fs_kwargs = {"version_aware": True} if meta.version_id else {}
+        fs_cls, fs_config, fs_path = get_cloud_fs(
+            self.repo,
+            url=path,
+            **fs_kwargs,
+        )
         self.fs = fs_cls(**fs_config)
 
         if (
@@ -320,7 +328,7 @@ class Output:
         # By resolved path, which contains actual location,
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
-        self.meta = Meta.from_dict(info)
+        self.meta = meta
         self.hash_info = HashInfo.from_dict(info)
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
@@ -334,6 +342,12 @@ class Output:
         self.obj = None
 
         self.remote = remote
+
+        if self.fs.version_aware:
+            _, version_id = self.fs.path.coalesce_version(
+                self.def_path, self.meta.version_id
+            )
+            self.meta.version_id = version_id
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -419,13 +433,17 @@ class Output:
         )
 
     def get_hash(self):
+        _, hash_info = self._get_hash_meta()
+        return hash_info
+
+    def _get_hash_meta(self):
         if self.use_cache:
             odb = self.odb
             name = self.odb.fs.PARAM_CHECKSUM
         else:
             odb = self.repo.odb.local
             name = self.fs.PARAM_CHECKSUM
-        _, _, obj = build(
+        _, meta, obj = build(
             odb,
             self.fs_path,
             self.fs,
@@ -433,7 +451,11 @@ class Output:
             ignore=self.dvcignore,
             dry_run=not self.use_cache,
         )
-        return obj.hash_info
+        return meta, obj.hash_info
+
+    def get_meta(self) -> Meta:
+        meta, _ = self._get_hash_meta()
+        return meta
 
     @property
     def is_dir_checksum(self):
@@ -468,6 +490,11 @@ class Output:
             return False
         except (FileNotFoundError, ObjectFormatError):
             return True
+
+    def changed_meta(self) -> bool:
+        if self.fs.version_aware and self.meta.version_id:
+            return self.meta.version_id == self.get_meta().version_id
+        return False
 
     def workspace_status(self):
         if not self.exists:
@@ -1095,6 +1122,7 @@ ARTIFACT_SCHEMA = {
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
     Meta.PARAM_ISEXEC: bool,
+    Meta.PARAM_VERSION_ID: str,
 }
 
 SCHEMA = {
