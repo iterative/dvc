@@ -113,6 +113,19 @@ def _get_monitor_tasks(stage, checkpoint_func, proc):
         from .monitor import CheckpointTask
 
         result.append(CheckpointTask(stage, checkpoint_func, proc))
+    elif (
+        any(o.is_metric or o.is_plot for o in stage.outs)
+        # TODO: How to enable the integration?
+        # Only env var or also other options?
+        and os.getenv("DVC_STUDIO_URL")
+    ):
+        from .monitor import LiveStudioTask
+
+        # TODO: How to get the user token?
+        # Will it be embedded in the URL?
+        result.append(
+            LiveStudioTask(stage, proc, url=os.getenv("DVC_STUDIO_URL"))
+        )
 
     return result
 
