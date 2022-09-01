@@ -90,6 +90,7 @@ def test_get_used_objs(exists, expected_message, mocker, caplog):
     mocker.patch.object(
         stage.repo.dvcignore, "check_ignore", return_value=_no_match("path")
     )
+    stage.repo.fs.version_aware = False
 
     output = Output(stage, "path")
 
