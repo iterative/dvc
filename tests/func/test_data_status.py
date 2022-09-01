@@ -1,3 +1,4 @@
+from os import fspath
 from os.path import join
 
 import pytest
@@ -96,6 +97,37 @@ def test_directory(M, tmp_dir, dvc, scm):
         "not_in_cache": [],
         "unchanged": [join("dir", "foo")],
         "untracked": ["untracked"],
+    }
+
+
+def test_tracked_directory_deep(M, tmp_dir, dvc, scm):
+    """Test for a directory not in cwd, but nested inside other directories."""
+    (tmp_dir / "sub").gen({"dir": {"foo": "foo"}})
+    dvc.add(fspath(tmp_dir / "sub" / "dir"))
+    scm.add_commit(["sub/dir.dvc", "sub/.gitignore"], message="add sub/dir")
+
+    (tmp_dir / "sub" / "dir").gen("bar", "bar")
+    dvc.commit(None, force=True)
+    (tmp_dir / "sub" / "dir").gen("foobar", "foobar")
+
+    assert dvc.data_status() == {
+        **EMPTY_STATUS,
+        "committed": {"modified": [join("sub", "dir", "")]},
+        "uncommitted": {"modified": [join("sub", "dir", "")]},
+        "git": M.dict(),
+    }
+    assert dvc.data_status(granular=True, untracked_files="all") == {
+        **EMPTY_STATUS,
+        "committed": {
+            "added": [join("sub", "dir", "bar")],
+            "modified": [join("sub", "dir", "")],
+        },
+        "uncommitted": {
+            "added": [join("sub", "dir", "foobar")],
+            "modified": [join("sub", "dir", "")],
+        },
+        "git": M.dict(),
+        "unchanged": [join("sub", "dir", "foo")],
     }
 
 
