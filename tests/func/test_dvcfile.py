@@ -335,7 +335,7 @@ def test_dvcfile_dump_preserves_desc(tmp_dir, dvc, run_copy):
     (tmp_dir / dvcfile.path).dump(data)
 
     assert stage.desc == stage_desc
-    stage.outs[0].desc = out_desc
+    stage.outs[0].annot.desc = out_desc
     dvcfile.dump(stage)
     loaded = dvcfile._load()[0]
     assert loaded == data
@@ -401,7 +401,7 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
     stage = dvc.stage.load_one(name="stage1")
     assert stage.meta == {"key1": "value1", "key2": "value2"}
     assert stage.desc == "stage desc"
-    assert stage.outs[0].desc == "bar desc"
+    assert stage.outs[0].annot.desc == "bar desc"
 
     # sanity check
     stage.dump()

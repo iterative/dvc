@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
+from dvc.annotations import ANNOTATION_FIELDS
 from dvc.exceptions import InvalidArgumentError
 from dvc_data.hashfile.meta import Meta
 
@@ -194,9 +195,9 @@ def compute_md5(stage):
     return dict_md5(
         d,
         exclude=[
+            *ANNOTATION_FIELDS,
             stage.PARAM_LOCKED,  # backward compatibility
             stage.PARAM_FROZEN,
-            Output.PARAM_DESC,
             Output.PARAM_METRIC,
             Output.PARAM_PERSIST,
             Output.PARAM_CHECKPOINT,

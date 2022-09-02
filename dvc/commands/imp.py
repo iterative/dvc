@@ -21,6 +21,8 @@ class CmdImport(CmdBase):
                 no_exec=self.args.no_exec,
                 no_download=self.args.no_download,
                 desc=self.args.desc,
+                type=self.args.type,
+                labels=self.args.labels,
                 jobs=self.args.jobs,
             )
         except DvcException:
@@ -34,6 +36,8 @@ class CmdImport(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
+    from .add import _add_annotating_args
+
     IMPORT_HELP = (
         "Download file or directory tracked by DVC or by Git "
         "into the workspace, and track it."
@@ -85,15 +89,6 @@ def add_parser(subparsers, parent_parser):
         " but do not actually download the file(s).",
     )
     import_parser.add_argument(
-        "--desc",
-        type=str,
-        metavar="<text>",
-        help=(
-            "User description of the data (optional). "
-            "This doesn't affect any DVC operations."
-        ),
-    )
-    import_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
@@ -103,4 +98,6 @@ def add_parser(subparsers, parent_parser):
         ),
         metavar="<number>",
     )
+
+    _add_annotating_args(import_parser)
     import_parser.set_defaults(func=CmdImport)

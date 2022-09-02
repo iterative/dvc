@@ -6,6 +6,7 @@ import pytest
 from funcy import first
 from scmrepo.git import Git
 
+from dvc.annotations import Annotation
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
@@ -627,3 +628,21 @@ def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+def test_import_with_annotations(M, tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    annot = {"desc": "foo desc", "labels": ["l1", "l2"], "type": "t1"}
+    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo", no_exec=True, **annot)
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+    # try to selectively update/overwrite some annotations
+    annot = {**annot, "type": "t2"}
+    stage = dvc.imp(
+        os.fspath(erepo_dir), "foo", "foo", no_exec=True, type="t2"
+    )
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

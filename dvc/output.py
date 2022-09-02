@@ -28,6 +28,7 @@ from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer as otransfer
 from dvc_objects.errors import ObjectFormatError
 
+from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
 from .utils import relpath
 from .utils.fs import path_isin
@@ -80,9 +81,9 @@ def loadd_from(stage, d_list):
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
         checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
-        desc = d.pop(Output.PARAM_DESC, False)
         live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
+        annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         ret.append(
             _get(
                 stage,
@@ -93,9 +94,9 @@ def loadd_from(stage, d_list):
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
-                desc=desc,
                 live=live,
                 remote=remote,
+                **annot,
             )
         )
     return ret
@@ -187,7 +188,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
-                Output.PARAM_DESC,
+                Annotation.PARAM_DESC,
             ],
         )
 
@@ -253,7 +254,6 @@ class Output:
     PARAM_PLOT_TITLE = "title"
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
-    PARAM_DESC = "desc"
     PARAM_LIVE = "live"
     PARAM_LIVE_SUMMARY = "summary"
     PARAM_LIVE_HTML = "html"
@@ -285,9 +285,12 @@ class Output:
         checkpoint=False,
         live=False,
         desc=None,
+        type=None,  # pylint: disable=redefined-builtin
+        labels=None,
         remote=None,
         repo=None,
     ):
+        self.annot = Annotation(desc=desc, type=type, labels=labels or [])
         self.repo = stage.repo if not repo and stage else repo
         meta = Meta.from_dict(info or {})
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be
@@ -336,7 +339,6 @@ class Output:
         self.persist = persist
         self.checkpoint = checkpoint
         self.live = live
-        self.desc = desc
 
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj = None
@@ -703,9 +705,7 @@ class Output:
         if self.IS_DEPENDENCY:
             return ret
 
-        if self.desc:
-            ret[self.PARAM_DESC] = self.desc
-
+        ret.update(self.annot.to_dict())
         if not self.use_cache:
             ret[self.PARAM_CACHE] = self.use_cache
 
@@ -1121,22 +1121,26 @@ class Output:
         return bool(self.plot) or bool(self.live)
 
 
-ARTIFACT_SCHEMA = {
-    **CHECKSUMS_SCHEMA,
-    Required(Output.PARAM_PATH): str,
-    Output.PARAM_PLOT: bool,
-    Output.PARAM_PERSIST: bool,
-    Output.PARAM_CHECKPOINT: bool,
+META_SCHEMA = {
     Meta.PARAM_SIZE: int,
     Meta.PARAM_NFILES: int,
     Meta.PARAM_ISEXEC: bool,
     Meta.PARAM_VERSION_ID: str,
 }
 
+ARTIFACT_SCHEMA = {
+    **CHECKSUMS_SCHEMA,
+    **META_SCHEMA,
+    Required(Output.PARAM_PATH): str,
+    Output.PARAM_PLOT: bool,
+    Output.PARAM_PERSIST: bool,
+    Output.PARAM_CHECKPOINT: bool,
+}
+
 SCHEMA = {
     **ARTIFACT_SCHEMA,
+    **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
     Output.PARAM_METRIC: Output.METRIC_SCHEMA,
-    Output.PARAM_DESC: str,
     Output.PARAM_REMOTE: str,
 }

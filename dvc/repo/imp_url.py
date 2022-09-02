@@ -22,6 +22,8 @@ def imp_url(
     remote=None,
     to_remote=False,
     desc=None,
+    type=None,  # pylint: disable=redefined-builtin
+    labels=None,
     jobs=None,
 ):
     from dvc.dvcfile import Dvcfile
@@ -61,9 +63,8 @@ def imp_url(
     )
     restore_fields(stage)
 
-    if desc:
-        stage.outs[0].desc = desc
-
+    out_obj = stage.outs[0]
+    out_obj.annot.update(desc=desc, type=type, labels=labels)
     dvcfile = Dvcfile(self, stage.path)
     dvcfile.remove()
 
