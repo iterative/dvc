@@ -382,7 +382,10 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             entry_key = key + (name,)
             try:
                 info = self._info(
-                    entry_key, entry_path, ignore_subrepos=ignore_subrepos
+                    entry_key,
+                    entry_path,
+                    ignore_subrepos=ignore_subrepos,
+                    check_ignored=False,
                 )
             except FileNotFoundError:
                 continue
@@ -413,7 +416,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
         return self._info(key, path, ignore_subrepos=ignore_subrepos)
 
-    def _info(self, key, path, ignore_subrepos=True):
+    def _info(self, key, path, ignore_subrepos=True, check_ignored=True):
         repo, fs, fs_path, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
 
         dvcignore = repo.dvcignore
@@ -431,7 +434,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if fs:
             try:
                 fs_info = fs.info(fs_path)
-                if dvcignore.is_ignored(
+                if check_ignored and dvcignore.is_ignored(
                     fs, fs_path, ignore_subrepos=ignore_subrepos
                 ):
                     fs_info = None
