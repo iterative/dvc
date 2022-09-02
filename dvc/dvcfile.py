@@ -172,7 +172,7 @@ class FileMixin:
     def dump(self, stage, **kwargs):
         raise NotImplementedError
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
@@ -204,12 +204,12 @@ class SingleStageFile(FileMixin):
     def remove_stage(self, stage):  # pylint: disable=unused-argument
         self.remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         assert isinstance(ancestor, SingleStageFile)
         assert isinstance(other, SingleStageFile)
 
         stage = self.stage
-        stage.merge(ancestor.stage, other.stage)
+        stage.merge(ancestor.stage, other.stage, allowed=allowed)
         self.dump(stage)
 
 
@@ -310,7 +310,7 @@ class PipelineFile(FileMixin):
         else:
             super().remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
@@ -411,7 +411,7 @@ class Lockfile(FileMixin):
         else:
             self.remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
