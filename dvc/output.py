@@ -1127,7 +1127,7 @@ class Output:
                 "unable to auto-merge outputs that are not directories"
             )
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         from dvc_data.hashfile.tree import MergeError as TreeMergeError
         from dvc_data.hashfile.tree import du, merge
 
@@ -1144,7 +1144,11 @@ class Output:
 
         try:
             merged = merge(
-                self.odb, ancestor_info, self.hash_info, other.hash_info
+                self.odb,
+                ancestor_info,
+                self.hash_info,
+                other.hash_info,
+                allowed=allowed,
             )
         except TreeMergeError as exc:
             raise MergeError(str(exc)) from exc
