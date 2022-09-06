@@ -281,8 +281,7 @@ def test_import_url_no_download(tmp_dir, dvc, local_workspace):
     assert not dst.exists()
 
     out = stage.outs[0]
-    assert out.hash_info.value is None
-    assert out.hash_info.name is None
+    assert not out.hash_info
     assert out.meta.size is None
 
     status = dvc.status()

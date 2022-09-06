@@ -330,7 +330,6 @@ class Output:
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.meta = meta
-        self.hash_info = HashInfo.from_dict(info)
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -349,6 +348,16 @@ class Output:
                 self.def_path, self.meta.version_id
             )
             self.meta.version_id = version_id
+
+        if self.is_in_repo:
+            self.hash_name = "md5"
+        else:
+            self.hash_name = self.fs.PARAM_CHECKSUM
+
+        self.hash_info = HashInfo(
+            name=self.hash_name,
+            value=getattr(self.meta, self.hash_name, None),
+        )
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -440,15 +449,13 @@ class Output:
     def _get_hash_meta(self):
         if self.use_cache:
             odb = self.odb
-            name = self.odb.fs.PARAM_CHECKSUM
         else:
             odb = self.repo.odb.local
-            name = self.fs.PARAM_CHECKSUM
         _, meta, obj = build(
             odb,
             self.fs_path,
             self.fs,
-            name,
+            self.hash_name,
             ignore=self.dvcignore,
             dry_run=not self.use_cache,
         )
@@ -579,7 +586,7 @@ class Output:
                 self.repo.odb.local,
                 self.fs_path,
                 self.fs,
-                self.fs.PARAM_CHECKSUM,
+                self.hash_name,
                 ignore=self.dvcignore,
                 dry_run=True,
             )
@@ -596,7 +603,7 @@ class Output:
             self.odb,
             self.fs_path,
             self.fs,
-            self.odb.fs.PARAM_CHECKSUM,
+            self.hash_name,
             ignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
@@ -638,7 +645,7 @@ class Output:
                     self.odb,
                     filter_info or self.fs_path,
                     self.fs,
-                    self.odb.fs.PARAM_CHECKSUM,
+                    self.hash_name,
                     ignore=self.dvcignore,
                 )
                 otransfer(
@@ -667,7 +674,7 @@ class Output:
             self.odb,
             self.fs_path,
             self.fs,
-            self.odb.fs.PARAM_CHECKSUM,
+            self.hash_name,
             ignore=self.dvcignore,
         )
         save_obj = save_obj.filter(prefix)
@@ -1048,7 +1055,7 @@ class Output:
         other = out.dumpd()
 
         ignored = [
-            self.fs.PARAM_CHECKSUM,
+            self.hash_name,
             Meta.PARAM_SIZE,
             Meta.PARAM_NFILES,
         ]

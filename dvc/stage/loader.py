@@ -69,7 +69,8 @@ class StageLoader(Mapping):
             info = info.copy()
             info.pop("path", None)
             item.meta = Meta.from_dict(info)
-            item.hash_info = HashInfo.from_dict(info)
+            hash_value = getattr(item.meta, item.hash_name, None)
+            item.hash_info = HashInfo(item.hash_name, hash_value)
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data=None):

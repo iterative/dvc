@@ -39,12 +39,13 @@ class ParamsDependency(Dependency):
 
     def __init__(self, stage, path, params=None, repo=None):
         self.params = list(params) if params else []
-        info = (
-            {self.PARAM_PARAMS: params} if isinstance(params, dict) else None
-        )
+        hash_info = HashInfo()
+        if isinstance(params, dict):
+            hash_info = HashInfo(self.PARAM_PARAMS, params)
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
-        super().__init__(stage, path, info=info, repo=repo)
+        super().__init__(stage, path, repo=repo)
+        self.hash_info = hash_info
 
     def dumpd(self):
         ret = super().dumpd()
