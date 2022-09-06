@@ -252,7 +252,7 @@ class Index:
             if out.files:
                 out.obj = out.get_obj()
 
-            data_index[key] = DataIndexEntry(
+            entry = DataIndexEntry(
                 meta=out.meta,
                 obj=out.obj,
                 hash_info=out.hash_info,
@@ -260,6 +260,11 @@ class Index:
                 cache=out.odb,
                 remote=remote,
             )
+            if out.stage.is_import and not out.stage.is_repo_import:
+                entry.fs = out.stage.deps[0].fs
+                entry.path = out.stage.deps[0].fs_path
+                entry.cache = out.odb
+            data_index[key] = entry
 
         return dict(by_workspace)
 
