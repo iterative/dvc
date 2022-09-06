@@ -3,6 +3,7 @@ import textwrap
 
 import pytest
 
+from dvc.annotations import Annotation
 from dvc.dvcfile import (
     PIPELINE_FILE,
     PIPELINE_LOCK,
@@ -392,7 +393,9 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
                 "desc": "stage desc",
                 "meta": {"key1": "value1", "key2": "value2"},
                 "deps": ["foo"],
-                "outs": [{"bar": {"desc": "bar desc"}}],
+                "outs": [
+                    {"bar": {"desc": "bar desc", "meta": {"key": "value"}}}
+                ],
             }
         }
     }
@@ -401,7 +404,9 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
     stage = dvc.stage.load_one(name="stage1")
     assert stage.meta == {"key1": "value1", "key2": "value2"}
     assert stage.desc == "stage desc"
-    assert stage.outs[0].annot.desc == "bar desc"
+    assert stage.outs[0].annot == Annotation(
+        desc="bar desc", meta={"key": "value"}
+    )
 
     # sanity check
     stage.dump()

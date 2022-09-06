@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
-from dvc.annotations import Annotation
+from dvc.annotations import ANNOTATION_SCHEMA
 from dvc.output import CHECKSUMS_SCHEMA, Output
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
@@ -48,10 +48,10 @@ LOCKFILE_V2_SCHEMA = {
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {
+        **ANNOTATION_SCHEMA,  # type: ignore
         Output.PARAM_CACHE: bool,
         Output.PARAM_PERSIST: bool,
         Output.PARAM_CHECKPOINT: bool,
-        Annotation.PARAM_DESC: str,
         Output.PARAM_REMOTE: str,
     }
 }

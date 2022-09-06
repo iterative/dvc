@@ -38,8 +38,9 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 @post_processing(OrderedDict)
 def _get_flags(out):
-    if out.annot.desc:
-        yield PARAM_DESC, out.annot.desc
+    annot = out.annot.to_dict()
+    yield from annot.items()
+
     if not out.use_cache:
         yield PARAM_CACHE, False
     if out.checkpoint:
