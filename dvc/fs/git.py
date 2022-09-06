@@ -15,6 +15,7 @@ class GitFileSystem(FileSystem):  # pylint:disable=abstract-method
     """Proxies the repo file access methods to Git objects"""
 
     protocol = "local"
+    PARAM_CHECKSUM = "md5"
 
     def __init__(
         self,

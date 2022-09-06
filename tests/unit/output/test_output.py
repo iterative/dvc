@@ -91,6 +91,7 @@ def test_get_used_objs(exists, expected_message, mocker, caplog):
         stage.repo.dvcignore, "check_ignore", return_value=_no_match("path")
     )
     stage.repo.fs.version_aware = False
+    stage.repo.fs.PARAM_CHECKSUM = "md5"
 
     output = Output(stage, "path")
 
