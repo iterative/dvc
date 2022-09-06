@@ -634,7 +634,12 @@ def test_import_with_annotations(M, tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
-    annot = {"desc": "foo desc", "labels": ["l1", "l2"], "type": "t1"}
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
     stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo", no_exec=True, **annot)
     assert stage.outs[0].annot == Annotation(**annot)
     assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

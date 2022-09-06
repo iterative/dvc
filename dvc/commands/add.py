@@ -2,6 +2,7 @@ import argparse
 import logging
 
 from dvc.cli import completion
+from dvc.cli.actions import KeyValueArgs
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 
@@ -17,6 +18,13 @@ def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
             "User description of the data (optional). "
             "This doesn't affect any DVC operations."
         ),
+    )
+    parser.add_argument(
+        "--meta",
+        metavar="key=value",
+        nargs=1,
+        action=KeyValueArgs,
+        help="Custom metadata to add to the data",
     )
     parser.add_argument(
         "--label",
@@ -56,6 +64,7 @@ class CmdAdd(CmdBase):
                 out=self.args.out,
                 type=self.args.type,
                 labels=self.args.labels,
+                meta=self.args.meta,
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 jobs=self.args.jobs,

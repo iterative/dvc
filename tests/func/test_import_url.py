@@ -147,6 +147,8 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
           labels:
           - label1
           - label2
+          meta:
+            key: value
         meta: some metadata
     """
     )
@@ -169,6 +171,8 @@ def test_import_url_preserve_fields(tmp_dir, dvc):
           labels:
           - label1
           - label2
+          meta:
+            key: value
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
@@ -301,7 +305,12 @@ def test_import_url_no_download(tmp_dir, dvc, local_workspace):
 
 def test_imp_url_with_annotations(M, tmp_dir, dvc, local_workspace):
     local_workspace.gen("foo", "foo")
-    annot = {"desc": "foo desc", "labels": ["l1", "l2"], "type": "t1"}
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
     stage = dvc.imp_url(
         "remote://workspace/foo",
         os.fspath(tmp_dir / "foo"),
