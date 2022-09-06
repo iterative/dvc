@@ -7,7 +7,7 @@ import pytest
 
 from dvc.fs.dvc import DvcFileSystem
 from dvc.testing.tmp_dir import make_subrepo
-from dvc_data.build import build
+from dvc_data.hashfile.build import build
 from dvc_data.hashfile.hash_info import HashInfo
 
 
@@ -566,7 +566,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
-    from dvc_data import check
+    from dvc_data.hashfile import check
     from dvc_data.hashfile.hash import hash_file
 
     tmp_dir.dvc_gen("file", "file")

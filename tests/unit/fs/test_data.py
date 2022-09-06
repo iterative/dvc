@@ -6,7 +6,7 @@ import pytest
 import dvc_data
 from dvc.fs.data import DataFileSystem
 from dvc.utils.fs import remove
-from dvc_data.build import build
+from dvc_data.hashfile.build import build
 from dvc_data.hashfile.hash_info import HashInfo
 
 

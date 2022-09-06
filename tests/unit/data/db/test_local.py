@@ -4,7 +4,7 @@ import os
 import pytest
 
 from dvc.fs import LocalFileSystem
-from dvc_data.db.local import LocalHashFileDB
+from dvc_data.hashfile.db.local import LocalHashFileDB
 from dvc_data.hashfile.hash_info import HashInfo
 
 
@@ -13,7 +13,7 @@ def test_status_download_optimization(mocker, dvc):
     And the desired files to fetch are already on the local cache,
     Don't check the existence of the desired files on the remote cache
     """
-    from dvc_data.status import compare_status
+    from dvc_data.hashfile.status import compare_status
 
     odb = LocalHashFileDB(LocalFileSystem(), os.getcwd())
     obj_ids = {
@@ -85,9 +85,9 @@ def test_set_exec_ignore_errors(tmp_dir, dvc, mocker, err):
 
 
 def test_staging_file(tmp_dir, dvc):
-    from dvc_data import check
-    from dvc_data.build import build
-    from dvc_data.transfer import transfer
+    from dvc_data.hashfile import check
+    from dvc_data.hashfile.build import build
+    from dvc_data.hashfile.transfer import transfer
 
     tmp_dir.gen("foo", "foo")
     fs = LocalFileSystem()
@@ -113,9 +113,9 @@ def test_staging_file(tmp_dir, dvc):
 
 
 def test_staging_dir(tmp_dir, dvc):
-    from dvc_data import check
-    from dvc_data.build import build
-    from dvc_data.transfer import transfer
+    from dvc_data.hashfile import check
+    from dvc_data.hashfile.build import build
+    from dvc_data.hashfile.transfer import transfer
 
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
     fs = LocalFileSystem()

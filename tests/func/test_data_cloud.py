@@ -13,8 +13,8 @@ from dvc.testing.test_remote import (  # noqa, pylint: disable=unused-import
     TestRemote,
 )
 from dvc.utils.fs import remove
-from dvc_data.db.local import LocalHashFileDB
 from dvc_data.hashfile.db import HashFileDB
+from dvc_data.hashfile.db.local import LocalHashFileDB
 
 
 def test_cloud_cli(tmp_dir, dvc, remote, mocker):

@@ -527,7 +527,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    import dvc_data.transfer as otransfer
+    import dvc_data.hashfile.transfer as otransfer
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(

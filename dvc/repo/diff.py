@@ -115,7 +115,7 @@ def _paths_checksums(repo, targets):
 
 def _output_paths(repo, targets):
     from dvc.fs import LocalFileSystem
-    from dvc_data.build import build
+    from dvc_data.hashfile.build import build
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 
