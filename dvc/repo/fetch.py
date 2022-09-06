@@ -45,7 +45,7 @@ def fetch(
     run_cache=False,
     revs=None,
     odb: Optional["ObjectDB"] = None,
-):
+) -> int:
     """Download data items from a cloud and imported repositories
 
     Returns:
@@ -58,6 +58,9 @@ def fetch(
         config.NoRemoteError: thrown when downloading only local files and no
             remote is configured
     """
+    from dvc.repo.imports import save_imports
+    from dvc_data.hashfile.transfer import TransferResult
+
     if isinstance(targets, str):
         targets = [targets]
 
@@ -66,7 +69,6 @@ def fetch(
         if _remote.worktree:
             return _fetch_worktree(self, _remote)
 
-    downloaded_count = 0
     failed_count = 0
 
     try:
@@ -75,39 +77,51 @@ def fetch(
     except DownloadError as exc:
         failed_count += exc.amount
 
-    result = _fetch(
-        self,
-        targets,
+    no_remote_msg: Optional[str] = None
+    result = TransferResult(set(), set())
+    try:
+        d, f = _fetch(
+            self,
+            targets,
+            all_branches=all_branches,
+            all_tags=all_tags,
+            all_commits=all_commits,
+            with_deps=with_deps,
+            force=True,
+            remote=remote,
+            jobs=jobs,
+            recursive=recursive,
+            revs=revs,
+            odb=odb,
+        )
+        result.transferred.update(d)
+        result.failed.update(f)
+    except NoRemoteError as exc:
+        no_remote_msg = str(exc)
+
+    for rev in self.brancher(
+        revs=revs,
         all_branches=all_branches,
         all_tags=all_tags,
         all_commits=all_commits,
-        with_deps=with_deps,
-        force=True,
-        remote=remote,
-        jobs=jobs,
-        recursive=recursive,
-        revs=revs,
-        odb=odb,
-    )
-    downloaded_count = len(result.transferred)
+    ):
+        imported = save_imports(
+            self,
+            targets,
+            unpartial=rev == "workspace",
+            recursive=recursive,
+        )
+        result.transferred.update(imported)
+        result.failed.difference_update(imported)
+
     failed_count += len(result.failed)
 
-    d, f = _fetch_partial_imports(
-        self,
-        targets,
-        all_branches=all_branches,
-        all_tags=all_tags,
-        all_commits=all_commits,
-        recursive=recursive,
-        revs=revs,
-    )
-    downloaded_count += d
-    failed_count += f
-
     if failed_count:
+        if no_remote_msg:
+            logger.error(no_remote_msg)
         raise DownloadError(failed_count)
 
-    return downloaded_count
+    return len(result.transferred)
 
 
 def _fetch(
@@ -154,39 +168,3 @@ def _fetch(
             result.transferred.update(d)
             result.failed.update(f)
     return result
-
-
-def _fetch_partial_imports(repo, targets, **kwargs):
-    from dvc.stage.exceptions import DataSourceChanged
-
-    downloaded = 0
-    failed = 0
-    for stage in repo.partial_imports(targets, **kwargs):
-        dep = stage.deps[0]
-        out = stage.outs[0]
-        try:
-            if dep.changed_checksum():
-                raise DataSourceChanged(f"{stage} ({dep})")
-
-            logger.info("Importing '%s' -> '%s'", dep, out)
-            if stage.is_repo_import:
-                obj = dep.get_obj()
-                meta = dep.get_meta()
-                out.hash_info = obj.hash_info
-                out.meta = meta
-            else:
-                out.transfer(
-                    dep.def_path, jobs=kwargs.get("jobs"), odb=repo.odb.local
-                )
-        except DataSourceChanged as exc:
-            logger.warning(f"{exc}")
-            failed += 1
-            continue
-        if not any(
-            kwargs.get(kw, None)
-            for kw in ("all_branches", "all_tags", "all_commits", "revs")
-        ):
-            stage.dump()
-
-        downloaded += 1
-    return downloaded, failed
