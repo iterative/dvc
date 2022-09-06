@@ -60,8 +60,8 @@ def gc(
     from contextlib import ExitStack
 
     from dvc.repo import Repo
-    from dvc_data.db import get_index
-    from dvc_data.gc import gc as ogc
+    from dvc_data.hashfile.db import get_index
+    from dvc_data.hashfile.gc import gc as ogc
 
     if not repos:
         repos = []

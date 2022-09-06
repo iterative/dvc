@@ -9,7 +9,7 @@ from funcy import cached_property, first
 from dvc import fs
 from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
-from dvc_data.transfer import _log_exceptions
+from dvc_data.hashfile.transfer import _log_exceptions
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB

@@ -7,8 +7,8 @@ from dvc.external_repo import CLONES, external_repo
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs, remove
-from dvc_data.build import build
-from dvc_data.transfer import transfer
+from dvc_data.hashfile.build import build
+from dvc_data.hashfile.transfer import transfer
 
 
 def test_external_repo(erepo_dir, mocker):

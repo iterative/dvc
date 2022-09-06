@@ -1,5 +1,5 @@
 from dvc.fs import GitFileSystem, Schemes
-from dvc_data.db import get_odb
+from dvc_data.hashfile.db import get_odb
 
 
 def _get_odb(repo, settings, fs=None):

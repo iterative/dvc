@@ -74,8 +74,8 @@ def _granular_diff(
     new_obj: Optional["HashFile"],
     cache: "HashFileDB",
 ) -> Dict[str, List[str]]:
-    from dvc_data.diff import ROOT
-    from dvc_data.diff import diff as odiff
+    from dvc_data.hashfile.diff import ROOT
+    from dvc_data.hashfile.diff import diff as odiff
 
     def path_join(root: str, *paths: str, isdir: bool = False) -> str:
         if not isdir and paths == ROOT:
@@ -102,7 +102,7 @@ def _get_obj_items(root: str, obj: Optional["HashFile"]) -> List[str]:
     if not obj:
         return []
 
-    from dvc_data.objects.tree import Tree
+    from dvc_data.hashfile.tree import Tree
 
     sep = os.path.sep
     if isinstance(obj, Tree):
@@ -164,7 +164,7 @@ def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
 
 
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
-    from dvc_data.build import build
+    from dvc_data.hashfile.build import build
 
     unstaged_diff = defaultdict(list)
     for out in repo.index.outs:

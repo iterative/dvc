@@ -17,15 +17,15 @@ from dvc.exceptions import (
     MergeError,
     RemoteCacheRequiredError,
 )
-from dvc_data import Tree
-from dvc_data import check as ocheck
-from dvc_data import load as oload
-from dvc_data.build import build
-from dvc_data.checkout import checkout
+from dvc_data.hashfile import Tree
+from dvc_data.hashfile import check as ocheck
+from dvc_data.hashfile import load as oload
+from dvc_data.hashfile.build import build
+from dvc_data.hashfile.checkout import checkout
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
-from dvc_data.transfer import transfer as otransfer
+from dvc_data.hashfile.transfer import transfer as otransfer
 from dvc_objects.errors import ObjectFormatError
 
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
@@ -606,8 +606,8 @@ class Output:
             self.odb.set_exec(self.fs_path)
 
     def _checkout(self, *args, **kwargs):
-        from dvc_data.checkout import CheckoutError as _CheckoutError
-        from dvc_data.checkout import LinkError, PromptError
+        from dvc_data.hashfile.checkout import CheckoutError as _CheckoutError
+        from dvc_data.hashfile.checkout import LinkError, PromptError
 
         kwargs.setdefault("ignore", self.dvcignore)
         try:
@@ -1068,8 +1068,8 @@ class Output:
             )
 
     def merge(self, ancestor, other):
-        from dvc_data.objects.tree import MergeError as TreeMergeError
-        from dvc_data.objects.tree import du, merge
+        from dvc_data.hashfile.tree import MergeError as TreeMergeError
+        from dvc_data.hashfile.tree import du, merge
 
         assert other
 
