@@ -188,7 +188,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
-                Annotation.PARAM_DESC,
+                *ANNOTATION_FIELDS,
             ],
         )
 
