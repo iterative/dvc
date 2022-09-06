@@ -26,6 +26,10 @@ def test_add_annotations(mocker, func, args):
             "model",
             "--desc",
             "description",
+            "--meta",
+            "key1=value1",
+            "--meta",
+            "key2=value2",
         ]
     )
 
@@ -39,4 +43,5 @@ def test_add_annotations(mocker, func, args):
         desc="description",
         type="model",
         labels=["example-get-started", "model-registry"],
+        meta={"key1": "value1", "key2": "value2"},
     )

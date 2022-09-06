@@ -1175,7 +1175,12 @@ def test_add_ignore_duplicated_targets(tmp_dir, dvc, capsys):
 def test_add_with_annotations(M, tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
 
-    annot = {"desc": "foo desc", "labels": ["l1", "l2"], "type": "t1"}
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
     (stage,) = dvc.add("foo", **annot)
     assert stage.outs[0].annot == Annotation(**annot)
     assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

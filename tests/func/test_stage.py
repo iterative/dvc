@@ -179,6 +179,7 @@ def test_md5_ignores_annotations(tmp_dir, dvc):
                 "desc": "foo desc",
                 "type": "mytype",
                 "labels": ["get-started", "dataset-registry"],
+                "meta": {"key1": "value1"},
             }
         ],
     }
@@ -209,6 +210,7 @@ def test_meta_desc_is_preserved(tmp_dir, dvc):
                 "desc": "foo desc",
                 "type": "mytype",
                 "labels": ["get-started", "dataset-registry"],
+                "meta": {"key": "value"},
             }
         ],
     }
@@ -221,6 +223,7 @@ def test_meta_desc_is_preserved(tmp_dir, dvc):
         desc="foo desc",
         type="mytype",
         labels=["get-started", "dataset-registry"],
+        meta={"key": "value"},
     )
 
     # sanity check

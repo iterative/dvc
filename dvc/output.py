@@ -287,10 +287,13 @@ class Output:
         desc=None,
         type=None,  # pylint: disable=redefined-builtin
         labels=None,
+        meta=None,
         remote=None,
         repo=None,
     ):
-        self.annot = Annotation(desc=desc, type=type, labels=labels or [])
+        self.annot = Annotation(
+            desc=desc, type=type, labels=labels or [], meta=meta or {}
+        )
         self.repo = stage.repo if not repo and stage else repo
         meta = Meta.from_dict(info or {})
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be

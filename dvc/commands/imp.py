@@ -23,6 +23,7 @@ class CmdImport(CmdBase):
                 desc=self.args.desc,
                 type=self.args.type,
                 labels=self.args.labels,
+                meta=self.args.meta,
                 jobs=self.args.jobs,
             )
         except DvcException:
