@@ -289,7 +289,7 @@ class Output:
         repo=None,
     ):
         self.repo = stage.repo if not repo and stage else repo
-        meta = Meta.from_dict(info)
+        meta = Meta.from_dict(info or {})
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be
         # set based on whether or not path is versioned
         fs_kwargs = {"version_aware": True} if meta.version_id else {}
