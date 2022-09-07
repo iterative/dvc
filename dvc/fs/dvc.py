@@ -256,24 +256,6 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
 
-    def _get_fs_pair(
-        self, path
-    ) -> Tuple[
-        "Repo",
-        Optional[FileSystem],
-        Optional[str],
-        Optional[DataFileSystem],
-        Optional[str],
-    ]:
-        """
-        Returns a pair of fss based on repo the path falls in, using prefix.
-        """
-        key = self._get_key_from_relative(path)
-        repo, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
-        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
-        fs_path = self._from_key(key)
-        return repo, repo.fs, fs_path, dvc_fs, dvc_path
-
     def _get_fs_pair_2(
         self, key: Key
     ) -> Tuple["Repo", Optional[DataFileSystem], Key]:
@@ -300,17 +282,22 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if "b" in mode:
             encoding = None
 
-        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        key = self._get_key_from_relative(path)
+        fs_path = self._from_key(key)
         try:
-            return fs.open(fs_path, mode=mode, encoding=encoding)
+            return self.repo.fs.open(fs_path, mode=mode, encoding=encoding)
         except FileNotFoundError:
+            _, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
             if not dvc_fs:
                 raise
 
+        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
         return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
 
     def isdvc(self, path, **kwargs):
-        _, _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
+        key = self._get_key_from_relative(path)
+        _, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
+        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
     def ls(  # pylint: disable=arguments-differ
@@ -367,15 +354,17 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def get_file(  # pylint: disable=arguments-differ
         self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
     ):
-        _, _, fs_path, dvc_fs, dvc_path = self._get_fs_pair(rpath)
-
+        key = self._get_key_from_relative(rpath)
+        fs_path = self._from_key(key)
         fs = self.repo.fs
         try:
             fs.get_file(fs_path, lpath, callback=callback, **kwargs)
             return
         except FileNotFoundError:
+            _, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
             if not dvc_fs:
                 raise
+        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
         dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
 
     def info(self, path, **kwargs):
