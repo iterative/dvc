@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class BaseExecutorManager(ABC, Mapping):
+class BaseExecutorManager(ABC, Mapping):  # noqa: B024
     """Manages executors for a collection of experiments to be run."""
 
     EXECUTOR_CLS: Type = BaseExecutor
