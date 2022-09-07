@@ -4,7 +4,6 @@ import os
 import posixpath
 import threading
 from contextlib import suppress
-from itertools import takewhile
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
@@ -225,20 +224,16 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return repo
 
         prefix_key, repo = self._subrepos_trie.longest_prefix(key)
-        prefix = self._from_key(prefix_key)
-        path = self._from_key(key)
-        parents = (parent for parent in self.repo.fs.path.parents(path))
-        dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
-        dirs.reverse()
-        self._update(dirs, starting_repo=repo)
+        dir_keys = (key[:i] for i in range(len(prefix_key) + 1, len(key) + 1))
+        self._update(dir_keys, starting_repo=repo)
         return self._subrepos_trie.get(key) or self.repo
 
     @wrap_with(threading.Lock())
-    def _update(self, dirs, starting_repo):
+    def _update(self, dir_keys, starting_repo):
         """Checks for subrepo in directories and updates them."""
         repo = starting_repo
-        for d in dirs:
-            key = self._get_key(d)
+        for key in dir_keys:
+            d = self._from_key(key)
             if self._is_dvc_repo(d):
                 repo = self.repo_factory(
                     d,
