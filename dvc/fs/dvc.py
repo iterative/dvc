@@ -29,31 +29,12 @@ def as_posix(path: str) -> str:
     return path.replace(ntpath.sep, posixpath.sep)
 
 
-def _wrap_walk(dvc_fs, *args, **kwargs):
-    for root, dnames, fnames in dvc_fs.walk(*args, **kwargs):
-        yield dvc_fs.path.join(dvc_fs.repo.root_dir, root), dnames, fnames
-
-
 # NOT the same as dvc.dvcfile.is_dvc_file()!
 def _is_dvc_file(fname):
     from dvc.dvcfile import is_valid_filename
     from dvc.ignore import DvcIgnore
 
     return is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
-
-
-def _ls(fs, path):
-    dnames = []
-    fnames = []
-
-    for entry in fs.ls(path, detail=True):
-        name = fs.path.name(entry["name"])
-        if entry["type"] == "directory":
-            dnames.append(name)
-        else:
-            fnames.append(name)
-
-    return dnames, fnames
 
 
 def _merge_info(repo, fs_info, dvc_info):
@@ -449,14 +430,6 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         info = _merge_info(repo, fs_info, dvc_info)
         info["name"] = path
         return info
-
-    def checksum(self, path):
-        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
-
-        try:
-            return fs.checksum(fs_path)
-        except FileNotFoundError:
-            return dvc_fs.checksum(dvc_path)
 
 
 class DvcFileSystem(FileSystem):
