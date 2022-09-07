@@ -153,6 +153,8 @@ def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
         empty_repo = False
 
     staged, unstaged, untracked = scm.status(untracked_files=untracked_files)
+    if os.name == "nt":
+        untracked = [posixpath_to_os_path(path) for path in untracked]
     # NOTE: order is important here.
     return GitInfo(
         staged=staged,
