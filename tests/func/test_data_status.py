@@ -4,7 +4,7 @@ from os.path import join
 import pytest
 
 from dvc.repo import Repo
-from dvc.repo.data import _transform_git_paths_to_dvc
+from dvc.repo.data import _transform_git_paths_to_dvc, posixpath_to_os_path
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 
@@ -31,7 +31,7 @@ def test_git_to_dvc_path_wdir_transformation(tmp_dir, scm, path):
         subdir.gen(struct)
         _, _, untracked = scm.status(untracked_files="all")
         # make order independent of the platforms for easier test assertions
-        untracked = sorted(untracked, reverse=True)
+        untracked = sorted(map(posixpath_to_os_path, untracked), reverse=True)
         assert _transform_git_paths_to_dvc(dvc, untracked) == [
             "file",
             join("dir", "foo"),
