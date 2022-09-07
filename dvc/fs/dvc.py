@@ -263,17 +263,15 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         Returns a pair of fss based on repo the path falls in, using prefix.
         """
         repo = self._get_repo(key)
+        repo_key: Key
         if repo is self.repo:
             dvc_parts = key
-            dvc_fs = self._datafss.get(())
+            repo_key = ()
         else:
-            repo_parts = self.repo.fs.path.relparts(
-                repo.root_dir, self.repo.root_dir
-            )
-            dvc_parts = key[len(repo_parts) :]
-            key = self._get_key(repo.root_dir)
-            dvc_fs = self._datafss.get(key)
+            repo_key = self._get_key(repo.root_dir)
+            dvc_parts = key[len(repo_key) :]
 
+        dvc_fs = self._datafss.get(repo_key)
         return repo, dvc_fs, dvc_parts
 
     def open(
