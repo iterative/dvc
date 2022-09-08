@@ -972,6 +972,10 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
       # comment preserved
       - path: bar
         desc: out desc
+        type: mytype
+        labels:
+        - label1
+        - label2
       meta:
         name: copy-foo-bar
     """
@@ -996,6 +1000,10 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
         # comment preserved
         - path: bar
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta:

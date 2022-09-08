@@ -37,6 +37,8 @@ def test_import_url(mocker):
         remote=None,
         to_remote=False,
         desc="description",
+        type=None,
+        labels=None,
         jobs=4,
     )
 
@@ -92,6 +94,8 @@ def test_import_url_no_exec_download_flags(mocker, flag, expected):
         to_remote=False,
         desc="description",
         jobs=None,
+        type=None,
+        labels=None,
         **expected
     )
 
@@ -125,6 +129,8 @@ def test_import_url_to_remote(mocker):
         remote="remote",
         to_remote=True,
         desc="description",
+        type=None,
+        labels=None,
         jobs=None,
     )
 

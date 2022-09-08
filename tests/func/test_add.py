@@ -12,6 +12,7 @@ import pytest
 
 import dvc as dvc_module
 import dvc_data
+from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
@@ -903,6 +904,10 @@ def test_add_preserve_fields(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           remote: testremote
         meta: some metadata
     """
@@ -916,6 +921,10 @@ def test_add_preserve_fields(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           remote: testremote
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
@@ -1161,3 +1170,18 @@ def test_add_ignore_duplicated_targets(tmp_dir, dvc, capsys):
     _, err = capsys.readouterr()
     assert len(stages) == 3
     assert "ignoring duplicated targets: foo, bar" in err
+
+
+def test_add_with_annotations(M, tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+
+    annot = {"desc": "foo desc", "labels": ["l1", "l2"], "type": "t1"}
+    (stage,) = dvc.add("foo", **annot)
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+    # try to selectively update/overwrite some annotations
+    annot = {**annot, "type": "t2"}
+    (stage,) = dvc.add("foo", type="t2")
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

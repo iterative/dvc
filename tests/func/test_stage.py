@@ -3,6 +3,7 @@ import tempfile
 
 import pytest
 
+from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dvcfile import SingleStageFile
 from dvc.fs import LocalFileSystem
@@ -10,6 +11,8 @@ from dvc.output import Output
 from dvc.repo import Repo, lock_repo
 from dvc.stage import PipelineStage, Stage
 from dvc.stage.run import run_stage
+from dvc.stage.utils import compute_md5
+from dvc.utils import dict_md5
 from dvc.utils.serialize import dump_yaml, load_yaml
 from dvc.utils.strictyaml import YAMLValidationError
 from tests.basic_env import TestDvc
@@ -164,40 +167,65 @@ def test_md5_ignores_comments(tmp_dir, dvc):
     assert not new_stage.changed_stage()
 
 
-def test_meta_is_preserved(tmp_dir, dvc):
-    (stage,) = tmp_dir.dvc_gen("foo", "foo content")
+def test_md5_ignores_annotations(tmp_dir, dvc):
+    data = {
+        "desc": "stage desc",
+        "meta": {"key1": "value1", "key2": "value2"},
+        "outs": [
+            {
+                "md5": "d3b07384d113edec49eaa6238ad5ff00",
+                "size": 4,
+                "path": "foo",
+                "desc": "foo desc",
+                "type": "mytype",
+                "labels": ["get-started", "dataset-registry"],
+            }
+        ],
+    }
+    (tmp_dir / "foo.dvc").dump(data)
+    stage = dvc.stage.load_one("foo.dvc")
+    assert compute_md5(stage) == "1822617147b53ae6f9eb4b3c87c0b6f3"
+    assert (
+        dict_md5(
+            {
+                "outs": [
+                    {"md5": "d3b07384d113edec49eaa6238ad5ff00", "path": "foo"}
+                ]
+            }
+        )
+        == "1822617147b53ae6f9eb4b3c87c0b6f3"
+    )
 
-    # Add meta to DVC-file
-    data = (tmp_dir / stage.path).parse()
-    data["meta"] = {"custom_key": 42}
-    (tmp_dir / stage.path).dump(data)
 
-    # Loading and dumping to test that it works and meta is retained
-    dvcfile = SingleStageFile(dvc, stage.path)
-    new_stage = dvcfile.stage
-    dvcfile.dump(new_stage)
+def test_meta_desc_is_preserved(tmp_dir, dvc):
+    data = {
+        "desc": "stage desc",
+        "meta": {"key1": "value1", "key2": "value2"},
+        "outs": [
+            {
+                "md5": "d3b07384d113edec49eaa6238ad5ff00",
+                "size": 4,
+                "path": "foo",
+                "desc": "foo desc",
+                "type": "mytype",
+                "labels": ["get-started", "dataset-registry"],
+            }
+        ],
+    }
+    (tmp_dir / "foo.dvc").dump(data)
+    stage = dvc.stage.load_one("foo.dvc")
 
-    new_data = (tmp_dir / stage.path).parse()
-    assert new_data["meta"] == data["meta"]
+    assert stage.meta == {"key1": "value1", "key2": "value2"}
+    assert stage.desc == "stage desc"
+    assert stage.outs[0].annot == Annotation(
+        desc="foo desc",
+        type="mytype",
+        labels=["get-started", "dataset-registry"],
+    )
 
-
-def test_desc_is_preserved(tmp_dir, dvc):
-    (stage,) = tmp_dir.dvc_gen("foo", "foo content")
-
-    data = (tmp_dir / stage.path).parse()
-    stage_desc = "test stage description"
-    out_desc = "test out description"
-    data["desc"] = stage_desc
-    data["outs"][0]["desc"] = out_desc
-    (tmp_dir / stage.path).dump(data)
-
-    dvcfile = SingleStageFile(dvc, stage.path)
-    new_stage = dvcfile.stage
-    dvcfile.dump(new_stage)
-
-    new_data = (tmp_dir / stage.path).parse()
-    assert new_data["desc"] == stage_desc
-    assert new_data["outs"][0]["desc"] == out_desc
+    # sanity check
+    stage.dump()
+    assert (tmp_dir / "foo.dvc").parse() == data
 
 
 def test_parent_repo_collect_stages(tmp_dir, scm, dvc):

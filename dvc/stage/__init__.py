@@ -110,16 +110,13 @@ def restore_fields(stage):
     # will be used to restore comments later
     # noqa, pylint: disable=protected-access
     stage._stage_text = old._stage_text
-
     stage.meta = old.meta
     stage.desc = old.desc
 
-    old_fields = {out.def_path: (out.desc, out.remote) for out in old.outs}
-
+    old_fields = {out.def_path: (out.annot, out.remote) for out in old.outs}
     for out in stage.outs:
-        out_fields = old_fields.get(out.def_path, None)
-        if out_fields:
-            out.desc, out.remote = out_fields
+        if out_fields := old_fields.get(out.def_path, None):
+            out.annot, out.remote = out_fields
 
 
 class Stage(params.StageParams):

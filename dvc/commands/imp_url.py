@@ -21,6 +21,8 @@ class CmdImportUrl(CmdBase):
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 desc=self.args.desc,
+                type=self.args.type,
+                labels=self.args.labels,
                 jobs=self.args.jobs,
             )
         except DvcException:
@@ -35,6 +37,8 @@ class CmdImportUrl(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
+    from .add import _add_annotating_args
+
     IMPORT_HELP = (
         "Download or copy file from URL and take it under DVC control."
     )
@@ -103,13 +107,5 @@ def add_parser(subparsers, parent_parser):
         ),
         metavar="<number>",
     )
-    import_parser.add_argument(
-        "--desc",
-        type=str,
-        metavar="<text>",
-        help=(
-            "User description of the data (optional). "
-            "This doesn't affect any DVC operations."
-        ),
-    )
+    _add_annotating_args(import_parser)
     import_parser.set_defaults(func=CmdImportUrl)

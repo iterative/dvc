@@ -36,6 +36,8 @@ def test_import(mocker):
         no_exec=False,
         no_download=False,
         desc="description",
+        type=None,
+        labels=None,
         jobs=3,
     )
 
@@ -72,6 +74,8 @@ def test_import_no_exec(mocker):
         no_exec=True,
         no_download=False,
         desc="description",
+        type=None,
+        labels=None,
         jobs=None,
     )
 
@@ -108,5 +112,7 @@ def test_import_no_download(mocker):
         no_exec=False,
         no_download=True,
         desc="description",
+        type=None,
+        labels=None,
         jobs=None,
     )

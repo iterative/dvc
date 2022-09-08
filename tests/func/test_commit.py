@@ -47,6 +47,10 @@ def test_commit_preserve_fields(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           remote: testremote
         meta: some metadata
     """
@@ -61,6 +65,10 @@ def test_commit_preserve_fields(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           remote: testremote
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
