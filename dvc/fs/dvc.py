@@ -59,8 +59,8 @@ def _merge_info(repo, fs_info, dvc_info):
     return ret
 
 
-def _get_dvc_path(dvc_fs, dvc_parts):
-    return dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
+def _get_dvc_path(dvc_fs, subkey):
+    return dvc_fs.path.join(*subkey) if subkey else ""
 
 
 class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
@@ -255,23 +255,23 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
 
-    def _get_fs_pair_2(
+    def _get_subrepo_info(
         self, key: Key
     ) -> Tuple["Repo", Optional[DataFileSystem], Key]:
         """
-        Returns a pair of fss based on repo the path falls in, using prefix.
+        Returns information about the subrepo the key is part of.
         """
         repo = self._get_repo(key)
         repo_key: Key
         if repo is self.repo:
-            dvc_parts = key
             repo_key = ()
+            subkey = key
         else:
             repo_key = self._get_key(repo.root_dir)
-            dvc_parts = key[len(repo_key) :]
+            subkey = key[len(repo_key) :]
 
         dvc_fs = self._datafss.get(repo_key)
-        return repo, dvc_fs, dvc_parts
+        return repo, dvc_fs, subkey
 
     def open(
         self, path, mode="r", encoding="utf-8", **kwargs
@@ -284,29 +284,29 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         try:
             return self.repo.fs.open(fs_path, mode=mode, encoding=encoding)
         except FileNotFoundError:
-            _, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
+            _, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
-        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+        dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
 
     def isdvc(self, path, **kwargs):
         key = self._get_key_from_relative(path)
-        _, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
-        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+        _, dvc_fs, subkey = self._get_subrepo_info(key)
+        dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
     def ls(  # pylint: disable=arguments-differ
         self, path, detail=True, dvc_only=False, **kwargs
     ):
         key = self._get_key_from_relative(path)
-        repo, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
+        repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         names = set()
         if dvc_fs:
             with suppress(FileNotFoundError):
-                dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+                dvc_path = _get_dvc_path(dvc_fs, subkey)
                 for entry in dvc_fs.ls(dvc_path, detail=False):
                     names.add(dvc_fs.path.name(entry))
 
@@ -358,10 +358,10 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             fs.get_file(fs_path, lpath, callback=callback, **kwargs)
             return
         except FileNotFoundError:
-            _, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
+            _, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
-        dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+        dvc_path = _get_dvc_path(dvc_fs, subkey)
         dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
 
     def info(self, path, **kwargs):
@@ -370,13 +370,13 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return self._info(key, path, ignore_subrepos=ignore_subrepos)
 
     def _info(self, key, path, ignore_subrepos=True, check_ignored=True):
-        repo, dvc_fs, dvc_parts = self._get_fs_pair_2(key)
+        repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         dvc_info = None
         if dvc_fs:
             try:
-                dvc_info = dvc_fs.fs.index.info(dvc_parts)
-                dvc_path = _get_dvc_path(dvc_fs, dvc_parts)
+                dvc_info = dvc_fs.fs.index.info(subkey)
+                dvc_path = _get_dvc_path(dvc_fs, subkey)
                 dvc_info["name"] = dvc_path
             except FileNotFoundError:
                 pass
