@@ -14,17 +14,14 @@ def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
         "--desc",
         type=str,
         metavar="<text>",
-        help=(
-            "User description of the data (optional). "
-            "This doesn't affect any DVC operations."
-        ),
+        help="User description of the data.",
     )
     parser.add_argument(
         "--meta",
         metavar="key=value",
         nargs=1,
         action=KeyValueArgs,
-        help="Custom metadata to add to the data",
+        help="Custom metadata to add to the data.",
     )
     parser.add_argument(
         "--label",
@@ -32,13 +29,13 @@ def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
         type=str,
         action="append",
         metavar="<str>",
-        help="Comma separated list of labels for the data (optional).",
+        help="Label for the data.",
     )
     parser.add_argument(
         "--type",
         type=str,
         metavar="<str>",
-        help="Type of the data (optional).",
+        help="Type of the data.",
     )
 
 
