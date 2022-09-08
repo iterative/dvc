@@ -60,8 +60,7 @@ def _merge_info(repo, fs_info, dvc_info):
 
 
 def _get_dvc_path(dvc_fs, dvc_parts):
-    if dvc_fs:
-        return dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
+    return dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
 
 
 class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
