@@ -278,6 +278,11 @@ class PathMissingError(DvcException):
         self.dvc_only = dvc_only
 
 
+class URLMissingError(DvcException):
+    def __init__(self, url):
+        super().__init__(f"The path '{url}' does not exist.")
+
+
 class RemoteCacheRequiredError(DvcException):
     def __init__(self, scheme, fs_path):
 

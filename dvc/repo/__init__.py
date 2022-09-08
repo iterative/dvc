@@ -68,6 +68,7 @@ class Repo:
     from dvc.repo.imp_url import imp_url  # type: ignore[misc]
     from dvc.repo.install import install  # type: ignore[misc]
     from dvc.repo.ls import ls as _ls  # type: ignore[misc]
+    from dvc.repo.ls_url import ls_url as _ls_url  # type: ignore[misc]
     from dvc.repo.move import move  # type: ignore[misc]
     from dvc.repo.pull import pull  # type: ignore[misc]
     from dvc.repo.push import push  # type: ignore[misc]
@@ -80,6 +81,7 @@ class Repo:
     from .data import status as data_status  # type: ignore[misc]
 
     ls = staticmethod(_ls)
+    ls_url = staticmethod(_ls_url)
     get = staticmethod(_get)
     get_url = staticmethod(_get_url)
 
