@@ -195,7 +195,8 @@ def add_parser(subparsers, _parent_parser):
         "--glob",
         action="store_true",
         default=False,
-        help="Pull cache for targets matching shell-style wildcards.",
+        help="Pull cache for targets matching shell-style wildcards"
+        " (only matches against files present in the workspace).",
     )
     pull_parser.set_defaults(func=CmdDataPull)
 
