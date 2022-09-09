@@ -151,17 +151,6 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return None
         return self.repo.url
 
-    @property
-    def config(self):
-        return {
-            self.PARAM_REPO_URL: self.repo_url,
-            self.PARAM_REPO_ROOT: self.repo.root_dir,
-            self.PARAM_REV: getattr(self.repo.fs, "rev", None),
-            self.PARAM_CACHE_DIR: os.path.abspath(self.repo.odb.local.path),
-            self.PARAM_CACHE_TYPES: self.repo.odb.local.cache_types,
-            self.PARAM_SUBREPOS: self._traverse_subrepos,
-        }
-
     @classmethod
     def _repo_from_fs_config(
         cls, **config
@@ -439,10 +428,6 @@ class DvcFileSystem(FileSystem):
     @property
     def repo_url(self):
         return self.fs.repo_url
-
-    @property
-    def config(self):
-        return self.fs.config
 
     def from_os_path(self, path):
         if os.path.isabs(path):
