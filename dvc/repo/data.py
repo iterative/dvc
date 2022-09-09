@@ -8,6 +8,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
     TypedDict,
     cast,
 )
@@ -212,7 +213,9 @@ def _diff_head_to_index(
     repo: "Repo", head: str = "HEAD", **kwargs: Any
 ) -> Dict[str, List[str]]:
     # we need to store objects from index and the HEAD to diff later
-    objs: Dict[str, Dict[str, "HashFile"]] = defaultdict(dict)
+    objs: Dict[str, Dict[str, Tuple["HashFile", "HashInfo"]]]
+    objs = defaultdict(dict)
+
     staged_diff = defaultdict(list)
     for rev in repo.brancher(revs=[head]):
         for out in repo.index.outs:
@@ -252,7 +255,9 @@ class Status(TypedDict):
     git: GitInfo
 
 
-def _transform_git_paths_to_dvc(repo: "Repo", files: Iterable[str]):
+def _transform_git_paths_to_dvc(
+    repo: "Repo", files: Iterable[str]
+) -> List[str]:
     """Transform files rel. to Git root to DVC root, and drop outside files."""
     rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
 
