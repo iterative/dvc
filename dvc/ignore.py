@@ -3,6 +3,7 @@ import os
 import re
 from collections import namedtuple
 from itertools import chain, groupby, takewhile
+from pathlib import Path
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -25,10 +26,10 @@ class DvcIgnore:
 class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, pattern_list, dirname, sep):
         if pattern_list:
-            if isinstance(pattern_list[0], str):
-                pattern_list = [
-                    PatternInfo(pattern, "") for pattern in pattern_list
-                ]
+            pattern_list = [
+                PatternInfo(pattern, "") if isinstance(pattern, str) else pattern
+                for pattern in pattern_list
+            ]
 
         self.sep = sep
         self.pattern_list = pattern_list
@@ -174,12 +175,24 @@ class DvcIgnoreFilter:
         self._ignores_trie_subrepos = Trie()
 
         key = self._get_key(root_dir)
+
+        sys_root_dvcignore_path = self.fs.path.join(str(Path.home()), DvcIgnore.DVCIGNORE_FILE)
+
+        if (self.fs.exists(sys_root_dvcignore_path)):
+            sys_root_ignore_patterns = DvcIgnorePatterns.from_file(
+                sys_root_dvcignore_path,
+                self.fs,
+                "sys_root"
+            )
+            default_ignore_patterns.extend(sys_root_ignore_patterns.pattern_list)
+
         self.ignores_trie_fs[key] = DvcIgnorePatterns(
             default_ignore_patterns,
             root_dir,
             fs.sep,
         )
         self._ignores_trie_subrepos[key] = self.ignores_trie_fs[key]
+
         self._update(
             self.root_dir,
             self._ignores_trie_subrepos,

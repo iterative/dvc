@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
+from dvc.pathspec_math import PatternInfo
 from dvc.ignore import DvcIgnorePatterns
 
 
@@ -213,3 +214,20 @@ def test_should_ignore_dir(omit_dir, sub_dir):
 
     assert set(new_dirs) == {"dir1", "dir2"}
     assert set(new_files) == {"file1", "file2", omit_dir}
+
+def test_allow_string_pattern_info_mix_input():
+    pattern1 = DvcIgnorePatterns([
+        "pattern1_string",
+        PatternInfo("pattern1_info", "pattern1_info_pattern_info")
+    ], "root", os.sep)
+
+    assert PatternInfo("pattern1_string", "") in pattern1.pattern_list
+    assert PatternInfo("pattern1_info", "pattern1_info_pattern_info") in pattern1.pattern_list
+
+    pattern2 = DvcIgnorePatterns([
+        PatternInfo("pattern2_info", "pattern2_info_pattern_info"),
+        "pattern2_string"
+    ], "root", os.sep)
+
+    assert PatternInfo("pattern2_string", "") in pattern2.pattern_list
+    assert PatternInfo("pattern2_info", "pattern2_info_pattern_info") in pattern2.pattern_list
