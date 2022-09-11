@@ -27,7 +27,9 @@ class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, pattern_list, dirname, sep):
         if pattern_list:
             pattern_list = [
-                PatternInfo(pattern, "") if isinstance(pattern, str) else pattern
+                PatternInfo(pattern, "")
+                if isinstance(pattern, str)
+                else pattern
                 for pattern in pattern_list
             ]
 
@@ -176,15 +178,17 @@ class DvcIgnoreFilter:
 
         key = self._get_key(root_dir)
 
-        sys_root_dvcignore_path = self.fs.path.join(str(Path.home()), DvcIgnore.DVCIGNORE_FILE)
+        sys_root_dvcignore_path = self.fs.path.join(
+            str(Path.home()), DvcIgnore.DVCIGNORE_FILE
+        )
 
-        if (self.fs.exists(sys_root_dvcignore_path)):
+        if self.fs.exists(sys_root_dvcignore_path):
             sys_root_ignore_patterns = DvcIgnorePatterns.from_file(
-                sys_root_dvcignore_path,
-                self.fs,
-                "sys_root"
+                sys_root_dvcignore_path, self.fs, "sys_root"
             )
-            default_ignore_patterns.extend(sys_root_ignore_patterns.pattern_list)
+            default_ignore_patterns.extend(
+                sys_root_ignore_patterns.pattern_list
+            )
 
         self.ignores_trie_fs[key] = DvcIgnorePatterns(
             default_ignore_patterns,

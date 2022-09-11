@@ -98,28 +98,32 @@ def test_check_ignore_sub_repo(tmp_dir, dvc, capsys):
         "in sub_repo:{}\t{}".format("dir", os.path.join("dir", "foo")) in out
     )
 
+
 def test_check_sys_root_ignore_file(tmp_dir, dvc, capsys):
-    tmp_dir.gen({ "dir": {
-        "ignored_in_repo_root": "ignored_in_repo_root",
-        "ignored_in_sys_root": "ignored_in_sys_root"
-    }})
+    tmp_dir.gen(
+        {
+            "dir": {
+                "ignored_in_repo_root": "ignored_in_repo_root",
+                "ignored_in_sys_root": "ignored_in_sys_root",
+            }
+        }
+    )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
     (Path.home() / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_sys_root",
-        encoding="utf-8"
+        "ignored_in_sys_root", encoding="utf-8"
     )
 
     assert main(["check-ignore", "-d", "ignored_in_repo_root"]) == 0
     output, _ = capsys.readouterr()
     assert (
-        output == f"{DvcIgnore.DVCIGNORE_FILE}:1:ignored_in_repo_root\tignored_in_repo_root\n"
+        output
+        == f"{DvcIgnore.DVCIGNORE_FILE}:1:ignored_in_repo_root\tignored_in_repo_root\n"
     )
 
     assert main(["check-ignore", "-d", "ignored_in_sys_root"]) == 0
     output, _ = capsys.readouterr()
-    assert (
-        output == "sys_root:1:ignored_in_sys_root\tignored_in_sys_root\n"
-    )
+    assert output == "sys_root:1:ignored_in_sys_root\tignored_in_sys_root\n"
+
 
 def test_check_sub_dir_ignore_file(tmp_dir, dvc, capsys):
     tmp_dir.gen(

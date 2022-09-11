@@ -35,15 +35,19 @@ def test_ignore(tmp_dir, dvc, filename):
         (tmp_dir / "dir" / "other").fs_path,
     }
 
+
 def test_ignore_from_sys_root_dvcignore(tmp_dir, dvc):
-    tmp_dir.gen({ "dir": {
-        "ignored_in_repo_root": "ignored_in_repo_root",
-        "ignored_in_sys_root": "ignored_in_sys_root"
-    }})
+    tmp_dir.gen(
+        {
+            "dir": {
+                "ignored_in_repo_root": "ignored_in_repo_root",
+                "ignored_in_sys_root": "ignored_in_sys_root",
+            }
+        }
+    )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
     (Path.home() / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_sys_root",
-        encoding="utf-8"
+        "ignored_in_sys_root", encoding="utf-8"
     )
 
     result = set(walk_files(dvc, dvc.fs, tmp_dir))
