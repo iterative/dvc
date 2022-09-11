@@ -117,7 +117,8 @@ def test_check_sys_root_ignore_file(tmp_dir, dvc, capsys):
     output, _ = capsys.readouterr()
     assert (
         output
-        == f"{DvcIgnore.DVCIGNORE_FILE}:1:ignored_in_repo_root\tignored_in_repo_root\n"
+        == f"{DvcIgnore.DVCIGNORE_FILE}:1:ignored_in_repo_root\t"
+        + "ignored_in_repo_root\n"
     )
 
     assert main(["check-ignore", "-d", "ignored_in_sys_root"]) == 0
