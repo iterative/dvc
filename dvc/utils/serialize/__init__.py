@@ -14,6 +14,13 @@ LOADERS.update(
     {".toml": load_toml, ".json": load_json, ".py": load_py}  # noqa: F405
 )
 
+
+def load_path(fs_path, fs):
+    suffix = fs.path.suffix(fs_path).lower()
+    loader = LOADERS[suffix]
+    return loader(fs_path, fs=fs)
+
+
 DUMPERS: DefaultDict[str, DumperFn] = defaultdict(  # noqa: F405
     lambda: dump_yaml  # noqa: F405
 )

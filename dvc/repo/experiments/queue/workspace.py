@@ -1,10 +1,12 @@
 import logging
+import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Collection, Dict, Generator, Optional
 
 from funcy import first
 
 from dvc.exceptions import DvcException
+from dvc.utils.fs import remove
 
 from ..exceptions import ExpQueueEmptyError
 from ..executor.base import BaseExecutor, ExecutorResult
@@ -116,6 +118,8 @@ class WorkspaceQueue(BaseStashQueue):
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
         finally:
+            if self._EXEC_NAME == exec_name:
+                remove(os.path.join(self.pid_dir, exec_name))
             executor.cleanup()
         return results
 

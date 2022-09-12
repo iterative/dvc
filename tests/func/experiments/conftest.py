@@ -3,7 +3,9 @@ from textwrap import dedent
 import pytest
 
 from tests.func.test_repro_multistage import COPY_SCRIPT
-from tests.unit.repo.experiments.conftest import test_queue  # noqa
+from tests.unit.repo.experiments.conftest import (  # noqa pylint disable=unused-argument
+    test_queue,
+)
 
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
@@ -133,3 +135,17 @@ def http_auth_patch(mocker):
 @pytest.fixture(params=[True, False])
 def workspace(request, test_queue) -> bool:  # noqa
     return request.param
+
+
+@pytest.fixture
+def params_repo(tmp_dir, scm, dvc):
+    (tmp_dir / "params.yaml").dump(
+        {"foo": [{"bar": 1}, {"baz": 2}], "goo": {"bag": 3.0}, "lorem": False}
+    )
+    dvc.run(
+        cmd="echo foo",
+        params=["params.yaml:"],
+        name="foo",
+    )
+    scm.add(["dvc.yaml", "dvc.lock", "copy.py", "params.yaml"])
+    scm.commit("init")

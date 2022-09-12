@@ -39,6 +39,9 @@ def test_add(mocker, dvc):
         remote=None,
         to_remote=False,
         desc="stage description",
+        type=None,
+        labels=None,
+        meta=None,
         jobs=None,
     )
 
@@ -127,6 +130,9 @@ def test_add_to_remote(mocker):
         remote="remote",
         to_remote=True,
         desc=None,
+        type=None,
+        labels=None,
+        meta=None,
         jobs=None,
     )
 

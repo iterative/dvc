@@ -9,7 +9,7 @@ from funcy import cached_property, first
 from dvc import fs
 from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
-from dvc_data.transfer import _log_exceptions
+from dvc_data.hashfile.transfer import _log_exceptions
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
@@ -65,7 +65,7 @@ class StageCache:
 
     @cached_property
     def cache_dir(self):
-        return os.path.join(self.repo.odb.local.cache_dir, "runs")
+        return os.path.join(self.repo.odb.local.path, "runs")
 
     def _get_cache_dir(self, key):
         return os.path.join(self.cache_dir, key[:2], key)

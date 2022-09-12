@@ -24,6 +24,10 @@ def test_queue(tmp_dir, dvc, scm, mocker) -> LocalCeleryQueue:
     """
     celery_queue = dvc.experiments.celery_queue
     mocker.patch.object(celery_queue, "spawn_worker")
-    with _thread_worker(celery_queue.celery, concurrency=1) as worker:
+    with _thread_worker(
+        celery_queue.celery,
+        concurrency=1,
+        ping_task_timeout=30,
+    ) as worker:
         mocker.patch.object(celery_queue, "worker", return_value=worker)
         yield celery_queue

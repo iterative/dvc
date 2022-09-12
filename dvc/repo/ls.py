@@ -1,5 +1,4 @@
 import os
-from itertools import chain
 from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import PathMissingError
@@ -66,15 +65,16 @@ def _ls(
 
     infos = {}
     for root, dirs, files in fs.walk(
-        fs_path, dvcfiles=True, dvc_only=dvc_only
+        fs_path, dvcfiles=True, dvc_only=dvc_only, detail=True
     ):
-        entries = chain(files, dirs) if not recursive else files
+        if not recursive:
+            files.update(dirs)
 
-        for entry in entries:
-            entry_fs_path = fs.path.join(root, entry)
+        for name, entry in files.items():
+            entry_fs_path = fs.path.join(root, name)
             relparts = fs.path.relparts(entry_fs_path, fs_path)
             name = os.path.join(*relparts)
-            infos[name] = fs.info(entry_fs_path)
+            infos[name] = entry
 
         if not recursive:
             break
@@ -85,11 +85,10 @@ def _ls(
     ret = {}
     for name, info in infos.items():
         dvc_info = info.get("dvc_info", {})
-        if dvc_info.get("outs") or not dvc_only:
-            ret[name] = {
-                "isout": dvc_info.get("isout", False),
-                "isdir": info["type"] == "directory",
-                "isexec": info.get("isexec", False),
-            }
+        ret[name] = {
+            "isout": dvc_info.get("isout", False),
+            "isdir": info["type"] == "directory",
+            "isexec": info.get("isexec", False),
+        }
 
     return ret

@@ -155,17 +155,18 @@ class CmdPlots(CmdBase):
                 out=renderers_out,
                 templates_dir=self.repo.plots.templates_dir,
             )
-            if self.args.show_vega:
-                renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
-                if renderer:
-                    ui.write_json(json.loads(renderer.get_filled_template()))
-                return 0
             if self.args.json:
                 renderers = _filter_unhandled_renderers(renderers)
                 _show_json(renderers, self.args.split)
                 return 0
 
             _adjust_vega_renderers(renderers)
+
+            if self.args.show_vega:
+                renderer = first(filter(lambda r: r.TYPE == "vega", renderers))
+                if renderer:
+                    ui.write_json(json.loads(renderer.get_filled_template()))
+                return 0
 
             output_file: Path = (Path.cwd() / out).resolve() / "index.html"
 
@@ -222,29 +223,22 @@ class CmdPlotsModify(CmdPlots):
 
 
 class CmdPlotsTemplates(CmdBase):
-    TEMPLATES_CHOICES = [
-        "simple",
-        "linear",
-        "confusion",
-        "confusion_normalized",
-        "scatter",
-        "smooth",
-    ]
-
     def run(self):
-        from dvc_render.vega_templates import dump_templates
+        from dvc.exceptions import InvalidArgumentError
+        from dvc_render.vega_templates import TEMPLATES
 
         try:
-            out = (
-                os.path.join(os.getcwd(), self.args.out)
-                if self.args.out
-                else self.repo.plots.templates_dir
-            )
+            target = self.args.template
+            if target:
+                for template in TEMPLATES:
+                    if target == template.DEFAULT_NAME:
+                        ui.write_json(template.DEFAULT_CONTENT)
+                        return 0
+                raise InvalidArgumentError(f"Unexpected template: {target}.")
 
-            targets = [self.args.target] if self.args.target else None
-            dump_templates(output=out, targets=targets)
-            templates_path = os.path.relpath(out, os.getcwd())
-            ui.write(f"Templates have been written into '{templates_path}'.")
+            else:
+                for template in TEMPLATES:
+                    ui.write(template.DEFAULT_NAME)
 
             return 0
         except DvcException:
@@ -270,8 +264,8 @@ def add_parser(subparsers, parent_parser):
     fix_subparsers(plots_subparsers)
 
     SHOW_HELP = (
-        "Generate plots from target files or plots definitions from "
-        "`dvc.yaml` file."
+        "Generate plots from target files or from `plots`"
+        " definitions in `dvc.yaml`."
     )
     plots_show_parser = plots_subparsers.add_parser(
         "show",
@@ -283,9 +277,10 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="Plots to visualize. Supports any file path, or plot name "
-        "defined in `dvc.yaml`. "
-        "Shows all plots by default.",
+        help=(
+            "Plots files or plot IDs from `dvc.yaml` to visualize. "
+            "Shows all plots by default."
+        ),
     ).complete = completion.FILE
     _add_props_arguments(plots_show_parser)
     _add_output_argument(plots_show_parser)
@@ -293,8 +288,8 @@ def add_parser(subparsers, parent_parser):
     plots_show_parser.set_defaults(func=CmdPlotsShow)
 
     PLOTS_DIFF_HELP = (
-        "Show multiple versions of plot data "
-        "by plotting them in a single image."
+        "Show multiple versions of a plot by overlaying them "
+        "in a single image."
     )
     plots_diff_parser = plots_subparsers.add_parser(
         "diff",
@@ -329,8 +324,8 @@ def add_parser(subparsers, parent_parser):
     plots_diff_parser.set_defaults(func=CmdPlotsDiff)
 
     PLOTS_MODIFY_HELP = (
-        "Modify display properties of data-series plot outputs "
-        "(has no effect on image-type plots)."
+        "Modify display properties of data-series plots "
+        "defined in stages (has no effect on image plots)."
     )
     plots_modify_parser = plots_subparsers.add_parser(
         "modify",
@@ -340,7 +335,8 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_modify_parser.add_argument(
-        "target", help="Plot output to set properties to"
+        "target",
+        help="Plots file to set properties for (defined at the stage level).",
     ).complete = completion.FILE
     _add_props_arguments(plots_modify_parser)
     plots_modify_parser.add_argument(
@@ -352,8 +348,7 @@ def add_parser(subparsers, parent_parser):
     plots_modify_parser.set_defaults(func=CmdPlotsModify)
 
     TEMPLATES_HELP = (
-        "Write built-in plots templates to a directory "
-        "(.dvc/plots by default)."
+        "List built-in plots templates or show JSON specification for one."
     )
     plots_templates_parser = plots_subparsers.add_parser(
         "templates",
@@ -363,13 +358,14 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     plots_templates_parser.add_argument(
-        "target",
+        "template",
         default=None,
         nargs="?",
-        choices=CmdPlotsTemplates.TEMPLATES_CHOICES,
-        help="Template to write. Writes all templates by default.",
+        help=(
+            "Template for which to show JSON specification. "
+            "List all template names by default."
+        ),
     )
-    _add_output_argument(plots_templates_parser, typ="templates")
     plots_templates_parser.set_defaults(func=CmdPlotsTemplates)
 
 

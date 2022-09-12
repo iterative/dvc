@@ -342,16 +342,22 @@ def _matches(targets, config_file, plot_id):
     return False
 
 
-def _dvcfile_relpath(dvcfile):
-    fs = dvcfile.repo.dvcfs
+def _normpath(path):
+    # TODO dvcfs.path.normopath normalizes to windows path on Windows
+    # even though other methods work as expected
+    import posixpath
 
+    return posixpath.normpath(path)
+
+
+def _relpath(fs, path):
     # TODO from_os_path changes abs to relative
     # TODO we should be using `dvcfile.relpath` - in case of GitFS (plots diff)
     # and invoking from some subdir `dvcfile.relpath` returns strange long
     # relative paths
     # ("../../../../../../dvc.yaml") - investigate
     return fs.path.relpath(
-        fs.path.join("/", fs.from_os_path(dvcfile.path)), fs.path.getcwd()
+        fs.path.join("/", fs.from_os_path(path)), fs.path.getcwd()
     )
 
 
@@ -363,12 +369,12 @@ def _collect_output_plots(
     for plot in repo.index.plots:
         plot_props = _plot_props(plot)
         dvcfile = plot.stage.dvcfile
-        config_path = _dvcfile_relpath(dvcfile)
-        config_dirname = os.path.dirname(config_path)
+        config_path = _relpath(fs, dvcfile.path)
+        wdir_relpath = _relpath(fs, plot.stage.wdir)
         if _matches(targets, config_path, str(plot)):
             unpacked = unpack_if_dir(
                 fs,
-                fs.path.join(config_dirname, plot.def_path),
+                _normpath(fs.path.join(wdir_relpath, plot.def_path)),
                 props={**plot_props, **props},
                 onerror=onerror,
             )
@@ -380,61 +386,76 @@ def _collect_output_plots(
     return result
 
 
-def _adjust_definitions_to_cwd(fs, config_relpath, plots_definitions):
-    # TODO normopath normalizes to windows path on Windows
-    # investigate
+def _id_is_path(plot_props=None):
+    if not plot_props:
+        return True
 
-    import posixpath
+    y_def = plot_props.get("y")
+    return not isinstance(y_def, dict)
 
-    result = defaultdict(dict)
 
-    config_dirname = fs.path.dirname(config_relpath)
+def _adjust_sources(fs, plot_props, config_dir):
+    new_plot_props = deepcopy(plot_props)
+    old_y = new_plot_props.pop("y", {})
+    new_y = {}
+    for filepath, val in old_y.items():
+        new_y[_normpath(fs.path.join(config_dir, filepath))] = val
+    new_plot_props["y"] = new_y
+    return new_plot_props
 
-    for plot_id, plot_def in plots_definitions.items():
 
-        y_def = plot_def.get("y", None) if plot_def else None
-        if y_def is None or not isinstance(y_def, dict):
-            # plot_id is filename
-            new_plot_id = posixpath.normpath(
-                fs.path.join(config_dirname, plot_id)
-            )
-            result[new_plot_id] = plot_def or {}
+def _resolve_definitions(
+    fs, targets, props, config_path, definitions, onerror=None
+):
+    config_dir = fs.path.dirname(config_path)
+    result: Dict[str, Dict] = {}
+    for plot_id, plot_props in definitions.items():
+        if plot_props is None:
+            plot_props = {}
+        if _id_is_path(plot_props):
+            data_path = _normpath(fs.path.join(config_dir, plot_id))
+            if _matches(targets, config_path, plot_id):
+                unpacked = unpack_if_dir(
+                    fs,
+                    data_path,
+                    props={**plot_props, **props},
+                    onerror=onerror,
+                )
+                dpath.util.merge(
+                    result,
+                    unpacked,
+                )
         else:
-            new_plot_def = deepcopy(plot_def)
-            old_y = new_plot_def.pop("y")
-            new_y = {}
-            for filepath, val in old_y.items():
-                new_y[
-                    posixpath.normpath(fs.path.join(config_dirname, filepath))
-                ] = val
-            new_plot_def["y"] = new_y
-            result[plot_id] = new_plot_def
-    return dict(result)
+            if _matches(targets, config_path, plot_id):
+                adjusted_props = _adjust_sources(fs, plot_props, config_dir)
+                dpath.util.merge(
+                    result, {"data": {plot_id: {**adjusted_props, **props}}}
+                )
+
+    return result
 
 
-def _collect_pipeline_files(repo, targets: List[str], props):
+def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
     from dvc.dvcfile import PipelineFile
 
     result: Dict[str, Dict] = {}
     dvcfiles = {stage.dvcfile for stage in repo.index.stages}
     for dvcfile in dvcfiles:
         if isinstance(dvcfile, PipelineFile):
-            dvcfile_path = _dvcfile_relpath(dvcfile)
-            dvcfile_defs = _adjust_definitions_to_cwd(
-                repo.fs, dvcfile_path, dvcfile.load().get("plots", {})
+            dvcfile_path = _relpath(repo.dvcfs, dvcfile.path)
+            dvcfile_defs = dvcfile.load().get("plots", {})
+            resolved = _resolve_definitions(
+                repo.dvcfs,
+                targets,
+                props,
+                dvcfile_path,
+                dvcfile_defs,
+                onerror=onerror,
             )
-            for plot_id, plot_props in dvcfile_defs.items():
-                if plot_props is None:
-                    plot_props = {}
-                if _matches(targets, dvcfile_path, plot_id):
-                    dpath.util.merge(
-                        result,
-                        {
-                            dvcfile_path: {
-                                "data": {plot_id: {**plot_props, **props}}
-                            }
-                        },
-                    )
+            dpath.util.merge(
+                result,
+                {dvcfile_path: resolved},
+            )
     return result
 
 
@@ -456,7 +477,10 @@ def _collect_definitions(
     fs = DvcFileSystem(repo=repo)
 
     if not config_files:
-        dpath.util.merge(result, _collect_pipeline_files(repo, targets, props))
+        dpath.util.merge(
+            result,
+            _collect_pipeline_files(repo, targets, props, onerror=onerror),
+        )
 
     if targets or (not targets and not config_files):
         dpath.util.merge(
@@ -466,12 +490,20 @@ def _collect_definitions(
 
     if config_files:
         for path in config_files:
-            definitions = parse(fs, path)
-            definitions = _adjust_definitions_to_cwd(
-                repo.fs, path, definitions
-            )
+            definitions = parse(fs, path).get("data", {})
             if definitions:
-                dpath.util.merge(result, {path: definitions})
+                resolved = _resolve_definitions(
+                    repo.dvcfs,
+                    targets,
+                    props,
+                    path,
+                    definitions,
+                    onerror=onerror,
+                )
+                dpath.util.merge(
+                    result,
+                    {path: resolved},
+                )
 
     for target in targets:
         if not result or fs.exists(target):

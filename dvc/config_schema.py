@@ -78,7 +78,9 @@ REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
+    Optional("worktree"): Bool,
     Optional("no_traverse"): Bool,  # obsoleted
+    Optional("version_aware"): Bool,
 }
 LOCAL_COMMON = {
     "type": supported_cache_type,
@@ -169,6 +171,7 @@ SCHEMA = {
                 "gs": {
                     "projectname": str,
                     "credentialpath": str,
+                    "endpointurl": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
@@ -220,6 +223,7 @@ SCHEMA = {
                     **REMOTE_COMMON,
                 },
                 "gdrive": {
+                    "profile": str,
                     "gdrive_use_service_account": Bool,
                     "gdrive_client_id": str,
                     "gdrive_client_secret": str,
@@ -227,6 +231,7 @@ SCHEMA = {
                     "gdrive_service_account_user_email": str,
                     "gdrive_service_account_json_file_path": str,
                     Optional("gdrive_trash_only", default=False): Bool,
+                    Optional("gdrive_acknowledge_abuse", default=False): Bool,
                     Optional("verify", default=True): Bool,
                     **REMOTE_COMMON,
                 },
@@ -286,5 +291,10 @@ SCHEMA = {
     "parsing": {
         "bool": All(Lower, Choices("store_true", "boolean_optional")),
         "list": All(Lower, Choices("nargs", "append")),
+    },
+    "hydra": {
+        Optional("enabled", default=False): Bool,
+        "config_dir": str,
+        "config_name": str,
     },
 }

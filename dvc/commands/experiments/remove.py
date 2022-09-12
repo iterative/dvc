@@ -10,23 +10,22 @@ logger = logging.getLogger(__name__)
 
 
 class CmdExperimentsRemove(CmdBase):
-    def raise_error_if_all_disabled(self):
+    def check_arguments(self):
         if not any(
             [
-                self.args.experiment,
                 self.args.all_commits,
                 self.args.rev,
                 self.args.queue,
             ]
-        ):
+        ) ^ bool(self.args.experiment):
             raise InvalidArgumentError(
                 "Either provide an `experiment` argument, or use the "
-                "`--rev` or `--all-commits` flag."
+                "`--rev` or `--all-commits` or `--queue` flag."
             )
 
     def run(self):
 
-        self.raise_error_if_all_disabled()
+        self.check_arguments()
 
         removed_list = self.repo.experiments.remove(
             exp_names=self.args.experiment,

@@ -7,7 +7,7 @@ import pytest
 
 from dvc.fs.dvc import DvcFileSystem
 from dvc.testing.tmp_dir import make_subrepo
-from dvc_data.build import build
+from dvc_data.hashfile.build import build
 from dvc_data.hashfile.hash_info import HashInfo
 
 
@@ -107,6 +107,7 @@ def test_isdir_isfile(tmp_dir, dvc):
     (tmp_dir / "datafile").unlink()
     (tmp_dir / "subdir" / "baz").unlink()
 
+    fs = DvcFileSystem(repo=dvc)
     assert fs.isdir("datadir")
     assert not fs.isfile("datadir")
     assert fs.isdvc("datadir")
@@ -565,7 +566,7 @@ def test_get_hash_mixed_dir(tmp_dir, scm, dvc):
 
 
 def test_get_hash_dirty_file(tmp_dir, dvc):
-    from dvc_data import check
+    from dvc_data.hashfile import check
     from dvc_data.hashfile.hash import hash_file
 
     tmp_dir.dvc_gen("file", "file")

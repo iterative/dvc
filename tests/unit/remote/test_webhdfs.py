@@ -2,8 +2,7 @@ from unittest.mock import Mock, create_autospec
 
 import pytest
 import requests
-
-from dvc.fs import WebHDFSFileSystem
+from dvc_webhdfs import WebHDFSFileSystem
 
 host = "host"
 kerberos = False
@@ -16,8 +15,8 @@ use_https = True
 user = "test"
 
 
-@pytest.fixture()
-def webhdfs_config():
+@pytest.fixture(name="webhdfs_config")
+def fixture_webhdfs_config():
     url = f"webhdfs://{user}@{host}:{port}"
     url_config = WebHDFSFileSystem._get_kwargs_from_urls(url)
     return {

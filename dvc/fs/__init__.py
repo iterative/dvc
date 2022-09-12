@@ -1,26 +1,18 @@
 from urllib.parse import urlparse
 
+from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
+
 # pylint: disable=unused-import
 from dvc_objects.fs import utils  # noqa: F401
 from dvc_objects.fs import (  # noqa: F401
-    FS_MAP,
-    AzureFileSystem,
-    GDriveFileSystem,
-    GSFileSystem,
-    HDFSFileSystem,
-    HTTPFileSystem,
-    HTTPSFileSystem,
     LocalFileSystem,
     MemoryFileSystem,
-    OSSFileSystem,
-    S3FileSystem,
     Schemes,
-    SSHFileSystem,
-    WebDAVFileSystem,
-    WebDAVSFileSystem,
-    WebHDFSFileSystem,
     generic,
     get_fs_cls,
+    known_implementations,
+    localfs,
+    registry,
     system,
 )
 from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
@@ -29,17 +21,25 @@ from dvc_objects.fs.errors import (  # noqa: F401
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
-from dvc_objects.fs.implementations.gdrive import GDriveAuthError  # noqa: F401
-from dvc_objects.fs.implementations.local import localfs  # noqa: F401
-from dvc_objects.fs.implementations.ssh import (  # noqa: F401
-    DEFAULT_PORT as DEFAULT_SSH_PORT,
-)
 from dvc_objects.fs.path import Path  # noqa: F401
 
 from .data import DataFileSystem  # noqa: F401
 from .dvc import DvcFileSystem  # noqa: F401
 from .git import GitFileSystem  # noqa: F401
+
+known_implementations.update(
+    {
+        "dvc": {
+            "class": "dvc.fs.dvc.DvcFileSystem",
+            "err": "dvc is supported, but requires 'dvc' to be installed",
+        },
+        "git": {
+            "class": "dvc.fs.git.GitFileSystem",
+            "err": "git is supported, but requires 'dvc' to be installed",
+        },
+    }
+)
+
 
 # pylint: enable=unused-import
 
@@ -116,11 +116,8 @@ def get_cloud_fs(repo, **kwargs):
 
     cls = get_fs_cls(remote_conf)
 
-    if cls == GDriveFileSystem and repo:
-        remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
-
     url = remote_conf.pop("url")
-    if issubclass(cls, WebDAVFileSystem):
+    if cls.protocol in ["webdav", "webdavs"]:
         # For WebDAVFileSystem, provided url is the base path itself, so it
         # should be treated as being a root path.
         fs_path = cls.root_marker

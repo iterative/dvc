@@ -721,12 +721,12 @@ class TestRunCommit(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertFalse(os.path.exists(self.dvc.odb.local.cache_dir))
+        self.assertFalse(os.path.exists(self.dvc.odb.local.path))
 
         ret = main(["commit", fname + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertEqual(len(os.listdir(self.dvc.odb.local.cache_dir)), 1)
+        self.assertEqual(len(os.listdir(self.dvc.odb.local.path)), 1)
 
 
 class TestRunPersist(TestDvc):
@@ -972,6 +972,12 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
       # comment preserved
       - path: bar
         desc: out desc
+        type: mytype
+        labels:
+        - label1
+        - label2
+        meta:
+          key: value
       meta:
         name: copy-foo-bar
     """
@@ -996,6 +1002,12 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
         # comment preserved
         - path: bar
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
+          meta:
+            key: value
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta:

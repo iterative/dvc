@@ -243,9 +243,11 @@ class PipelineFile(FileMixin):
         self._lockfile.dump(stage)
 
     @staticmethod
-    def _check_if_parametrized(stage):
+    def _check_if_parametrized(stage, action: str = "dump") -> None:
         if stage.raw_data.parametrized:
-            raise ParametrizedDumpError(f"cannot dump a parametrized {stage}")
+            raise ParametrizedDumpError(
+                f"cannot {action} a parametrized {stage}"
+            )
 
     def _dump_pipeline_file(self, stage):
         self._check_if_parametrized(stage)
@@ -291,6 +293,7 @@ class PipelineFile(FileMixin):
         self._lockfile.remove()
 
     def remove_stage(self, stage):
+        self._check_if_parametrized(stage, "remove")
         self._lockfile.remove_stage(stage)
         if not self.exists():
             return

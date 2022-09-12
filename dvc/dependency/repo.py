@@ -63,7 +63,7 @@ class RepoDependency(Dependency):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to, jobs=None):
-        from dvc_data.checkout import checkout
+        from dvc_data.hashfile.checkout import checkout
 
         for odb, objs in self.get_used_objs().items():
             self.repo.cloud.pull(objs, jobs=jobs, odb=odb)
@@ -103,14 +103,12 @@ class RepoDependency(Dependency):
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.utils import as_posix
-        from dvc_data.build import build
-        from dvc_data.objects.tree import Tree, TreeError
+        from dvc_data.hashfile.build import build
+        from dvc_data.hashfile.tree import Tree, TreeError
 
         local_odb = self.repo.odb.local
         locked = kwargs.pop("locked", True)
-        with self._make_repo(
-            locked=locked, cache_dir=local_odb.cache_dir
-        ) as repo:
+        with self._make_repo(locked=locked, cache_dir=local_odb.path) as repo:
             used_obj_ids = defaultdict(set)
             rev = repo.get_rev()
             if locked and self.def_repo.get(self.PARAM_REV_LOCK) is None:
@@ -155,8 +153,8 @@ class RepoDependency(Dependency):
     def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
         from dvc.fs.dvc import DvcFileSystem
-        from dvc_data.db.reference import ReferenceHashFileDB
-        from dvc_data.objects.tree import Tree
+        from dvc_data.hashfile.db.reference import ReferenceHashFileDB
+        from dvc_data.hashfile.tree import Tree
 
         if not isinstance(odb, ReferenceHashFileDB):
             return

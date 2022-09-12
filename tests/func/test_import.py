@@ -6,6 +6,7 @@ import pytest
 from funcy import first
 from scmrepo.git import Git
 
+from dvc.annotations import Annotation
 from dvc.config import NoRemoteError
 from dvc.dvcfile import Dvcfile
 from dvc.exceptions import DownloadError, PathMissingError
@@ -242,7 +243,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -258,7 +259,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -483,9 +484,9 @@ def test_pull_imported_stage_from_subrepos(
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
     remove("out")
-    makedirs(dvc.odb.local.cache_dir)
+    makedirs(dvc.odb.local.path)
 
     stats = dvc.pull(["out.dvc"])
 
@@ -527,7 +528,7 @@ def test_import_with_no_exec(tmp_dir, dvc, erepo_dir):
 
 
 def test_import_with_jobs(mocker, dvc, erepo_dir):
-    import dvc_data.transfer as otransfer
+    import dvc_data.hashfile.transfer as otransfer
 
     with erepo_dir.chdir():
         erepo_dir.dvc_gen(
@@ -554,7 +555,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     with erepo_dir.chdir():
         erepo_dir.dvc_gen({"dir": {"foo": "foo", "bar": "bar"}}, commit="init")
     erepo_dir.dvc.push()
-    remove(erepo_dir.dvc.odb.local.cache_dir)
+    remove(erepo_dir.dvc.odb.local.path)
     remove(os.fspath(erepo_dir / "dir"))
 
     erepo2 = make_tmp_dir("erepo2", scm=True, dvc=True)
@@ -562,7 +563,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
         erepo2.dvc.imp(os.fspath(erepo_dir), "dir")
         erepo2.scm.add("dir.dvc")
         erepo2.scm.commit("import")
-    remove(erepo2.dvc.odb.local.cache_dir)
+    remove(erepo2.dvc.odb.local.path)
     remove(os.fspath(erepo2 / "dir"))
 
     dvc.imp(os.fspath(erepo2), "dir", "dir_imported")
@@ -570,14 +571,14 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
-    remove(dvc.odb.local.cache_dir)
+    remove(dvc.odb.local.path)
     remove("dir_imported")
 
     # pulled objects should come from the original upstream repo's remote,
     # no cache or remote should be needed from the intermediate repo
     dvc.pull(["dir_imported.dvc"])
-    assert not os.path.exists(erepo_dir.dvc.odb.local.cache_dir)
-    assert not os.path.exists(erepo2.dvc.odb.local.cache_dir)
+    assert not os.path.exists(erepo_dir.dvc.odb.local.path)
+    assert not os.path.exists(erepo2.dvc.odb.local.path)
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
@@ -627,3 +628,26 @@ def test_parameterized_repo(tmp_dir, dvc, scm, erepo_dir, paths):
         "url": os.fspath(erepo_dir),
         "rev_lock": erepo_dir.scm.get_rev(),
     }
+
+
+def test_import_with_annotations(M, tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
+    stage = dvc.imp(os.fspath(erepo_dir), "foo", "foo", no_exec=True, **annot)
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+    # try to selectively update/overwrite some annotations
+    annot = {**annot, "type": "t2"}
+    stage = dvc.imp(
+        os.fspath(erepo_dir), "foo", "foo", no_exec=True, type="t2"
+    )
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

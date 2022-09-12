@@ -3,16 +3,6 @@ from collections.abc import Mapping
 from functools import wraps
 from typing import Callable, Dict, Iterable, List, TypeVar, Union
 
-from dvc.exceptions import DvcException
-
-
-class NewParamsFound(DvcException):
-    """Thrown if new params were found during merge_params"""
-
-    def __init__(self, new_params: List, *args):
-        self.new_params = new_params
-        super().__init__("New params found during merge", *args)
-
 
 def apply_diff(src, dest):
     """Recursively apply changes from src to dest.
@@ -61,6 +51,53 @@ def apply_diff(src, dest):
         )
 
 
+def to_omegaconf(item):
+    """
+    Some parsers return custom classes (i.e. parse_yaml_for_update)
+    that can mess up with omegaconf logic.
+    Cast the custom classes to Python primitives.
+    """
+    if isinstance(item, dict):
+        item = {k: to_omegaconf(v) for k, v in item.items()}
+    elif isinstance(item, list):
+        item = [to_omegaconf(x) for x in item]
+    return item
+
+
+def remove_missing_keys(src, to_update):
+    keys = list(src.keys())
+    for key in keys:
+        if key not in to_update:
+            del src[key]
+        elif isinstance(src[key], dict):
+            remove_missing_keys(src[key], to_update[key])
+
+    return src
+
+
+def _merge_item(d, key, value):
+    if key in d:
+        item = d.get(key, None)
+        if isinstance(item, dict) and isinstance(value, dict):
+            merge_dicts(item, value)
+        else:
+            d[key] = value
+    else:
+        d[key] = value
+
+
+def merge_dicts(src: Dict, to_update: Dict) -> Dict:
+    """Recursively merges dictionaries.
+
+    Args:
+        src (dict): source dictionary of parameters
+        to_update (dict): dictionary of parameters to merge into src
+    """
+    for key, value in to_update.items():
+        _merge_item(src, key, value)
+    return src
+
+
 def ensure_list(item: Union[Iterable[str], str, None]) -> List[str]:
     if item is None:
         return []
@@ -77,31 +114,6 @@ def chunk_dict(d: Dict[_KT, _VT], size: int = 1) -> List[Dict[_KT, _VT]]:
     from funcy import chunks
 
     return [{key: d[key] for key in chunk} for chunk in chunks(size, d)]
-
-
-def merge_params(src: Dict, to_update: Dict, allow_new: bool = True) -> Dict:
-    """
-    Recursively merges params with benedict's syntax support in-place.
-
-    Args:
-        src (dict): source dictionary of parameters
-        to_update (dict): dictionary of parameters to merge into src
-        allow_new (bool): if False, raises an error if new keys would be
-            added to src
-    """
-    from ._benedict import benedict
-
-    data = benedict(src)
-
-    if not allow_new:
-        new_params = list(
-            set(to_update.keys()) - set(data.keypaths(indexes=True))
-        )
-        if new_params:
-            raise NewParamsFound(new_params)
-
-    data.merge(to_update, overwrite=True)
-    return src
 
 
 class _NamespacedDict(dict):

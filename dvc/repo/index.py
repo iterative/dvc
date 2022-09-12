@@ -25,8 +25,8 @@ if TYPE_CHECKING:
     from dvc.repo.stage import StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
-    from dvc_data import Tree
     from dvc_data.hashfile.hash_info import HashInfo
+    from dvc_data.index import DataIndex
     from dvc_objects.db import ObjectDB
 
 
@@ -168,33 +168,48 @@ class Index:
         return build_outs_graph(self.graph, self.outs_trie)
 
     @cached_property
-    def tree(self) -> "Tree":
-        from dvc.config import NoRemoteError
-        from dvc_data import Tree
+    def data(self) -> "Dict[str, DataIndex]":
+        from collections import defaultdict
 
-        tree = Tree()
+        from dvc.config import NoRemoteError
+        from dvc_data.index import DataIndex, DataIndexEntry
+
+        by_workspace: dict = defaultdict(DataIndex)
+
+        by_workspace["repo"] = DataIndex()
+        by_workspace["local"] = DataIndex()
 
         for out in self.outs:
             if not out.use_cache:
                 continue
 
             if out.is_in_repo:
-                fs_key = "repo"
+                workspace = "repo"
                 key = self.repo.fs.path.relparts(
                     out.fs_path, self.repo.root_dir
                 )
             else:
-                fs_key = out.fs.protocol
-                key = out.fs.path.parts(out.fs_path)
+                workspace = out.fs.protocol
+                no_drive = out.fs.path.flavour.splitdrive(out.fs_path)[1]
+                key = out.fs.path.parts(no_drive)[1:]
 
-            out.meta.odb = out.odb
             try:
-                out.meta.remote = self.repo.cloud.get_remote_odb(out.remote)
+                remote = self.repo.cloud.get_remote_odb(out.remote)
             except NoRemoteError:
-                out.meta.remote = None
-            tree.add((fs_key,) + key, out.meta, out.hash_info)
+                remote = None
 
-        return tree
+            data_index = by_workspace[workspace]
+
+            data_index[key] = DataIndexEntry(
+                meta=out.meta,
+                obj=out.obj,
+                hash_info=out.hash_info,
+                odb=out.odb,
+                cache=out.odb,
+                remote=remote,
+            )
+
+        return dict(by_workspace)
 
     def used_objs(
         self,
@@ -231,6 +246,28 @@ class Index:
             ).items():
                 used[odb].update(objs)
         return used
+
+    def partial_imports(
+        self,
+        targets: "TargetType" = None,
+        recursive: bool = False,
+    ) -> List["Stage"]:
+        from itertools import chain
+
+        from dvc.utils.collections import ensure_list
+
+        collect_targets: Sequence[Optional[str]] = (None,)
+        if targets:
+            collect_targets = ensure_list(targets)
+
+        pairs = chain.from_iterable(
+            self.stage_collector.collect_granular(
+                target, recursive=recursive, with_deps=True
+            )
+            for target in collect_targets
+        )
+
+        return [stage for stage, _ in pairs if stage.is_partial_import]
 
     # Following methods help us treat the collection as a set-like structure
     # and provides faux-immutability.

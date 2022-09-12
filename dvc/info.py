@@ -8,12 +8,20 @@ import psutil
 
 from dvc import __version__
 from dvc.exceptions import NotDvcRepoError
-from dvc.fs import FS_MAP, generic, get_fs_cls, get_fs_config
+from dvc.fs import Schemes, generic, get_fs_cls, get_fs_config, registry
 from dvc.repo import Repo
 from dvc.scm import SCMError
 from dvc.utils import error_link
 from dvc.utils.pkg import PKG
 
+SUBPROJECTS = (
+    "dvc_data",
+    "dvc_objects",
+    "dvc_render",
+    "dvc_task",
+    "dvclive",
+    "scmrepo",
+)
 package = "" if PKG is None else f"({PKG})"
 
 
@@ -23,6 +31,7 @@ def get_dvc_info():
         "---------------------------------",
         f"Platform: Python {platform.python_version()} on "
         f"{platform.platform()}",
+        f"Subprojects:{_get_subprojects()}",
         f"Supports:{_get_supported_remotes()}",
     ]
 
@@ -32,9 +41,9 @@ def get_dvc_info():
             # can't auto-create it, as it might cause issues if the user
             # later decides to enable shared cache mode with
             # `dvc config cache.shared group`.
-            if os.path.exists(repo.odb.local.cache_dir):
+            if os.path.exists(repo.odb.local.path):
                 info.append(f"Cache types: {_get_linktype_support_info(repo)}")
-                fs_type = get_fs_type(repo.odb.local.cache_dir)
+                fs_type = get_fs_type(repo.odb.local.path)
                 info.append(f"Cache directory: {fs_type}")
             else:
                 info.append("Cache types: " + error_link("no-dvc-cache"))
@@ -58,7 +67,7 @@ def _get_caches(cache):
     caches = (
         cache_type
         for cache_type, cache_instance in cache.by_scheme()
-        if cache_instance
+        if cache_instance and cache_type != "repo"
     )
 
     # Caches will be always non-empty including the local cache
@@ -88,9 +97,29 @@ def _get_linktype_support_info(repo):
     return ", ".join(links)
 
 
+def _get_subprojects():
+    subprojects = []
+    for subproject in SUBPROJECTS:
+        try:
+            version = importlib_metadata.version(subproject)
+            subprojects.append(f"{subproject} = {version}")
+        except ImportError:
+            pass
+
+    return "\n\t" + "\n\t".join(subprojects)
+
+
 def _get_supported_remotes():
     supported_remotes = []
-    for scheme, fs_cls in FS_MAP.items():
+    for scheme in registry:
+        if scheme in [Schemes.LOCAL, Schemes.MEMORY, "dvc", "git"]:
+            continue
+
+        try:
+            fs_cls = registry[scheme]
+        except ImportError:
+            continue
+
         if not fs_cls.get_missing_deps():
             dependencies = []
             for requirement in fs_cls.REQUIRES:

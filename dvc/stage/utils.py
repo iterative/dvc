@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
+from dvc.annotations import ANNOTATION_FIELDS
 from dvc.exceptions import InvalidArgumentError
 from dvc_data.hashfile.meta import Meta
 
@@ -50,10 +51,14 @@ def fill_stage_outputs(stage, **kwargs):
     keys = [
         "outs_persist",
         "outs_persist_no_cache",
-        "metrics_no_cache",
         "metrics",
-        "plots_no_cache",
+        "metrics_persist",
+        "metrics_no_cache",
+        "metrics_persist_no_cache",
         "plots",
+        "plots_persist",
+        "plots_no_cache",
+        "plots_persist_no_cache",
         "outs_no_cache",
         "outs",
         "checkpoints",
@@ -190,9 +195,9 @@ def compute_md5(stage):
     return dict_md5(
         d,
         exclude=[
+            *ANNOTATION_FIELDS,
             stage.PARAM_LOCKED,  # backward compatibility
             stage.PARAM_FROZEN,
-            Output.PARAM_DESC,
             Output.PARAM_METRIC,
             Output.PARAM_PERSIST,
             Output.PARAM_CHECKPOINT,

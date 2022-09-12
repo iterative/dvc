@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
 import pytest
+from dvc_webdav import WebDAVFileSystem, WebDAVSFileSystem
 
-from dvc.fs import WebDAVFileSystem, WebDAVSFileSystem, get_cloud_fs
+from dvc.fs import get_cloud_fs
 from tests.utils.asserts import issubset
 
 url_fmt = "{scheme}://{user}@example.com/public.php/webdav"
@@ -65,7 +66,7 @@ def test_token():
     )
 
 
-@patch("dvc_objects.fs.implementations.webdav.ask_password")
+@patch("dvc_webdav.ask_password")
 def test_ask_password(ask_password_mocked):
     ask_password_mocked.return_value = "pass"
     host = "host"

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, no_type_check
 from funcy import post_processing
 
 from dvc.dependency import ParamsDependency
-from dvc.output import Output
+from dvc.output import Annotation, Output
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import parse_yaml_for_update
 
@@ -27,7 +27,7 @@ PARAM_METRIC = Output.PARAM_METRIC
 PARAM_PLOT = Output.PARAM_PLOT
 PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
-PARAM_DESC = Output.PARAM_DESC
+PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
@@ -38,8 +38,9 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 @post_processing(OrderedDict)
 def _get_flags(out):
-    if out.desc:
-        yield PARAM_DESC, out.desc
+    annot = out.annot.to_dict()
+    yield from annot.items()
+
     if not out.use_cache:
         yield PARAM_CACHE, False
     if out.checkpoint:

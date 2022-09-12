@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
@@ -132,7 +133,7 @@ class TestImport(_TestImport):
         return False
 
 
-def test_import_url_preserve_meta(tmp_dir, dvc):
+def test_import_url_preserve_fields(tmp_dir, dvc):
     text = textwrap.dedent(
         """\
         # top comment
@@ -142,6 +143,12 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
         outs:
         - path: bar # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
+          meta:
+            key: value
         meta: some metadata
     """
     )
@@ -160,6 +167,12 @@ def test_import_url_preserve_meta(tmp_dir, dvc):
         outs:
         - path: bar # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
+          meta:
+            key: value
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
         meta: some metadata
@@ -267,3 +280,53 @@ def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
 
     status = dvc.status()
     assert len(status) == 0
+
+
+def test_import_url_no_download(tmp_dir, dvc, local_workspace):
+    local_workspace.gen("file", "file content")
+    dst = tmp_dir / "file"
+    stage = dvc.imp_url(
+        "remote://workspace/file", os.fspath(dst), no_download=True
+    )
+
+    assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
+
+    assert not dst.exists()
+
+    out = stage.outs[0]
+    assert not out.hash_info
+    assert out.meta.size is None
+
+    status = dvc.status()
+    assert status["file.dvc"] == [
+        {"changed outs": {"file": "deleted"}},
+    ]
+
+
+def test_imp_url_with_annotations(M, tmp_dir, dvc, local_workspace):
+    local_workspace.gen("foo", "foo")
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
+    stage = dvc.imp_url(
+        "remote://workspace/foo",
+        os.fspath(tmp_dir / "foo"),
+        no_exec=True,
+        **annot,
+    )
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+    # try to selectively update/overwrite some annotations
+    annot = {**annot, "type": "t2"}
+    stage = dvc.imp_url(
+        "remote://workspace/foo",
+        os.fspath(tmp_dir / "foo"),
+        no_exec=True,
+        type="t2",
+    )
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

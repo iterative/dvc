@@ -15,12 +15,12 @@ def test_cache(tmp_dir, dvc):
     cache1_md5 = "123"
     cache2_md5 = "234"
     cache1 = os.path.join(
-        dvc.odb.local.cache_dir,
+        dvc.odb.local.path,
         cache1_md5[0:2],
         cache1_md5[2:],
     )
     cache2 = os.path.join(
-        dvc.odb.local.cache_dir,
+        dvc.odb.local.path,
         cache2_md5[0:2],
         cache2_md5[2:],
     )
@@ -43,7 +43,7 @@ def test_cache(tmp_dir, dvc):
 
 
 def test_cache_load_bad_dir_cache(tmp_dir, dvc):
-    from dvc_data import load
+    from dvc_data.hashfile import load
 
     dir_hash = "123.dir"
     fname = os.fspath(dvc.odb.local.oid_to_path(dir_hash))
@@ -63,7 +63,7 @@ def test_external_cache_dir(tmp_dir, dvc, make_tmp_dir):
 
     with dvc.config.edit() as conf:
         conf["cache"]["dir"] = cache_dir.fs_path
-    assert not os.path.exists(dvc.odb.local.cache_dir)
+    assert not os.path.exists(dvc.odb.local.path)
     dvc.odb = ODBManager(dvc)
 
     tmp_dir.dvc_gen({"foo": "foo"})
@@ -186,7 +186,7 @@ def test_shared_cache(tmp_dir, dvc, group):
         with dvc.config.edit() as conf:
             conf["cache"].update({"shared": "group"})
     dvc.odb = ODBManager(dvc)
-    cache_dir = dvc.odb.local.cache_dir
+    cache_dir = dvc.odb.local.path
 
     assert not os.path.exists(cache_dir)
 

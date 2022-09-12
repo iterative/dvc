@@ -43,7 +43,8 @@ class CmdDataPull(CmdDataBase):
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
-            self.log_summary(getattr(exc, "stats", {}))
+            if stats := getattr(exc, "stats", {}):
+                self.log_summary(stats)
             logger.exception("failed to pull data from the cloud")
             return 1
 

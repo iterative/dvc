@@ -2,20 +2,22 @@
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
-• `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_
 • `Blog <http://blog.dataversioncontrol.com>`_
-• `Twitter <https://twitter.com/DVCorg>`_
-• `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
-• `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+• `Related Technologies <https://dvc.org/doc/user-guide/related-technologies>`_
+• `How DVC works`_
+• `VS Code Extension`_
+• `Installation`_
+• `Contributing`_
+• `Community and Support`_
 
-|CI| |Maintainability| |Coverage| |VS Code| |DOI|
+|CI| |Python Version| |Coverage| |VS Code| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 
-**Data Version Control** or **DVC** is a command line tool and `VS Code Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ to help you develop reproducible machine learning projects:
+**Data Version Control** or **DVC** is a command line tool and `VS Code Extension`_ to help you develop reproducible machine learning projects:
 
 #. **Version** your data and models.
    Store them in your cloud storage but keep their version info in your Git repo.
@@ -25,12 +27,9 @@
 
 #. **Track** experiments in your local Git repo (no servers needed).
 
-#. **Compare** any data, code, parameters, model, or performance plots
+#. **Compare** any data, code, parameters, model, or performance plots.
 
 #. **Share** experiments and automatically reproduce anyone's experiment.
-
-.. contents:: **Contents**
-  :backlinks: none
 
 Quick start
 ===========
@@ -39,25 +38,30 @@ Quick start
 
 A common CLI workflow includes:
 
-+-----------------------------------+----------------------------------------------------------------------------+
-| Task                              | Terminal                                                                   |
-+===================================+============================================================================+
-| Track data                        | | ``$ git add train.py``                                                   |
-|                                   | | ``$ dvc add images.zip``                                                 |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Connect code and data             | | ``$ dvc run -n prepare -d images.zip -o images/ unzip -q images.zip``    |
-|                                   | | ``$ dvc run -n train -d images/ -d train.py -o model.p python train.py`` |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Make changes and reproduce        | | ``$ vi train.py``                                                        |
-|                                   | | ``$ dvc repro model.p.dvc``                                              |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Share code                        | | ``$ git add .``                                                          |
-|                                   | | ``$ git commit -m 'The baseline model'``                                 |
-|                                   | | ``$ git push``                                                           |
-+-----------------------------------+----------------------------------------------------------------------------+
-| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                 |
-|                                   | | ``$ dvc push``                                                           |
-+-----------------------------------+----------------------------------------------------------------------------+
+
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Task                              | Terminal                                                                                           |
++===================================+====================================================================================================+
+| Track data                        | | ``$ git add train.py params.yaml``                                                               |
+|                                   | | ``$ dvc add images/``                                                                            |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Connect code and data             | | ``$ dvc stage add -n featurize -d images/ -o features/ python featurize.py``                     |
+|                                   | | ``$ dvc stage add -n train -d features/ -d train.py -o model.p -M metrics.json python train.py`` |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Make changes and experiment       | | ``$ dvc exp run -n exp-baseline``                                                                |
+|                                   | | ``$ vi train.py``                                                                                |
+|                                   | | ``$ dvc exp run -n exp-code-change``                                                             |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Compare and select experiments    | | ``$ dvc exp show``                                                                               |
+|                                   | | ``$ dvc exp apply exp-baseline``                                                                 |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Share code                        | | ``$ git add .``                                                                                  |
+|                                   | | ``$ git commit -m 'The baseline model'``                                                         |
+|                                   | | ``$ git push``                                                                                   |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
+| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``                                         |
+|                                   | | ``$ dvc push``                                                                                   |
++-----------------------------------+----------------------------------------------------------------------------------------------------+
 
 How DVC works
 =============
@@ -84,12 +88,14 @@ They specify all steps required to produce a model: input dependencies including
 Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
 Their results can be filtered and compared based on hyperparameters and metrics, and visualized with multiple plots.
 
+.. _`VS Code Extension`:
+
 Visual Studio Code Extension
 ============================
 
 |VS Code|
 
-To get use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
+To use DVC as a GUI right from your VS Code IDE, install the `DVC Extension <https://marketplace.visualstudio.com/items?itemName=Iterative.dvc>`_ from the Marketplace.
 It currently features experiment tracking and data management, and more features (data pipeline support, etc.) are coming soon!
 
 |VS Code Extension Overview|
@@ -189,35 +195,6 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
-Comparison to related technologies
-==================================
-
-#. Data Engineering tools such as `AirFlow <https://airflow.apache.org/>`_, `Luigi <https://github.com/spotify/luigi>`_, and others - in DVC data, model and ML pipelines represent a single ML project focused on data scientists' experience.
-   Data engineering tools orchestrate multiple data projects and focus on efficient execution.
-   A DVC project can be used from existing data pipelines as a single execution step.
-
-#. `Git-annex <https://git-annex.branchable.com/>`_:
-   DVC uses the idea of storing the content of large files (which should not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of copying/duplicating files.
-
-#. `Git-LFS <https://git-lfs.github.com/>`_: DVC is compatible with many remote storage services (S3, Google Cloud, Azure, SSH, etc).
-   DVC also uses reflinks or hardlinks to avoid copy operations on checkouts; thus handling large data
-   files much more efficiently.
-
-#. Makefile (and analogues including ad-hoc scripts):
-   DVC tracks dependencies (in a directed acyclic graph).
-
-#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_:
-   DVC is a workflow management system designed specifically to manage machine learning experiments.
-   DVC is built on top of Git.
-
-#. `DAGsHub <https://dagshub.com/>`_: Online service to host DVC projects.
-   It provides a useful UI around DVC repositories and integrates other tools.
-
-#. `Iterative Studio <https://studio.iterative.ai/>`_: Official web platform for DVC projects.
-   It can be used to manage data and models, run and track experiments, and visualize and share results.
-   Also, it integrates with `CML (CI/CD for ML) <https://cml.dev/>`__ for training models in the cloud or Kubernetes, and with `MLEM <https://mlem.ai/>` for model deployment.
-
-
 Contributing
 ============
 
@@ -229,13 +206,14 @@ Thanks to all our contributors!
 
 |Contribs|
 
-Mailing List
-============
+Community and Support
+=====================
 
-Want to stay up to date?
-Want to help improve DVC by participating in our occasional polls?
-Subscribe to our `mailing list <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_.
-No spam, really low traffic.
+* `Twitter <https://twitter.com/DVCorg>`_
+* `Forum <https://discuss.dvc.org/>`_
+* `Discord Chat <https://dvc.org/chat>`_
+* `Email <mailto:support@dvc.org>`_
+* `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 Copyright
 =========
@@ -269,6 +247,10 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
    :target: https://codeclimate.com/github/iterative/dvc
    :alt: Code Climate
+
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/dvc
+   :target: https://pypi.org/project/dvc
+   :alt: Python Version
 
 .. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc

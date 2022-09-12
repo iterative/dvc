@@ -21,6 +21,32 @@ def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     }
 
 
+def test_show_simple_from_subdir(tmp_dir, dvc, run_copy_metrics):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+    tmp_dir.gen("metrics_t.yaml", "1.1")
+    run_copy_metrics(
+        "metrics_t.yaml",
+        "subdir/metrics.yaml",
+        metrics=["subdir/metrics.yaml"],
+    )
+
+    expected_path = os.path.join("subdir", "metrics.yaml")
+    assert dvc.metrics.show() == {"": {"data": {expected_path: {"data": 1.1}}}}
+
+    expected_path = os.path.join("..", "subdir", "metrics.yaml")
+    with subdir.chdir():
+        assert dvc.metrics.show() == {
+            "": {"data": {expected_path: {"data": 1.1}}}
+        }
+    subdir2 = tmp_dir / "subdir2"
+    subdir2.mkdir()
+    with subdir2.chdir():
+        assert dvc.metrics.show() == {
+            "": {"data": {expected_path: {"data": 1.1}}}
+        }
+
+
 def test_show(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "foo: 1.1")
     run_copy_metrics(
@@ -272,7 +298,7 @@ def test_metrics_show_overlap(
     # so as it works even for optimized cases
     if clear_before_run:
         remove(data_dir)
-        remove(dvc.odb.local.cache_dir)
+        remove(dvc.odb.local.path)
 
     dvc._reset()
 

@@ -121,7 +121,7 @@ def _log_exceptions(exc: Exception) -> Optional[int]:
         )
         return None
 
-    from dvc_data.build import IgnoreInCollectedDirError
+    from dvc_data.hashfile.build import IgnoreInCollectedDirError
 
     if isinstance(exc, IgnoreInCollectedDirError):
         logger.exception("")
@@ -189,6 +189,15 @@ def main(argv=None):  # noqa: C901
     except KeyboardInterrupt:
         logger.exception("interrupted by the user")
         ret = 252
+    except BrokenPipeError:
+        import os
+
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid another BrokenPipeError at shutdown
+        # See: https://docs.python.org/3/library/signal.html#note-on-sigpipe
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        ret = 141  # 128 + 13 (SIGPIPE)
     except NotDvcRepoError:
         logger.exception("")
         ret = 253

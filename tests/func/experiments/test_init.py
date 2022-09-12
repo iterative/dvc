@@ -396,12 +396,12 @@ def test_init_with_type_checkpoint_and_models_plots_provided(
                 "cmd": "cmd",
                 "deps": ["data", "src"],
                 "metrics": [
-                    {"m": {"cache": False}},
+                    {"m": {"cache": False, "persist": True}},
                 ],
                 "outs": [{"models": {"checkpoint": True}}],
                 "params": [{"params.yaml": None}],
                 "plots": [
-                    {"p": {"cache": False}},
+                    {"p": {"cache": False, "persist": True}},
                 ],
             }
         }

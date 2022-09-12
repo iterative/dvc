@@ -14,6 +14,7 @@ from dvc.commands import (
     config,
     daemon,
     dag,
+    data,
     data_sync,
     destroy,
     diff,
@@ -88,6 +89,7 @@ COMMANDS = [
     experiments,
     check_ignore,
     machine,
+    data,
 ]
 
 

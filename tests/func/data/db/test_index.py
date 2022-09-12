@@ -3,7 +3,7 @@ import pytest
 from dvc.exceptions import DownloadError, UploadError
 from dvc.fs import LocalFileSystem
 from dvc.utils.fs import remove
-from dvc_data.db import get_index
+from dvc_data.hashfile.db import get_index
 
 
 @pytest.fixture

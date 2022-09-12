@@ -8,7 +8,7 @@ import dpath.util
 from voluptuous import Any
 
 from dvc.exceptions import DvcException
-from dvc.utils.serialize import LOADERS, ParseError
+from dvc.utils.serialize import ParseError, load_path
 from dvc_data.hashfile.hash_info import HashInfo
 
 from .base import Dependency
@@ -39,12 +39,13 @@ class ParamsDependency(Dependency):
 
     def __init__(self, stage, path, params=None, repo=None):
         self.params = list(params) if params else []
-        info = (
-            {self.PARAM_PARAMS: params} if isinstance(params, dict) else None
-        )
+        hash_info = HashInfo()
+        if isinstance(params, dict):
+            hash_info = HashInfo(self.PARAM_PARAMS, params)
         repo = repo or stage.repo
         path = path or os.path.join(repo.root_dir, self.DEFAULT_PARAMS_FILE)
-        super().__init__(stage, path, info=info, repo=repo)
+        super().__init__(stage, path, repo=repo)
+        self.hash_info = hash_info
 
     def dumpd(self):
         ret = super().dumpd()
@@ -139,12 +140,9 @@ class ParamsDependency(Dependency):
             )
 
     def read_file(self):
-        _, ext = os.path.splitext(self.fs_path)
-        loader = LOADERS[ext]
-
         self.validate_filepath()
         try:
-            return loader(self.fs_path, fs=self.repo.fs)
+            return load_path(self.fs_path, self.repo.fs)
         except ParseError as exc:
             raise BadParamFileError(
                 f"Unable to read parameters from '{self}'"

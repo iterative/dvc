@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from dvc.info import get_dvc_info
+from dvc.info import SUBPROJECTS, get_dvc_info
 
 # Python's version is in the shape of:
 # <major>.<minor>.<patch>[{a|b|rc}N][.postN][.devN]
@@ -47,12 +47,15 @@ def find_supported_remotes(string):
 def test_info_in_repo(scm_init, tmp_dir):
     tmp_dir.init(scm=scm_init, dvc=True)
     # Create `.dvc/cache`, that is needed to check supported link types.
-    os.mkdir(tmp_dir.dvc.odb.local.cache_dir)
+    os.mkdir(tmp_dir.dvc.odb.local.path)
 
     dvc_info = get_dvc_info()
 
     assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", dvc_info)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", dvc_info)
+    for subproject in SUBPROJECTS:
+        assert re.search(rf"{subproject} = {DVC_VERSION_REGEX}", dvc_info)
+
     assert find_supported_remotes(dvc_info)
     assert re.search(r"Cache types: .*", dvc_info)
 
@@ -116,7 +119,7 @@ def test_remotes(tmp_dir, dvc, caplog):
 
 
 def test_fs_info_in_repo(tmp_dir, dvc, caplog):
-    os.mkdir(dvc.odb.local.cache_dir)
+    os.mkdir(dvc.odb.local.path)
     dvc_info = get_dvc_info()
 
     assert re.search(r"Cache directory: .* on .*", dvc_info)
@@ -141,10 +144,10 @@ def test_fs_info_outside_of_repo(tmp_dir, caplog):
 
 
 def test_plugin_versions(tmp_dir, dvc):
-    from dvc.fs import FS_MAP
+    from dvc.fs import registry
 
     dvc_info = get_dvc_info()
     remotes = find_supported_remotes(dvc_info)
 
     for remote, dependencies in remotes.items():
-        assert dependencies.keys() == FS_MAP[remote].REQUIRES.keys()
+        assert dependencies.keys() == registry[remote].REQUIRES.keys()

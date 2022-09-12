@@ -18,6 +18,7 @@ class CmdUpdate(CmdBase):
                 rev=self.args.rev,
                 recursive=self.args.recursive,
                 to_remote=self.args.to_remote,
+                no_download=self.args.no_download,
                 remote=self.args.remote,
                 jobs=self.args.jobs,
             )
@@ -54,6 +55,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Update all stages in the specified directory.",
+    )
+    update_parser.add_argument(
+        "--no-download",
+        action="store_true",
+        default=False,
+        help="Update .dvc file hash value(s)"
+        " but do not download the file(s).",
     )
     update_parser.add_argument(
         "--to-remote",
