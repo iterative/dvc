@@ -2,6 +2,8 @@ import sys
 
 import pytest
 
+from dvc.exceptions import InvalidArgumentError
+
 from ..utils.test_hydra import hydra_setup
 
 
@@ -85,3 +87,57 @@ def test_hydra_compose_and_dump(
             "goo": {"bag": 3.0},
             "lorem": False,
         }
+
+
+@pytest.mark.parametrize(
+    "hydra_enabled,overrides,expected",
+    [
+        (
+            pytest.param(
+                True,
+                marks=pytest.mark.xfail(
+                    sys.version_info >= (3, 11), reason="unsupported on 3.11"
+                ),
+            ),
+            ["db=mysql,postgresql"],
+            [
+                {"params.yaml": ["db=mysql"]},
+                {"params.yaml": ["db=postgresql"]},
+            ],
+        ),
+        (
+            False,
+            ["foo=bar,baz"],
+            [{"params.yaml": ["foo=bar"]}, {"params.yaml": ["foo=baz"]}],
+        ),
+    ],
+)
+def test_hydra_sweep(
+    tmp_dir, params_repo, dvc, mocker, hydra_enabled, overrides, expected
+):
+    patched = mocker.patch.object(dvc.experiments, "queue_one")
+
+    if hydra_enabled:
+        hydra_setup(
+            tmp_dir,
+            config_dir="conf",
+            config_name="config",
+        )
+        with dvc.config.edit() as conf:
+            conf["hydra"]["enabled"] = True
+
+    dvc.experiments.run(params=overrides, queue=True)
+
+    assert patched.call_count == len(expected)
+    for e in expected:
+        patched.assert_any_call(
+            mocker.ANY,
+            params=e,
+            reset=True,
+            targets=None,
+        )
+
+
+def test_hydra_sweep_requires_queue(params_repo, dvc):
+    with pytest.raises(InvalidArgumentError):
+        dvc.experiments.run(params=["db=mysql,postgresql"])
