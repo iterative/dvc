@@ -34,8 +34,8 @@ def _fetch_worktree(repo, remote):
             if not out.is_in_repo:
                 continue
 
-            key = repo.fs.path.relparts(out.fs_path, repo.root_dir)
-            entry = repo.index.data["repo"][key]
+            workspace, key = out.index_key
+            entry = repo.index.data[workspace][key]
             out.hash_info = entry.hash_info
             out.meta = entry.meta
 
