@@ -198,7 +198,7 @@ class SingleStageFile(FileMixin):
         if self.verify:
             check_dvcfile_path(self.repo, self.path)
         logger.debug("Saving information to '%s'.", relpath(self.path))
-        dump_yaml(self.path, serialize.to_single_stage_file(stage))
+        dump_yaml(self.path, serialize.to_single_stage_file(stage, **kwargs))
         self.repo.scm_context.track_file(self.relpath)
 
     def remove_stage(self, stage):  # pylint: disable=unused-argument

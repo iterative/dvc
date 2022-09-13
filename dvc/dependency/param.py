@@ -47,7 +47,7 @@ class ParamsDependency(Dependency):
         super().__init__(stage, path, repo=repo)
         self.hash_info = hash_info
 
-    def dumpd(self):
+    def dumpd(self, **kwargs):
         ret = super().dumpd()
         if not self.hash_info:
             ret[self.PARAM_PARAMS] = self.params or {}

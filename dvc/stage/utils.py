@@ -226,7 +226,7 @@ def resolve_paths(fs, path, wdir=None):
     return path, wdir
 
 
-def get_dump(stage):
+def get_dump(stage, **kwargs):
     return {
         key: value
         for key, value in {
@@ -235,8 +235,8 @@ def get_dump(stage):
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
             stage.PARAM_FROZEN: stage.frozen,
-            stage.PARAM_DEPS: [d.dumpd() for d in stage.deps],
-            stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
+            stage.PARAM_DEPS: [d.dumpd(**kwargs) for d in stage.deps],
+            stage.PARAM_OUTS: [o.dumpd(**kwargs) for o in stage.outs],
             stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
             stage.PARAM_META: stage.meta,
         }.items()

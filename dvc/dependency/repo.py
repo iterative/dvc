@@ -59,7 +59,7 @@ class RepoDependency(Dependency):
     def save(self):
         pass
 
-    def dumpd(self):
+    def dumpd(self, **kwargs):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
     def download(self, to, jobs=None):
