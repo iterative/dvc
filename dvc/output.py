@@ -85,6 +85,7 @@ def loadd_from(stage, d_list):
         live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
+        files = d.pop(Output.PARAM_FILES, None)
         ret.append(
             _get(
                 stage,
@@ -98,6 +99,7 @@ def loadd_from(stage, d_list):
                 live=live,
                 remote=remote,
                 **annot,
+                files=files,
             )
         )
     return ret
@@ -243,6 +245,7 @@ class Output:
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
     PARAM_CHECKPOINT = "checkpoint"
+    PARAM_FILES = "files"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
@@ -292,6 +295,7 @@ class Output:
         remote=None,
         repo=None,
         fs_config=None,
+        files=None,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -340,6 +344,7 @@ class Output:
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.meta = meta
+        self._dump_files = files is not None
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -367,6 +372,12 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
+        if self.hash_info and self.hash_info.isdir:
+            self.meta.isdir = True
+            if files:
+                tree = Tree.from_list(files, hash_name=self.hash_name)
+                tree.digest()
+                self.obj = tree
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -708,8 +719,10 @@ class Output:
         )
         return checkout_obj
 
-    def dumpd(self):
-        ret = {**self.hash_info.to_dict(), **self.meta.to_dict()}
+    def dumpd(self, **kwargs):
+        meta = self.meta.to_dict()
+        meta.pop("isdir", None)
+        ret = {**self.hash_info.to_dict(), **meta}
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(
@@ -751,6 +764,15 @@ class Output:
 
         if self.remote:
             ret[self.PARAM_REMOTE] = self.remote
+
+        if (
+            self.use_cache
+            and self.is_in_repo
+            and self.hash_info.isdir
+            and (kwargs.get("with_files") or self._dump_files)
+        ):
+            assert self.obj
+            ret[self.PARAM_FILES] = self.obj.as_list(with_meta=True)
 
         return ret
 
@@ -1155,10 +1177,17 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_CHECKPOINT: bool,
 }
 
+DIR_FILES_SCHEMA: Dict[str, Any] = {
+    **CHECKSUMS_SCHEMA,
+    **META_SCHEMA,
+    Required(Tree.PARAM_RELPATH): str,
+}
+
 SCHEMA = {
     **ARTIFACT_SCHEMA,
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
     Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_REMOTE: str,
+    Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
