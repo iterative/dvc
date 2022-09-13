@@ -1,10 +1,10 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional, Set, Type
+from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple, Type
 from urllib.parse import urlparse
 
-from funcy import collecting, project
+from funcy import cached_property, collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
@@ -34,6 +34,7 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
+    from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
@@ -489,6 +490,17 @@ class Output:
             return False
 
         return self.fs.exists(self.fs_path)
+
+    @cached_property
+    def index_key(self) -> Tuple[str, "DataIndexKey"]:
+        if self.is_in_repo:
+            workspace = "repo"
+            key = self.repo.fs.path.relparts(self.fs_path, self.repo.root_dir)
+        else:
+            workspace = self.fs.protocol
+            no_drive = self.fs.path.flavour.splitdrive(self.fs_path)[1]
+            key = self.fs.path.parts(no_drive)[1:]
+        return workspace, key
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
