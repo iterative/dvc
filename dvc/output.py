@@ -290,6 +290,7 @@ class Output:
         meta=None,
         remote=None,
         repo=None,
+        fs_config=None,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -299,10 +300,12 @@ class Output:
         # NOTE: when version_aware is not passed into get_cloud_fs, it will be
         # set based on whether or not path is versioned
         fs_kwargs = {"version_aware": True} if meta.version_id else {}
+
+        if fs_config is not None:
+            fs_kwargs.update(**fs_config)
+
         fs_cls, fs_config, fs_path = get_cloud_fs(
-            self.repo,
-            url=path,
-            **fs_kwargs,
+            self.repo, url=path, **fs_kwargs
         )
         self.fs = fs_cls(**fs_config)
 

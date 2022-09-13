@@ -7,7 +7,7 @@ import pytest
 
 from dvc.annotations import Annotation
 from dvc.cli import main
-from dvc.dependency.base import DependencyDoesNotExistError
+from dvc.dependency.base import Dependency, DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.test_workspace import TestImport as _TestImport
@@ -330,3 +330,21 @@ def test_imp_url_with_annotations(M, tmp_dir, dvc, local_workspace):
     )
     assert stage.outs[0].annot == Annotation(**annot)
     assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+
+def test_import_url_fs_config(tmp_dir, dvc, workspace, mocker):
+    import dvc.fs as dvc_fs
+
+    workspace.gen("foo", "foo")
+
+    url = "remote://workspace/foo"
+    get_fs_config = mocker.spy(dvc_fs, "get_fs_config")
+    dep_init = mocker.spy(Dependency, "__init__")
+    dvc.imp_url(url, fs_config={"jobs": 42})
+
+    dep_init_kwargs = dep_init.call_args[1]
+    assert dep_init_kwargs.get("fs_config") == {"jobs": 42}
+
+    assert get_fs_config.call_args_list[0][1] == {"url": "foo"}
+    assert get_fs_config.call_args_list[1][1] == {"url": url, "jobs": 42}
+    assert get_fs_config.call_args_list[2][1] == {"name": "workspace"}
