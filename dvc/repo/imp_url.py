@@ -26,6 +26,7 @@ def imp_url(
     labels=None,
     meta=None,
     jobs=None,
+    fs_config=None,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_fields
@@ -61,6 +62,7 @@ def imp_url(
         deps=[url],
         outs=[out],
         erepo=erepo,
+        fs_config=fs_config,
     )
     restore_fields(stage)
 
