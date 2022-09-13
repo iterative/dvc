@@ -4,7 +4,7 @@ import os
 import posixpath
 import threading
 from contextlib import suppress
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
@@ -75,28 +75,25 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     root_marker = "/"
 
-    PARAM_REPO_URL = "repo_url"
-    PARAM_REPO_ROOT = "repo_root"
-    PARAM_REV = "rev"
-    PARAM_CACHE_DIR = "cache_dir"
-    PARAM_CACHE_TYPES = "cache_types"
-    PARAM_SUBREPOS = "subrepos"
-
     def __init__(
         self,
+        url: Optional[str] = None,
+        rev: Optional[str] = None,
         repo: Optional["Repo"] = None,
-        subrepos=False,
-        repo_factory: RepoFactory = None,
-        **kwargs,
-    ):
-        super().__init__()
-
+        subrepos: bool = False,
+        repo_factory: Optional[RepoFactory] = None,
+        **repo_kwargs: Any,
+    ) -> None:
         from pygtrie import Trie
 
+        super().__init__()
         if repo is None:
-            repo, repo_factory = self._repo_from_fs_config(
-                subrepos=subrepos, **kwargs
+            repo = self._make_repo(
+                url=url, rev=rev, subrepos=subrepos, **repo_kwargs
             )
+            assert repo
+            # pylint: disable=protected-access
+            repo_factory = repo._fs_conf["repo_factory"]
 
         if not repo_factory:
             from dvc.repo import Repo
@@ -152,52 +149,11 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return self.repo.url
 
     @classmethod
-    def _repo_from_fs_config(
-        cls, **config
-    ) -> Tuple["Repo", Optional["RepoFactory"]]:
-        from dvc.external_repo import erepo_factory, external_repo
+    def _make_repo(cls, **kwargs) -> "Repo":
         from dvc.repo import Repo
 
-        url = config.get(cls.PARAM_REPO_URL)
-        root = config.get(cls.PARAM_REPO_ROOT)
-        assert url or root
-
-        def _open(*args, **kwargs):
-            # NOTE: if original repo was an erepo (and has a URL),
-            # we cannot use Repo.open() since it will skip erepo
-            # cache/remote setup for local URLs
-            if url is None:
-                return Repo.open(*args, **kwargs)
-            return external_repo(*args, **kwargs)
-
-        cache_dir = config.get(cls.PARAM_CACHE_DIR)
-        cache_config = (
-            {}
-            if not cache_dir
-            else {
-                "cache": {
-                    "dir": cache_dir,
-                    "type": config.get(cls.PARAM_CACHE_TYPES),
-                }
-            }
-        )
-        repo_kwargs: dict = {
-            "rev": config.get(cls.PARAM_REV),
-            "subrepos": config.get(cls.PARAM_SUBREPOS, False),
-            "uninitialized": True,
-        }
-        factory: Optional["RepoFactory"] = None
-        if url is None:
-            repo_kwargs["config"] = cache_config
-        else:
-            repo_kwargs["cache_dir"] = cache_dir
-            factory = erepo_factory(url, root, cache_config)
-
-        with _open(
-            url if url else root,
-            **repo_kwargs,
-        ) as repo:
-            return repo, factory
+        with Repo.open(uninitialized=True, **kwargs) as repo:
+            return repo
 
     def _get_repo(self, key: Key) -> "Repo":
         """Returns repo that the path falls in, using prefix.
