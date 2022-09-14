@@ -93,3 +93,16 @@ def test_workspace_executor_failed_status(
     else:
         executor_info = ExecutorInfo.load_json(infofile)
         assert executor_info.status == TaskStatus.FAILED
+
+
+def test_executor_status_compatiblity():
+    data = {
+        "git_url": "file:///Users/home",
+        "baseline_rev": "123",
+        "location": "dvc-task",
+        "root_dir": "/Users/home/8088/.dvc/tmp/exps/tmpx85892cx",
+        "dvc_dir": ".dvc",
+        "collected": True,
+    }
+    result = ExecutorInfo.from_dict(data)
+    assert result.status == TaskStatus.FINISHED

@@ -92,6 +92,9 @@ class ExecutorInfo:
 
     @classmethod
     def from_dict(cls, d):
+        if "collected" in d:
+            if d.pop("collected"):
+                d["status"] = TaskStatus.FINISHED
         return cls(**d)
 
     def asdict(self):
