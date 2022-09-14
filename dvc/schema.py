@@ -57,7 +57,6 @@ OUT_PSTAGE_DETAILED_SCHEMA = {
 }
 
 PLOTS = "plots"
-PLOTS_SCHEMA = dict
 PLOT_PROPS = {
     Output.PARAM_PLOT_TEMPLATE: str,
     Output.PARAM_PLOT_X: str,
@@ -113,6 +112,15 @@ def either_or(primary, fallback, fallback_includes=None):
     return validator
 
 
+PLOT_DEFINITION = {
+    Output.PARAM_PLOT_X: str,
+    Output.PARAM_PLOT_Y: Any(str, [str], {str: Any(str, [str])}),
+    Output.PARAM_PLOT_X_LABEL: str,
+    Output.PARAM_PLOT_Y_LABEL: str,
+    Output.PARAM_PLOT_TITLE: str,
+    Output.PARAM_PLOT_TEMPLATE: str,
+}
+PLOTS_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,
