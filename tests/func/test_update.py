@@ -294,6 +294,46 @@ def test_update_recursive(tmp_dir, dvc, erepo_dir):
     assert stage3.deps[0].def_repo["rev_lock"] == new_rev
 
 
+def test_update_all(tmp_dir, dvc, workspace):
+    files = {f"file{i}": f"content{i}" for i in range(2)}
+    workspace.gen(files)
+
+    dsts = [tmp_dir / name for name in files]
+    stages = [
+        dvc.imp_url(f"remote://workspace/{name}", os.fspath(dst))
+        for name, dst in zip(files, dsts)
+    ]
+
+    for dst, content in zip(dsts, files.values()):
+        assert dst.is_file()
+        assert dst.read_text() == content
+
+    # update data
+    updated = {f"file{i}": f"content_modified{i}" for i in range(2)}
+    workspace.gen(updated)
+
+    updated_stages = dvc.update(all_=True)
+
+    expected_hashes = {
+        "file0": "cf7265435f4544acf79cbb9de1f76522",
+        "file1": "3f22a358c6b55a14c799d9c6d8915409",
+    }
+    assert len(updated_stages) == 2
+    for stage, updated_stage in zip(stages, updated_stages):
+        dep = stage.deps[0]
+        updated_dep = updated_stage.deps[0]
+        assert dep.hash_info != updated_dep.hash_info
+        assert (
+            updated_dep.hash_info.value
+            == expected_hashes[stage.outs[0].def_path]
+        )
+
+
+def test_update_all_with_targets(tmp_dir, dvc, erepo_dir, local_remote):
+    with pytest.raises(InvalidArgumentError):
+        dvc.update(["target1", "target2"], all_=True)
+
+
 @pytest.mark.parametrize("is_dvc", [True, False])
 def test_update_from_subrepos(tmp_dir, dvc, erepo_dir, is_dvc):
     subrepo = erepo_dir / "subrepo"

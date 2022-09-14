@@ -21,6 +21,7 @@ class CmdUpdate(CmdBase):
                 no_download=self.args.no_download,
                 remote=self.args.remote,
                 jobs=self.args.jobs,
+                all_=self.args.all,
             )
         except DvcException:
             logger.exception("failed update data")
@@ -41,8 +42,16 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     update_parser.add_argument(
-        "targets", nargs="+", help=".dvc files to update."
+        "targets",
+        nargs="*",
+        help=".dvc files to update.",
     ).complete = completion.DVC_FILE
+    update_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Update all imports in the repo to the latest version.",
+    )
     update_parser.add_argument(
         "--rev",
         nargs="?",

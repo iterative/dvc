@@ -37,6 +37,8 @@ if typing.TYPE_CHECKING:
 
 PIPELINE_FILE = "dvc.yaml"
 
+StageFilterFn = Callable[["Stage"], bool]
+
 
 def log_walk(seq):
     for root, dirs, files in seq:
@@ -333,6 +335,7 @@ class StageLoad:
         recursive: bool = False,
         graph: "DiGraph" = None,
         glob: bool = False,
+        stage_filter: Optional[StageFilterFn] = None,
     ) -> StageIter:
         """Collect list of stages from the provided target.
 
@@ -360,21 +363,26 @@ class StageLoad:
                 stages inside that directory is returned.
             graph: graph to use. Defaults to `repo.graph`.
             glob: Use `target` as a pattern to match stages in a file.
+            stage_filter: Filter results using the given function.
         """
         if not target:
-            return list(graph) if graph else list(self.repo.index)
-
-        if recursive and self.fs.isdir(target):
+            res = graph if graph else self.repo.index
+        elif recursive and self.fs.isdir(target):
             from dvc.repo.graph import collect_inside_path
 
             path = self.fs.path.abspath(target)
-            return collect_inside_path(path, graph or self.graph)
+            res = collect_inside_path(path, graph or self.graph)
+        else:
+            stages = self.from_target(target, glob=glob)
+            if not with_deps:
+                res = stages
+            else:
+                res = _collect_with_deps(stages, graph or self.graph)
 
-        stages = self.from_target(target, glob=glob)
-        if not with_deps:
-            return stages
+        if stage_filter is not None:
+            return list(filter(stage_filter, res))
 
-        return _collect_with_deps(stages, graph or self.graph)
+        return list(res)
 
     def collect_granular(
         self,
