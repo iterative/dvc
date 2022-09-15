@@ -345,7 +345,7 @@ class Output:
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.meta = meta
-        self._files = files
+        self.files = files
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -420,7 +420,7 @@ class Output:
         self.hash_info = HashInfo.from_dict({})
         self.meta = Meta.from_dict({})
         self.obj = None
-        self._files = None
+        self.files = None
 
     @property
     def protocol(self):
@@ -620,7 +620,7 @@ class Output:
                 dry_run=True,
             )
             self.hash_info = obj.hash_info
-            self._files = None
+            self.files = None
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
@@ -637,7 +637,7 @@ class Output:
             ignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
-        self._files = None
+        self.files = None
 
     def set_exec(self):
         if self.isfile() and self.meta.isexec:
@@ -769,7 +769,7 @@ class Output:
             self.use_cache
             and self.is_in_repo
             and self.hash_info.isdir
-            and (kwargs.get("with_files") or self._files is not None)
+            and (kwargs.get("with_files") or self.files is not None)
         ):
             if self.obj:
                 obj = self.obj
@@ -816,8 +816,8 @@ class Output:
         if self.obj:
             obj = self.obj
         elif self.hash_info:
-            if self._files:
-                tree = Tree.from_list(self._files, hash_name=self.hash_name)
+            if self.files:
+                tree = Tree.from_list(self.files, hash_name=self.hash_name)
                 tree.digest()
                 obj = tree
             else:
@@ -944,7 +944,7 @@ class Output:
         )
 
         self.hash_info = obj.hash_info
-        self._files = None
+        self.files = None
         return obj
 
     def get_files_number(self, filter_info=None):
@@ -1152,7 +1152,7 @@ class Output:
         self.odb.add(merged.path, merged.fs, merged.oid)
 
         self.hash_info = merged.hash_info
-        self._files = None
+        self.files = None
         self.meta = Meta(
             size=du(self.odb, merged),
             nfiles=len(merged),
