@@ -156,10 +156,12 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     assert stage.cmd
 
     def _dumpd(item):
+        meta_d = item.meta.to_dict()
+        meta_d.pop("isdir", None)
         ret = [
             (item.PARAM_PATH, item.def_path),
             *item.hash_info.to_dict().items(),
-            *item.meta.to_dict().items(),
+            *meta_d.items(),
         ]
 
         return OrderedDict(ret)
