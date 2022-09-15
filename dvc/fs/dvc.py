@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
 
+from dvc.utils.fs import makedirs
 from dvc_objects.fs.base import FileSystem
 from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.path import Path
@@ -296,6 +297,11 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         key = self._get_key_from_relative(rpath)
         fs_path = self._from_key(key)
         fs = self.repo.fs
+
+        if self.isdir(rpath):
+            makedirs(lpath, exist_ok=True)
+            return None
+
         try:
             fs.get_file(fs_path, lpath, callback=callback, **kwargs)
             return
