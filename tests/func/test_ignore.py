@@ -21,8 +21,10 @@ def _to_pattern_info_list(str_list: List):
 def walk_files(dvc, *args):
     yield from dvc.dvcignore.find(*args)
 
+
 def _get_tmp_config_dir(tmp_path, level):
     return tmp_path / ".." / (tmp_path.name + "_config_" + level)
+
 
 @pytest.fixture(autouse=True)
 def tmp_config_dir(mocker, tmp_path):
@@ -35,6 +37,7 @@ def tmp_config_dir(mocker, tmp_path):
 
     def get_tmp_config_dir(level):
         return str(_get_tmp_config_dir(tmp_path, level))
+
     mocker.patch("dvc.config.Config.get_dir", side_effect=get_tmp_config_dir)
 
 
@@ -74,18 +77,14 @@ def test_ignore_from_excludesfile(tmp_path, tmp_dir, dvc, file_exists):
         }
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
-    if (file_exists):
-        (excludesfile).write_text(
-            "ignored_in_excludesfile", encoding="utf-8"
-        )
-    (_get_tmp_config_dir(tmp_path, "global") / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_global",
-        encoding="utf-8"
-    )
-    (_get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_system",
-        encoding="utf-8"
-    )
+    if file_exists:
+        (excludesfile).write_text("ignored_in_excludesfile", encoding="utf-8")
+    (
+        _get_tmp_config_dir(tmp_path, "global") / DvcIgnore.DVCIGNORE_FILE
+    ).write_text("ignored_in_global", encoding="utf-8")
+    (
+        _get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE
+    ).write_text("ignored_in_system", encoding="utf-8")
     dvc._reset()
 
     result = set(walk_files(dvc, dvc.fs, tmp_dir))
@@ -93,7 +92,7 @@ def test_ignore_from_excludesfile(tmp_path, tmp_dir, dvc, file_exists):
     files_to_be_ignored = ["ignored_in_repo_root"]
     files_not_to_be_ignored = ["ignored_in_global", "ignored_in_system"]
 
-    if (file_exists):
+    if file_exists:
         files_to_be_ignored.append("ignored_in_excludesfile")
     else:
         files_not_to_be_ignored.append("ignored_in_excludesfile")
@@ -103,6 +102,7 @@ def test_ignore_from_excludesfile(tmp_path, tmp_dir, dvc, file_exists):
 
     for file in files_not_to_be_ignored:
         assert (tmp_dir / "dir" / file).fs_path in result
+
 
 def test_ignore_from_global_dvcignore(tmp_path, tmp_dir, dvc):
     # NOTE(meshde): if core.excludesfile is not defined in the config
@@ -118,14 +118,12 @@ def test_ignore_from_global_dvcignore(tmp_path, tmp_dir, dvc):
         }
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
-    (_get_tmp_config_dir(tmp_path, "global") / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_global",
-        encoding="utf-8"
-    )
-    (_get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_system",
-        encoding="utf-8"
-    )
+    (
+        _get_tmp_config_dir(tmp_path, "global") / DvcIgnore.DVCIGNORE_FILE
+    ).write_text("ignored_in_global", encoding="utf-8")
+    (
+        _get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE
+    ).write_text("ignored_in_system", encoding="utf-8")
     dvc._reset()
 
     result = set(walk_files(dvc, dvc.fs, tmp_dir))
@@ -134,6 +132,7 @@ def test_ignore_from_global_dvcignore(tmp_path, tmp_dir, dvc):
         assert (tmp_dir / "dir" / ignored_file).fs_path not in result
 
     assert (tmp_dir / "dir" / "ignored_in_system").fs_path in result
+
 
 def test_ignore_from_system_dvcignore(tmp_path, tmp_dir, dvc):
     # NOTE(meshde): if core.excludesfile is not defined in the config and
@@ -148,10 +147,9 @@ def test_ignore_from_system_dvcignore(tmp_path, tmp_dir, dvc):
         }
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
-    (_get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_system",
-        encoding="utf-8"
-    )
+    (
+        _get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE
+    ).write_text("ignored_in_system", encoding="utf-8")
     dvc._reset()
 
     result = set(walk_files(dvc, dvc.fs, tmp_dir))

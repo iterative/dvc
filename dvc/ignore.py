@@ -9,8 +9,8 @@ from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
 from pygtrie import Trie
 
-from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
 from dvc.config import Config
+from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.types import List, Optional
 
@@ -187,9 +187,7 @@ class DvcIgnoreFilter:
             ignore_patterns = DvcIgnorePatterns.from_file(
                 ignore_file_path, self.fs, ignore_file_path
             )
-            default_ignore_patterns.extend(
-                ignore_patterns.pattern_list
-            )
+            default_ignore_patterns.extend(ignore_patterns.pattern_list)
 
         if config_ignore_file:
             if self.fs.exists(config_ignore_file):
@@ -197,8 +195,7 @@ class DvcIgnoreFilter:
         else:
             for level in ["global", "system"]:
                 ignore_file_path_at_level = self.fs.path.join(
-                    Config.get_dir(level),
-                    DvcIgnore.DVCIGNORE_FILE
+                    Config.get_dir(level), DvcIgnore.DVCIGNORE_FILE
                 )
                 if self.fs.exists(ignore_file_path_at_level):
                     extend_default_ignore_patterns(ignore_file_path_at_level)
