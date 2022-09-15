@@ -3,7 +3,6 @@ import os
 import re
 from collections import namedtuple
 from itertools import chain, groupby, takewhile
-from pathlib import Path
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
