@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Iterable, Optional
 
 from dvc.dependency.param import ParamsDependency
+from dvc.exceptions import InvalidArgumentError
 from dvc.repo import locked
 from dvc.ui import ui
 from dvc.utils.cli_parse import to_path_overrides
@@ -27,6 +28,8 @@ def run(
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
+    from dvc.utils.hydra import to_hydra_overrides
+
     if run_all:
         entries = list(repo.experiments.celery_queue.iter_queued())
         return repo.experiments.reproduce_celery(entries, jobs=jobs)
@@ -42,19 +45,42 @@ def run(
         # Force `_update_params` even if `--set-param` was not used
         path_overrides[hydra_output_file] = []
 
-    if queue:
-        if not kwargs.get("checkpoint_resume", None):
-            kwargs["reset"] = True
+    hydra_sweep = any(
+        x.is_sweep_override()
+        for param_file in path_overrides
+        for x in to_hydra_overrides(path_overrides[param_file])
+    )
+
+    if hydra_sweep and not queue:
+        raise InvalidArgumentError(
+            "Sweep overrides can't be used without `--queue`"
+        )
+
+    if not queue:
+        return repo.experiments.reproduce_one(
+            targets=targets, params=path_overrides, tmp_dir=tmp_dir, **kwargs
+        )
+
+    if hydra_sweep:
+        from dvc.utils.hydra import get_hydra_sweeps
+
+        sweeps = get_hydra_sweeps(path_overrides)
+    else:
+        sweeps = [path_overrides]
+
+    if not kwargs.get("checkpoint_resume", None):
+        kwargs["reset"] = True
+
+    for sweep_overrides in sweeps:
         queue_entry = repo.experiments.queue_one(
             repo.experiments.celery_queue,
             targets=targets,
-            params=path_overrides,
+            params=sweep_overrides,
             **kwargs,
         )
+        if sweep_overrides:
+            ui.write(f"Queueing with overrides '{sweep_overrides}'.")
         name = queue_entry.name or queue_entry.stash_rev[:7]
         ui.write(f"Queued experiment '{name}' for future execution.")
-        return {}
 
-    return repo.experiments.reproduce_one(
-        targets=targets, params=path_overrides, tmp_dir=tmp_dir, **kwargs
-    )
+    return {}

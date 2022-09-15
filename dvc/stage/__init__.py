@@ -88,7 +88,7 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     if not external:
         check_no_externals(stage)
     fill_stage_dependencies(
-        stage, **project(kwargs, ["deps", "erepo", "params"])
+        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config"])
     )
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)

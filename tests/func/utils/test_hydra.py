@@ -178,3 +178,54 @@ def test_compose_and_dump(tmp_dir, suffix, overrides, expected):
     output_file = tmp_dir / f"params.{suffix}"
     compose_and_dump(output_file, config_dir, config_name, overrides)
     assert output_file.parse() == expected
+
+
+@pytest.mark.parametrize(
+    "overrides, expected",
+    [
+        (
+            {"params.yaml": ["foo=1,2", "bar=3,4"]},
+            [
+                {"params.yaml": ["foo=1", "bar=3"]},
+                {"params.yaml": ["foo=1", "bar=4"]},
+                {"params.yaml": ["foo=2", "bar=3"]},
+                {"params.yaml": ["foo=2", "bar=4"]},
+            ],
+        ),
+        (
+            {"params.yaml": ["foo=choice(1,2)"]},
+            [{"params.yaml": ["foo=1"]}, {"params.yaml": ["foo=2"]}],
+        ),
+        (
+            {"params.yaml": ["foo=range(1, 3)"]},
+            [{"params.yaml": ["foo=1"]}, {"params.yaml": ["foo=2"]}],
+        ),
+        (
+            {"params.yaml": ["foo=1,2"], "others.yaml": ["bar=3"]},
+            [
+                {"params.yaml": ["foo=1"], "others.yaml": ["bar=3"]},
+                {"params.yaml": ["foo=2"], "others.yaml": ["bar=3"]},
+            ],
+        ),
+        (
+            {"params.yaml": ["foo=1,2"], "others.yaml": ["bar=3,4"]},
+            [
+                {"params.yaml": ["foo=1"], "others.yaml": ["bar=3"]},
+                {"params.yaml": ["foo=1"], "others.yaml": ["bar=4"]},
+                {"params.yaml": ["foo=2"], "others.yaml": ["bar=3"]},
+                {"params.yaml": ["foo=2"], "others.yaml": ["bar=4"]},
+            ],
+        ),
+    ],
+)
+def test_hydra_sweeps(overrides, expected):
+    from dvc.utils.hydra import get_hydra_sweeps
+
+    assert get_hydra_sweeps(overrides) == expected
+
+
+def test_invalid_sweep():
+    from dvc.utils.hydra import get_hydra_sweeps
+
+    with pytest.raises(InvalidArgumentError):
+        get_hydra_sweeps({"params.yaml": ["foo=glob(*)"]})

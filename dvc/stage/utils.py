@@ -108,12 +108,16 @@ def _load_live_output(
     return outs
 
 
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
+def fill_stage_dependencies(
+    stage, deps=None, erepo=None, params=None, fs_config=None
+):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo)
+    stage.deps += loads_from(
+        stage, deps or [], erepo=erepo, fs_config=fs_config
+    )
     stage.deps += loads_params(stage, params or [])
 
 
