@@ -461,8 +461,8 @@ class Stage(params.StageParams):
     def reload(self):
         return self.dvcfile.stage
 
-    def dumpd(self):
-        return get_dump(self)
+    def dumpd(self, **kwargs):
+        return get_dump(self, **kwargs)
 
     def compute_md5(self):
         # `dvc add`ed files don't need stage md5

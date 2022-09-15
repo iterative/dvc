@@ -218,23 +218,20 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_fs = self._datafss.get(repo_key)
         return repo, dvc_fs, subkey
 
-    def open(
-        self, path, mode="r", encoding="utf-8", **kwargs
+    def _open(
+        self, path, mode="rb", **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
-        if "b" in mode:
-            encoding = None
-
         key = self._get_key_from_relative(path)
         fs_path = self._from_key(key)
         try:
-            return self.repo.fs.open(fs_path, mode=mode, encoding=encoding)
+            return self.repo.fs.open(fs_path, mode=mode)
         except FileNotFoundError:
             _, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
         dvc_path = _get_dvc_path(dvc_fs, subkey)
-        return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
+        return dvc_fs.open(dvc_path, mode=mode)
 
     def isdvc(self, path, **kwargs):
         key = self._get_key_from_relative(path)

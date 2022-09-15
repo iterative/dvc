@@ -1,10 +1,10 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Optional, Set, Type
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type
 from urllib.parse import urlparse
 
-from funcy import collecting, project
+from funcy import cached_property, collecting, project
 from voluptuous import And, Any, Coerce, Length, Lower, Required, SetTo
 
 from dvc import prompt
@@ -34,6 +34,8 @@ from .utils import relpath
 from .utils.fs import path_isin
 
 if TYPE_CHECKING:
+    from dvc_data.hashfile.obj import HashFile
+    from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
 
 logger = logging.getLogger(__name__)
@@ -84,6 +86,7 @@ def loadd_from(stage, d_list):
         live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
+        files = d.pop(Output.PARAM_FILES, None)
         ret.append(
             _get(
                 stage,
@@ -97,6 +100,7 @@ def loadd_from(stage, d_list):
                 live=live,
                 remote=remote,
                 **annot,
+                files=files,
             )
         )
     return ret
@@ -242,6 +246,7 @@ class Output:
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
     PARAM_CHECKPOINT = "checkpoint"
+    PARAM_FILES = "files"
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
@@ -291,6 +296,7 @@ class Output:
         remote=None,
         repo=None,
         fs_config=None,
+        files: List[Dict[str, Any]] = None,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -339,6 +345,7 @@ class Output:
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.meta = meta
+        self._files = files
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.plot = False if self.IS_DEPENDENCY else plot
@@ -347,7 +354,7 @@ class Output:
         self.live = live
 
         self.fs_path = self._parse_path(self.fs, fs_path)
-        self.obj = None
+        self.obj: Optional["HashFile"] = None
 
         self.remote = remote
 
@@ -366,6 +373,8 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
+        if self.hash_info and self.hash_info.isdir:
+            self.meta.isdir = True
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
@@ -411,6 +420,7 @@ class Output:
         self.hash_info = HashInfo.from_dict({})
         self.meta = Meta.from_dict({})
         self.obj = None
+        self._files = None
 
     @property
     def protocol(self):
@@ -489,6 +499,17 @@ class Output:
             return False
 
         return self.fs.exists(self.fs_path)
+
+    @cached_property
+    def index_key(self) -> Tuple[str, "DataIndexKey"]:
+        if self.is_in_repo:
+            workspace = "repo"
+            key = self.repo.fs.path.relparts(self.fs_path, self.repo.root_dir)
+        else:
+            workspace = self.fs.protocol
+            no_drive = self.fs.path.flavour.splitdrive(self.fs_path)[1]
+            key = self.fs.path.parts(no_drive)[1:]
+        return workspace, key
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
@@ -599,6 +620,7 @@ class Output:
                 dry_run=True,
             )
             self.hash_info = obj.hash_info
+            self._files = None
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
@@ -615,6 +637,7 @@ class Output:
             ignore=self.dvcignore,
         )
         self.hash_info = self.obj.hash_info
+        self._files = None
 
     def set_exec(self):
         if self.isfile() and self.meta.isexec:
@@ -696,8 +719,10 @@ class Output:
         )
         return checkout_obj
 
-    def dumpd(self):
-        ret = {**self.hash_info.to_dict(), **self.meta.to_dict()}
+    def dumpd(self, **kwargs):
+        meta = self.meta.to_dict()
+        meta.pop("isdir", None)
+        ret = {**self.hash_info.to_dict(), **meta}
 
         if self.is_in_repo:
             path = self.fs.path.as_posix(
@@ -740,6 +765,18 @@ class Output:
         if self.remote:
             ret[self.PARAM_REMOTE] = self.remote
 
+        if (
+            self.use_cache
+            and self.is_in_repo
+            and self.hash_info.isdir
+            and (kwargs.get("with_files") or self._files is not None)
+        ):
+            if self.obj:
+                obj = self.obj
+            else:
+                obj = self.get_obj()
+            ret[self.PARAM_FILES] = obj.as_list(with_meta=True)
+
         return ret
 
     def verify_metric(self):
@@ -772,14 +809,22 @@ class Output:
         ) as cb:
             self.fs.get(self.fs_path, to.fs_path, batch_size=jobs, callback=cb)
 
-    def get_obj(self, filter_info=None, **kwargs):
+    def get_obj(
+        self, filter_info: Optional[str] = None, **kwargs
+    ) -> Optional["HashFile"]:
+        obj: Optional["HashFile"] = None
         if self.obj:
             obj = self.obj
         elif self.hash_info:
-            try:
-                obj = oload(self.odb, self.hash_info)
-            except (FileNotFoundError, ObjectFormatError):
-                return None
+            if self._files:
+                tree = Tree.from_list(self._files, hash_name=self.hash_name)
+                tree.digest()
+                obj = tree
+            else:
+                try:
+                    obj = oload(self.odb, self.hash_info)
+                except (FileNotFoundError, ObjectFormatError):
+                    return None
         else:
             return None
 
@@ -899,6 +944,7 @@ class Output:
         )
 
         self.hash_info = obj.hash_info
+        self._files = None
         return obj
 
     def get_files_number(self, filter_info=None):
@@ -969,6 +1015,7 @@ class Output:
 
         obj = self.get_obj()
         if filter_info and filter_info != self.fs_path:
+            assert obj
             prefix = self.fs.path.parts(
                 self.fs.path.relpath(filter_info, self.fs_path)
             )
@@ -1105,6 +1152,7 @@ class Output:
         self.odb.add(merged.path, merged.fs, merged.oid)
 
         self.hash_info = merged.hash_info
+        self._files = None
         self.meta = Meta(
             size=du(self.odb, merged),
             nfiles=len(merged),
@@ -1143,10 +1191,17 @@ ARTIFACT_SCHEMA = {
     Output.PARAM_CHECKPOINT: bool,
 }
 
+DIR_FILES_SCHEMA: Dict[str, Any] = {
+    **CHECKSUMS_SCHEMA,
+    **META_SCHEMA,
+    Required(Tree.PARAM_RELPATH): str,
+}
+
 SCHEMA = {
     **ARTIFACT_SCHEMA,
     **ANNOTATION_SCHEMA,
     Output.PARAM_CACHE: bool,
     Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_REMOTE: str,
+    Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }

@@ -183,15 +183,7 @@ class Index:
             if not out.use_cache:
                 continue
 
-            if out.is_in_repo:
-                workspace = "repo"
-                key = self.repo.fs.path.relparts(
-                    out.fs_path, self.repo.root_dir
-                )
-            else:
-                workspace = out.fs.protocol
-                no_drive = out.fs.path.flavour.splitdrive(out.fs_path)[1]
-                key = out.fs.path.parts(no_drive)[1:]
+            workspace, key = out.index_key
 
             try:
                 remote = self.repo.cloud.get_remote_odb(out.remote)
