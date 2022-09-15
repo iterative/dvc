@@ -10,6 +10,7 @@ from pathspec.util import normalize_file
 from pygtrie import Trie
 
 from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
+from dvc.config import Config
 from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.types import List, Optional
 
@@ -175,20 +176,33 @@ class DvcIgnoreFilter:
         self.root_dir = root_dir
         self.ignores_trie_fs = Trie()
         self._ignores_trie_subrepos = Trie()
+        self.config = Config()
 
         key = self._get_key(root_dir)
 
-        sys_root_dvcignore_path = self.fs.path.join(
-            str(Path.home()), DvcIgnore.DVCIGNORE_FILE
-        )
+        core_config = self.config.get("core", {})
+        config_ignore_file = core_config.get("excludesfile", None)
 
-        if self.fs.exists(sys_root_dvcignore_path):
-            sys_root_ignore_patterns = DvcIgnorePatterns.from_file(
-                sys_root_dvcignore_path, self.fs, "sys_root"
+        def extend_default_ignore_patterns(ignore_file_path):
+            ignore_patterns = DvcIgnorePatterns.from_file(
+                ignore_file_path, self.fs, ignore_file_path
             )
             default_ignore_patterns.extend(
-                sys_root_ignore_patterns.pattern_list
+                ignore_patterns.pattern_list
             )
+
+        if config_ignore_file:
+            if self.fs.exists(config_ignore_file):
+                extend_default_ignore_patterns(config_ignore_file)
+        else:
+            for level in ["global", "system"]:
+                ignore_file_path_at_level = self.fs.path.join(
+                    Config.get_dir(level),
+                    DvcIgnore.DVCIGNORE_FILE
+                )
+                if self.fs.exists(ignore_file_path_at_level):
+                    extend_default_ignore_patterns(ignore_file_path_at_level)
+                    break
 
         self.ignores_trie_fs[key] = DvcIgnorePatterns(
             default_ignore_patterns,

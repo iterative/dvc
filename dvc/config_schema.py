@@ -123,6 +123,7 @@ SCHEMA = {
         Optional("experiments"): Bool,  # obsoleted
         Optional("check_update", default=True): Bool,
         "machine": Lower,
+        "excludesfile": str,
     },
     "cache": {
         "local": str,

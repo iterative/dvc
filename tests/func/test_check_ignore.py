@@ -7,6 +7,22 @@ from dvc.cli import main
 from dvc.ignore import DvcIgnore
 
 
+def _get_tmp_config_dir(tmp_path, level):
+    return tmp_path / ".." / (tmp_path.name + "_config_" + level)
+
+@pytest.fixture(autouse=True)
+def tmp_config_dir(mocker, tmp_path):
+    """
+    Fixture to prevent modifying/reading the actual global config
+    """
+
+    for level in ["global", "system"]:
+        os.makedirs(_get_tmp_config_dir(tmp_path, level))
+
+    def get_tmp_config_dir(level):
+        return str(_get_tmp_config_dir(tmp_path, level))
+    mocker.patch("dvc.config.Config.get_dir", side_effect=get_tmp_config_dir)
+
 @pytest.mark.parametrize(
     "file,ret,output", [("ignored", 0, True), ("not_ignored", 1, False)]
 )
@@ -99,18 +115,22 @@ def test_check_ignore_sub_repo(tmp_dir, dvc, capsys):
     )
 
 
-def test_check_sys_root_ignore_file(tmp_dir, dvc, capsys):
+def test_check_excludesfile(tmp_dir, dvc, capsys):
+    excludesfile = Path.home() / DvcIgnore.DVCIGNORE_FILE
+
+    with dvc.config.edit() as conf:
+        conf["core"]["excludesfile"] = str(excludesfile)
     tmp_dir.gen(
         {
             "dir": {
                 "ignored_in_repo_root": "ignored_in_repo_root",
-                "ignored_in_sys_root": "ignored_in_sys_root",
+                "ignored_in_excludesfile": "ignored_in_excludesfile",
             }
         }
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
-    (Path.home() / DvcIgnore.DVCIGNORE_FILE).write_text(
-        "ignored_in_sys_root", encoding="utf-8"
+    (excludesfile).write_text(
+        "ignored_in_excludesfile", encoding="utf-8"
     )
 
     assert main(["check-ignore", "-d", "ignored_in_repo_root"]) == 0
@@ -121,10 +141,65 @@ def test_check_sys_root_ignore_file(tmp_dir, dvc, capsys):
         + "ignored_in_repo_root\n"
     )
 
-    assert main(["check-ignore", "-d", "ignored_in_sys_root"]) == 0
+    assert main(["check-ignore", "-d", "ignored_in_excludesfile"]) == 0
     output, _ = capsys.readouterr()
-    assert output == "sys_root:1:ignored_in_sys_root\tignored_in_sys_root\n"
+    assert output == f"{excludesfile}:1:ignored_in_excludesfile\tignored_in_excludesfile\n"
 
+def test_check_global_dvcignore(tmp_path, tmp_dir, dvc, capsys):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "ignored_in_repo_root": "ignored_in_repo_root",
+                "ignored_in_global": "ignored_in_global",
+            }
+        }
+    )
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
+    global_dvcignore = _get_tmp_config_dir(tmp_path, "global") / DvcIgnore.DVCIGNORE_FILE
+    global_dvcignore.write_text(
+        "ignored_in_global",
+        encoding="utf-8"
+    )
+
+    assert main(["check-ignore", "-d", "ignored_in_repo_root"]) == 0
+    output, _ = capsys.readouterr()
+    assert (
+        output
+        == f"{DvcIgnore.DVCIGNORE_FILE}:1:ignored_in_repo_root\t"
+        + "ignored_in_repo_root\n"
+    )
+
+    assert main(["check-ignore", "-d", "ignored_in_global"]) == 0
+    output, _ = capsys.readouterr()
+    assert output == f"{global_dvcignore}:1:ignored_in_global\tignored_in_global\n"
+
+def test_check_system_dvcignore(tmp_path, tmp_dir, dvc, capsys):
+    tmp_dir.gen(
+        {
+            "dir": {
+                "ignored_in_repo_root": "ignored_in_repo_root",
+                "ignored_in_system": "ignored_in_system",
+            }
+        }
+    )
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
+    system_dvcignore = _get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE
+    system_dvcignore.write_text(
+        "ignored_in_system",
+        encoding="utf-8"
+    )
+
+    assert main(["check-ignore", "-d", "ignored_in_repo_root"]) == 0
+    output, _ = capsys.readouterr()
+    assert (
+        output
+        == f"{DvcIgnore.DVCIGNORE_FILE}:1:ignored_in_repo_root\t"
+        + "ignored_in_repo_root\n"
+    )
+
+    assert main(["check-ignore", "-d", "ignored_in_system"]) == 0
+    output, _ = capsys.readouterr()
+    assert output == f"{system_dvcignore}:1:ignored_in_system\tignored_in_system\n"
 
 def test_check_sub_dir_ignore_file(tmp_dir, dvc, capsys):
     tmp_dir.gen(
