@@ -4,11 +4,10 @@ from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
 from dvc.annotations import ANNOTATION_SCHEMA
-from dvc.output import CHECKSUMS_SCHEMA, Output
+from dvc.output import CHECKSUMS_SCHEMA, DIR_FILES_SCHEMA, META_SCHEMA, Output
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
-from dvc_data.hashfile.meta import Meta
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
@@ -26,10 +25,9 @@ SINGLE_STAGE_SCHEMA = {
 
 DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
+    **META_SCHEMA,
     Required("path"): str,
-    Meta.PARAM_SIZE: int,
-    Meta.PARAM_NFILES: int,
-    Meta.PARAM_ISEXEC: bool,
+    Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): Any(str, list),
