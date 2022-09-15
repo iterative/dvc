@@ -146,7 +146,8 @@ def test_check_excludesfile(tmp_dir, dvc, capsys):
     output, _ = capsys.readouterr()
     assert (
         output
-        == f"{excludesfile}:1:ignored_in_excludesfile\tignored_in_excludesfile\n"
+        == f"{excludesfile}:1:ignored_in_excludesfile"
+        + "\tignored_in_excludesfile\n"
     )
 
 
