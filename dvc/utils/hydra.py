@@ -86,8 +86,13 @@ def to_hydra_overrides(path_overrides):
 def get_hydra_sweeps(path_overrides):
     merged_overrides = []
     for path, overrides in path_overrides.items():
+        # `.` is reserved character in hydra syntax
+        # _merge_ is required to support sweeps across multiple files.
         merged_overrides.extend(
-            [f"{path}___{override}" for override in overrides]
+            [
+                f"{path.replace('.', '_')}_merge_{override}"
+                for override in overrides
+            ]
         )
 
     hydra_overrides = to_hydra_overrides(merged_overrides)
@@ -103,7 +108,7 @@ def get_hydra_sweeps(path_overrides):
     for split in splits:
         sweep_overrides = defaultdict(list)
         for merged_override in split:
-            path, override = merged_override.split("___")
-            sweep_overrides[path].append(override)
+            path, override = merged_override.split("_merge_")
+            sweep_overrides[path.replace("_", ".")].append(override)
         sweeps.append(dict(sweep_overrides))
     return sweeps
