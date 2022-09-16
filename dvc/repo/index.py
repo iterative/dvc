@@ -194,7 +194,7 @@ class Index:
 
             data_index[key] = DataIndexEntry(
                 meta=out.meta,
-                obj=out.obj,
+                obj=out.get_obj() if out.files else out.obj,
                 hash_info=out.hash_info,
                 odb=out.odb,
                 cache=out.odb,
