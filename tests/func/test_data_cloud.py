@@ -49,7 +49,7 @@ def test_cloud_cli(tmp_dir, dvc, remote, mocker):
         for (_args, _kwargs) in oids_exist.call_args_list
     )
 
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
     oids_exist.reset_mock()
 
     assert main(["fetch"] + args) == 0
@@ -164,7 +164,7 @@ def test_missing_cache(tmp_dir, dvc, local_remote, caplog):
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     # purge cache
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     header = (
         "Some of the cache files do not exist "
@@ -205,7 +205,7 @@ def test_verify_hashes(
     # remove artifacts and cache to trigger fetching
     remove("file")
     remove("dir")
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     hash_spy = mocker.spy(dvc_data.hashfile.hash, "file_md5")
 
@@ -213,7 +213,7 @@ def test_verify_hashes(
     assert hash_spy.call_count == 0
 
     # Removing cache will invalidate existing state entries
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     dvc.config["remote"]["upstream"]["verify"] = True
 
@@ -310,18 +310,19 @@ def test_pull_external_dvc_imports_mixed(
 
 def clean(outs, dvc=None):
     if dvc:
-        outs = outs + [dvc.odb.local.path]
+        dvc.odb.local.clear()
     for path in outs:
         print(path)
         remove(path)
     if dvc:
-        os.makedirs(dvc.odb.local.path, exist_ok=True)
         clean_repos()
 
 
 def recurse_list_dir(d):
     return [
-        os.path.join(d, f) for _, _, filenames in os.walk(d) for f in filenames
+        os.path.join(root, f)
+        for root, _, filenames in os.walk(d)
+        for f in filenames
     ]
 
 
@@ -488,11 +489,11 @@ def test_push_pull_fetch_pipeline_stages(tmp_dir, dvc, run_copy, local_remote):
 
     dvc.pull("copy-foo-bar")
     assert (tmp_dir / "bar").exists()
-    assert len(recurse_list_dir(dvc.odb.local.path)) == 1
+    assert len(recurse_list_dir(dvc.odb.local.path)) == 2
     clean(["bar"], dvc)
 
     dvc.fetch("copy-foo-bar")
-    assert len(recurse_list_dir(dvc.odb.local.path)) == 1
+    assert len(recurse_list_dir(dvc.odb.local.path)) == 2
 
 
 def test_pull_partial(tmp_dir, dvc, local_remote):

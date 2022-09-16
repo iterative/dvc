@@ -201,7 +201,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
     # Push everything and delete local cache
     dvc.push()
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     baz._collect_used_dir_cache()
     with patch.object(generic, "transfer", side_effect=Exception):
