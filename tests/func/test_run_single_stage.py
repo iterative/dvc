@@ -726,7 +726,7 @@ class TestRunCommit(TestDvc):
         ret = main(["commit", fname + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
-        self.assertEqual(len(os.listdir(self.dvc.odb.local.path)), 1)
+        self.assertEqual(len(list(self.dvc.odb.local.all())), 1)
 
 
 class TestRunPersist(TestDvc):

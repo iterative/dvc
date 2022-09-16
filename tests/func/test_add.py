@@ -453,7 +453,9 @@ class TestAddCommit(TestDvc):
         ret = main(["commit", self.FOO + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.odb.local.path)), 1)
+        self.assertTrue(
+            self.dvc.odb.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
+        )
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
@@ -832,9 +834,9 @@ def test_add_symlink_file(tmp_dir, dvc):
     assert (tmp_dir / "dir" / "foo").read_text() == "bar"
     assert (tmp_dir / "dir" / "bar").read_text() == "bar"
 
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "37": {"b51d194a7513e45b56f6524f2d51f2": "bar"}
-    }
+    assert (
+        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+    ).read_text() == "bar"
     assert not (
         tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
     ).is_symlink()
@@ -891,9 +893,9 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
-    }
+    assert (
+        tmp_dir / ".dvc" / "cache" / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
+    ).read_text() == "foo"
 
 
 def test_add_preserve_fields(tmp_dir, dvc):
