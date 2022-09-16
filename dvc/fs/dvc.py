@@ -1,3 +1,4 @@
+import errno
 import logging
 import ntpath
 import os
@@ -222,6 +223,9 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     def _open(
         self, path, mode="rb", **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
+        if mode != "rb":
+            raise OSError(errno.EROFS, os.strerror(errno.EROFS))
+
         key = self._get_key_from_relative(path)
         fs_path = self._from_key(key)
         try:
