@@ -4,7 +4,7 @@ from typing import List
 
 from scmrepo.exceptions import SCMError
 
-from dvc.fs.dvc import DvcFileSystem
+from dvc.fs.dvc import DVCFileSystem
 from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
@@ -77,7 +77,7 @@ def _read_metric(path, fs, rev, **kwargs):
 
 
 def _read_metrics(repo, metrics, rev, onerror=None):
-    fs = DvcFileSystem(repo=repo)
+    fs = DVCFileSystem(repo=repo)
 
     relpath = ""
     if repo.root_dir != repo.fs.path.getcwd():

@@ -24,13 +24,13 @@ from dvc_objects.fs.errors import (  # noqa: F401
 from dvc_objects.fs.path import Path  # noqa: F401
 
 from .data import DataFileSystem  # noqa: F401
-from .dvc import DvcFileSystem  # noqa: F401
+from .dvc import DVCFileSystem  # noqa: F401
 from .git import GitFileSystem  # noqa: F401
 
 known_implementations.update(
     {
         "dvc": {
-            "class": "dvc.fs.dvc.DvcFileSystem",
+            "class": "dvc.fs.dvc.DVCFileSystem",
             "err": "dvc is supported, but requires 'dvc' to be installed",
         },
         "git": {
