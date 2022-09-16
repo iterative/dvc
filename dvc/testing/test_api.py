@@ -1,7 +1,7 @@
 import pytest
 
 from dvc import api
-from dvc.api import DvcFileSystem
+from dvc.api import DVCFileSystem
 from dvc.utils.fs import remove
 
 
@@ -59,7 +59,7 @@ class TestAPI:
                 path=tmp_dir, posixpath=tmp_dir.as_posix()
             )
 
-        fs = DvcFileSystem(**fs_kwargs)
+        fs = DVCFileSystem(**fs_kwargs)
 
         assert fs.ls("/", detail=False) == M.unordered(
             "/.gitignore", "/scripts", "/data"

@@ -30,9 +30,9 @@ def _collect_paths(
     recursive: bool = False,
     rev: str = None,
 ) -> StrPaths:
-    from dvc.fs.dvc import DvcFileSystem
+    from dvc.fs.dvc import DVCFileSystem
 
-    fs = DvcFileSystem(repo=repo)
+    fs = DVCFileSystem(repo=repo)
     fs_paths = [fs.from_os_path(target) for target in targets]
 
     target_paths: StrPaths = []

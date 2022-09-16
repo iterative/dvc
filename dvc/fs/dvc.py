@@ -65,7 +65,7 @@ def _get_dvc_path(dvc_fs, subkey):
     return dvc_fs.path.join(*subkey) if subkey else ""
 
 
-class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
     """DVC + git-tracked files fs.
 
     Args:
@@ -365,7 +365,7 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return info
 
 
-class DvcFileSystem(FileSystem):
+class DVCFileSystem(FileSystem):
     protocol = "local"
     PARAM_CHECKSUM = "md5"
 
@@ -375,7 +375,7 @@ class DvcFileSystem(FileSystem):
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
-        return _DvcFileSystem(**self.fs_args)
+        return _DVCFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)

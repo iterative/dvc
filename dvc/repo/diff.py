@@ -23,9 +23,9 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
-    from dvc.fs.dvc import DvcFileSystem
+    from dvc.fs.dvc import DVCFileSystem
 
-    dvcfs = DvcFileSystem(repo=self)
+    dvcfs = DVCFileSystem(repo=self)
     targets = ensure_list(targets)
     targets = [dvcfs.from_os_path(target) for target in targets]
 

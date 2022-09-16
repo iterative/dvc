@@ -1,4 +1,4 @@
-from dvc.fs.dvc import _DvcFileSystem as DvcFileSystem
+from dvc.fs.dvc import _DVCFileSystem as DVCFileSystem
 
 from .data import open  # pylint: disable=redefined-builtin
 from .data import get_url, read
@@ -11,5 +11,5 @@ __all__ = [
     "open",
     "params_show",
     "read",
-    "DvcFileSystem",
+    "DVCFileSystem",
 ]
