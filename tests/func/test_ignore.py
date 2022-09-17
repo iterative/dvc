@@ -26,7 +26,7 @@ def walk_files(dvc, *args):
 @pytest.fixture
 def global_dvcignore():
     global_path = Path(Config.get_dir("global"))
-    os.makedirs(global_path)
+    global_path.mkdir(parents=True, exist_ok=True)
     global_dvcignore_path = global_path / DvcIgnore.DVCIGNORE_FILE
     global_dvcignore_path.write_text("ignored_in_global", encoding="utf-8")
 
@@ -34,6 +34,7 @@ def global_dvcignore():
 @pytest.fixture
 def system_dvcignore():
     system_path = Path(Config.get_dir("system"))
+    system_path.mkdir(parents=True, exist_ok=True)
     system_dvcignore_path = system_path / DvcIgnore.DVCIGNORE_FILE
     system_dvcignore_path.write_text("ignored_in_system", encoding="utf-8")
 
