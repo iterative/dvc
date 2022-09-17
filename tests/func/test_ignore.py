@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from dvc.config import Config
 from dvc.ignore import DvcIgnore, DvcIgnorePatterns
 from dvc.output import OutputIsIgnoredError
 from dvc.pathspec_math import PatternInfo, merge_patterns
@@ -12,7 +13,6 @@ from dvc.testing.tmp_dir import TmpDir
 from dvc.types import List
 from dvc_data.hashfile.build import IgnoreInCollectedDirError
 from dvc_data.hashfile.utils import get_mtime_and_size
-from dvc.config import Config
 
 
 def _to_pattern_info_list(str_list: List):
@@ -27,18 +27,14 @@ def walk_files(dvc, *args):
 def global_dvcignore():
     global_path = Path(Config.get_dir("global"))
     os.makedirs(global_path)
-    global_dvcignore_path = (
-        global_path / DvcIgnore.DVCIGNORE_FILE
-    )
+    global_dvcignore_path = global_path / DvcIgnore.DVCIGNORE_FILE
     global_dvcignore_path.write_text("ignored_in_global", encoding="utf-8")
 
 
 @pytest.fixture
 def system_dvcignore():
     system_path = Path(Config.get_dir("system"))
-    system_dvcignore_path = (
-        system_path / DvcIgnore.DVCIGNORE_FILE
-    )
+    system_dvcignore_path = system_path / DvcIgnore.DVCIGNORE_FILE
     system_dvcignore_path.write_text("ignored_in_system", encoding="utf-8")
 
 

@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from dvc.cli import main
-from dvc.ignore import DvcIgnore
 from dvc.config import Config
+from dvc.ignore import DvcIgnore
 
 
 @pytest.mark.parametrize(
@@ -145,9 +145,7 @@ def test_check_global_dvcignore(tmp_path, tmp_dir, dvc, capsys):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
     global_path = Path(Config.get_dir("global"))
     os.makedirs(global_path)
-    global_dvcignore = (
-        global_path / DvcIgnore.DVCIGNORE_FILE
-    )
+    global_dvcignore = global_path / DvcIgnore.DVCIGNORE_FILE
     global_dvcignore.write_text("ignored_in_global", encoding="utf-8")
 
     assert main(["check-ignore", "-d", "ignored_in_repo_root"]) == 0
@@ -177,9 +175,7 @@ def test_check_system_dvcignore(tmp_path, tmp_dir, dvc, capsys):
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
     system_path = Path(Config.get_dir("system"))
-    system_dvcignore = (
-        system_path / DvcIgnore.DVCIGNORE_FILE
-    )
+    system_dvcignore = system_path / DvcIgnore.DVCIGNORE_FILE
     system_dvcignore.write_text("ignored_in_system", encoding="utf-8")
 
     assert main(["check-ignore", "-d", "ignored_in_repo_root"]) == 0
