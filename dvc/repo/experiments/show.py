@@ -1,9 +1,11 @@
 import logging
 from collections import OrderedDict, defaultdict
 from datetime import datetime
+from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
+from dvc.repo.experiments.queue.base import QueueDoneResult
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
@@ -17,11 +19,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class ExpStatus(Enum):
+    Success = 0
+    Queued = 1
+    Running = 2
+    Failed = 3
+
+
 @error_handler
 def _collect_experiment_commit(
-    repo,
-    exp_rev,
-    stash=False,
+    repo: "Repo",
+    exp_rev: str,
+    status: ExpStatus = ExpStatus.Success,
     sha_only=True,
     param_deps=False,
     running=None,
@@ -67,14 +76,19 @@ def _collect_experiment_commit(
             if not (out.is_metric or out.is_plot)
         }
 
-        res["queued"] = stash
-        if running is not None and exp_rev in running:
-            res["running"] = True
+        res["status"] = status.name
+        if status == ExpStatus.Running:
             res["executor"] = running[exp_rev].get("location")
         else:
-            res["running"] = False
             res["executor"] = None
-        if not stash:
+
+        if status == ExpStatus.Failed:
+            res["error"] = {
+                "msg": "Experiment run failed.",
+                "type": "",
+            }
+
+        if status not in {ExpStatus.Queued, ExpStatus.Failed}:
             vals = _gather_metrics(
                 repo, targets=None, rev=rev, recursive=False, onerror=onerror
             )
@@ -97,7 +111,13 @@ def _collect_experiment_commit(
 
 
 def _collect_experiment_branch(
-    res, repo, branch, baseline, onerror: Optional[Callable] = None, **kwargs
+    res,
+    repo,
+    branch,
+    baseline,
+    onerror: Optional[Callable] = None,
+    running=None,
+    **kwargs
 ):
     from dvc.scm import resolve_rev
 
@@ -105,8 +125,14 @@ def _collect_experiment_branch(
     prev = None
     revs = list(repo.scm.branch_revs(exp_rev, baseline))
     for rev in revs:
+        status = ExpStatus.Running if rev in running else ExpStatus.Success
         collected_exp = _collect_experiment_commit(
-            repo, rev, onerror=onerror, **kwargs
+            repo,
+            rev,
+            onerror=onerror,
+            status=status,
+            running=running,
+            **kwargs
         )
         if len(revs) > 1:
             exp = {"checkpoint_tip": exp_rev}
@@ -135,6 +161,8 @@ def show(
     all_tags=False,
     revs: Union[List[str], str, None] = None,
     all_commits=False,
+    hide_queued=False,
+    hide_failed=False,
     sha_only=False,
     num=1,
     param_deps=False,
@@ -163,10 +191,12 @@ def show(
     running = repo.experiments.get_running_exps(fetch_refs=fetch_running)
 
     for rev in found_revs:
+        status = ExpStatus.Running if rev in running else ExpStatus.Success
         res[rev]["baseline"] = _collect_experiment_commit(
             repo,
             rev,
             sha_only=sha_only,
+            status=status,
             param_deps=param_deps,
             running=running,
             onerror=onerror,
@@ -202,7 +232,19 @@ def show(
             repo.experiments.tempdir_queue.iter_active(),
             repo.experiments.celery_queue.iter_active(),
             repo.experiments.celery_queue.iter_queued(),
+            repo.experiments.celery_queue.iter_failed(),
         ):
+            if isinstance(entry, QueueDoneResult):
+                entry = entry.entry
+                if hide_failed:
+                    continue
+                status = ExpStatus.Failed
+            elif entry.stash_rev in running:
+                status = ExpStatus.Running
+            else:
+                if hide_queued:
+                    continue
+                status = ExpStatus.Queued
             stash_rev = entry.stash_rev
             if entry.baseline_rev in found_revs:
                 if stash_rev not in running or not running[stash_rev].get(
@@ -212,7 +254,7 @@ def show(
                         repo,
                         stash_rev,
                         sha_only=sha_only,
-                        stash=stash_rev not in running,
+                        status=status,
                         param_deps=param_deps,
                         running=running,
                         onerror=onerror,

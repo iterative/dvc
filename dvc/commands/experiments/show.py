@@ -95,11 +95,8 @@ def _collect_rows(
 
         exp = results.get("data", {})
 
-        if exp.get("running"):
-            state = "Running"
-        elif exp.get("queued"):
-            state = "Queued"
-        else:
+        state = exp.get("status")
+        if state == "Success":
             state = fill_value
 
         is_baseline = rev == "baseline"
@@ -476,6 +473,8 @@ class CmdExperimentsShow(CmdBase):
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 all_commits=self.args.all_commits,
+                hide_queued=self.args.hide_queued,
+                hide_failed=self.args.hide_failed,
                 revs=self.args.rev,
                 num=self.args.num,
                 sha_only=self.args.sha,
@@ -593,6 +592,18 @@ def add_parser(experiments_subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Always show git commit SHAs instead of branch/tag names.",
+    )
+    experiments_show_parser.add_argument(
+        "--hide-failed",
+        action="store_true",
+        default=False,
+        help="Hide failed experiments in the table.",
+    )
+    experiments_show_parser.add_argument(
+        "--hide-queued",
+        action="store_true",
+        default=False,
+        help="Hide queued experiments in the table.",
     )
     experiments_show_parser.add_argument(
         "--json",
