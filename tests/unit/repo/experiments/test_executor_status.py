@@ -4,7 +4,11 @@ import pytest
 
 from dvc.exceptions import DvcException
 from dvc.repo.experiments.executor.base import ExecutorInfo, TaskStatus
-from dvc.repo.experiments.queue.tasks import collect_exp, setup_exp
+from dvc.repo.experiments.queue.tasks import (
+    cleanup_exp,
+    collect_exp,
+    setup_exp,
+)
 
 
 def test_celery_queue_success_status(dvc, scm, test_queue, exp_stage):
@@ -14,7 +18,7 @@ def test_celery_queue_success_status(dvc, scm, test_queue, exp_stage):
         name="success",
     )
     infofile = test_queue.get_infofile_path(queue_entry.stash_rev)
-    setup_exp.s(queue_entry.asdict())()
+    executor = setup_exp.s(queue_entry.asdict())()
     executor_info = ExecutorInfo.load_json(infofile)
     assert executor_info.status == TaskStatus.PREPARING
 
@@ -27,6 +31,7 @@ def test_celery_queue_success_status(dvc, scm, test_queue, exp_stage):
     assert executor_info.status == TaskStatus.SUCCESS
 
     collect_exp.s(proc_dict, queue_entry.asdict())()
+    cleanup_exp.s(executor, infofile)()
     executor_info = ExecutorInfo.load_json(infofile)
     assert executor_info.status == TaskStatus.FINISHED
 
@@ -66,11 +71,15 @@ def test_workspace_executor_success_status(dvc, scm, exp_stage, queue_type):
     assert executor_info.status == TaskStatus.SUCCESS
     if exec_result.ref_info:
         workspace_queue.collect_executor(
-            dvc.experiments, executor, exec_result, infofile
+            dvc.experiments, executor, exec_result
         )
+    executor.cleanup(infofile)
 
-    executor_info = ExecutorInfo.load_json(infofile)
-    assert executor_info.status == TaskStatus.FINISHED
+    if queue_type == "tempdir_queue":
+        executor_info = ExecutorInfo.load_json(infofile)
+        assert executor_info.status == TaskStatus.FINISHED
+    else:
+        assert not os.path.exists(infofile)
 
 
 @pytest.mark.parametrize("queue_type", ["workspace_queue", "tempdir_queue"])

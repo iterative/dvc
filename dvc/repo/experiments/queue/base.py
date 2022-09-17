@@ -31,7 +31,6 @@ from ..executor.base import (
     EXEC_TMP_DIR,
     BaseExecutor,
     ExecutorResult,
-    TaskStatus,
 )
 from ..executor.local import WorkspaceExecutor
 from ..refs import ExpRefInfo
@@ -582,14 +581,13 @@ class BaseStashQueue(ABC):
         )
 
         infofile = exp.celery_queue.get_infofile_path(stash_rev)
-        executor.info.dump_json(infofile)
-
         executor.init_git(
-            exp.repo.scm, stash_rev, stash_entry, branch=stash_entry.branch
+            exp.repo.scm,
+            stash_rev,
+            stash_entry,
+            infofile,
+            branch=stash_entry.branch,
         )
-
-        infofile = exp.celery_queue.get_infofile_path(stash_rev)
-        executor.info.dump_json(infofile)
 
         executor.init_cache(exp.repo, stash_rev)
 
@@ -608,7 +606,6 @@ class BaseStashQueue(ABC):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: ExecutorResult,
-        infofile: str,
     ) -> Dict[str, str]:
         results = {}
 
@@ -631,10 +628,6 @@ class BaseStashQueue(ABC):
 
         if exec_result.ref_info is not None:
             executor.collect_cache(exp.repo, exec_result.ref_info)
-
-        executor.status = TaskStatus.FINISHED
-        if infofile is not None:
-            executor.info.dump_json(infofile)
 
         return results
 

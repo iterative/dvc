@@ -72,7 +72,7 @@ class TaskStatus(IntEnum):
     RUNNING = 2
     SUCCESS = 3
     FAILED = 4
-    REVOKED = 5
+    CANCELED = 5
     FINISHED = 6
 
 
@@ -173,6 +173,7 @@ class BaseExecutor(ABC):
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
+        infofile: Optional[str],
         branch: Optional[str] = None,
     ):
         """Init git repo and populate it using exp refs from the specified
@@ -281,8 +282,12 @@ class BaseExecutor(ABC):
                 exp_data.update(to_lockfile(stage))
         return dict_sha256(exp_data)
 
-    def cleanup(self):
-        pass
+    def cleanup(self, infofile: str):
+        if infofile is not None:
+            info = ExecutorInfo.load_json(infofile)
+            if info.status < TaskStatus.FAILED:
+                info.status = TaskStatus.FINISHED
+            info.dump_json(infofile)
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod

@@ -58,7 +58,8 @@ def test_init_git(tmp_dir, scm, cloud, mocker):
         username=TEST_SSH_USER,
         fs_factory=partial(_ssh_factory, cloud),
     )
-    executor.init_git(scm, rev, mock)
+    infofile = str((root_url / "foo.run").path)
+    executor.init_git(scm, rev, mock, infofile=infofile)
     assert root_url.path == executor._repo_abspath
 
     fs = cloud._ssh
@@ -116,7 +117,6 @@ def test_reproduce(tmp_dir, scm, dvc, cloud, exp_stage, mocker):
     SSHExecutor.reproduce(
         info,
         rev,
-        infofile=infofile,
         fs_factory=partial(_ssh_factory, cloud),
     )
     assert mock_execute.called_once()
