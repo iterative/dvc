@@ -63,8 +63,7 @@ def test_show_simple(tmp_dir, scm, dvc, exp_stage):
                 "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
                 "outs": {},
                 "params": {"params.yaml": {"data": {"foo": 1}}},
-                "queued": False,
-                "running": False,
+                "status": "Success",
                 "executor": None,
                 "timestamp": None,
             }
@@ -97,8 +96,7 @@ def test_show_experiment(tmp_dir, scm, dvc, exp_stage, workspace):
             "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
             "outs": {},
             "params": {"params.yaml": {"data": {"foo": 1}}},
-            "queued": False,
-            "running": False,
+            "status": "Success",
             "executor": None,
             "timestamp": timestamp,
             "name": "master",
@@ -130,7 +128,7 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     assert len(results) == 2
     exp = results[exp_rev]["data"]
     assert exp["name"] == "test_name"
-    assert exp["queued"]
+    assert exp["status"] == "Queued"
     assert exp["params"]["params.yaml"] == {"data": {"foo": 2}}
 
     # test that only queued experiments for the current baseline are returned
@@ -145,8 +143,65 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
     results = dvc.experiments.show()[new_rev]
     assert len(results) == 2
     exp = results[exp_rev]["data"]
-    assert exp["queued"]
+    assert exp["status"] == "Queued"
     assert exp["params"]["params.yaml"] == {"data": {"foo": 3}}
+
+
+@pytest.mark.vscode
+def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
+    baseline_rev = scm.get_rev()
+    timestamp = datetime.fromtimestamp(
+        scm.gitpython.repo.rev_parse(baseline_rev).committed_date
+    )
+
+    dvc.experiments.run(
+        failed_exp_stage.addressing, params=["foo=2"], queue=True
+    )
+    exp_rev = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
+    dvc.experiments.run(run_all=True)
+    experiments = dvc.experiments.show()[baseline_rev]
+
+    expected_baseline = {
+        "data": {
+            "deps": {
+                "copy.py": {
+                    "hash": ANY,
+                    "size": ANY,
+                    "nfiles": None,
+                }
+            },
+            "metrics": {},
+            "outs": {},
+            "params": {"params.yaml": {"data": {"foo": 1}}},
+            "status": "Success",
+            "executor": None,
+            "timestamp": timestamp,
+            "name": "master",
+        }
+    }
+
+    expected_failed = {
+        "data": {
+            "timestamp": ANY,
+            "params": {"params.yaml": {"data": {"foo": 2}}},
+            "deps": {"copy.py": {"hash": None, "size": None, "nfiles": None}},
+            "outs": {},
+            "status": "Failed",
+            "executor": None,
+            "error": {
+                "msg": "Experiment run failed.",
+                "type": "",
+            },
+        }
+    }
+
+    assert len(experiments) == 2
+    for rev, exp in experiments.items():
+        if rev == "baseline":
+            assert exp == expected_baseline
+        else:
+            assert rev == exp_rev
+            assert exp == expected_failed
 
 
 @pytest.mark.vscode
@@ -339,12 +394,8 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 @pytest.mark.vscode
-@pytest.mark.parametrize(
-    "status, running", [(TaskStatus.RUNNING, True), (TaskStatus.FAILED, False)]
-)
-def test_show_running_workspace(
-    tmp_dir, scm, dvc, exp_stage, capsys, status, running
-):
+@pytest.mark.parametrize("status", [TaskStatus.RUNNING, TaskStatus.FAILED])
+def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys, status):
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
     info = make_executor_info(
         location=BaseExecutor.DEFAULT_LOCATION, status=status
@@ -357,7 +408,8 @@ def test_show_running_workspace(
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
-    print(dvc.experiments.show())
+    print(dvc.experiments.show().get("workspace"))
+
     assert dvc.experiments.show().get("workspace") == {
         "baseline": {
             "data": {
@@ -371,9 +423,12 @@ def test_show_running_workspace(
                 "metrics": {"metrics.yaml": {"data": {"foo": 1}}},
                 "params": {"params.yaml": {"data": {"foo": 1}}},
                 "outs": {},
-                "queued": False,
-                "running": True if running else False,
-                "executor": info.location if running else None,
+                "status": "Running"
+                if status == TaskStatus.RUNNING
+                else "Success",
+                "executor": info.location
+                if status == TaskStatus.RUNNING
+                else None,
                 "timestamp": None,
             }
         }
@@ -381,7 +436,7 @@ def test_show_running_workspace(
     capsys.readouterr()
     assert main(["exp", "show", "--csv"]) == 0
     cap = capsys.readouterr()
-    if running:
+    if status == TaskStatus.RUNNING:
         assert "Running" in cap.out
         assert info.location in cap.out
 
@@ -428,10 +483,10 @@ def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):
         [mocker.call(stash_rev, pidfile, True)],
     )
     exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
-    assert exp_data["running"]
+    assert exp_data["status"] == "Running"
     assert exp_data["executor"] == info.location
 
-    assert not results["workspace"]["baseline"]["data"]["running"]
+    assert results["workspace"]["baseline"]["data"]["status"] == "Success"
 
 
 def test_show_running_celery(tmp_dir, scm, dvc, exp_stage, mocker):
@@ -453,11 +508,10 @@ def test_show_running_celery(tmp_dir, scm, dvc, exp_stage, mocker):
 
     results = dvc.experiments.show()
     exp_data = get_in(results, [baseline_rev, exp_rev, "data"])
-    assert not exp_data["queued"]
-    assert exp_data["running"]
+    assert exp_data["status"] == "Running"
     assert exp_data["executor"] == info.location
 
-    assert not results["workspace"]["baseline"]["data"]["running"]
+    assert results["workspace"]["baseline"]["data"]["status"] == "Success"
 
 
 def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
@@ -479,6 +533,11 @@ def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
         "iter_active",
         return_value=entries,
     )
+    mocker.patch.object(
+        dvc.experiments.celery_queue,
+        "iter_failed",
+        return_value=[],
+    )
     pidfile = queue.get_infofile_path(entries[0].stash_rev)
     info = make_executor_info(
         git_url="foo.git",
@@ -495,10 +554,10 @@ def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
     results = dvc.experiments.show()
 
     checkpoint_res = get_in(results, [baseline_rev, checkpoint_rev, "data"])
-    assert checkpoint_res["running"]
+    assert checkpoint_res["status"] == "Running"
     assert checkpoint_res["executor"] == info.location
 
-    assert not results["workspace"]["baseline"]["data"]["running"]
+    assert results["workspace"]["baseline"]["data"]["status"] == "Success"
 
 
 def test_show_with_broken_repo(tmp_dir, scm, dvc, exp_stage, caplog):

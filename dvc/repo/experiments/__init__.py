@@ -427,6 +427,8 @@ class Experiments:
                 pass
         if rev in self.stash_revs:
             return self.stash_revs[rev].name
+        if rev in self.celery_queue.failed_stash.stash_revs:
+            return self.celery_queue.failed_stash.stash_revs[rev].name
         return None
 
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Any]:

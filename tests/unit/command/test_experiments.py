@@ -95,6 +95,8 @@ def test_experiments_show(dvc, scm, mocker):
             "--all-tags",
             "--all-branches",
             "--all-commits",
+            "--hide-queued",
+            "--hide-failed",
             "--sha",
             "--param-deps",
             "-n",
@@ -115,6 +117,8 @@ def test_experiments_show(dvc, scm, mocker):
         all_tags=True,
         all_branches=True,
         all_commits=True,
+        hide_queued=True,
+        hide_failed=True,
         num=1,
         revs="foo",
         sha_only=True,
@@ -433,8 +437,7 @@ def test_show_experiments_csv(capsys):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {
@@ -470,8 +473,7 @@ def test_show_experiments_csv(capsys):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {
@@ -506,8 +508,7 @@ def test_show_experiments_csv(capsys):
                             }
                         }
                     },
-                    "queued": True,
-                    "running": True,
+                    "status": "Running",
                     "executor": None,
                     "metrics": {
                         "scores.json": {
@@ -561,8 +562,7 @@ def test_show_experiments_md(capsys):
                 "data": {
                     "timestamp": None,
                     "params": {"params.yaml": {"data": {"foo": 1}}},
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {"data": {"bar": 0.9544670443829399}}
@@ -599,8 +599,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                 }
@@ -617,8 +616,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "master",
@@ -634,8 +632,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "exp-89140",
@@ -651,8 +648,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "exp-43537",
@@ -668,8 +664,7 @@ def test_show_experiments_sort_by(capsys, sort_order):
                             }
                         }
                     },
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {},
                     "name": "exp-4f89e",
@@ -915,8 +910,7 @@ def test_show_experiments_pcp(tmp_dir, mocker):
                 "data": {
                     "timestamp": None,
                     "params": {"params.yaml": {"data": {"foo": 1}}},
-                    "queued": False,
-                    "running": False,
+                    "status": "Success",
                     "executor": None,
                     "metrics": {
                         "scores.json": {"data": {"bar": 0.9544670443829399}}
