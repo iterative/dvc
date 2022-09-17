@@ -1,15 +1,13 @@
 import logging
-import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Collection, Dict, Generator, Optional
 
 from funcy import first
 
 from dvc.exceptions import DvcException
-from dvc.utils.fs import remove
 
 from ..exceptions import ExpQueueEmptyError
-from ..executor.base import BaseExecutor, ExecutorResult, TaskStatus
+from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
@@ -105,7 +103,7 @@ class WorkspaceQueue(BaseStashQueue):
             if exec_result.ref_info:
                 results[rev].update(
                     self.collect_executor(
-                        self.repo.experiments, executor, exec_result, infofile
+                        self.repo.experiments, executor, exec_result
                     )
                 )
         except CheckpointKilledError:
@@ -118,9 +116,7 @@ class WorkspaceQueue(BaseStashQueue):
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
         finally:
-            if self._EXEC_NAME == exec_name:
-                remove(os.path.join(self.pid_dir, exec_name))
-            executor.cleanup()
+            executor.cleanup(infofile)
         return results
 
     @staticmethod
@@ -128,7 +124,6 @@ class WorkspaceQueue(BaseStashQueue):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: ExecutorResult,
-        infofile: str,
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}
         exp_rev = exp.scm.get_ref(EXEC_BRANCH)
@@ -136,10 +131,6 @@ class WorkspaceQueue(BaseStashQueue):
             assert exec_result.exp_hash
             logger.debug("Collected experiment '%s'.", exp_rev[:7])
             results[exp_rev] = exec_result.exp_hash
-
-        executor.status = TaskStatus.FINISHED
-        if infofile is not None:
-            executor.info.dump_json(infofile)
 
         return results
 

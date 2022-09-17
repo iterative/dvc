@@ -15,7 +15,7 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
-from .base import BaseExecutor, ExecutorInfo, ExecutorResult
+from .base import BaseExecutor, ExecutorInfo, ExecutorResult, TaskStatus
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -122,9 +122,14 @@ class SSHExecutor(BaseExecutor):
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
+        infofile: Optional[str],
         branch: Optional[str] = None,
     ):
         from ..utils import push_refspec
+
+        self.status = TaskStatus.PREPARING
+        if infofile:
+            self.info.dump_json(infofile)
 
         with self.sshfs() as fs:
             fs.makedirs(self.root_dir)

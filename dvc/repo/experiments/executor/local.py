@@ -46,8 +46,8 @@ class BaseLocalExecutor(BaseExecutor):
     def scm(self):
         return SCM(self.root_dir)
 
-    def cleanup(self):
-        super().cleanup()
+    def cleanup(self, infofile: str):
+        super().cleanup(infofile)
         self.scm.close()
         del self.scm
 
@@ -72,6 +72,7 @@ class TempDirExecutor(BaseLocalExecutor):
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
+        infofile: Optional[str],
         branch: Optional[str] = None,
     ):
         from dulwich.repo import Repo as DulwichRepo
@@ -81,6 +82,8 @@ class TempDirExecutor(BaseLocalExecutor):
         DulwichRepo.init(os.fspath(self.root_dir))
 
         self.status = TaskStatus.PREPARING
+        if infofile:
+            self.info.dump_json(infofile)
 
         with self.set_exec_refs(scm, stash_rev, entry):
             refspec = f"{EXEC_NAMESPACE}/"
@@ -119,8 +122,8 @@ class TempDirExecutor(BaseLocalExecutor):
         """Initialize DVC cache."""
         self._config(repo.odb.repo.path)
 
-    def cleanup(self):
-        super().cleanup()
+    def cleanup(self, infofile: str):
+        super().cleanup(infofile)
         logger.debug("Removing tmpdir '%s'", self.root_dir)
         remove(self.root_dir)
 
@@ -169,8 +172,13 @@ class WorkspaceExecutor(BaseLocalExecutor):
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
+        infofile: Optional[str],
         branch: Optional[str] = None,
     ):
+        self.status = TaskStatus.PREPARING
+        if infofile:
+            self.info.dump_json(infofile)
+
         scm.set_ref(EXEC_HEAD, entry.head_rev)
         scm.set_ref(EXEC_MERGE, stash_rev)
         scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
@@ -194,7 +202,9 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         pass
 
-    def cleanup(self):
+    def cleanup(self, infofile: str):
+        super().cleanup(infofile)
+        remove(os.path.dirname(infofile))
         with self._detach_stack:
             self.scm.remove_ref(EXEC_BASELINE)
             self.scm.remove_ref(EXEC_MERGE)
@@ -203,4 +213,3 @@ class WorkspaceExecutor(BaseLocalExecutor):
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
             if checkpoint and checkpoint != self._orig_checkpoint:
                 self.scm.set_ref(EXEC_APPLY, checkpoint)
-        super().cleanup()

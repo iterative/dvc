@@ -96,8 +96,5 @@ class TempDirQueue(WorkspaceQueue):
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: ExecutorResult,
-        infofile: str,
     ) -> Dict[str, str]:
-        return BaseStashQueue.collect_executor(
-            exp, executor, exec_result, infofile
-        )
+        return BaseStashQueue.collect_executor(exp, executor, exec_result)
