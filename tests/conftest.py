@@ -181,10 +181,19 @@ def mocked_webbrowser_open(mocker):
 
 
 @pytest.fixture(autouse=True)
-def isolate(tmp_path_factory, monkeypatch) -> None:
+def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
     path = tmp_path_factory.mktemp("mock")
     home_dir = path / "home"
     home_dir.mkdir()
+
+    # NOTE(meshde): appdirs.site_config_dir statically returns
+    # /Library/Application Support/ on macos leaving us no way to
+    # manipulate the response of this function using env variables
+    #
+    # Hence, resorting to mocking this function entirely
+    root_dir = path / "root"
+    root_dir.mkdir()
+    mocker.patch("appdirs.site_config_dir", return_value=str(root_dir))
 
     if sys.platform == "win32":
         home_drive, home_path = os.path.splitdrive(home_dir)

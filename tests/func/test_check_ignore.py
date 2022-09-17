@@ -5,25 +5,7 @@ import pytest
 
 from dvc.cli import main
 from dvc.ignore import DvcIgnore
-
-
-def _get_tmp_config_dir(tmp_path, level):
-    return tmp_path / ".." / (tmp_path.name + "_config_" + level)
-
-
-@pytest.fixture(autouse=True)
-def tmp_config_dir(mocker, tmp_path):
-    """
-    Fixture to prevent modifying/reading the actual global config
-    """
-
-    for level in ["global", "system"]:
-        os.makedirs(_get_tmp_config_dir(tmp_path, level))
-
-    def get_tmp_config_dir(level):
-        return str(_get_tmp_config_dir(tmp_path, level))
-
-    mocker.patch("dvc.config.Config.get_dir", side_effect=get_tmp_config_dir)
+from dvc.config import Config
 
 
 @pytest.mark.parametrize(
@@ -161,8 +143,10 @@ def test_check_global_dvcignore(tmp_path, tmp_dir, dvc, capsys):
         }
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
+    global_path = Path(Config.get_dir("global"))
+    os.makedirs(global_path)
     global_dvcignore = (
-        _get_tmp_config_dir(tmp_path, "global") / DvcIgnore.DVCIGNORE_FILE
+        global_path / DvcIgnore.DVCIGNORE_FILE
     )
     global_dvcignore.write_text("ignored_in_global", encoding="utf-8")
 
@@ -192,8 +176,9 @@ def test_check_system_dvcignore(tmp_path, tmp_dir, dvc, capsys):
         }
     )
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored_in_repo_root")
+    system_path = Path(Config.get_dir("system"))
     system_dvcignore = (
-        _get_tmp_config_dir(tmp_path, "system") / DvcIgnore.DVCIGNORE_FILE
+        system_path / DvcIgnore.DVCIGNORE_FILE
     )
     system_dvcignore.write_text("ignored_in_system", encoding="utf-8")
 
