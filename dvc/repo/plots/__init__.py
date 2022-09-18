@@ -152,9 +152,9 @@ class Plots:
         props: Optional[Dict] = None,
         onerror: Optional[Callable] = None,
     ):
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.dvc import DVCFileSystem
 
-        fs = DvcFileSystem(repo=self.repo)
+        fs = DVCFileSystem(repo=self.repo)
 
         props = props or {}
 
@@ -472,9 +472,9 @@ def _collect_definitions(
     result: Dict = defaultdict(dict)
     props = props or {}
 
-    from dvc.fs.dvc import DvcFileSystem
+    from dvc.fs.dvc import DVCFileSystem
 
-    fs = DvcFileSystem(repo=repo)
+    fs = DVCFileSystem(repo=repo)
 
     if not config_files:
         dpath.util.merge(

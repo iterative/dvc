@@ -14,7 +14,11 @@ def tmp_global_dir(mocker, tmp_path):
     """
     Fixture to prevent modifying the actual global config
     """
-    mocker.patch("dvc.config.Config.get_dir", return_value=str(tmp_path))
+
+    def _user_config_dir(appname, *_args, **_kwargs):
+        return str(tmp_path / appname)
+
+    mocker.patch("iterative_telemetry.user_config_dir", _user_config_dir)
 
 
 def test_collect_and_send_report(mocker, tmp_global_dir):
@@ -155,10 +159,3 @@ def test_system_info():
         )
 
     assert schema(analytics._system_info())
-
-
-def test_find_or_create_user_id(tmp_global_dir):
-    created = analytics._find_or_create_user_id()
-    found = analytics._find_or_create_user_id()
-
-    assert created == found

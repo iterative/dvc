@@ -187,7 +187,7 @@ class Repo:
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
 
-        # used by DvcFileSystem to determine if it should traverse subrepos
+        # used by DVCFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
         self.cloud = DataCloud(self)
@@ -526,9 +526,9 @@ class Repo:
 
     @cached_property
     def dvcfs(self):
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.dvc import DVCFileSystem
 
-        return DvcFileSystem(
+        return DVCFileSystem(
             repo=self, subrepos=self.subrepos, **self._fs_conf
         )
 
@@ -540,13 +540,13 @@ class Repo:
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
         from dvc.fs.data import DataFileSystem
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.dvc import DVCFileSystem
 
         if os.path.isabs(path):
             fs = DataFileSystem(index=self.index.data["local"])
             fs_path = path
         else:
-            fs = DvcFileSystem(repo=self, subrepos=True)
+            fs = DVCFileSystem(repo=self, subrepos=True)
             fs_path = fs.from_os_path(path)
 
         try:

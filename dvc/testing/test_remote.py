@@ -71,7 +71,7 @@ class TestRemote:
         _check_status(status_dir, ok=dir_hashes)
 
         # Remove and check status
-        remove(dvc.odb.local.path)
+        dvc.odb.local.clear()
 
         status = dvc.cloud.status(foo_hashes)
         _check_status(status, deleted={foo_hash})

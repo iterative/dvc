@@ -50,7 +50,7 @@ def test_open_dirty_hash(tmp_dir, dvc):
 
     fs = DataFileSystem(index=dvc.index.data["repo"])
     with fs.open("file", "r") as fobj:
-        # NOTE: Unlike DvcFileSystem, DataFileSystem should not
+        # NOTE: Unlike DVCFileSystem, DataFileSystem should not
         # be affected by a dirty workspace.
         assert fobj.read() == "file"
 
@@ -71,7 +71,7 @@ def test_open_dirty_no_hash(tmp_dir, dvc):
     (tmp_dir / "file.dvc").write_text("outs:\n- path: file\n")
 
     fs = DataFileSystem(index=dvc.index.data["repo"])
-    # NOTE: Unlike DvcFileSystem, DataFileSystem should not
+    # NOTE: Unlike DVCFileSystem, DataFileSystem should not
     # be affected by a dirty workspace.
     with pytest.raises(FileNotFoundError):
         with fs.open("file", "r"):

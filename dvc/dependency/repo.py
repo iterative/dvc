@@ -152,7 +152,7 @@ class RepoDependency(Dependency):
 
     def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.dvc import DVCFileSystem
         from dvc_data.hashfile.db.reference import ReferenceHashFileDB
         from dvc_data.hashfile.tree import Tree
 
@@ -169,7 +169,7 @@ class RepoDependency(Dependency):
 
         checked_urls = set()
         for obj in iter_objs():
-            if not isinstance(obj.fs, DvcFileSystem):
+            if not isinstance(obj.fs, DVCFileSystem):
                 continue
             if (
                 obj.fs.repo_url in checked_urls
