@@ -210,6 +210,7 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
             monkeypatch.setenv(env_var, os.fspath(path))
     else:
         monkeypatch.setenv("HOME", str(home_dir))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(home_dir))
 
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     contents = b"""
