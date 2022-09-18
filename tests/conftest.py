@@ -213,11 +213,11 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
         # Hence, resorting to mocking these functions entirely
         mocker.patch(
             "appdirs.site_config_dir",
-            side_effect=config_dir_generator(root_dir)
+            side_effect=config_dir_generator(root_dir),
         )
         mocker.patch(
             "appdirs.user_config_dir",
-            side_effect=config_dir_generator(home_dir)
+            side_effect=config_dir_generator(home_dir),
         )
     elif sys.platform == "darwin":
         monkeypatch.setenv("HOME", str(home_dir))
@@ -229,7 +229,7 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
         # Hence, resorting to mocking this function entirely
         mocker.patch(
             "appdirs.site_config_dir",
-            side_effect=config_dir_generator(root_dir)
+            side_effect=config_dir_generator(root_dir),
         )
     else:
         monkeypatch.setenv("HOME", str(home_dir))
