@@ -218,6 +218,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
 
     print(dvcignore._get_trie_pattern(top_ignore_path).pattern_list)
     print(dvcignore._get_trie_pattern(sub_dir_path).pattern_list)
+    print(os.environ["HOME"])
 
     assert (
         DvcIgnorePatterns(
