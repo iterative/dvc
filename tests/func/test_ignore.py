@@ -60,7 +60,7 @@ def test_ignore_from_excludesfile(tmp_path, tmp_dir, dvc, file_exists):
     # then the ignore patterns from the global or system .dvcignore
     # should not be considered irrespective of whether or not the path
     # given to code.excludesfile exists in the file system
-    excludesfile = Path.home() / DvcIgnore.DVCIGNORE_FILE
+    excludesfile = Path.home() / (DvcIgnore.DVCIGNORE_FILE + "_custom")
 
     with dvc.config.edit() as conf:
         conf["core"]["excludesfile"] = str(excludesfile)
