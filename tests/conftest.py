@@ -185,15 +185,8 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
     path = tmp_path_factory.mktemp("mock")
     home_dir = path / "home"
     home_dir.mkdir()
-
-    # NOTE(meshde): appdirs.site_config_dir statically returns
-    # /Library/Application Support/ on macos leaving us no way to
-    # manipulate the response of this function using env variables
-    #
-    # Hence, resorting to mocking this function entirely
     root_dir = path / "root"
     root_dir.mkdir()
-    mocker.patch("appdirs.site_config_dir", return_value=str(root_dir))
 
     if sys.platform == "win32":
         home_drive, home_path = os.path.splitdrive(home_dir)
@@ -208,9 +201,28 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
             path = home_dir / "AppData" / sub_path
             path.mkdir(parents=True)
             monkeypatch.setenv(env_var, os.fspath(path))
+
+        # NOTE(meshde): The env vars set above don't seem to affect the
+        # response of appdirs.site_config_dir or appdirs.user_config_dir
+        # on Windows and these continue to return the actual respective
+        # config dirs on Windows machines
+        #
+        # Hence, resorting to mocking these functions entirely
+        mocker.patch("appdirs.site_config_dir", return_value=str(root_dir))
+        mocker.patch("appdirs.user_config_dir", return_value=str(home_dir))
+    elif sys.platform == "darwin":
+        monkeypatch.setenv("HOME", str(home_dir))
+
+        # NOTE(meshde): appdirs.site_config_dir statically returns
+        # /Library/Application Support/ on macos leaving us no way to
+        # manipulate the response of this function using env variables
+        #
+        # Hence, resorting to mocking this function entirely
+        mocker.patch("appdirs.site_config_dir", return_value=str(root_dir))
     else:
         monkeypatch.setenv("HOME", str(home_dir))
         monkeypatch.setenv("XDG_CONFIG_HOME", str(home_dir))
+        monkeypatch.setenv("XDG_CONFIG_DIRS", str(root_dir))
 
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     contents = b"""
