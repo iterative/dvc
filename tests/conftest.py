@@ -188,6 +188,9 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
     root_dir = path / "root"
     root_dir.mkdir()
 
+    def config_dir_generator(dirname):
+        return lambda x, y: str(dirname / x / (y or ""))
+
     if sys.platform == "win32":
         home_drive, home_path = os.path.splitdrive(home_dir)
         monkeypatch.setenv("USERPROFILE", str(home_dir))
@@ -208,8 +211,14 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
         # config dirs on Windows machines
         #
         # Hence, resorting to mocking these functions entirely
-        mocker.patch("appdirs.site_config_dir", return_value=str(root_dir))
-        mocker.patch("appdirs.user_config_dir", return_value=str(home_dir))
+        mocker.patch(
+            "appdirs.site_config_dir",
+            side_effect=config_dir_generator(root_dir)
+        )
+        mocker.patch(
+            "appdirs.user_config_dir",
+            side_effect=config_dir_generator(home_dir)
+        )
     elif sys.platform == "darwin":
         monkeypatch.setenv("HOME", str(home_dir))
 
@@ -218,7 +227,10 @@ def isolate(tmp_path_factory, monkeypatch, mocker) -> None:
         # manipulate the response of this function using env variables
         #
         # Hence, resorting to mocking this function entirely
-        mocker.patch("appdirs.site_config_dir", return_value=str(root_dir))
+        mocker.patch(
+            "appdirs.site_config_dir",
+            side_effect=config_dir_generator(root_dir)
+        )
     else:
         monkeypatch.setenv("HOME", str(home_dir))
         monkeypatch.setenv("XDG_CONFIG_HOME", str(home_dir))
