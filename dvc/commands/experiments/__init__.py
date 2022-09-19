@@ -2,8 +2,8 @@ import argparse
 
 from dvc.cli.utils import (
     append_doc_link,
-    fix_plumbing_subparsers,
     fix_subparsers,
+    hide_subparsers_from_help,
 )
 from dvc.commands.experiments import (
     apply,
@@ -59,7 +59,7 @@ def add_parser(subparsers, parent_parser):
     fix_subparsers(experiments_subparsers)
     for cmd in SUB_COMMANDS:
         cmd.add_parser(experiments_subparsers, parent_parser)
-    fix_plumbing_subparsers(experiments_subparsers)
+    hide_subparsers_from_help(experiments_subparsers)
 
 
 def add_rev_selection_flags(

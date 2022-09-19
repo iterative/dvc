@@ -21,10 +21,13 @@ def append_doc_link(help_message, path):
     )
 
 
-def fix_plumbing_subparsers(subparsers):
-    # metavar needs to be explicitly set in order to hide plumbing subcommands
+def hide_subparsers_from_help(subparsers):
+    # metavar needs to be explicitly set in order to hide subcommands
     # from the 'positional arguments' choices list
     # see: https://bugs.python.org/issue22848
+    # Need to set `add_help=False`, but avoid setting `help`
+    # (not even to `argparse.SUPPPRESS`).
+    # NOTE: The argument is the parent subparser, not the subcommand parser.
     cmds = [
         cmd for cmd, parser in subparsers.choices.items() if parser.add_help
     ]

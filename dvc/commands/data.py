@@ -8,7 +8,11 @@ from funcy import chunks, compact, log_durations
 from dvc.cli import completion
 from dvc.cli.actions import CommaSeparatedArgs
 from dvc.cli.command import CmdBase
-from dvc.cli.utils import append_doc_link, fix_subparsers
+from dvc.cli.utils import (
+    append_doc_link,
+    fix_subparsers,
+    hide_subparsers_from_help,
+)
 from dvc.ui import ui
 from dvc.utils import colorize
 
@@ -251,7 +255,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=append_doc_link(DATA_LS_HELP, "data/ls"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help=DATA_LS_HELP,
+        add_help=False,
     )
     data_ls_parser.add_argument(
         "--md",
@@ -289,5 +293,5 @@ def add_parser(subparsers, parent_parser):
             ".dvc files, or stage names."
         ),
     ).complete = completion.DVCFILES_AND_STAGE
-
     data_ls_parser.set_defaults(func=CmdDataLs)
+    hide_subparsers_from_help(data_subparsers)
