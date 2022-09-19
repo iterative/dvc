@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Dict, Type
 
 from dvc.exceptions import DvcException
 from dvc.fs import download as fs_download
@@ -31,8 +31,34 @@ class Dependency(Output):
     )  # type: Type[DvcException]
     IsStageFileError = DependencyIsStageFileError  # type: Type[DvcException]
 
+    def workspace_status(self) -> Dict[str, str]:
+        if self.fs.version_aware:
+            old_fs_path = self.fs_path
+            try:
+                self.fs_path = self.fs.path.version_path(self.fs_path, None)
+                if self.changed_meta():
+                    return {str(self): "update available"}
+            finally:
+                self.fs_path = old_fs_path
+        return super().workspace_status()
+
     def update(self, rev=None):
-        pass
+        if self.fs.version_aware:
+            self.fs_path = self.fs.path.version_path(self.fs_path, rev)
+            self.meta = self.get_meta()
+            self.def_path = self.fs.path.version_path(
+                self.def_path, self.meta.version_id
+            )
+            self.fs_path = self.fs.path.version_path(
+                self.fs_path, self.meta.version_id
+            )
 
     def download(self, to, jobs=None):
         fs_download(self.fs, self.fs_path, to, jobs=jobs)
+
+    def save(self):
+        super().save()
+        if self.fs.version_aware:
+            self.fs_path = self.fs.path.version_path(
+                self.fs_path, self.meta.version_id
+            )

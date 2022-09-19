@@ -258,6 +258,10 @@ class Stage(params.StageParams):
         return isinstance(self.deps[0], RepoDependency)
 
     @property
+    def is_versioned_import(self):
+        return self.is_import and self.deps[0].fs.version_aware
+
+    @property
     def is_checkpoint(self):
         """
         A stage containing checkpoint outs is always considered as changed
@@ -620,7 +624,9 @@ class Stage(params.StageParams):
     @rwlocked(read=["deps", "outs"])
     def status(self, check_updates=False, filter_info=None):
         ret = []
-        show_import = self.is_repo_import and check_updates
+        show_import = (
+            self.is_repo_import or self.is_versioned_import
+        ) and check_updates
 
         if not self.frozen or show_import:
             self._status_deps(ret)

@@ -551,7 +551,7 @@ class Output:
 
     def changed_meta(self) -> bool:
         if self.fs.version_aware and self.meta.version_id:
-            return self.meta.version_id == self.get_meta().version_id
+            return self.meta.version_id != self.get_meta().version_id
         return False
 
     def workspace_status(self):
