@@ -1,25 +1,27 @@
 name: Tests
 
 on:
-  pull_request: {}
-  push: {}
+  push:
+    branches: [main]
+  pull_request:
   schedule:
     - cron: '5 1 * * *'  # every day at 01:05
+  workflow_dispatch:
 
 env:
   DVC_TEST: "true"
   HOMEBREW_NO_AUTO_UPDATE: 1
   SHELL: /bin/bash
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
-    - name: Cancel Previous Runs
-      uses: styfle/cancel-workflow-action@0.10.0
-      with:
-        access_token: ${{ github.token }}
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
@@ -31,7 +33,7 @@ jobs:
       run: |
         pip install --upgrade pip setuptools wheel
         pip install collective.checkdocs==0.2
-        pip install ".[dev]" pre-commit
+        pip install ".[dev]"
     - name: Check README
       run: python setup.py checkdocs
     - uses: pre-commit/action@v3.0.0
@@ -57,18 +59,8 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyv }}
-    - name: get pip cache dir
-      id: pip-cache-dir
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
-    - name: set pip cache
-      id: pip-cache
-      uses: actions/cache@v3
-      with:
-        path: ${{ steps.pip-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        cache: pip
+        cache-dependency-path: setup.cfg
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
