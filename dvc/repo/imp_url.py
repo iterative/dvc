@@ -1,4 +1,5 @@
 import os
+from typing import TYPE_CHECKING
 
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath, resolve_output, resolve_paths
@@ -6,6 +7,9 @@ from dvc.utils.fs import path_isin
 
 from ..exceptions import InvalidArgumentError, OutputDuplicationError
 from . import locked
+
+if TYPE_CHECKING:
+    from dvc.dvcfile import DVCFile
 
 
 @locked
@@ -27,6 +31,7 @@ def imp_url(
     meta=None,
     jobs=None,
     fs_config=None,
+    version_aware: bool = False,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_fields
@@ -54,6 +59,11 @@ def imp_url(
     ):
         url = relpath(url, wdir)
 
+    if version_aware:
+        if fs_config is None:
+            fs_config = {}
+        fs_config["version_aware"] = True
+
     stage = create_stage(
         Stage,
         self,
@@ -68,7 +78,7 @@ def imp_url(
 
     out_obj = stage.outs[0]
     out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
-    dvcfile = Dvcfile(self, stage.path)
+    dvcfile: "DVCFile" = Dvcfile(self, stage.path)  # type: ignore
     dvcfile.remove()
 
     try:
