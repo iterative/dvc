@@ -50,7 +50,7 @@ def _push_worktree(repo, remote):
             else:
                 out.hash_info = entry.hash_info
                 out.meta = entry.meta
-        stage.dvcfile.dump(stage, with_files=True)
+        stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
 
     return len(index)
 
