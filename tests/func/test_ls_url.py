@@ -12,11 +12,13 @@ def match_files(entries, expected):
     assert entries_content == expected_content
 
 
-def test_file(tmp_dir):
-    tmp_dir.gen({"foo": "foo contents"})
+@pytest.mark.parametrize("fname", ["foo", "dir/foo"])
+def test_file(tmp_dir, fname):
+    tmp_dir.gen({fname: "foo contents"})
 
-    result = Repo.ls_url("foo")
-    match_files(result, [{"path": os.path.abspath("foo"), "isdir": False}])
+    (d,) = Repo.ls_url(fname)
+    assert d["isdir"] is False
+    assert os.path.normpath(d["path"]) == os.path.abspath(fname)
 
 
 def test_dir(tmp_dir):
