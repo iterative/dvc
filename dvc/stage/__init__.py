@@ -683,7 +683,7 @@ class Stage(params.StageParams):
         self, *args, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return set of object IDs used by this stage."""
-        if self.is_partial_import:
+        if self.is_partial_import and not self.is_repo_import:
             return {}
 
         used_objs = defaultdict(set)

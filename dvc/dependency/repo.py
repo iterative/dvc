@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Set, Tuple
 from voluptuous import Required
 
 from dvc.prompt import confirm
+from dvc_data.hashfile.meta import Meta
 
 from .base import Dependency
 
@@ -32,6 +33,7 @@ class RepoDependency(Dependency):
     def __init__(self, def_repo, stage, *args, **kwargs):
         self.def_repo = def_repo
         self._objs: Dict[str, "HashFile"] = {}
+        self._meta: Dict[str, Meta] = {}
         super().__init__(stage, *args, **kwargs)
 
     def _parse_path(self, fs, fs_path):
@@ -94,12 +96,12 @@ class RepoDependency(Dependency):
     def get_used_objs(
         self, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
-        used, _ = self._get_used_and_obj(**kwargs)
+        used, _, _ = self._get_used_and_obj(**kwargs)
         return used
 
     def _get_used_and_obj(
         self, obj_only=False, **kwargs
-    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], "HashFile"]:
+    ) -> Tuple[Dict[Optional["ObjectDB"], Set["HashInfo"]], Meta, "HashFile"]:
         from dvc.config import NoRemoteError
         from dvc.exceptions import NoOutputOrStageError, PathMissingError
         from dvc.utils import as_posix
@@ -131,7 +133,7 @@ class RepoDependency(Dependency):
                     pass
 
             try:
-                object_store, _, obj = build(
+                object_store, meta, obj = build(
                     local_odb,
                     as_posix(self.def_path),
                     repo.dvcfs,
@@ -145,10 +147,12 @@ class RepoDependency(Dependency):
             object_store.read_only = True
 
             self._objs[rev] = obj
+            self._meta[rev] = meta
+
             used_obj_ids[object_store].add(obj.hash_info)
             if isinstance(obj, Tree):
                 used_obj_ids[object_store].update(oid for _, _, oid in obj)
-            return used_obj_ids, obj
+            return used_obj_ids, meta, obj
 
     def _check_circular_import(self, odb, obj_ids):
         from dvc.exceptions import CircularImportError
@@ -190,10 +194,20 @@ class RepoDependency(Dependency):
         rev = self._get_rev(locked=locked)
         if rev in self._objs:
             return self._objs[rev]
-        _, obj = self._get_used_and_obj(
+        _, _, obj = self._get_used_and_obj(
             obj_only=True, filter_info=filter_info, **kwargs
         )
         return obj
+
+    def get_meta(self, filter_info=None, **kwargs):
+        locked = kwargs.get("locked", True)
+        rev = self._get_rev(locked=locked)
+        if rev in self._meta:
+            return self._meta[rev]
+        _, meta, _ = self._get_used_and_obj(
+            obj_only=True, filter_info=filter_info, **kwargs
+        )
+        return meta
 
     def _make_repo(self, locked=True, **kwargs):
         from dvc.external_repo import external_repo

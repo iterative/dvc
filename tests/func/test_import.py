@@ -217,6 +217,68 @@ def test_pull_imported_stage(tmp_dir, dvc, erepo_dir):
     assert os.path.isfile(dst_cache)
 
 
+def test_import_no_download(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
+
+    assert not os.path.exists("foo_imported")
+
+    dst_stage = Dvcfile(dvc, "foo_imported.dvc").stage
+
+    assert dst_stage.deps[0].def_repo == {
+        "url": os.fspath(erepo_dir),
+        "rev_lock": erepo_dir.scm.get_rev(),
+    }
+    assert scm.is_ignored("foo_imported")
+
+
+def test_pull_import_no_download(tmp_dir, scm, dvc, erepo_dir):
+    with erepo_dir.chdir():
+        erepo_dir.scm_gen(os.path.join("foo", "bar"), b"bar", commit="add bar")
+        erepo_dir.dvc_gen(
+            os.path.join("foo", "baz"), b"baz contents", commit="add baz"
+        )
+        size = (
+            len(b"bar")
+            + len(b"baz contents")
+            + len((erepo_dir / "foo" / ".gitignore").read_bytes())
+        )
+
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
+
+    dvc.pull(["foo_imported.dvc"])
+    assert os.path.exists("foo_imported")
+
+    stage = Dvcfile(dvc, "foo_imported.dvc").stage
+
+    assert (
+        stage.outs[0].hash_info.value == "bdb8641831d8fcb03939637e09011c21.dir"
+    )
+
+    assert stage.outs[0].meta.size == size
+    assert stage.outs[0].meta.nfiles == 3
+    assert stage.outs[0].meta.isdir
+
+
+def test_pull_import_no_download_rev_lock(
+    tmp_dir,
+    dvc,
+    erepo_dir,
+):
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "foo content", commit="add")
+
+    dvc.imp(os.fspath(erepo_dir), "foo", "foo_imported", no_download=True)
+
+    with erepo_dir.chdir():
+        erepo_dir.dvc_gen("foo", "modified foo content", commit="modify foo")
+
+    dvc.pull(["foo_imported.dvc"])
+    assert (tmp_dir / "foo_imported").read_text() == "foo content"
+
+
 def test_cache_type_is_properly_overridden(tmp_dir, scm, dvc, erepo_dir):
     with erepo_dir.chdir():
         with erepo_dir.dvc.config.edit() as conf:
