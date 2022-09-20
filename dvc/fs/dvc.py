@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
 
-from dvc.utils.fs import makedirs
 from dvc_objects.fs.base import FileSystem
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.path import Path
 
 from .data import DataFileSystem
@@ -66,15 +64,7 @@ def _get_dvc_path(dvc_fs, subkey):
 
 
 class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
-    """DVC + git-tracked files fs.
-
-    Args:
-        repo: DVC or git repo.
-        subrepos: traverse to subrepos (by default, it ignores subrepos)
-        repo_factory: A function to initialize subrepo with, default is Repo.
-        kwargs: Additional keyword arguments passed to the `DataFileSystem()`.
-    """
-
+    cachable = False
     root_marker = "/"
 
     def __init__(
@@ -238,7 +228,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs.open(dvc_path, mode=mode)
 
-    def isdvc(self, path, **kwargs):
+    def isdvc(self, path, **kwargs) -> bool:
         key = self._get_key_from_relative(path)
         _, dvc_fs, subkey = self._get_subrepo_info(key)
         dvc_path = _get_dvc_path(dvc_fs, subkey)
@@ -294,27 +284,6 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return paths
 
         return infos
-
-    def get_file(  # pylint: disable=arguments-differ
-        self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        key = self._get_key_from_relative(rpath)
-        fs_path = self._from_key(key)
-        fs = self.repo.fs
-
-        if self.isdir(rpath):
-            makedirs(lpath, exist_ok=True)
-            return None
-
-        try:
-            fs.get_file(fs_path, lpath, callback=callback, **kwargs)
-            return
-        except FileNotFoundError:
-            _, dvc_fs, subkey = self._get_subrepo_info(key)
-            if not dvc_fs:
-                raise
-        dvc_path = _get_dvc_path(dvc_fs, subkey)
-        dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
 
     def info(self, path, **kwargs):
         key = self._get_key_from_relative(path)
