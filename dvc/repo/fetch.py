@@ -155,9 +155,15 @@ def _fetch_partial_imports(repo, targets, **kwargs):
                 raise DataSourceChanged(f"{stage} ({dep})")
 
             logger.info("Importing '%s' -> '%s'", dep, out)
-            out.transfer(
-                dep.def_path, jobs=kwargs.get("jobs"), odb=repo.odb.local
-            )
+            if stage.is_repo_import:
+                obj = dep.get_obj()
+                meta = dep.get_meta()
+                out.hash_info = obj.hash_info
+                out.meta = meta
+            else:
+                out.transfer(
+                    dep.def_path, jobs=kwargs.get("jobs"), odb=repo.odb.local
+                )
         except DataSourceChanged as exc:
             logger.warning(f"{exc}")
             failed += 1

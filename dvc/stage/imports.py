@@ -56,7 +56,10 @@ def sync_import(
         stage.outs[0].checkout()
     else:
         stage.save_deps()
-        if not no_download:
+        if no_download:
+            if stage.is_repo_import:
+                stage.deps[0].update()
+        else:
             stage.deps[0].download(
                 stage.outs[0],
                 jobs=jobs,
