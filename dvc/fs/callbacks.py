@@ -24,6 +24,7 @@ class RichCallback(Callback):
         bytes: bool = False,  # pylint: disable=redefined-builtin
         unit: str = None,
         disable: bool = False,
+        transient: bool = True,
     ) -> None:
         self._progress = progress
         self.disable = disable
@@ -35,6 +36,7 @@ class RichCallback(Callback):
             "visible": False,
             "progress_type": None if bytes else "summary",
         }
+        self._transient = transient
         self._stack = ExitStack()
         super().__init__(size=size, value=value)
 
@@ -47,7 +49,7 @@ class RichCallback(Callback):
             return self._progress
 
         progress = RichTransferProgress(
-            transient=True,
+            transient=self._transient,
             disable=self.disable,
             console=ui.error_console,
         )
@@ -61,7 +63,8 @@ class RichCallback(Callback):
         return self
 
     def close(self):
-        self.progress.clear_task(self.task)
+        if self._transient:
+            self.progress.clear_task(self.task)
         self._stack.close()
 
     def call(self, hook_name=None, **kwargs):
@@ -74,6 +77,9 @@ class RichCallback(Callback):
 
     def branch(self, path_1, path_2, kwargs, child: Optional[Callback] = None):
         child = child or RichCallback(
-            progress=self.progress, desc=path_1, bytes=True
+            progress=self.progress,
+            desc=path_1,
+            bytes=True,
+            transient=self._transient,
         )
         return super().branch(path_1, path_2, kwargs, child=child)
