@@ -76,6 +76,41 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         repo_factory: Optional[RepoFactory] = None,
         **repo_kwargs: Any,
     ) -> None:
+        """DVC + git-tracked files fs.
+
+        Args:
+            path (str, optional): URL or path to a DVC/Git repository.
+                Defaults to a DVC repository in the current working directory.
+                Both HTTP and SSH protocols are supported for remote Git repos
+                (e.g. [user@]server:project.git).
+            rev (str, optional): Any Git revision such as a branch or tag name,
+                a commit hash or a dvc experiment name.
+                Defaults to the default branch in case of remote repositories.
+                In case of a local repository, if rev is unspecified, it will
+                default to the working directory.
+                If the repo is not a Git repo, this option is ignored.
+            repo (:obj:`Repo`, optional): `Repo` instance.
+            subrepos (bool): traverse to subrepos.
+                By default, it ignores subrepos.
+            repo_factory (callable): A function to initialize subrepo with.
+                The default is `Repo`.
+
+        Examples:
+            - Opening a filesystem from repo in current working directory
+
+            >>> fs = DVCFileSystem()
+
+            - Opening a filesystem from local repository
+
+            >>> fs = DVCFileSystem("path/to/local/repository")
+
+            - Opening a remote repository
+
+            >>> fs = DVCFileSystem(
+            ...    "https://github.com/iterative/example-get-started",
+            ...    rev="main",
+            ... )
+        """
         from pygtrie import Trie
 
         super().__init__()
@@ -229,6 +264,7 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         return dvc_fs.open(dvc_path, mode=mode)
 
     def isdvc(self, path, **kwargs) -> bool:
+        """Is this entry dvc-tracked?"""
         key = self._get_key_from_relative(path)
         _, dvc_fs, subkey = self._get_subrepo_info(key)
         dvc_path = _get_dvc_path(dvc_fs, subkey)
