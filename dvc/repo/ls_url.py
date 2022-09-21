@@ -8,7 +8,7 @@ def parse_external_url(url):
     return fs, fs.path.abspath(fs.path.normpath(fs_path))
 
 
-def ls_url(url):
+def ls_url(url, recursive=False):
     fs, fs_path = parse_external_url(url)
     try:
         info = fs.info(fs_path)
@@ -17,12 +17,19 @@ def ls_url(url):
     if info["type"] != "directory":
         return [{"path": info["name"], "isdir": False}]
 
-    infos = fs.ls(fs_path, detail=True)
     ret = []
-    for info in infos:
-        ls_info = {
-            "path": fs.path.relpath(info["name"], fs_path),
-            "isdir": info["type"] == "directory",
-        }
-        ret.append(ls_info)
+    for _, dirs, files in fs.walk(fs_path, detail=True):
+        if not recursive:
+            files.update(dirs)
+
+        for info in files.values():
+            ls_info = {
+                "path": fs.path.relpath(info["name"], fs_path),
+                "isdir": info["type"] == "directory",
+            }
+            ret.append(ls_info)
+
+        if not recursive:
+            break
+
     return ret

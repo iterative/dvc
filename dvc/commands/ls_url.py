@@ -16,7 +16,7 @@ class CmdListUrl(CmdBaseNoRepo):
         from dvc.repo import Repo
 
         try:
-            entries = Repo.ls_url(self.args.url)
+            entries = Repo.ls_url(self.args.url, recursive=self.args.recursive)
             if entries:
                 entries = _prettify(entries, with_color=True)
                 ui.write("\n".join(entries))
@@ -28,7 +28,7 @@ class CmdListUrl(CmdBaseNoRepo):
 
 def add_parser(subparsers, parent_parser):
     LS_HELP = "List directory contents from URL."
-    get_parser = subparsers.add_parser(
+    lsurl_parser = subparsers.add_parser(
         "list-url",
         aliases=["ls-url"],
         parents=[parent_parser],
@@ -36,7 +36,13 @@ def add_parser(subparsers, parent_parser):
         help=LS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    get_parser.add_argument(
+    lsurl_parser.add_argument(
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
-    get_parser.set_defaults(func=CmdListUrl)
+    lsurl_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        help="Recursively list files.",
+    )
+    lsurl_parser.set_defaults(func=CmdListUrl)
