@@ -568,6 +568,8 @@ class Stage(params.StageParams):
             if kwargs.get("checkpoint_func", None) or no_download:
                 allow_missing = True
             self.save(allow_missing=allow_missing)
+            if no_download:
+                self.ignore_outs()
             if not no_commit:
                 self.commit(allow_missing=allow_missing)
 

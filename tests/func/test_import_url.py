@@ -282,7 +282,7 @@ def test_import_url_to_remote_status(tmp_dir, dvc, local_cloud, local_remote):
     assert len(status) == 0
 
 
-def test_import_url_no_download(tmp_dir, dvc, local_workspace):
+def test_import_url_no_download(tmp_dir, scm, dvc, local_workspace):
     local_workspace.gen("file", "file content")
     dst = tmp_dir / "file"
     stage = dvc.imp_url(
@@ -292,6 +292,7 @@ def test_import_url_no_download(tmp_dir, dvc, local_workspace):
     assert stage.deps[0].hash_info.value == "d10b4c3ff123b26dc068d43a8bef2d23"
 
     assert not dst.exists()
+    assert scm.is_ignored(dst)
 
     out = stage.outs[0]
     assert not out.hash_info
