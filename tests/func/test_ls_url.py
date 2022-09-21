@@ -12,7 +12,7 @@ def match_files(entries, expected):
     assert entries_content == expected_content
 
 
-@pytest.mark.parametrize("fname", ["foo", "dir/foo"])
+@pytest.mark.parametrize("fname", ["foo", "foo.dvc", "dir/foo"])
 def test_file(tmp_dir, fname):
     tmp_dir.gen({fname: "foo contents"})
 
