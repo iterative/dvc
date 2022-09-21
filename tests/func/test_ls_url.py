@@ -31,6 +31,19 @@ def test_dir(tmp_dir):
     )
 
 
+def test_recursive(tmp_dir):
+    tmp_dir.gen({"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"})
+
+    result = Repo.ls_url("dir", recursive=True)
+    match_files(
+        result,
+        [
+            {"path": "foo", "isdir": False},
+            {"path": "subdir/bar", "isdir": False},
+        ],
+    )
+
+
 def test_nonexistent(tmp_dir):
     with pytest.raises(URLMissingError):
         Repo.ls_url("nonexistent")
