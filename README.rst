@@ -82,7 +82,7 @@ To share and back up the *data cache*, DVC supports multiple remote storage plat
 
 |Flowchart|
 
-`DVC pipelines <https://dvc.org/doc/start/data-management/pipelines>`_ (computational graphs) connect code and data together.
+`DVC pipelines <https://dvc.org/doc/start/data-management/data-pipelines>`_ (computational graphs) connect code and data together.
 They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
 
 Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
