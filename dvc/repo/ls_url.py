@@ -5,7 +5,7 @@ from dvc.fs import get_cloud_fs
 def parse_external_url(url):
     fs_cls, fs_config, fs_path = get_cloud_fs(None, url=url)
     fs = fs_cls(**fs_config)
-    return fs, fs.path.abspath(fs.path.normpath(fs_path))
+    return fs, fs_path
 
 
 def ls_url(url, recursive=False):
