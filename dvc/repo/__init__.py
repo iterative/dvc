@@ -583,3 +583,20 @@ class Repo:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._reset()
         self.scm.close()
+
+
+class MemoryRepo(Repo):
+    """Repo with an in-memory object storage."""
+
+    def __init__(self, *args, **kwargs):
+        from dvc_data.hashfile.db import HashFileDB
+        from dvc_objects.fs.memory import MemoryFileSystem
+
+        class MemFS(MemoryFileSystem):  # pylint: disable=abstract-method
+            # we have some assumptions for MemoryFileSystem in `status`,
+            # so we need to create a new filesystem with a different protocol.
+            protocol = "memfs"
+
+        super().__init__(*args, **kwargs)
+        memfs = MemFS(global_store=False)
+        self.odb.repo = HashFileDB(memfs, memfs.root_marker, state=self.state)
