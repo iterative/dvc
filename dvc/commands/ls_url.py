@@ -3,7 +3,6 @@ import logging
 
 from dvc.cli.command import CmdBaseNoRepo
 from dvc.cli.utils import append_doc_link
-from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from .ls import _prettify
@@ -15,15 +14,11 @@ class CmdListUrl(CmdBaseNoRepo):
     def run(self):
         from dvc.repo import Repo
 
-        try:
-            entries = Repo.ls_url(self.args.url, recursive=self.args.recursive)
-            if entries:
-                entries = _prettify(entries, with_color=True)
-                ui.write("\n".join(entries))
-            return 0
-        except DvcException:
-            logger.exception("failed to list '%s'", self.args.url)
-            return 1
+        entries = Repo.ls_url(self.args.url, recursive=self.args.recursive)
+        if entries:
+            entries = _prettify(entries, with_color=True)
+            ui.write("\n".join(entries))
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
