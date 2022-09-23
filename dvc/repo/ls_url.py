@@ -12,8 +12,8 @@ def ls_url(url, recursive=False):
     fs, fs_path = parse_external_url(url)
     try:
         info = fs.info(fs_path)
-    except FileNotFoundError:
-        raise URLMissingError(url)
+    except FileNotFoundError as exc:
+        raise URLMissingError(url) from exc
     if info["type"] != "directory":
         return [{"path": info["name"], "isdir": False}]
 
