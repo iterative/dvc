@@ -8,7 +8,9 @@ from dvc.repo import Repo
 
 def match_files(entries, expected):
     entries_content = {(d["path"], d["isdir"]) for d in entries}
-    expected_content = {(d["path"], d["isdir"]) for d in expected}
+    expected_content = {
+        (os.path.normpath(d["path"]), d["isdir"]) for d in expected
+    }
     assert entries_content == expected_content
 
 
