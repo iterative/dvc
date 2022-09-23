@@ -66,8 +66,6 @@ jobs:
       run: |
         pip install --upgrade pip setuptools wheel
         pip install -e ".[dev]"
-      env:
-        AIOHTTP_NO_EXTENSIONS: ${{ matrix.pyv == '3.11-dev' && '1' }}
     - name: run tests
       timeout-minutes: 40
       run: pytest -nauto -ra --durations 100 --cov=dvc --cov-report=xml --cov-report=term -k "${{ matrix.pytest-filter }}"
