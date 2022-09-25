@@ -152,7 +152,7 @@ def to_pipeline_file(stage: "PipelineStage"):
     }
 
 
-def to_single_stage_lockfile(stage: "Stage") -> dict:
+def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     assert stage.cmd
 
     def _dumpd(item):
@@ -163,6 +163,13 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
             *item.hash_info.to_dict().items(),
             *meta_d.items(),
         ]
+
+        if item.hash_info.isdir and kwargs.get("with_files"):
+            if item.obj:
+                obj = item.obj
+            else:
+                obj = item.get_obj()
+            ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
 
         return OrderedDict(ret)
 
@@ -183,9 +190,9 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     return res
 
 
-def to_lockfile(stage: "PipelineStage") -> dict:
+def to_lockfile(stage: "PipelineStage", **kwargs) -> dict:
     assert stage.name
-    return {stage.name: to_single_stage_lockfile(stage)}
+    return {stage.name: to_single_stage_lockfile(stage, **kwargs)}
 
 
 def to_single_stage_file(stage: "Stage", **kwargs):
