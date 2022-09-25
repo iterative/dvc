@@ -73,6 +73,7 @@ class StageLoader(Mapping):
             item.hash_info = HashInfo(item.hash_name, hash_value)
             if item.hash_info and item.hash_info.isdir:
                 item.meta.isdir = True
+            item.files = get_in(checksums, [key, path, item.PARAM_FILES])
 
     @classmethod
     def load_stage(cls, dvcfile, name, stage_data, lock_data=None):

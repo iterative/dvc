@@ -237,10 +237,10 @@ class PipelineFile(FileMixin):
             self._dump_pipeline_file(stage)
 
         if update_lock:
-            self._dump_lockfile(stage)
+            self._dump_lockfile(stage, **kwargs)
 
-    def _dump_lockfile(self, stage):
-        self._lockfile.dump(stage)
+    def _dump_lockfile(self, stage, **kwargs):
+        self._lockfile.dump(stage, **kwargs)
 
     @staticmethod
     def _check_if_parametrized(stage, action: str = "dump") -> None:
@@ -366,7 +366,7 @@ class Lockfile(FileMixin):
         return {SCHEMA_KWD: version}
 
     def dump(self, stage, **kwargs):
-        stage_data = serialize.to_lockfile(stage)
+        stage_data = serialize.to_lockfile(stage, **kwargs)
 
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             version = LOCKFILE_VERSION.from_dict(data)

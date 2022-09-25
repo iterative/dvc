@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def _fetch_worktree(repo, remote):
-    from dvc_data.index import md5, save
+    from dvc_data.index import save
 
     index = repo.index.data["repo"]
     for key, entry in index.iteritems():
@@ -24,24 +24,7 @@ def _fetch_worktree(repo, remote):
             remote.path,
             *key,
         )
-    md5(index)
     save(index)
-
-    for stage in repo.index.stages:
-        for out in stage.outs:
-            if not out.use_cache:
-                continue
-
-            if not out.is_in_repo:
-                continue
-
-            workspace, key = out.index_key
-            entry = repo.index.data[workspace][key]
-            out.hash_info = entry.hash_info
-            out.meta = entry.meta
-
-        stage.dvcfile.dump(stage)
-
     return len(index)
 
 

@@ -765,11 +765,8 @@ class Output:
         if self.remote:
             ret[self.PARAM_REMOTE] = self.remote
 
-        if (
-            self.use_cache
-            and self.is_in_repo
-            and self.hash_info.isdir
-            and (kwargs.get("with_files") or self.files is not None)
+        if self.hash_info.isdir and (
+            kwargs.get("with_files") or self.files is not None
         ):
             if self.obj:
                 obj = self.obj
