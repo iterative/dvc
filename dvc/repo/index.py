@@ -256,9 +256,7 @@ class Index:
             collect_targets = ensure_list(targets)
 
         pairs = chain.from_iterable(
-            self.stage_collector.collect_granular(
-                target, recursive=recursive, with_deps=True
-            )
+            self.stage_collector.collect_granular(target, recursive=recursive)
             for target in collect_targets
         )
 
