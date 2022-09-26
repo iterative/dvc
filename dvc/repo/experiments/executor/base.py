@@ -351,11 +351,12 @@ class BaseExecutor(ABC):
                 logger.debug("Replacing existing experiment '%s'", orig_ref)
                 return True
 
+            if on_diverged:
+                return on_diverged(orig_ref, has_checkpoint)
+
             self._raise_ref_conflict(
                 dest_scm, orig_ref, new_rev, has_checkpoint
             )
-            if on_diverged:
-                on_diverged(orig_ref, has_checkpoint)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 

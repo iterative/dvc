@@ -100,7 +100,7 @@ class Plots:
                             "filename":
                             {
                                 "data_source": callable loading the data,
-                                "props": propreties for the file if it is
+                                "props": properties for the file if it is
                                          plots type output
                             }
                         }

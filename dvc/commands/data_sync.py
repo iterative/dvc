@@ -120,7 +120,7 @@ def shared_parent_parser():
         nargs="*",
         help=(
             "Limit command scope to these tracked files/directories, "
-            ".dvc files, or stage names."
+            ".dvc files and stage or foreach-group names."
         ),
     ).complete = completion.DVC_FILE
 
@@ -195,7 +195,7 @@ def add_parser(subparsers, _parent_parser):
         "--glob",
         action="store_true",
         default=False,
-        help="Pull cache for targets matching shell-style wildcards.",
+        help=argparse.SUPPRESS,
     )
     pull_parser.set_defaults(func=CmdDataPull)
 

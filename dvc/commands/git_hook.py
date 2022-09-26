@@ -74,7 +74,7 @@ class CmdMergeDriver(CmdHookBase):
             our = Dvcfile(dvc, self.args.our, verify=False)
             their = Dvcfile(dvc, self.args.their, verify=False)
 
-            our.merge(ancestor, their)
+            our.merge(ancestor, their, allowed=["add", "remove", "change"])
 
             return 0
         finally:

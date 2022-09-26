@@ -192,9 +192,12 @@ class Index:
 
             data_index = by_workspace[workspace]
 
+            if out.files:
+                out.obj = out.get_obj()
+
             data_index[key] = DataIndexEntry(
                 meta=out.meta,
-                obj=out.get_obj() if out.files else out.obj,
+                obj=out.obj,
                 hash_info=out.hash_info,
                 odb=out.odb,
                 cache=out.odb,

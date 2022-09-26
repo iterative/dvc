@@ -110,7 +110,7 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help=(
             "Limit command scope to these tracked files/directories, "
-            ".dvc files, or stage names."
+            ".dvc files and stage or foreach-group names."
         ),
     ).complete = completion.DVC_FILE
     checkout_parser.set_defaults(func=CmdCheckout)
