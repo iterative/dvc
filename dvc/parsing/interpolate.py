@@ -1,3 +1,4 @@
+import os
 import re
 import typing
 from collections.abc import Iterable, Mapping
@@ -70,6 +71,16 @@ def embrace(s: str):
     return BRACE_OPEN + s + BRACE_CLOSE
 
 
+def escape_str(value):
+    if os.name == "nt":
+        from subprocess import list2cmdline
+
+        return list2cmdline([value])
+    from shlex import quote
+
+    return quote(value)
+
+
 @singledispatch
 def to_str(obj) -> str:
     return str(obj)
@@ -97,12 +108,12 @@ def _(obj: dict):
                     result += f"--no-{k} "
 
         elif isinstance(v, str):
-            result += f"--{k} '{v}' "
+            result += f"--{k} {escape_str(v)} "
 
         elif isinstance(v, Iterable):
             for n, i in enumerate(v):
                 if isinstance(i, str):
-                    i = f"'{i}'"
+                    i = escape_str(i)
                 elif isinstance(i, Iterable):
                     raise ParseError(
                         f"Cannot interpolate nested iterable in '{k}'"
