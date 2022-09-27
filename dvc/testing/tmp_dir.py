@@ -51,6 +51,7 @@ import sys
 from contextlib import contextmanager
 from functools import partialmethod
 
+from dvc.fs import LocalFileSystem
 from dvc.utils import serialize
 from dvc.utils.fs import makedirs
 
@@ -69,6 +70,10 @@ class TmpDir(pathlib.Path):
     @property
     def config(self):
         return {"url": self.url}
+
+    @property
+    def fs(self):
+        return LocalFileSystem(**self.config)
 
     def __new__(cls, *args, **kwargs):
         if cls is TmpDir:

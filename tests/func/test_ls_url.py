@@ -4,6 +4,7 @@ import pytest
 
 from dvc.exceptions import URLMissingError
 from dvc.repo import Repo
+from dvc.testing.workspace_tests import TestLsUrl as _TestLsUrl
 
 
 def match_files(entries, expected):
@@ -49,3 +50,7 @@ def test_recursive(tmp_dir):
 def test_nonexistent(tmp_dir):
     with pytest.raises(URLMissingError):
         Repo.ls_url("nonexistent")
+
+
+class TestLsUrl(_TestLsUrl):
+    pass
