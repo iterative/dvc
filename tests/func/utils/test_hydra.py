@@ -184,6 +184,13 @@ def test_compose_and_dump(tmp_dir, suffix, overrides, expected):
     "overrides, expected",
     [
         (
+            {"params.yaml": ["defaults/foo=1,2"]},
+            [
+                {"params.yaml": ["defaults/foo=1"]},
+                {"params.yaml": ["defaults/foo=2"]},
+            ],
+        ),
+        (
             {"params.yaml": ["foo=1,2", "bar=3,4"]},
             [
                 {"params.yaml": ["foo=1", "bar=3"]},

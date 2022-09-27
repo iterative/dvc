@@ -568,6 +568,8 @@ class Stage(params.StageParams):
             if kwargs.get("checkpoint_func", None) or no_download:
                 allow_missing = True
             self.save(allow_missing=allow_missing)
+            if no_download:
+                self.ignore_outs()
             if not no_commit:
                 self.commit(allow_missing=allow_missing)
 
@@ -706,7 +708,7 @@ class Stage(params.StageParams):
                 "unable to auto-merge DVC files with deleted outputs"
             )
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         assert other
 
         if not other.outs:
@@ -726,7 +728,7 @@ class Stage(params.StageParams):
         self._check_can_merge(self, ancestor_out)
         self._check_can_merge(other, ancestor_out)
 
-        self.outs[0].merge(ancestor_out, other.outs[0])
+        self.outs[0].merge(ancestor_out, other.outs[0], allowed=allowed)
 
     def dump(self, **kwargs):
         self.dvcfile.dump(self, **kwargs)
@@ -768,5 +770,5 @@ class PipelineStage(Stage):
     def _changed_stage_entry(self):
         return f"'cmd' of {self} has changed."
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError

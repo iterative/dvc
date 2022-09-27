@@ -765,11 +765,8 @@ class Output:
         if self.remote:
             ret[self.PARAM_REMOTE] = self.remote
 
-        if (
-            self.use_cache
-            and self.is_in_repo
-            and self.hash_info.isdir
-            and (kwargs.get("with_files") or self.files is not None)
+        if self.hash_info.isdir and (
+            kwargs.get("with_files") or self.files is not None
         ):
             if self.obj:
                 obj = self.obj
@@ -1127,7 +1124,7 @@ class Output:
                 "unable to auto-merge outputs that are not directories"
             )
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         from dvc_data.hashfile.tree import MergeError as TreeMergeError
         from dvc_data.hashfile.tree import du, merge
 
@@ -1144,7 +1141,11 @@ class Output:
 
         try:
             merged = merge(
-                self.odb, ancestor_info, self.hash_info, other.hash_info
+                self.odb,
+                ancestor_info,
+                self.hash_info,
+                other.hash_info,
+                allowed=allowed,
             )
         except TreeMergeError as exc:
             raise MergeError(str(exc)) from exc

@@ -12,6 +12,7 @@ from dvc.repo.experiments.executor.base import (
     EXEC_TMP_DIR,
     BaseExecutor,
     ExecutorInfo,
+    TaskStatus,
 )
 from dvc.repo.experiments.queue.base import QueueEntry
 from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
@@ -338,9 +339,16 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 @pytest.mark.vscode
-def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
+@pytest.mark.parametrize(
+    "status, running", [(TaskStatus.RUNNING, True), (TaskStatus.FAILED, False)]
+)
+def test_show_running_workspace(
+    tmp_dir, scm, dvc, exp_stage, capsys, status, running
+):
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
-    info = make_executor_info(location=BaseExecutor.DEFAULT_LOCATION)
+    info = make_executor_info(
+        location=BaseExecutor.DEFAULT_LOCATION, status=status
+    )
     pidfile = os.path.join(
         pid_dir,
         "workspace",
@@ -349,7 +357,8 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
-    assert dvc.experiments.show()["workspace"] == {
+    print(dvc.experiments.show())
+    assert dvc.experiments.show().get("workspace") == {
         "baseline": {
             "data": {
                 "deps": {
@@ -363,18 +372,18 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys):
                 "params": {"params.yaml": {"data": {"foo": 1}}},
                 "outs": {},
                 "queued": False,
-                "running": True,
-                "executor": info.location,
+                "running": True if running else False,
+                "executor": info.location if running else None,
                 "timestamp": None,
             }
         }
     }
-
     capsys.readouterr()
     assert main(["exp", "show", "--csv"]) == 0
     cap = capsys.readouterr()
-    assert "Running" in cap.out
-    assert info.location in cap.out
+    if running:
+        assert "Running" in cap.out
+        assert info.location in cap.out
 
 
 def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):

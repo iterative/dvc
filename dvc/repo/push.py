@@ -11,13 +11,11 @@ if TYPE_CHECKING:
 
 def _push_worktree(repo, remote):
     from dvc_data.hashfile.tree import tree_from_index
-    from dvc_data.index import build, checkout, collect
+    from dvc_data.index import checkout, collect
 
     index = repo.index.data["repo"]
     checkout(index, remote.path, remote.fs, force=True)
-    build(index, remote.path, remote.fs)
-    if any(out.isdir() for out in repo.index.outs):
-        collect(index, remote.path, remote.fs)
+    collect(index, remote.path, remote.fs, update=True)
 
     for stage in repo.index.stages:
         for out in stage.outs:
@@ -50,7 +48,7 @@ def _push_worktree(repo, remote):
             else:
                 out.hash_info = entry.hash_info
                 out.meta = entry.meta
-        stage.dvcfile.dump(stage, with_files=True)
+        stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
 
     return len(index)
 

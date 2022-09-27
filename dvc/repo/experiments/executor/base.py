@@ -4,6 +4,7 @@ import pickle
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from enum import IntEnum
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -35,6 +36,8 @@ from ..refs import (
     EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
+    EXEC_HEAD,
+    EXEC_MERGE,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
     EXPS_STASH,
@@ -47,9 +50,8 @@ if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
+    from dvc.repo.experiments.stash import ExpStashEntry
     from dvc.stage import PipelineStage
-
-    from ..base import ExpStashEntry
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,16 @@ class ExecutorResult(NamedTuple):
     force: bool
 
 
+class TaskStatus(IntEnum):
+    PENDING = 0
+    PREPARING = 1
+    RUNNING = 2
+    SUCCESS = 3
+    FAILED = 4
+    CANCELED = 5
+    FINISHED = 6
+
+
 @dataclass
 class ExecutorInfo:
     git_url: str
@@ -73,13 +85,16 @@ class ExecutorInfo:
     dvc_dir: str
     name: Optional[str] = None
     wdir: Optional[str] = None
-    collected: bool = False
     result_hash: Optional[str] = None
     result_ref: Optional[str] = None
     result_force: bool = False
+    status: TaskStatus = TaskStatus.PENDING
 
     @classmethod
     def from_dict(cls, d):
+        if "collected" in d:
+            if d.pop("collected"):
+                d["status"] = TaskStatus.FINISHED
         return cls(**d)
 
     def asdict(self):
@@ -136,6 +151,7 @@ class BaseExecutor(ABC):
         root_dir: str,
         dvc_dir: str,
         baseline_rev: str,
+        status: TaskStatus,
         wdir: Optional[str] = None,
         name: Optional[str] = None,
         location: Optional[str] = None,
@@ -149,9 +165,17 @@ class BaseExecutor(ABC):
         self.baseline_rev = baseline_rev
         self.location: str = location or self.DEFAULT_LOCATION
         self.result = result
+        self.status = status
 
     @abstractmethod
-    def init_git(self, scm: "Git", branch: Optional[str] = None):
+    def init_git(
+        self,
+        scm: "Git",
+        stash_rev: str,
+        entry: "ExpStashEntry",
+        infofile: Optional[str],
+        branch: Optional[str] = None,
+    ):
         """Init git repo and populate it using exp refs from the specified
         SCM instance.
         """
@@ -191,6 +215,7 @@ class BaseExecutor(ABC):
             dvc_dir=self.dvc_dir,
             name=self.name,
             wdir=self.wdir,
+            status=self.status,
             **result_dict,
         )
 
@@ -212,6 +237,7 @@ class BaseExecutor(ABC):
             root_dir=info.root_dir,
             dvc_dir=info.dvc_dir,
             baseline_rev=info.baseline_rev,
+            status=info.status,
             name=info.name,
             wdir=info.wdir,
             result=result,
@@ -222,7 +248,6 @@ class BaseExecutor(ABC):
     def from_stash_entry(
         cls: Type[_T],
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         **kwargs,
     ) -> _T:
@@ -232,7 +257,6 @@ class BaseExecutor(ABC):
     def _from_stash_entry(
         cls: Type[_T],
         repo: "Repo",
-        stash_rev: str,
         entry: "ExpStashEntry",
         root_dir: str,
         **kwargs,
@@ -241,12 +265,11 @@ class BaseExecutor(ABC):
             root_dir=root_dir,
             dvc_dir=relpath(repo.dvc_dir, repo.scm.root_dir),
             baseline_rev=entry.baseline_rev,
+            status=TaskStatus.PREPARING,
             name=entry.name,
             wdir=relpath(os.getcwd(), repo.scm.root_dir),
             **kwargs,
         )
-        executor.init_git(repo.scm, branch=entry.branch)
-        executor.init_cache(repo, stash_rev)
         return executor
 
     @staticmethod
@@ -259,8 +282,12 @@ class BaseExecutor(ABC):
                 exp_data.update(to_lockfile(stage))
         return dict_sha256(exp_data)
 
-    def cleanup(self):
-        pass
+    def cleanup(self, infofile: str):
+        if infofile is not None:
+            info = ExecutorInfo.load_json(infofile)
+            if info.status < TaskStatus.FAILED:
+                info.status = TaskStatus.FINISHED
+            info.dump_json(infofile)
 
     # TODO: come up with better way to stash repro arguments
     @staticmethod
@@ -324,11 +351,12 @@ class BaseExecutor(ABC):
                 logger.debug("Replacing existing experiment '%s'", orig_ref)
                 return True
 
+            if on_diverged:
+                return on_diverged(orig_ref, has_checkpoint)
+
             self._raise_ref_conflict(
                 dest_scm, orig_ref, new_rev, has_checkpoint
             )
-            if on_diverged:
-                on_diverged(orig_ref, has_checkpoint)
             logger.debug("Reproduced existing experiment '%s'", orig_ref)
             return False
 
@@ -411,11 +439,9 @@ class BaseExecutor(ABC):
         exp_ref: Optional["ExpRefInfo"] = None
         repro_force: bool = False
 
-        if infofile is not None:
-            info.dump_json(infofile)
-
         with cls._repro_dvc(
             info,
+            infofile,
             log_errors=log_errors,
             **kwargs,
         ) as dvc:
@@ -491,9 +517,6 @@ class BaseExecutor(ABC):
             info.result_ref = ref
             info.result_force = repro_force
 
-        if infofile is not None:
-            info.dump_json(infofile)
-
         # ideally we would return stages here like a normal repro() call, but
         # stages is not currently picklable and cannot be returned across
         # multiprocessing calls
@@ -550,6 +573,7 @@ class BaseExecutor(ABC):
     def _repro_dvc(
         cls,
         info: "ExecutorInfo",
+        infofile: str = None,
         log_errors: bool = True,
         **kwargs,
     ):
@@ -557,6 +581,9 @@ class BaseExecutor(ABC):
         from dvc.stage.monitor import CheckpointKilledError
 
         dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
+        info.status = TaskStatus.RUNNING
+        if infofile is not None:
+            info.dump_json(infofile)
         if cls.QUIET:
             dvc.scm_context.quiet = cls.QUIET
         old_cwd = os.getcwd()
@@ -568,15 +595,28 @@ class BaseExecutor(ABC):
         try:
             logger.debug("Running repro in '%s'", os.getcwd())
             yield dvc
+            info.status = TaskStatus.SUCCESS
+            if infofile is not None:
+                info.dump_json(infofile)
+
         except CheckpointKilledError:
+            info.status = TaskStatus.FAILED
+            if infofile is not None:
+                info.dump_json(infofile)
             raise
         except DvcException:
             if log_errors:
                 logger.exception("")
+            info.status = TaskStatus.FAILED
+            if infofile is not None:
+                info.dump_json(infofile)
             raise
         except Exception:
             if log_errors:
                 logger.exception("unexpected error")
+            info.status = TaskStatus.FAILED
+            if infofile is not None:
+                info.dump_json(infofile)
             raise
         finally:
             dvc.close()
@@ -714,3 +754,23 @@ class BaseExecutor(ABC):
         disable_other_loggers()
         if level is not None:
             dvc_logger.setLevel(level)
+
+    @contextmanager
+    def set_exec_refs(
+        self, scm: "Git", stash_rev: str, entry: "ExpStashEntry"
+    ):
+        try:
+            # Executor will be initialized with an empty git repo that
+            # we populate by pushing:
+            #   EXEC_HEAD - the base commit for this experiment
+            #   EXEC_MERGE - the unmerged changes (from our stash)
+            #       to be reproduced
+            #   EXEC_BASELINE - the baseline commit for this experiment
+            scm.set_ref(EXEC_HEAD, entry.head_rev)
+            scm.set_ref(EXEC_MERGE, stash_rev)
+            scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+            yield
+        finally:
+            for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+                if scm.get_ref(ref):
+                    scm.remove_ref(ref)

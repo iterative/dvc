@@ -23,7 +23,12 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
+from ..executor.base import (
+    EXEC_TMP_DIR,
+    ExecutorInfo,
+    ExecutorResult,
+    TaskStatus,
+)
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .tasks import run_exp
 
@@ -248,7 +253,7 @@ class LocalCeleryQueue(BaseStashQueue):
 
         def _load_collected(rev: str) -> Optional[ExecutorResult]:
             executor_info = _load_info(rev)
-            if executor_info.collected:
+            if executor_info.status > TaskStatus.SUCCESS:
                 return executor_info.result
             raise FileNotFoundError
 

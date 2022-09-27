@@ -172,7 +172,7 @@ class FileMixin:
     def dump(self, stage, **kwargs):
         raise NotImplementedError
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
@@ -204,12 +204,12 @@ class SingleStageFile(FileMixin):
     def remove_stage(self, stage):  # pylint: disable=unused-argument
         self.remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         assert isinstance(ancestor, SingleStageFile)
         assert isinstance(other, SingleStageFile)
 
         stage = self.stage
-        stage.merge(ancestor.stage, other.stage)
+        stage.merge(ancestor.stage, other.stage, allowed=allowed)
         self.dump(stage)
 
 
@@ -237,10 +237,10 @@ class PipelineFile(FileMixin):
             self._dump_pipeline_file(stage)
 
         if update_lock:
-            self._dump_lockfile(stage)
+            self._dump_lockfile(stage, **kwargs)
 
-    def _dump_lockfile(self, stage):
-        self._lockfile.dump(stage)
+    def _dump_lockfile(self, stage, **kwargs):
+        self._lockfile.dump(stage, **kwargs)
 
     @staticmethod
     def _check_if_parametrized(stage, action: str = "dump") -> None:
@@ -310,7 +310,7 @@ class PipelineFile(FileMixin):
         else:
             super().remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 
@@ -366,7 +366,7 @@ class Lockfile(FileMixin):
         return {SCHEMA_KWD: version}
 
     def dump(self, stage, **kwargs):
-        stage_data = serialize.to_lockfile(stage)
+        stage_data = serialize.to_lockfile(stage, **kwargs)
 
         with modify_yaml(self.path, fs=self.repo.fs) as data:
             version = LOCKFILE_VERSION.from_dict(data)
@@ -411,7 +411,7 @@ class Lockfile(FileMixin):
         else:
             self.remove()
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError
 
 

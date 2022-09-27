@@ -16,7 +16,7 @@ from .exceptions import (
     InvalidExpRefError,
     MultipleBranchError,
 )
-from .executor.base import BaseExecutor, ExecutorInfo
+from .executor.base import BaseExecutor, ExecutorInfo, TaskStatus
 from .queue.base import BaseStashQueue, QueueEntry
 from .queue.celery import LocalCeleryQueue
 from .queue.tempdir import TempDirQueue
@@ -463,6 +463,8 @@ class Experiments:
             if rev == "workspace":
                 # If we are appending to a checkpoint branch in a workspace
                 # run, show the latest checkpoint as running.
+                if info.status > TaskStatus.RUNNING:
+                    return result
                 last_rev = self.scm.get_ref(EXEC_BRANCH)
                 if last_rev:
                     result[last_rev] = info.asdict()

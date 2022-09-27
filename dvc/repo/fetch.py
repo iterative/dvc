@@ -25,22 +25,6 @@ def _fetch_worktree(repo, remote):
             *key,
         )
     save(index)
-
-    for stage in repo.index.stages:
-        for out in stage.outs:
-            if not out.use_cache:
-                continue
-
-            if not out.is_in_repo:
-                continue
-
-            workspace, key = out.index_key
-            entry = repo.index.data[workspace][key]
-            out.hash_info = entry.hash_info
-            out.meta = entry.meta
-
-        stage.dvcfile.dump(stage)
-
     return len(index)
 
 
