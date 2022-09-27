@@ -2,6 +2,9 @@ import os
 
 import pytest
 
+from dvc.exceptions import URLMissingError
+from dvc.repo.ls_url import _ls_url
+
 
 class TestImport:
     def test_import(self, tmp_dir, dvc, workspace):
@@ -134,3 +137,66 @@ class TestAdd:
         assert (
             workspace / "cache" / dir_hash_value[:2] / dir_hash_value[2:]
         ).is_file()
+
+
+def match_files(fs, entries, expected):
+    entries_content = {
+        (fs.path.normpath(d["path"]), d["isdir"]) for d in entries
+    }
+    expected_content = {
+        (fs.path.normpath(d["path"]), d["isdir"]) for d in expected
+    }
+    assert entries_content == expected_content
+
+
+class TestLsUrl:
+    @pytest.mark.parametrize("fname", ["foo", "foo.dvc", "dir/foo"])
+    def test_file(self, cloud, fname):
+        cloud.gen({fname: "foo contents"})
+        fs = cloud.fs
+        fs_path = fs.path.join(cloud.fs_path, fname)
+
+        result = _ls_url(fs, fs_path)
+
+        match_files(fs, result, [{"path": fs_path, "isdir": False}])
+
+    def test_dir(self, cloud):
+        cloud.gen(
+            {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
+        )
+        fs = cloud.fs
+        fs_path = fs.path.join(cloud.fs_path, "dir")
+
+        result = _ls_url(fs, fs_path)
+        match_files(
+            fs,
+            result,
+            [
+                {"path": "foo", "isdir": False},
+                {"path": "subdir", "isdir": True},
+            ],
+        )
+
+    def test_recursive(self, cloud):
+        cloud.gen(
+            {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
+        )
+        fs = cloud.fs
+        fs_path = fs.path.join(cloud.fs_path, "dir")
+
+        result = _ls_url(fs, fs_path, recursive=True)
+
+        match_files(
+            fs,
+            result,
+            [
+                {"path": "foo", "isdir": False},
+                {"path": "subdir/bar", "isdir": False},
+            ],
+        )
+
+    def test_nonexistent(self, cloud):
+        fs = cloud.fs
+        fs_path = fs.path.join(cloud.fs_path, "nonexistent")
+        with pytest.raises(URLMissingError):
+            _ls_url(fs, fs_path)
