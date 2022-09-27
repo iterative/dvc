@@ -468,11 +468,11 @@ class Experiments:
             info = ExecutorInfo.from_dict(load_json(infofile))
         except OSError:
             return result
-        if info.result is None:
+        if info.status < TaskStatus.FAILED:
             if rev == "workspace":
                 # If we are appending to a checkpoint branch in a workspace
                 # run, show the latest checkpoint as running.
-                if info.status > TaskStatus.RUNNING:
+                if info.status == TaskStatus.SUCCESS:
                     return result
                 last_rev = self.scm.get_ref(EXEC_BRANCH)
                 if last_rev:
@@ -481,7 +481,11 @@ class Experiments:
                     result[rev] = info.asdict()
             else:
                 result[rev] = info.asdict()
-                if info.git_url and fetch_refs:
+                if (
+                    info.git_url
+                    and fetch_refs
+                    and info.status > TaskStatus.PREPARING
+                ):
 
                     def on_diverged(_ref: str, _checkpoint: bool):
                         return False

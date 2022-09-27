@@ -20,6 +20,8 @@ from typing import (
     Union,
 )
 
+from scmrepo.exceptions import SCMError
+
 from dvc.env import DVC_EXP_AUTO_PUSH, DVC_EXP_GIT_REMOTE
 from dvc.exceptions import DvcException
 from dvc.stage.serialize import to_lockfile
@@ -361,21 +363,25 @@ class BaseExecutor(ABC):
             return False
 
         # fetch experiments
-        dest_scm.fetch_refspecs(
-            self.git_url,
-            [f"{ref}:{ref}" for ref in refs],
-            on_diverged=on_diverged_ref,
-            force=force,
-            **kwargs,
-        )
-        # update last run checkpoint (if it exists)
-        if has_checkpoint:
+        try:
             dest_scm.fetch_refspecs(
                 self.git_url,
-                [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
-                force=True,
+                [f"{ref}:{ref}" for ref in refs],
+                on_diverged=on_diverged_ref,
+                force=force,
                 **kwargs,
             )
+            # update last run checkpoint (if it exists)
+            if has_checkpoint:
+                dest_scm.fetch_refspecs(
+                    self.git_url,
+                    [f"{EXEC_CHECKPOINT}:{EXEC_CHECKPOINT}"],
+                    force=True,
+                    **kwargs,
+                )
+        except SCMError:
+            pass
+
         return refs
 
     @classmethod

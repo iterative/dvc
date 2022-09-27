@@ -5,7 +5,6 @@ from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
-from dvc.repo.experiments.queue.base import QueueDoneResult
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
@@ -76,7 +75,7 @@ def _collect_experiment_commit(
 
         res["status"] = status.name
         if status == ExpStatus.Running:
-            res["executor"] = running[exp_rev].get("location")
+            res["executor"] = running.get(exp_rev, {}).get("location", None)
         else:
             res["executor"] = None
 
@@ -180,6 +179,81 @@ def get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
 
 
 # flake8: noqa: C901
+def _collect_active_experiment(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict] = defaultdict(OrderedDict)
+    for entry in chain(
+        repo.experiments.tempdir_queue.iter_active(),
+        repo.experiments.celery_queue.iter_active(),
+    ):
+        stash_rev = entry.stash_rev
+        if entry.baseline_rev in found_revs and (
+            stash_rev not in running or not running[stash_rev].get("last")
+        ):
+            result[entry.baseline_rev][stash_rev] = _collect_experiment_commit(
+                repo,
+                stash_rev,
+                status=ExpStatus.Running,
+                running=running,
+                **kwargs,
+            )
+    return result
+
+
+def _collect_queued_experiment(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict] = defaultdict(OrderedDict)
+    for entry in repo.experiments.celery_queue.iter_queued():
+        stash_rev = entry.stash_rev
+        if entry.baseline_rev in found_revs:
+            result[entry.baseline_rev][stash_rev] = _collect_experiment_commit(
+                repo,
+                stash_rev,
+                status=ExpStatus.Queued,
+                running=running,
+                **kwargs,
+            )
+    return result
+
+
+def _collect_failed_experiment(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Dict[str, Any]]:
+    result: Dict[str, Dict] = defaultdict(OrderedDict)
+    for queue_done_result in repo.experiments.celery_queue.iter_failed():
+        entry = queue_done_result.entry
+        stash_rev = entry.stash_rev
+        if entry.baseline_rev in found_revs:
+            experiment = _collect_experiment_commit(
+                repo,
+                stash_rev,
+                status=ExpStatus.Failed,
+                running=running,
+                **kwargs,
+            )
+            result[entry.baseline_rev][stash_rev] = experiment
+    return result
+
+
+def update_new(
+    to_dict: Dict[str, Dict[str, Any]], from_dict: Dict[str, Dict[str, Any]]
+):
+    for baseline, experiments in from_dict.items():
+        for rev, experiment in experiments.items():
+            to_dict[baseline][rev] = to_dict[baseline].get(rev, experiment)
+
+
 def show(
     repo: "Repo",
     all_branches=False,
@@ -215,6 +289,39 @@ def show(
 
     running = repo.experiments.get_running_exps(fetch_refs=fetch_running)
 
+    queued_experiment = (
+        _collect_queued_experiment(
+            repo,
+            found_revs,
+            running,
+            param_deps=param_deps,
+            onerror=onerror,
+        )
+        if not hide_queued
+        else {}
+    )
+
+    active_experiment = _collect_active_experiment(
+        repo,
+        found_revs,
+        running,
+        param_deps=param_deps,
+        onerror=onerror,
+    )
+
+    failed_experiments = (
+        _collect_failed_experiment(
+            repo,
+            found_revs,
+            running,
+            sha_only=sha_only,
+            param_deps=param_deps,
+            onerror=onerror,
+        )
+        if not hide_failed
+        else {}
+    )
+
     for rev in found_revs:
         status = ExpStatus.Running if rev in running else ExpStatus.Success
         res[rev]["baseline"] = _collect_experiment_commit(
@@ -249,38 +356,13 @@ def show(
                 onerror=onerror,
             )
 
-        # collect standalone & celery experiments
-        for entry in chain(
-            repo.experiments.tempdir_queue.iter_active(),
-            repo.experiments.celery_queue.iter_active(),
-            repo.experiments.celery_queue.iter_queued(),
-            repo.experiments.celery_queue.iter_failed(),
-        ):
-            if isinstance(entry, QueueDoneResult):
-                entry = entry.entry
-                if hide_failed:
-                    continue
-                status = ExpStatus.Failed
-            elif entry.stash_rev in running:
-                status = ExpStatus.Running
-            else:
-                if hide_queued:
-                    continue
-                status = ExpStatus.Queued
-            stash_rev = entry.stash_rev
-            if entry.baseline_rev in found_revs:
-                if stash_rev not in running or not running[stash_rev].get(
-                    "last"
-                ):
-                    experiment = _collect_experiment_commit(
-                        repo,
-                        stash_rev,
-                        status=status,
-                        param_deps=param_deps,
-                        running=running,
-                        onerror=onerror,
-                    )
-                    res[entry.baseline_rev][stash_rev] = experiment
+    if not hide_failed:
+        update_new(res, failed_experiments)
+
+    update_new(res, active_experiment)
+
+    if not hide_queued:
+        update_new(res, queued_experiment)
 
     if not sha_only:
         get_names(repo, res)

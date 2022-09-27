@@ -163,6 +163,7 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
 
 
 @pytest.mark.vscode
+@pytest.mark.xfail(strict=False, reason="pytest-celery flaky")
 def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(
@@ -423,8 +424,6 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys, status):
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
 
-    print(dvc.experiments.show().get("workspace"))
-
     assert dvc.experiments.show().get("workspace") == {
         "baseline": {
             "data": {
@@ -558,6 +557,7 @@ def test_show_running_checkpoint(tmp_dir, scm, dvc, checkpoint_stage, mocker):
         git_url="foo.git",
         baseline_rev=baseline_rev,
         location=TempDirExecutor.DEFAULT_LOCATION,
+        status=TaskStatus.RUNNING,
     )
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
