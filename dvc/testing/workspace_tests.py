@@ -3,7 +3,7 @@ import os
 import pytest
 
 from dvc.exceptions import URLMissingError
-from dvc.repo.ls_url import _ls_url
+from dvc.repo.ls_url import ls_url, parse_external_url
 
 
 class TestImport:
@@ -153,21 +153,20 @@ class TestLsUrl:
     @pytest.mark.parametrize("fname", ["foo", "foo.dvc", "dir/foo"])
     def test_file(self, cloud, fname):
         cloud.gen({fname: "foo contents"})
-        fs = cloud.fs
-        fs_path = fs.path.join(cloud.fs_path, fname)
-
-        result = _ls_url(fs, fs_path)
-
-        match_files(fs, result, [{"path": fs_path, "isdir": False}])
+        fs, fs_path = parse_external_url(cloud.url, cloud.config)
+        result = ls_url(str(cloud / fname), cloud.config)
+        match_files(
+            fs,
+            result,
+            [{"path": fs.path.join(fs_path, fname), "isdir": False}],
+        )
 
     def test_dir(self, cloud):
         cloud.gen(
             {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
         )
-        fs = cloud.fs
-        fs_path = fs.path.join(cloud.fs_path, "dir")
-
-        result = _ls_url(fs, fs_path)
+        fs, _ = parse_external_url(cloud.url, cloud.config)
+        result = ls_url(str(cloud / "dir"), cloud.config)
         match_files(
             fs,
             result,
@@ -181,11 +180,8 @@ class TestLsUrl:
         cloud.gen(
             {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
         )
-        fs = cloud.fs
-        fs_path = fs.path.join(cloud.fs_path, "dir")
-
-        result = _ls_url(fs, fs_path, recursive=True)
-
+        fs, _ = parse_external_url(cloud.url, cloud.config)
+        result = ls_url(str(cloud / "dir"), cloud.config, recursive=True)
         match_files(
             fs,
             result,
@@ -196,7 +192,5 @@ class TestLsUrl:
         )
 
     def test_nonexistent(self, cloud):
-        fs = cloud.fs
-        fs_path = fs.path.join(cloud.fs_path, "nonexistent")
         with pytest.raises(URLMissingError):
-            _ls_url(fs, fs_path)
+            ls_url(str(cloud / "dir"), cloud.config)
