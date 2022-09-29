@@ -176,7 +176,10 @@ class Config(dict):
 
         if fs.exists(filename):
             with fs.open(filename) as fobj:
-                conf_obj = ConfigObj(fobj)
+                try:
+                    conf_obj = ConfigObj(fobj)
+                except UnicodeDecodeError as exc:
+                    raise ConfigError(str(exc)) from exc
         else:
             conf_obj = ConfigObj()
         return _parse_named(_lower_keys(conf_obj.dict()))
