@@ -265,6 +265,23 @@ def test_collect_repo_ignored_dir_unignored_pattern(tmp_dir, dvc, scm):
     assert dvc.stage.collect_repo() == [stage]
 
 
+@pytest.mark.parametrize("with_deps", (False, True))
+def test_collect_symlink(tmp_dir, dvc, with_deps):
+    tmp_dir.gen({"data": {"foo": "foo contents"}})
+    foo_path = os.path.join("data", "foo")
+    dvc.add(foo_path)
+
+    data_link = tmp_dir / "data_link"
+    data_link.symlink_to("data")
+    stage = list(
+        dvc.stage.collect(
+            target=str(data_link / "foo.dvc"), with_deps=with_deps
+        )
+    )[0]
+
+    assert stage.addressing == f"{foo_path}.dvc"
+
+
 def test_stage_strings_representation(tmp_dir, dvc, run_copy):
     tmp_dir.dvc_gen("foo", "foo")
     stage1 = run_copy("foo", "bar", single_stage=True)
