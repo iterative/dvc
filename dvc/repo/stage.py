@@ -225,10 +225,9 @@ class StageLoad:
         path, name = parse_target(target)
         return self.load_one(path=path, name=name)
 
-    @staticmethod
-    def _get_filepath(path: str = None, name: str = None) -> str:
+    def _get_filepath(self, path: str = None, name: str = None) -> str:
         if path:
-            return path
+            return self.repo.fs.path.realpath(path)
 
         path = PIPELINE_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
