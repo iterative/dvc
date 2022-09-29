@@ -120,7 +120,7 @@ def shared_parent_parser():
         nargs="*",
         help=(
             "Limit command scope to these tracked files/directories, "
-            ".dvc files and stage or foreach-group names."
+            ".dvc files and stage names."
         ),
     ).complete = completion.DVC_FILE
 

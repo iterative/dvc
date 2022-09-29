@@ -59,10 +59,10 @@ def add_arguments(repro_parser):
             """\
 Stages to reproduce. 'dvc.yaml' by default.
 The targets can be path to a dvc.yaml file or `.dvc` file,
-or a stage name or a foreach-group name from dvc.yaml file from
-current working directory. To run a stage/foreach-group from dvc.yaml
+or a stage name from dvc.yaml file from
+current working directory. To run a stage from dvc.yaml
 from other directories, the target must be a path followed by colon `:`
-and then the stage name or foreach-group name.
+and then the stage name name.
 """
         ),
     ).complete = completion.DVCFILES_AND_STAGE
