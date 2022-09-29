@@ -72,7 +72,7 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help=(
             "Limit command scope to these tracked files/directories, "
-            ".dvc files and stage or foreach-group names."
+            ".dvc files and stage names."
         ),
     ).complete = completion.DVCFILES_AND_STAGE
     commit_parser.set_defaults(func=CmdCommit)
