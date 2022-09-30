@@ -10,7 +10,7 @@ from dvc.cli import main
 from dvc.dependency.base import Dependency, DependencyDoesNotExistError
 from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
-from dvc.testing.test_workspace import TestImport as _TestImport
+from dvc.testing.workspace_tests import TestImport as _TestImport
 from dvc.utils.fs import makedirs
 from tests.basic_env import TestDvc
 

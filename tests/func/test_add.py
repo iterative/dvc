@@ -34,7 +34,7 @@ from dvc.stage.exceptions import (
     StageExternalOutputsError,
     StagePathNotFoundError,
 )
-from dvc.testing.test_workspace import TestAdd
+from dvc.testing.workspace_tests import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
