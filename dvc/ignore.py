@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class DvcIgnore:
     DVCIGNORE_FILE = ".dvcignore"
+    GLOBAL_IGNORE_FILE = "ignore"
 
     def __call__(self, root, dirs, files):
         raise NotImplementedError
@@ -210,7 +211,7 @@ class DvcIgnoreFilter:
 
         for level in ["global", "system"]:
             ignore_file_path_at_level = self.fs.path.join(
-                Config.get_dir(level), DvcIgnore.DVCIGNORE_FILE
+                Config.get_dir(level), DvcIgnore.GLOBAL_IGNORE_FILE
             )
             if self.fs.exists(ignore_file_path_at_level):
                 return ignore_file_path_at_level
