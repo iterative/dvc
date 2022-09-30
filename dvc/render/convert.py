@@ -2,7 +2,13 @@ import json
 from collections import defaultdict
 from typing import Dict, List, Union
 
-from dvc.render import REVISION_FIELD, REVISIONS_KEY, SRC_FIELD, TYPE_KEY
+from dvc.render import (
+    REVISION_FIELD,
+    REVISIONS_KEY,
+    SRC_FIELD,
+    TYPE_KEY,
+    VERSION_FIELD,
+)
 from dvc.render.converter.image import ImageConverter
 from dvc.render.converter.vega import VegaConverter
 
@@ -23,7 +29,7 @@ def _get_converter(
 def _group_by_rev(datapoints):
     grouped = defaultdict(list)
     for datapoint in datapoints:
-        rev = datapoint.pop(REVISION_FIELD)
+        rev = datapoint.get(VERSION_FIELD, {}).get("revision")
         grouped[rev].append(datapoint)
     return dict(grouped)
 
