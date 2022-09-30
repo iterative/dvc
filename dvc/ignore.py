@@ -179,26 +179,7 @@ class DvcIgnoreFilter:
 
         key = self._get_key(root_dir)
 
-        core_config = self.config.get("core", {})
-        config_ignore_file = core_config.get("excludesfile", None)
-
-        def extend_default_ignore_patterns(ignore_file_path):
-            ignore_patterns = DvcIgnorePatterns.from_file(
-                ignore_file_path, self.fs, ignore_file_path
-            )
-            default_ignore_patterns.extend(ignore_patterns.pattern_list)
-
-        if config_ignore_file:
-            if self.fs.exists(config_ignore_file):
-                extend_default_ignore_patterns(config_ignore_file)
-        else:
-            for level in ["global", "system"]:
-                ignore_file_path_at_level = self.fs.path.join(
-                    Config.get_dir(level), DvcIgnore.DVCIGNORE_FILE
-                )
-                if self.fs.exists(ignore_file_path_at_level):
-                    extend_default_ignore_patterns(ignore_file_path_at_level)
-                    break
+        default_ignore_patterns.extend(self._get_global_ignore_patterns())
 
         self.ignores_trie_fs[key] = DvcIgnorePatterns(
             default_ignore_patterns,
@@ -219,6 +200,32 @@ class DvcIgnoreFilter:
             dnames=None,
             ignore_subrepos=True,
         )
+
+    def _get_global_ignore_file(self):
+        core_config = self.config.get("core", {})
+        config_ignore_file = core_config.get("excludesfile", None)
+
+        if config_ignore_file:
+            return config_ignore_file
+
+        for level in ["global", "system"]:
+            ignore_file_path_at_level = self.fs.path.join(
+                Config.get_dir(level), DvcIgnore.DVCIGNORE_FILE
+            )
+            if self.fs.exists(ignore_file_path_at_level):
+                return ignore_file_path_at_level
+
+        return None
+
+    def _get_global_ignore_patterns(self):
+        global_ignore_file = self._get_global_ignore_file()
+
+        if global_ignore_file and self.fs.exists(global_ignore_file):
+            return DvcIgnorePatterns.from_file(
+                global_ignore_file, self.fs, global_ignore_file
+            ).pattern_list
+
+        return []
 
     def _get_key(self, path):
         parts = self.fs.path.relparts(path, self.root_dir)
