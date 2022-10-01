@@ -47,6 +47,8 @@ class TestAPI:
         fs_kwargs,
         clear_cache,
     ):
+        fs_kwargs = fs_kwargs.copy()
+
         tmp_dir.scm_gen({"scripts": {"script1": "script1"}}, commit="scripts")
         tmp_dir.dvc_gen({"data": {"foo": "foo", "bar": "bar"}}, commit="data")
         dvc.push()
