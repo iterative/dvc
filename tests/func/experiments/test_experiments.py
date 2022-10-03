@@ -9,10 +9,11 @@ from funcy import first
 
 from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import ReproductionError
+from dvc.repo.experiments.exceptions import ExperimentExistsError
 from dvc.repo.experiments.queue.base import BaseStashQueue
 from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
-from dvc.stage.exceptions import StageFileDoesNotExistError
+from dvc.stage.exceptions import StageCommitError, StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
 from tests.scripts import COPY_SCRIPT
 
@@ -44,8 +45,6 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
 
 
 def test_experiment_exists(tmp_dir, scm, dvc, exp_stage, mocker, workspace):
-    from dvc.repo.experiments.exceptions import ExperimentExistsError
-
     dvc.experiments.run(
         exp_stage.addressing,
         name="foo",
