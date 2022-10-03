@@ -18,6 +18,7 @@ from dvc.commands.experiments import (
     queue_worker,
     remove,
     run,
+    save,
     show,
 )
 
@@ -34,6 +35,7 @@ SUB_COMMANDS = [
     queue_worker,
     remove,
     run,
+    save,
     show,
 ]
 
