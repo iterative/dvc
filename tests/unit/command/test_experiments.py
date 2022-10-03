@@ -16,6 +16,7 @@ from dvc.commands.experiments.pull import CmdExperimentsPull
 from dvc.commands.experiments.push import CmdExperimentsPush
 from dvc.commands.experiments.remove import CmdExperimentsRemove
 from dvc.commands.experiments.run import CmdExperimentsRun
+from dvc.commands.experiments.save import CmdExperimentsSave
 from dvc.commands.experiments.show import CmdExperimentsShow, show_experiments
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo import Repo
@@ -934,3 +935,15 @@ def test_show_experiments_pcp(tmp_dir, mocker):
 
     assert kwargs["output_path"] == str(tmp_dir / "dvc_plots" / "index.html")
     assert kwargs["color_by"] == "Experiment"
+
+
+def test_experiments_save(dvc, scm, mocker):
+    cli_args = parse_args(["exp", "save", "--name", "exp-name", "--force"])
+    assert cli_args.func == CmdExperimentsSave
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.repo.experiments.save.save", return_value="acabb")
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(cmd.repo, name="exp-name", force=True)

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional
 from funcy import cached_property
 from scmrepo.exceptions import SCMError as _SCMError
 
+from dvc.exceptions import DvcException
 from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import makedirs, remove
 
@@ -18,16 +19,17 @@ from ..refs import (
     EXEC_HEAD,
     EXEC_MERGE,
     EXEC_NAMESPACE,
+    ExpRefInfo,
 )
-from .base import EXEC_TMP_DIR, BaseExecutor, TaskStatus
+from .base import EXEC_TMP_DIR, BaseExecutor, ExecutorResult, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
 
     from dvc.repo import Repo
 
-    from ..refs import ExpRefInfo
     from ..stash import ExpStashEntry
+    from .base import ExecutorInfo
 
 logger = logging.getLogger(__name__)
 
@@ -213,3 +215,58 @@ class WorkspaceExecutor(BaseLocalExecutor):
             checkpoint = self.scm.get_ref(EXEC_CHECKPOINT)
             if checkpoint and checkpoint != self._orig_checkpoint:
                 self.scm.set_ref(EXEC_APPLY, checkpoint)
+
+    @classmethod
+    def save(
+        cls,
+        info: "ExecutorInfo",
+        is_checkpoint: bool = False,
+        force: bool = False,
+    ) -> ExecutorResult:
+        from dvc.repo import Repo
+
+        exp_hash: Optional[str] = None
+        exp_ref: Optional[ExpRefInfo] = None
+
+        dvc = Repo(os.path.join(info.root_dir, info.dvc_dir))
+        old_cwd = os.getcwd()
+        if info.wdir:
+            os.chdir(os.path.join(dvc.scm.root_dir, info.wdir))
+        else:
+            os.chdir(dvc.root_dir)
+
+        try:
+            stages = dvc.commit([], force=force)
+            exp_hash = cls.hash_exp(stages)
+            cls.commit(
+                dvc.scm,
+                exp_hash,
+                exp_name=info.name,
+                checkpoint=is_checkpoint,
+                force=force,
+            )
+            ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
+            exp_ref = ExpRefInfo.from_ref(ref) if ref else None
+            # TODO: research into how untracked files should be handled
+            if cls.WARN_UNTRACKED:
+                untracked = dvc.scm.untracked_files()
+                if untracked:
+                    logger.warning(
+                        "The following untracked files were present in "
+                        "the experiment directory after reproduction but "
+                        "will not be included in experiment commits:\n"
+                        "\t%s",
+                        ", ".join(untracked),
+                    )
+            info.result_hash = exp_hash
+            info.result_ref = ref
+            info.result_force = False
+            info.status = TaskStatus.SUCCESS
+        except DvcException:
+            info.status = TaskStatus.FAILED
+            raise
+        finally:
+            dvc.close()
+            os.chdir(old_cwd)
+
+        return ExecutorResult(ref, exp_ref, info.result_force)
