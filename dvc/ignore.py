@@ -300,12 +300,25 @@ class DvcIgnoreFilter:
         return [fs_dict[name] for name in chain(dirs, nondirs)]
 
     def walk(self, fs: FileSystem, path: AnyFSPath, **kwargs):
+        detail = kwargs.get("detail", False)
         ignore_subrepos = kwargs.pop("ignore_subrepos", True)
         if fs.protocol == Schemes.LOCAL:
             for root, dirs, files in fs.walk(path, **kwargs):
-                dirs[:], files[:] = self(
-                    root, dirs, files, ignore_subrepos=ignore_subrepos
-                )
+                if detail:
+                    all_dnames = set(dirs.keys())
+                    all_fnames = set(files.keys())
+                    dnames, fnames = self(
+                        root,
+                        all_dnames,
+                        all_fnames,
+                        ignore_subrepos=ignore_subrepos,
+                    )
+                    list(map(dirs.pop, all_dnames - set(dnames)))
+                    list(map(files.pop, all_fnames - set(fnames)))
+                else:
+                    dirs[:], files[:] = self(
+                        root, dirs, files, ignore_subrepos=ignore_subrepos
+                    )
                 yield root, dirs, files
         else:
             yield from fs.walk(path, **kwargs)
