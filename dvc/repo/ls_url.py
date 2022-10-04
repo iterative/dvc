@@ -10,7 +10,7 @@ def parse_external_url(url, config=None):
     return fs, fs_path
 
 
-def ls_url(url, config=None, recursive=False):
+def ls_url(url, *, config=None, recursive=False):
     fs, fs_path = parse_external_url(url, config=config)
     try:
         info = fs.info(fs_path)

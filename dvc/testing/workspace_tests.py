@@ -154,7 +154,7 @@ class TestLsUrl:
     def test_file(self, cloud, fname):
         cloud.gen({fname: "foo contents"})
         fs, fs_path = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / fname), cloud.config)
+        result = ls_url(str(cloud / fname), config=cloud.config)
         match_files(
             fs,
             result,
@@ -166,7 +166,7 @@ class TestLsUrl:
             {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
         )
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / "dir"), cloud.config)
+        result = ls_url(str(cloud / "dir"), config=cloud.config)
         match_files(
             fs,
             result,
@@ -181,7 +181,9 @@ class TestLsUrl:
             {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
         )
         fs, _ = parse_external_url(cloud.url, cloud.config)
-        result = ls_url(str(cloud / "dir"), cloud.config, recursive=True)
+        result = ls_url(
+            str(cloud / "dir"), config=cloud.config, recursive=True
+        )
         match_files(
             fs,
             result,
@@ -193,4 +195,4 @@ class TestLsUrl:
 
     def test_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
-            ls_url(str(cloud / "dir"), cloud.config)
+            ls_url(str(cloud / "dir"), config=cloud.config)
