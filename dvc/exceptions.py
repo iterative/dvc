@@ -1,4 +1,6 @@
 """Exceptions raised by the dvc."""
+from typing import Dict, List
+
 from dvc.utils import format_link
 
 
@@ -227,7 +229,7 @@ class UploadError(FileTransferError):
 
 
 class CheckoutError(DvcException):
-    def __init__(self, target_infos, stats=None):
+    def __init__(self, target_infos: List[str], stats: Dict[str, List[str]]):
         from dvc.utils import error_link
 
         self.target_infos = target_infos

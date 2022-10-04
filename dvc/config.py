@@ -4,13 +4,17 @@ import os
 import re
 from contextlib import contextmanager
 from functools import partial
-from typing import Dict
+from typing import TYPE_CHECKING, Dict, Optional
 
 from funcy import compact, memoize, re_find
 
 from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.types import DictStrAny, StrPath
 
 from .utils.objects import cached_property
+
+if TYPE_CHECKING:
+    from dvc.fs import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +91,11 @@ class Config(dict):
     CONFIG_LOCAL = "config.local"
 
     def __init__(
-        self, dvc_dir=None, validate=True, fs=None, config=None
+        self,
+        dvc_dir: Optional[StrPath] = None,
+        validate: bool = True,
+        fs: Optional["FileSystem"] = None,
+        config: Optional[DictStrAny] = None,
     ):  # pylint: disable=super-init-not-called
         from dvc.fs import LocalFileSystem
 
@@ -145,7 +153,7 @@ class Config(dict):
         with open(config_file, "w+", encoding="utf-8"):
             return Config(dvc_dir)
 
-    def load(self, validate=True, config=None):
+    def load(self, validate: bool = True, config: Optional[DictStrAny] = None):
         """Loads config from all the config files.
 
         Raises:

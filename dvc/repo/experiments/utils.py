@@ -51,6 +51,7 @@ def get_exp_rwlock(
     writes = writes or []
 
     cmd = " ".join(sys.argv)
+    assert repo.tmp_dir is not None
     path = os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
     repo.fs.makedirs(path, exist_ok=True)
 

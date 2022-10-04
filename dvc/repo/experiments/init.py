@@ -283,6 +283,7 @@ def init(
             plots_key: compact(plots),
         },
     )
+    assert isinstance(stage, PipelineStage)
 
     with _disable_logging(), repo.scm_context(autostage=True, quiet=True):
         stage.dump(update_lock=False)
@@ -292,5 +293,4 @@ def init(
         if params:
             repo.scm_context.track_file(params)
 
-    assert isinstance(stage, PipelineStage)
     return stage, initialized_deps, initialized_out_dirs

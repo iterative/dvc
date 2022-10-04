@@ -3,6 +3,7 @@ import os
 import re
 from collections import namedtuple
 from itertools import chain, groupby, takewhile
+from typing import List, Optional
 
 from pathspec.patterns import GitWildMatchPattern
 from pathspec.util import normalize_file
@@ -10,7 +11,6 @@ from pygtrie import Trie
 
 from dvc.fs import AnyFSPath, FileSystem, Schemes, localfs
 from dvc.pathspec_math import PatternInfo, merge_patterns
-from dvc.types import List, Optional
 
 logger = logging.getLogger(__name__)
 

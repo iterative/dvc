@@ -32,7 +32,7 @@ from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
-from .fs.callbacks import DEFAULT_CALLBACK
+from .fs.callbacks import DEFAULT_CALLBACK, Callback
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
 
-    from .fs.callbacks import Callback
+    from .ignore import DvcIgnoreFilter
 
 logger = logging.getLogger(__name__)
 
@@ -561,7 +561,7 @@ class Output:
             return self.meta.version_id != self.get_meta().version_id
         return False
 
-    def workspace_status(self):
+    def workspace_status(self) -> Dict[str, str]:
         if not self.exists:
             return {str(self): "deleted"}
 
@@ -573,40 +573,40 @@ class Output:
 
         return {}
 
-    def status(self):
+    def status(self) -> Dict[str, str]:
         if self.hash_info and self.use_cache and self.changed_cache():
             return {str(self): "not in cache"}
 
         return self.workspace_status()
 
-    def changed(self):
+    def changed(self) -> bool:
         status = self.status()
         logger.debug(str(status))
         return bool(status)
 
     @property
-    def dvcignore(self):
+    def dvcignore(self) -> Optional["DvcIgnoreFilter"]:
         if self.fs.protocol == "local":
             return self.repo.dvcignore
         return None
 
     @property
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return self.fs.is_empty(self.fs_path)
 
-    def isdir(self):
+    def isdir(self) -> bool:
         if self._is_path_dvcignore(self.fs_path):
             return False
         return self.fs.isdir(self.fs_path)
 
-    def isfile(self):
+    def isfile(self) -> bool:
         if self._is_path_dvcignore(self.fs_path):
             return False
         return self.fs.isfile(self.fs_path)
 
     # pylint: disable=no-member
 
-    def ignore(self):
+    def ignore(self) -> None:
         if not self.use_scm_ignore:
             return
 
@@ -615,7 +615,7 @@ class Output:
 
         self.repo.scm_context.ignore(self.fspath)
 
-    def ignore_remove(self):
+    def ignore_remove(self) -> None:
         if not self.use_scm_ignore:
             return
 
@@ -623,11 +623,11 @@ class Output:
 
     # pylint: enable=no-member
 
-    def save(self):
+    def save(self) -> None:
         if not self.exists:
             raise self.DoesNotExistError(self)
 
-        if not self.isfile and not self.isdir:
+        if not self.isfile() and not self.isdir():
             raise self.IsNotFileOrDirError(self)
 
         if self.is_empty:
@@ -663,11 +663,11 @@ class Output:
         self.hash_info = self.obj.hash_info
         self.files = None
 
-    def set_exec(self):
+    def set_exec(self) -> None:
         if self.isfile() and self.meta.isexec:
             self.odb.set_exec(self.fs_path)
 
-    def _checkout(self, *args, **kwargs):
+    def _checkout(self, *args, **kwargs) -> Optional[bool]:
         from dvc_data.hashfile.checkout import CheckoutError as _CheckoutError
         from dvc_data.hashfile.checkout import LinkError, PromptError
 
@@ -679,9 +679,9 @@ class Output:
         except LinkError as exc:
             raise CacheLinkError([exc.path])  # noqa: B904
         except _CheckoutError as exc:
-            raise CheckoutError(exc.paths)  # noqa: B904
+            raise CheckoutError(exc.paths, {})  # noqa: B904
 
-    def commit(self, filter_info=None):
+    def commit(self, filter_info=None) -> None:
         if not self.exists:
             raise self.DoesNotExistError(self)
 
@@ -721,7 +721,7 @@ class Output:
             )
             self.set_exec()
 
-    def _commit_granular_dir(self, filter_info):
+    def _commit_granular_dir(self, filter_info) -> Optional["HashFile"]:
         prefix = self.fs.path.parts(
             self.fs.path.relpath(filter_info, self.fs_path)
         )
@@ -850,14 +850,14 @@ class Output:
 
     def checkout(
         self,
-        force=False,
+        force: bool = False,
         progress_callback: "Callback" = DEFAULT_CALLBACK,
-        relink=False,
-        filter_info=None,
-        allow_missing=False,
-        checkpoint_reset=False,
+        relink: bool = False,
+        filter_info: Optional[str] = None,
+        allow_missing: bool = False,
+        checkpoint_reset: bool = False,
         **kwargs,
-    ):
+    ) -> Optional[Tuple[bool, Optional[bool]]]:
         if not self.use_cache:
             if progress_callback != DEFAULT_CALLBACK:
                 progress_callback.relative_update(

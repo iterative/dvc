@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from dvc.repo import Repo
 
     from .parsing import DataResolver
+    from .stage import Stage
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -198,16 +199,16 @@ class SingleStageFile(FileMixin):
     params: List[str] = []
 
     @property
-    def stage(self):
+    def stage(self) -> "Stage":
         data, raw = self._load()
         return self.LOADER.load_stage(self, data, raw)
 
     @property
-    def stages(self):
+    def stages(self) -> LOADER:
         data, raw = self._load()
         return self.LOADER(self, data, raw)
 
-    def dump(self, stage, **kwargs):
+    def dump(self, stage, **kwargs) -> None:
         """Dumps given stage appropriately in the dvcfile."""
         from dvc.stage import PipelineStage
 

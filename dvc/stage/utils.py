@@ -1,6 +1,6 @@
 import os
 import pathlib
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from funcy import concat, first, lsplit, rpartial
 
@@ -17,6 +17,7 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
+    from dvc.dependency import Dependency, ParamsDependency
     from dvc.repo import Repo
 
     from . import PipelineStage, Stage
@@ -195,7 +196,7 @@ def resolve_paths(fs, path, wdir=None):
     return path, wdir
 
 
-def get_dump(stage, **kwargs):
+def get_dump(stage: "Stage", **kwargs):
     return {
         key: value
         for key, value in {
@@ -213,19 +214,21 @@ def get_dump(stage, **kwargs):
     }
 
 
-def split_params_deps(stage):
+def split_params_deps(
+    stage: "Stage",
+) -> Tuple[List["ParamsDependency"], List["Dependency"]]:
     from dvc.dependency import ParamsDependency
 
     return lsplit(rpartial(isinstance, ParamsDependency), stage.deps)
 
 
-def is_valid_name(name: str):
+def is_valid_name(name: str) -> bool:
     from . import INVALID_STAGENAME_CHARS
 
     return not INVALID_STAGENAME_CHARS & set(name)
 
 
-def prepare_file_path(kwargs):
+def prepare_file_path(kwargs) -> str:
     """Determine file path from the first output name.
 
     Used in creating .dvc files.
@@ -280,7 +283,7 @@ def check_stage_exists(
 
 def validate_kwargs(
     single_stage: bool = False, fname: Optional[str] = None, **kwargs
-):
+) -> Dict[str, Any]:
     """Prepare, validate and process kwargs passed from cli"""
     cmd = kwargs.get("cmd")
     if not cmd and not single_stage:

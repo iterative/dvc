@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from funcy import get_in, lcat, once, project
 
@@ -18,13 +18,16 @@ from .exceptions import StageNameUnspecified, StageNotFound
 from .params import StageParams
 from .utils import fill_stage_dependencies, resolve_paths
 
+if TYPE_CHECKING:
+    from dvc.dvcfile import ProjectFile, SingleStageFile
+
 logger = logging.getLogger(__name__)
 
 
 class StageLoader(Mapping):
     def __init__(
         self,
-        dvcfile,
+        dvcfile: "ProjectFile",
         data,
         lockfile_data=None,
     ):
@@ -79,7 +82,9 @@ class StageLoader(Mapping):
             item.files = get_in(checksums, [key, path, item.PARAM_FILES])
 
     @classmethod
-    def load_stage(cls, dvcfile, name, stage_data, lock_data=None):
+    def load_stage(
+        cls, dvcfile: "ProjectFile", name, stage_data, lock_data=None
+    ):
         assert all([name, dvcfile, dvcfile.repo, dvcfile.path])
         assert stage_data and isinstance(stage_data, dict)
 
@@ -170,7 +175,12 @@ class StageLoader(Mapping):
 
 
 class SingleStageLoader(Mapping):
-    def __init__(self, dvcfile, stage_data, stage_text=None):
+    def __init__(
+        self,
+        dvcfile: "SingleStageFile",
+        stage_data: Dict[Any, str],
+        stage_text: Optional[str] = None,
+    ):
         self.dvcfile = dvcfile
         self.stage_data = stage_data or {}
         self.stage_text = stage_text
@@ -189,7 +199,9 @@ class SingleStageLoader(Mapping):
         )
 
     @classmethod
-    def load_stage(cls, dvcfile, d, stage_text):
+    def load_stage(
+        cls, dvcfile: "SingleStageFile", d: Dict[str, Any], stage_text: str
+    ) -> Stage:
         path, wdir = resolve_paths(
             dvcfile.repo.fs, dvcfile.path, d.get(Stage.PARAM_WDIR)
         )

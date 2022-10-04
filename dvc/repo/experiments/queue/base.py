@@ -112,6 +112,7 @@ class BaseStashQueue(ABC):
             failed_ref: Failed run Git stash ref for this queue.
         """
         self.repo = repo
+        assert self.repo.tmp_dir
         self.ref = ref
         self.failed_ref = failed_ref
 
@@ -129,10 +130,12 @@ class BaseStashQueue(ABC):
 
     @cached_property
     def pid_dir(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
 
     @cached_property
     def args_file(self) -> str:
+        assert self.repo.tmp_dir is not None
         return os.path.join(self.repo.tmp_dir, BaseExecutor.PACKED_ARGS_FILE)
 
     @abstractmethod

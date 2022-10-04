@@ -127,6 +127,7 @@ class MachineManager:
         self, repo: "Repo", backends: Optional[Iterable[str]] = None, **kwargs
     ):
         self.repo = repo
+        assert self.repo.tmp_dir
         tmp_dir = os.path.join(self.repo.tmp_dir, "machine")
         self.backends = MachineBackends(backends, tmp_dir=tmp_dir, **kwargs)
 

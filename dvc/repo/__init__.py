@@ -3,7 +3,15 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from dvc.exceptions import FileMissingError
 from dvc.exceptions import IsADirectoryError as DvcIsADirectoryError
@@ -17,9 +25,11 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.fs.data import DataFileSystem
     from dvc.fs.dvc import DVCFileSystem
+    from dvc.lock import LockBase
     from dvc.machine import MachineManager
     from dvc.scm import Base, Git, NoSCM
     from dvc.stage import Stage
+    from dvc.types import DictStrAny
 
     from .experiments import Experiments
     from .index import Index
@@ -31,7 +41,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def lock_repo(repo: "Repo"):
     # pylint: disable=protected-access
-    depth = repo._lock_depth
+    depth: int = repo._lock_depth
     repo._lock_depth += 1
 
     try:
@@ -95,13 +105,13 @@ class Repo:
         root_dir: Optional[str] = None,
         fs: Optional["FileSystem"] = None,
         uninitialized: bool = False,
-        scm: Optional["Base"] = None,
-    ):
+        scm: Optional[Union["Git", "NoSCM"]] = None,
+    ) -> Tuple[str, Optional[str], Optional[str]]:
         from dvc.fs import localfs
         from dvc.scm import SCM, SCMError
 
-        dvc_dir = None
-        tmp_dir = None
+        dvc_dir: Optional[str] = None
+        tmp_dir: Optional[str] = None
         try:
             root_dir = self.find_root(root_dir, fs)
             fs = fs or localfs
@@ -123,7 +133,7 @@ class Repo:
         assert root_dir
         return root_dir, dvc_dir, tmp_dir
 
-    def _get_database_dir(self, db_name):
+    def _get_database_dir(self, db_name: str) -> Optional[str]:
         # NOTE: by default, store SQLite-based remote indexes and state's
         # `links` and `md5s` caches in the repository itself to avoid any
         # possible state corruption in 'shared cache dir' scenario, but allow
@@ -151,15 +161,15 @@ class Repo:
 
     def __init__(
         self,
-        root_dir=None,
-        fs=None,
-        rev=None,
-        subrepos=False,
-        uninitialized=False,
-        config=None,
-        url=None,
-        repo_factory=None,
-        scm=None,
+        root_dir: Optional[str] = None,
+        fs: Optional["FileSystem"] = None,
+        rev: Optional[str] = None,
+        subrepos: bool = False,
+        uninitialized: bool = False,
+        config: Optional["DictStrAny"] = None,
+        url: Optional[str] = None,
+        repo_factory: Optional[Callable] = None,
+        scm: Optional["Base"] = None,
     ):
         from dvc.config import Config
         from dvc.data_cloud import DataCloud
@@ -184,6 +194,9 @@ class Repo:
             root_dir = "/"
             self._fs = GitFileSystem(scm=self._scm, rev=rev)
 
+        self.root_dir: str
+        self.dvc_dir: Optional[str]
+        self.tmp_dir: Optional[str]
         self.root_dir, self.dvc_dir, self.tmp_dir = self._get_repo_dirs(
             root_dir=root_dir,
             fs=self.fs,
@@ -191,15 +204,17 @@ class Repo:
             scm=scm,
         )
 
-        self.config = Config(self.dvc_dir, fs=self.fs, config=config)
+        self.config: Config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
 
         # used by DVCFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
         self.cloud = DataCloud(self)
-        self.stage = StageLoad(self)
+        self.stage: "StageLoad" = StageLoad(self)
 
+        self.lock: "LockBase"
+        self.odb: ODBManager
         if isinstance(self.fs, GitFileSystem) or not self.dvc_dir:
             self.lock = LockNoop()
             self.state = StateNoop()
@@ -230,13 +245,13 @@ class Repo:
             self._ignore()
 
         self.metrics = Metrics(self)
-        self.plots = Plots(self)
+        self.plots: Plots = Plots(self)
         self.params = Params(self)
 
         self.stage_collection_error_handler: Optional[
             Callable[[str, Exception], None]
         ] = None
-        self._lock_depth = 0
+        self._lock_depth: int = 0
 
     def __str__(self):
         return self.url or self.root_dir

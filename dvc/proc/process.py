@@ -5,7 +5,7 @@ import shlex
 import subprocess
 from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass
-from typing import List, Optional, TextIO, Union
+from typing import BinaryIO, List, Optional, Union
 
 from shortuuid import uuid
 
@@ -59,8 +59,8 @@ class ManagedProcess(AbstractContextManager):
         self.wdir = wdir
         self.name = name or uuid()
         self.returncode: Optional[int] = None
-        self._stdout: Optional[TextIO] = None
-        self._stderr: Optional[TextIO] = None
+        self._stdout: Optional[BinaryIO] = None
+        self._stderr: Optional[BinaryIO] = None
 
         self._run()
 
@@ -111,7 +111,7 @@ class ManagedProcess(AbstractContextManager):
         with open(self.pidfile_path, "w", encoding="utf-8") as fobj:
             fobj.write(str(self.pid))
 
-    def _run(self):
+    def _run(self) -> None:
         self._make_wdir()
         logger.debug(
             "Appending output to '%s'",

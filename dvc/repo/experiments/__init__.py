@@ -410,7 +410,7 @@ class Experiments:
     def get_exact_name(self, revs: Iterable[str]) -> Dict[str, Optional[str]]:
         """Returns preferred name for the specified revision.
 
-        Prefers tags, branches (heads), experiments in that orer.
+        Prefers tags, branches (heads), experiments in that order.
         """
         result: Dict[str, Optional[str]] = {}
         exclude = f"{EXEC_NAMESPACE}/*"

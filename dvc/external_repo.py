@@ -3,7 +3,7 @@ import os
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Collection, Dict, Iterator, Optional
 
 from funcy import retry, wrap_with
 
@@ -17,6 +17,7 @@ from dvc.exceptions import (
 )
 from dvc.repo import Repo
 from dvc.scm import CloneError, map_scm_exception
+from dvc.types import StrPath
 from dvc.utils import relpath
 
 if TYPE_CHECKING:
@@ -28,8 +29,13 @@ logger = logging.getLogger(__name__)
 @contextmanager
 @map_scm_exception()
 def external_repo(
-    url, rev=None, for_write=False, cache_dir=None, cache_types=None, **kwargs
-):
+    url,
+    rev: Optional[str] = None,
+    for_write: bool = False,
+    cache_dir: Optional[StrPath] = None,
+    cache_types: Optional[Collection[str]] = None,
+    **kwargs,
+) -> Iterator["Repo"]:
     from scmrepo.git import Git
 
     from dvc.config import NoRemoteError

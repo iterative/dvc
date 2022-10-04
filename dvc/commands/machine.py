@@ -1,4 +1,5 @@
 import argparse
+from typing import Dict, List
 
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link, fix_subparsers
@@ -6,7 +7,6 @@ from dvc.commands.config import CmdConfig
 from dvc.compare import TabularData
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
-from dvc.types import Dict, List
 from dvc.ui import ui
 from dvc.utils import format_link
 
