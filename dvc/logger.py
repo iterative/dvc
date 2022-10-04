@@ -213,8 +213,6 @@ def set_loggers_level(level: int = logging.INFO) -> None:
 
 
 def setup(level: int = logging.INFO) -> None:
-    colorama.init()
-
     if level >= logging.DEBUG:
         # Unclosed session errors for asyncio/aiohttp are only available
         # on the tracing mode for extensive debug purposes. They are really
@@ -297,3 +295,8 @@ def setup(level: int = logging.INFO) -> None:
             "disable_existing_loggers": False,
         }
     )
+
+    # NOTE: colorama init needs to go after logging config to avoid potential
+    # conflicts with libs that modify logging (like tensorflow/abseil)
+    # https://github.com/iterative/dvc/issues/8387
+    colorama.init()
