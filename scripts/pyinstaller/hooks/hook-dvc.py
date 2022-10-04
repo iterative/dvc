@@ -16,5 +16,15 @@ datas += copy_metadata("webdav4")
 datas += copy_metadata("aiohttp")
 datas += copy_metadata("aiohttp_retry")
 
-# https://github.com/pypa/setuptools/issues/1963
-hiddenimports = ["pkg_resources.py2_warn"]
+hiddenimports = [
+    "dvc_azure",
+    "dvc_gdrive",
+    "dvc_gs",
+    "dvc_hdfs",
+    "dvc_oss",
+    "dvc_s3",
+    "dvc_webdav",
+    "dvc_webhdfs",
+    # https://github.com/pypa/setuptools/issues/1963
+    "pkg_resources.py2_warn",
+]

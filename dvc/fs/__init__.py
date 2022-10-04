@@ -1,26 +1,21 @@
 from urllib.parse import urlparse
 
+from dvc_http import HTTPFileSystem, HTTPSFileSystem  # noqa: F401
+
+from dvc.config import ConfigError as RepoConfigError
+from dvc.config_schema import SCHEMA, Invalid
+
 # pylint: disable=unused-import
 from dvc_objects.fs import utils  # noqa: F401
 from dvc_objects.fs import (  # noqa: F401
-    FS_MAP,
-    AzureFileSystem,
-    GDriveFileSystem,
-    GSFileSystem,
-    HDFSFileSystem,
-    HTTPFileSystem,
-    HTTPSFileSystem,
     LocalFileSystem,
     MemoryFileSystem,
-    OSSFileSystem,
-    S3FileSystem,
     Schemes,
-    SSHFileSystem,
-    WebDAVFileSystem,
-    WebDAVSFileSystem,
-    WebHDFSFileSystem,
     generic,
     get_fs_cls,
+    known_implementations,
+    localfs,
+    registry,
     system,
 )
 from dvc_objects.fs.base import AnyFSPath, FileSystem  # noqa: F401
@@ -29,21 +24,30 @@ from dvc_objects.fs.errors import (  # noqa: F401
     ConfigError,
     RemoteMissingDepsError,
 )
-from dvc_objects.fs.implementations.azure import AzureAuthError  # noqa: F401
-from dvc_objects.fs.implementations.local import localfs  # noqa: F401
-from dvc_objects.fs.implementations.ssh import (  # noqa: F401
-    DEFAULT_PORT as DEFAULT_SSH_PORT,
-)
 from dvc_objects.fs.path import Path  # noqa: F401
 
 from .data import DataFileSystem  # noqa: F401
-from .dvc import DvcFileSystem  # noqa: F401
+from .dvc import DVCFileSystem  # noqa: F401
 from .git import GitFileSystem  # noqa: F401
+
+known_implementations.update(
+    {
+        "dvc": {
+            "class": "dvc.fs.dvc.DVCFileSystem",
+            "err": "dvc is supported, but requires 'dvc' to be installed",
+        },
+        "git": {
+            "class": "dvc.fs.git.GitFileSystem",
+            "err": "git is supported, but requires 'dvc' to be installed",
+        },
+    }
+)
+
 
 # pylint: enable=unused-import
 
 
-def get_fs_config(repo, config, **kwargs):
+def get_fs_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
         try:
@@ -54,10 +58,10 @@ def get_fs_config(repo, config, **kwargs):
             raise RemoteNotFoundError(f"remote '{name}' doesn't exist")
     else:
         remote_conf = kwargs
-    return _resolve_remote_refs(repo, config, remote_conf)
+    return _resolve_remote_refs(config, remote_conf)
 
 
-def _resolve_remote_refs(repo, config, remote_conf):
+def _resolve_remote_refs(config, remote_conf):
     # Support for cross referenced remotes.
     # This will merge the settings, shadowing base ref with remote_conf.
     # For example, having:
@@ -83,21 +87,22 @@ def _resolve_remote_refs(repo, config, remote_conf):
     if parsed.scheme != "remote":
         return remote_conf
 
-    base = get_fs_config(repo, config, name=parsed.netloc)
-    cls, _, _ = get_cloud_fs(repo, **base)
+    base = get_fs_config(config, name=parsed.netloc)
+    cls, _, _ = _get_cloud_fs(config, **base)
     relpath = parsed.path.lstrip("/").replace("/", cls.sep)
     url = cls.sep.join((base["url"], relpath))
     return {**base, **remote_conf, "url": url}
 
 
 def get_cloud_fs(repo, **kwargs):
-    from dvc.config import ConfigError as RepoConfigError
-    from dvc.config_schema import SCHEMA, Invalid
-
     repo_config = repo.config if repo else {}
+    return _get_cloud_fs(repo_config, **kwargs)
+
+
+def _get_cloud_fs(repo_config, **kwargs):
     core_config = repo_config.get("core", {})
 
-    remote_conf = get_fs_config(repo, repo_config, **kwargs)
+    remote_conf = get_fs_config(repo_config, **kwargs)
     try:
         remote_conf = SCHEMA["remote"][str](remote_conf)
     except Invalid as exc:
@@ -110,11 +115,8 @@ def get_cloud_fs(repo, **kwargs):
 
     cls = get_fs_cls(remote_conf)
 
-    if cls == GDriveFileSystem and repo:
-        remote_conf["gdrive_credentials_tmp_dir"] = repo.tmp_dir
-
     url = remote_conf.pop("url")
-    if issubclass(cls, WebDAVFileSystem):
+    if cls.protocol in ["webdav", "webdavs"]:
         # For WebDAVFileSystem, provided url is the base path itself, so it
         # should be treated as being a root path.
         fs_path = cls.root_marker

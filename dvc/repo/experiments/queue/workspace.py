@@ -1,12 +1,10 @@
 import logging
-import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, Collection, Dict, Generator, Optional
 
 from funcy import first
 
 from dvc.exceptions import DvcException
-from dvc.utils.fs import remove
 
 from ..exceptions import ExpQueueEmptyError
 from ..executor.base import BaseExecutor, ExecutorResult
@@ -41,7 +39,7 @@ class WorkspaceQueue(BaseStashQueue):
             stash_entry.name,
             stash_entry.head_rev,
         )
-        executor = self.setup_executor(self.repo.experiments, entry)
+        executor = self.init_executor(self.repo.experiments, entry)
         return QueueGetResult(entry, executor)
 
     def iter_queued(self) -> Generator[QueueEntry, None, None]:
@@ -118,9 +116,7 @@ class WorkspaceQueue(BaseStashQueue):
                 f"Failed to reproduce experiment '{rev[:7]}'"
             ) from exc
         finally:
-            if self._EXEC_NAME == exec_name:
-                remove(os.path.join(self.pid_dir, exec_name))
-            executor.cleanup()
+            executor.cleanup(infofile)
         return results
 
     @staticmethod
@@ -135,6 +131,7 @@ class WorkspaceQueue(BaseStashQueue):
             assert exec_result.exp_hash
             logger.debug("Collected experiment '%s'.", exp_rev[:7])
             results[exp_rev] = exec_result.exp_hash
+
         return results
 
     def get_result(self, entry: QueueEntry) -> Optional[ExecutorResult]:

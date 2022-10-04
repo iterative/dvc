@@ -183,15 +183,7 @@ class Index:
             if not out.use_cache:
                 continue
 
-            if out.is_in_repo:
-                workspace = "repo"
-                key = self.repo.fs.path.relparts(
-                    out.fs_path, self.repo.root_dir
-                )
-            else:
-                workspace = out.fs.protocol
-                no_drive = out.fs.path.flavour.splitdrive(out.fs_path)[1]
-                key = out.fs.path.parts(no_drive)[1:]
+            workspace, key = out.index_key
 
             try:
                 remote = self.repo.cloud.get_remote_odb(out.remote)
@@ -200,11 +192,15 @@ class Index:
 
             data_index = by_workspace[workspace]
 
+            if out.files:
+                out.obj = out.get_obj()
+
             data_index[key] = DataIndexEntry(
                 meta=out.meta,
                 obj=out.obj,
                 hash_info=out.hash_info,
                 odb=out.odb,
+                cache=out.odb,
                 remote=remote,
             )
 
@@ -245,6 +241,26 @@ class Index:
             ).items():
                 used[odb].update(objs)
         return used
+
+    def partial_imports(
+        self,
+        targets: "TargetType" = None,
+        recursive: bool = False,
+    ) -> List["Stage"]:
+        from itertools import chain
+
+        from dvc.utils.collections import ensure_list
+
+        collect_targets: Sequence[Optional[str]] = (None,)
+        if targets:
+            collect_targets = ensure_list(targets)
+
+        pairs = chain.from_iterable(
+            self.stage_collector.collect_granular(target, recursive=recursive)
+            for target in collect_targets
+        )
+
+        return [stage for stage, _ in pairs if stage.is_partial_import]
 
     # Following methods help us treat the collection as a set-like structure
     # and provides faux-immutability.

@@ -139,8 +139,8 @@ def test_upper_case_remote(tmp_dir, dvc, local_cloud):
 
 
 def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
-    from dvc_data.build import build
-    from dvc_data.objects.tree import Tree
+    from dvc_data.hashfile.build import build
+    from dvc_data.hashfile.tree import Tree
 
     tmp_dir.gen({"data": {"1": "1 content", "2": "2 content"}})
 
@@ -150,7 +150,9 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"relpath": "1", "md5": "1"}, {"relpath": "2", "md5": "2"}]
     )
     tree.digest()
-    with patch("dvc_data.build._build_tree", return_value=(None, tree)):
+    with patch(
+        "dvc_data.hashfile.build._build_tree", return_value=(None, tree)
+    ):
         _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash1 = obj.hash_info
 
@@ -161,7 +163,9 @@ def test_dir_hash_should_be_key_order_agnostic(tmp_dir, dvc):
         [{"md5": "1", "relpath": "1"}, {"md5": "2", "relpath": "2"}]
     )
     tree.digest()
-    with patch("dvc_data.build._build_tree", return_value=(None, tree)):
+    with patch(
+        "dvc_data.hashfile.build._build_tree", return_value=(None, tree)
+    ):
         _, _, obj = build(dvc.odb.local, path, dvc.odb.local.fs, "md5")
         hash2 = obj.hash_info
 
@@ -197,7 +201,7 @@ def test_partial_push_n_pull(tmp_dir, dvc, tmp_path_factory, local_remote):
 
     # Push everything and delete local cache
     dvc.push()
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     baz._collect_used_dir_cache()
     with patch.object(generic, "transfer", side_effect=Exception):

@@ -1,3 +1,4 @@
+import os
 from textwrap import dedent
 
 import pytest
@@ -67,6 +68,9 @@ def test_params_show_targets(params_repo):
         "bar": 2,
         "foobar": 3,
     }
+    assert api.params_show("params.yaml", stages="stage-1") == {
+        "foo": 5,
+    }
 
 
 def test_params_show_deps(params_repo):
@@ -90,6 +94,27 @@ def test_params_show_stages(params_repo):
 
     with pytest.raises(DvcException, match="No params found"):
         api.params_show(stages="stage-0")
+
+
+def test_params_show_stage_addressing(tmp_dir, dvc):
+    for subdir in {"subdir1", "subdir2"}:
+        subdir = tmp_dir / subdir
+        subdir.mkdir()
+        with subdir.chdir():
+            subdir.gen("params.yaml", "foo: 1")
+
+            dvc.run(name="stage-0", cmd="echo stage-0", params=["foo"])
+
+    for s in {"subdir1", "subdir2"}:
+        dvcyaml = os.path.join(s, "dvc.yaml")
+        assert api.params_show(stages=f"{dvcyaml}:stage-0") == {"foo": 1}
+
+    with subdir.chdir():
+        nested = subdir / "nested"
+        nested.mkdir()
+        with nested.chdir():
+            dvcyaml = os.path.join("..", "dvc.yaml")
+            assert api.params_show(stages=f"{dvcyaml}:stage-0") == {"foo": 1}
 
 
 def test_params_show_revs(params_repo):
@@ -168,3 +193,15 @@ def test_params_show_stage_without_params(tmp_dir, dvc):
 
     with pytest.raises(DvcException, match="No params found"):
         api.params_show(deps=True)
+
+
+def test_params_show_untracked_target(params_repo, tmp_dir):
+    tmp_dir.gen("params_foo.yaml", "foo: 1")
+
+    assert api.params_show("params_foo.yaml") == {"foo": 1}
+
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show("params_foo.yaml", stages="stage-0")
+
+    with pytest.raises(DvcException, match="No params found"):
+        api.params_show("params_foo.yaml", deps=True)

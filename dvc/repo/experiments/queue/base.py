@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from typing import (
@@ -19,6 +20,7 @@ from typing import (
 
 from funcy import cached_property
 
+from dvc.dependency import ParamsDependency
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.ui import ui
@@ -31,7 +33,7 @@ from ..executor.base import (
     ExecutorResult,
 )
 from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_BASELINE, EXEC_HEAD, EXEC_MERGE, ExpRefInfo
+from ..refs import ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
 from ..utils import exp_refs_by_rev, scm_locked
 
@@ -520,14 +522,36 @@ class BaseStashQueue(ABC):
                 provided via `exp run --set-param`.
 
         .. _Hydra Override:
-            https://hydra.cc/docs/next/advanced/override_grammar/basic/
+            https://hydra.cc/docs/advanced/override_grammar/basic/
         """
         logger.debug("Using experiment params '%s'", params)
 
-        from dvc.utils.hydra import apply_overrides
+        try:
+            from dvc.utils.hydra import apply_overrides, compose_and_dump
+        except ValueError:
+            if sys.version_info >= (3, 11):
+                raise DvcException(
+                    "--set-param is not supported in Python >= 3.11"
+                )
+            raise
 
+        hydra_config = self.repo.config.get("hydra", {})
+        hydra_enabled = hydra_config.get("enabled", False)
+        hydra_output_file = ParamsDependency.DEFAULT_PARAMS_FILE
         for path, overrides in params.items():
-            apply_overrides(path, overrides)
+            if hydra_enabled and path == hydra_output_file:
+                config_dir = os.path.join(
+                    self.repo.root_dir, hydra_config.get("config_dir", "conf")
+                )
+                config_name = hydra_config.get("config_name", "config")
+                compose_and_dump(
+                    path,
+                    config_dir,
+                    config_name,
+                    overrides,
+                )
+            else:
+                apply_overrides(path, overrides)
 
         # Force params file changes to be staged in git
         # Otherwise in certain situations the changes to params file may be
@@ -537,7 +561,7 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @scm_locked
-    def setup_executor(
+    def init_executor(
         exp: "Experiments",
         queue_entry: QueueEntry,
         executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
@@ -552,20 +576,22 @@ class BaseStashQueue(ABC):
         )
         if stash_entry.stash_index is not None:
             stash.drop(stash_entry.stash_index)
-
-        scm.set_ref(EXEC_HEAD, stash_entry.head_rev)
-        scm.set_ref(EXEC_MERGE, stash_rev)
-        scm.set_ref(EXEC_BASELINE, stash_entry.baseline_rev)
-
-        # Executor will be initialized with an empty git repo that
-        # we populate by pushing:
-        #   EXEC_HEAD - the base commit for this experiment
-        #   EXEC_MERGE - the unmerged changes (from our stash)
-        #       to be reproduced
-        #   EXEC_BASELINE - the baseline commit for this experiment
-        return executor_cls.from_stash_entry(
-            exp.repo, stash_rev, stash_entry, **kwargs
+        executor = executor_cls.from_stash_entry(
+            exp.repo, stash_entry, **kwargs
         )
+
+        infofile = exp.celery_queue.get_infofile_path(stash_rev)
+        executor.init_git(
+            exp.repo.scm,
+            stash_rev,
+            stash_entry,
+            infofile,
+            branch=stash_entry.branch,
+        )
+
+        executor.init_cache(exp.repo, stash_rev)
+
+        return executor
 
     def get_infofile_path(self, name: str) -> str:
         return os.path.join(

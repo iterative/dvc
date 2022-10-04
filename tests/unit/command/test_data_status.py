@@ -14,15 +14,21 @@ from tests.func.parsing.test_errors import escape_ansi
 def mocked_status():
     yield Status(
         not_in_cache=["notincache"],
-        committed={"added": ["dir/bar", "dir/foo"]},
+        committed={
+            "added": ["dir/bar", "dir/foo"],
+            "deleted": ["dir/baz"],
+            "modified": ["dir/foobar"],
+            "unknown": ["dir/unknown1"],
+        },
         uncommitted={
             "added": ["dir/baz"],
             "modified": ["dir/bar"],
             "deleted": ["dir/foobar"],
+            "unknown": ["dir2/unknown2"],
         },
         untracked=["untracked"],
         unchanged=["dir/foo"],
-        git={"is_dirty": True},
+        git={"is_dirty": True, "is_empty": False},
     )
 
 
@@ -38,7 +44,6 @@ def test_cli(dvc, mocker, mocked_status):
             "--json",
             "--unchanged",
             "--untracked-files",
-            "--with-dirs",
             "--granular",
         ]
     )
@@ -49,7 +54,6 @@ def test_cli(dvc, mocker, mocked_status):
     status.assert_called_once_with(
         untracked_files="all",
         granular=True,
-        with_dirs=True,
     )
 
 
@@ -106,24 +110,29 @@ def test_show_status(dvc, scm, mocker, capsys, mocked_status, args, is_dirty):
     out, err = capsys.readouterr()
     expected_out = """\
 Not in cache:
-  (use "dvc pull <file>..." to update your local storage)
+  (use "dvc fetch <file>..." to download files)
         notincache
 
 DVC committed changes:
   (git commit the corresponding dvc files to update the repo)
         added: dir/bar
         added: dir/foo
+        deleted: dir/baz
+        modified: dir/foobar
+        unknown: dir/unknown1
 
 DVC uncommitted changes:
   (use "dvc commit <file>..." to track changes)
+  (use "dvc checkout <file>..." to discard changes)
         added: dir/baz
         modified: dir/bar
         deleted: dir/foobar
+        unknown: dir2/unknown2
 """
     if "--untracked-files" in args:
         expected_out += """
 Untracked files:
-  (use "git add <file> ..." or dvc add <file>..." to commit to git or to dvc)
+  (use "git add <file> ..." or "dvc add <file>..." to commit to git or to dvc)
         untracked
 """
     if "--unchanged" in args:

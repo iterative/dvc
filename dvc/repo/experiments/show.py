@@ -142,6 +142,9 @@ def show(
     fetch_running: bool = True,
 ):
 
+    if repo.scm.no_commits:
+        return {}
+
     if onerror is None:
         onerror = onerror_collect
 

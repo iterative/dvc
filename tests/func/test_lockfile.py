@@ -207,7 +207,7 @@ def test_lockfile_invalid_versions(tmp_dir, dvc, version_info):
     lockdata = {**version_info, "stages": {"foo": {"cmd": "echo foo"}}}
     (tmp_dir / "dvc.lock").dump(lockdata)
     with pytest.raises(YAMLValidationError) as exc_info:
-        Lockfile(dvc, tmp_dir / "dvc.lock").load()
+        Lockfile(dvc, (tmp_dir / "dvc.lock").fs_path).load()
 
     rel = make_relpath("dvc.lock")
     assert f"'{rel}' validation failed" in str(exc_info.value)

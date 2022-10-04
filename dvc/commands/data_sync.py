@@ -43,7 +43,8 @@ class CmdDataPull(CmdDataBase):
             )
             self.log_summary(stats)
         except (CheckoutError, DvcException) as exc:
-            self.log_summary(getattr(exc, "stats", {}))
+            if stats := getattr(exc, "stats", {}):
+                self.log_summary(stats)
             logger.exception("failed to pull data from the cloud")
             return 1
 
@@ -119,7 +120,7 @@ def shared_parent_parser():
         nargs="*",
         help=(
             "Limit command scope to these tracked files/directories, "
-            ".dvc files, or stage names."
+            ".dvc files and stage names."
         ),
     ).complete = completion.DVC_FILE
 
@@ -194,7 +195,7 @@ def add_parser(subparsers, _parent_parser):
         "--glob",
         action="store_true",
         default=False,
-        help="Pull cache for targets matching shell-style wildcards.",
+        help=argparse.SUPPRESS,
     )
     pull_parser.set_defaults(func=CmdDataPull)
 

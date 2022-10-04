@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Union
 
 from funcy import concat, first, lsplit, rpartial, without
 
+from dvc.annotations import ANNOTATION_FIELDS
 from dvc.exceptions import InvalidArgumentError
 from dvc_data.hashfile.meta import Meta
 
@@ -107,12 +108,16 @@ def _load_live_output(
     return outs
 
 
-def fill_stage_dependencies(stage, deps=None, erepo=None, params=None):
+def fill_stage_dependencies(
+    stage, deps=None, erepo=None, params=None, fs_config=None
+):
     from dvc.dependency import loads_from, loads_params
 
     assert not stage.deps
     stage.deps = []
-    stage.deps += loads_from(stage, deps or [], erepo=erepo)
+    stage.deps += loads_from(
+        stage, deps or [], erepo=erepo, fs_config=fs_config
+    )
     stage.deps += loads_params(stage, params or [])
 
 
@@ -194,9 +199,9 @@ def compute_md5(stage):
     return dict_md5(
         d,
         exclude=[
+            *ANNOTATION_FIELDS,
             stage.PARAM_LOCKED,  # backward compatibility
             stage.PARAM_FROZEN,
-            Output.PARAM_DESC,
             Output.PARAM_METRIC,
             Output.PARAM_PERSIST,
             Output.PARAM_CHECKPOINT,
@@ -221,7 +226,7 @@ def resolve_paths(fs, path, wdir=None):
     return path, wdir
 
 
-def get_dump(stage):
+def get_dump(stage, **kwargs):
     return {
         key: value
         for key, value in {
@@ -230,8 +235,8 @@ def get_dump(stage):
             stage.PARAM_CMD: stage.cmd,
             stage.PARAM_WDIR: resolve_wdir(stage.wdir, stage.path),
             stage.PARAM_FROZEN: stage.frozen,
-            stage.PARAM_DEPS: [d.dumpd() for d in stage.deps],
-            stage.PARAM_OUTS: [o.dumpd() for o in stage.outs],
+            stage.PARAM_DEPS: [d.dumpd(**kwargs) for d in stage.deps],
+            stage.PARAM_OUTS: [o.dumpd(**kwargs) for o in stage.outs],
             stage.PARAM_ALWAYS_CHANGED: stage.always_changed,
             stage.PARAM_META: stage.meta,
         }.items()

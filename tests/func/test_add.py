@@ -12,6 +12,7 @@ import pytest
 
 import dvc as dvc_module
 import dvc_data
+from dvc.annotations import Annotation
 from dvc.cli import main
 from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import (
@@ -33,7 +34,7 @@ from dvc.stage.exceptions import (
     StageExternalOutputsError,
     StagePathNotFoundError,
 )
-from dvc.testing.test_workspace import TestAdd
+from dvc.testing.workspace_tests import TestAdd
 from dvc.utils import LARGE_DIR_SIZE, relpath
 from dvc.utils.fs import path_isin
 from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
@@ -103,7 +104,7 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
-    from dvc_data import load
+    from dvc_data.hashfile import load
 
     (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
@@ -452,12 +453,14 @@ class TestAddCommit(TestDvc):
         ret = main(["commit", self.FOO + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.odb.local.path)), 1)
+        self.assertTrue(
+            self.dvc.odb.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
+        )
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     tmp_dir.gen({"data/data": "foo"})
-    counter = mocker.spy(dvc_data.build, "_build_tree")
+    counter = mocker.spy(dvc_data.hashfile.build, "_build_tree")
     ret = main(["add", "data"])
     assert ret == 0
     assert counter.mock.call_count == 3
@@ -831,9 +834,9 @@ def test_add_symlink_file(tmp_dir, dvc):
     assert (tmp_dir / "dir" / "foo").read_text() == "bar"
     assert (tmp_dir / "dir" / "bar").read_text() == "bar"
 
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "37": {"b51d194a7513e45b56f6524f2d51f2": "bar"}
-    }
+    assert (
+        tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
+    ).read_text() == "bar"
     assert not (
         tmp_dir / ".dvc" / "cache" / "37" / "b51d194a7513e45b56f6524f2d51f2"
     ).is_symlink()
@@ -881,7 +884,7 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
     tmp_dir.gen("foo", "foo")
 
     mocker.patch(
-        "dvc_data.checkout.test_links",
+        "dvc_data.hashfile.checkout.test_links",
         return_value=[],
     )
     dvc.add("foo")
@@ -890,9 +893,9 @@ def test_add_with_cache_link_error(tmp_dir, dvc, mocker, capsys):
 
     assert (tmp_dir / "foo").exists()
     assert (tmp_dir / "foo.dvc").exists()
-    assert (tmp_dir / ".dvc" / "cache").read_text() == {
-        "ac": {"bd18db4cc2f85cedef654fccc4a4d8": "foo"}
-    }
+    assert (
+        tmp_dir / ".dvc" / "cache" / "ac" / "bd18db4cc2f85cedef654fccc4a4d8"
+    ).read_text() == "foo"
 
 
 def test_add_preserve_fields(tmp_dir, dvc):
@@ -903,6 +906,10 @@ def test_add_preserve_fields(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           remote: testremote
         meta: some metadata
     """
@@ -916,6 +923,10 @@ def test_add_preserve_fields(tmp_dir, dvc):
         outs:
         - path: foo # out comment
           desc: out desc
+          type: mytype
+          labels:
+          - label1
+          - label2
           remote: testremote
           md5: acbd18db4cc2f85cedef654fccc4a4d8
           size: 3
@@ -1161,3 +1172,23 @@ def test_add_ignore_duplicated_targets(tmp_dir, dvc, capsys):
     _, err = capsys.readouterr()
     assert len(stages) == 3
     assert "ignoring duplicated targets: foo, bar" in err
+
+
+def test_add_with_annotations(M, tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+
+    annot = {
+        "desc": "foo desc",
+        "labels": ["l1", "l2"],
+        "type": "t1",
+        "meta": {"key": "value"},
+    }
+    (stage,) = dvc.add("foo", **annot)
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])
+
+    # try to selectively update/overwrite some annotations
+    annot = {**annot, "type": "t2"}
+    (stage,) = dvc.add("foo", type="t2")
+    assert stage.outs[0].annot == Annotation(**annot)
+    assert (tmp_dir / "foo.dvc").parse() == M.dict(outs=[M.dict(**annot)])

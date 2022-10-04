@@ -11,7 +11,7 @@ from dvc.exceptions import CollectCacheError, DvcException
 from dvc.fs import LocalFileSystem
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
-from dvc_data.db.local import LocalHashFileDB
+from dvc_data.hashfile.db.local import LocalHashFileDB
 from tests.basic_env import TestDir, TestDvcGit
 
 

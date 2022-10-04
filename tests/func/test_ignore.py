@@ -10,7 +10,7 @@ from dvc.pathspec_math import PatternInfo, merge_patterns
 from dvc.repo import Repo
 from dvc.testing.tmp_dir import TmpDir
 from dvc.types import List
-from dvc_data.build import IgnoreInCollectedDirError
+from dvc_data.hashfile.build import IgnoreInCollectedDirError
 from dvc_data.hashfile.utils import get_mtime_and_size
 
 
@@ -421,8 +421,6 @@ def test_run_dvcignored_dep(tmp_dir, dvc, run_copy):
 
 
 def test_pull_ignore(tmp_dir, dvc, local_cloud):
-    from dvc.utils.fs import remove
-
     tmp_dir.dvc_gen(
         {
             ".dvcignore": "data/processed/",
@@ -437,7 +435,7 @@ def test_pull_ignore(tmp_dir, dvc, local_cloud):
     foo_path.unlink()
     assert not foo_path.exists()
 
-    remove(tmp_dir / ".dvc/cache")
+    dvc.odb.local.clear()
     dvc.pull()
 
     assert foo_path.exists()

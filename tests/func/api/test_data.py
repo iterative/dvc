@@ -9,7 +9,9 @@ from dvc.exceptions import (
     OutputNotFoundError,
     PathMissingError,
 )
-from dvc.testing.test_api import TestAPI  # noqa, pylint: disable=unused-import
+from dvc.testing.api_tests import (  # noqa, pylint: disable=unused-import
+    TestAPI,
+)
 from dvc.testing.tmp_dir import make_subrepo
 from dvc.utils.fs import remove
 

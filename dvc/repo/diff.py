@@ -23,9 +23,9 @@ def diff(self, a_rev="HEAD", b_rev=None, targets=None):
     if self.scm.no_commits:
         return {}
 
-    from dvc.fs.dvc import DvcFileSystem
+    from dvc.fs.dvc import DVCFileSystem
 
-    dvcfs = DvcFileSystem(repo=self)
+    dvcfs = DVCFileSystem(repo=self)
     targets = ensure_list(targets)
     targets = [dvcfs.from_os_path(target) for target in targets]
 
@@ -115,7 +115,7 @@ def _paths_checksums(repo, targets):
 
 def _output_paths(repo, targets):
     from dvc.fs import LocalFileSystem
-    from dvc_data.build import build
+    from dvc_data.hashfile.build import build
 
     on_working_fs = isinstance(repo.fs, LocalFileSystem)
 

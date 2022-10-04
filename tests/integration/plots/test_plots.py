@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from funcy import first
 
 from dvc.cli import main
+from dvc.render import REVISION_FIELD, VERSION_FIELD
 
 JSON_OUT = "vis_data"
 
@@ -58,17 +59,6 @@ def extract_vega_specs(html_path, plots_ids):
         )
 
     return result
-
-
-def filter_fields(datapoints: List[Dict], fields: List[str]):
-
-    tmp = deepcopy(datapoints)
-    for datapoint in tmp:
-        keys = set(datapoint.keys())
-        for key in keys:
-            if key not in fields:
-                datapoint.pop(key)
-    return tmp
 
 
 def drop_fields(datapoints: List[Dict], fields: List[str]):
@@ -219,10 +209,35 @@ def test_repo_with_plots(
     html_result = extract_vega_specs(
         html_path, ["linear.json", "confusion.json"]
     )
+
+    assert json_result["linear.json"][0]["content"]["data"][
+        "values"
+    ] == _update_datapoints(
+        linear_v1,
+        {
+            VERSION_FIELD: {
+                "revision": "workspace",
+                "filename": "linear.json",
+                "field": "y",
+            },
+        },
+    )
     assert html_result["linear.json"]["data"]["values"] == _update_datapoints(
         linear_v1,
         {
-            "rev": "workspace",
+            REVISION_FIELD: "workspace",
+        },
+    )
+    assert json_result["confusion.json"][0]["content"]["data"][
+        "values"
+    ] == _update_datapoints(
+        confusion_v1,
+        {
+            VERSION_FIELD: {
+                "revision": "workspace",
+                "filename": "confusion.json",
+                "field": "actual",
+            },
         },
     )
     assert html_result["confusion.json"]["data"][
@@ -230,10 +245,9 @@ def test_repo_with_plots(
     ] == _update_datapoints(
         confusion_v1,
         {
-            "rev": "workspace",
+            REVISION_FIELD: "workspace",
         },
     )
-
     verify_image(
         tmp_dir, "workspace", "image.png", image_v1, html_path, json_result
     )
@@ -280,17 +294,59 @@ def test_repo_with_plots(
             html_path,
             ["../linear.json", "../confusion.json"],
         )
+        assert json_result["../linear.json"][0]["content"]["data"][
+            "values"
+        ] == _update_datapoints(
+            linear_v2,
+            {
+                VERSION_FIELD: {
+                    "revision": "workspace",
+                    "filename": "../linear.json",
+                    "field": "y",
+                },
+            },
+        ) + _update_datapoints(
+            linear_v1,
+            {
+                VERSION_FIELD: {
+                    "revision": "HEAD",
+                    "filename": "../linear.json",
+                    "field": "y",
+                },
+            },
+        )
         assert html_result["../linear.json"]["data"][
             "values"
         ] == _update_datapoints(
             linear_v2,
             {
-                "rev": "workspace",
+                REVISION_FIELD: "workspace",
             },
         ) + _update_datapoints(
             linear_v1,
             {
-                "rev": "HEAD",
+                REVISION_FIELD: "HEAD",
+            },
+        )
+        assert json_result["../confusion.json"][0]["content"]["data"][
+            "values"
+        ] == _update_datapoints(
+            confusion_v2,
+            {
+                VERSION_FIELD: {
+                    "revision": "workspace",
+                    "filename": "../confusion.json",
+                    "field": "actual",
+                },
+            },
+        ) + _update_datapoints(
+            confusion_v1,
+            {
+                VERSION_FIELD: {
+                    "revision": "HEAD",
+                    "filename": "../confusion.json",
+                    "field": "actual",
+                },
             },
         )
         assert html_result["../confusion.json"]["data"][
@@ -298,12 +354,12 @@ def test_repo_with_plots(
         ] == _update_datapoints(
             confusion_v2,
             {
-                "rev": "workspace",
+                REVISION_FIELD: "workspace",
             },
         ) + _update_datapoints(
             confusion_v1,
             {
-                "rev": "HEAD",
+                REVISION_FIELD: "HEAD",
             },
         )
 
@@ -390,11 +446,9 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     repo_state = repo_with_config_plots()
     plots = next(repo_state)
 
-    html_path, json_result, split_json_result = call(capsys)
+    html_path, _, __ = call(capsys)
 
     assert os.path.exists(html_path)
-    assert json_result == {}
-    assert split_json_result == {}
     html_result = extract_vega_specs(
         html_path,
         [
@@ -405,9 +459,15 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
     assert html_result["dvc.yaml::linear_train_vs_test"]["data"][
         "values"
     ] == _update_datapoints(
-        plots["data"]["linear_train.json"], {"rev": "linear_train.json"}
+        plots["data"]["linear_train.json"],
+        {
+            REVISION_FIELD: "linear_train.json",
+        },
     ) + _update_datapoints(
-        plots["data"]["linear_test.json"], {"rev": "linear_test.json"}
+        plots["data"]["linear_test.json"],
+        {
+            REVISION_FIELD: "linear_test.json",
+        },
     )
 
     # TODO check json results once vscode is able to handle flexible plots

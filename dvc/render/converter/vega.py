@@ -127,13 +127,20 @@ class VegaConverter(Converter):
                 ),
             )
         )
+        self.steps.append(
+            (
+                "infer_y",
+                partial(
+                    self._infer_y,
+                ),
+            )
+        )
 
         self.steps.append(
             (
                 "generate_y",
                 partial(
                     self._generate_y_values,
-                    y_values=self.plot_properties.get("y", None),
                 ),
             )
         )
@@ -156,7 +163,7 @@ class VegaConverter(Converter):
             } - {None}
             self.inferred_properties["fields"] = fields
 
-    def _infer_y(self, datapoints: List[Dict]):
+    def _infer_y(self, datapoints: List[Dict], **kwargs):
         if "y" not in self.plot_properties:
             data_fields = list(first(datapoints))
             skip = (
@@ -178,6 +185,7 @@ class VegaConverter(Converter):
                     )
             else:
                 self.inferred_properties["y"] = inferred_y
+        return datapoints
 
     def convert(
         self,
@@ -197,7 +205,6 @@ class VegaConverter(Converter):
         processed = deepcopy(data)
 
         for step_name, step in self.steps:
-
             if step_name not in skip:
                 processed = step(  # type: ignore
                     processed,
@@ -205,17 +212,21 @@ class VegaConverter(Converter):
                     filename=filename,
                 )
 
-        self._infer_y(processed)  # type: ignore
         return processed, {**self.plot_properties, **self.inferred_properties}
 
     def _generate_y_values(  # noqa: C901
         self,
         datapoints: List[Dict],
-        y_values: Optional[Union[str, List, Dict]],
         revision: str,
         filename: str,
         **kwargs,
     ) -> List[Dict]:
+
+        y_values = self.plot_properties.get(
+            "y", None
+        ) or self.inferred_properties.get("y", None)
+
+        assert y_values is not None
 
         result = []
         properties_update = {}
@@ -223,7 +234,6 @@ class VegaConverter(Converter):
         def _add_version_info(datapoint, version_info):
             tmp = datapoint.copy()
             tmp[VERSION_FIELD] = version_info
-            tmp[REVISION_FIELD] = version_info["revision"]
             return tmp
 
         def _version_info(revision, filename=None, field=None):
@@ -249,12 +259,6 @@ class VegaConverter(Converter):
             properties_update["y"] = "dvc_inferred_y_value"
 
             return tmp
-
-        if not y_values:
-            for dp in datapoints:
-                result.append(
-                    _add_version_info(dp, _version_info(revision, filename))
-                )
 
         if isinstance(y_values, str):
             for datapoint in datapoints:
@@ -290,13 +294,15 @@ class VegaConverter(Converter):
             ):
                 # if we use the same field from all files,
                 # we dont have to generate it
+                y_field = all_fields.pop()
                 for datapoint in datapoints:
                     result.append(
                         _add_version_info(
-                            datapoint, _version_info(revision, filename)
+                            datapoint,
+                            _version_info(revision, filename, y_field),
                         )
                     )
-                properties_update.update({"y": all_fields.pop()})
+                properties_update.update({"y": y_field})
             else:
                 for def_filename, val in y_values.items():
                     if isinstance(val, str):

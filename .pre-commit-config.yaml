@@ -6,7 +6,7 @@ repos:
       - id: black
         language_version: python3
     repo: https://github.com/ambv/black
-    rev: 22.6.0
+    rev: 22.8.0
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
@@ -16,9 +16,9 @@ repos:
       - id: codespell
         args: 
           - --ignore-words-list
-          - ba,datas,fo,uptodate,cachable
+          - ba,datas,fo,uptodate,cachable,falsy
     repo: https://github.com/codespell-project/codespell
-    rev: v2.1.0
+    rev: v2.2.1
   - hooks:
       - id: isort
         language_version: python3

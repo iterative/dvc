@@ -15,6 +15,7 @@ def _id_gen(val) -> str:
     "args, key",
     [
         (["dag", "--show-md"], "markdown"),
+        (["data", "ls", "--show-md"], "markdown"),
         (["diff", "--show-json"], "json"),
         (["diff", "--show-md"], "markdown"),
         (["experiments", "diff", "--show-json"], "json"),

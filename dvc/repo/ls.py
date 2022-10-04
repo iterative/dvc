@@ -1,11 +1,10 @@
 import os
-from itertools import chain
 from typing import TYPE_CHECKING, Optional
 
 from dvc.exceptions import PathMissingError
 
 if TYPE_CHECKING:
-    from dvc.fs.dvc import DvcFileSystem
+    from dvc.fs.dvc import DVCFileSystem
 
     from . import Repo
 
@@ -56,7 +55,7 @@ def ls(
 def _ls(
     repo: "Repo", path: str, recursive: bool = None, dvc_only: bool = False
 ):
-    fs: "DvcFileSystem" = repo.dvcfs
+    fs: "DVCFileSystem" = repo.dvcfs
     fs_path = fs.from_os_path(path)
 
     try:
@@ -66,15 +65,16 @@ def _ls(
 
     infos = {}
     for root, dirs, files in fs.walk(
-        fs_path, dvcfiles=True, dvc_only=dvc_only
+        fs_path, dvcfiles=True, dvc_only=dvc_only, detail=True
     ):
-        entries = chain(files, dirs) if not recursive else files
+        if not recursive:
+            files.update(dirs)
 
-        for entry in entries:
-            entry_fs_path = fs.path.join(root, entry)
+        for name, entry in files.items():
+            entry_fs_path = fs.path.join(root, name)
             relparts = fs.path.relparts(entry_fs_path, fs_path)
             name = os.path.join(*relparts)
-            infos[name] = fs.info(entry_fs_path)
+            infos[name] = entry
 
         if not recursive:
             break
@@ -85,11 +85,10 @@ def _ls(
     ret = {}
     for name, info in infos.items():
         dvc_info = info.get("dvc_info", {})
-        if fs.isdvc(info["name"], recursive=True) or not dvc_only:
-            ret[name] = {
-                "isout": dvc_info.get("isout", False),
-                "isdir": info["type"] == "directory",
-                "isexec": info.get("isexec", False),
-            }
+        ret[name] = {
+            "isout": dvc_info.get("isout", False),
+            "isdir": info["type"] == "directory",
+            "isexec": info.get("isexec", False),
+        }
 
     return ret

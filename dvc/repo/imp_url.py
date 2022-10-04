@@ -17,11 +17,16 @@ def imp_url(
     fname=None,
     erepo=None,
     frozen=True,
+    no_download=False,
     no_exec=False,
     remote=None,
     to_remote=False,
     desc=None,
+    type=None,  # pylint: disable=redefined-builtin
+    labels=None,
+    meta=None,
     jobs=None,
+    fs_config=None,
 ):
     from dvc.dvcfile import Dvcfile
     from dvc.stage import Stage, create_stage, restore_fields
@@ -31,9 +36,9 @@ def imp_url(
         self, out, always_local=to_remote and not out
     )
 
-    if to_remote and no_exec:
+    if to_remote and (no_exec or no_download):
         raise InvalidArgumentError(
-            "--no-exec can't be combined with --to-remote"
+            "--no-exec/--no-download cannot be combined with --to-remote"
         )
 
     if not to_remote and remote:
@@ -57,12 +62,12 @@ def imp_url(
         deps=[url],
         outs=[out],
         erepo=erepo,
+        fs_config=fs_config,
     )
     restore_fields(stage)
 
-    if desc:
-        stage.outs[0].desc = desc
-
+    out_obj = stage.outs[0]
+    out_obj.annot.update(desc=desc, type=type, labels=labels, meta=meta)
     dvcfile = Dvcfile(self, stage.path)
     dvcfile.remove()
 
@@ -80,7 +85,7 @@ def imp_url(
         stage.save_deps()
         stage.md5 = stage.compute_md5()
     else:
-        stage.run(jobs=jobs)
+        stage.run(jobs=jobs, no_download=no_download)
 
     stage.frozen = frozen
 

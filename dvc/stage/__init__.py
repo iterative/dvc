@@ -78,6 +78,7 @@ def create_stage(cls, repo, path, external=False, **kwargs):
 
     wdir = os.path.abspath(kwargs.get("wdir", None) or os.curdir)
     path = os.path.abspath(path)
+
     check_dvcfile_path(repo, path)
     check_stage_path(repo, wdir, is_wdir=kwargs.get("wdir"))
     check_stage_path(repo, os.path.dirname(path))
@@ -87,7 +88,7 @@ def create_stage(cls, repo, path, external=False, **kwargs):
     if not external:
         check_no_externals(stage)
     fill_stage_dependencies(
-        stage, **project(kwargs, ["deps", "erepo", "params"])
+        stage, **project(kwargs, ["deps", "erepo", "params", "fs_config"])
     )
     check_circular_dependency(stage)
     check_duplicated_arguments(stage)
@@ -109,16 +110,13 @@ def restore_fields(stage):
     # will be used to restore comments later
     # noqa, pylint: disable=protected-access
     stage._stage_text = old._stage_text
-
     stage.meta = old.meta
     stage.desc = old.desc
 
-    old_fields = {out.def_path: (out.desc, out.remote) for out in old.outs}
-
+    old_fields = {out.def_path: (out.annot, out.remote) for out in old.outs}
     for out in stage.outs:
-        out_fields = old_fields.get(out.def_path, None)
-        if out_fields:
-            out.desc, out.remote = out_fields
+        if out_fields := old_fields.get(out.def_path, None):
+            out.annot, out.remote = out_fields
 
 
 class Stage(params.StageParams):
@@ -241,6 +239,14 @@ class Stage(params.StageParams):
     def is_import(self):
         """Whether the DVC file was created with `dvc import`."""
         return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
+
+    @property
+    def is_partial_import(self) -> bool:
+        """
+        Whether the DVC file was created using `dvc import --no-download`
+        or `dvc import-url --no-download`.
+        """
+        return self.is_import and (not self.outs[0].hash_info)
 
     @property
     def is_repo_import(self):
@@ -433,18 +439,30 @@ class Stage(params.StageParams):
 
         return self
 
-    def update(self, rev=None, to_remote=False, remote=None, jobs=None):
+    def update(
+        self,
+        rev=None,
+        to_remote=False,
+        remote=None,
+        no_download=None,
+        jobs=None,
+    ):
         if not (self.is_repo_import or self.is_import):
             raise StageUpdateError(self.relpath)
         update_import(
-            self, rev=rev, to_remote=to_remote, remote=remote, jobs=jobs
+            self,
+            rev=rev,
+            to_remote=to_remote,
+            remote=remote,
+            no_download=no_download,
+            jobs=jobs,
         )
 
     def reload(self):
         return self.dvcfile.stage
 
-    def dumpd(self):
-        return get_dump(self)
+    def dumpd(self, **kwargs):
+        return get_dump(self, **kwargs)
 
     def compute_md5(self):
         # `dvc add`ed files don't need stage md5
@@ -457,6 +475,7 @@ class Stage(params.StageParams):
 
     def save(self, allow_missing=False):
         self.save_deps(allow_missing=allow_missing)
+
         self.save_outs(allow_missing=allow_missing)
         self.md5 = self.compute_md5()
 
@@ -525,14 +544,16 @@ class Stage(params.StageParams):
         no_commit=False,
         force=False,
         allow_missing=False,
+        no_download=False,
         **kwargs,
     ):
         if (self.cmd or self.is_import) and not self.frozen and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
-        if not self.frozen and self.is_import:
-            jobs = kwargs.get("jobs", None)
-            self._sync_import(dry, force, jobs)
+        if (not self.frozen and self.is_import) or self.is_partial_import:
+            self._sync_import(
+                dry, force, kwargs.get("jobs", None), no_download
+            )
         elif not self.frozen and self.cmd:
             self._run_stage(dry, force, **kwargs)
         else:
@@ -544,9 +565,11 @@ class Stage(params.StageParams):
                 self._check_missing_outputs()
 
         if not dry:
-            if kwargs.get("checkpoint_func", None):
+            if kwargs.get("checkpoint_func", None) or no_download:
                 allow_missing = True
             self.save(allow_missing=allow_missing)
+            if no_download:
+                self.ignore_outs()
             if not no_commit:
                 self.commit(allow_missing=allow_missing)
 
@@ -555,8 +578,8 @@ class Stage(params.StageParams):
         return run_stage(self, dry, force, **kwargs)
 
     @rwlocked(read=["deps"], write=["outs"])
-    def _sync_import(self, dry, force, jobs):
-        sync_import(self, dry, force, jobs)
+    def _sync_import(self, dry, force, jobs, no_download):
+        sync_import(self, dry, force, jobs, no_download)
 
     @rwlocked(read=["outs"])
     def _check_missing_outputs(self):
@@ -571,6 +594,8 @@ class Stage(params.StageParams):
     @rwlocked(write=["outs"])
     def checkout(self, allow_missing=False, **kwargs):
         stats = defaultdict(list)
+        if self.is_partial_import:
+            return {}
         for out in self.filter_outs(kwargs.get("filter_info")):
             key, outs = self._checkout(
                 out,
@@ -658,6 +683,9 @@ class Stage(params.StageParams):
         self, *args, **kwargs
     ) -> Dict[Optional["ObjectDB"], Set["HashInfo"]]:
         """Return set of object IDs used by this stage."""
+        if self.is_partial_import and not self.is_repo_import:
+            return {}
+
         used_objs = defaultdict(set)
         for out in self.filter_outs(kwargs.get("filter_info")):
             for odb, objs in out.get_used_objs(*args, **kwargs).items():
@@ -680,7 +708,7 @@ class Stage(params.StageParams):
                 "unable to auto-merge DVC files with deleted outputs"
             )
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         assert other
 
         if not other.outs:
@@ -700,7 +728,7 @@ class Stage(params.StageParams):
         self._check_can_merge(self, ancestor_out)
         self._check_can_merge(other, ancestor_out)
 
-        self.outs[0].merge(ancestor_out, other.outs[0])
+        self.outs[0].merge(ancestor_out, other.outs[0], allowed=allowed)
 
     def dump(self, **kwargs):
         self.dvcfile.dump(self, **kwargs)
@@ -742,5 +770,5 @@ class PipelineStage(Stage):
     def _changed_stage_entry(self):
         return f"'cmd' of {self} has changed."
 
-    def merge(self, ancestor, other):
+    def merge(self, ancestor, other, allowed=None):
         raise NotImplementedError

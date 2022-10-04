@@ -4,7 +4,7 @@ from typing import List
 
 from scmrepo.exceptions import SCMError
 
-from dvc.fs.dvc import DvcFileSystem
+from dvc.fs.dvc import DVCFileSystem
 from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
@@ -12,7 +12,7 @@ from dvc.repo.live import summary_fs_path
 from dvc.scm import NoSCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
-from dvc.utils.serialize import LOADERS
+from dvc.utils.serialize import load_path
 
 logger = logging.getLogger(__name__)
 
@@ -71,15 +71,13 @@ def _extract_metrics(metrics, path, rev):
 
 @error_handler
 def _read_metric(path, fs, rev, **kwargs):
-    suffix = fs.path.suffix(path).lower()
-    loader = LOADERS[suffix]
-    val = loader(path, fs=fs)
+    val = load_path(path, fs)
     val = _extract_metrics(val, path, rev)
     return val or {}
 
 
 def _read_metrics(repo, metrics, rev, onerror=None):
-    fs = DvcFileSystem(repo=repo)
+    fs = DVCFileSystem(repo=repo)
 
     relpath = ""
     if repo.root_dir != repo.fs.path.getcwd():
@@ -87,12 +85,14 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
     res = {}
     for metric in metrics:
+        rel_metric_path = os.path.join(relpath, *fs.path.parts(metric))
         if not fs.isfile(metric):
-            continue
+            if fs.isfile(rel_metric_path):
+                metric = rel_metric_path
+            else:
+                continue
 
-        res[os.path.join(relpath, *fs.path.parts(metric))] = _read_metric(
-            metric, fs, rev, onerror=onerror
-        )
+        res[rel_metric_path] = _read_metric(metric, fs, rev, onerror=onerror)
 
     return res
 

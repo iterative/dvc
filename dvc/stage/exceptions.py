@@ -31,7 +31,7 @@ class StageFileIsNotDvcFileError(DvcException):
 
         sname = fname + DVC_FILE_SUFFIX
         if is_dvc_file(sname):
-            msg += f" Do you mean '{sname}'?"
+            msg += f". Do you mean '{sname}'?"
 
         super().__init__(msg)
 
@@ -78,6 +78,11 @@ class MissingDataSource(DvcException):
 
         msg = "missing data '{}': {}".format(source, ", ".join(missing_files))
         super().__init__(msg)
+
+
+class DataSourceChanged(DvcException):
+    def __init__(self, path: str):
+        super().__init__(f"data source changed: {path}")
 
 
 class StageNotFound(DvcException, KeyError):

@@ -16,7 +16,7 @@ from .exceptions import (
     InvalidExpRefError,
     MultipleBranchError,
 )
-from .executor.base import BaseExecutor, ExecutorInfo
+from .executor.base import BaseExecutor, ExecutorInfo, TaskStatus
 from .queue.base import BaseStashQueue, QueueEntry
 from .queue.celery import LocalCeleryQueue
 from .queue.tempdir import TempDirQueue
@@ -214,7 +214,7 @@ class Experiments:
         for rev in revs:
             name = self.get_exact_name(rev)
             names.append(name if name else rev[:7])
-        ui.write("\nReproduced experiment(s): {}".format(", ".join(names)))
+        ui.write("\nRan experiment(s): {}".format(", ".join(names)))
         if tmp_dir:
             ui.write(
                 "To apply the results of an experiment to your workspace "
@@ -463,6 +463,8 @@ class Experiments:
             if rev == "workspace":
                 # If we are appending to a checkpoint branch in a workspace
                 # run, show the latest checkpoint as running.
+                if info.status > TaskStatus.RUNNING:
+                    return result
                 last_rev = self.scm.get_ref(EXEC_BRANCH)
                 if last_rev:
                     result[last_rev] = info.asdict()

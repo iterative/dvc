@@ -11,6 +11,7 @@ from ..executor.base import (
     BaseExecutor,
     ExecutorInfo,
     ExecutorResult,
+    TaskStatus,
 )
 from ..executor.local import TempDirExecutor
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
@@ -60,7 +61,7 @@ class TempDirQueue(WorkspaceQueue):
             stash_entry.name,
             stash_entry.head_rev,
         )
-        executor = self.setup_executor(
+        executor = self.init_executor(
             self.repo.experiments,
             entry,
             TempDirExecutor,
@@ -75,8 +76,9 @@ class TempDirQueue(WorkspaceQueue):
         for stash_rev in self.proc:
             infofile = self.get_infofile_path(stash_rev)
             executor_info = ExecutorInfo.load_json(infofile)
-            if not executor_info.collected and os.path.exists(
-                executor_info.root_dir
+            if (
+                not executor_info.status <= TaskStatus.SUCCESS
+                and os.path.exists(executor_info.root_dir)
             ):
                 yield QueueEntry(
                     self.repo.root_dir,

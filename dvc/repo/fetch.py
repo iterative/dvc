@@ -1,6 +1,8 @@
 import logging
+from contextlib import suppress
 from typing import TYPE_CHECKING, Optional
 
+from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, FileTransferError
 from dvc.fs import Schemes
 
@@ -10,6 +12,20 @@ if TYPE_CHECKING:
     from dvc_objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
+
+
+def _fetch_worktree(repo, remote):
+    from dvc_data.index import save
+
+    index = repo.index.data["repo"]
+    for key, entry in index.iteritems():
+        entry.fs = remote.fs
+        entry.path = remote.fs.path.join(
+            remote.path,
+            *key,
+        )
+    save(index)
+    return len(index)
 
 
 @locked
@@ -41,6 +57,11 @@ def fetch(
     """
     if isinstance(targets, str):
         targets = [targets]
+
+    with suppress(NoRemoteError):
+        _remote = self.cloud.get_remote(name=remote)
+        if _remote.worktree:
+            return _fetch_worktree(self, _remote)
 
     used = self.used_objs(
         targets,
@@ -93,6 +114,18 @@ def fetch(
             downloaded += d
             failed += f
 
+    d, f = _fetch_partial_imports(
+        self,
+        targets,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        all_commits=all_commits,
+        recursive=recursive,
+        revs=revs,
+    )
+    downloaded += d
+    failed += f
+
     if failed:
         raise DownloadError(failed)
 
@@ -106,4 +139,40 @@ def _fetch(repo, obj_ids, **kwargs):
         downloaded += repo.cloud.pull(obj_ids, **kwargs)
     except FileTransferError as exc:
         failed += exc.amount
+    return downloaded, failed
+
+
+def _fetch_partial_imports(repo, targets, **kwargs):
+    from dvc.stage.exceptions import DataSourceChanged
+
+    downloaded = 0
+    failed = 0
+    for stage in repo.partial_imports(targets, **kwargs):
+        dep = stage.deps[0]
+        out = stage.outs[0]
+        try:
+            if dep.changed_checksum():
+                raise DataSourceChanged(f"{stage} ({dep})")
+
+            logger.info("Importing '%s' -> '%s'", dep, out)
+            if stage.is_repo_import:
+                obj = dep.get_obj()
+                meta = dep.get_meta()
+                out.hash_info = obj.hash_info
+                out.meta = meta
+            else:
+                out.transfer(
+                    dep.def_path, jobs=kwargs.get("jobs"), odb=repo.odb.local
+                )
+        except DataSourceChanged as exc:
+            logger.warning(f"{exc}")
+            failed += 1
+            continue
+        if not any(
+            kwargs.get(kw, None)
+            for kw in ("all_branches", "all_tags", "all_commits", "revs")
+        ):
+            stage.dump()
+
+        downloaded += 1
     return downloaded, failed

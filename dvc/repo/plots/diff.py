@@ -12,6 +12,8 @@ def _revisions(repo, revs, experiment):
 
 
 def diff(repo, *args, revs=None, experiment=False, **kwargs):
+    if repo.scm.no_commits:
+        return {}
     return repo.plots.show(
         *args, revs=_revisions(repo, revs, experiment), **kwargs
     )

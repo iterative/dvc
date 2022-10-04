@@ -82,7 +82,6 @@ def _collect_specific_target(
     target: str,
     with_deps: bool,
     recursive: bool,
-    accept_group: bool,
 ) -> Tuple[StageIter, "OptStr", "OptStr"]:
     from dvc.dvcfile import is_valid_filename
 
@@ -98,13 +97,11 @@ def _collect_specific_target(
         msg = "Checking if stage '%s' is in '%s'"
         logger.debug(msg, target, PIPELINE_FILE)
         if not (recursive and loader.fs.isdir(target)):
-            stages = _maybe_collect_from_dvc_yaml(
-                loader, target, with_deps, accept_group=accept_group
-            )
+            stages = _maybe_collect_from_dvc_yaml(loader, target, with_deps)
             if stages:
                 return stages, file, name
     elif not with_deps and is_valid_filename(file):
-        stages = loader.load_all(file, name, accept_group=accept_group)
+        stages = loader.load_all(file, name)
         return stages, file, name
     return [], file, name
 
@@ -209,7 +206,7 @@ class StageLoad:
         return stage
 
     def from_target(
-        self, target: str, accept_group: bool = False, glob: bool = False
+        self, target: str, accept_group: bool = True, glob: bool = False
     ) -> StageList:
         """
         Returns a list of stage from the provided target.
@@ -228,10 +225,9 @@ class StageLoad:
         path, name = parse_target(target)
         return self.load_one(path=path, name=name)
 
-    @staticmethod
-    def _get_filepath(path: str = None, name: str = None) -> str:
+    def _get_filepath(self, path: str = None, name: str = None) -> str:
         if path:
-            return path
+            return self.repo.fs.path.realpath(path)
 
         path = PIPELINE_FILE
         logger.debug("Assuming '%s' to be a stage inside '%s'", name, path)
@@ -250,15 +246,12 @@ class StageLoad:
         self,
         stages: "StageLoader",
         name: str = None,
-        accept_group: bool = False,
+        accept_group: bool = True,
         glob: bool = False,
     ) -> Iterable[str]:
 
-        assert not (accept_group and glob)
-
         if not name:
             return stages.keys()
-
         if accept_group and stages.is_foreach_generated(name):
             return self._get_group_keys(stages, name)
         if glob:
@@ -269,7 +262,7 @@ class StageLoad:
         self,
         path: str = None,
         name: str = None,
-        accept_group: bool = False,
+        accept_group: bool = True,
         glob: bool = False,
     ) -> StageList:
         """Load a list of stages from a file.
@@ -338,7 +331,6 @@ class StageLoad:
         with_deps: bool = False,
         recursive: bool = False,
         graph: "DiGraph" = None,
-        accept_group: bool = False,
         glob: bool = False,
     ) -> StageIter:
         """Collect list of stages from the provided target.
@@ -347,15 +339,14 @@ class StageLoad:
             target: if not provided, all of the stages in the graph are
                 returned.
                 Target can be:
-                - a stage name in the `dvc.yaml` file.
+                - a foreach group name or a stage name in the `dvc.yaml` file.
+                - a generated stage name from a foreach group.
                 - a path to `dvc.yaml` or `.dvc` file.
                 - in case of a stage to a dvc.yaml file in a different
                   directory than current working directory, it can be a path
                   to dvc.yaml file, followed by a colon `:`, followed by stage
                   name (eg: `../dvc.yaml:build`).
                 - in case of `recursive`, it can be a path to a directory.
-                - in case of `accept_group`, it can be a group name of
-                    `foreach` generated stage.
                 - in case of `glob`, it can be a wildcard pattern to match
                   stages. Example: `build*` for stages in `dvc.yaml` file, or
                   `../dvc.yaml:build*` for stages in dvc.yaml in a different
@@ -367,8 +358,6 @@ class StageLoad:
             recursive: if true and if `target` is a directory, all of the
                 stages inside that directory is returned.
             graph: graph to use. Defaults to `repo.graph`.
-            accept_group: if true, all of the `foreach` generated stages of
-                the specified target is returned.
             glob: Use `target` as a pattern to match stages in a file.
         """
         if not target:
@@ -380,7 +369,7 @@ class StageLoad:
             path = self.fs.path.abspath(target)
             return collect_inside_path(path, graph or self.graph)
 
-        stages = self.from_target(target, accept_group=accept_group, glob=glob)
+        stages = self.from_target(target, glob=glob)
         if not with_deps:
             return stages
 
@@ -392,14 +381,14 @@ class StageLoad:
         with_deps: bool = False,
         recursive: bool = False,
         graph: "DiGraph" = None,
-        accept_group: bool = False,
     ) -> List[StageInfo]:
         """Collects a list of (stage, filter_info) from the given target.
 
         Priority is in the order of following in case of ambiguity:
         - .dvc file or .yaml file
         - dir if recursive and directory exists
-        - stage_name
+        - foreach_group_name or stage_name
+        - generated stage name from a foreach group
         - output file
 
         Args:
@@ -418,7 +407,7 @@ class StageLoad:
         target = as_posix(target)
 
         stages, file, _ = _collect_specific_target(
-            self, target, with_deps, recursive, accept_group
+            self, target, with_deps, recursive
         )
         if not stages:
             if not (recursive and self.fs.isdir(target)):
@@ -440,7 +429,6 @@ class StageLoad:
                     with_deps,
                     recursive,
                     graph,
-                    accept_group=accept_group,
                 )
             except StageFileDoesNotExistError as exc:
                 # collect() might try to use `target` as a stage name

@@ -1,7 +1,21 @@
 import os
+import posixpath
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict, cast
+from itertools import chain
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypedDict,
+    cast,
+)
 
+from dvc.fs.git import GitFileSystem
 from dvc.ui import ui
 
 if TYPE_CHECKING:
@@ -10,19 +24,20 @@ if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
     from dvc_data.hashfile.db import HashFileDB
+    from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.obj import HashFile
 
 
-def _in_cache(obj: Optional["HashFile"], cache: "HashFileDB") -> bool:
+def posixpath_to_os_path(path: str) -> str:
+    return path.replace(posixpath.sep, os.path.sep)
+
+
+def _in_cache(obj: "HashInfo", cache: "HashFileDB") -> bool:
     from dvc_objects.errors import ObjectFormatError
 
-    if not obj:
-        return False
-    if not obj.hash_info.value:
-        return False
-
+    assert obj.value
     try:
-        cache.check(obj.hash_info.value)
+        cache.check(obj.value)
         return True
     except (FileNotFoundError, ObjectFormatError):
         return False
@@ -30,31 +45,30 @@ def _in_cache(obj: Optional["HashFile"], cache: "HashFileDB") -> bool:
 
 def _shallow_diff(
     root: str,
-    old_obj: Optional["HashFile"],
-    new_obj: Optional["HashFile"],
+    old: Optional["HashInfo"],
+    new: Optional["HashInfo"],
     cache: "HashFileDB",
 ) -> Dict[str, List[str]]:
-    # TODO: add support for shallow diff in dvc-data
-    # TODO: we may want to recursively do in_cache check
     d = {}
 
-    from dvc_data.objects.tree import Tree
+    old_root = new_root = root
+    if old and old.isdir:
+        old_root = os.path.sep.join([root, ""])
+    if new and new.isdir:
+        new_root = os.path.sep.join([root, ""])
 
-    if isinstance(new_obj, Tree):
-        root = os.path.sep.join([root, ""])
+    if old and not _in_cache(old, cache):
+        d["not_in_cache"] = [old_root]
 
-    if not _in_cache(old_obj, cache):
-        d["not_in_cache"] = [root]
-
-    if old_obj is None and new_obj is None:
+    if not old and not new:
         return d
-    if old_obj is None:
-        return {"added": [root], **d}
-    if new_obj is None:
-        return {"deleted": [root], **d}
-    if old_obj.hash_info != new_obj.hash_info:
-        return {"modified": [root], **d}
-    return {"unchanged": [root], **d}
+    if not new:
+        return {"deleted": [old_root], **d}
+    if not old:
+        return {"added": [new_root], **d}
+    if old != new:
+        return {"modified": [new_root], **d}
+    return {"unchanged": [new_root], **d}
 
 
 def _granular_diff(
@@ -62,55 +76,60 @@ def _granular_diff(
     old_obj: Optional["HashFile"],
     new_obj: Optional["HashFile"],
     cache: "HashFileDB",
-    with_dirs: bool = False,
 ) -> Dict[str, List[str]]:
-    from dvc_data.diff import ROOT
-    from dvc_data.diff import diff as odiff
-    from dvc_data.objects.tree import Tree
+    from dvc_data.hashfile.diff import ROOT
+    from dvc_data.hashfile.diff import diff as odiff
 
-    def path_join(root: str, *paths: str) -> str:
-        if not isinstance(new_obj, Tree):
+    def path_join(root: str, *paths: str, isdir: bool = False) -> str:
+        if not isdir and paths == ROOT:
             return root
         return os.path.sep.join([root, *paths])
 
     diff_data = odiff(old_obj, new_obj, cache)
-    drop_root = not with_dirs and isinstance(new_obj, Tree)
 
     output: Dict[str, List[str]] = defaultdict(list)
     for state in ("added", "deleted", "modified", "unchanged"):
         items = getattr(diff_data, state)
-        output[state].extend(
-            path_join(root, *item.new.key)
-            for item in items
-            if not (drop_root and item.new.key == ROOT)
-        )
-        # TODO: PERF: diff is checking not_in_cache for each even if we only
-        # need it for the index.
-        # BUG: not_in_cache file also shows up as modified in staged and
-        # unstaged. We currently don't know if it is really modified.
-        output["not_in_cache"].extend(
-            path_join(root, *item.new.key)
-            for item in items
-            if not item.old.in_cache
-            and not (drop_root and item.new.key == ROOT)
-            and state != "added"
-        )
-    return output
+        for item in items:  # pylint: disable=not-an-iterable
+            entry = item.old if state == "deleted" else item.new
+            isdir = entry.oid.isdir if entry.oid else False
+
+            path = path_join(root, *entry.key, isdir=isdir)
+            output[state].append(path)
+            if not item.old.in_cache and state != "added":
+                output["not_in_cache"].append(path)
+    return dict(output)
+
+
+def _get_obj_items(root: str, obj: Optional["HashFile"]) -> List[str]:
+    if not obj:
+        return []
+
+    from dvc_data.hashfile.tree import Tree
+
+    sep = os.path.sep
+    if isinstance(obj, Tree):
+        return [sep.join([root, *key]) for key, _, _ in obj]
+    return [root]
 
 
 def _diff(
     root: str,
+    old_oid: Optional["HashInfo"],
     old_obj: Optional["HashFile"],
+    new_oid: Optional["HashInfo"],
     new_obj: Optional["HashFile"],
-    cache: "HashFileDB",
+    odb: "HashFileDB",
     granular: bool = False,
-    with_dirs: bool = False,
 ) -> Dict[str, List[str]]:
-    if granular:
-        return _granular_diff(
-            root, old_obj, new_obj, cache, with_dirs=with_dirs
-        )
-    return _shallow_diff(root, old_obj, new_obj, cache)
+    if not granular:
+        return _shallow_diff(root, old_oid, new_oid, odb)
+    if (old_oid and not old_obj) or (new_oid and not new_obj):
+        # we don't have enough information to give full details
+        unknown = _get_obj_items(root, new_obj)
+        shallow_diff = _shallow_diff(root, old_oid, new_oid, odb)
+        return {**shallow_diff, "unknown": unknown}
+    return _granular_diff(root, old_obj, new_obj, odb)
 
 
 class GitInfo(TypedDict, total=False):
@@ -137,6 +156,8 @@ def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
         empty_repo = False
 
     staged, unstaged, untracked = scm.status(untracked_files=untracked_files)
+    if os.name == "nt":
+        untracked = [posixpath_to_os_path(path) for path in untracked]
     # NOTE: order is important here.
     return GitInfo(
         staged=staged,
@@ -148,7 +169,7 @@ def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
 
 
 def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
-    from dvc_data.build import build
+    from dvc_data.hashfile.build import build
 
     unstaged_diff = defaultdict(list)
     for out in repo.index.outs:
@@ -171,8 +192,18 @@ def _diff_index_to_wtree(repo: "Repo", **kwargs: Any) -> Dict[str, List[str]]:
         cache = repo.odb.repo
         root = str(out)
         old = out.get_obj()
+
         with ui.status(f"Calculating diff for {root} between index/workspace"):
-            d = _diff(root, old, new, cache, **kwargs)
+            d = _diff(
+                root,
+                out.hash_info,
+                old,
+                new.hash_info if new else None,
+                new,
+                cache,
+                **kwargs,
+            )
+
         for state, items in d.items():
             if not items:
                 continue
@@ -184,7 +215,9 @@ def _diff_head_to_index(
     repo: "Repo", head: str = "HEAD", **kwargs: Any
 ) -> Dict[str, List[str]]:
     # we need to store objects from index and the HEAD to diff later
-    objs: Dict[str, Dict[str, "HashFile"]] = defaultdict(dict)
+    objs: Dict[str, Dict[str, Tuple["HashFile", "HashInfo"]]]
+    objs = defaultdict(dict)
+
     staged_diff = defaultdict(list)
     for rev in repo.brancher(revs=[head]):
         for out in repo.index.outs:
@@ -193,15 +226,20 @@ def _diff_head_to_index(
                 continue
 
             root = str(out)
+            if isinstance(out.fs, GitFileSystem):
+                root = posixpath_to_os_path(root)
             typ = "index" if rev == "workspace" else head
-            objs[root][typ] = out.get_obj()
+            objs[root][typ] = (out.get_obj(), out.hash_info)
 
     cache = repo.odb.repo
     for root, obj_d in objs.items():
-        old = obj_d.get(head, None)
-        new = obj_d.get("index", None)
+        old_obj, old_oid = obj_d.get(head, (None, None))
+        new_obj, new_oid = obj_d.get("index", (None, None))
         with ui.status(f"Calculating diff for {root} between head/index"):
-            d = _diff(root, old, new, cache, **kwargs)
+            d = _diff(
+                root, old_oid, old_obj, new_oid, new_obj, cache, **kwargs
+            )
+
         for state, items in d.items():
             if not items:
                 continue
@@ -212,28 +250,36 @@ def _diff_head_to_index(
 
 class Status(TypedDict):
     not_in_cache: List[str]
-    committed: Dict[str, Any]
-    uncommitted: Dict[str, Any]
+    committed: Dict[str, List[str]]
+    uncommitted: Dict[str, List[str]]
     untracked: List[str]
     unchanged: List[str]
     git: GitInfo
 
 
-def _transform_git_paths_to_dvc(repo: "Repo", files: List[str]):
+def _transform_git_paths_to_dvc(
+    repo: "Repo", files: Iterable[str]
+) -> List[str]:
     """Transform files rel. to Git root to DVC root, and drop outside files."""
     rel = repo.fs.path.relpath(repo.root_dir, repo.scm.root_dir).rstrip("/")
-    if rel in (os.curdir, ""):
-        return files
 
-    prefix = rel + os.sep
-    length = len(prefix)
-    return [file[length:] for file in files if file.startswith(prefix)]
+    # if we have repo root in a different location than scm's root,
+    # i.e. subdir repo, all git_paths need to be transformed rel. to the DVC
+    # repo root and anything outside need to be filtered out.
+    if rel not in (os.curdir, ""):
+        prefix = rel + os.sep
+        length = len(prefix)
+        files = (file[length:] for file in files if file.startswith(prefix))
+
+    start = repo.fs.path.relpath(repo.fs.path.getcwd(), repo.root_dir)
+    if start in (os.curdir, ""):
+        return list(files)
+    # we need to convert repo relative paths to curdir relative.
+    return [repo.fs.path.relpath(file, start) for file in files]
 
 
 def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
-    from scmrepo.exceptions import SCMError
-
-    from dvc.scm import NoSCMError
+    from dvc.scm import NoSCMError, SCMError
 
     head = kwargs.pop("head", "HEAD")
     uncommitted_diff = _diff_index_to_wtree(repo, **kwargs)
@@ -261,3 +307,18 @@ def status(repo: "Repo", untracked_files: str = "no", **kwargs: Any) -> Status:
         unchanged=list(unchanged),
         git=git_info,
     )
+
+
+def ls(
+    repo: "Repo",
+    targets: List[Optional[str]] = None,
+    recursive: bool = False,
+) -> Iterator[Dict[str, Any]]:
+    targets = targets or [None]
+    pairs = chain.from_iterable(
+        repo.stage.collect_granular(target, recursive=recursive)
+        for target in targets
+    )
+    for stage, filter_info in pairs:
+        for out in stage.filter_outs(filter_info):
+            yield {"path": str(out), **out.annot.to_dict()}

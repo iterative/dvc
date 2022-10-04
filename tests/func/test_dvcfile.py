@@ -3,6 +3,7 @@ import textwrap
 
 import pytest
 
+from dvc.annotations import Annotation
 from dvc.dvcfile import (
     PIPELINE_FILE,
     PIPELINE_LOCK,
@@ -335,7 +336,7 @@ def test_dvcfile_dump_preserves_desc(tmp_dir, dvc, run_copy):
     (tmp_dir / dvcfile.path).dump(data)
 
     assert stage.desc == stage_desc
-    stage.outs[0].desc = out_desc
+    stage.outs[0].annot.desc = out_desc
     dvcfile.dump(stage)
     loaded = dvcfile._load()[0]
     assert loaded == data
@@ -382,3 +383,31 @@ def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
         dvcfile.dump(stage)
 
     assert str(exc.value) == f"cannot dump a parametrized stage: '{name}'"
+
+
+def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
+    data = {
+        "stages": {
+            "stage1": {
+                "cmd": "cp foo bar",
+                "desc": "stage desc",
+                "meta": {"key1": "value1", "key2": "value2"},
+                "deps": ["foo"],
+                "outs": [
+                    {"bar": {"desc": "bar desc", "meta": {"key": "value"}}}
+                ],
+            }
+        }
+    }
+    (tmp_dir / "dvc.yaml").dump(data)
+
+    stage = dvc.stage.load_one(name="stage1")
+    assert stage.meta == {"key1": "value1", "key2": "value2"}
+    assert stage.desc == "stage desc"
+    assert stage.outs[0].annot == Annotation(
+        desc="bar desc", meta={"key": "value"}
+    )
+
+    # sanity check
+    stage.dump()
+    assert (tmp_dir / "dvc.yaml").parse() == data

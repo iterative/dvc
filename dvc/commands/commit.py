@@ -70,7 +70,9 @@ def add_parser(subparsers, parent_parser):
     commit_parser.add_argument(
         "targets",
         nargs="*",
-        help="stages or .dvc files to commit. Optional. "
-        "(Finds all DVC files in the workspace by default.)",
+        help=(
+            "Limit command scope to these tracked files/directories, "
+            ".dvc files and stage names."
+        ),
     ).complete = completion.DVCFILES_AND_STAGE
     commit_parser.set_defaults(func=CmdCommit)

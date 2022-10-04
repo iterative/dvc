@@ -3,7 +3,7 @@ import os
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from funcy import cached_property
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from dvc.fs import FileSystem
     from dvc.repo.scm_context import SCMContext
     from dvc.scm import Base
+    from dvc.stage import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class Repo:
     from dvc.repo.imp_url import imp_url  # type: ignore[misc]
     from dvc.repo.install import install  # type: ignore[misc]
     from dvc.repo.ls import ls as _ls  # type: ignore[misc]
+    from dvc.repo.ls_url import ls_url as _ls_url  # type: ignore[misc]
     from dvc.repo.move import move  # type: ignore[misc]
     from dvc.repo.pull import pull  # type: ignore[misc]
     from dvc.repo.push import push  # type: ignore[misc]
@@ -79,6 +81,7 @@ class Repo:
     from .data import status as data_status  # type: ignore[misc]
 
     ls = staticmethod(_ls)
+    ls_url = staticmethod(_ls_url)
     get = staticmethod(_get)
     get_url = staticmethod(_get_url)
 
@@ -186,7 +189,7 @@ class Repo:
         self.config = Config(self.dvc_dir, fs=self.fs, config=config)
         self._uninitialized = uninitialized
 
-        # used by DvcFileSystem to determine if it should traverse subrepos
+        # used by DVCFileSystem to determine if it should traverse subrepos
         self.subrepos = subrepos
 
         self.cloud = DataCloud(self)
@@ -445,6 +448,44 @@ class Repo:
 
         return used
 
+    def partial_imports(
+        self,
+        targets=None,
+        all_branches=False,
+        all_tags=False,
+        all_commits=False,
+        all_experiments=False,
+        commit_date: Optional[str] = None,
+        recursive=False,
+        revs=None,
+        num=1,
+    ) -> List["Stage"]:
+        """Get the stages related to the given target and collect dependencies
+        which are missing outputs.
+
+        This is useful to retrieve files which have been imported to the repo
+        using --no-download.
+
+        Returns:
+            A list of partially imported stages
+        """
+        from itertools import chain
+
+        partial_imports = chain.from_iterable(
+            self.index.partial_imports(targets, recursive=recursive)
+            for _ in self.brancher(
+                revs=revs,
+                all_branches=all_branches,
+                all_tags=all_tags,
+                all_commits=all_commits,
+                all_experiments=all_experiments,
+                commit_date=commit_date,
+                num=num,
+            )
+        )
+
+        return list(partial_imports)
+
     @property
     def stages(self):  # obsolete, only for backward-compatibility
         return self.index.stages
@@ -501,9 +542,9 @@ class Repo:
 
     @cached_property
     def dvcfs(self):
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.dvc import DVCFileSystem
 
-        return DvcFileSystem(
+        return DVCFileSystem(
             repo=self, subrepos=self.subrepos, **self._fs_conf
         )
 
@@ -515,13 +556,13 @@ class Repo:
     def open_by_relpath(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
         from dvc.fs.data import DataFileSystem
-        from dvc.fs.dvc import DvcFileSystem
+        from dvc.fs.dvc import DVCFileSystem
 
         if os.path.isabs(path):
             fs = DataFileSystem(index=self.index.data["local"])
             fs_path = path
         else:
-            fs = DvcFileSystem(repo=self, subrepos=True)
+            fs = DVCFileSystem(repo=self, subrepos=True)
             fs_path = fs.from_os_path(path)
 
         try:

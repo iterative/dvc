@@ -1,17 +1,16 @@
+import errno
 import logging
 import ntpath
 import os
 import posixpath
 import threading
 from contextlib import suppress
-from itertools import takewhile
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Type, Union
 
 from fsspec.spec import AbstractFileSystem
 from funcy import cached_property, wrap_prop, wrap_with
 
 from dvc_objects.fs.base import FileSystem
-from dvc_objects.fs.callbacks import DEFAULT_CALLBACK
 from dvc_objects.fs.path import Path
 
 from .data import DataFileSystem
@@ -22,29 +21,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 RepoFactory = Union[Callable[[str], "Repo"], Type["Repo"]]
+Key = Tuple[str, ...]
 
 
 def as_posix(path: str) -> str:
     return path.replace(ntpath.sep, posixpath.sep)
 
 
-def _wrap_walk(dvc_fs, *args, **kwargs):
-    for root, dnames, fnames in dvc_fs.walk(*args, **kwargs):
-        yield dvc_fs.path.join(dvc_fs.repo.root_dir, root), dnames, fnames
+# NOT the same as dvc.dvcfile.is_dvc_file()!
+def _is_dvc_file(fname):
+    from dvc.dvcfile import is_valid_filename
+    from dvc.ignore import DvcIgnore
 
-
-def _ls(fs, path):
-    dnames = []
-    fnames = []
-
-    for entry in fs.ls(path, detail=True):
-        name = fs.path.name(entry["name"])
-        if entry["type"] == "directory":
-            dnames.append(name)
-        else:
-            fnames.append(name)
-
-    return dnames, fnames
+    return is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
 
 
 def _merge_info(repo, fs_info, dvc_info):
@@ -70,40 +59,68 @@ def _merge_info(repo, fs_info, dvc_info):
     return ret
 
 
-class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
-    """DVC + git-tracked files fs.
+def _get_dvc_path(dvc_fs, subkey):
+    return dvc_fs.path.join(*subkey) if subkey else ""
 
-    Args:
-        repo: DVC or git repo.
-        subrepos: traverse to subrepos (by default, it ignores subrepos)
-        repo_factory: A function to initialize subrepo with, default is Repo.
-        kwargs: Additional keyword arguments passed to the `DataFileSystem()`.
-    """
 
+class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
+    cachable = False
     root_marker = "/"
-
-    PARAM_REPO_URL = "repo_url"
-    PARAM_REPO_ROOT = "repo_root"
-    PARAM_REV = "rev"
-    PARAM_CACHE_DIR = "cache_dir"
-    PARAM_CACHE_TYPES = "cache_types"
-    PARAM_SUBREPOS = "subrepos"
 
     def __init__(
         self,
+        url: Optional[str] = None,
+        rev: Optional[str] = None,
         repo: Optional["Repo"] = None,
-        subrepos=False,
-        repo_factory: RepoFactory = None,
-        **kwargs,
-    ):
-        super().__init__()
+        subrepos: bool = False,
+        repo_factory: Optional[RepoFactory] = None,
+        **repo_kwargs: Any,
+    ) -> None:
+        """DVC + git-tracked files fs.
 
+        Args:
+            path (str, optional): URL or path to a DVC/Git repository.
+                Defaults to a DVC repository in the current working directory.
+                Both HTTP and SSH protocols are supported for remote Git repos
+                (e.g. [user@]server:project.git).
+            rev (str, optional): Any Git revision such as a branch or tag name,
+                a commit hash or a dvc experiment name.
+                Defaults to the default branch in case of remote repositories.
+                In case of a local repository, if rev is unspecified, it will
+                default to the working directory.
+                If the repo is not a Git repo, this option is ignored.
+            repo (:obj:`Repo`, optional): `Repo` instance.
+            subrepos (bool): traverse to subrepos.
+                By default, it ignores subrepos.
+            repo_factory (callable): A function to initialize subrepo with.
+                The default is `Repo`.
+
+        Examples:
+            - Opening a filesystem from repo in current working directory
+
+            >>> fs = DVCFileSystem()
+
+            - Opening a filesystem from local repository
+
+            >>> fs = DVCFileSystem("path/to/local/repository")
+
+            - Opening a remote repository
+
+            >>> fs = DVCFileSystem(
+            ...    "https://github.com/iterative/example-get-started",
+            ...    rev="main",
+            ... )
+        """
         from pygtrie import Trie
 
+        super().__init__()
         if repo is None:
-            repo, repo_factory = self._repo_from_fs_config(
-                subrepos=subrepos, **kwargs
+            repo = self._make_repo(
+                url=url, rev=rev, subrepos=subrepos, **repo_kwargs
             )
+            assert repo
+            # pylint: disable=protected-access
+            repo_factory = repo._fs_conf["repo_factory"]
 
         if not repo_factory:
             from dvc.repo import Repo
@@ -137,11 +154,20 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         if hasattr(repo, "dvc_dir"):
             self._datafss[key] = DataFileSystem(index=repo.index.data["repo"])
 
-    def _get_key(self, path):
+    def _get_key(self, path) -> Key:
         parts = self.repo.fs.path.relparts(path, self.repo.root_dir)
         if parts == (".",):
             parts = ()
         return parts
+
+    def _get_key_from_relative(self, path) -> Key:
+        parts = self.path.relparts(path, self.root_marker)
+        if parts and parts[0] == os.curdir:
+            parts = parts[1:]
+        return parts
+
+    def _from_key(self, parts: Key) -> str:
+        return self.repo.fs.path.join(self.repo.root_dir, *parts)
 
     @property
     def repo_url(self):
@@ -149,66 +175,14 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
             return None
         return self.repo.url
 
-    @property
-    def config(self):
-        return {
-            self.PARAM_REPO_URL: self.repo_url,
-            self.PARAM_REPO_ROOT: self.repo.root_dir,
-            self.PARAM_REV: getattr(self.repo.fs, "rev", None),
-            self.PARAM_CACHE_DIR: os.path.abspath(self.repo.odb.local.path),
-            self.PARAM_CACHE_TYPES: self.repo.odb.local.cache_types,
-            self.PARAM_SUBREPOS: self._traverse_subrepos,
-        }
-
     @classmethod
-    def _repo_from_fs_config(
-        cls, **config
-    ) -> Tuple["Repo", Optional["RepoFactory"]]:
-        from dvc.external_repo import erepo_factory, external_repo
+    def _make_repo(cls, **kwargs) -> "Repo":
         from dvc.repo import Repo
 
-        url = config.get(cls.PARAM_REPO_URL)
-        root = config.get(cls.PARAM_REPO_ROOT)
-        assert url or root
+        with Repo.open(uninitialized=True, **kwargs) as repo:
+            return repo
 
-        def _open(*args, **kwargs):
-            # NOTE: if original repo was an erepo (and has a URL),
-            # we cannot use Repo.open() since it will skip erepo
-            # cache/remote setup for local URLs
-            if url is None:
-                return Repo.open(*args, **kwargs)
-            return external_repo(*args, **kwargs)
-
-        cache_dir = config.get(cls.PARAM_CACHE_DIR)
-        cache_config = (
-            {}
-            if not cache_dir
-            else {
-                "cache": {
-                    "dir": cache_dir,
-                    "type": config.get(cls.PARAM_CACHE_TYPES),
-                }
-            }
-        )
-        repo_kwargs: dict = {
-            "rev": config.get(cls.PARAM_REV),
-            "subrepos": config.get(cls.PARAM_SUBREPOS, False),
-            "uninitialized": True,
-        }
-        factory: Optional["RepoFactory"] = None
-        if url is None:
-            repo_kwargs["config"] = cache_config
-        else:
-            repo_kwargs["cache_dir"] = cache_dir
-            factory = erepo_factory(url, root, cache_config)
-
-        with _open(
-            url if url else root,
-            **repo_kwargs,
-        ) as repo:
-            return repo, factory
-
-    def _get_repo(self, path: str) -> "Repo":
+    def _get_repo(self, key: Key) -> "Repo":
         """Returns repo that the path falls in, using prefix.
 
         If the path is already tracked/collected, it just returns the repo.
@@ -216,33 +190,21 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         Otherwise, it collects the repos that might be in the path's parents
         and then returns the appropriate one.
         """
-        if not self.repo.fs.path.isin_or_eq(path, self.repo.root_dir):
-            # outside of repo
-            return self.repo
-
-        key = self._get_key(path)
         repo = self._subrepos_trie.get(key)
         if repo:
             return repo
 
         prefix_key, repo = self._subrepos_trie.longest_prefix(key)
-        prefix = self.repo.fs.path.join(
-            self.repo.root_dir,
-            *prefix_key,  # pylint: disable=not-an-iterable
-        )
-
-        parents = (parent for parent in self.repo.fs.path.parents(path))
-        dirs = [path] + list(takewhile(lambda p: p != prefix, parents))
-        dirs.reverse()
-        self._update(dirs, starting_repo=repo)
+        dir_keys = (key[:i] for i in range(len(prefix_key) + 1, len(key) + 1))
+        self._update(dir_keys, starting_repo=repo)
         return self._subrepos_trie.get(key) or self.repo
 
     @wrap_with(threading.Lock())
-    def _update(self, dirs, starting_repo):
+    def _update(self, dir_keys, starting_repo):
         """Checks for subrepo in directories and updates them."""
         repo = starting_repo
-        for d in dirs:
-            key = self._get_key(d)
+        for key in dir_keys:
+            d = self._from_key(key)
             if self._is_dvc_repo(d):
                 repo = self.repo_factory(
                     d,
@@ -265,79 +227,68 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         repo_path = self.repo.fs.path.join(dir_path, Repo.DVC_DIR)
         return self.repo.fs.isdir(repo_path)
 
-    def _get_fs_pair(
-        self, path
-    ) -> Tuple[
-        Optional["Repo"],
-        Optional[FileSystem],
-        Optional[str],
-        Optional[DataFileSystem],
-        Optional[str],
-    ]:
+    def _get_subrepo_info(
+        self, key: Key
+    ) -> Tuple["Repo", Optional[DataFileSystem], Key]:
         """
-        Returns a pair of fss based on repo the path falls in, using prefix.
+        Returns information about the subrepo the key is part of.
         """
-        parts = self.path.relparts(path, self.root_marker)
-        if parts and parts[0] == os.curdir:
-            parts = parts[1:]
-
-        fs_path = self.repo.fs.path.join(self.repo.root_dir, *parts)
-        repo = self._get_repo(fs_path)
-        fs = repo.fs
-
-        repo_parts = fs.path.relparts(repo.root_dir, self.repo.root_dir)
-        if repo_parts[0] == os.curdir:
-            repo_parts = repo_parts[1:]
-
-        dvc_parts = parts[len(repo_parts) :]
-        if dvc_parts and dvc_parts[0] == os.curdir:
-            dvc_parts = dvc_parts[1:]
-
-        key = self._get_key(repo.root_dir)
-        dvc_fs = self._datafss.get(key)
-        if dvc_fs:
-            dvc_path = dvc_fs.path.join(*dvc_parts) if dvc_parts else ""
+        repo = self._get_repo(key)
+        repo_key: Key
+        if repo is self.repo:
+            repo_key = ()
+            subkey = key
         else:
-            dvc_path = None
+            repo_key = self._get_key(repo.root_dir)
+            subkey = key[len(repo_key) :]
 
-        return repo, fs, fs_path, dvc_fs, dvc_path
+        dvc_fs = self._datafss.get(repo_key)
+        return repo, dvc_fs, subkey
 
-    def open(
-        self, path, mode="r", encoding="utf-8", **kwargs
+    def _open(
+        self, path, mode="rb", **kwargs
     ):  # pylint: disable=arguments-renamed, arguments-differ
-        if "b" in mode:
-            encoding = None
+        if mode != "rb":
+            raise OSError(errno.EROFS, os.strerror(errno.EROFS))
 
-        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
+        key = self._get_key_from_relative(path)
+        fs_path = self._from_key(key)
         try:
-            return fs.open(fs_path, mode=mode, encoding=encoding)
+            return self.repo.fs.open(fs_path, mode=mode)
         except FileNotFoundError:
+            _, dvc_fs, subkey = self._get_subrepo_info(key)
             if not dvc_fs:
                 raise
 
-        return dvc_fs.open(dvc_path, mode=mode, encoding=encoding, **kwargs)
+        dvc_path = _get_dvc_path(dvc_fs, subkey)
+        return dvc_fs.open(dvc_path, mode=mode)
 
-    def isdvc(self, path, **kwargs):
-        _, _, _, dvc_fs, dvc_path = self._get_fs_pair(path)
+    def isdvc(self, path, **kwargs) -> bool:
+        """Is this entry dvc-tracked?"""
+        key = self._get_key_from_relative(path)
+        _, dvc_fs, subkey = self._get_subrepo_info(key)
+        dvc_path = _get_dvc_path(dvc_fs, subkey)
         return dvc_fs is not None and dvc_fs.isdvc(dvc_path, **kwargs)
 
     def ls(  # pylint: disable=arguments-differ
         self, path, detail=True, dvc_only=False, **kwargs
     ):
-        repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
-
-        dvcignore = repo.dvcignore
-        ignore_subrepos = kwargs.get("ignore_subrepos", True)
+        key = self._get_key_from_relative(path)
+        repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         names = set()
         if dvc_fs:
             with suppress(FileNotFoundError):
+                dvc_path = _get_dvc_path(dvc_fs, subkey)
                 for entry in dvc_fs.ls(dvc_path, detail=False):
                     names.add(dvc_fs.path.name(entry))
 
-        if not dvc_only and fs:
+        ignore_subrepos = kwargs.get("ignore_subrepos", True)
+        if not dvc_only:
+            fs = self.repo.fs
+            fs_path = self._from_key(key)
             try:
-                for entry in dvcignore.ls(
+                for entry in repo.dvcignore.ls(
                     fs, fs_path, detail=False, ignore_subrepos=ignore_subrepos
                 ):
                     names.add(fs.path.name(entry))
@@ -345,26 +296,21 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
                 pass
 
         dvcfiles = kwargs.get("dvcfiles", False)
-
-        def _func(fname):
-            from dvc.dvcfile import is_valid_filename
-            from dvc.ignore import DvcIgnore
-
-            if dvcfiles:
-                return True
-
-            return not (
-                is_valid_filename(fname) or fname == DvcIgnore.DVCIGNORE_FILE
-            )
-
-        names = filter(_func, names)
+        if not dvcfiles:
+            names = (name for name in names if not _is_dvc_file(name))
 
         infos = []
         paths = []
         for name in names:
             entry_path = self.path.join(path, name)
+            entry_key = key + (name,)
             try:
-                info = self.info(entry_path, ignore_subrepos=ignore_subrepos)
+                info = self._info(
+                    entry_key,
+                    entry_path,
+                    ignore_subrepos=ignore_subrepos,
+                    check_ignored=False,
+                )
             except FileNotFoundError:
                 continue
             infos.append(info)
@@ -375,48 +321,39 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
         return infos
 
-    def get_file(  # pylint: disable=arguments-differ
-        self, rpath, lpath, callback=DEFAULT_CALLBACK, **kwargs
-    ):
-        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(rpath)
-
-        if fs:
-            try:
-                fs.get_file(fs_path, lpath, callback=callback, **kwargs)
-                return
-            except FileNotFoundError:
-                if not dvc_fs:
-                    raise
-        dvc_fs.get_file(dvc_path, lpath, callback=callback, **kwargs)
-
     def info(self, path, **kwargs):
-        repo, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
-
-        dvcignore = repo.dvcignore
+        key = self._get_key_from_relative(path)
         ignore_subrepos = kwargs.get("ignore_subrepos", True)
+        return self._info(key, path, ignore_subrepos=ignore_subrepos)
+
+    def _info(self, key, path, ignore_subrepos=True, check_ignored=True):
+        repo, dvc_fs, subkey = self._get_subrepo_info(key)
 
         dvc_info = None
         if dvc_fs:
             try:
-                dvc_info = dvc_fs.info(dvc_path)
+                dvc_info = dvc_fs.fs.index.info(subkey)
+                dvc_path = _get_dvc_path(dvc_fs, subkey)
+                dvc_info["name"] = dvc_path
             except FileNotFoundError:
                 pass
 
         fs_info = None
-        if fs:
-            try:
-                fs_info = fs.info(fs_path)
-                if dvcignore.is_ignored(
-                    fs, fs_path, ignore_subrepos=ignore_subrepos
-                ):
-                    fs_info = None
-            except (FileNotFoundError, NotADirectoryError):
-                if not dvc_info:
-                    raise
+        fs = self.repo.fs
+        fs_path = self._from_key(key)
+        try:
+            fs_info = fs.info(fs_path)
+            if check_ignored and repo.dvcignore.is_ignored(
+                fs, fs_path, ignore_subrepos=ignore_subrepos
+            ):
+                fs_info = None
+        except (FileNotFoundError, NotADirectoryError):
+            if not dvc_info:
+                raise
 
         # NOTE: if some parent in fs_path turns out to be a file, it means
         # that the whole repofs branch doesn't exist.
-        if fs and not fs_info and dvc_info:
+        if dvc_info and not fs_info:
             for parent in fs.path.parents(fs_path):
                 try:
                     if fs.info(parent)["type"] != "directory":
@@ -432,16 +369,8 @@ class _DvcFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
         info["name"] = path
         return info
 
-    def checksum(self, path):
-        _, fs, fs_path, dvc_fs, dvc_path = self._get_fs_pair(path)
 
-        try:
-            return fs.checksum(fs_path)
-        except FileNotFoundError:
-            return dvc_fs.checksum(dvc_path)
-
-
-class DvcFileSystem(FileSystem):
+class DVCFileSystem(FileSystem):
     protocol = "local"
     PARAM_CHECKSUM = "md5"
 
@@ -451,7 +380,7 @@ class DvcFileSystem(FileSystem):
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
-        return _DvcFileSystem(**self.fs_args)
+        return _DVCFileSystem(**self.fs_args)
 
     def isdvc(self, path, **kwargs):
         return self.fs.isdvc(path, **kwargs)
@@ -467,10 +396,6 @@ class DvcFileSystem(FileSystem):
     @property
     def repo_url(self):
         return self.fs.repo_url
-
-    @property
-    def config(self):
-        return self.fs.config
 
     def from_os_path(self, path):
         if os.path.isabs(path):

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, no_type_check
 from funcy import post_processing
 
 from dvc.dependency import ParamsDependency
-from dvc.output import Output
+from dvc.output import Annotation, Output
 from dvc.utils.collections import apply_diff
 from dvc.utils.serialize import parse_yaml_for_update
 
@@ -27,7 +27,7 @@ PARAM_METRIC = Output.PARAM_METRIC
 PARAM_PLOT = Output.PARAM_PLOT
 PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
-PARAM_DESC = Output.PARAM_DESC
+PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
@@ -38,8 +38,9 @@ sort_by_path = partial(sorted, key=attrgetter("def_path"))
 
 @post_processing(OrderedDict)
 def _get_flags(out):
-    if out.desc:
-        yield PARAM_DESC, out.desc
+    annot = out.annot.to_dict()
+    yield from annot.items()
+
     if not out.use_cache:
         yield PARAM_CACHE, False
     if out.checkpoint:
@@ -151,15 +152,24 @@ def to_pipeline_file(stage: "PipelineStage"):
     }
 
 
-def to_single_stage_lockfile(stage: "Stage") -> dict:
+def to_single_stage_lockfile(stage: "Stage", **kwargs) -> dict:
     assert stage.cmd
 
     def _dumpd(item):
+        meta_d = item.meta.to_dict()
+        meta_d.pop("isdir", None)
         ret = [
             (item.PARAM_PATH, item.def_path),
             *item.hash_info.to_dict().items(),
-            *item.meta.to_dict().items(),
+            *meta_d.items(),
         ]
+
+        if item.hash_info.isdir and kwargs.get("with_files"):
+            if item.obj:
+                obj = item.obj
+            else:
+                obj = item.get_obj()
+            ret.append((item.PARAM_FILES, obj.as_list(with_meta=True)))
 
         return OrderedDict(ret)
 
@@ -180,13 +190,13 @@ def to_single_stage_lockfile(stage: "Stage") -> dict:
     return res
 
 
-def to_lockfile(stage: "PipelineStage") -> dict:
+def to_lockfile(stage: "PipelineStage", **kwargs) -> dict:
     assert stage.name
-    return {stage.name: to_single_stage_lockfile(stage)}
+    return {stage.name: to_single_stage_lockfile(stage, **kwargs)}
 
 
-def to_single_stage_file(stage: "Stage"):
-    state = stage.dumpd()
+def to_single_stage_file(stage: "Stage", **kwargs):
+    state = stage.dumpd(**kwargs)
 
     # When we load a stage we parse yaml with a fast parser, which strips
     # off all the comments and formatting. To retain those on update we do

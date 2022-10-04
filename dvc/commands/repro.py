@@ -55,7 +55,16 @@ def add_arguments(repro_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help="Stages to reproduce. 'dvc.yaml' by default.",
+        help=(
+            """\
+Stages to reproduce. 'dvc.yaml' by default.
+The targets can be path to a dvc.yaml file or `.dvc` file,
+or a stage name from dvc.yaml file from
+current working directory. To run a stage from dvc.yaml
+from other directories, the target must be a path followed by colon `:`
+and then the stage name name.
+"""
+        ),
     ).complete = completion.DVCFILES_AND_STAGE
     repro_parser.add_argument(
         "-f",

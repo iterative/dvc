@@ -90,7 +90,7 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
-        from dvc_data import load
+        from dvc_data.hashfile import load
 
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(["config", "cache.type", "copy"])

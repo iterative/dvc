@@ -18,7 +18,7 @@ SCHEMA: Mapping[str, Any] = {
 }
 
 
-def _get(stage, p, info):
+def _get(stage, p, info, fs_config=None):
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
         return RepoDependency(repo, stage, p, info)
@@ -27,7 +27,7 @@ def _get(stage, p, info):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    return Dependency(stage, p, info)
+    return Dependency(stage, p, info, fs_config=fs_config)
 
 
 def loadd_from(stage, d_list):
@@ -38,10 +38,18 @@ def loadd_from(stage, d_list):
     return ret
 
 
-def loads_from(stage, s_list, erepo=None):
+def loads_from(stage, s_list, erepo=None, fs_config=None):
     assert isinstance(s_list, list)
     info = {RepoDependency.PARAM_REPO: erepo} if erepo else {}
-    return [_get(stage, s, info.copy()) for s in s_list]
+    return [
+        _get(
+            stage,
+            s,
+            info.copy(),
+            fs_config=fs_config,
+        )
+        for s in s_list
+    ]
 
 
 def _merge_params(s_list):

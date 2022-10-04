@@ -3,11 +3,11 @@ from collections.abc import Mapping
 from voluptuous import Any, Optional, Required, Schema
 
 from dvc import dependency, output
-from dvc.output import CHECKSUMS_SCHEMA, Output
+from dvc.annotations import ANNOTATION_SCHEMA
+from dvc.output import CHECKSUMS_SCHEMA, DIR_FILES_SCHEMA, META_SCHEMA, Output
 from dvc.parsing import DO_KWD, FOREACH_KWD, VARS_KWD
 from dvc.parsing.versions import SCHEMA_KWD, lockfile_version_schema
 from dvc.stage.params import StageParams
-from dvc_data.hashfile.meta import Meta
 
 STAGES = "stages"
 SINGLE_STAGE_SCHEMA = {
@@ -25,10 +25,9 @@ SINGLE_STAGE_SCHEMA = {
 
 DATA_SCHEMA = {
     **CHECKSUMS_SCHEMA,
+    **META_SCHEMA,
     Required("path"): str,
-    Meta.PARAM_SIZE: int,
-    Meta.PARAM_NFILES: int,
-    Meta.PARAM_ISEXEC: bool,
+    Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 LOCK_FILE_STAGE_SCHEMA = {
     Required(StageParams.PARAM_CMD): Any(str, list),
@@ -47,16 +46,15 @@ LOCKFILE_V2_SCHEMA = {
 
 OUT_PSTAGE_DETAILED_SCHEMA = {
     str: {
+        **ANNOTATION_SCHEMA,  # type: ignore
         Output.PARAM_CACHE: bool,
         Output.PARAM_PERSIST: bool,
         Output.PARAM_CHECKPOINT: bool,
-        Output.PARAM_DESC: str,
         Output.PARAM_REMOTE: str,
     }
 }
 
 PLOTS = "plots"
-PLOTS_SCHEMA = dict
 PLOT_PROPS = {
     Output.PARAM_PLOT_TEMPLATE: str,
     Output.PARAM_PLOT_X: str,
@@ -112,6 +110,15 @@ def either_or(primary, fallback, fallback_includes=None):
     return validator
 
 
+PLOT_DEFINITION = {
+    Output.PARAM_PLOT_X: str,
+    Output.PARAM_PLOT_Y: Any(str, [str], {str: Any(str, [str])}),
+    Output.PARAM_PLOT_X_LABEL: str,
+    Output.PARAM_PLOT_Y_LABEL: str,
+    Output.PARAM_PLOT_TITLE: str,
+    Output.PARAM_PLOT_TEMPLATE: str,
+}
+PLOTS_SCHEMA = {str: Any(PLOT_DEFINITION, None)}
 FOREACH_IN = {
     Required(FOREACH_KWD): Any(dict, list, str),
     Required(DO_KWD): STAGE_DEFINITION,

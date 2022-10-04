@@ -43,7 +43,7 @@ def test_cache(tmp_dir, dvc):
 
 
 def test_cache_load_bad_dir_cache(tmp_dir, dvc):
-    from dvc_data import load
+    from dvc_data.hashfile import load
 
     dir_hash = "123.dir"
     fname = os.fspath(dvc.odb.local.oid_to_path(dir_hash))
@@ -112,18 +112,15 @@ def test_shared_cache_dir(tmp_dir):
 
     assert not os.path.exists(os.path.join("dir1", ".dvc", "cache"))
     assert not os.path.exists(os.path.join("dir2", ".dvc", "cache"))
-
-    subdirs = list(
-        filter(
-            lambda x: os.path.isdir(os.path.join(cache_dir, x)),
-            os.listdir(cache_dir),
-        )
+    assert os.path.exists(
+        os.path.join(cache_dir, "dc", "f6c2fa538b445a3a095255c3641dfc")
     )
-    assert len(subdirs) == 3
-    assert len(os.listdir(os.path.join(cache_dir, subdirs[0]))) == 1
-
-    assert len(os.listdir(os.path.join(cache_dir, subdirs[1]))) == 1
-    assert len(os.listdir(os.path.join(cache_dir, subdirs[2]))) == 1
+    assert os.path.exists(
+        os.path.join(cache_dir, "b4", "333c8cfa2ebba7ef20ec6c3265902b")
+    )
+    assert os.path.exists(
+        os.path.join(cache_dir, "9e", "fab2399c7c560b34de477b9aa0a465")
+    )
 
 
 def test_cache_link_type(tmp_dir, scm, dvc):
@@ -167,10 +164,9 @@ def test_cmd_cache_relative_path(tmp_dir, scm, dvc, make_tmp_dir):
 
     tmp_dir.dvc_gen({"foo": "foo"})
 
-    subdirs = os.listdir(cache_dir)
-    assert len(subdirs) == 1
-    files = os.listdir(os.path.join(cache_dir, subdirs[0]))
-    assert len(files) == 1
+    assert os.path.exists(
+        os.path.join(cache_dir, "ac", "bd18db4cc2f85cedef654fccc4a4d8")
+    )
 
 
 def test_default_cache_type(dvc):
@@ -194,28 +190,13 @@ def test_shared_cache(tmp_dir, dvc, group):
         {"file": "file content", "dir": {"file2": "file 2 " "content"}}
     )
 
-    actual = {}
-    for root, dnames, fnames in os.walk(cache_dir):
-        for name in dnames + fnames:
-            path = os.path.join(root, name)
-            actual[path] = oct(stat.S_IMODE(os.stat(path).st_mode))
-
     file_mode = oct(0o444)
     dir_mode = oct(0o2775 if group else (0o777 & ~system.umask))
+    for root, dnames, fnames in os.walk(cache_dir):
+        for dname in dnames:
+            path = os.path.join(root, dname)
+            assert oct(stat.S_IMODE(os.stat(path).st_mode)) == dir_mode
 
-    expected = {
-        os.path.join(cache_dir, "17"): dir_mode,
-        os.path.join(
-            cache_dir, "17", "4eaa1dd94050255b7b98a7e1924b31.dir"
-        ): file_mode,
-        os.path.join(cache_dir, "97"): dir_mode,
-        os.path.join(
-            cache_dir, "97", "e17781c198500e2766ea56bd697c03"
-        ): file_mode,
-        os.path.join(cache_dir, "d1"): dir_mode,
-        os.path.join(
-            cache_dir, "d1", "0b4c3ff123b26dc068d43a8bef2d23"
-        ): file_mode,
-    }
-
-    assert expected == actual
+        for fname in fnames:
+            path = os.path.join(root, fname)
+            assert oct(stat.S_IMODE(os.stat(path).st_mode)) == file_mode

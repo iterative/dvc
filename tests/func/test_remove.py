@@ -4,7 +4,10 @@ import pytest
 
 from dvc.cli import main
 from dvc.fs import system
-from dvc.stage.exceptions import StageFileDoesNotExistError
+from dvc.stage.exceptions import (
+    StageFileDoesNotExistError,
+    StageFileIsNotDvcFileError,
+)
 from dvc.utils.fs import remove
 from dvc_objects.errors import ObjectDBError
 from tests.utils import get_gitignore_content
@@ -30,6 +33,18 @@ def test_remove(tmp_dir, scm, dvc, run_copy, remove_outs):
             assert all(out_exists)
 
     assert not (tmp_dir / ".gitignore").exists()
+
+
+def test_remove_file_target(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+
+    with pytest.raises(
+        StageFileIsNotDvcFileError,
+        match="'foo' is not a .dvc file. Do you mean 'foo.dvc'?",
+    ):
+        dvc.remove("foo")
+
+    dvc.remove("foo.dvc")
 
 
 def test_remove_non_existent_file(tmp_dir, dvc):

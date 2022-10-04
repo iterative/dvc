@@ -11,7 +11,7 @@
 • `Contributing`_
 • `Community and Support`_
 
-|CI| |Maintainability| |Coverage| |VS Code| |DOI|
+|CI| |Python Version| |Coverage| |VS Code| |DOI|
 
 |PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
 
@@ -82,7 +82,7 @@ To share and back up the *data cache*, DVC supports multiple remote storage plat
 
 |Flowchart|
 
-`DVC pipelines <https://dvc.org/doc/start/data-management/pipelines>`_ (computational graphs) connect code and data together.
+`DVC pipelines <https://dvc.org/doc/start/data-management/data-pipelines>`_ (computational graphs) connect code and data together.
 They specify all steps required to produce a model: input dependencies including code, data, commands to run; and output information to be saved.
 
 Last but not least, `DVC Experiment Versioning <https://dvc.org/doc/start/experiments>`_ lets you prepare and run a large number of experiments.
@@ -247,6 +247,10 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |Maintainability| image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
    :target: https://codeclimate.com/github/iterative/dvc
    :alt: Code Climate
+
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/dvc
+   :target: https://pypi.org/project/dvc
+   :alt: Python Version
 
 .. |Coverage| image:: https://codecov.io/gh/iterative/dvc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/iterative/dvc

@@ -78,7 +78,9 @@ REMOTE_COMMON = {
     "url": str,
     "checksum_jobs": All(Coerce(int), Range(1)),
     "jobs": All(Coerce(int), Range(1)),
+    Optional("worktree"): Bool,
     Optional("no_traverse"): Bool,  # obsoleted
+    Optional("version_aware"): Bool,
 }
 LOCAL_COMMON = {
     "type": supported_cache_type,
@@ -168,6 +170,7 @@ SCHEMA = {
                 "gs": {
                     "projectname": str,
                     "credentialpath": str,
+                    "endpointurl": str,
                     Optional("verify", default=False): Bool,
                     **REMOTE_COMMON,
                 },
@@ -287,5 +290,10 @@ SCHEMA = {
     "parsing": {
         "bool": All(Lower, Choices("store_true", "boolean_optional")),
         "list": All(Lower, Choices("nargs", "append")),
+    },
+    "hydra": {
+        Optional("enabled", default=False): Bool,
+        "config_dir": str,
+        "config_name": str,
     },
 }

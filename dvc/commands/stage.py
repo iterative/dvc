@@ -76,7 +76,7 @@ class CmdStageList(CmdBase):
         # removing duplicates while maintaining order
         collected = chain.from_iterable(
             self.repo.stage.collect(
-                target=target, recursive=self.args.recursive, accept_group=True
+                target=target, recursive=self.args.recursive
             )
             for target in self.args.targets
         )

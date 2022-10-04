@@ -4,7 +4,6 @@ import posixpath
 from pathlib import Path
 
 import pytest
-from funcy import pluck_attr
 
 from dvc.cli import parse_args
 from dvc.commands.plots import CmdPlotsDiff, CmdPlotsShow, CmdPlotsTemplates
@@ -335,10 +334,6 @@ def test_plots_diff_json(dvc, mocker, capsys):
     )
     render_mock = mocker.patch("dvc_render.render_html")
 
-    show_json_mock = mocker.patch(
-        "dvc.commands.plots._filter_unhandled_renderers",
-        return_value=renderers,
-    )
     show_json_mock = mocker.patch("dvc.commands.plots._show_json")
 
     assert cmd.run() == 0
@@ -348,39 +343,38 @@ def test_plots_diff_json(dvc, mocker, capsys):
     render_mock.assert_not_called()
 
 
-@pytest.mark.parametrize("target", (("t1"), (None)))
-def test_plots_templates(tmp_dir, dvc, mocker, capsys, target):
-    assert not os.path.exists(dvc.plots.templates_dir)
-    mocker.patch(
-        "dvc.commands.plots.CmdPlotsTemplates.TEMPLATES_CHOICES",
-        ["t1", "t2"],
-    )
+@pytest.mark.parametrize(
+    "target,expected_out,expected_rtn",
+    (("t1", "\"{'t1'}\"", 0), (None, "t1\nt2", 0), ("t3", "", 1)),
+)
+def test_plots_templates(
+    dvc, mocker, capsys, target, expected_out, expected_rtn
+):
+    t1 = mocker.Mock()
+    t1.DEFAULT_NAME = "t1"
+    t1.DEFAULT_CONTENT = "{'t1'}"
 
-    arguments = ["plots", "templates", "--out", "output"]
+    t2 = mocker.Mock()
+    t2.DEFAULT_NAME = "t2"
+    t2.DEFAULT_CONTENT = "{'t2'}"
+
+    mocker.patch("dvc_render.vega_templates.TEMPLATES", [t1, t2])
+
+    arguments = ["plots", "templates"]
     if target:
         arguments += [target]
 
     cli_args = parse_args(arguments)
     assert cli_args.func == CmdPlotsTemplates
 
-    dump_mock = mocker.patch("dvc_render.vega_templates.dump_templates")
     cmd = cli_args.func(cli_args)
 
-    assert cmd.run() == 0
+    rtn = cmd.run()
+
     out, _ = capsys.readouterr()
 
-    dump_mock.assert_called_once_with(
-        output=os.path.abspath("output"), targets=[target] if target else None
-    )
-    assert "Templates have been written into 'output'." in out
-
-
-def test_plots_templates_choices(tmp_dir, dvc):
-    from dvc_render import TEMPLATES
-
-    assert CmdPlotsTemplates.TEMPLATES_CHOICES == list(
-        pluck_attr("DEFAULT_NAME", TEMPLATES)
-    )
+    assert out.strip() == expected_out
+    assert rtn == expected_rtn
 
 
 @pytest.mark.parametrize("split", (True, False))

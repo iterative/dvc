@@ -2,10 +2,41 @@ import argparse
 import logging
 
 from dvc.cli import completion
+from dvc.cli.actions import KeyValueArgs
 from dvc.cli.command import CmdBase
 from dvc.cli.utils import append_doc_link
 
 logger = logging.getLogger(__name__)
+
+
+def _add_annotating_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--desc",
+        type=str,
+        metavar="<text>",
+        help="User description of the data.",
+    )
+    parser.add_argument(
+        "--meta",
+        metavar="key=value",
+        nargs=1,
+        action=KeyValueArgs,
+        help="Custom metadata to add to the data.",
+    )
+    parser.add_argument(
+        "--label",
+        dest="labels",
+        type=str,
+        action="append",
+        metavar="<str>",
+        help="Label for the data.",
+    )
+    parser.add_argument(
+        "--type",
+        type=str,
+        metavar="<str>",
+        help="Type of the data.",
+    )
 
 
 class CmdAdd(CmdBase):
@@ -28,6 +59,9 @@ class CmdAdd(CmdBase):
                 glob=self.args.glob,
                 desc=self.args.desc,
                 out=self.args.out,
+                type=self.args.type,
+                labels=self.args.labels,
+                meta=self.args.meta,
                 remote=self.args.remote,
                 to_remote=self.args.to_remote,
                 jobs=self.args.jobs,
@@ -109,15 +143,8 @@ def add_parser(subparsers, parent_parser):
         ),
         metavar="<number>",
     )
-    parser.add_argument(
-        "--desc",
-        type=str,
-        metavar="<text>",
-        help=(
-            "User description of the data (optional). "
-            "This doesn't affect any DVC operations."
-        ),
-    )
+
+    _add_annotating_args(parser)
     parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."
     ).complete = completion.FILE
