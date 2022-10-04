@@ -27,7 +27,7 @@ def add_parser(subparsers, parent_parser):
         "list-url",
         aliases=["ls-url"],
         parents=[parent_parser],
-        description=append_doc_link(LS_HELP, "ls-url"),
+        description=append_doc_link(LS_HELP, "list-url"),
         help=LS_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
