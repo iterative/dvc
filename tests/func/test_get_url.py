@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.dependency.base import DependencyDoesNotExistError
+from dvc.exceptions import URLMissingError
 from dvc.repo import Repo
 
 
@@ -36,5 +36,5 @@ def test_get_url_to_dir(tmp_dir, tmp_path_factory, dname):
 
 
 def test_get_url_nonexistent(tmp_dir):
-    with pytest.raises(DependencyDoesNotExistError):
+    with pytest.raises(URLMissingError):
         Repo.get_url("nonexistent")

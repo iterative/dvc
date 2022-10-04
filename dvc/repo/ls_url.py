@@ -1,13 +1,5 @@
 from dvc.exceptions import URLMissingError
-from dvc.fs import get_cloud_fs
-
-
-def parse_external_url(url, config=None):
-    remote_config = dict(config) if config else {}
-    remote_config["url"] = url
-    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
-    fs = fs_cls(**fs_config)
-    return fs, fs_path
+from dvc.fs import parse_external_url
 
 
 def ls_url(url, *, config=None, recursive=False):
