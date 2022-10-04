@@ -56,6 +56,14 @@ def download(fs, fs_path, to, jobs=None):
         fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
 
 
+def parse_external_url(url, config=None):
+    remote_config = dict(config) if config else {}
+    remote_config["url"] = url
+    fs_cls, fs_config, fs_path = get_cloud_fs(None, **remote_config)
+    fs = fs_cls(**fs_config)
+    return fs, fs_path
+
+
 def get_fs_config(config, **kwargs):
     name = kwargs.get("name")
     if name:
