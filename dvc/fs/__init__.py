@@ -26,6 +26,7 @@ from dvc_objects.fs.errors import (  # noqa: F401
 )
 from dvc_objects.fs.path import Path  # noqa: F401
 
+from .callbacks import Callback
 from .data import DataFileSystem  # noqa: F401
 from .dvc import DVCFileSystem  # noqa: F401
 from .git import GitFileSystem  # noqa: F401
@@ -45,6 +46,14 @@ known_implementations.update(
 
 
 # pylint: enable=unused-import
+
+
+def download(fs, fs_path, to, jobs=None):
+    with Callback.as_tqdm_callback(
+        desc=f"Downloading {fs.path.name(fs_path)}",
+        unit="files",
+    ) as cb:
+        fs.get(fs_path, to.fs_path, batch_size=jobs, callback=cb)
 
 
 def get_fs_config(config, **kwargs):

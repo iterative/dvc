@@ -797,15 +797,6 @@ class Output:
                 f"binary file '{self.fs_path}' cannot be used as metrics."
             )
 
-    def download(self, to, jobs=None):
-        from dvc.fs.callbacks import Callback
-
-        with Callback.as_tqdm_callback(
-            desc=f"Downloading {self.fs.path.name(self.fs_path)}",
-            unit="files",
-        ) as cb:
-            self.fs.get(self.fs_path, to.fs_path, batch_size=jobs, callback=cb)
-
     def get_obj(
         self, filter_info: Optional[str] = None, **kwargs
     ) -> Optional["HashFile"]:
