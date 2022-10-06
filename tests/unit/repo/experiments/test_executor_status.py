@@ -82,21 +82,34 @@ def test_workspace_executor_success_status(dvc, scm, exp_stage, queue_type):
         assert not os.path.exists(infofile)
 
 
-@pytest.mark.parametrize("queue_type", ["workspace_queue", "tempdir_queue"])
+@pytest.mark.parametrize(
+    "queue_type",
+    ["workspace_queue", "tempdir_queue"],
+)
 def test_workspace_executor_failed_status(
     dvc, scm, failed_exp_stage, queue_type
 ):
-    workspace_queue = getattr(dvc.experiments, queue_type)
-    queue_entry = workspace_queue.put(
+    queue = getattr(dvc.experiments, queue_type)
+    queue.put(
         params={"params.yaml": ["foo=1"]},
         targets=failed_exp_stage.addressing,
         name="failed",
     )
-    name = workspace_queue._EXEC_NAME or queue_entry.stash_rev
+    entry, executor = queue.get()
+    name = queue._EXEC_NAME or entry.stash_rev
+    infofile = queue.get_infofile_path(name)
+    rev = entry.stash_rev
 
-    infofile = workspace_queue.get_infofile_path(name)
     with pytest.raises(DvcException):
-        workspace_queue.reproduce()
+        executor.reproduce(
+            info=executor.info,
+            rev=rev,
+            infofile=infofile,
+        )
+    executor_info = ExecutorInfo.load_json(infofile)
+    assert executor_info.status == TaskStatus.FAILED
+
+    cleanup_exp.s(executor, infofile)()
     if queue_type == "workspace_queue":
         assert not os.path.exists(infofile)
     else:

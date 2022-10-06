@@ -23,12 +23,7 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import (
-    EXEC_TMP_DIR,
-    ExecutorInfo,
-    ExecutorResult,
-    TaskStatus,
-)
+from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
@@ -243,48 +238,50 @@ class LocalCeleryQueue(BaseStashQueue):
     def reproduce(self) -> Mapping[str, Mapping[str, str]]:
         raise NotImplementedError
 
-    def get_result(
+    def _load_info(self, rev: str) -> ExecutorInfo:
+        infofile = self.get_infofile_path(rev)
+        return ExecutorInfo.load_json(infofile)
+
+    def _get_done_result(
         self, entry: QueueEntry, timeout: Optional[float] = None
-    ) -> Optional[ExecutorResult]:
+    ) -> Optional["ExecutorResult"]:
         from celery.exceptions import TimeoutError as _CeleryTimeout
 
-        def _load_info(rev: str) -> ExecutorInfo:
-            infofile = self.get_infofile_path(rev)
-            return ExecutorInfo.load_json(infofile)
-
-        def _load_collected(rev: str) -> Optional[ExecutorResult]:
-            executor_info = _load_info(rev)
-            if executor_info.status > TaskStatus.SUCCESS:
+        for msg, processed_entry in self._iter_processed():
+            if entry.stash_rev == processed_entry.stash_rev:
+                task_id = msg.headers["id"]
+                result: AsyncResult = AsyncResult(task_id)
+                if not result.ready():
+                    logger.debug(
+                        "Waiting for exp task '%s' to complete", result.id
+                    )
+                    try:
+                        result.get(timeout=timeout)
+                    except _CeleryTimeout as exc:
+                        raise DvcException(
+                            "Timed out waiting for exp to finish."
+                        ) from exc
+                executor_info = self._load_info(entry.stash_rev)
                 return executor_info.result
-            raise FileNotFoundError
+        raise FileNotFoundError
+
+    def get_result(
+        self, entry: QueueEntry, timeout: Optional[float] = None
+    ) -> Optional["ExecutorResult"]:
 
         try:
-            return _load_collected(entry.stash_rev)
+            return self._get_done_result(entry, timeout)
         except FileNotFoundError:
-            # Infofile will not be created until execution begins
             pass
 
         for queue_entry in self.iter_queued():
             if entry.stash_rev == queue_entry.stash_rev:
                 raise DvcException("Experiment has not been started.")
-        for result, active_entry in self._iter_active_tasks():
-            if entry.stash_rev == active_entry.stash_rev:
-                logger.debug(
-                    "Waiting for exp task '%s' to complete", result.id
-                )
-                try:
-                    result.get(timeout=timeout)
-                except _CeleryTimeout as exc:
-                    raise DvcException(
-                        "Timed out waiting for exp to finish."
-                    ) from exc
-                executor_info = _load_info(entry.stash_rev)
-                return executor_info.result
 
         # NOTE: It's possible for an exp to complete while iterating through
         # other queued and active tasks, in which case the exp will get moved
         # out of the active task list, and needs to be loaded here.
-        return _load_collected(entry.stash_rev)
+        return self._get_done_result(entry, timeout)
 
     def kill(self, revs: Collection[str]) -> None:
         to_kill: Set[QueueEntry] = set()

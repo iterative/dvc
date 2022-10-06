@@ -174,7 +174,6 @@ def test_show_queued(tmp_dir, scm, dvc, exp_stage):
 
 
 @pytest.mark.vscode
-@pytest.mark.xfail(strict=False, reason="pytest-celery flaky")
 def test_show_failed_experiment(tmp_dir, scm, dvc, failed_exp_stage):
     baseline_rev = scm.get_rev()
     timestamp = datetime.fromtimestamp(

@@ -189,7 +189,10 @@ class Experiments:
                     time.sleep(1)
                 self.celery_queue.follow(entry)
                 # wait for task collection to complete
-                result = self.celery_queue.get_result(entry)
+                try:
+                    result = self.celery_queue.get_result(entry)
+                except FileNotFoundError:
+                    result = None
                 if result is None or result.exp_hash is None:
                     name = entry.name or entry.stash_rev[:7]
                     failed.append(name)

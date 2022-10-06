@@ -602,29 +602,22 @@ class BaseExecutor(ABC):
             logger.debug("Running repro in '%s'", os.getcwd())
             yield dvc
             info.status = TaskStatus.SUCCESS
-            if infofile is not None:
-                info.dump_json(infofile)
-
         except CheckpointKilledError:
             info.status = TaskStatus.FAILED
-            if infofile is not None:
-                info.dump_json(infofile)
             raise
         except DvcException:
             if log_errors:
                 logger.exception("")
             info.status = TaskStatus.FAILED
-            if infofile is not None:
-                info.dump_json(infofile)
             raise
         except Exception:
             if log_errors:
                 logger.exception("unexpected error")
             info.status = TaskStatus.FAILED
-            if infofile is not None:
-                info.dump_json(infofile)
             raise
         finally:
+            if infofile is not None:
+                info.dump_json(infofile)
             dvc.close()
             os.chdir(old_cwd)
 
