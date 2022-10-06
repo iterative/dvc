@@ -398,7 +398,6 @@ def show(
             repo,
             found_revs,
             running,
-            sha_only=sha_only,
             param_deps=param_deps,
             onerror=onerror,
         )

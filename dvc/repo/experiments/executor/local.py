@@ -47,9 +47,9 @@ class BaseLocalExecutor(BaseExecutor):
         return SCM(self.root_dir)
 
     def cleanup(self, infofile: str):
-        super().cleanup(infofile)
         self.scm.close()
         del self.scm
+        super().cleanup(infofile)
 
     def collect_cache(
         self, repo: "Repo", exp_ref: "ExpRefInfo", run_cache: bool = True
