@@ -3,6 +3,7 @@ import os
 import pytest
 
 from dvc.exceptions import URLMissingError
+from dvc.repo import Repo
 from dvc.repo.ls_url import ls_url, parse_external_url
 
 
@@ -196,3 +197,36 @@ class TestLsUrl:
     def test_nonexistent(self, cloud):
         with pytest.raises(URLMissingError):
             ls_url(str(cloud / "dir"), config=cloud.config)
+
+
+class TestGetUrl:
+    def test_get_file(self, cloud, tmp_dir):
+        cloud.gen({"foo": "foo contents"})
+
+        Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
+
+        assert (tmp_dir / "foo_imported").is_file()
+        assert (tmp_dir / "foo_imported").read_text() == "foo contents"
+
+    def test_get_dir(self, cloud, tmp_dir):
+        cloud.gen({"foo": {"foo": "foo contents"}})
+
+        Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
+
+        assert (tmp_dir / "foo_imported").is_dir()
+        assert (tmp_dir / "foo_imported" / "foo").is_file()
+        assert (tmp_dir / "foo_imported" / "foo").read_text() == "foo contents"
+
+    @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
+    def test_get_url_to_dir(self, cloud, tmp_dir, dname):
+        cloud.gen({"src": {"foo": "foo contents"}})
+        tmp_dir.gen({"dir": {"subdir": {}}})
+
+        Repo.get_url(str(cloud / "src" / "foo"), dname, config=cloud.config)
+
+        assert (tmp_dir / dname).is_dir()
+        assert (tmp_dir / dname / "foo").read_text() == "foo contents"
+
+    def test_get_url_nonexistent(self, cloud):
+        with pytest.raises(URLMissingError):
+            Repo.get_url(str(cloud / "nonexistent"), config=cloud.config)
