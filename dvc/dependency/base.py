@@ -1,6 +1,7 @@
 from typing import Type
 
 from dvc.exceptions import DvcException
+from dvc.fs import download as fs_download
 from dvc.output import Output
 
 
@@ -32,3 +33,6 @@ class Dependency(Output):
 
     def update(self, rev=None):
         pass
+
+    def download(self, to, jobs=None):
+        fs_download(self.fs, self.fs_path, to, jobs=jobs)
