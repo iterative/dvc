@@ -15,6 +15,16 @@ from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.stage.loader import StageNotFound
 from dvc.utils.strictyaml import YAMLValidationError
 
+STAGE_EXAMPLE = {
+    "stage1": {
+        "cmd": "cp foo bar",
+        "desc": "stage desc",
+        "meta": {"key1": "value1", "key2": "value2"},
+        "deps": ["foo"],
+        "outs": [{"bar": {"desc": "bar desc", "meta": {"key": "value"}}}],
+    }
+}
+
 
 def test_run_load_one_for_multistage(tmp_dir, dvc):
     tmp_dir.gen("foo", "foo")
@@ -386,19 +396,7 @@ def test_dvcfile_try_dumping_parametrized_stage(tmp_dir, dvc, data, name):
 
 
 def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
-    data = {
-        "stages": {
-            "stage1": {
-                "cmd": "cp foo bar",
-                "desc": "stage desc",
-                "meta": {"key1": "value1", "key2": "value2"},
-                "deps": ["foo"],
-                "outs": [
-                    {"bar": {"desc": "bar desc", "meta": {"key": "value"}}}
-                ],
-            }
-        }
-    }
+    data = {"stages": STAGE_EXAMPLE}
     (tmp_dir / "dvc.yaml").dump(data)
 
     stage = dvc.stage.load_one(name="stage1")
@@ -411,3 +409,34 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
     # sanity check
     stage.dump()
     assert (tmp_dir / "dvc.yaml").parse() == data
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        {
+            "plots": {
+                "path/to/plot": {"x": "value", "y": "value"},
+                "path/to/another/plot": {"x": "value", "y": "value"},
+            },
+            "stages": STAGE_EXAMPLE,
+        },
+        {
+            "plots": [
+                {"path/to/plot": {"x": "value", "y": "value"}},
+                {"path/to/another/plot": {"x": "value", "y": "value"}},
+            ],
+            "stages": STAGE_EXAMPLE,
+        },
+    ),
+)
+def test_dvcfile_load_with_plots(tmp_dir, dvc, data):
+    (tmp_dir / "dvc.yaml").dump(data)
+    plots = list(dvc.plots.collect())
+    top_level_plots = plots[0]["workspace"]["definitions"]["data"]["dvc.yaml"][
+        "data"
+    ]
+    assert all(
+        name in top_level_plots
+        for name in ("path/to/plot", "path/to/another/plot")
+    )
