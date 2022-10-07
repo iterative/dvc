@@ -166,6 +166,8 @@ class TestLsUrl:
         cloud.gen(
             {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
         )
+        if not (cloud / "dir").is_dir():
+            pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
         result = ls_url(str(cloud / "dir"), config=cloud.config)
         match_files(
@@ -181,6 +183,8 @@ class TestLsUrl:
         cloud.gen(
             {"dir/foo": "foo contents", "dir/subdir/bar": "bar contents"}
         )
+        if not (cloud / "dir").is_dir():
+            pytest.skip("Cannot create directories on this cloud")
         fs, _ = parse_external_url(cloud.url, cloud.config)
         result = ls_url(
             str(cloud / "dir"), config=cloud.config, recursive=True
@@ -210,6 +214,8 @@ class TestGetUrl:
 
     def test_get_dir(self, cloud, tmp_dir):
         cloud.gen({"foo": {"foo": "foo contents"}})
+        if not (cloud / "foo").is_dir():
+            pytest.skip("Cannot create directories on this cloud")
 
         Repo.get_url(str(cloud / "foo"), "foo_imported", config=cloud.config)
 
@@ -220,6 +226,8 @@ class TestGetUrl:
     @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
     def test_get_url_to_dir(self, cloud, tmp_dir, dname):
         cloud.gen({"src": {"foo": "foo contents"}})
+        if not (cloud / "src").is_dir():
+            pytest.skip("Cannot create directories on this cloud")
         tmp_dir.gen({"dir": {"subdir": {}}})
 
         Repo.get_url(str(cloud / "src" / "foo"), dname, config=cloud.config)
