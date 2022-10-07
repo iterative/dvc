@@ -18,10 +18,6 @@ def _to_pattern_info_list(str_list: List):
     return [PatternInfo(a, "") for a in str_list]
 
 
-def walk_files(dvc, *args):
-    yield from dvc.dvcignore.find(*args)
-
-
 @pytest.mark.parametrize("filename", ["ignored", "тест"])
 def test_ignore(tmp_dir, dvc, filename):
     tmp_dir.gen({"dir": {filename: filename, "other": "text2"}})
@@ -29,7 +25,7 @@ def test_ignore(tmp_dir, dvc, filename):
 
     dvc._reset()
 
-    result = walk_files(dvc, dvc.fs, tmp_dir)
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir)
     assert set(result) == {
         (tmp_dir / DvcIgnore.DVCIGNORE_FILE).fs_path,
         (tmp_dir / "dir" / "other").fs_path,
@@ -133,7 +129,7 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
 
     dvc._reset()
 
-    result = walk_files(dvc, dvc.fs, tmp_dir)
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir)
     assert set(result) == {
         (tmp_dir / "foo").fs_path,
         (tmp_dir / "bar").fs_path,
@@ -155,7 +151,7 @@ def test_match_nested(tmp_dir, dvc):
         }
     )
     dvc._reset()
-    result = walk_files(dvc, dvc.fs, tmp_dir)
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir)
     assert set(result) == {
         (tmp_dir / DvcIgnore.DVCIGNORE_FILE).fs_path,
         (tmp_dir / "foo").fs_path,
@@ -167,7 +163,7 @@ def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     ext_dir = TmpDir(os.fspath(tmp_path_factory.mktemp("external_dir")))
     ext_dir.gen({"y.backup": "y", "tmp": {"file": "ext tmp"}})
 
-    result = walk_files(dvc, dvc.fs, ext_dir)
+    result = dvc.dvcignore.find(dvc.fs, ext_dir)
     assert set(result) == {
         (ext_dir / "y.backup").fs_path,
         (ext_dir / "tmp" / "file").fs_path,
@@ -207,7 +203,7 @@ def test_ignore_blank_line(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "foo\n\ndir/ignored")
     dvc._reset()
-    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
     assert set(result) == {(tmp_dir / "dir" / "other").fs_path}
 
 
@@ -242,7 +238,7 @@ def test_ignore_file_in_parent_path(
     tmp_dir.gen(data_struct)
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "\n".join(pattern_list))
     dvc._reset()
-    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
     assert set(result) == {
         (tmp_dir / relpath).fs_path for relpath in result_set
     }
@@ -265,7 +261,7 @@ def test_ignore_sub_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "doc/fortz"}})
 
     dvc._reset()
-    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
     assert set(result) == {
         (tmp_dir / "dir" / "a" / "doc" / "fortz" / "a").fs_path,
         (tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path,
@@ -277,7 +273,7 @@ def test_ignore_directory(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"fortz": {}, "a": {"fortz": {}}}})
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "fortz"}})
     dvc._reset()
-    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
     assert set(result) == {
         (tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path
     }
@@ -288,7 +284,7 @@ def test_multi_ignore_file(tmp_dir, dvc, monkeypatch):
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/subdir/*_ignore")
     tmp_dir.gen({"dir": {DvcIgnore.DVCIGNORE_FILE: "!subdir/not_ignore"}})
     dvc._reset()
-    result = walk_files(dvc, dvc.fs, tmp_dir / "dir")
+    result = dvc.dvcignore.find(dvc.fs, tmp_dir / "dir")
     assert set(result) == {
         (tmp_dir / "dir" / "subdir" / "not_ignore").fs_path,
         (tmp_dir / "dir" / DvcIgnore.DVCIGNORE_FILE).fs_path,
@@ -386,7 +382,7 @@ def test_ignore_in_added_dir(tmp_dir, dvc):
     dvc._reset()
 
     ignored_path = tmp_dir / "dir" / "sub" / "ignored"
-    result = walk_files(dvc, dvc.fs, ignored_path)
+    result = dvc.dvcignore.find(dvc.fs, ignored_path)
     assert set(result) == set()
     assert ignored_path.exists()
 
