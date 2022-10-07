@@ -32,6 +32,61 @@ def test_ignore(tmp_dir, dvc, filename):
     }
 
 
+def test_walk(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            "foo": "foo",
+            "bar": "bar",
+            "dir": {
+                "foo": "foo",
+                "bar": "bar",
+                "baz": "baz",
+                "subdir": {"foo": "foo", "qux": "qux"},
+            },
+        }
+    )
+    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/bar\nfoo")
+
+    dvc._reset()
+
+    result = list(dvc.dvcignore.walk(dvc.fs, tmp_dir))
+    assert result[0][0] == str(tmp_dir)
+    assert result[0][1] == ["dir"]
+    assert set(result[0][2]) == {"bar", ".dvcignore"}
+    assert result[1][0] == str(tmp_dir / "dir")
+    assert result[1][1] == ["subdir"]
+    assert result[1][2] == ["baz"]
+    assert result[2][0] == str(tmp_dir / "dir" / "subdir")
+    assert result[2][1] == []
+    assert result[2][2] == ["qux"]
+
+    result = list(dvc.dvcignore.walk(dvc.fs, tmp_dir, detail=True))
+    assert result == [
+        (
+            str(tmp_dir),
+            {"dir": dvc.fs.info(tmp_dir / "dir")},
+            {
+                "bar": dvc.fs.info(tmp_dir / "bar"),
+                ".dvcignore": dvc.fs.info(tmp_dir / ".dvcignore"),
+            },
+        ),
+        (
+            str(tmp_dir / "dir"),
+            {
+                "subdir": dvc.fs.info(tmp_dir / "dir" / "subdir"),
+            },
+            {
+                "baz": dvc.fs.info(tmp_dir / "dir" / "baz"),
+            },
+        ),
+        (
+            str(tmp_dir / "dir" / "subdir"),
+            {},
+            {"qux": dvc.fs.info(tmp_dir / "dir" / "subdir" / "qux")},
+        ),
+    ]
+
+
 def test_rename_ignored_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "...", "other": "text"}})
 
