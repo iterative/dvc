@@ -444,6 +444,10 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
         if isinstance(dvcfile, PipelineFile):
             dvcfile_path = _relpath(repo.dvcfs, dvcfile.path)
             dvcfile_defs = dvcfile.load().get("plots", {})
+            if isinstance(dvcfile_defs, list):
+                dvcfile_defs = {
+                    k: v for elem in dvcfile_defs for k, v in elem.items()
+                }
             resolved = _resolve_definitions(
                 repo.dvcfs,
                 targets,
