@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
     from dvc_data.hashfile.hash_info import HashInfo
-    from dvc_data.index import DataIndex
+    from dvc_data.index import DataIndex, DataIndexKey, DataIndexView
     from dvc_objects.db import ObjectDB
 
 
@@ -147,6 +147,28 @@ class Index:
                 )
             )
         return self._collected_targets[targets_hash]
+
+    def targets_view(
+        self,
+        targets: "TargetType",
+        filter_fn: Optional[Callable[["Stage"], bool]] = None,
+        **kwargs: Any,
+    ) -> "IndexView":
+        """Return read-only view of index for the specified targets.
+
+        Args:
+            targets: Targets to collect
+            filter_fn: Optional stage filter to be applied after collecting
+                targets.
+
+        Additional kwargs will be passed into the stage collector.
+        """
+        stage_infos = [
+            stage_info
+            for stage_info in self._collect_targets(targets, **kwargs)
+            if not filter_fn or filter_fn(stage_info.stage)
+        ]
+        return IndexView(self, stage_infos)
 
     @property
     def outs(self) -> Iterator["Output"]:
@@ -337,6 +359,75 @@ class Index:
         Currently, it is unique to the platform (windows vs posix).
         """
         return dict_md5(self.dumpd())
+
+
+class IndexView:
+    """Read-only view of Index.data using filtered stages."""
+
+    def __init__(  # pylint: disable=redefined-outer-name
+        self, index: Index, stage_infos: Iterable["StageInfo"]
+    ):
+        self._index = index
+        self._stages: Dict["Stage", Optional[str]] = dict(stage_infos)
+
+    def __len__(self) -> int:
+        return len(self._stages)
+
+    def __contains__(self, stage: "Stage") -> bool:
+        # as we are keeping stages inside a list, it might be slower.
+        return stage in self._stages
+
+    def __iter__(self) -> Iterator["Stage"]:
+        yield from self._stages
+
+    def __getitem__(self, item: str) -> "Stage":
+        """Get a stage by its addressing attribute."""
+        for stage in self:
+            if stage.addressing == item:
+                return stage
+        raise KeyError(f"{item} - available stages are {self.stages}")
+
+    @property
+    def stages(self):
+        return list(self._stages)
+
+    @property
+    def deps(self) -> Iterator["Dependency"]:
+        for stage in self:
+            yield from stage.deps
+
+    @property
+    def outs(self) -> Iterator["Output"]:
+        for stage, filter_info in self._stages.items():
+            yield from stage.filter_outs(filter_info)
+
+    @cached_property
+    def _data_prefixes(self) -> Dict[str, Set["DataIndexKey"]]:
+        from collections import defaultdict
+
+        prefixes: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
+        for out in self.outs:
+            workspace, key = out.index_key
+            prefixes[workspace].add(key)
+            prefixes[workspace].update(key[:i] for i in range(len(key), 0, -1))
+        return prefixes
+
+    @cached_property
+    def data(self) -> "Dict[str, DataIndexView]":
+        from functools import partial
+
+        from dvc_data.index import view
+
+        def key_filter(workspace: str, key: "DataIndexKey"):
+            try:
+                return key in self._data_prefixes[workspace]
+            except KeyError:
+                return False
+
+        return {
+            workspace: view(index, partial(key_filter, workspace))
+            for workspace, index in self._index.data.items()
+        }
 
 
 if __name__ == "__main__":
