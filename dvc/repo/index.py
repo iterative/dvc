@@ -1,13 +1,13 @@
 from contextlib import suppress
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
     Dict,
     Iterable,
     Iterator,
     List,
     Optional,
-    Sequence,
     Set,
 )
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from dvc.dependency import Dependency, ParamsDependency
     from dvc.fs import FileSystem
     from dvc.output import Output
-    from dvc.repo.stage import StageLoad
+    from dvc.repo.stage import StageInfo, StageLoad
     from dvc.stage import Stage
     from dvc.types import StrPath, TargetType
     from dvc_data.hashfile.hash_info import HashInfo
@@ -64,6 +64,7 @@ class Index:
         self.stage_collector: "StageLoad" = repo.stage
         if stages is not None:
             self.stages: List["Stage"] = stages
+        self._collected_targets: Dict[int, List["StageInfo"]] = {}
 
     @cached_property
     def stages(self) -> List["Stage"]:  # pylint: disable=method-hidden
@@ -112,6 +113,40 @@ class Index:
             return path_isin(stage.path_in_repo, target_path)
 
         return self.filter(is_stage_inside_path)
+
+    @staticmethod
+    def _hash_targets(
+        targets: Iterable[Optional[str]],
+        **kwargs: Any,
+    ) -> int:
+        return hash(
+            (
+                frozenset(targets),
+                kwargs.get("with_deps", False),
+                kwargs.get("recursive", False),
+            )
+        )
+
+    def _collect_targets(
+        self, targets: Optional["TargetType"], **kwargs: Any
+    ) -> List["StageInfo"]:
+        from itertools import chain
+
+        from dvc.repo.stage import StageInfo
+        from dvc.utils.collections import ensure_list
+
+        targets = ensure_list(targets)
+        if not targets:
+            return [StageInfo(stage) for stage in self.stages]
+        targets_hash = self._hash_targets(targets, **kwargs)
+        if targets_hash not in self._collected_targets:
+            self._collected_targets[targets_hash] = list(
+                chain.from_iterable(
+                    self.stage_collector.collect_granular(target, **kwargs)
+                    for target in targets
+                )
+            )
+        return self._collected_targets[targets_hash]
 
     @property
     def outs(self) -> Iterator["Output"]:
@@ -216,22 +251,11 @@ class Index:
         jobs: int = None,
     ) -> "ObjectContainer":
         from collections import defaultdict
-        from itertools import chain
-
-        from dvc.utils.collections import ensure_list
 
         used: "ObjectContainer" = defaultdict(set)
-        collect_targets: Sequence[Optional[str]] = (None,)
-        if targets:
-            collect_targets = ensure_list(targets)
-
-        pairs = chain.from_iterable(
-            self.stage_collector.collect_granular(
-                target, recursive=recursive, with_deps=with_deps
-            )
-            for target in collect_targets
+        pairs = self._collect_targets(
+            targets, recursive=recursive, with_deps=with_deps
         )
-
         for stage, filter_info in pairs:
             for odb, objs in stage.get_used_objs(
                 remote=remote,
@@ -247,19 +271,7 @@ class Index:
         targets: "TargetType" = None,
         recursive: bool = False,
     ) -> List["Stage"]:
-        from itertools import chain
-
-        from dvc.utils.collections import ensure_list
-
-        collect_targets: Sequence[Optional[str]] = (None,)
-        if targets:
-            collect_targets = ensure_list(targets)
-
-        pairs = chain.from_iterable(
-            self.stage_collector.collect_granular(target, recursive=recursive)
-            for target in collect_targets
-        )
-
+        pairs = self._collect_targets(targets, recursive=recursive)
         return [stage for stage, _ in pairs if stage.is_partial_import]
 
     # Following methods help us treat the collection as a set-like structure
