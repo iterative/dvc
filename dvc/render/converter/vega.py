@@ -1,90 +1,83 @@
-from copy import deepcopy
-from functools import partial
-from typing import Dict, Iterable, List, Optional, Set, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
-from funcy import first, project
+from funcy import first, group_values, last
 
 from dvc.exceptions import DvcException
-from dvc.render import (
-    FILENAME_FIELD,
-    INDEX_FIELD,
-    REVISION_FIELD,
-    VERSION_FIELD,
-)
+from dvc.render import FILENAME_FIELD, INDEX_FIELD, VERSION_FIELD
 
 from . import Converter
 
 
-class FieldsNotFoundError(DvcException):
-    def __init__(self, expected_fields, found_fields):
-        expected_str = ", ".join(expected_fields)
-        found_str = ", ".join(found_fields)
-        super().__init__(
-            f"Could not find all provided fields ('{expected_str}') "
-            f"in data fields ('{found_str}')."
-        )
+def _lists(blob: Union[Dict, List]) -> Iterable[List]:
+    if isinstance(blob, list):
+        yield blob
+    else:
+        for _, value in blob.items():
+            if isinstance(value, dict):
+                yield from _lists(value)
+            elif isinstance(value, list):
+                yield value
 
 
-class PlotDataStructureError(DvcException):
-    def __init__(self):
-        super().__init__(
-            "Plot data extraction failed. Please see "
-            "https://man.dvc.org/plots for supported data formats."
-        )
+def _file_field(*args):
+    for axis_def in args:
+        if axis_def is not None:
+            for file, val in axis_def.items():
+                if isinstance(val, str):
+                    yield file, val
+                elif isinstance(val, list):
+                    for field in val:
+                        yield file, field
 
 
-def _filter_fields(
-    datapoints: List[Dict], fields: Set, **kwargs
-) -> List[Dict]:
-    if not fields:
-        return datapoints
-    assert isinstance(fields, set)
-
-    new_data = []
-    for data_point in datapoints:
-        keys = set(data_point.keys())
-        if not fields <= keys:
-            raise FieldsNotFoundError(fields, keys)
-
-        new_data.append(project(data_point, fields))
-
-    return new_data
+def _find(
+    filename: str,
+    field: str,
+    data_series: List[Tuple[str, str, Any]],
+):
+    for data_file, data_field, data in data_series:
+        if data_file == filename and data_field == field:
+            return data_file, data_field, data
+    return None
 
 
-def _lists(dictionary: Dict):
-    for _, value in dictionary.items():
-        if isinstance(value, dict):
-            yield from _lists(value)
-        elif isinstance(value, list):
-            yield value
+def _get_x(properties: Dict, data_series: List[Tuple[str, str, Any]]):
+    x = properties.get("x", None)
+    if x is not None and isinstance(x, dict):
+        filename, field = first(_file_field(x))
+        return _find(filename, field, data_series)
+    return None
 
 
-def _find_first_list(
-    data: Union[Dict, List], fields: Set, **kwargs
-) -> List[Dict]:
-    fields = fields or set()
-
-    if not isinstance(data, dict):
-        return data
-
-    for lst in _lists(data):
-        if (
-            all(isinstance(dp, dict) for dp in lst)
-            # if fields is empty, it will match any set
-            and set(first(lst).keys()) & fields == fields
-        ):
-            return lst
-
-    raise PlotDataStructureError()
+def _get_ys(properties, data_series: List[Tuple[str, str, Any]]):
+    y = properties.get("y", None)
+    if y is not None:
+        for filename, field in _file_field(y):
+            result = _find(filename, field, data_series)
+            if result is not None:
+                yield result
 
 
-def _append_index(datapoints: List[Dict], **kwargs) -> List[Dict]:
-    if INDEX_FIELD in first(datapoints).keys():
-        return datapoints
+def _is_datapoints(lst: List):
+    # check if dict keys match, datapoints with different keys mgiht lead
+    # to unexpected behavior
+    return all(isinstance(item, dict) for item in lst) and set(
+        first(lst).keys()
+    ) == {key for keys in lst for key in keys}
 
-    for index, data_point in enumerate(datapoints):
-        data_point[INDEX_FIELD] = index
-    return datapoints
+
+def get_data_series(file_content: Dict):
+    data_series = {}
+    for lst in _lists(file_content):
+        if _is_datapoints(lst):
+            data_series.update(
+                group_values(
+                    (key, value)
+                    for datapoint in lst
+                    for key, value in datapoint.items()
+                )
+            )
+    return dict(data_series)
 
 
 class VegaConverter(Converter):
@@ -95,228 +88,139 @@ class VegaConverter(Converter):
     ('x', 'y') it will attempt to fill in the blanks.
     """
 
-    def __init__(self, plot_properties: Optional[Dict] = None):
-        super().__init__(plot_properties)
+    def __init__(
+        self, plot_id: str, data: Dict = None, properties: Dict = None
+    ):
+        super().__init__(plot_id, data, properties)
+        self.plot_id = plot_id
         self.inferred_properties: Dict = {}
 
-        self.steps = []
+        self._infer_x_y()
 
-        self._infer_x()
-        self._infer_fields()
+    def _infer_y_from_data(self):
+        if self.plot_id in self.data:
+            for lst in _lists(self.data[self.plot_id]):
+                if all(isinstance(item, dict) for item in lst):
+                    datapoint = first(lst)
+                    field = last(datapoint.keys())
+                    self.inferred_properties["y"] = {self.plot_id: field}
+                    break
 
-        self.steps.append(
-            (
-                "find_data",
-                partial(
-                    _find_first_list,
-                    fields=self.inferred_properties.get("fields", set())
-                    - {INDEX_FIELD},
-                ),
-            )
-        )
+    def _infer_x_y(self):
+        def _infer_files(from_name, to_name):
+            from_value = self.properties.get(from_name, None)
+            to_value = self.properties.get(to_name, None)
 
-        if not self.plot_properties.get("x", None):
-            self.steps.append(("append_index", partial(_append_index)))
-
-        self.steps.append(
-            (
-                "filter_fields",
-                partial(
-                    _filter_fields,
-                    fields=self.inferred_properties.get("fields", set()),
-                ),
-            )
-        )
-        self.steps.append(
-            (
-                "infer_y",
-                partial(
-                    self._infer_y,
-                ),
-            )
-        )
-
-        self.steps.append(
-            (
-                "generate_y",
-                partial(
-                    self._generate_y_values,
-                ),
-            )
-        )
-
-    def _infer_x(self):
-        if not self.plot_properties.get("x", None):
-            self.inferred_properties["x"] = INDEX_FIELD
-
-    def skip_step(self, name: str):
-        self.steps = [(_name, fn) for _name, fn in self.steps if _name != name]
-
-    def _infer_fields(self):
-        fields = self.plot_properties.get("fields", set())
-        if fields:
-            fields = {
-                *fields,
-                self.plot_properties.get("x", None),
-                self.plot_properties.get("y", None),
-                self.inferred_properties.get("x", None),
-            } - {None}
-            self.inferred_properties["fields"] = fields
-
-    def _infer_y(self, datapoints: List[Dict], **kwargs):
-        if "y" not in self.plot_properties:
-            data_fields = list(first(datapoints))
-            skip = (
-                REVISION_FIELD,
-                self.plot_properties.get("x", None)
-                or self.inferred_properties.get("x"),
-                FILENAME_FIELD,
-                VERSION_FIELD,
-            )
-            inferred_y = first(
-                f for f in reversed(data_fields) if f not in skip
-            )
-            if "y" in self.inferred_properties:
-                previous_y = self.inferred_properties["y"]
-                if previous_y != inferred_y:
-                    raise DvcException(
-                        f"Inferred y ('{inferred_y}' value does not match"
-                        f"previously matched one ('f{previous_y}')."
-                    )
+            if isinstance(to_value, str):
+                self.inferred_properties[to_name] = {}
+                if isinstance(from_value, dict):
+                    for file in from_value.keys():
+                        self.inferred_properties[to_name][file] = to_value
+                else:
+                    self.inferred_properties[to_name][self.plot_id] = to_value
             else:
-                self.inferred_properties["y"] = inferred_y
-        return datapoints
+                self.inferred_properties[to_name] = to_value
+
+        _infer_files("y", "x")
+        _infer_files("x", "y")
+
+        if self.inferred_properties.get("y", None) is None:
+            self._infer_y_from_data()
+
+    def _find_series(self) -> List[Tuple[str, str, List]]:
+        x = self.inferred_properties.get("x", None)
+        y = self.inferred_properties.get("y", None)
+        file_fields = list(_file_field(x, y))
+
+        result = []
+        for file, content in self.data.items():
+            for field, data in get_data_series(content).items():
+                if ((file, field) in file_fields) and len(data) > 0:
+                    result.append((file, field, data))
+        return result
+
+    def flat_datapoints(self, revision):
+        def _datapoint(d: Dict, revision, filename, field):
+            d.update(
+                {
+                    VERSION_FIELD: {
+                        "revision": revision,
+                        FILENAME_FIELD: filename,
+                        "field": field,
+                    }
+                }
+            )
+            return d
+
+        datas, properties = self.convert()
+
+        x = _get_x(properties, datas)
+        ys = list(_get_ys(properties, datas))
+        if x and not ys:
+            file, field, data = x
+            return [
+                _datapoint({field: val}, revision, file, field) for val in data
+            ], {**properties, **{"x": field}}
+
+        dps = []
+        props_update = {}
+        all_y_fields = {y_field for _, y_field, _ in ys}
+        for y_file, y_field, y_data in ys:
+            y_value_name = y_field
+
+            # assign "step" if no x provided
+            if not x:
+                x_file, x_field, x_data = (
+                    None,
+                    INDEX_FIELD,
+                    list(range(len(y_data))),
+                )
+            else:
+                x_file, x_field, x_data = x
+            props_update["x"] = x_field
+
+            # override to unified y field name if there are multiple y fields
+            if len(all_y_fields) > 1:
+                y_value_name = "dvc_inferred_y_value"
+                props_update["y"] = "dvc_inferred_y_value"
+                if "y_label" not in properties:
+                    props_update["y_label"] = "y"
+            else:
+                props_update["y"] = y_field
+
+            try:
+                dps.extend(
+                    [
+                        _datapoint(
+                            {y_value_name: y_val, x_field: x_data[index]},
+                            revision,
+                            y_file,
+                            y_field,
+                        )
+                        for index, y_val in enumerate(y_data)
+                    ]
+                )
+            except IndexError:
+                raise DvcException(
+                    f"Number of values in '{x_field}' field from '{x_file}' "
+                    f"and '{y_field}' from '{y_file}' columns do not match."
+                )
+
+        if not dps:
+            return [], {}
+
+        return dps, {**properties, **props_update}
 
     def convert(
         self,
-        data,
-        revision: str,
-        filename: str,
-        skip: List = None,
-        **kwargs,
     ):
         """
         Convert the data. Fill necessary fields ('x', 'y') and return both
         generated datapoints and updated properties.
         """
-        if not skip:
-            skip = []
+        data_series = self._find_series()
 
-        processed = deepcopy(data)
-
-        for step_name, step in self.steps:
-            if step_name not in skip:
-                processed = step(  # type: ignore
-                    processed,
-                    revision=revision,
-                    filename=filename,
-                )
-
-        return processed, {**self.plot_properties, **self.inferred_properties}
-
-    def _generate_y_values(  # noqa: C901
-        self,
-        datapoints: List[Dict],
-        revision: str,
-        filename: str,
-        **kwargs,
-    ) -> List[Dict]:
-
-        y_values = self.plot_properties.get(
-            "y", None
-        ) or self.inferred_properties.get("y", None)
-
-        assert y_values is not None
-
-        result = []
-        properties_update = {}
-
-        def _add_version_info(datapoint, version_info):
-            tmp = datapoint.copy()
-            tmp[VERSION_FIELD] = version_info
-            return tmp
-
-        def _version_info(revision, filename=None, field=None):
-            res = {"revision": revision}
-            if filename is not None:
-                res["filename"] = filename
-            if field is not None:
-                res["field"] = field
-            return res
-
-        def _generate_y(datapoint, field):
-            tmp = datapoint.copy()
-            tmp["dvc_inferred_y_value"] = datapoint[field]
-            tmp = _add_version_info(
-                tmp, _version_info(revision, filename, field)
-            )
-            if (
-                "y_label" not in properties_update
-                and "y_label" not in self.plot_properties
-            ):
-                properties_update["y_label"] = "y"
-
-            properties_update["y"] = "dvc_inferred_y_value"
-
-            return tmp
-
-        if isinstance(y_values, str):
-            for datapoint in datapoints:
-                result.append(
-                    _add_version_info(
-                        datapoint, _version_info(revision, filename, y_values)
-                    )
-                )
-
-        if isinstance(y_values, list):
-            for datapoint in datapoints:
-                for y_val in y_values:
-                    if y_val in datapoint:
-                        result.append(_generate_y(datapoint, y_val))
-
-        if isinstance(y_values, dict):
-
-            def _to_set(values: Iterable):
-                result = set()
-                for val in values:
-                    if isinstance(val, list):
-                        for elem in val:
-                            result.add(elem)
-                    else:
-                        result.add(val)
-
-                return result
-
-            all_fields = _to_set(y_values.values())
-            if (
-                all([isinstance(field, str) for field in all_fields])
-                and len(all_fields) == 1
-            ):
-                # if we use the same field from all files,
-                # we dont have to generate it
-                y_field = all_fields.pop()
-                for datapoint in datapoints:
-                    result.append(
-                        _add_version_info(
-                            datapoint,
-                            _version_info(revision, filename, y_field),
-                        )
-                    )
-                properties_update.update({"y": y_field})
-            else:
-                for def_filename, val in y_values.items():
-                    if isinstance(val, str):
-                        fields = [val]
-                    if isinstance(val, list):
-                        fields = val
-                    for datapoint in datapoints:
-                        for field in fields:
-                            if field in datapoint and def_filename in filename:
-                                result.append(_generate_y(datapoint, field))
-
-        self.inferred_properties = {
+        return data_series, {
+            **self.properties,
             **self.inferred_properties,
-            **properties_update,
         }
-
-        return result

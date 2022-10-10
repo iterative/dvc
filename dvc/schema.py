@@ -104,7 +104,7 @@ def either_or(primary, fallback, fallback_includes=None):
 
 
 PLOT_DEFINITION = {
-    Output.PARAM_PLOT_X: str,
+    Output.PARAM_PLOT_X: Any(str, {str: str}),
     Output.PARAM_PLOT_Y: Any(str, [str], {str: Any(str, [str])}),
     Output.PARAM_PLOT_X_LABEL: str,
     Output.PARAM_PLOT_Y_LABEL: str,
