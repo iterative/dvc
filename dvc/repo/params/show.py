@@ -20,13 +20,14 @@ from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils import error_handler, errored_revisions, onerror_default
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
 if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.types import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -126,11 +127,9 @@ def show(
     revs=None,
     targets=None,
     deps=False,
-    onerror: Callable = None,
+    onerror: Optional["ErrorHandler"] = onerror_default,
     stages=None,
 ):
-    if onerror is None:
-        onerror = onerror_collect
     res = {}
 
     targets = ensure_list(targets)

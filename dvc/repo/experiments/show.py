@@ -9,12 +9,13 @@ from dvc.repo.experiments.queue.base import QueueDoneResult
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
-from dvc.utils import error_handler, onerror_collect, relpath
+from dvc.utils import error_handler, onerror_default, relpath
 
 from .refs import ExpRefInfo
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
+    from dvc.types import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -165,15 +166,12 @@ def show(
     sha_only=False,
     num=1,
     param_deps=False,
-    onerror: Optional[Callable] = None,
+    onerror: Optional["ErrorHandler"] = onerror_default,
     fetch_running: bool = True,
 ):
 
     if repo.scm.no_commits:
         return {}
-
-    if onerror is None:
-        onerror = onerror_collect
 
     res: Dict[str, Dict] = defaultdict(OrderedDict)
 

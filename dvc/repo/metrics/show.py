@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List
+from typing import TYPE_CHECKING, List, Optional
 
 from scmrepo.exceptions import SCMError
 
@@ -10,11 +10,14 @@ from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
 from dvc.repo.live import summary_fs_path
 from dvc.scm import NoSCMError
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils import error_handler, errored_revisions, onerror_default
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from dvc.types import ErrorHandler
 
 
 def _is_metric(out: Output) -> bool:
@@ -97,7 +100,9 @@ def _read_metrics(repo, metrics, rev, onerror=None):
     return res
 
 
-def _gather_metrics(repo, targets, rev, recursive, onerror=None):
+def _gather_metrics(
+    repo, targets, rev, recursive, onerror: Optional["ErrorHandler"] = None
+):
     metrics = _collect_metrics(repo, targets, rev, recursive)
     return _read_metrics(repo, metrics, rev, onerror=onerror)
 
@@ -111,11 +116,8 @@ def show(
     recursive=False,
     revs=None,
     all_commits=False,
-    onerror=None,
+    onerror: Optional["ErrorHandler"] = onerror_default,
 ):
-    if onerror is None:
-        onerror = onerror_collect
-
     targets = ensure_list(targets)
     targets = [repo.dvcfs.from_os_path(target) for target in targets]
 

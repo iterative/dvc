@@ -7,7 +7,6 @@ from dvc.dvcfile import PIPELINE_FILE
 from dvc.exceptions import OverlappingOutputPathsError
 from dvc.repo import Repo
 from dvc.repo.plots import PlotMetricTypeError
-from dvc.utils import onerror_collect
 from dvc.utils.fs import remove
 from dvc.utils.serialize import EncodingError, YAMLFileCorruptedError
 from tests.utils.plots import get_plot
@@ -66,7 +65,7 @@ def test_plot_wrong_metric_type(tmp_dir, scm, dvc, run_copy_metrics):
         commit="add text metric",
     )
 
-    result = dvc.plots.show(targets=["metric.txt"], onerror=onerror_collect)
+    result = dvc.plots.show(targets=["metric.txt"])
     assert isinstance(
         get_plot(result, "workspace", file="metric.txt", endkey="error"),
         PlotMetricTypeError,
@@ -167,7 +166,7 @@ def test_plots_show_overlap(tmp_dir, dvc, run_copy_metrics, clear_before_run):
 
     dvc._reset()
 
-    result = dvc.plots.show(onerror=onerror_collect)
+    result = dvc.plots.show()
     assert isinstance(
         get_plot(result, "workspace", endkey="error"),
         OverlappingOutputPathsError,
@@ -212,7 +211,7 @@ def test_ignore_parsing_error(tmp_dir, dvc, run_copy_metrics):
         fobj.write(b"\xc1")
 
     run_copy_metrics("file", "plot_file.json", plots=["plot_file.json"])
-    result = dvc.plots.show(onerror=onerror_collect)
+    result = dvc.plots.show()
 
     assert isinstance(
         get_plot(result, "workspace", file="plot_file.json", endkey="error"),
@@ -247,7 +246,7 @@ def test_log_errors(
     with open(file, "a", encoding="utf-8") as fd:
         fd.write("\nMALFORMED!")
 
-    result = dvc.plots.show(onerror=onerror_collect)
+    result = dvc.plots.show()
     _, error = capsys.readouterr()
 
     assert isinstance(get_plot(result, **path_kwargs), YAMLFileCorruptedError)

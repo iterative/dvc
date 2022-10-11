@@ -6,9 +6,12 @@ import logging
 import os
 import re
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 import colorama
+
+if TYPE_CHECKING:
+    from dvc.types import ErrorHandler, ResultDict
 
 logger = logging.getLogger(__name__)
 
@@ -401,26 +404,32 @@ def glob_targets(targets, glob=True, recursive=True):
     return results
 
 
-def error_handler(func):
-    def wrapper(*args, **kwargs):
-        onerror = kwargs.get("onerror", None)
-        result = {}
+def onerror_default(result: "ResultDict", exception: Exception) -> None:
+    logger.exception("")
+    result["error"] = exception
+
+
+def _onerror_raise(result: "ResultDict", exception: Exception) -> None:
+    raise  # pylint: disable=misplaced-bare-raise
+
+
+def error_handler(func: Callable):
+    def wrapper(*args, **kwargs) -> "ResultDict":
+        onerror: Optional["ErrorHandler"] = kwargs.get("onerror", None)
+        result: "ResultDict" = {}
 
         try:
             vals = func(*args, **kwargs)
             if vals:
                 result["data"] = vals
-        except Exception as e:  # pylint: disable=broad-except
-            if onerror is not None:
-                onerror(result, e, **kwargs)
+        except Exception as exc:  # pylint: disable=broad-except
+            result["error"] = exc
+            if onerror is None:
+                raise
+            onerror(result, exc)
         return result
 
     return wrapper
-
-
-def onerror_collect(result: Dict, exception: Exception, *args, **kwargs):
-    logger.debug("", exc_info=True)
-    result["error"] = exception
 
 
 def errored_revisions(rev_data: Dict) -> List:

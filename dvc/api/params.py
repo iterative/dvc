@@ -238,9 +238,6 @@ def params_show(
     if isinstance(stages, str):
         stages = [stages]
 
-    def _onerror_raise(result: Dict, exception: Exception, *args, **kwargs):
-        raise exception
-
     def _postprocess(params):
         processed = {}
         for rev, rev_data in params.items():
@@ -265,6 +262,8 @@ def params_show(
             raise DvcException("No params found")
 
         return processed[first(processed)]
+
+    from dvc.utils import _onerror_raise
 
     with Repo.open(repo) as _repo:
         params = _repo.params.show(

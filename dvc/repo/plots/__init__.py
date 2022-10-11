@@ -21,12 +21,13 @@ import dpath.util
 from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException
-from dvc.utils import error_handler, errored_revisions, onerror_collect
+from dvc.utils import error_handler, errored_revisions, onerror_default
 from dvc.utils.serialize import LOADERS
 
 if TYPE_CHECKING:
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.types import ErrorHandler
 
 dpath.options.ALLOW_EMPTY_STRING_KEYS = True
 
@@ -182,12 +183,9 @@ class Plots:
         revs=None,
         props=None,
         recursive=False,
-        onerror=None,
+        onerror: Optional["ErrorHandler"] = onerror_default,
         config_files: Optional[Set[str]] = None,
     ):
-        if onerror is None:
-            onerror = onerror_collect
-
         result: Dict[str, Dict] = {}
         for data in self.collect(
             targets,
