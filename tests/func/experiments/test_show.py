@@ -49,6 +49,21 @@ def test_show_no_commits(tmp_dir):
 
 
 @pytest.mark.vscode
+def test_show_branch_and_tag_name(tmp_dir, scm, dvc, exp_stage):
+    with tmp_dir.branch("new/branch", new=True):
+        tmp_dir.scm_gen("branch", "branch", "commit")
+        branch_rev = scm.get_rev()
+
+    result = dvc.experiments.show(all_branches=True)
+    assert result[branch_rev]["baseline"]["data"]["name"] == "new/branch"
+
+    scm.tag("new/tag")
+    tag_rev = scm.get_rev()
+    result = dvc.experiments.show(all_tags=True)
+    assert result[tag_rev]["baseline"]["data"]["name"] == "new/tag"
+
+
+@pytest.mark.vscode
 def test_show_simple(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.show()["workspace"] == {
         "baseline": {
