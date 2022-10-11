@@ -100,11 +100,10 @@ def _collect_experiment_commit(
                 for refspec in ["refs/tags", "refs/heads"]:
                     name = repo.scm.describe(rev, base=refspec)
                     if name:
+                        name = name.replace(f"{refspec}/", "")
                         break
-            if not name:
-                name = repo.experiments.get_exact_name(rev)
+            name = name or repo.experiments.get_exact_name(rev)
             if name:
-                name = name.rsplit("/")[-1]
                 res["name"] = name
 
     return res
@@ -117,7 +116,7 @@ def _collect_experiment_branch(
     baseline,
     onerror: Optional[Callable] = None,
     running=None,
-    **kwargs
+    **kwargs,
 ):
     from dvc.scm import resolve_rev
 
@@ -132,7 +131,7 @@ def _collect_experiment_branch(
             onerror=onerror,
             status=status,
             running=running,
-            **kwargs
+            **kwargs,
         )
         if len(revs) > 1:
             exp = {"checkpoint_tip": exp_rev}
