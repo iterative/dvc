@@ -228,8 +228,7 @@ class Index:
     def data(self) -> "Dict[str, DataIndex]":
         from collections import defaultdict
 
-        from dvc.config import NoRemoteError
-        from dvc_data.index import DataIndex, DataIndexEntry
+        from dvc_data.index import DataIndex
 
         by_workspace: dict = defaultdict(DataIndex)
 
@@ -241,29 +240,16 @@ class Index:
                 continue
 
             workspace, key = out.index_key
-
-            try:
-                remote = self.repo.cloud.get_remote_odb(out.remote)
-            except NoRemoteError:
-                remote = None
-
             data_index = by_workspace[workspace]
 
             if out.files:
                 out.obj = out.get_obj()
 
-            entry = DataIndexEntry(
-                meta=out.meta,
-                obj=out.obj,
-                hash_info=out.hash_info,
-                odb=out.odb,
-                cache=out.odb,
-                remote=remote,
-            )
+            entry = out.get_entry()
             if out.stage.is_import and not out.stage.is_repo_import:
                 entry.fs = out.stage.deps[0].fs
                 entry.path = out.stage.deps[0].fs_path
-                entry.cache = out.odb
+                entry.meta = out.stage.deps[0].meta
             data_index[key] = entry
 
         return dict(by_workspace)
