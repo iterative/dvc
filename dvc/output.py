@@ -26,6 +26,7 @@ from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.istextfile import istextfile
 from dvc_data.hashfile.meta import Meta
 from dvc_data.hashfile.transfer import transfer as otransfer
+from dvc_data.index import DataIndexEntry
 from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
@@ -513,6 +514,23 @@ class Output:
             no_drive = self.fs.path.flavour.splitdrive(self.fs_path)[1]
             key = self.fs.path.parts(no_drive)[1:]
         return workspace, key
+
+    def get_entry(self) -> "DataIndexEntry":
+        from dvc.config import NoRemoteError
+
+        try:
+            remote = self.repo.cloud.get_remote_odb(self.remote)
+        except NoRemoteError:
+            remote = None
+
+        return DataIndexEntry(
+            meta=self.meta,
+            obj=self.obj,
+            hash_info=self.hash_info,
+            odb=self.odb,
+            cache=self.odb,
+            remote=remote,
+        )
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
