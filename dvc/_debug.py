@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Union
 
 if TYPE_CHECKING:
     from argparse import Namespace
+    from types import FrameType
 
 
 @contextmanager
@@ -106,6 +107,29 @@ def debug():
         raise  # prevent from jumping ahead
 
 
+def _sigshow(_, frame: Optional["FrameType"]) -> None:
+    from shutil import get_terminal_size
+    from traceback import format_stack
+
+    from dvc.ui import ui
+
+    lines = "\u2015" * get_terminal_size().columns
+    ui.error_write(lines, "\n", *format_stack(frame), lines, sep="")
+
+
+@contextmanager
+def show_stack():
+    r"""Show stack trace on SIGQUIT (Ctrl-\) or SIGINFO (Ctrl-T on macOS)."""
+    import signal
+
+    signal.signal(signal.SIGQUIT, _sigshow)
+    try:
+        signal.signal(signal.SIGINFO, _sigshow)  # only available on macOS
+    except AttributeError:
+        pass
+    yield
+
+
 def _get_path_func(tool: str, ext: str):
     fmt = f"{tool}.dvc-{{now:%Y%m%d}}_{{now:%H%M%S}}.{ext}"
 
@@ -127,6 +151,8 @@ def debugtools(args: "Namespace" = None, **kwargs):
             stack.enter_context(profile(kw.get("cprofile_dump")))
         if kw.get("instrument") or kw.get("instrument_open"):
             stack.enter_context(instrument(kw.get("instrument_open", False)))
+        if kw.get("show_stack", False):
+            stack.enter_context(show_stack())
         if kw.get("yappi"):
             path_func = _get_path_func("callgrind", "out")
             stack.enter_context(yappi_profile(path=path_func))
@@ -160,4 +186,11 @@ def add_debugging_flags(parser):
     )
     parser.add_argument(
         "--instrument-open", action="store_true", default=False, help=SUPPRESS
+    )
+    parser.add_argument(
+        "--show-stack",
+        "--ss",
+        action="store_true",
+        default=False,
+        help=SUPPRESS,
     )
