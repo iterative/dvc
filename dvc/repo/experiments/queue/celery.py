@@ -182,6 +182,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 continue
             args, kwargs, _embed = msg.decode()
             entry_dict = kwargs.get("entry_dict", args[0])
+            logger.debug("Found queued task %s", entry_dict["stash_rev"])
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
     def _iter_processed(self) -> Generator[_MessageEntry, None, None]:
@@ -198,6 +199,7 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if not result.ready():
+                logger.debug("Found active task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
@@ -206,6 +208,7 @@ class LocalCeleryQueue(BaseStashQueue):
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
             if result.ready():
+                logger.debug("Found done task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def iter_active(self) -> Generator[QueueEntry, None, None]:

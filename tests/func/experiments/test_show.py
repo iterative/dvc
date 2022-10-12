@@ -646,6 +646,9 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     result1 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     rev1 = first(result1)
     ref_info1 = first(exp_refs_by_rev(scm, rev1))
+
+    # at least 1 second gap between these experiments to make sure
+    # the previous experiment to be regarded as branch_base
     time.sleep(1)
     result2 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
     rev2 = first(result2)

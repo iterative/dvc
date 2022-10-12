@@ -29,8 +29,7 @@ def run(
     of `repro` for that experiment.
     """
     if run_all:
-        entries = list(repo.experiments.celery_queue.iter_queued())
-        return repo.experiments.reproduce_celery(entries, jobs=jobs)
+        return repo.experiments.reproduce_celery(jobs=jobs)
 
     hydra_sweep = None
     if params:
