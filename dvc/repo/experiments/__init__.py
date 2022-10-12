@@ -4,7 +4,7 @@ import re
 import time
 from typing import Dict, Iterable, Optional
 
-from funcy import cached_property, first
+from funcy import cached_property, chain, first
 
 from dvc.exceptions import DvcException
 from dvc.ui import ui
@@ -171,7 +171,18 @@ class Experiments:
     ) -> Dict[str, str]:
         results: Dict[str, str] = {}
         if entries is None:
-            entries = list(self.celery_queue.iter_queued())
+            entries = list(
+                chain(
+                    self.celery_queue.iter_active(),
+                    self.celery_queue.iter_queued(),
+                )
+            )
+
+        logger.debug(
+            "reproduce all these entries '%s'",
+            entries,
+        )
+
         if not entries:
             return results
 

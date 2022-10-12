@@ -536,7 +536,7 @@ def test_run_celery(tmp_dir, scm, dvc, exp_stage, mocker):
     repro_spy = mocker.spy(dvc.experiments, "reproduce_celery")
     results = dvc.experiments.run(run_all=True)
     assert len(results) == 2
-    repro_spy.assert_called_once_with(entries=mocker.ANY, jobs=1)
+    repro_spy.assert_called_once_with(jobs=1)
 
     expected = {"foo: 2", "foo: 3"}
     metrics = set()
