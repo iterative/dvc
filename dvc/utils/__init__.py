@@ -13,6 +13,7 @@ import colorama
 if TYPE_CHECKING:
     from dvc.types import ErrorHandler, ResultDict
 
+
 logger = logging.getLogger(__name__)
 
 LARGE_DIR_SIZE = 100
@@ -404,30 +405,24 @@ def glob_targets(targets, glob=True, recursive=True):
     return results
 
 
-def onerror_default(result: "ResultDict", exception: Exception) -> None:
-    logger.exception("")
-    result["error"] = exception
+def onerror_store(exception: Exception) -> "ResultDict":
+    return {"error": exception}
 
 
-def _onerror_raise(result: "ResultDict", exception: Exception) -> None:
+def onerror_raise(exception: Exception) -> "ResultDict":
     raise  # pylint: disable=misplaced-bare-raise
 
 
 def error_handler(func: Callable):
     def wrapper(*args, **kwargs) -> "ResultDict":
-        onerror: Optional["ErrorHandler"] = kwargs.get("onerror", None)
-        result: "ResultDict" = {}
-
         try:
             vals = func(*args, **kwargs)
-            if vals:
-                result["data"] = vals
+            return {"data": vals} if vals else {}
         except Exception as exc:  # pylint: disable=broad-except
-            result["error"] = exc
-            if onerror is None:
-                raise
-            onerror(result, exc)
-        return result
+            onerror: Optional["ErrorHandler"] = kwargs.get("onerror")
+            if onerror is not None:
+                return onerror(exc)
+            raise
 
     return wrapper
 

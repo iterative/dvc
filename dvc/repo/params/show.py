@@ -20,7 +20,7 @@ from dvc.repo.collect import collect
 from dvc.scm import NoSCMError
 from dvc.stage import PipelineStage
 from dvc.ui import ui
-from dvc.utils import error_handler, errored_revisions, onerror_default
+from dvc.utils import error_handler, errored_revisions, onerror_store
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -127,7 +127,7 @@ def show(
     revs=None,
     targets=None,
     deps=False,
-    onerror: Optional["ErrorHandler"] = onerror_default,
+    onerror: Optional["ErrorHandler"] = onerror_store,
     stages=None,
 ):
     res = {}

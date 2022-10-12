@@ -10,7 +10,7 @@ from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
 from dvc.repo.live import summary_fs_path
 from dvc.scm import NoSCMError
-from dvc.utils import error_handler, errored_revisions, onerror_default
+from dvc.utils import error_handler, errored_revisions, onerror_store
 from dvc.utils.collections import ensure_list
 from dvc.utils.serialize import load_path
 
@@ -116,7 +116,7 @@ def show(
     recursive=False,
     revs=None,
     all_commits=False,
-    onerror: Optional["ErrorHandler"] = onerror_default,
+    onerror: Optional["ErrorHandler"] = onerror_store,
 ):
     targets = ensure_list(targets)
     targets = [repo.dvcfs.from_os_path(target) for target in targets]

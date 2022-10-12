@@ -23,4 +23,4 @@ DictAny = Dict[Any, Any]
 ResultDict = TypedDict(
     "ResultDict", {"data": Any, "error": Exception}, total=False
 )
-ErrorHandler = Callable[[ResultDict, Exception], None]
+ErrorHandler = Callable[[Exception], ResultDict]

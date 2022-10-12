@@ -21,7 +21,7 @@ import dpath.util
 from funcy import cached_property, first, project
 
 from dvc.exceptions import DvcException
-from dvc.utils import error_handler, errored_revisions, onerror_default
+from dvc.utils import error_handler, errored_revisions, onerror_store
 from dvc.utils.serialize import LOADERS
 
 if TYPE_CHECKING:
@@ -183,7 +183,7 @@ class Plots:
         revs=None,
         props=None,
         recursive=False,
-        onerror: Optional["ErrorHandler"] = onerror_default,
+        onerror: Optional["ErrorHandler"] = onerror_store,
         config_files: Optional[Set[str]] = None,
     ):
         result: Dict[str, Dict] = {}

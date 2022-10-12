@@ -9,7 +9,7 @@ from dvc.repo.experiments.queue.base import QueueDoneResult
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
-from dvc.utils import error_handler, onerror_default, relpath
+from dvc.utils import error_handler, onerror_store, relpath
 
 from .refs import ExpRefInfo
 
@@ -166,7 +166,7 @@ def show(
     sha_only=False,
     num=1,
     param_deps=False,
-    onerror: Optional["ErrorHandler"] = onerror_default,
+    onerror: Optional["ErrorHandler"] = onerror_store,
     fetch_running: bool = True,
 ):
 

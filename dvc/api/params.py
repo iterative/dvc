@@ -263,14 +263,14 @@ def params_show(
 
         return processed[first(processed)]
 
-    from dvc.utils import _onerror_raise
+    from dvc.utils import onerror_raise
 
     with Repo.open(repo) as _repo:
         params = _repo.params.show(
             revs=rev if rev is None else [rev],
             targets=targets,
             deps=deps,
-            onerror=_onerror_raise,
+            onerror=onerror_raise,
             stages=stages,
         )
 
