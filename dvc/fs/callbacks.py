@@ -1,6 +1,6 @@
 # pylint: disable=unused-import
 from contextlib import ExitStack
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, BinaryIO, Dict, Optional, Union
 
 from funcy import cached_property
 
@@ -75,10 +75,16 @@ class RichCallback(Callback):
             visible=not self.disable,
         )
 
-    def branch(self, path_1, path_2, kwargs, child: Optional[Callback] = None):
+    def branch(
+        self,
+        path_1: Union[str, BinaryIO],
+        path_2: str,
+        kwargs: Dict[str, Any],
+        child: "Callback" = None,
+    ):
         child = child or RichCallback(
             progress=self.progress,
-            desc=path_1,
+            desc=path_1 if isinstance(path_1, str) else path_2,
             bytes=True,
             transient=self._transient,
         )
