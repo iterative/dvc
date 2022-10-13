@@ -30,6 +30,7 @@ from dvc_objects.errors import ObjectFormatError
 
 from .annotations import ANNOTATION_FIELDS, ANNOTATION_SCHEMA, Annotation
 from .fs import LocalFileSystem, RemoteMissingDepsError, Schemes, get_cloud_fs
+from .fs.callbacks import DEFAULT_CALLBACK
 from .utils import relpath
 from .utils.fs import path_isin
 
@@ -37,6 +38,8 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.obj import HashFile
     from dvc_data.index import DataIndexKey
     from dvc_objects.db import ObjectDB
+
+    from .fs.callbacks import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -827,7 +830,7 @@ class Output:
     def checkout(
         self,
         force=False,
-        progress_callback=None,
+        progress_callback: "Callback" = DEFAULT_CALLBACK,
         relink=False,
         filter_info=None,
         allow_missing=False,
@@ -835,9 +838,9 @@ class Output:
         **kwargs,
     ):
         if not self.use_cache:
-            if progress_callback:
-                progress_callback(
-                    self.fs_path, self.get_files_number(filter_info)
+            if progress_callback != DEFAULT_CALLBACK:
+                progress_callback.relative_update(
+                    self.get_files_number(filter_info)
                 )
             return None
 
