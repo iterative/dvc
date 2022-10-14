@@ -34,18 +34,25 @@ def test_get_kwargs_from_urls():
 
 def test_init():
     fs = SSHFileSystem(
-        user="test", host="12.34.56.78", port="1234", password="xxx"
+        user="test",
+        host="12.34.56.78",
+        port="1234",
+        password="xxx",
+        passphrase="yyy",
     )
     assert fs.fs_args["username"] == "test"
     assert fs.fs_args["host"] == "12.34.56.78"
     assert fs.fs_args["port"] == "1234"
-    assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "xxx"
+    assert fs.fs_args["password"] == "xxx"
+    assert fs.fs_args["passphrase"] == "yyy"
 
 
-def test_ssh_ask_password(mocker):
+@pytest.mark.parametrize("option", ("password", "passphrase"))
+def test_ssh_ask_password(mocker, option):
     mocker.patch("dvc_ssh.ask_password", return_value="fish")
-    fs = SSHFileSystem(user="test", host="2.2.2.2", ask_password=True)
-    assert fs.fs_args["password"] == fs.fs_args["passphrase"] == "fish"
+    args = {f"ask_{option}": True}
+    fs = SSHFileSystem(user="test", host="2.2.2.2", **args)
+    assert fs.fs_args[option] == "fish"
 
 
 mock_ssh_config = """
