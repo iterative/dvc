@@ -18,11 +18,12 @@ from typing import (
     Union,
 )
 
-from funcy import cached_property
+from funcy import cached_property, retry
 
 from dvc.dependency import ParamsDependency
 from dvc.env import DVCLIVE_RESUME
 from dvc.exceptions import DvcException
+from dvc.lock import LockError
 from dvc.ui import ui
 
 from ..exceptions import CheckpointExistsError, ExperimentExistsError
@@ -560,6 +561,7 @@ class BaseStashQueue(ABC):
         self.scm.add(list(params.keys()))
 
     @staticmethod
+    @retry(180, errors=LockError, timeout=1)
     @scm_locked
     def init_executor(
         exp: "Experiments",
@@ -601,8 +603,9 @@ class BaseStashQueue(ABC):
         )
 
     @staticmethod
+    @retry(180, errors=LockError, timeout=1)
     @scm_locked
-    def collect_executor(
+    def collect_git(
         exp: "Experiments",
         executor: BaseExecutor,
         exec_result: ExecutorResult,
@@ -625,6 +628,17 @@ class BaseStashQueue(ABC):
                 assert exec_result.exp_hash
                 logger.debug("Collected experiment '%s'.", exp_rev[:7])
                 results[exp_rev] = exec_result.exp_hash
+
+        return results
+
+    @classmethod
+    def collect_executor(
+        cls,
+        exp: "Experiments",
+        executor: BaseExecutor,
+        exec_result: ExecutorResult,
+    ) -> Dict[str, str]:
+        results = cls.collect_git(exp, executor, exec_result)
 
         if exec_result.ref_info is not None:
             executor.collect_cache(exp.repo, exec_result.ref_info)
