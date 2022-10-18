@@ -18,7 +18,7 @@ repos:
           - --ignore-words-list
           - ba,datas,fo,uptodate,cachable,falsy
     repo: https://github.com/codespell-project/codespell
-    rev: v2.2.1
+    rev: v2.2.2
   - hooks:
       - id: isort
         language_version: python3
