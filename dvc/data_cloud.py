@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.status import CompareStatusResult
+    from dvc_data.hashfile.transfer import TransferResult
 
 logger = logging.getLogger(__name__)
 
@@ -106,14 +107,10 @@ class DataCloud:
         dest_odb: "HashFileDB",
         objs: Iterable["HashInfo"],
         **kwargs,
-    ):
-        from dvc.exceptions import FileTransferError
-        from dvc_data.hashfile.transfer import TransferError, transfer
+    ) -> "TransferResult":
+        from dvc_data.hashfile.transfer import transfer
 
-        try:
-            return transfer(src_odb, dest_odb, objs, **kwargs)
-        except TransferError as exc:
-            raise FileTransferError(exc.fails) from exc
+        return transfer(src_odb, dest_odb, objs, **kwargs)
 
     def push(
         self,
@@ -121,7 +118,7 @@ class DataCloud:
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
         odb: Optional["HashFileDB"] = None,
-    ):
+    ) -> "TransferResult":
         """Push data items in a cloud-agnostic way.
 
         Args:
@@ -148,7 +145,7 @@ class DataCloud:
         jobs: Optional[int] = None,
         remote: Optional[str] = None,
         odb: Optional["HashFileDB"] = None,
-    ):
+    ) -> "TransferResult":
         """Pull data items in a cloud-agnostic way.
 
         Args:

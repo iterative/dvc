@@ -3,12 +3,15 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Optional
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError, FileTransferError
+from dvc.exceptions import DownloadError
 from dvc.fs import Schemes
 
 from . import locked
 
 if TYPE_CHECKING:
+    from dvc.repo import Repo
+    from dvc.types import TargetType
+    from dvc_data.hashfile.transfer import TransferResult
     from dvc_objects.db.base import ObjectDB
 
 logger = logging.getLogger(__name__)
@@ -63,7 +66,17 @@ def fetch(
         if _remote.worktree:
             return _fetch_worktree(self, _remote)
 
-    used = self.used_objs(
+    downloaded_count = 0
+    failed_count = 0
+
+    try:
+        if run_cache:
+            self.stage_cache.pull(remote)
+    except DownloadError as exc:
+        failed_count += exc.amount
+
+    result = _fetch(
+        self,
         targets,
         all_branches=all_branches,
         all_tags=all_tags,
@@ -74,45 +87,10 @@ def fetch(
         jobs=jobs,
         recursive=recursive,
         revs=revs,
+        odb=odb,
     )
-
-    downloaded = 0
-    failed = 0
-
-    try:
-        if run_cache:
-            self.stage_cache.pull(remote)
-    except DownloadError as exc:
-        failed += exc.amount
-
-    if odb:
-        all_ids = set()
-        for _odb, obj_ids in used.items():
-            all_ids.update(obj_ids)
-        d, f = _fetch(
-            self,
-            all_ids,
-            jobs=jobs,
-            remote=remote,
-            odb=odb,
-        )
-        downloaded += d
-        failed += f
-    else:
-        for src_odb, obj_ids in sorted(
-            used.items(),
-            key=lambda item: item[0] is not None
-            and item[0].fs.protocol == Schemes.MEMORY,
-        ):
-            d, f = _fetch(
-                self,
-                obj_ids,
-                jobs=jobs,
-                remote=remote,
-                odb=src_odb,
-            )
-            downloaded += d
-            failed += f
+    downloaded_count = len(result.transferred)
+    failed_count += len(result.failed)
 
     d, f = _fetch_partial_imports(
         self,
@@ -123,23 +101,59 @@ def fetch(
         recursive=recursive,
         revs=revs,
     )
-    downloaded += d
-    failed += f
+    downloaded_count += d
+    failed_count += f
 
-    if failed:
-        raise DownloadError(failed)
+    if failed_count:
+        raise DownloadError(failed_count)
 
-    return downloaded
+    return downloaded_count
 
 
-def _fetch(repo, obj_ids, **kwargs):
-    downloaded = 0
-    failed = 0
-    try:
-        downloaded += repo.cloud.pull(obj_ids, **kwargs)
-    except FileTransferError as exc:
-        failed += exc.amount
-    return downloaded, failed
+def _fetch(
+    repo: "Repo",
+    targets: "TargetType",
+    remote: Optional[str] = None,
+    jobs: Optional[int] = None,
+    odb: Optional["ObjectDB"] = None,
+    **kwargs,
+) -> "TransferResult":
+    from dvc_data.hashfile.transfer import TransferResult
+
+    result = TransferResult(set(), set())
+    used = repo.used_objs(
+        targets,
+        remote=remote,
+        jobs=jobs,
+        **kwargs,
+    )
+    if odb:
+        all_ids = set()
+        for _odb, obj_ids in used.items():
+            all_ids.update(obj_ids)
+        d, f = repo.cloud.pull(
+            all_ids,
+            jobs=jobs,
+            remote=remote,
+            odb=odb,
+        )
+        result.transferred.update(d)
+        result.failed.update(f)
+    else:
+        for src_odb, obj_ids in sorted(
+            used.items(),
+            key=lambda item: item[0] is not None
+            and item[0].fs.protocol == Schemes.MEMORY,
+        ):
+            d, f = repo.cloud.pull(
+                obj_ids,
+                jobs=jobs,
+                remote=remote,
+                odb=src_odb,
+            )
+            result.transferred.update(d)
+            result.failed.update(f)
+    return result
 
 
 def _fetch_partial_imports(repo, targets, **kwargs):
