@@ -253,6 +253,7 @@ class Index:
                 out.obj = out.get_obj()
 
             data_index[key] = DataIndexEntry(
+                key=key,
                 meta=out.meta,
                 obj=out.obj,
                 hash_info=out.hash_info,
