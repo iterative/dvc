@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def unfetched_view(
-    index: "Index", targets: "TargetType", **kwargs
+    index: "Index", targets: "TargetType", unpartial: bool = False, **kwargs
 ) -> Tuple["IndexView", List["Dependency"]]:
     """Return index view of imports which have not been fetched.
 
@@ -26,6 +26,13 @@ def unfetched_view(
     changed_deps: List["Dependency"] = []
 
     def need_fetch(stage: "Stage") -> bool:
+        if (
+            not stage.is_import
+            or stage.is_repo_import
+            or (stage.is_partial_import and not unpartial)
+        ):
+            return False
+
         out = stage.outs[0]
         if not out.changed_cache():
             return False
@@ -41,6 +48,16 @@ def unfetched_view(
     return unfetched, changed_deps
 
 
+def partial_view(
+    index: "Index", targets: "TargetType", **kwargs
+) -> "IndexView":
+    return index.targets_view(
+        targets,
+        filter_fn=lambda s: s.is_partial_import,
+        **kwargs,
+    )
+
+
 def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
     """Update any outs in the index which are no longer partial imports.
 
@@ -54,8 +71,13 @@ def unpartial_imports(index: Union["Index", "IndexView"]) -> int:
         workspace, key = out.index_key
         entry = index.data[workspace][key]
         if out.stage.is_partial_import:
-            out.hash_info = entry.hash_info
-            out.meta = entry.meta
+            if out.stage.is_repo_import:
+                dep = out.stage.deps[0]
+                out.hash_info = dep.get_obj().hash_info
+                out.meta = dep.get_meta()
+            else:
+                out.hash_info = entry.hash_info
+                out.meta = entry.meta
             out.stage.dump()
             updated += out.meta.nfiles if out.meta.nfiles is not None else 1
     return updated
@@ -78,7 +100,9 @@ def save_imports(
 
     downloaded: Set["HashInfo"] = set()
 
-    unfetched, changed = unfetched_view(repo.index, targets, **kwargs)
+    unfetched, changed = unfetched_view(
+        repo.index, targets, unpartial=unpartial, **kwargs
+    )
     for dep in changed:
         logger.warning(str(DataSourceChanged(f"{dep.stage} ({dep})")))
 
@@ -96,13 +120,13 @@ def save_imports(
             md5(data_view)
             save(data_view, odb=cache, hardlink=True)
 
-        if unpartial:
-            unpartial_imports(unfetched)
-
         downloaded.update(
             entry.hash_info
             for _, entry in data_view.iteritems()
             if not entry.meta.isdir and entry.hash_info is not None
         )
+
+    if unpartial:
+        unpartial_imports(partial_view(repo.index, targets, **kwargs))
 
     return downloaded

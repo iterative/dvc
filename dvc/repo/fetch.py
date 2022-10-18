@@ -108,7 +108,7 @@ def fetch(
         imported = save_imports(
             self,
             targets,
-            unpartial=rev == "workspace",
+            unpartial=not rev or rev == "workspace",
             recursive=recursive,
         )
         result.transferred.update(imported)
