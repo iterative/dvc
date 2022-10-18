@@ -38,7 +38,7 @@ class TestAPI:
     )
     def test_filesystem(
         self,
-        M,  # from `pytest-test-utils`
+        M,
         tmp_dir,
         make_tmp_dir,
         scm,
