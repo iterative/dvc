@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from dvc.exceptions import FileTransferError, UploadError
+from dvc.exceptions import UploadError
 
 from ..utils import glob_targets
 from . import locked
@@ -103,18 +103,18 @@ def push(
             if not include_imports and dest_odb and dest_odb.read_only:
                 continue
             all_ids.update(obj_ids)
-        try:
-            pushed += self.cloud.push(all_ids, jobs, remote=remote, odb=odb)
-        except FileTransferError as exc:
-            raise UploadError(exc.amount)
+        result = self.cloud.push(all_ids, jobs, remote=remote, odb=odb)
+        if result.failed:
+            raise UploadError(len(result.failed))
+        pushed += len(result.transferred)
     else:
         for dest_odb, obj_ids in used.items():
             if dest_odb and dest_odb.read_only:
                 continue
-            try:
-                pushed += self.cloud.push(
-                    obj_ids, jobs, remote=remote, odb=odb or dest_odb
-                )
-            except FileTransferError as exc:
-                raise UploadError(exc.amount)
+            result = self.cloud.push(
+                obj_ids, jobs, remote=remote, odb=odb or dest_odb
+            )
+            if result.failed:
+                raise UploadError(len(result.failed))
+            pushed += len(result.transferred)
     return pushed

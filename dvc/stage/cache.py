@@ -9,7 +9,6 @@ from funcy import cached_property, first
 from dvc import fs
 from dvc.exceptions import DvcException
 from dvc.utils import dict_sha256, relpath
-from dvc_data.hashfile.transfer import _log_exceptions
 
 if TYPE_CHECKING:
     from dvc_objects.db import ObjectDB
@@ -222,7 +221,7 @@ class StageCache:
 
         from_fs = from_odb.fs
         to_fs = to_odb.fs
-        func = _log_exceptions(fs.generic.copy)
+        func = fs.generic.log_exceptions(fs.generic.copy)
         runs = from_fs.path.join(from_odb.path, "runs")
 
         http_odb = next(
