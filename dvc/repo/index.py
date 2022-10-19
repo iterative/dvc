@@ -279,14 +279,6 @@ class Index:
                 used[odb].update(objs)
         return used
 
-    def partial_imports(
-        self,
-        targets: "TargetType" = None,
-        recursive: bool = False,
-    ) -> List["Stage"]:
-        pairs = self._collect_targets(targets, recursive=recursive)
-        return [stage for stage, _ in pairs if stage.is_partial_import]
-
     # Following methods help us treat the collection as a set-like structure
     # and provides faux-immutability.
     # These methods do not preserve stages order.
