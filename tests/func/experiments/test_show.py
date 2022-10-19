@@ -245,7 +245,7 @@ def test_show_checkpoint(
 
     for i, rev in enumerate(checkpoints):
         if i == 0:
-            name = dvc.experiments.get_exact_name(rev)
+            name = dvc.experiments.get_exact_name([rev])[rev]
             name = f"{rev[:7]} [{name}]"
             fs = "╓"
         elif i == len(checkpoints) - 1:

@@ -38,7 +38,7 @@ def test_new_simple(tmp_dir, scm, dvc, exp_stage, mocker, name, workspace):
         assert (tmp_dir / "metrics.yaml").read_text().strip() == "foo: 2"
 
     exp_name = name if name else ref_info.name
-    assert dvc.experiments.get_exact_name(exp) == exp_name
+    assert dvc.experiments.get_exact_name([exp])[exp] == exp_name
     assert resolve_rev(scm, exp_name) == exp
 
 
@@ -481,7 +481,7 @@ def test_subdir(tmp_dir, scm, dvc, workspace):
     with fs.open("dir/metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
-    assert dvc.experiments.get_exact_name(exp) == ref_info.name
+    assert dvc.experiments.get_exact_name([exp])[exp] == ref_info.name
     assert resolve_rev(scm, ref_info.name) == exp
 
 
@@ -525,7 +525,7 @@ def test_subrepo(tmp_dir, scm, workspace):
     with fs.open("dir/repo/metrics.yaml", mode="r", encoding="utf-8") as fobj:
         assert fobj.read().strip() == "foo: 2"
 
-    assert subrepo.dvc.experiments.get_exact_name(exp) == ref_info.name
+    assert subrepo.dvc.experiments.get_exact_name([exp])[exp] == ref_info.name
     assert resolve_rev(scm, ref_info.name) == exp
 
 

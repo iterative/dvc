@@ -16,13 +16,17 @@ class CmdExperimentsList(CmdBase):
             num=self.args.num,
             git_remote=self.args.git_remote,
         )
+        tags = self.repo.scm.describe(exps)
+        remained = {baseline for baseline, tag in tags.items() if tag is None}
+        base = "refs/heads/"
+        ref_heads = self.repo.scm.describe(remained, base=base)
+
         for baseline in exps:
-            tag = self.repo.scm.describe(baseline)
-            if not tag:
-                branch = self.repo.scm.describe(baseline, base="refs/heads")
-                if branch:
-                    tag = branch.split("/")[-1]
-            name = tag if tag else baseline[:7]
+            name = (
+                tags[baseline]
+                or ref_heads[baseline][len(base) :]
+                or baseline[:7]
+            )
             if not name_only:
                 print(f"{name}:")
             for exp_name in exps[baseline]:
