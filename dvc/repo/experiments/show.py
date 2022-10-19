@@ -31,11 +31,9 @@ def _collect_experiment_commit(
     repo: "Repo",
     exp_rev: str,
     status: ExpStatus = ExpStatus.Success,
-    sha_only=True,
     param_deps=False,
     running=None,
     onerror: Optional[Callable] = None,
-    is_baseline: bool = False,
 ):
     from dvc.dependency import ParamsDependency, RepoDependency
 
@@ -94,18 +92,6 @@ def _collect_experiment_commit(
             )
             res["metrics"] = vals
 
-        if not sha_only and rev != "workspace":
-            name: Optional[str] = None
-            if is_baseline:
-                for refspec in ["refs/tags", "refs/heads"]:
-                    name = repo.scm.describe(rev, base=refspec)
-                    if name:
-                        name = name.replace(f"{refspec}/", "")
-                        break
-            name = name or repo.experiments.get_exact_name(rev)
-            if name:
-                res["name"] = name
-
     return res
 
 
@@ -154,6 +140,46 @@ def _collect_experiment_branch(
     return res
 
 
+def get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
+
+    rev_set = set()
+    baseline_set = set()
+    for baseline in result:
+        for rev in result[baseline]:
+            if rev == "baseline":
+                rev = baseline
+                baseline_set.add(rev)
+            if rev != "workspace":
+                rev_set.add(rev)
+
+    names: Dict[str, Optional[str]] = {}
+    for base in ("refs/tags/", "refs/heads/"):
+        if rev_set:
+            names.update(
+                (rev, ref[len(base) :])
+                for rev, ref in repo.scm.describe(
+                    baseline_set, base=base
+                ).items()
+                if ref is not None
+            )
+            rev_set.difference_update(names.keys())
+
+    exact_name = repo.experiments.get_exact_name(rev_set)
+
+    for baseline, baseline_results in result.items():
+        for rev, rev_result in baseline_results.items():
+            name: Optional[str] = None
+            if rev == "baseline":
+                rev = baseline
+                if rev == "workspace":
+                    continue
+                name = names.get(rev, None)
+            name = name or exact_name[rev]
+            if name:
+                rev_result["data"]["name"] = name
+
+
+# flake8: noqa: C901
 def show(
     repo: "Repo",
     all_branches=False,
@@ -194,12 +220,10 @@ def show(
         res[rev]["baseline"] = _collect_experiment_commit(
             repo,
             rev,
-            sha_only=sha_only,
             status=status,
             param_deps=param_deps,
             running=running,
             onerror=onerror,
-            is_baseline=True,
         )
 
         if rev == "workspace":
@@ -220,7 +244,6 @@ def show(
                 repo,
                 exp_ref,
                 rev,
-                sha_only=sha_only,
                 param_deps=param_deps,
                 running=running,
                 onerror=onerror,
@@ -252,11 +275,14 @@ def show(
                     experiment = _collect_experiment_commit(
                         repo,
                         stash_rev,
-                        sha_only=sha_only,
                         status=status,
                         param_deps=param_deps,
                         running=running,
                         onerror=onerror,
                     )
                     res[entry.baseline_rev][stash_rev] = experiment
+
+    if not sha_only:
+        get_names(repo, res)
+
     return res

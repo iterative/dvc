@@ -211,8 +211,9 @@ class Experiments:
 
     def _log_reproduced(self, revs: Iterable[str], tmp_dir: bool = False):
         names = []
+        rev_names = self.get_exact_name(revs)
         for rev in revs:
-            name = self.get_exact_name(rev)
+            name = rev_names[rev]
             names.append(name if name else rev[:7])
         ui.write("\nRan experiment(s): {}".format(", ".join(names)))
         if tmp_dir:
@@ -411,25 +412,31 @@ class Experiments:
             raise MultipleBranchError(rev, ref_infos)
         return str(ref_infos[0])
 
-    def get_exact_name(self, rev: str):
+    def get_exact_name(self, revs: Iterable[str]) -> Dict[str, Optional[str]]:
         """Returns preferred name for the specified revision.
 
         Prefers tags, branches (heads), experiments in that orer.
         """
+        result: Dict[str, Optional[str]] = {}
         exclude = f"{EXEC_NAMESPACE}/*"
-        ref = self.scm.describe(rev, base=EXPS_NAMESPACE, exclude=exclude)
-        if ref:
-            try:
-                name = ExpRefInfo.from_ref(ref).name
-                if name:
-                    return name
-            except InvalidExpRefError:
-                pass
-        if rev in self.stash_revs:
-            return self.stash_revs[rev].name
-        if rev in self.celery_queue.failed_stash.stash_revs:
-            return self.celery_queue.failed_stash.stash_revs[rev].name
-        return None
+        ref_dict = self.scm.describe(
+            revs, base=EXPS_NAMESPACE, exclude=exclude
+        )
+        for rev in revs:
+            name: Optional[str] = None
+            ref = ref_dict[rev]
+            if ref:
+                try:
+                    name = ExpRefInfo.from_ref(ref).name
+                except InvalidExpRefError:
+                    pass
+            if not name:
+                if rev in self.stash_revs:
+                    name = self.stash_revs[rev].name
+                elif rev in self.celery_queue.failed_stash.stash_revs:
+                    name = self.celery_queue.failed_stash.stash_revs[rev].name
+            result[rev] = name
+        return result
 
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Any]:
         """Return info for running experiments."""
