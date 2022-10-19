@@ -1,16 +1,13 @@
 from contextlib import ExitStack, contextmanager
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 if TYPE_CHECKING:
     from argparse import Namespace
 
 
 @contextmanager
-def viztracer_profile(
-    path: Union[Callable[[], str], str],
-    max_stack_depth: int = -1,
-):
+def viztracer_profile(path: Union[Callable[[], str], str], depth: int = -1):
     try:
         import viztracer  # pylint: disable=import-error
     except ImportError:
@@ -18,7 +15,7 @@ def viztracer_profile(
         yield
         return
 
-    tracer = viztracer.VizTracer(max_stack_depth=max_stack_depth)
+    tracer = viztracer.VizTracer(max_stack_depth=depth)
 
     tracer.start()
     yield
@@ -109,6 +106,15 @@ def debug():
         raise  # prevent from jumping ahead
 
 
+def _get_path_func(tool: str, ext: str):
+    fmt = f"{tool}.dvc-{{now:%Y%m%d}}_{{now:%H%M%S}}.{ext}"
+
+    def func(now: Optional["datetime"] = None) -> str:
+        return fmt.format(now=now or datetime.now())
+
+    return func
+
+
 @contextmanager
 def debugtools(args: "Namespace" = None, **kwargs):
     kw = vars(args) if args else {}
@@ -122,18 +128,13 @@ def debugtools(args: "Namespace" = None, **kwargs):
         if kw.get("instrument") or kw.get("instrument_open"):
             stack.enter_context(instrument(kw.get("instrument_open", False)))
         if kw.get("yappi"):
-            output = "callgrind.dvc-{0:%Y%m%d}_{0:%H%M%S}.out"
-            stack.enter_context(
-                yappi_profile(path=lambda: output.format(datetime.now()))
-            )
+            path_func = _get_path_func("callgrind", "out")
+            stack.enter_context(yappi_profile(path=path_func))
         if kw.get("viztracer") or kw.get("viztracer_depth"):
-            output = "viztracer.dvc-{0:%Y%m%d}_{0:%H%M%S}.json"
-            stack.enter_context(
-                viztracer_profile(
-                    path=lambda: output.format(datetime.now()),
-                    max_stack_depth=kw.get("viztracer_depth") or -1,
-                )
-            )
+            path_func = _get_path_func("viztracer", "json")
+            depth = kw.get("viztracer_depth") or -1
+            prof = viztracer_profile(path=path_func, depth=depth)
+            stack.enter_context(prof)
         yield
 
 
