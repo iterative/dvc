@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 
 def _push_worktree(repo, remote):
-    from dvc_data.hashfile.tree import tree_from_index
     from dvc_data.index import checkout
+    from dvc_data.index.save import build_tree
 
     index = repo.index.data["repo"]
     checkout(index, remote.path, remote.fs)
@@ -39,8 +39,7 @@ def _push_worktree(repo, remote):
                         repo.fs.path.relparts(fs_path, out.fs_path)
                     )
                     entry.hash_info = hash_info
-                tree_meta, new_tree = tree_from_index(index, key)
-                new_tree.digest()
+                tree_meta, new_tree = build_tree(index, key)
                 out.obj = new_tree
                 out.hash_info = new_tree.hash_info
                 out.meta = tree_meta
