@@ -98,3 +98,6 @@ class TempDirQueue(WorkspaceQueue):
         exec_result: ExecutorResult,
     ) -> Dict[str, str]:
         return BaseStashQueue.collect_executor(exp, executor, exec_result)
+
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        return super(WorkspaceQueue, self).get_running_exps(fetch_refs)

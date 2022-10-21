@@ -487,7 +487,7 @@ def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
     mock_fetch = mocker.patch.object(
-        dvc.experiments,
+        dvc.experiments.tempdir_queue,
         "_fetch_running_exp",
         return_value={exp_rev: info.asdict()},
     )

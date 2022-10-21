@@ -7,7 +7,12 @@ from funcy import first
 from dvc.exceptions import DvcException
 
 from ..exceptions import ExpQueueEmptyError
-from ..executor.base import BaseExecutor, ExecutorResult
+from ..executor.base import (
+    BaseExecutor,
+    ExecutorInfo,
+    ExecutorResult,
+    TaskStatus,
+)
 from ..executor.local import WorkspaceExecutor
 from ..refs import EXEC_BRANCH
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
@@ -150,3 +155,28 @@ class WorkspaceQueue(BaseStashQueue):
         follow: bool = False,
     ):
         raise NotImplementedError
+
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        from dvc.utils.serialize import load_json
+
+        assert self._EXEC_NAME
+
+        result: Dict[str, Dict] = {}
+        infofile = self.get_infofile_path(self._EXEC_NAME)
+
+        try:
+            info = ExecutorInfo.from_dict(load_json(infofile))
+        except OSError:
+            return result
+
+        if info.status < TaskStatus.FAILED:
+            # If we are appending to a checkpoint branch in a workspace
+            # run, show the latest checkpoint as running.
+            if info.status == TaskStatus.SUCCESS:
+                return result
+            last_rev = self.scm.get_ref(EXEC_BRANCH)
+            if last_rev:
+                result[last_rev] = info.asdict()
+            else:
+                result[self._EXEC_NAME] = info.asdict()
+        return result

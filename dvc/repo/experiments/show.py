@@ -287,7 +287,9 @@ def show(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
 
-    running = repo.experiments.get_running_exps(fetch_refs=fetch_running)
+    running: Dict[str, Dict] = repo.experiments.get_running_exps(
+        fetch_refs=fetch_running
+    )
 
     queued_experiment = (
         _collect_queued_experiment(
