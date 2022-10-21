@@ -246,11 +246,12 @@ class Index:
                 out.obj = out.get_obj()
 
             entry = out.get_entry()
+            entry.key = key
             if out.stage.is_import and not out.stage.is_repo_import:
                 entry.fs = out.stage.deps[0].fs
                 entry.path = out.stage.deps[0].fs_path
                 entry.meta = out.stage.deps[0].meta
-            data_index[key] = entry
+            data_index.add(entry)
 
         return dict(by_workspace)
 
