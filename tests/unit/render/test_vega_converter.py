@@ -49,7 +49,7 @@ def test_finding_lists(dictionary, expected_result):
                     },
                 },
             ],
-            {"x": "step", "y": "v"},
+            {"x": "step", "y": "v", "x_label": "step", "y_label": "v"},
             id="default_x_y",
         ),
         pytest.param(
@@ -75,7 +75,7 @@ def test_finding_lists(dictionary, expected_result):
                     },
                 },
             ],
-            {"x": "v", "y": "v2"},
+            {"x": "v", "y": "v2", "x_label": "v", "y_label": "v2"},
             id="choose_x_y",
         ),
         pytest.param(
@@ -92,7 +92,7 @@ def test_finding_lists(dictionary, expected_result):
                     },
                 }
             },
-            {"x": "v", "y": "v2"},
+            {"x": "v", "y": "v2", "x_label": "x", "y_label": "y"},
             [
                 {
                     "v": 1,
@@ -113,7 +113,7 @@ def test_finding_lists(dictionary, expected_result):
                     },
                 },
             ],
-            {"x": "v", "y": "v2"},
+            {"x": "v", "y": "v2", "x_label": "x", "y_label": "y"},
             id="find_in_nested_structure",
         ),
         pytest.param(
@@ -157,7 +157,12 @@ def test_finding_lists(dictionary, expected_result):
                     "step": 1,
                 },
             ],
-            {"x": "step", "y": "dvc_inferred_y_value", "y_label": "y"},
+            {
+                "x": "step",
+                "y": "dvc_inferred_y_value",
+                "y_label": "y",
+                "x_label": "step",
+            },
             id="y_def_list",
         ),
         pytest.param(
@@ -206,7 +211,12 @@ def test_finding_lists(dictionary, expected_result):
                     },
                 },
             ],
-            {"x": "step", "y": "dvc_inferred_y_value", "y_label": "y"},
+            {
+                "x": "step",
+                "y": "dvc_inferred_y_value",
+                "y_label": "y",
+                "x_label": "step",
+            },
             id="multi_source_json",
         ),
     ],

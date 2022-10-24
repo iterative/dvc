@@ -139,6 +139,41 @@ class VegaConverter(Converter):
                     result.append((file, field, data))
         return result
 
+    @staticmethod
+    def infer_y_label(properties):
+        y_label = properties.get("y_label", None)
+        if y_label is None:
+            y = properties.get("y", None)
+            if isinstance(y, dict):
+                fields = {field for _, field in _file_field(y)}
+                if len(fields) == 1:
+                    y_label = first(fields)
+                else:
+                    y_label = "y"
+            elif isinstance(y, list):
+                y_label = "y"
+            elif isinstance(y, str):
+                y_label = y
+
+        return y_label
+
+    @staticmethod
+    def infer_x_label(properties):
+        x_label = properties.get("x_label", None)
+        if x_label is None:
+            x = properties.get("x", None)
+            if isinstance(x, dict):
+                fields = {field for _, field in _file_field(x)}
+                if len(fields) == 1:
+                    x_label = first(fields)
+                else:
+                    x_label = "x"
+            elif isinstance(x, list):
+                x_label = "x"
+            elif isinstance(x, str):
+                x_label = x
+        return x_label
+
     def flat_datapoints(self, revision):
         def _datapoint(d: Dict, revision, filename, field):
             d.update(
@@ -209,7 +244,11 @@ class VegaConverter(Converter):
         if not dps:
             return [], {}
 
-        return dps, {**properties, **props_update}
+        properties = {**properties, **props_update}
+        properties["y_label"] = self.infer_y_label(properties)
+        properties["x_label"] = self.infer_x_label(properties)
+
+        return dps, properties
 
     def convert(
         self,

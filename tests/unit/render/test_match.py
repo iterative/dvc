@@ -111,6 +111,8 @@ def test_match_renderers(mocker):
         "title": "config_file_1::plot_id_1",
         "x": "x",
         "y": "y",
+        "x_label": "x",
+        "y_label": "y",
     }
 
 
