@@ -17,9 +17,19 @@ from dvc.repo.experiments.executor.base import (
 from dvc.repo.experiments.queue.base import QueueEntry
 from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
 from dvc.repo.experiments.utils import exp_refs_by_rev
+from dvc.utils import relpath
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
 from tests.func.test_repro_multistage import COPY_SCRIPT
+
+LOCK_CONTENTS = {
+    "read": {
+        "data/MNIST": [{"pid": 54062, "cmd": "dvc exp run"}],
+    },
+    "write": {
+        "data/MNIST": {"pid": 54062, "cmd": "dvc exp run"},
+    },
+}
 
 
 def make_executor_info(**kwargs):
@@ -410,9 +420,21 @@ def test_show_sort(tmp_dir, scm, dvc, exp_stage, caplog):
 
 
 @pytest.mark.vscode
-@pytest.mark.parametrize("status", [TaskStatus.RUNNING, TaskStatus.FAILED])
-def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys, status):
+@pytest.mark.parametrize(
+    "status, pid_exists",
+    [
+        (TaskStatus.RUNNING, True),
+        (TaskStatus.RUNNING, False),
+        (TaskStatus.FAILED, False),
+    ],
+)
+def test_show_running_workspace(
+    tmp_dir, scm, dvc, exp_stage, capsys, caplog, status, pid_exists, mocker
+):
+    from dvc.rwlock import RWLOCK_FILE
+
     pid_dir = os.path.join(dvc.tmp_dir, EXEC_TMP_DIR, EXEC_PID_DIR)
+    lock_file = relpath(os.path.join(dvc.tmp_dir, RWLOCK_FILE), str(tmp_dir))
     info = make_executor_info(
         location=BaseExecutor.DEFAULT_LOCATION, status=status
     )
@@ -423,6 +445,9 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys, status):
     )
     makedirs(os.path.dirname(pidfile), True)
     (tmp_dir / pidfile).dump_json(info.asdict())
+    (tmp_dir / lock_file).dump_json(LOCK_CONTENTS)
+
+    mocker.patch("psutil.pid_exists", return_value=pid_exists)
 
     assert dvc.experiments.show().get("workspace") == {
         "baseline": {
@@ -438,10 +463,10 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys, status):
                 "params": {"params.yaml": {"data": {"foo": 1}}},
                 "outs": {},
                 "status": "Running"
-                if status == TaskStatus.RUNNING
+                if status == TaskStatus.RUNNING and pid_exists
                 else "Success",
                 "executor": info.location
-                if status == TaskStatus.RUNNING
+                if status == TaskStatus.RUNNING and pid_exists
                 else None,
                 "timestamp": None,
             }
@@ -451,8 +476,19 @@ def test_show_running_workspace(tmp_dir, scm, dvc, exp_stage, capsys, status):
     assert main(["exp", "show", "--csv"]) == 0
     cap = capsys.readouterr()
     if status == TaskStatus.RUNNING:
-        assert "Running" in cap.out
-        assert info.location in cap.out
+        if pid_exists:
+            assert "Running" in cap.out
+            assert info.location in cap.out
+        else:
+            cmd = LOCK_CONTENTS["read"]["data/MNIST"][0]["cmd"]
+            pid = LOCK_CONTENTS["read"]["data/MNIST"][0]["pid"]
+            assert (
+                f"Process '{cmd}' with (Pid {pid}), in RWLock-file "
+                f"'{lock_file}' had been killed."
+            ) in caplog.text
+            assert (
+                f"Delete corrupted RWLock-file '{lock_file}'"
+            ) in caplog.text
 
 
 def test_show_running_tempdir(tmp_dir, scm, dvc, exp_stage, mocker):

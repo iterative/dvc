@@ -157,11 +157,15 @@ class WorkspaceQueue(BaseStashQueue):
         raise NotImplementedError
 
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        from dvc.rwlock import check_rwlock
         from dvc.utils.serialize import load_json
 
         assert self._EXEC_NAME
-
         result: Dict[str, Dict] = {}
+
+        if not check_rwlock(self.repo.tmp_dir, self.repo.fs, autocorrect=True):
+            return result
+
         infofile = self.get_infofile_path(self._EXEC_NAME)
 
         try:
