@@ -352,7 +352,10 @@ class IndexView:
         self, index: Index, stage_infos: Iterable["StageInfo"]
     ):
         self._index = index
-        self._stages: Dict["Stage", Optional[str]] = dict(stage_infos)
+        self._stage_infos = stage_infos
+        # NOTE: stage_infos might have the same stage multiple times but with
+        # different filter_info
+        self._stages = list({stage for stage, _ in stage_infos})
 
     def __len__(self) -> int:
         return len(self._stages)
@@ -373,7 +376,7 @@ class IndexView:
 
     @property
     def stages(self):
-        return list(self._stages)
+        return self._stages
 
     @property
     def deps(self) -> Iterator["Dependency"]:
@@ -382,18 +385,29 @@ class IndexView:
 
     @property
     def outs(self) -> Iterator["Output"]:
-        for stage, filter_info in self._stages.items():
-            yield from stage.filter_outs(filter_info)
+        outs = set()
+        for stage, filter_info in self._stage_infos:
+            for out in stage.filter_outs(filter_info):
+                outs.add(out)
+        yield from outs
 
     @cached_property
     def _data_prefixes(self) -> Dict[str, Set["DataIndexKey"]]:
         from collections import defaultdict
 
         prefixes: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
-        for out in self.outs:
-            workspace, key = out.index_key
-            prefixes[workspace].add(key)
-            prefixes[workspace].update(key[:i] for i in range(len(key), 0, -1))
+        for stage, filter_info in self._stage_infos:
+            for out in stage.filter_outs(filter_info):
+                workspace, key = out.index_key
+                if filter_info and out.fs.path.isin(filter_info, out.fs_path):
+                    key = (
+                        *key,
+                        out.fs.path.relparts(filter_info, out.fs_path),
+                    )
+                prefixes[workspace].add(key)
+                prefixes[workspace].update(
+                    key[:i] for i in range(len(key), 0, -1)
+                )
         return prefixes
 
     @cached_property
