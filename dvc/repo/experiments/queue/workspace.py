@@ -1,10 +1,17 @@
+import json
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Collection, Dict, Generator, Optional
+from typing import TYPE_CHECKING, Collection, Dict, Generator, List, Optional
 
+import psutil
 from funcy import first
+from voluptuous import Invalid
 
 from dvc.exceptions import DvcException
+from dvc.lock import make_lock
+from dvc.rwlock import RWLOCK_FILE, RWLOCK_LOCK, SCHEMA
+from dvc.utils import relpath
+from dvc.utils.fs import remove
 
 from ..exceptions import ExpQueueEmptyError
 from ..executor.base import (
@@ -156,14 +163,71 @@ class WorkspaceQueue(BaseStashQueue):
     ):
         raise NotImplementedError
 
+    def check_rwlock(
+        self,
+        hardlink: bool = False,
+        autocorrect: bool = False,
+    ) -> bool:
+        """Check and autocorrect the RWLock status for file paths.
+
+        Args:
+            hardlink (bool): use hardlink lock to guard rwlock file when on
+                            edit.
+            autocorrect (bool): autocorrect corrupted rwlock file.
+
+        Return:
+            (bool): if the pid alive.
+        """
+        path = self.repo.fs.path.join(self.repo.tmp_dir, RWLOCK_FILE)
+
+        rwlock_guard = make_lock(
+            self.repo.fs.path.join(self.repo.tmp_dir, RWLOCK_LOCK),
+            tmp_dir=self.repo.tmp_dir,
+            hardlink_lock=hardlink,
+        )
+        with rwlock_guard:
+            try:
+                with self.repo.fs.open(path, encoding="utf-8") as fobj:
+                    lock: Dict[str, List[Dict]] = SCHEMA(json.load(fobj))
+                file_path = first(lock["read"])
+                if not file_path:
+                    return False
+                lock_info = first(lock["read"][file_path])
+                pid = int(lock_info["pid"])
+                if psutil.pid_exists(pid):
+                    return True
+                cmd = lock_info["cmd"]
+                logger.warning(
+                    "Process '%s' with (Pid %s), in RWLock-file '%s'"
+                    " had been killed.",
+                    cmd,
+                    pid,
+                    relpath(path),
+                )
+            except FileNotFoundError:
+                return False
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Unable to read RWLock-file '%s'. JSON structure is"
+                    " corrupted",
+                    relpath(path),
+                )
+            except Invalid:
+                logger.warning("RWLock-file '%s' format error.", relpath(path))
+            if autocorrect:
+                logger.warning(
+                    "Delete corrupted RWLock-file '%s'", relpath(path)
+                )
+                remove(path)
+            return False
+
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
-        from dvc.rwlock import check_rwlock
         from dvc.utils.serialize import load_json
 
         assert self._EXEC_NAME
         result: Dict[str, Dict] = {}
 
-        if not check_rwlock(self.repo.tmp_dir, self.repo.fs, autocorrect=True):
+        if not self.check_rwlock(autocorrect=True):
             return result
 
         infofile = self.get_infofile_path(self._EXEC_NAME)
