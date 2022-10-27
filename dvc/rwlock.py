@@ -3,20 +3,13 @@ import logging
 import os
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Dict, List
 
-import psutil
-from funcy import first
 from voluptuous import Invalid, Optional, Required, Schema
 
 from .exceptions import DvcException
 from .fs import localfs
 from .lock import make_lock
 from .utils import relpath
-from .utils.fs import remove
-
-if TYPE_CHECKING:
-    from .fs import FileSystem
 
 logger = logging.getLogger(__name__)
 
@@ -190,62 +183,3 @@ def rwlock(tmp_dir, fs, cmd, read, write, hardlink):
         with _edit_rwlock(tmp_dir, fs, hardlink) as lock:
             _release_write(lock, info, wchanges)
             _release_read(lock, info, rchanges)
-
-
-def check_rwlock(
-    tmp_dir: str,
-    fs: "FileSystem",
-    hardlink: bool = False,
-    autocorrect: bool = False,
-) -> bool:
-    """Check and autocorrect the RWLock status for file paths.
-
-    Args:
-        tmp_dir (str): existing directory where to create the rwlock file.
-        fs (FileSystem): fs instance that tmp_dir belongs to.
-        hardlink (bool): use hardlink lock to guard rwlock file when on edit.
-        autocorrect (bool): autocorrect corrupted rwlock file.
-
-    Return:
-        (bool): if the pid alive.
-    """
-    path = fs.path.join(tmp_dir, RWLOCK_FILE)
-
-    rwlock_guard = make_lock(
-        fs.path.join(tmp_dir, RWLOCK_LOCK),
-        tmp_dir=tmp_dir,
-        hardlink_lock=hardlink,
-    )
-    with rwlock_guard:
-        try:
-            with fs.open(path, encoding="utf-8") as fobj:
-                lock: Dict[str, List[Dict]] = SCHEMA(json.load(fobj))
-            file_path = first(lock["read"])
-            if not file_path:
-                return False
-            lock_info = first(lock["read"][file_path])
-            pid = int(lock_info["pid"])
-            if psutil.pid_exists(pid):
-                return True
-            cmd = lock_info["cmd"]
-            logger.warning(
-                "Process '%s' with (Pid %s), in RWLock-file '%s'"
-                " had been killed.",
-                cmd,
-                pid,
-                relpath(path),
-            )
-        except FileNotFoundError:
-            return False
-        except json.JSONDecodeError:
-            logger.warning(
-                "Unable to read RWLock-file '%s'. JSON structure is"
-                " corrupted",
-                relpath(path),
-            )
-        except Invalid:
-            logger.warning("RWLock-file '%s' format error.", relpath(path))
-        if autocorrect:
-            logger.warning("Delete corrupted RWLock-file '%s'", relpath(path))
-            remove(path)
-        return False
