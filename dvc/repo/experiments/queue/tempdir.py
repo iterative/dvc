@@ -15,6 +15,7 @@ from ..executor.base import (
 )
 from ..executor.local import TempDirExecutor
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
+from .utils import fetch_running_exp_from_temp_dir
 from .workspace import WorkspaceQueue
 
 if TYPE_CHECKING:
@@ -100,4 +101,11 @@ class TempDirQueue(WorkspaceQueue):
         return BaseStashQueue.collect_executor(exp, executor, exec_result)
 
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
-        return super(WorkspaceQueue, self).get_running_exps(fetch_refs)
+        result: Dict[str, Dict] = {}
+        for entry in self.iter_active():
+            result.update(
+                fetch_running_exp_from_temp_dir(
+                    self, entry.stash_rev, fetch_refs
+                )
+            )
+        return result

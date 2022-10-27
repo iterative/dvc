@@ -31,6 +31,7 @@ from ..executor.base import (
 )
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .tasks import run_exp
+from .utils import fetch_running_exp_from_temp_dir
 
 if TYPE_CHECKING:
     from dvc_task.app import FSApp
@@ -373,3 +374,18 @@ class LocalCeleryQueue(BaseStashQueue):
         from .remove import celery_remove
 
         return celery_remove(self, *args, **kwargs)
+
+    def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
+        """Get the execution info of the currently running experiments
+
+        Args:
+            fetch_ref (bool): fetch completed checkpoints or not.
+        """
+        result: Dict[str, Dict] = {}
+        for entry in self.iter_active():
+            result.update(
+                fetch_running_exp_from_temp_dir(
+                    self, entry.stash_rev, fetch_refs
+                )
+            )
+        return result
