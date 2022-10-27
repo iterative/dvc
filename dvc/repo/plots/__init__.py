@@ -14,6 +14,7 @@ from typing import (
     List,
     Optional,
     Set,
+    Union,
 )
 
 import dpath.options
@@ -444,16 +445,23 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
         if isinstance(dvcfile, PipelineFile):
             dvcfile_path = _relpath(repo.dvcfs, dvcfile.path)
             dvcfile_defs = dvcfile.load().get("plots", {})
+            dvcfile_defs_dict: Dict[str, Union[Dict, None]] = {}
             if isinstance(dvcfile_defs, list):
-                dvcfile_defs = {
-                    k: v for elem in dvcfile_defs for k, v in elem.items()
-                }
+                for elem in dvcfile_defs:
+                    if isinstance(elem, str):
+                        dvcfile_defs_dict[elem] = None
+                    else:
+                        k, v = list(elem.items())[0]
+                        dvcfile_defs_dict[k] = v
+            else:
+                dvcfile_defs_dict = dvcfile_defs
+            print(dvcfile_defs_dict)
             resolved = _resolve_definitions(
                 repo.dvcfs,
                 targets,
                 props,
                 dvcfile_path,
-                dvcfile_defs,
+                dvcfile_defs_dict,
                 onerror=onerror,
             )
             dpath.util.merge(
