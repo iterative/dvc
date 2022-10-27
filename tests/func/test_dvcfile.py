@@ -418,6 +418,7 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
             "plots": {
                 "path/to/plot": {"x": "value", "y": "value"},
                 "path/to/another/plot": {"x": "value", "y": "value"},
+                "path/to/empty/plot": None,
             },
             "stages": STAGE_EXAMPLE,
         },
@@ -425,6 +426,8 @@ def test_dvcfile_load_dump_stage_with_desc_meta(tmp_dir, dvc):
             "plots": [
                 {"path/to/plot": {"x": "value", "y": "value"}},
                 {"path/to/another/plot": {"x": "value", "y": "value"}},
+                {"path/to/empty/plot": None},
+                "path/to/plot/str",
             ],
             "stages": STAGE_EXAMPLE,
         },
