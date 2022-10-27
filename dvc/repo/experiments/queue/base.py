@@ -31,9 +31,7 @@ from ..executor.base import (
     EXEC_PID_DIR,
     EXEC_TMP_DIR,
     BaseExecutor,
-    ExecutorInfo,
     ExecutorResult,
-    TaskStatus,
 )
 from ..executor.local import WorkspaceExecutor
 from ..refs import ExpRefInfo
@@ -709,56 +707,10 @@ class BaseStashQueue(ABC):
                 message=f"commit: {msg}",
             )
 
-    def _fetch_running_exp(
-        self, rev: str, infofile: str, fetch_refs: bool
-    ) -> Dict[str, Dict]:
-        from dvc.scm import InvalidRemoteSCMRepo
-        from dvc.utils.serialize import load_json
-
-        from ..executor.local import TempDirExecutor
-
-        result: Dict[str, Dict] = {}
-        try:
-            info = ExecutorInfo.from_dict(load_json(infofile))
-        except OSError:
-            return result
-        if info.status < TaskStatus.FAILED:
-            result[rev] = info.asdict()
-            if (
-                info.git_url
-                and fetch_refs
-                and info.status > TaskStatus.PREPARING
-            ):
-
-                def on_diverged(_ref: str, _checkpoint: bool):
-                    return False
-
-                executor = TempDirExecutor.from_info(info)
-                try:
-                    for ref in executor.fetch_exps(
-                        self.scm,
-                        on_diverged=on_diverged,
-                    ):
-                        logger.debug("Updated running experiment '%s'.", ref)
-                        last_rev = self.scm.get_ref(ref)
-                        result[rev]["last"] = last_rev
-                        if last_rev:
-                            result[last_rev] = info.asdict()
-                except InvalidRemoteSCMRepo:
-                    # ignore stale info files
-                    del result[rev]
-        return result
-
+    @abstractmethod
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
         """Get the execution info of the currently running experiments
 
         Args:
             fetch_ref (bool): fetch completed checkpoints or not.
         """
-        result: Dict[str, Dict] = {}
-        for entry in self.iter_active():
-            infofile = self.get_infofile_path(entry.stash_rev)
-            result.update(
-                self._fetch_running_exp(entry.stash_rev, infofile, fetch_refs)
-            )
-        return result
