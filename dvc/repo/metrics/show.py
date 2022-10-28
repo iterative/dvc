@@ -17,6 +17,9 @@ from dvc.utils.serialize import load_path
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_METRICS_FILE = "metrics.json"
+
+
 def _is_metric(out: Output) -> bool:
     return bool(out.metric) or bool(out.live)
 
@@ -41,6 +44,13 @@ def _collect_metrics(repo, targets, revision, recursive):
         recursive=recursive,
         rev=revision,
     )
+    if not targets:
+        default_metrics = repo.fs.path.join(
+            repo.root_dir, DEFAULT_METRICS_FILE
+        )
+        if default_metrics not in fs_paths and repo.fs.exists(default_metrics):
+            fs_paths.append(repo.dvcfs.from_os_path(default_metrics))
+
     return _to_fs_paths(metrics) + list(fs_paths)
 
 

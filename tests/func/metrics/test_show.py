@@ -11,6 +11,16 @@ from dvc.utils.fs import remove
 from dvc.utils.serialize import JSONFileCorruptedError, YAMLFileCorruptedError
 
 
+def test_show_default_file(tmp_dir, dvc):
+    from dvc.repo.metrics.show import DEFAULT_METRICS_FILE
+
+    default_file = tmp_dir / DEFAULT_METRICS_FILE
+    default_file.dump({"foo": 1.0})
+    assert dvc.metrics.show() == {
+        "": {"data": {DEFAULT_METRICS_FILE: {"data": {"foo": 1.0}}}}
+    }
+
+
 def test_show_simple(tmp_dir, dvc, run_copy_metrics):
     tmp_dir.gen("metrics_t.yaml", "1.1")
     run_copy_metrics(
