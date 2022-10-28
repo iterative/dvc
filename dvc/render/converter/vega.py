@@ -8,6 +8,15 @@ from dvc.render import FILENAME_FIELD, INDEX_FIELD, VERSION_FIELD
 from . import Converter
 
 
+class FieldNotFoundError(DvcException):
+    def __init__(self, expected_field, found_fields):
+        found_str = ", ".join(found_fields)
+        super().__init__(
+            f"Could not find provided field ('{expected_field}') "
+            f"in data fields ('{found_str}')."
+        )
+
+
 def _lists(blob: Union[Dict, List]) -> Iterable[List]:
     if isinstance(blob, list):
         yield blob
@@ -41,21 +50,29 @@ def _find(
     return None
 
 
-def _get_x(properties: Dict, data_series: List[Tuple[str, str, Any]]):
+def _verify_field(file2datapoints: List, filename: str, field: str):
+    if filename in file2datapoints:
+        datapoint = first(file2datapoints[filename])
+        if field not in datapoint:
+            raise FieldNotFoundError(field, datapoint.keys())
+    return
+
+
+def _get_x(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
     x = properties.get("x", None)
     if x is not None and isinstance(x, dict):
         filename, field = first(_file_field(x))
-        return _find(filename, field, data_series)
+        _verify_field(file2datapoints, filename, field)
+        return filename, field
     return None
 
 
-def _get_ys(properties, data_series: List[Tuple[str, str, Any]]):
+def _get_ys(properties, file2datapoints: Dict[str, List[Dict]]):
     y = properties.get("y", None)
     if y is not None:
         for filename, field in _file_field(y):
-            result = _find(filename, field, data_series)
-            if result is not None:
-                yield result
+            _verify_field(file2datapoints, filename, field)
+            yield filename, field
 
 
 def _is_datapoints(lst: List):
@@ -66,7 +83,8 @@ def _is_datapoints(lst: List):
     ) == {key for keys in lst for key in keys}
 
 
-def get_data_series(file_content: Dict):
+def get_datapoints(file_content: Dict):
+    # TODO optimize
     data_series = {}
     for lst in _lists(file_content):
         if _is_datapoints(lst):
@@ -77,7 +95,13 @@ def get_data_series(file_content: Dict):
                     for key, value in datapoint.items()
                 )
             )
-    return dict(data_series)
+    result = []
+    for field, data in data_series.items():
+        for index, value in enumerate(data):
+            if len(result) <= index:
+                result.append({})
+            result[index][field] = value
+    return result
 
 
 class VegaConverter(Converter):
@@ -127,16 +151,11 @@ class VegaConverter(Converter):
         if self.inferred_properties.get("y", None) is None:
             self._infer_y_from_data()
 
-    def _find_series(self) -> List[Tuple[str, str, List]]:
-        x = self.inferred_properties.get("x", None)
-        y = self.inferred_properties.get("y", None)
-        file_fields = list(_file_field(x, y))
-
-        result = []
+    def _find_datapoints(self):
+        result = {}
         for file, content in self.data.items():
-            for field, data in get_data_series(content).items():
-                if ((file, field) in file_fields) and len(data) > 0:
-                    result.append((file, field, data))
+            result[file] = get_datapoints(content)
+
         return result
 
     @staticmethod
@@ -175,46 +194,32 @@ class VegaConverter(Converter):
         return x_label
 
     def flat_datapoints(self, revision):
-        def _datapoint(d: Dict, revision, filename, field):
-            d.update(
-                {
-                    VERSION_FIELD: {
-                        "revision": revision,
-                        FILENAME_FIELD: filename,
-                        "field": field,
-                    }
-                }
+
+        file2datapoints, properties = self.convert()
+
+        props_update = {}
+
+        x = _get_x(properties, file2datapoints)
+
+        # assign "step" if no x provided
+        if not x:
+            x_file, x_field = (
+                None,
+                INDEX_FIELD,
             )
-            return d
+        else:
+            x_file, x_field = x
+        props_update["x"] = x_field
 
-        datas, properties = self.convert()
-
-        x = _get_x(properties, datas)
-        ys = list(_get_ys(properties, datas))
-        if x and not ys:
-            file, field, data = x
-            return [
-                _datapoint({field: val}, revision, file, field) for val in data
-            ], {**properties, **{"x": field}}
+        ys = list(_get_ys(properties, file2datapoints))
 
         dps = []
-        props_update = {}
-        all_y_fields = {y_field for _, y_field, _ in ys}
-        for y_file, y_field, y_data in ys:
+        all_y_fields = {y_field for _, y_field in ys}
+        for y_file, y_field in ys:
             y_value_name = y_field
 
-            # assign "step" if no x provided
-            if not x:
-                x_file, x_field, x_data = (
-                    None,
-                    INDEX_FIELD,
-                    list(range(len(y_data))),
-                )
-            else:
-                x_file, x_field, x_data = x
-            props_update["x"] = x_field
-
             # override to unified y field name if there are multiple y fields
+            y_value_name = None
             if len(all_y_fields) > 1:
                 y_value_name = "dvc_inferred_y_value"
                 props_update["y"] = "dvc_inferred_y_value"
@@ -224,17 +229,32 @@ class VegaConverter(Converter):
                 props_update["y"] = y_field
 
             try:
-                dps.extend(
-                    [
-                        _datapoint(
-                            {y_value_name: y_val, x_field: x_data[index]},
-                            revision,
-                            y_file,
-                            y_field,
-                        )
-                        for index, y_val in enumerate(y_data)
-                    ]
-                )
+                for index, datapoint in enumerate(
+                    file2datapoints.get(y_file, [])
+                ):
+                    tmp = {**datapoint}
+                    if y_value_name:
+                        tmp[y_value_name] = datapoint[y_field]
+                        del tmp[y_field]
+                    # TODO
+                    if x_field == INDEX_FIELD and x_file is None:
+                        tmp[x_field] = index
+                    else:
+                        # TODO what if there is no x data?
+                        tmp[x_field] = file2datapoints.get(x_file, [])[index][
+                            x_field
+                        ]
+                    tmp.update(
+                        {
+                            VERSION_FIELD: {
+                                "revision": revision,
+                                FILENAME_FIELD: y_file,
+                                "field": y_field,
+                            }
+                        }
+                    )
+                    dps.append(tmp)
+            # TODO better handling
             except IndexError:
                 raise DvcException(
                     f"Number of values in '{x_field}' field from '{x_file}' "
@@ -257,9 +277,9 @@ class VegaConverter(Converter):
         Convert the data. Fill necessary fields ('x', 'y') and return both
         generated datapoints and updated properties.
         """
-        data_series = self._find_series()
+        datapoints = self._find_datapoints()
 
-        return data_series, {
+        return datapoints, {
             **self.properties,
             **self.inferred_properties,
         }
