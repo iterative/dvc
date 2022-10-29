@@ -6,14 +6,13 @@ from funcy import cached_property, first
 
 from ..exceptions import ExpQueueEmptyError
 from ..executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
     BaseExecutor,
     ExecutorInfo,
     ExecutorResult,
     TaskStatus,
 )
 from ..executor.local import TempDirExecutor
+from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR
 from .base import BaseStashQueue, QueueEntry, QueueGetResult
 from .utils import fetch_running_exp_from_temp_dir
 from .workspace import WorkspaceQueue

@@ -1,3 +1,5 @@
+import os
+import sys
 from collections import defaultdict
 from functools import wraps
 from typing import (
@@ -12,10 +14,12 @@ from typing import (
     Union,
 )
 
+from funcy import decorator
 from scmrepo.git import Git
 
-from dvc.exceptions import InvalidArgumentError
+from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
+from dvc.rwlock import rwlock
 
 from .refs import (
     EXEC_APPLY,
@@ -28,18 +32,47 @@ from .refs import (
     ExpRefInfo,
 )
 
+EXEC_TMP_DIR = "exps"
+EXEC_PID_DIR = "run"
 
-def scm_locked(f):
-    # Lock the experiments workspace so that we don't try to perform two
-    # different sequences of git operations at once
-    @wraps(f)
-    def wrapper(exp, *args, **kwargs):
-        from dvc.scm import map_scm_exception
 
-        with map_scm_exception(), exp.scm_lock:
-            return f(exp, *args, **kwargs)
+@decorator
+def exp_rwlocked(
+    call, reads: Optional[List[str]] = None, writes: Optional[List[str]] = None
+):
+    from dvc.repo import Repo
+    from dvc.repo.experiments import Experiments
+    from dvc.repo.experiments.queue.base import BaseStashQueue
 
-    return wrapper
+    reads = reads or []
+    writes = writes or []
+
+    first_arg = call._args[0]  # pylint: disable=protected-access
+    if isinstance(first_arg, Repo):
+        repo: "Repo" = first_arg
+    elif isinstance(first_arg, Experiments):
+        repo = first_arg.repo
+    elif isinstance(first_arg, BaseStashQueue):
+        repo = first_arg.repo
+    else:
+        raise DvcException(
+            f"Argument '{first_arg}''s type {type(first_arg)} not among "
+            "'Repo', 'Experiments', or 'BaseStashQueue'",
+        )
+
+    cmd = " ".join(sys.argv)
+    path = os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
+    repo.fs.makedirs(path, exist_ok=True)
+
+    with rwlock(
+        path,
+        repo.fs,
+        cmd,
+        reads,
+        writes,
+        repo.config["core"].get("hardlink_lock", False),
+    ):
+        return call()
 
 
 def unlocked_repo(f):

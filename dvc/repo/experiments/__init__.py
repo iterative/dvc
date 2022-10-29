@@ -28,11 +28,12 @@ from .refs import (
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
     EXPS_NAMESPACE,
+    STASHES,
     WORKSPACE_STASH,
     ExpRefInfo,
 )
 from .stash import ExpStashEntry
-from .utils import exp_refs_by_rev, scm_locked, unlocked_repo
+from .utils import exp_refs_by_rev, exp_rwlocked, unlocked_repo
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +51,12 @@ class Experiments:
     )
 
     def __init__(self, repo):
-        from dvc.lock import make_lock
         from dvc.scm import NoSCMError
 
         if repo.config["core"].get("no_scm", False):
             raise NoSCMError
 
         self.repo = repo
-        self.scm_lock = make_lock(
-            os.path.join(self.repo.tmp_dir, "exp_scm_lock"),
-            tmp_dir=self.repo.tmp_dir,
-            hardlink_lock=repo.config["core"].get("hardlink_lock", False),
-        )
 
     @property
     def scm(self):
@@ -239,7 +234,7 @@ class Experiments:
         if self.scm.get_ref(str(exp_ref)):
             raise ExperimentExistsError(exp_ref.name)
 
-    @scm_locked
+    @exp_rwlocked(writes=list(STASHES))
     def new(
         self,
         queue: BaseStashQueue,

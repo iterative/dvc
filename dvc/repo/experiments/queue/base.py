@@ -27,16 +27,11 @@ from dvc.lock import LockError
 from dvc.ui import ui
 
 from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
-    BaseExecutor,
-    ExecutorResult,
-)
+from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
-from ..refs import ExpRefInfo
+from ..refs import EXEC_NAMESPACE, EXPS_NAMESPACE, STASHES, ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
-from ..utils import exp_refs_by_rev, scm_locked
+from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev, exp_rwlocked
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
@@ -562,15 +557,12 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    @scm_locked
-    def init_executor(
+    @exp_rwlocked(writes=list(STASHES))
+    def get_stash_entry(
         exp: "Experiments",
         queue_entry: QueueEntry,
-        executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
-        **kwargs,
-    ) -> BaseExecutor:
-        scm = exp.scm
-        stash = ExpStash(scm, queue_entry.stash_ref)
+    ) -> "ExpStashEntry":
+        stash = ExpStash(exp.scm, queue_entry.stash_ref)
         stash_rev = queue_entry.stash_rev
         stash_entry = stash.stash_revs.get(
             stash_rev,
@@ -578,10 +570,17 @@ class BaseStashQueue(ABC):
         )
         if stash_entry.stash_index is not None:
             stash.drop(stash_entry.stash_index)
-        executor = executor_cls.from_stash_entry(
-            exp.repo, stash_entry, **kwargs
-        )
+        return stash_entry
 
+    @staticmethod
+    @retry(180, errors=LockError, timeout=1)
+    @exp_rwlocked(writes=[EXEC_NAMESPACE])
+    def init_git(
+        exp: "Experiments",
+        stash_rev: str,
+        stash_entry: "ExpStashEntry",
+        executor: "BaseExecutor",
+    ):
         infofile = exp.celery_queue.get_infofile_path(stash_rev)
         executor.init_git(
             exp.repo.scm,
@@ -590,6 +589,23 @@ class BaseStashQueue(ABC):
             infofile,
             branch=stash_entry.branch,
         )
+
+    @classmethod
+    def init_executor(
+        cls,
+        exp: "Experiments",
+        queue_entry: QueueEntry,
+        executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
+        **kwargs,
+    ) -> BaseExecutor:
+        stash_entry = cls.get_stash_entry(exp, queue_entry)
+
+        executor = executor_cls.from_stash_entry(
+            exp.repo, stash_entry, **kwargs
+        )
+
+        stash_rev = queue_entry.stash_rev
+        cls.init_git(exp, stash_rev, stash_entry, executor)
 
         executor.init_cache(exp.repo, stash_rev)
 
@@ -604,7 +620,7 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    @scm_locked
+    @exp_rwlocked(writes=[EXPS_NAMESPACE])
     def collect_git(
         exp: "Experiments",
         executor: BaseExecutor,

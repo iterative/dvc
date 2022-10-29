@@ -8,15 +8,17 @@ from funcy import first, get_in
 
 from dvc.cli import main
 from dvc.repo.experiments.executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
     BaseExecutor,
     ExecutorInfo,
     TaskStatus,
 )
 from dvc.repo.experiments.queue.base import QueueEntry
 from dvc.repo.experiments.refs import CELERY_STASH, ExpRefInfo
-from dvc.repo.experiments.utils import exp_refs_by_rev
+from dvc.repo.experiments.utils import (
+    EXEC_PID_DIR,
+    EXEC_TMP_DIR,
+    exp_refs_by_rev,
+)
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
