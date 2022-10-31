@@ -36,7 +36,7 @@ from .interpolate import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import NoReturn
+    from typing import NoReturn
 
     from dvc.repo import Repo
 

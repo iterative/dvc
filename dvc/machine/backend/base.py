@@ -26,7 +26,7 @@ class BaseMachineBackend(ABC):
     ) -> Iterator[dict]:
         """Iterate over status of all instances of the specified machine."""
 
-    def close(self):
+    def close(self):  # noqa: B027
         pass
 
     @abstractmethod

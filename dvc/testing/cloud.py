@@ -65,7 +65,7 @@ class Cloud(ABC):
         self._gen(struct)
         return struct.keys()
 
-    def close(self):
+    def close(self):  # noqa: B027
         pass
 
     @staticmethod
