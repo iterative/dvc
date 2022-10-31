@@ -7,8 +7,13 @@ on:
     types: [released, prereleased]
   workflow_dispatch:
 
+permissions:  # added using https://github.com/step-security/secure-workflows
+  contents: read
+
 jobs:
   binary:
+    permissions:
+      contents: write  # for actions/upload-release-asset to upload release asset
     strategy:
       matrix:
         include:
