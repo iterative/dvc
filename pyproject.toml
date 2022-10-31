@@ -16,7 +16,7 @@ keywords = [
     "collaboration",
     "ai",
 ]
-license = { file = "LICENSE" }
+license = { text = "Apache License 2.0" }
 authors = [{ name = "Dmitry Petrov", email = "dmitry@dvc.org" }]
 maintainers = [{ name = "Iterative", email = "support@dvc.org" }]
 requires-python = ">=3.8"
@@ -131,9 +131,10 @@ dvc = "dvc.api:DVCFileSystem"
 
 [tool.setuptools]
 zip-safe = false
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
-exclude = ["dvc.testing", "dvc.testing.*", "tests", "tests.*"]
+exclude = ["tests", "tests.*"]
 
 [tool.setuptools_scm]
 write_to = "dvc/_dvc_version.py"
