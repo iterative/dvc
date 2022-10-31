@@ -4,9 +4,10 @@ import re
 import time
 from typing import Dict, Iterable, Optional
 
-from funcy import cached_property, first
+from funcy import cached_property, first, retry
 
 from dvc.exceptions import DvcException
+from dvc.lock import LockError
 from dvc.ui import ui
 from dvc.utils import relpath
 
@@ -24,6 +25,7 @@ from .queue.workspace import WorkspaceQueue
 from .refs import (
     CELERY_FAILED_STASH,
     CELERY_STASH,
+    COMPLETE_NAMESPACE,
     EXEC_APPLY,
     EXEC_CHECKPOINT,
     EXEC_NAMESPACE,
@@ -234,6 +236,7 @@ class Experiments:
         if self.scm.get_ref(str(exp_ref)):
             raise ExperimentExistsError(exp_ref.name)
 
+    @retry(3, errors=LockError, timeout=0.5)
     @exp_rwlocked(writes=list(STASHES))
     def new(
         self,
@@ -432,6 +435,10 @@ class Experiments:
             result[rev] = name
         return result
 
+    @retry(3, errors=LockError, timeout=0.5)
+    @exp_rwlocked(
+        reads=list(STASHES) + [COMPLETE_NAMESPACE, CELERY_FAILED_STASH]
+    )
     def get_running_exps(self, fetch_refs: bool = True) -> Dict[str, Dict]:
         """Return info for running experiments."""
         result = {}

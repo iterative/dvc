@@ -5,6 +5,7 @@ from .exceptions import InvalidExpRefError
 # Experiment refs are stored according baseline git SHA:
 #   refs/exps/01/234abcd.../<exp_name>
 EXPS_NAMESPACE = "refs/exps"
+COMPLETE_NAMESPACE = f"{EXPS_NAMESPACE}/complete"  # used for rwlock
 EXPS_STASH = f"{EXPS_NAMESPACE}/stash"
 WORKSPACE_STASH = EXPS_STASH
 CELERY_STASH = f"{EXPS_NAMESPACE}/celery/stash"

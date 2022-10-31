@@ -1,7 +1,13 @@
 from typing import TYPE_CHECKING, Collection, Dict, Iterable, List, Set, Union
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.repo.experiments.exceptions import UnresolvedExpNamesError
 from dvc.repo.experiments.queue.base import QueueDoneResult
+
+from ..refs import CELERY_STASH
+from ..utils import exp_rwlocked
 
 if TYPE_CHECKING:
     from dvc.repo.experiments.queue.base import QueueEntry
@@ -75,6 +81,8 @@ def _get_names(entries: Iterable[Union["QueueEntry", "QueueDoneResult"]]):
     return names
 
 
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[CELERY_STASH])
 def celery_clear(
     self: "LocalCeleryQueue",
     queued: bool = False,
@@ -112,6 +120,8 @@ def celery_clear(
     return removed
 
 
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[CELERY_STASH])
 def celery_remove(
     self: "LocalCeleryQueue",
     revs: Collection[str],

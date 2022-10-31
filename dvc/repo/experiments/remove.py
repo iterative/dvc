@@ -9,13 +9,16 @@ from typing import (
     Union,
 )
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 
 from .exceptions import UnresolvedExpNamesError
-from .refs import ExpRefInfo
-from .utils import exp_refs, exp_refs_by_baseline, push_refspec
+from .refs import CELERY_FAILED_STASH, COMPLETE_NAMESPACE, STASHES, ExpRefInfo
+from .utils import exp_refs, exp_refs_by_baseline, exp_rwlocked, push_refspec
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -76,6 +79,8 @@ def _get_ref_and_entry_by_names(
 
 @locked
 @scm_context
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[COMPLETE_NAMESPACE, CELERY_FAILED_STASH] + list(STASHES))
 def remove(
     repo: "Repo",
     exp_names: Union[None, str, List[str]] = None,

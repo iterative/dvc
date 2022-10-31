@@ -3,6 +3,9 @@ import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.utils.fs import remove
@@ -13,7 +16,8 @@ from .exceptions import (
     InvalidExpRevError,
 )
 from .executor.base import BaseExecutor
-from .refs import EXEC_APPLY
+from .refs import COMPLETE_NAMESPACE, EXEC_APPLY
+from .utils import exp_rwlocked
 
 if TYPE_CHECKING:
     from scmrepo import Git
@@ -25,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[COMPLETE_NAMESPACE])
 def apply(repo: "Repo", rev: str, force: bool = True, **kwargs):
     from scmrepo.exceptions import SCMError as _SCMError
 

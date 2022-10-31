@@ -1,18 +1,24 @@
 import logging
 
+from funcy import retry
+
 from dvc.exceptions import InvalidArgumentError
+from dvc.lock import LockError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import RevError
 
 from .exceptions import InvalidExpRevError
-from .utils import exp_refs_by_rev
+from .refs import COMPLETE_NAMESPACE
+from .utils import exp_refs_by_rev, exp_rwlocked
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[COMPLETE_NAMESPACE])
 def branch(repo, exp_rev, branch_name, *args, **kwargs):
     from dvc.scm import resolve_rev
 

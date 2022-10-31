@@ -5,12 +5,16 @@ from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import iter_revs
 from dvc.utils import error_handler, onerror_collect, relpath
 
-from .refs import ExpRefInfo
+from .refs import CELERY_FAILED_STASH, COMPLETE_NAMESPACE, STASHES, ExpRefInfo
+from .utils import exp_rwlocked
 
 if TYPE_CHECKING:
     from dvc.repo import Repo
@@ -139,7 +143,7 @@ def _collect_experiment_branch(
     return res
 
 
-def get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
+def _get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
 
     rev_set = set()
     baseline_set = set()
@@ -178,11 +182,13 @@ def get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
                 rev_result["data"]["name"] = name
 
 
-# flake8: noqa: C901
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(reads=[COMPLETE_NAMESPACE, CELERY_FAILED_STASH] + list(STASHES))
 def _collect_active_experiment(
     repo: "Repo",
     found_revs: Dict[str, List[str]],
     running: Dict[str, Any],
+    sha_only: bool = False,
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict] = defaultdict(OrderedDict)
@@ -201,13 +207,18 @@ def _collect_active_experiment(
                 running=running,
                 **kwargs,
             )
+    if not sha_only:
+        _get_names(repo, result)
     return result
 
 
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(reads=list(STASHES))
 def _collect_queued_experiment(
     repo: "Repo",
     found_revs: Dict[str, List[str]],
     running: Dict[str, Any],
+    sha_only: bool = False,
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict] = defaultdict(OrderedDict)
@@ -221,13 +232,18 @@ def _collect_queued_experiment(
                 running=running,
                 **kwargs,
             )
+    if not sha_only:
+        _get_names(repo, result)
     return result
 
 
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(reads=[CELERY_FAILED_STASH])
 def _collect_failed_experiment(
     repo: "Repo",
     found_revs: Dict[str, List[str]],
     running: Dict[str, Any],
+    sha_only: bool = False,
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict] = defaultdict(OrderedDict)
@@ -243,6 +259,9 @@ def _collect_failed_experiment(
                 **kwargs,
             )
             result[entry.baseline_rev][stash_rev] = experiment
+    if not sha_only:
+        _get_names(repo, result)
+
     return result
 
 
@@ -252,6 +271,53 @@ def update_new(
     for baseline, experiments in from_dict.items():
         for rev, experiment in experiments.items():
             to_dict[baseline][rev] = to_dict[baseline].get(rev, experiment)
+
+
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(reads=[COMPLETE_NAMESPACE])
+def _collect_complete_experiments(
+    repo: "Repo",
+    found_revs: Dict[str, List[str]],
+    running: Dict[str, Any],
+    sha_only: bool = False,
+    **kwargs,
+):
+    results: Dict[str, Dict] = defaultdict(OrderedDict)
+    for rev in found_revs:
+        status = ExpStatus.Running if rev in running else ExpStatus.Success
+        results[rev]["baseline"] = _collect_experiment_commit(
+            repo,
+            rev,
+            status=status,
+            running=running,
+            **kwargs,
+        )
+
+        if rev == "workspace":
+            continue
+
+        ref_info = ExpRefInfo(baseline_sha=rev)
+        commits = [
+            (ref, repo.scm.resolve_commit(ref))
+            for ref in repo.scm.iter_refs(base=str(ref_info))
+        ]
+        for exp_ref, _ in sorted(
+            commits, key=lambda x: x[1].commit_time, reverse=True
+        ):
+            ref_info = ExpRefInfo.from_ref(exp_ref)
+            assert ref_info.baseline_sha == rev
+            _collect_experiment_branch(
+                results[rev],
+                repo,
+                exp_ref,
+                rev,
+                running=running,
+                **kwargs,
+            )
+
+    if not sha_only:
+        _get_names(repo, results)
+    return results
 
 
 def show(
@@ -290,12 +356,12 @@ def show(
     running: Dict[str, Dict] = repo.experiments.get_running_exps(
         fetch_refs=fetch_running
     )
-
-    queued_experiment = (
+    queued_experiments = (
         _collect_queued_experiment(
             repo,
             found_revs,
             running,
+            sha_only=sha_only,
             param_deps=param_deps,
             onerror=onerror,
         )
@@ -303,10 +369,11 @@ def show(
         else {}
     )
 
-    active_experiment = _collect_active_experiment(
+    active_experiments = _collect_active_experiment(
         repo,
         found_revs,
         running,
+        sha_only=sha_only,
         param_deps=param_deps,
         onerror=onerror,
     )
@@ -324,49 +391,20 @@ def show(
         else {}
     )
 
-    for rev in found_revs:
-        status = ExpStatus.Running if rev in running else ExpStatus.Success
-        res[rev]["baseline"] = _collect_experiment_commit(
+    update_new(
+        res,
+        _collect_complete_experiments(
             repo,
-            rev,
-            status=status,
+            found_revs,
+            running,
+            sha_only=sha_only,
             param_deps=param_deps,
-            running=running,
             onerror=onerror,
-        )
+        ),
+    )
 
-        if rev == "workspace":
-            continue
-
-        ref_info = ExpRefInfo(baseline_sha=rev)
-        commits = [
-            (ref, repo.scm.resolve_commit(ref))
-            for ref in repo.scm.iter_refs(base=str(ref_info))
-        ]
-        for exp_ref, _ in sorted(
-            commits, key=lambda x: x[1].commit_time, reverse=True
-        ):
-            ref_info = ExpRefInfo.from_ref(exp_ref)
-            assert ref_info.baseline_sha == rev
-            _collect_experiment_branch(
-                res[rev],
-                repo,
-                exp_ref,
-                rev,
-                param_deps=param_deps,
-                running=running,
-                onerror=onerror,
-            )
-
-    if not hide_failed:
-        update_new(res, failed_experiments)
-
-    update_new(res, active_experiment)
-
-    if not hide_queued:
-        update_new(res, queued_experiment)
-
-    if not sha_only:
-        get_names(repo, res)
+    update_new(res, queued_experiments)
+    update_new(res, active_experiments)
+    update_new(res, failed_experiments)
 
     return res

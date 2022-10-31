@@ -1,18 +1,24 @@
 import logging
 from collections import defaultdict
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import iter_revs
 from dvc.types import Optional
 
-from .utils import exp_refs, exp_refs_by_baseline
+from .refs import COMPLETE_NAMESPACE
+from .utils import exp_refs, exp_refs_by_baseline, exp_rwlocked
 
 logger = logging.getLogger(__name__)
 
 
 @locked
 @scm_context
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(reads=[COMPLETE_NAMESPACE])
 def ls(
     repo,
     rev: Optional[str] = None,

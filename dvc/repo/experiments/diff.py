@@ -1,11 +1,19 @@
 import logging
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.utils.diff import diff as _diff
 from dvc.utils.diff import format_dict
+
+from .refs import COMPLETE_NAMESPACE
+from .utils import exp_rwlocked
 
 logger = logging.getLogger(__name__)
 
 
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(reads=[COMPLETE_NAMESPACE])
 def diff(repo, *args, a_rev=None, b_rev=None, param_deps=False, **kwargs):
     from dvc.repo.experiments.show import _collect_experiment_commit
     from dvc.scm import resolve_rev

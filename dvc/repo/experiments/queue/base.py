@@ -29,7 +29,7 @@ from dvc.ui import ui
 from ..exceptions import CheckpointExistsError, ExperimentExistsError
 from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_NAMESPACE, EXPS_NAMESPACE, STASHES, ExpRefInfo
+from ..refs import COMPLETE_NAMESPACE, EXEC_NAMESPACE, STASHES, ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
 from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev, exp_rwlocked
 
@@ -620,7 +620,7 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    @exp_rwlocked(writes=[EXPS_NAMESPACE])
+    @exp_rwlocked(writes=[COMPLETE_NAMESPACE])
     def collect_git(
         exp: "Experiments",
         executor: BaseExecutor,

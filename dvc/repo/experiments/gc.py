@@ -1,14 +1,20 @@
 import logging
 from typing import Optional
 
+from funcy import retry
+
+from dvc.lock import LockError
 from dvc.repo import locked
 
-from .utils import exp_refs, remove_exp_refs
+from .refs import COMPLETE_NAMESPACE, STASHES
+from .utils import exp_refs, exp_rwlocked, remove_exp_refs
 
 logger = logging.getLogger(__name__)
 
 
 @locked
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[COMPLETE_NAMESPACE] + list(STASHES))
 def gc(
     repo,
     all_branches: Optional[bool] = False,

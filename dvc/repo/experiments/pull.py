@@ -1,19 +1,30 @@
 import logging
-from typing import Iterable, List, Mapping, Optional, Set, Union
+from typing import TYPE_CHECKING, Iterable, List, Mapping, Optional, Set, Union
 
-from funcy import group_by
+from funcy import group_by, retry
 from scmrepo.git.backend.base import SyncStatus
 
+from dvc.lock import LockError
 from dvc.repo import locked
 from dvc.repo.scm_context import scm_context
 from dvc.scm import TqdmGit, iter_revs
 from dvc.ui import ui
 
 from .exceptions import UnresolvedExpNamesError
-from .refs import ExpRefInfo
-from .utils import exp_commits, exp_refs, exp_refs_by_baseline, resolve_name
+from .refs import COMPLETE_NAMESPACE, ExpRefInfo
+from .utils import (
+    exp_commits,
+    exp_refs,
+    exp_refs_by_baseline,
+    exp_rwlocked,
+    resolve_name,
+)
 
 logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:
+    from dvc.repo import Repo
 
 
 @locked
@@ -29,33 +40,15 @@ def pull(
     pull_cache: bool = False,
     **kwargs,
 ) -> Iterable[str]:
-    exp_ref_set: Set["ExpRefInfo"] = set()
-    if all_commits:
-        exp_ref_set.update(exp_refs(repo.scm, git_remote))
-    else:
-        if exp_names:
-            if isinstance(exp_names, str):
-                exp_names = [exp_names]
-            exp_ref_dict = resolve_name(repo.scm, exp_names, git_remote)
-
-            unresolved_exp_names = []
-            for exp_name, exp_ref in exp_ref_dict.items():
-                if exp_ref is None:
-                    unresolved_exp_names.append(exp_name)
-                else:
-                    exp_ref_set.add(exp_ref)
-
-            if unresolved_exp_names:
-                raise UnresolvedExpNamesError(unresolved_exp_names)
-
-        if rev:
-            rev_dict = iter_revs(repo.scm, [rev], num)
-            rev_set = set(rev_dict.keys())
-            ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
-            for _, ref_info_list in ref_info_dict.items():
-                exp_ref_set.update(ref_info_list)
-
-    pull_result = _pull(repo, git_remote, exp_ref_set, force)
+    pull_result = _pull_git_ref(
+        repo,
+        git_remote,
+        exp_names,
+        all_commits=all_commits,
+        rev=rev,
+        num=num,
+        force=force,
+    )
 
     if pull_result[SyncStatus.DIVERGED]:
         diverged_refs = [ref.name for ref in pull_result[SyncStatus.DIVERGED]]
@@ -100,6 +93,60 @@ def _pull(
     )
 
     return pull_result
+
+
+def _find_exp_refs(
+    repo: "Repo",
+    git_remote: str,
+    exp_names: Union[Iterable[str], str],
+    all_commits=False,
+    rev: Optional[str] = None,
+    num=1,
+) -> Set["ExpRefInfo"]:
+    exp_ref_set: Set["ExpRefInfo"] = set()
+    if all_commits:
+        exp_ref_set.update(exp_refs(repo.scm, git_remote))
+    else:
+        if exp_names:
+            if isinstance(exp_names, str):
+                exp_names = [exp_names]
+            exp_ref_dict = resolve_name(repo.scm, exp_names, git_remote)
+
+            unresolved_exp_names = []
+            for exp_name, exp_ref in exp_ref_dict.items():
+                if exp_ref is None:
+                    unresolved_exp_names.append(exp_name)
+                else:
+                    exp_ref_set.add(exp_ref)
+
+            if unresolved_exp_names:
+                raise UnresolvedExpNamesError(unresolved_exp_names)
+
+        if rev:
+            rev_dict = iter_revs(repo.scm, [rev], num)
+            rev_set = set(rev_dict.keys())
+            ref_info_dict = exp_refs_by_baseline(repo.scm, rev_set, git_remote)
+            for _, ref_info_list in ref_info_dict.items():
+                exp_ref_set.update(ref_info_list)
+
+    return exp_ref_set
+
+
+@retry(3, errors=LockError, timeout=0.5)
+@exp_rwlocked(writes=[COMPLETE_NAMESPACE])
+def _pull_git_ref(
+    repo: "Repo",
+    git_remote: str,
+    exp_names: Union[Iterable[str], str],
+    all_commits=False,
+    rev: Optional[str] = None,
+    num=1,
+    force: bool = False,
+) -> Mapping[SyncStatus, List["ExpRefInfo"]]:
+    exp_ref_set = _find_exp_refs(
+        repo, git_remote, exp_names, all_commits=all_commits, rev=rev, num=num
+    )
+    return _pull(repo, git_remote, exp_ref_set, force)
 
 
 def _pull_cache(
