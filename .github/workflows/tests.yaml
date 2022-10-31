@@ -30,7 +30,7 @@ jobs:
       with:
         python-version: 3.8
         cache: pip
-        cache-dependency-path: setup.cfg
+        cache-dependency-path: pyproject.toml
     - name: Install requirements
       run: |
         pip install --upgrade pip setuptools wheel
@@ -62,7 +62,7 @@ jobs:
       with:
         python-version: ${{ matrix.pyv }}
         cache: pip
-        cache-dependency-path: setup.cfg
+        cache-dependency-path: pyproject.toml
     - name: install
       if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
