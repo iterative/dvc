@@ -8,7 +8,7 @@ about: Create a bug report to help us improve DVC
 <!--
 ## Issue name
 
-Issue names must follow the pattern `command: description` where the command is the dvc command that you are trying to run. The description should describe the consequence of the bug. 
+Issue names must follow the pattern `command: description` where the command is the dvc command that you are trying to run. The description should describe the consequence of the bug.
 
 Example: `repro: doesn't detect input changes`
 -->

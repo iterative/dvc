@@ -44,7 +44,7 @@ def extract_vega_specs(html_path, plots_ids):
 
     result = {}
 
-    with open(html_path, "r", encoding="utf-8") as fd:
+    with open(html_path, encoding="utf-8") as fd:
         content = fd.read()
 
     reader = BeautifulSoup(content, features="html.parser")

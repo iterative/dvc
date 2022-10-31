@@ -9,10 +9,9 @@ from dvc.exceptions import DvcException
 from dvc.utils.flatten import flatten
 
 if typing.TYPE_CHECKING:
-    from typing import List, Match
+    from typing import List, Match, NoReturn
 
     from pyparsing import ParseException
-    from typing_extensions import NoReturn
 
     from .context import Context
 

@@ -269,6 +269,7 @@ class BaseStashQueue(ABC):
                 finish any active experiments before shutting down.
         """
 
+    @abstractmethod
     def logs(
         self,
         rev: str,
