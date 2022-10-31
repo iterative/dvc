@@ -455,7 +455,6 @@ def _collect_pipeline_files(repo, targets: List[str], props, onerror=None):
                         dvcfile_defs_dict[k] = v
             else:
                 dvcfile_defs_dict = dvcfile_defs
-            print(dvcfile_defs_dict)
             resolved = _resolve_definitions(
                 repo.dvcfs,
                 targets,
