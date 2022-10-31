@@ -82,18 +82,6 @@ webhdfs = ["dvc-webhdfs==2.19.0"]
 webhdfs_kerberos = ["dvc-webhdfs[kerberos]==2.19.0"]
 terraform = ["tpi[ssh]>=2.1.0"]
 testing = ["pytest-test-utils==0.0.8"]
-all = [
-    "dvc-azure==2.20.4",
-    "dvc-gdrive==2.19.0",
-    "dvc-gs==2.19.1",
-    "dvc-hdfs==2.19.0; python_version < '3.11'",
-    "dvc-oss==2.19.0",
-    "dvc-s3==2.20.1",
-    "dvc-ssh==2.20.0",
-    "dvc-webdav==2.19.0",
-    "dvc-webhdfs==2.19.0",
-    "dvc-webhdfs[kerberos]==2.19.0",
-]
 tests = [
     "tpi[ssh]>=2.1.0",
     "dvc-ssh==2.20.0",
@@ -126,7 +114,8 @@ tests = [
     "types-tabulate>=0.8.6",
     "types-toml>=0.10.4",
 ]
-dev = ["dvc[all,tests]"]
+all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
+dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests]"]
 
 [project.urls]
 Documentation = "https://dvc.org/doc"
