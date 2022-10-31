@@ -30,7 +30,7 @@ jobs:
         python-version: 3.9
         cache: pip
         cache-dependency-path: |
-          setup.cfg
+          pyproject.toml
           scripts/build-requirements.txt
 
     - name: Set up Ruby 2.6
@@ -78,7 +78,7 @@ jobs:
       with:
         python-version: 3.8
         cache: pip
-        cache-dependency-path: setup.cfg
+        cache-dependency-path: pyproject.toml
 
     - name: Install
       run: |
