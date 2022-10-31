@@ -77,21 +77,29 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.8
-        cache: pip
-        cache-dependency-path: pyproject.toml
 
     - name: Install
-      run: |
-        pip install -U wheel pip build setuptools
-        pip install ".[all,tests]"
+      run: pip install -U wheel pip build setuptools_scm
+
+    - name: Force version for Test PyPI uploads
+      if: ${{ !startsWith(github.ref, 'refs/tags') }}
+      run: echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
 
     - name: Build packages
-      run: |
-        pip install -U pip
-        ./scripts/build_package.sh
+      run: ./scripts/build_package.sh
+      env:
+        SETUPTOOLS_SCM_PRETEND_VERSION: ${{ env.version }}
 
     - name: Publish packages to PyPI
       if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_TOKEN }}
+
+    - name: Publish to Test PyPI
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.TEST_PYPI_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+        skip_existing: true
