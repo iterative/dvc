@@ -130,7 +130,6 @@ dvc = "dvc.cli:main"
 dvc = "dvc.api:DVCFileSystem"
 
 [tool.setuptools]
-zip-safe = false
 license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
