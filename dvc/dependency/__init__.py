@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Mapping
 
-from dvc.output import ARTIFACT_SCHEMA, Output
+from dvc.output import ARTIFACT_SCHEMA, DIR_FILES_SCHEMA, Output
 
 from .base import Dependency
 from .param import ParamsDependency
@@ -15,10 +15,11 @@ SCHEMA: Mapping[str, Any] = {
     **ARTIFACT_SCHEMA,
     **RepoDependency.REPO_SCHEMA,
     **ParamsDependency.PARAM_SCHEMA,
+    Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }
 
 
-def _get(stage, p, info, fs_config=None):
+def _get(stage, p, info, **kwargs):
     if info and info.get(RepoDependency.PARAM_REPO):
         repo = info.pop(RepoDependency.PARAM_REPO)
         return RepoDependency(repo, stage, p, info)
@@ -27,14 +28,15 @@ def _get(stage, p, info, fs_config=None):
         params = info.pop(ParamsDependency.PARAM_PARAMS)
         return ParamsDependency(stage, p, params)
 
-    return Dependency(stage, p, info, fs_config=fs_config)
+    return Dependency(stage, p, info, **kwargs)
 
 
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
         p = d.pop(Output.PARAM_PATH, None)
-        ret.append(_get(stage, p, d))
+        files = d.pop(Output.PARAM_FILES, None)
+        ret.append(_get(stage, p, d, files=files))
     return ret
 
 
