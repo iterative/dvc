@@ -7,5 +7,6 @@ coverage:
       default:
         target: auto
         threshold: 2%
+    patch: off
 github_checks:
   annotations: false
