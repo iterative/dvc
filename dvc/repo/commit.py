@@ -56,10 +56,13 @@ def commit(
     ]
     for stage_info in stages_info:
         stage = stage_info.stage
-        changes = stage.changed_entries()
-        if any(changes):
-            prompt_to_commit(stage, changes, force=force)
+        if force:
             stage.save(allow_missing=allow_missing)
+        else:
+            changes = stage.changed_entries()
+            if any(changes):
+                prompt_to_commit(stage, changes, force=force)
+                stage.save(allow_missing=allow_missing)
         stage.commit(
             filter_info=stage_info.filter_info, allow_missing=allow_missing
         )
