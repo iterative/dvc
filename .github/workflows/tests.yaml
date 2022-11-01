@@ -45,13 +45,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest]
         pyv: ["3.8", "3.9", "3.10"]
         pytest-filter:
         - "import or plot or live or experiment"
         - "not (import or plot or live or experiment)"
         include:
-        - {os: ubuntu-latest, pyv: "3.11-dev"}
+        - {os: ubuntu-latest, pyv: "3.11"}
+        - {os: macos-latest, pyv: "3.8"}
 
     steps:
     - uses: actions/checkout@v3
