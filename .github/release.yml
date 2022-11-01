@@ -1,14 +1,15 @@
-exclude: ["skip-changelog"]
-categories:
-  - title: 🛠 Breaking Changes
-    labels: ["breaking-change"]
-  - title: 🚀 New Features and Enhancements
-    labels: ["feature", "enhancement", "ui"]
-  - title: ⚡ Optimizations
-    labels: ["optimize", "performance"]
-  - title: 🐛 Bug Fixes
-    labels: ["bugfix", "bug"]
-  - title: 🔨 Maintenance
-    labels: ["maintenance", "refactoring", "chore", "build", "ci"]
-  - title: Other Changes
-    labels: ["*"]
+changelog:
+  exclude: ["skip-changelog"]
+  categories:
+    - title: 🛠 Breaking Changes
+      labels: ["breaking-change"]
+    - title: 🚀 New Features and Enhancements
+      labels: ["feature", "enhancement", "ui"]
+    - title: ⚡ Optimizations
+      labels: ["optimize", "performance"]
+    - title: 🐛 Bug Fixes
+      labels: ["bugfix", "bug"]
+    - title: 🔨 Maintenance
+      labels: ["maintenance", "refactoring", "chore", "build", "ci"]
+    - title: Other Changes
+      labels: ["*"]
