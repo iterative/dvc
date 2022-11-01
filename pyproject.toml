@@ -132,8 +132,8 @@ dvc = "dvc.api:DVCFileSystem"
 [tool.setuptools]
 license-files = ["LICENSE"]
 
-[tool.setuptools.packages.find]
-exclude = ["tests", "tests.*"]
+[tool.setuptools.packages]
+find = {namespaces = false, exclude=["tests", "tests.*"]}
 
 [tool.setuptools_scm]
 write_to = "dvc/_dvc_version.py"
@@ -163,13 +163,33 @@ line_length = 79
 
 [tool.pytest.ini_options]
 log_level = "debug"
-addopts = "-ra -p no:hydra_pytest"
+addopts = "-ra -p no:hydra_pytest --cov-config pyproject.toml"
 markers = [
     "needs_internet: Might need network access for the tests",
     "vscode: Tests verifying contract between DVC and VSCode plugin",
     "studio: Tests verifying contract between DVC and Studio",
 ]
 xfail_strict = true
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["dvc", "tests"]
+
+[tool.coverage.paths]
+source = ["dvc"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if typing.TYPE_CHECKING:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "raise AssertionError",
+    "@overload",
+]
 
 [tool.mypy]
 # Error output

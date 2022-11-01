@@ -50,7 +50,7 @@ jobs:
 
     - name: Install deps
       run: |
-        pip install -U wheel pip setuptools
+        pip install --upgrade pip wheel setuptools
         pip install .[all]
         pip install -r scripts/build-requirements.txt
 
@@ -84,11 +84,13 @@ jobs:
         python-version: 3.8
 
     - name: Install
-      run: pip install -U wheel pip build setuptools_scm
+      run: pip install --upgrade pip wheel
 
     - name: Force version for Test PyPI uploads
       if: ${{ !startsWith(github.ref, 'refs/tags') }}
-      run: echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
+      run: |
+        pip install setuptools_scm
+        echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
 
     - name: Build packages
       run: ./scripts/build_package.sh
