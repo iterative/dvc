@@ -56,5 +56,5 @@ def metrics_show(
             all_commits=all_commits,
             onerror=_onerror_raise,
         )
-    print(metrics)
+
     return _postprocess(metrics)
