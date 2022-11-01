@@ -50,7 +50,7 @@ jobs:
 
     - name: Install deps
       run: |
-        pip install -U wheel pip setuptools
+        pip install --upgrade pip wheel setuptools
         pip install .[all]
         pip install -r scripts/build-requirements.txt
 
