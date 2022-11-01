@@ -10,5 +10,6 @@ fi
 
 echo 'PKG = "pip"' >dvc/utils/build.py
 
-python -m pip install -U build setuptools>=61
+python -m pip install build twine
 python -m build
+twine check dist/*
