@@ -1,5 +1,6 @@
 changelog:
-  exclude: ["skip-changelog"]
+  exclude:
+    labels: ["skip-changelog"]
   categories:
     - title: 🛠 Breaking Changes
       labels: ["breaking-change"]
