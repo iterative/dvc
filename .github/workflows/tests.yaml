@@ -76,6 +76,14 @@ jobs:
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+  check:
+    if: always()
+    needs: [lint, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
   notify:
     if: github.ref == 'refs/heads/main' && failure()
     needs: [lint, tests]
