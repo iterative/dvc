@@ -62,3 +62,8 @@ class Dependency(Output):
             self.fs_path = self.fs.path.version_path(
                 self.fs_path, self.meta.version_id
             )
+
+    def dumpd(self, **kwargs):
+        if self.fs.version_aware:
+            kwargs["with_files"] = True
+        return super().dumpd(**kwargs)

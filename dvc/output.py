@@ -631,8 +631,16 @@ class Output:
         if self.metric:
             self.verify_metric()
 
-        if not self.use_cache:
-            _, self.meta, obj = build(
+        if self.use_cache:
+            _, self.meta, self.obj = build(
+                self.odb,
+                self.fs_path,
+                self.fs,
+                self.hash_name,
+                ignore=self.dvcignore,
+            )
+        else:
+            _, self.meta, self.obj = build(
                 self.repo.odb.local,
                 self.fs_path,
                 self.fs,
@@ -640,23 +648,11 @@ class Output:
                 ignore=self.dvcignore,
                 dry_run=True,
             )
-            self.hash_info = obj.hash_info
-            self.files = None
             if not self.IS_DEPENDENCY:
                 logger.debug(
                     "Output '%s' doesn't use cache. Skipping saving.", self
                 )
-            return
 
-        assert not self.IS_DEPENDENCY
-
-        _, self.meta, self.obj = build(
-            self.odb,
-            self.fs_path,
-            self.fs,
-            self.hash_name,
-            ignore=self.dvcignore,
-        )
         self.hash_info = self.obj.hash_info
         self.files = None
 
@@ -754,40 +750,40 @@ class Output:
 
         ret[self.PARAM_PATH] = path
 
-        if self.IS_DEPENDENCY:
-            return ret
+        if not self.IS_DEPENDENCY:
+            ret.update(self.annot.to_dict())
+            if not self.use_cache:
+                ret[self.PARAM_CACHE] = self.use_cache
 
-        ret.update(self.annot.to_dict())
-        if not self.use_cache:
-            ret[self.PARAM_CACHE] = self.use_cache
+            if isinstance(self.metric, dict):
+                if (
+                    self.PARAM_METRIC_XPATH in self.metric
+                    and not self.metric[self.PARAM_METRIC_XPATH]
+                ):
+                    del self.metric[self.PARAM_METRIC_XPATH]
 
-        if isinstance(self.metric, dict):
-            if (
-                self.PARAM_METRIC_XPATH in self.metric
-                and not self.metric[self.PARAM_METRIC_XPATH]
-            ):
-                del self.metric[self.PARAM_METRIC_XPATH]
+            if self.metric:
+                ret[self.PARAM_METRIC] = self.metric
 
-        if self.metric:
-            ret[self.PARAM_METRIC] = self.metric
+            if self.plot:
+                ret[self.PARAM_PLOT] = self.plot
 
-        if self.plot:
-            ret[self.PARAM_PLOT] = self.plot
+            if self.persist:
+                ret[self.PARAM_PERSIST] = self.persist
 
-        if self.persist:
-            ret[self.PARAM_PERSIST] = self.persist
+            if self.checkpoint:
+                ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
-        if self.checkpoint:
-            ret[self.PARAM_CHECKPOINT] = self.checkpoint
+            if self.live:
+                ret[self.PARAM_LIVE] = self.live
 
-        if self.live:
-            ret[self.PARAM_LIVE] = self.live
+            if self.remote:
+                ret[self.PARAM_REMOTE] = self.remote
 
-        if self.remote:
-            ret[self.PARAM_REMOTE] = self.remote
-
-        if self.hash_info.isdir and (
-            kwargs.get("with_files") or self.files is not None
+        if (
+            (not self.IS_DEPENDENCY or self.stage.is_import)
+            and self.hash_info.isdir
+            and (kwargs.get("with_files") or self.files is not None)
         ):
             if self.obj:
                 obj = self.obj
