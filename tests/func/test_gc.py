@@ -12,7 +12,7 @@ from dvc.fs import LocalFileSystem
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.fs import remove
 from dvc_data.hashfile.db.local import LocalHashFileDB
-from tests.basic_env import TestDir, TestDvcGit
+from tests.basic_env import TestDvcGit
 
 
 class TestGC(TestDvcGit):
@@ -122,7 +122,7 @@ class TestGCMultipleDvcRepos(TestDvcGit):
 
     def setUp(self):
         super().setUp()
-        self.additional_path = TestDir.mkdtemp()
+        self.additional_path = self.mkdtemp()
         self.additional_git = Repo.init(self.additional_path)
         self.additional_dvc = DvcRepo.init(self.additional_path)
 

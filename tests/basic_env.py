@@ -94,7 +94,7 @@ class TestDirFixture:
         self._popd()
         try:
             remove(self._root_dir)
-        except OSError as exc:
+        except OSError as exc:  # pragma: no cover
             # pylint: disable=no-member
             # We ignore this under Windows with a warning because it happened
             # to be really hard to trace all not properly closed files.
@@ -147,12 +147,6 @@ class TestDvcGitFixture(TestGitFixture):
 
 
 # NOTE: Inheritance order in the classes below is important.
-
-
-class TestDir(TestDirFixture, TestCase):
-    def __init__(self, methodName):
-        TestDirFixture.__init__(self)
-        TestCase.__init__(self, methodName)
 
 
 class TestDvc(TestDvcFixture, TestCase):
