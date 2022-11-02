@@ -10,9 +10,7 @@ jobs:
     name: run benchmarks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-python@v4
-        with:
-            python-version: "3.10"
-      - uses: iterative/dvc-bench@main
+      - uses: iterative/dvc-bench@custom-action-improv-caching
         with:
             pytest_options: "-k 'test_init or test_help'"
+            python-version: "3.10"
