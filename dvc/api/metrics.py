@@ -23,7 +23,8 @@ def metrics_show(
 
     Args:
         *targets (str, optional): Names of the metric files to retrieve
-        params from. For example, "classifier_eval.json, clustering_eval.json".
+        metrics from. For example, "classifier_eval.json,
+        clustering_eval.json".
         If no `targets` are provided, all metric files tracked in `dvc.yaml`
         will be used.
         Note that targets don't necessarily have to be defined in `dvc.yaml`.
@@ -54,7 +55,7 @@ def metrics_show(
         Dict: See Examples below.
 
     Raises:
-        DvcException: If no params are found in `repo`.
+        DvcException: If no metrics are found in `repo`.
 
     Examples:
 
@@ -117,7 +118,6 @@ def metrics_show(
 
     .. _Git revision:
         https://git-scm.com/docs/revisions
-
     """
 
     def _onerror_raise(result: Dict, exception: Exception, *args, **kwargs):
