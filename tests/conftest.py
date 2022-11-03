@@ -9,7 +9,7 @@ from dvc.testing.fixtures import *  # noqa, pylint: disable=wildcard-import
 
 from .dir_helpers import *  # noqa, pylint: disable=wildcard-import
 from .remotes import *  # noqa, pylint: disable=wildcard-import
-from .utils.scriptify import scriptify
+from .scripts import *  # noqa, pylint: disable=wildcard-import
 
 # Prevent updater and analytics from running their processes
 os.environ["DVC_TEST"] = "true"
@@ -172,9 +172,6 @@ def custom_template(tmp_dir, dvc):
     return template
 
 
-scriptify_fixture = pytest.fixture(lambda: scriptify, name="scriptify")
-
-
 @pytest.fixture(autouse=True)
 def mocked_webbrowser_open(mocker):
     mocker.patch("webbrowser.open")
@@ -218,7 +215,7 @@ defaultBranch=master
 
 
 @pytest.fixture
-def run_copy_metrics(tmp_dir, run_copy):
+def run_copy_metrics(tmp_dir, copy_script):
     def run(
         file1,
         file2,

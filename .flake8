@@ -1,0 +1,12 @@
+[flake8]
+ignore=
+    E203, # Whitespace before ':'
+    E266, # Too many leading '#' for block comment
+    W503, # Line break occurred before a binary operator
+    P1,  # unindexed parameters in the str.format, see:
+    # https://pypi.org/project/flake8-string-format/
+max_line_length = 79
+max-complexity = 15
+select = B,C,E,F,W,T4,B902,T,P
+show_source = true
+count = true

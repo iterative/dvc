@@ -1,12 +1,10 @@
 import os
-from unittest.mock import patch
 
 from dvc.output import Output
 from dvc.stage import Stage
 from dvc.utils import relpath
 from dvc_data.hashfile.hash_info import HashInfo
 from dvc_data.hashfile.meta import Meta
-from tests.basic_env import TestDvc
 
 
 def test_str_workdir_outside_repo(tmp_dir, erepo_dir):
@@ -52,24 +50,21 @@ def test_str_on_external_absolute_path(dvc):
     assert str(output) == abs_path
 
 
-class TestGetFilesNumber(TestDvc):
-    def _get_output(self):
-        stage = Stage(self.dvc)
-        return Output(stage, "path")
+def test_return_0_on_no_cache(dvc):
+    o = Output(Stage(dvc), "path")
+    o.use_cache = False
+    assert o.get_files_number() == 0
 
-    def test_return_0_on_no_cache(self):
-        o = self._get_output()
-        o.use_cache = False
-        self.assertEqual(0, o.get_files_number())
 
-    def test_return_multiple_for_dir(self):
-        o = self._get_output()
-        o.hash_info = HashInfo("md5", "12345678.dir")
-        o.meta = Meta(nfiles=2)
-        self.assertEqual(2, o.get_files_number())
+def test_return_multiple_for_dir(dvc):
+    o = Output(Stage(dvc), "path")
+    o.hash_info = HashInfo("md5", "12345678.dir")
+    o.meta = Meta(nfiles=2)
+    assert o.get_files_number() == 2
 
-    @patch.object(Output, "is_dir_checksum", False)
-    def test_return_1_on_single_file_cache(self):
-        o = self._get_output()
-        o.hash_info = HashInfo("md5", "12345678")
-        self.assertEqual(1, o.get_files_number())
+
+def test_return_1_on_single_file_cache(mocker, dvc):
+    mocker.patch.object(Output, "is_dir_checksum", False)
+    o = Output(Stage(dvc), "path")
+    o.hash_info = HashInfo("md5", "12345678")
+    assert o.get_files_number() == 1

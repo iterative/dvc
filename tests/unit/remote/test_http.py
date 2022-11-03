@@ -1,5 +1,4 @@
 import ssl
-from unittest.mock import patch
 
 from dvc.fs import HTTPFileSystem
 
@@ -64,8 +63,8 @@ def test_ssl_verify_disable(dvc):
     assert not fs.fs_args["client_kwargs"]["connector"]._ssl
 
 
-@patch("ssl.SSLContext.load_verify_locations")
 def test_ssl_verify_custom_cert(dvc, mocker):
+    mocker.patch("ssl.SSLContext.load_verify_locations")
     config = {
         "url": "http://example.com/",
         "path": "file.html",

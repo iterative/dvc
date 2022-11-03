@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from typing import (
@@ -526,16 +525,9 @@ class BaseStashQueue(ABC):
         .. _Hydra Override:
             https://hydra.cc/docs/advanced/override_grammar/basic/
         """
-        logger.debug("Using experiment params '%s'", params)
+        from dvc.utils.hydra import apply_overrides, compose_and_dump
 
-        try:
-            from dvc.utils.hydra import apply_overrides, compose_and_dump
-        except ValueError:
-            if sys.version_info >= (3, 11):
-                raise DvcException(
-                    "--set-param is not supported in Python >= 3.11"
-                )
-            raise
+        logger.debug("Using experiment params '%s'", params)
 
         hydra_config = self.repo.config.get("hydra", {})
         hydra_enabled = hydra_config.get("enabled", False)

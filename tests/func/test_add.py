@@ -4,8 +4,7 @@ import os
 import shutil
 import stat
 import textwrap
-import time
-from unittest.mock import call, patch
+from unittest.mock import call
 
 import colorama
 import pytest
@@ -35,12 +34,11 @@ from dvc.stage.exceptions import (
     StagePathNotFoundError,
 )
 from dvc.testing.workspace_tests import TestAdd
-from dvc.utils import LARGE_DIR_SIZE, relpath
+from dvc.utils import LARGE_DIR_SIZE
 from dvc.utils.fs import path_isin
-from dvc.utils.serialize import YAMLFileCorruptedError, load_yaml
+from dvc.utils.serialize import YAMLFileCorruptedError
 from dvc_data.hashfile.hash import file_md5
 from dvc_data.hashfile.hash_info import HashInfo
-from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
 
 
@@ -120,49 +118,38 @@ def test_add_directory(tmp_dir, dvc):
             assert "\\" not in part
 
 
-class TestAddDirectoryRecursive(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA_DIR, recursive=True)
-        self.assertEqual(len(stages), 2)
+def test_add_directory_recursive(tmp_dir, dvc):
+    tmp_dir.gen("data", {"file1": "file1", "sub": {"file2": "file2"}})
+    stages = dvc.add("data", recursive=True)
+    assert len(stages) == 2
 
 
-class TestAddCmdDirectoryRecursive(TestDvc):
-    def test(self):
-        ret = main(["add", "--recursive", self.DATA_DIR])
-        self.assertEqual(ret, 0)
-
-    def test_warn_about_large_directories(self):
-        warning = (
-            "You are adding a large directory 'large-dir' recursively."
-            "\nConsider tracking it as a whole instead with "
-            "`{cyan}dvc add large-dir{nc}`"
-        ).format(
-            cyan=colorama.Fore.CYAN,
-            nc=colorama.Style.RESET_ALL,
-        )
-
-        os.mkdir("large-dir")
-
-        # Create a lot of files
-        for iteration in range(LARGE_DIR_SIZE + 1):
-            path = os.path.join("large-dir", str(iteration))
-            with open(path, "w", encoding="utf-8") as fobj:
-                fobj.write(path)
-
-        assert main(["add", "--recursive", "large-dir"]) == 0
-        assert warning in self._capsys.readouterr()[1]
+def test_add_cmd_directory_recursive(tmp_dir, dvc):
+    tmp_dir.gen("data", {"file1": "file1", "sub": {"file2": "file2"}})
+    assert main(["add", "--recursive", "data"]) == 0
 
 
-class TestAddDirectoryWithForwardSlash(TestDvc):
-    def test(self):
-        dname = "directory/"
-        os.mkdir(dname)
-        self.create(os.path.join(dname, "file"), "file")
-        stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
+def test_warn_about_large_directories_recursive_add(tmp_dir, dvc, capsys):
+    warning = (
+        "You are adding a large directory 'large-dir' recursively."
+        "\nConsider tracking it as a whole instead with "
+        "`{cyan}dvc add large-dir{nc}`"
+    ).format(
+        cyan=colorama.Fore.CYAN,
+        nc=colorama.Style.RESET_ALL,
+    )
+
+    tmp_dir.gen(
+        "large-dir", {f"{i}": f"{i}" for i in range(LARGE_DIR_SIZE + 1)}
+    )
+    assert main(["add", "--recursive", "large-dir"]) == 0
+    assert warning in capsys.readouterr()[1]
+
+
+def test_add_directory_with_forward_slash(tmp_dir, dvc):
+    tmp_dir.gen("directory", {"file": "file"})
+    (stage,) = dvc.add("directory/")
+    assert stage.relpath == "directory.dvc"
 
 
 def test_add_tracked_file(tmp_dir, scm, dvc):
@@ -178,33 +165,23 @@ def test_add_tracked_file(tmp_dir, scm, dvc):
         dvc.add(path)
 
 
-class TestAddDirWithExistingCache(TestDvc):
-    def test(self):
-        dname = "a"
-        fname = os.path.join(dname, "b")
-        os.mkdir(dname)
-        shutil.copyfile(self.FOO, fname)
+def test_add_dir_with_existing_cache(tmp_dir, dvc):
+    tmp_dir.gen({"foo": "foo", "dir": {"file": "foo"}})
 
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-        stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
+    (stage,) = dvc.add("foo")
+    assert stage is not None
+    (stage,) = dvc.add("dir")
+    assert stage is not None
 
 
-class TestAddModifiedDir(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-        os.unlink(self.DATA)
+def test_add_modified_dir(tmp_dir, dvc):
+    tmp_dir.gen("data", {"foo": "foo", "sub": {"bar": "bar"}})
+    (stage,) = dvc.add("data")
+    assert stage is not None
 
-        time.sleep(2)
-
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
+    (tmp_dir / "data" / "foo").unlink()
+    (stage,) = dvc.add("data")
+    assert stage is not None
 
 
 def test_add_file_in_dir(tmp_dir, dvc):
@@ -326,57 +303,47 @@ def test_add_external_relpath(tmp_dir, dvc, local_cloud):
     assert dvc.status() == {}
 
 
-class TestAddLocalRemoteFile(TestDvc):
-    def test(self):
-        """
-        Making sure that 'remote' syntax is handled properly for local outs.
-        """
-        cwd = os.getcwd()
-        remote = "myremote"
+def test_add_local_remote_file(tmp_dir, dvc):
+    """
+    Making sure that 'remote' syntax is handled properly for local outs.
+    """
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    tmp_dir.add_remote(url=tmp_dir.fs_path, name="myremote")
 
-        ret = main(["remote", "add", remote, cwd])
-        self.assertEqual(ret, 0)
+    assert main(["add", "remote://myremote/foo"]) == 0
+    d = (tmp_dir / "foo.dvc").load_yaml()
+    assert d["outs"][0]["path"] == "remote://myremote/foo"
 
-        self.dvc.config.load()
-
-        foo = f"remote://{remote}/{self.FOO}"
-        ret = main(["add", foo])
-        self.assertEqual(ret, 0)
-
-        d = load_yaml("foo.dvc")
-        self.assertEqual(d["outs"][0]["path"], foo)
-
-        bar = os.path.join(cwd, self.BAR)
-        ret = main(["add", bar])
-        self.assertEqual(ret, 0)
-
-        d = load_yaml("bar.dvc")
-        self.assertEqual(d["outs"][0]["path"], self.BAR)
+    assert main(["add", (tmp_dir / "bar").fs_path]) == 0
+    d = (tmp_dir / "bar.dvc").load_yaml()
+    assert d["outs"][0]["path"] == "bar"
 
 
-class TestCmdAdd(TestDvc):
-    def test(self):
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+def test_cmd_add(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-        ret = main(["add", "non-existing-file"])
-        self.assertNotEqual(ret, 0)
+    ret = main(["add", "non-existing-file"])
+    assert ret != 0
 
 
-class TestDoubleAddUnchanged(TestDvc):
-    def test_file(self):
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+def test_double_add_unchanged_file(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-    def test_dir(self):
-        ret = main(["add", self.DATA_DIR])
-        self.assertEqual(ret, 0)
 
-        ret = main(["add", self.DATA_DIR])
-        self.assertEqual(ret, 0)
+def test_double_add_unchanged_dir(tmp_dir, dvc):
+    tmp_dir.gen("data", {"foo": "foo"})
+    ret = main(["add", "data"])
+    assert ret == 0
+
+    ret = main(["add", "data"])
+    assert ret == 0
 
 
 def test_should_update_state_entry_for_file_after_add(mocker, dvc, tmp_dir):
@@ -443,19 +410,17 @@ def test_should_update_state_entry_for_directory_after_add(
     assert file_md5_counter.mock.call_count == 10
 
 
-class TestAddCommit(TestDvc):
-    def test(self):
-        ret = main(["add", self.FOO, "--no-commit"])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertFalse(os.path.exists(self.dvc.odb.local.path))
+def test_add_commit(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["add", "foo", "--no-commit"])
+    assert ret == 0
+    assert os.path.isfile("foo")
+    assert not os.path.exists(dvc.odb.local.path)
 
-        ret = main(["commit", self.FOO + ".dvc"])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertTrue(
-            self.dvc.odb.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
-        )
+    ret = main(["commit", "foo" + ".dvc"])
+    assert ret == 0
+    assert os.path.isfile("foo")
+    assert dvc.odb.local.exists("acbd18db4cc2f85cedef654fccc4a4d8")
 
 
 def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
@@ -474,80 +439,66 @@ def test_should_collect_dir_cache_only_once(mocker, tmp_dir, dvc):
     assert counter.mock.call_count == 5
 
 
-class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
-    def test(self):
-        def is_symlink_true_below_dvc_root(path):
-            if path == os.path.dirname(self.dvc.root_dir):
-                return True
-            return False
+def test_should_place_stage_in_data_dir_if_repository_below_symlink(
+    mocker, tmp_dir, dvc
+):
+    def is_symlink_true_below_dvc_root(path):
+        return path == os.path.dirname(dvc.root_dir)
 
-        with patch.object(
-            system, "is_symlink", side_effect=is_symlink_true_below_dvc_root
-        ):
+    tmp_dir.gen({"data": {"foo": "foo"}})
+    mocker.patch.object(
+        system, "is_symlink", side_effect=is_symlink_true_below_dvc_root
+    )
+    ret = main(["add", os.path.join("data", "foo")])
+    assert ret == 0
 
-            ret = main(["add", self.DATA])
-            self.assertEqual(0, ret)
-
-            stage_file_path_on_data_below_symlink = (
-                os.path.basename(self.DATA) + DVC_FILE_SUFFIX
-            )
-            self.assertFalse(
-                os.path.exists(stage_file_path_on_data_below_symlink)
-            )
-
-            stage_file_path = self.DATA + DVC_FILE_SUFFIX
-            self.assertTrue(os.path.exists(stage_file_path))
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "data" / "foo.dvc").exists()
 
 
-class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
-    def test(self):
-        ret = main(["add", self.FOO])
-        assert 0 == ret
+def test_should_throw_proper_exception_on_corrupted_stage_file(
+    caplog, tmp_dir, dvc
+):
+    tmp_dir.gen({"foo": "foo", "bar": " bar"})
+    assert main(["add", "foo"]) == 0
 
-        foo_stage = relpath(self.FOO + DVC_FILE_SUFFIX)
+    with (tmp_dir / "foo.dvc").open("a+") as f:
+        f.write("this will break yaml file structure")
 
-        # corrupt stage file
-        with open(foo_stage, "a+", encoding="utf-8") as file:
-            file.write("this will break yaml file structure")
-
-        self._caplog.clear()
-
-        ret = main(["add", self.BAR])
-        assert 1 == ret
-
-        expected_error = (
-            f"unable to read: '{foo_stage}', YAML file structure is corrupted"
-        )
-
-        assert expected_error in self._caplog.text
+    caplog.clear()
+    assert main(["add", "bar"]) == 1
+    expected_error = (
+        "unable to read: 'foo.dvc', YAML file structure is corrupted"
+    )
+    assert expected_error in caplog.text
 
 
-class TestAddFilename(TestDvc):
-    def test(self):
-        ret = main(["add", self.FOO, self.BAR, "--file", "error.dvc"])
-        self.assertNotEqual(0, ret)
+def test_add_filename(tmp_dir, dvc):
+    tmp_dir.gen({"foo": "foo", "bar": "bar", "data": {"file": "file"}})
+    ret = main(["add", "foo", "bar", "--file", "error.dvc"])
+    assert ret != 0
 
-        ret = main(["add", "-R", self.DATA_DIR, "--file", "error.dvc"])
-        self.assertNotEqual(0, ret)
+    ret = main(["add", "-R", "data", "--file", "error.dvc"])
+    assert ret != 0
 
-        with self.assertRaises(RecursiveAddingWhileUsingFilename):
-            self.dvc.add(self.DATA_DIR, recursive=True, fname="error.dvc")
+    with pytest.raises(RecursiveAddingWhileUsingFilename):
+        dvc.add("data", recursive=True, fname="error.dvc")
 
-        ret = main(["add", self.DATA_DIR, "--file", "data_directory.dvc"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("data_directory.dvc"))
+    ret = main(["add", "data", "--file", "data_directory.dvc"])
+    assert ret == 0
+    assert (tmp_dir / "data_directory.dvc").exists()
 
-        ret = main(["add", self.FOO, "--file", "bar.dvc"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
-        self.assertFalse(os.path.exists("foo.dvc"))
+    ret = main(["add", "foo", "--file", "bar.dvc"])
+    assert ret == 0
+    assert (tmp_dir / "bar.dvc").exists()
+    assert not (tmp_dir / "foo.dvc").exists()
 
-        os.remove("bar.dvc")
+    (tmp_dir / "bar.dvc").unlink()
 
-        ret = main(["add", self.FOO, "--file", "bar.dvc"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
-        self.assertFalse(os.path.exists("foo.dvc"))
+    ret = main(["add", "foo", "--file", "bar.dvc"])
+    assert ret == 0
+    assert (tmp_dir / "bar.dvc").exists()
+    assert not (tmp_dir / "foo.dvc").exists()
 
 
 def test_failed_add_cleanup(tmp_dir, scm, dvc):
@@ -577,25 +528,25 @@ def test_should_not_track_git_internal_files(mocker, dvc, tmp_dir):
         assert ".git" not in fname
 
 
-class TestAddUnprotected(TestDvc):
-    def test(self):
-        ret = main(["config", "cache.type", "hardlink"])
-        self.assertEqual(ret, 0)
+def test_add_unprotected(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["config", "cache.type", "hardlink"])
+    assert ret == 0
 
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-        self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(system.is_hardlink(self.FOO))
+    assert not os.access("foo", os.W_OK)
+    assert system.is_hardlink("foo")
 
-        ret = main(["unprotect", self.FOO])
-        self.assertEqual(ret, 0)
+    ret = main(["unprotect", "foo"])
+    assert ret == 0
 
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+    ret = main(["add", "foo"])
+    assert ret == 0
 
-        self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(system.is_hardlink(self.FOO))
+    assert not os.access("foo", os.W_OK)
+    assert system.is_hardlink("foo")
 
 
 @pytest.fixture

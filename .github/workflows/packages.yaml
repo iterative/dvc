@@ -7,8 +7,13 @@ on:
     types: [released, prereleased]
   workflow_dispatch:
 
+permissions:  # added using https://github.com/step-security/secure-workflows
+  contents: read
+
 jobs:
   binary:
+    permissions:
+      contents: write  # for actions/upload-release-asset to upload release asset
     strategy:
       matrix:
         include:
@@ -24,13 +29,13 @@ jobs:
       with:
           fetch-depth: 0
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: "3.10"
         cache: pip
         cache-dependency-path: |
-          setup.cfg
+          pyproject.toml
           scripts/build-requirements.txt
 
     - name: Set up Ruby 2.6
@@ -45,7 +50,7 @@ jobs:
 
     - name: Install deps
       run: |
-        pip install -U wheel pip setuptools
+        pip install --upgrade pip wheel setuptools
         pip install .[all]
         pip install -r scripts/build-requirements.txt
 
@@ -77,21 +82,31 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.8
-        cache: pip
-        cache-dependency-path: setup.cfg
 
     - name: Install
+      run: pip install --upgrade pip wheel
+
+    - name: Force version for Test PyPI uploads
+      if: ${{ !startsWith(github.ref, 'refs/tags') }}
       run: |
-        pip install -U wheel pip build setuptools
-        pip install ".[all,tests]"
+        pip install setuptools_scm
+        echo version=$(python -m setuptools_scm | awk -F+ '{print $1}' | tail -1) >> $GITHUB_ENV
 
     - name: Build packages
-      run: |
-        pip install -U pip
-        ./scripts/build_package.sh
+      run: ./scripts/build_package.sh
+      env:
+        SETUPTOOLS_SCM_PRETEND_VERSION: ${{ env.version }}
 
     - name: Publish packages to PyPI
       if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_TOKEN }}
+
+    - name: Publish to Test PyPI
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.TEST_PYPI_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+        skip_existing: true

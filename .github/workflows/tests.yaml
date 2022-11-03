@@ -17,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:  # added using https://github.com/step-security/secure-workflows
+  contents: read
+
 jobs:
   lint:
     timeout-minutes: 10
@@ -29,13 +32,12 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.8
+        cache: pip
+        cache-dependency-path: pyproject.toml
     - name: Install requirements
       run: |
-        pip install --upgrade pip setuptools wheel
-        pip install collective.checkdocs==0.2
+        pip install --upgrade pip wheel
         pip install ".[dev]"
-    - name: Check README
-      run: python setup.py checkdocs
     - uses: pre-commit/action@v3.0.0
   tests:
     timeout-minutes: 45
@@ -43,13 +45,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest]
         pyv: ["3.8", "3.9", "3.10"]
         pytest-filter:
         - "import or plot or live or experiment"
         - "not (import or plot or live or experiment)"
         include:
-        - {os: ubuntu-latest, pyv: "3.11-dev"}
+        - {os: ubuntu-latest, pyv: "3.11"}
+        - {os: macos-latest, pyv: "3.8"}
 
     steps:
     - uses: actions/checkout@v3
@@ -60,25 +63,30 @@ jobs:
       with:
         python-version: ${{ matrix.pyv }}
         cache: pip
-        cache-dependency-path: setup.cfg
+        cache-dependency-path: pyproject.toml
     - name: install
-      if: steps.cache.pip-cache-dir.cache-hit != 'true'
       run: |
-        pip install --upgrade pip setuptools wheel
+        pip install --upgrade pip wheel
         pip install -e ".[dev]"
     - name: run tests
-      timeout-minutes: 40
-      run: pytest -nauto -ra --durations 100 --cov=dvc --cov-report=xml --cov-report=term -k "${{ matrix.pytest-filter }}"
+      timeout-minutes: 20
+      run: pytest -nauto --durations 100 --cov --cov-report=xml --cov-report=term -k "${{ matrix.pytest-filter }}"
     - name: upload coverage report
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+  check:
+    if: always()
+    needs: [lint, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
   notify:
     if: github.ref == 'refs/heads/main' && failure()
-    needs:
-      - lint
-      - tests
+    needs: [lint, tests]
     runs-on: ubuntu-latest
     steps:
     - name: Slack Notification

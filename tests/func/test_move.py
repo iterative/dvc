@@ -4,198 +4,129 @@ import textwrap
 import pytest
 
 from dvc.cli import main
-from dvc.dvcfile import DVC_FILE_SUFFIX
 from dvc.exceptions import DvcException, MoveNotDataSourceError
-from dvc.utils.serialize import load_yaml
-from tests.basic_env import TestDvc, TestDvcGit
-from tests.func.test_repro import TestRepro
-from tests.utils import cd
 
 
-class TestMove(TestDvc):
-    def test(self):
-        dst = self.FOO + "1"
-        self.dvc.add(self.FOO)
-        self.dvc.move(self.FOO, dst)
+def test_move(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.move("foo", "foo1")
 
-        self.assertFalse(os.path.isfile(self.FOO))
-        self.assertTrue(os.path.isfile(dst))
+    assert not (tmp_dir / "foo").is_file()
+    assert (tmp_dir / "foo1").is_file()
 
 
-class TestMoveNonExistentFile(TestDvc):
-    def test(self):
-        with self.assertRaises(DvcException):
-            self.dvc.move("non_existent_file", "dst")
+def test_move_non_existent_file(dvc):
+    with pytest.raises(DvcException):
+        dvc.move("non_existent_file", "dst")
 
 
-class TestMoveDirectory(TestDvc):
-    def test(self):
-        dst = "dst"
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-        self.dvc.move(self.DATA_DIR, dst)
-        self.assertFalse(os.path.exists(self.DATA_DIR))
-        self.assertTrue(os.path.exists(dst))
+def test_move_directory(tmp_dir, dvc):
+    tmp_dir.dvc_gen("data", {"foo": "foo", "bar": "bar"})
+    dvc.move("data", "dst")
+    assert not (tmp_dir / "data").is_dir()
+    assert (tmp_dir / "dst").is_dir()
 
 
-class TestCmdMove(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-        ret = main(["move", self.FOO, self.FOO + "1"])
-        self.assertEqual(ret, 0)
-
-        ret = main(["move", "non-existing-file", "dst"])
-        self.assertNotEqual(ret, 0)
+def test_cmd_move(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    assert main(["move", "foo", "foo" + "1"]) == 0
+    assert main(["move", "non-existing-file", "dst"]) != 0
 
 
-class TestMoveNotDataSource(TestRepro):
-    def test(self):
-        from dvc.repo import Repo as DvcRepo
+def test_move_not_data_source(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.run(
+        cmd="cp foo file1",
+        outs=["file1"],
+        deps=["foo"],
+        single_stage=True,
+    )
 
-        self.dvc = DvcRepo(self._root_dir)
-        with self.assertRaises(MoveNotDataSourceError):
-            self.dvc.move(self.file1, "dst")
+    with pytest.raises(MoveNotDataSourceError):
+        dvc.move("file1", "dst")
 
-        ret = main(["move", self.file1, "dst"])
-        self.assertNotEqual(ret, 0)
-
-
-class TestMoveFileWithExtension(TestDvc):
-    def test(self):
-        with open(
-            os.path.join(self.dvc.root_dir, "file.csv"), "w", encoding="utf-8"
-        ) as fd:
-            fd.write("1,2,3\n")
-
-        self.dvc.add("file.csv")
-
-        self.assertTrue(os.path.exists("file.csv"))
-        self.assertTrue(os.path.exists("file.csv.dvc"))
-
-        ret = main(["move", "file.csv", "other_name.csv"])
-        self.assertEqual(ret, 0)
-
-        self.assertFalse(os.path.exists("file.csv"))
-        self.assertFalse(os.path.exists("file.csv.dvc"))
-        self.assertTrue(os.path.exists("other_name.csv"))
-        self.assertTrue(os.path.exists("other_name.csv.dvc"))
+    assert main(["move", "file1", "dst"]) != 0
+    assert (tmp_dir / "file1").exists()
 
 
-class TestMoveFileToDirectory(TestDvc):
-    def test(self):
-        foo_dvc_file = self.FOO + DVC_FILE_SUFFIX
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists(foo_dvc_file))
+def test_move_file_with_extension(tmp_dir, dvc):
+    tmp_dir.dvc_gen("file.csv", "1,2,3\n")
 
-        new_foo_path = os.path.join(self.DATA_DIR, self.FOO)
-        new_foo_dvc_path = new_foo_path + DVC_FILE_SUFFIX
-        ret = main(["move", self.FOO, new_foo_path])
-        self.assertEqual(ret, 0)
-
-        self.assertFalse(os.path.exists(self.FOO))
-        self.assertFalse(os.path.exists(foo_dvc_file))
-        self.assertTrue(os.path.exists(new_foo_path))
-        self.assertTrue(os.path.exists(new_foo_dvc_path))
+    assert main(["move", "file.csv", "other_name.csv"]) == 0
+    assert not (tmp_dir / "file.csv").exists()
+    assert not (tmp_dir / "file.csv.dvc").exists()
+    assert (tmp_dir / "other_name.csv").exists()
+    assert (tmp_dir / "other_name.csv.dvc").exists()
 
 
-class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
-    def test(self):
-        foo_stage_file_path = self.FOO + DVC_FILE_SUFFIX
-        ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists(foo_stage_file_path))
+def test_move_file_to_directory(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.gen({"data": {"bar": "bar"}})
 
-        target_foo_path = os.path.join(self.DATA_DIR, self.FOO)
-        target_foo_stage_file_path = target_foo_path + DVC_FILE_SUFFIX
-
-        ret = main(["move", self.FOO, self.DATA_DIR])
-        self.assertEqual(ret, 0)
-
-        self.assertFalse(os.path.exists(self.FOO))
-        self.assertFalse(os.path.exists(foo_stage_file_path))
-
-        self.assertTrue(os.path.exists(target_foo_path))
-        self.assertTrue(os.path.exists(target_foo_stage_file_path))
-
-        new_stage = load_yaml(target_foo_stage_file_path)
-        self.assertEqual(self.FOO, new_stage["outs"][0]["path"])
+    assert main(["move", "foo", os.path.join("data", "foo")]) == 0
+    assert not (tmp_dir / "foo").exists()
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "data" / "foo").exists()
+    assert (tmp_dir / "data" / "foo.dvc").exists()
 
 
-class TestMoveDirectoryShouldNotOverwriteExisting(TestDvcGit):
-    def test(self):
-        dir_name = "dir"
-        orig_listdir = set(os.listdir(self.DATA_DIR))
+def test_move_file_to_directory_without_specified_target_name(tmp_dir, dvc):
+    tmp_dir.dvc_gen("foo", "foo")
+    tmp_dir.gen({"data": {"bar": "bar"}})
 
-        self.dvc.add(self.DATA_DIR)
+    assert main(["move", "foo", "data"]) == 0
+    assert not (tmp_dir / "foo").exists()
+    assert not (tmp_dir / "foo.dvc").exists()
+    assert (tmp_dir / "data" / "foo").exists()
+    assert (tmp_dir / "data" / "foo.dvc").exists()
 
-        os.mkdir(dir_name)
-        new_dir_name = os.path.join(dir_name, self.DATA_DIR)
-
-        self.dvc.move(self.DATA_DIR, dir_name)
-
-        data_dir_stage = self.DATA_DIR + DVC_FILE_SUFFIX
-        self.assertFalse(os.path.exists(self.DATA_DIR))
-        self.assertFalse(os.path.exists(data_dir_stage))
-
-        self.assertTrue(os.path.exists(dir_name))
-        self.assertEqual(
-            set(os.listdir(dir_name)),
-            {".gitignore", data_dir_stage, self.DATA_DIR},
-        )
-
-        self.assertTrue(os.path.exists(new_dir_name))
-        self.assertTrue(os.path.isfile(new_dir_name + DVC_FILE_SUFFIX))
-        self.assertEqual(set(os.listdir(new_dir_name)), orig_listdir)
+    new_stage = (tmp_dir / "data" / "foo.dvc").load_yaml()
+    assert new_stage["outs"][0]["path"] == "foo"
 
 
-class TestMoveFileBetweenDirectories(TestDvc):
-    def test(self):
-        data_stage_file = self.DATA + DVC_FILE_SUFFIX
-        ret = main(["add", self.DATA])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists(data_stage_file))
+def test_move_directory_should_not_overwrite_existing(tmp_dir, dvc, scm):
+    tmp_dir.dvc_gen({"data": {"foo": "foo"}})
+    new_dir = tmp_dir / "dir"
+    new_dir.mkdir()
 
-        new_data_dir = "data_dir2"
-        os.makedirs(new_data_dir)
-
-        ret = main(["move", self.DATA, new_data_dir])
-        self.assertEqual(ret, 0)
-
-        new_data_path = os.path.join(new_data_dir, os.path.basename(self.DATA))
-        new_data_stage_file = new_data_path + DVC_FILE_SUFFIX
-
-        self.assertFalse(os.path.exists(self.DATA))
-        self.assertFalse(os.path.exists(data_stage_file))
-
-        self.assertTrue(os.path.exists(new_data_path))
-        self.assertTrue(os.path.exists(new_data_stage_file))
-
-        new_stage_file = load_yaml(new_data_stage_file)
-        self.assertEqual(
-            os.path.basename(self.DATA), new_stage_file["outs"][0]["path"]
-        )
+    dvc.move("data", "dir")
+    assert not (tmp_dir / "data").exists()
+    assert not (tmp_dir / "data.dvc").exists()
+    assert set(new_dir.iterdir()) == {
+        new_dir / ".gitignore",
+        new_dir / "data.dvc",
+        new_dir / "data",
+    }
+    assert set((new_dir / "data").iterdir()) == {new_dir / "data" / "foo"}
 
 
-class TestMoveFileInsideDirectory(TestDvc):
-    def test(self):
-        ret = main(["add", self.DATA])
-        self.assertEqual(ret, 0)
+def test_move_file_between_directories(tmp_dir, dvc):
+    tmp_dir.gen({"data": {"foo": "foo"}})
+    dvc.add(os.path.join("data", "foo"))
 
-        with cd(self.DATA_DIR):
-            ret = main(["move", os.path.basename(self.DATA), "data.txt"])
-            self.assertEqual(ret, 0)
+    (tmp_dir / "data2").mkdir()
 
-        self.assertFalse(os.path.exists(self.DATA))
+    assert main(["move", os.path.join("data", "foo"), "data2"]) == 0
+    assert not (tmp_dir / "data" / "foo").exists()
+    assert not (tmp_dir / "data" / "foo.dvc").exists()
+    assert (tmp_dir / "data2" / "foo").exists()
+    assert (tmp_dir / "data2" / "foo.dvc").exists()
 
-        data_fullpath = os.path.join(self.DATA_DIR, "data.txt")
-        dvc_fullpath = os.path.join(self.DATA_DIR, "data.txt.dvc")
-        self.assertTrue(os.path.exists(data_fullpath))
-        self.assertTrue(os.path.exists(dvc_fullpath))
+    d = (tmp_dir / "data2" / "foo.dvc").load_yaml()
+    assert d["outs"][0]["path"] == "foo"
+
+
+def test_move_file_inside_directory(tmp_dir, dvc):
+    tmp_dir.gen({"data": {"foo": "foo"}})
+    file = tmp_dir / "data" / "foo"
+    dvc.add(file.fs_path)
+
+    with (tmp_dir / "data").chdir():
+        assert main(["move", "foo", "data.txt"]) == 0
+
+    assert not file.exists()
+    assert (tmp_dir / "data" / "data.txt").exists()
+    assert (tmp_dir / "data" / "data.txt.dvc").exists()
 
 
 def test_move_should_save_stage_info(tmp_dir, dvc):

@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -22,76 +21,75 @@ from dvc.utils import relpath
 from dvc.utils.fs import remove
 from dvc.utils.serialize import dump_yaml, load_yaml
 from dvc_data.hashfile.hash import file_md5
-from tests.basic_env import TestDvc
 
 
-class SingleStageRun:
-    def _run(self, **kwargs):
-        kwargs["single_stage"] = True
-        kwargs.pop("name", None)
-        return self.dvc.run(**kwargs)  # noqa, pylint: disable=no-member
+@pytest.fixture(
+    params=(
+        {"single_stage": True},
+        {"single_stage": False},
+    ),
+    ids=["single_stage", "multi_stage"],
+)
+def run_stage(dvc, request):
+    def inner(*args, name=None, **kwargs):
+        assert name
+        # these should not be passed
+        assert "single_stage" not in kwargs
+        assert "fname" not in kwargs
 
-    @staticmethod
-    def _get_stage_target(stage):
-        return stage.addressing
+        if request.param["single_stage"]:
+            kwargs.update(
+                {
+                    "fname": name + ".dvc",
+                    "single_stage": True,
+                }
+            )
+        else:
+            kwargs["name"] = name
+        return dvc.run(*args, **kwargs)
 
-
-class TestRepro(SingleStageRun, TestDvc):
-    def setUp(self):
-        super().setUp()
-
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        self.foo_stage = stages[0]
-        self.assertTrue(self.foo_stage is not None)
-
-        self.file1 = "file1"
-        self.file1_stage = self.file1 + ".dvc"
-        self.stage = self._run(
-            fname=self.file1_stage,
-            outs=[self.file1],
-            deps=[self.FOO, self.CODE],
-            cmd=f"python {self.CODE} {self.FOO} {self.file1}",
-            name="run1",
-        )
+    return inner
 
 
-class TestReproFail(TestRepro):
-    def test(self):
-        os.unlink(self.CODE)
-
-        ret = main(["repro", self._get_stage_target(self.stage)])
-        self.assertNotEqual(ret, 0)
-
-
-class TestReproCyclicGraph(SingleStageRun, TestDvc):
-    def test(self):
-        self._run(
-            deps=[self.FOO],
-            outs=["bar.txt"],
-            cmd="echo bar > bar.txt",
-            name="copybarbar-txt",
-        )
-
-        self._run(
-            deps=["bar.txt"],
-            outs=["baz.txt"],
-            cmd="echo baz > baz.txt",
-            name="copybazbaz-txt",
-        )
-
-        stage_dump = {
-            "cmd": "echo baz > foo",
-            "deps": [{"path": "baz.txt"}],
-            "outs": [{"path": self.FOO}],
-        }
-        dump_yaml("cycle.dvc", stage_dump)
-
-        with self.assertRaises(CyclicGraphError):
-            self.dvc.reproduce("cycle.dvc")
+def test_repro_fail(tmp_dir, run_stage, copy_script):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    os.unlink("copy.py")
+    assert main(["repro", stage.addressing]) != 0
 
 
-class TestReproWorkingDirectoryAsOutput(TestDvc):
+def test_repro_cyclic_graph(tmp_dir, dvc, run_stage):
+    tmp_dir.gen("foo", "foo")
+    run_stage(
+        deps=["foo"],
+        outs=["bar.txt"],
+        cmd="echo bar > bar.txt",
+        name="copybarbar-txt",
+    )
+    run_stage(
+        deps=["bar.txt"],
+        outs=["baz.txt"],
+        cmd="echo baz > baz.txt",
+        name="copybazbaz-txt",
+    )
+
+    stage_dump = {
+        "cmd": "echo baz > foo",
+        "deps": [{"path": "baz.txt"}],
+        "outs": [{"path": "foo"}],
+    }
+    dump_yaml("cycle.dvc", stage_dump)
+
+    with pytest.raises(CyclicGraphError):
+        dvc.reproduce("cycle.dvc")
+
+
+class TestReproWorkingDirectoryAsOutput:
     """
     |  stage.cwd  |  out.path | cwd as output |
     |:-----------:|:---------:|:-------------:|
@@ -101,7 +99,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
     |      .      | something |     False     |
     """
 
-    def test(self):
+    def test(self, dvc):
         # File structure:
         #       .
         #       |-- dir1
@@ -109,9 +107,9 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         #       |__ dir2
         #           |__ something.dvc    (stage.cwd == ./dir2)
 
-        os.mkdir(os.path.join(self.dvc.root_dir, "dir1"))
+        os.mkdir(os.path.join(dvc.root_dir, "dir1"))
 
-        self.dvc.run(
+        dvc.run(
             fname=os.path.join("dir1", "dir2.dvc"),
             wdir="dir1",
             outs=[os.path.join("..", "dir2")],
@@ -128,10 +126,10 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         }
         dump_yaml(faulty_stage_path, stage_dump)
 
-        with self.assertRaises(StagePathAsOutputError):
-            self.dvc.reproduce(faulty_stage_path)
+        with pytest.raises(StagePathAsOutputError):
+            dvc.reproduce(faulty_stage_path)
 
-    def test_nested(self):
+    def test_nested(self, mocker, dvc):
         #       .
         #       |-- a
         #       |  |__ nested
@@ -148,7 +146,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         nested_dir = os.path.join(dir2, "nested")
         out_dir = relpath(nested_dir, dir1)
 
-        nested_stage = self.dvc.run(
+        nested_stage = dvc.run(
             fname=os.path.join(dir1, "b.dvc"),
             wdir=dir1,
             outs=[out_dir],  # ../a/nested
@@ -169,18 +167,18 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
-        self.dvc.index = self.dvc.index.update(
+        dvc.index = dvc.index.update(
             [
                 nested_stage,
-                Dvcfile(self.dvc, error_stage_path).stage,
+                Dvcfile(dvc, error_stage_path).stage,
             ]
         )
 
-        with patch.object(self.dvc, "_reset"):  # to prevent `stages` resetting
-            with self.assertRaises(StagePathAsOutputError):
-                self.dvc.reproduce(error_stage_path)
+        mocker.patch.object(dvc, "_reset")  # to prevent `stages` resetting
+        with pytest.raises(StagePathAsOutputError):
+            dvc.reproduce(error_stage_path)
 
-    def test_similar_paths(self):
+    def test_similar_paths(self, dvc):
         # File structure:
         #
         #       .
@@ -190,9 +188,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         #          |-- a
         #          |__ a.dvc        (stage.cwd == something-1)
 
-        self.dvc.run(
-            outs=["something"], cmd="mkdir something", single_stage=True
-        )
+        dvc.run(outs=["something"], cmd="mkdir something", single_stage=True)
 
         os.mkdir("something-1")
 
@@ -201,648 +197,657 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         stage_dump = {"cmd": "echo a > a", "outs": [{"path": "a"}]}
         dump_yaml(stage, stage_dump)
 
-        try:
-            self.dvc.reproduce(stage)
-        except StagePathAsOutputError:
-            self.fail("should not raise StagePathAsOutputError")
+        dvc.reproduce(stage)
 
 
-class TestReproDepUnderDir(SingleStageRun, TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertTrue(stages and stages[0] is not None)
+def test_repro_dep_under_dir(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("foo", "foo")
+    tmp_dir.dvc_gen("data", {"file": "file", "sub": {"foo": "foo"}})
 
-        file1 = "file1"
-        stage = self._run(
-            fname=file1 + ".dvc",
-            outs=[file1],
-            deps=[self.DATA, self.CODE],
-            cmd=f"python {self.CODE} {self.DATA} {file1}",
-            name="copy-data-file1",
-        )
+    stage = run_stage(
+        outs=["file1"],
+        deps=["data/file", "copy.py"],
+        cmd="python copy.py data/file file1",
+        name="copy-data-file1",
+    )
 
-        self.assertTrue(filecmp.cmp(file1, self.DATA, shallow=False))
+    assert filecmp.cmp("file1", "data/file", shallow=False)
 
-        os.unlink(self.DATA)
-        shutil.copyfile(self.FOO, self.DATA)
+    os.unlink("data/file")
+    shutil.copyfile("foo", "data/file")
 
-        stages = self.dvc.reproduce(self._get_stage_target(stage))
-        self.assertEqual(len(stages), 2)
-        self.assertTrue(filecmp.cmp(file1, self.FOO, shallow=False))
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 2
+    assert filecmp.cmp("file1", "foo", shallow=False)
 
 
-class TestReproDepDirWithOutputsUnderIt(SingleStageRun, TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-        stages = self.dvc.add(self.DATA_SUB)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-        deps = [self.DATA, self.DATA_SUB]
-        stage = self.dvc.run(
-            cmd="ls {}".format(" ".join(deps)),
-            fname="dvcfile2.dvc",
-            deps=deps,
-            single_stage=True,
-        )
-        self.assertTrue(stage is not None)
-
-        file1 = "file1"
-        file1_stage = file1 + ".dvc"
-        stage = self._run(
-            fname=file1_stage,
-            deps=[self.DATA_DIR],
-            outs=[file1],
-            cmd=f"python {self.CODE} {self.DATA} {file1}",
-            name="copy-data-file1",
-        )
-        self.assertTrue(stage is not None)
-
-        os.unlink(self.DATA)
-        shutil.copyfile(self.FOO, self.DATA)
-
-        stages = self.dvc.reproduce(self._get_stage_target(stage))
-        self.assertEqual(len(stages), 2)
+def test_repro_dep_dir_with_outputs_under_it(
+    tmp_dir, dvc, copy_script, run_stage
+):
+    tmp_dir.gen("foo", "foo")
+    file_stage, _ = tmp_dir.dvc_gen(
+        {"data/file": "file", "data/sub": {"foo": "foo", "bar": "bar"}}
+    )
+    run_stage(
+        cmd="ls data/file data/sub",
+        deps=["data/file", "data/sub"],
+        name="list-files",
+    )
+    copy_stage = run_stage(
+        deps=["data"],
+        outs=["file1"],
+        cmd="python copy.py data file1",
+        name="copy-data-file1",
+    )
+    os.unlink("data/file")
+    shutil.copyfile("foo", "data/file")
+    assert dvc.reproduce(copy_stage.addressing) == [file_stage, copy_stage]
 
 
-class TestReproForce(TestRepro):
-    def test(self):
-        stages = self.dvc.reproduce(
-            self._get_stage_target(self.stage), force=True
-        )
-        self.assertEqual(len(stages), 2)
+def test_repro_force(tmp_dir, dvc, run_stage, copy_script):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    stages = dvc.reproduce(stage.addressing, force=True)
+    assert len(stages) == 2
 
 
-class TestReproChangedCode(TestRepro):
-    def test(self):
-        self.swap_code()
+def test_repro_changed_code(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    with (tmp_dir / "copy.py").open("a+", encoding="utf8") as f:
+        f.write("\nshutil.copyfile('bar', sys.argv[2])")
+    stages = dvc.reproduce(stage.addressing)
 
-        stages = self.dvc.reproduce(self._get_stage_target(self.stage))
-
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
-        self.assertEqual(len(stages), 1)
-
-    def swap_code(self):
-        os.unlink(self.CODE)
-        new_contents = self.CODE_CONTENTS
-        new_contents += "\nshutil.copyfile('{}', " "sys.argv[2])\n".format(
-            self.BAR
-        )
-        self.create(self.CODE, new_contents)
-
-
-class TestReproChangedData(TestRepro):
-    def test(self):
-        self.swap_foo_with_bar()
-
-        stages = self.dvc.reproduce(self._get_stage_target(self.stage))
-
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
-        self.assertEqual(len(stages), 2)
-
-    def swap_foo_with_bar(self):
-        os.unlink(self.FOO)
-        shutil.copyfile(self.BAR, self.FOO)
+    assert filecmp.cmp("file1", "bar", shallow=False)
+    assert len(stages) == 1
 
 
-class TestReproDry(TestReproChangedData):
-    def test(self):
-        self.swap_foo_with_bar()
+def test_repro_changed_data(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    shutil.copyfile("bar", "foo")
 
-        stages = self.dvc.reproduce(
-            self._get_stage_target(self.stage), dry=True
-        )
+    stages = dvc.reproduce(stage.addressing)
 
-        self.assertTrue(len(stages), 2)
-        self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
-
-        ret = main(["repro", "--dry", self._get_stage_target(self.stage)])
-        self.assertEqual(ret, 0)
-        self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
-
-
-class TestReproUpToDate(TestRepro):
-    def test(self):
-        ret = main(["repro", self._get_stage_target(self.stage)])
-        self.assertEqual(ret, 0)
+    assert filecmp.cmp("file1", "bar", shallow=False)
+    assert len(stages) == 2
 
 
-class TestReproDryNoExec(TestDvc):
-    def test(self):
-        deps = []
-        for d in range(3):
-            idir = f"idir{d}"
-            odir = f"odir{d}"
+def test_repro_dry(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    shutil.copyfile("bar", "foo")
 
-            deps.append("-d")
-            deps.append(odir)
+    stages = dvc.reproduce(stage.addressing, dry=True)
 
-            os.mkdir(idir)
+    assert len(stages), 2
+    assert not filecmp.cmp("file1", "bar", shallow=False)
 
-            f = os.path.join(idir, "file")
-            with open(f, "w+", encoding="utf-8") as fobj:
-                fobj.write(str(d))
+    ret = main(["repro", "--dry", stage.addressing])
+    assert ret == 0
+    assert not filecmp.cmp("file1", "bar", shallow=False)
 
-            ret = main(
-                [
-                    "run",
-                    "--no-exec",
-                    "--single-stage",
-                    "-d",
-                    idir,
-                    "-o",
-                    odir,
-                    "python -c 'import shutil; "
-                    'shutil.copytree("{}", "{}")\''.format(idir, odir),
-                ]
-            )
-            self.assertEqual(ret, 0)
+
+def test_repro_up_to_date(tmp_dir, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    ret = main(["repro", stage.addressing])
+    assert ret == 0
+
+
+def test_repro_dry_no_exec(tmp_dir, dvc):
+    deps = []
+    for d in range(3):
+        idir = f"idir{d}"
+        odir = f"odir{d}"
+
+        deps.append("-d")
+        deps.append(odir)
+
+        os.mkdir(idir)
+
+        f = os.path.join(idir, "file")
+        with open(f, "w+", encoding="utf-8") as fobj:
+            fobj.write(str(d))
 
         ret = main(
             [
                 "run",
                 "--no-exec",
                 "--single-stage",
-                "--file",
-                DVC_FILE,
-                *deps,
-                "ls {}".format(
-                    " ".join(dep for i, dep in enumerate(deps) if i % 2)
-                ),
+                "-d",
+                idir,
+                "-o",
+                odir,
+                "python -c 'import shutil; "
+                'shutil.copytree("{}", "{}")\''.format(idir, odir),
             ]
         )
-        self.assertEqual(ret, 0)
-
-        ret = main(["repro", "--dry", DVC_FILE])
-        self.assertEqual(ret, 0)
-
-
-class TestReproChangedDeepData(TestReproChangedData):
-    def setUp(self):
-        super().setUp()
-
-        self.file2 = "file2"
-        self.stage = self._run(
-            fname=self.file2 + ".dvc",
-            outs=[self.file2],
-            deps=[self.file1, self.CODE],
-            cmd=f"python {self.CODE} {self.file1} {self.file2}",
-            name="copy-file-file2",
-        )
-
-    def test(self):
-        self.swap_foo_with_bar()
-
-        stages = self.dvc.reproduce(self._get_stage_target(self.stage))
-
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
-        self.assertTrue(filecmp.cmp(self.file2, self.BAR, shallow=False))
-        self.assertEqual(len(stages), 3)
-
-
-class TestReproForceDownstream(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        foo_stage = stages[0]
-        self.assertTrue(foo_stage is not None)
-
-        code1 = "code1.py"
-        shutil.copyfile(self.CODE, code1)
-        file1 = "file1"
-        file1_stage = self.dvc.run(
-            outs=[file1],
-            deps=[self.FOO, code1],
-            cmd=f"python {code1} {self.FOO} {file1}",
-            single_stage=True,
-        )
-        self.assertTrue(file1_stage is not None)
-
-        code2 = "code2.py"
-        shutil.copyfile(self.CODE, code2)
-        file2 = "file2"
-        file2_stage = self.dvc.run(
-            outs=[file2],
-            deps=[file1, code2],
-            cmd=f"python {code2} {file1} {file2}",
-            single_stage=True,
-        )
-        self.assertTrue(file2_stage is not None)
-
-        code3 = "code3.py"
-        shutil.copyfile(self.CODE, code3)
-        file3 = "file3"
-        file3_stage = self.dvc.run(
-            outs=[file3],
-            deps=[file2, code3],
-            cmd=f"python {code3} {file2} {file3}",
-            single_stage=True,
-        )
-        self.assertTrue(file3_stage is not None)
-
-        with open(code2, "a", encoding="utf-8") as fobj:
-            fobj.write("\n\n")
-
-        stages = self.dvc.reproduce(file3_stage.path, force_downstream=True)
-        self.assertEqual(len(stages), 2)
-        self.assertEqual(stages[0].path, file2_stage.path)
-        self.assertEqual(stages[1].path, file3_stage.path)
-
-
-class TestReproPipeline(TestReproChangedDeepData):
-    def test(self):
-        stages = self.dvc.reproduce(
-            self._get_stage_target(self.stage), force=True, pipeline=True
-        )
-        self.assertEqual(len(stages), 3)
-
-    def test_cli(self):
-        ret = main(
-            ["repro", "--pipeline", "-f", self._get_stage_target(self.stage)]
-        )
-        self.assertEqual(ret, 0)
-
-
-class TestReproPipelines(SingleStageRun, TestDvc):
-    def setUp(self):
-        super().setUp()
-
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        self.foo_stage = stages[0]
-        self.assertTrue(self.foo_stage is not None)
-
-        stages = self.dvc.add(self.BAR)
-        self.assertEqual(len(stages), 1)
-        self.bar_stage = stages[0]
-        self.assertTrue(self.bar_stage is not None)
-
-        self.file1 = "file1"
-        self.file1_stage = self.dvc.run(
-            fname=self.file1 + ".dvc",
-            outs=[self.file1],
-            deps=[self.FOO, self.CODE],
-            cmd=f"python {self.CODE} {self.FOO} {self.file1}",
-            single_stage=True,
-        )
-
-        self.file2 = "file2"
-        self.file2_stage = self._run(
-            fname=self.file2 + ".dvc",
-            outs=[self.file2],
-            deps=[self.BAR, self.CODE],
-            cmd=f"python {self.CODE} {self.BAR} {self.file2}",
-            name="copy-BAR-file2",
-        )
-
-    def test(self):
-        stages = self.dvc.reproduce(all_pipelines=True, force=True)
-        self.assertEqual(len(stages), 4)
-        self.assertTrue(self.file1_stage in stages)
-        self.assertTrue(self.file2_stage in stages)
-
-    def test_cli(self):
-        ret = main(["repro", "-f", "-P"])
-        self.assertEqual(ret, 0)
-
-
-class TestReproFrozen(TestReproChangedData):
-    def test(self):
-        file2 = "file2"
-        file2_stage = self._run(
-            fname=file2 + ".dvc",
-            outs=[file2],
-            deps=[self.file1, self.CODE],
-            cmd=f"python {self.CODE} {self.file1} {file2}",
-            name="copy-file1-file2",
-        )
-
-        self.swap_foo_with_bar()
-
-        ret = main(["freeze", self._get_stage_target(file2_stage)])
-        self.assertEqual(ret, 0)
-        stages = self.dvc.reproduce(self._get_stage_target(file2_stage))
-        self.assertEqual(len(stages), 0)
-
-        ret = main(["unfreeze", self._get_stage_target(file2_stage)])
-        self.assertEqual(ret, 0)
-        stages = self.dvc.reproduce(self._get_stage_target(file2_stage))
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
-        self.assertTrue(filecmp.cmp(file2, self.BAR, shallow=False))
-        self.assertEqual(len(stages), 3)
-
-    def test_non_existing(self):
-        with self.assertRaises(StageFileDoesNotExistError):
-            self.dvc.freeze("Dvcfile")
-            self.dvc.freeze("pipelines.yaml")
-            self.dvc.freeze("pipelines.yaml:name")
-            self.dvc.freeze("Dvcfile:name")
-            self.dvc.freeze("stage.dvc")
-            self.dvc.freeze("stage.dvc:name")
-            self.dvc.freeze("not-existing-stage.json")
-
-        ret = main(["freeze", "non-existing-stage"])
-        self.assertNotEqual(ret, 0)
-
-
-class TestReproFrozenCallback(SingleStageRun, TestDvc):
-    def test(self):
-        file1 = "file1"
-        file1_stage = file1 + ".dvc"
-        # NOTE: purposefully not specifying deps or outs
-        # to create a callback stage.
-        stage = self._run(
-            fname=file1_stage,
-            cmd=f"python {self.CODE} {self.FOO} {file1}",
-            name="copy-FOO-file1",
-        )
-        self.assertTrue(stage is not None)
-
-        stages = self.dvc.reproduce(self._get_stage_target(stage))
-        self.assertEqual(len(stages), 1)
-
-        self.dvc.freeze(self._get_stage_target(stage))
-        stages = self.dvc.reproduce(self._get_stage_target(stage))
-        self.assertEqual(len(stages), 0)
-
-        self.dvc.unfreeze(self._get_stage_target(stage))
-        stages = self.dvc.reproduce(self._get_stage_target(stage))
-        self.assertEqual(len(stages), 1)
-
-
-class TestReproFrozenUnchanged(TestRepro):
-    def test(self):
-        """
-        Check that freezing/unfreezing doesn't affect stage state
-        """
-        target = self._get_stage_target(self.stage)
-        self.dvc.freeze(target)
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 0)
-
-        self.dvc.unfreeze(target)
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 0)
-
-
-class TestReproMetricsAddUnchanged(TestDvc):
-    def test(self):
-        """
-        Check that adding/removing metrics doesn't affect stage state
-        """
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-        file1 = "file1"
-        file1_stage = file1 + ".dvc"
-        self.dvc.run(
-            fname=file1_stage,
-            outs_no_cache=[file1],
-            deps=[self.FOO, self.CODE],
-            cmd=f"python {self.CODE} {self.FOO} {file1}",
-            single_stage=True,
-        )
-
-        stages = self.dvc.reproduce(file1_stage)
-        self.assertEqual(len(stages), 0)
-
-        d = load_yaml(file1_stage)
-        d["outs"][0]["metric"] = True
-        dump_yaml(file1_stage, d)
-
-        stages = self.dvc.reproduce(file1_stage)
-        self.assertEqual(len(stages), 0)
-
-        d = load_yaml(file1_stage)
-        d["outs"][0]["metric"] = False
-        dump_yaml(file1_stage, d)
-
-        stages = self.dvc.reproduce(file1_stage)
-        self.assertEqual(len(stages), 0)
-
-
-class TestReproPhony(TestReproChangedData):
-    def test(self):
-        stage = self._run(
-            cmd="cat " + self.file1, deps=[self.file1], name="no_cmd"
-        )
-
-        self.swap_foo_with_bar()
-
-        self.dvc.reproduce(self._get_stage_target(stage))
-
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
-
-
-class TestNonExistingOutput(TestRepro):
-    def test(self):
-        os.unlink(self.FOO)
-
-        with self.assertRaises(ReproductionError):
-            self.dvc.reproduce(self._get_stage_target(self.stage))
-
-
-class TestReproDataSource(TestReproChangedData):
-    def test(self):
-        self.swap_foo_with_bar()
-
-        stages = self.dvc.reproduce(self.foo_stage.path)
-
-        self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
-        self.assertEqual(
-            stages[0].outs[0].hash_info.value, file_md5(self.BAR, self.dvc.fs)
-        )
-
-
-class TestReproChangedDir(SingleStageRun, TestDvc):
-    def test(self):
-        file_name = "file"
-        shutil.copyfile(self.FOO, file_name)
-
-        dir_name = "dir"
-        dir_code = "dir.py"
-        code = (
-            'import os; import shutil; os.mkdir("{}"); '
-            'shutil.copyfile("{}", os.path.join("{}", "{}"))'
-        )
-
-        with open(dir_code, "w+", encoding="utf-8") as fd:
-            fd.write(code.format(dir_name, file_name, dir_name, file_name))
-
-        stage = self._run(
-            outs=[dir_name],
-            deps=[file_name, dir_code],
-            cmd=f"python {dir_code}",
-            name="copy-in-dir",
-        )
-        target = self._get_stage_target(stage)
-
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 0)
-
-        os.unlink(file_name)
-        shutil.copyfile(self.BAR, file_name)
-
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 1)
-
-
-class TestReproChangedDirData(SingleStageRun, TestDvc):
-    def test(self):
-        dir_name = "dir"
-        dir_code = "dir_code.py"
-
-        with open(dir_code, "w+", encoding="utf-8") as fd:
-            fd.write(
-                "import os; import sys; import shutil; "
-                "shutil.copytree(sys.argv[1], sys.argv[2])"
-            )
-
-        stage = self._run(
-            outs=[dir_name],
-            deps=[self.DATA_DIR, dir_code],
-            cmd=f"python {dir_code} {self.DATA_DIR} {dir_name}",
-            name="copy-dir",
-        )
-        target = self._get_stage_target(stage)
-
-        self.assertTrue(stage is not None)
-
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 0)
-
-        with open(self.DATA_SUB, "a", encoding="utf-8") as fd:
-            fd.write("add")
-
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-        # Check that dvc indeed registers changed output dir
-        shutil.move(self.BAR, dir_name)
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-        # Check that dvc registers mtime change for the directory.
-        system.hardlink(self.DATA_SUB, self.DATA_SUB + ".lnk")
-        stages = self.dvc.reproduce(target)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
-
-
-class TestReproMissingMd5InStageFile(TestRepro):
-    def test(self):
-        d = load_yaml(self.file1_stage)
-        del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
-        del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
-        dump_yaml(self.file1_stage, d)
-
-        stages = self.dvc.reproduce(self.file1_stage)
-        self.assertEqual(len(stages), 1)
-
-
-class TestCmdRepro(TestReproChangedData):
-    def test(self):
-        self.swap_foo_with_bar()
-
-        ret = main(["status"])
-        self.assertEqual(ret, 0)
-
-        ret = main(["repro", self._get_stage_target(self.stage)])
-        self.assertEqual(ret, 0)
-
-        ret = main(["repro", "non-existing-file"])
-        self.assertNotEqual(ret, 0)
-
-
-class TestReproShell(TestDvc):
-    def test(self):
-        if os.name == "nt":
-            return
-
-        fname = "shell.txt"
-        stage = fname + ".dvc"
-
-        self.dvc.run(
-            fname=stage,
-            outs=[fname],
-            cmd=f"echo $SHELL > {fname}",
-            single_stage=True,
-        )
-
-        with open(fname, encoding="utf-8") as fd:
-            self.assertEqual(os.getenv("SHELL"), fd.read().strip())
-
-        os.unlink(fname)
-
-        self.dvc.reproduce(stage)
-
-        with open(fname, encoding="utf-8") as fd:
-            self.assertEqual(os.getenv("SHELL"), fd.read().strip())
-
-
-class TestReproAllPipelines(SingleStageRun, TestDvc):
-    def test(self):
-        stages = [
-            self._run(
-                fname="start.dvc",
-                outs=["start.txt"],
-                cmd="echo start > start.txt",
-                name="start",
-            ),
-            self._run(
-                fname="middle.dvc",
-                deps=["start.txt"],
-                outs=["middle.txt"],
-                cmd="echo middle > middle.txt",
-                name="middle",
-            ),
-            self._run(
-                fname="final.dvc",
-                deps=["middle.txt"],
-                outs=["final.txt"],
-                cmd="echo final > final.txt",
-                name="final",
-            ),
-            self._run(
-                fname="disconnected.dvc",
-                outs=["disconnected.txt"],
-                cmd="echo other > disconnected.txt",
-                name="disconnected",
+        assert ret == 0
+
+    ret = main(
+        [
+            "run",
+            "--no-exec",
+            "--single-stage",
+            "--file",
+            DVC_FILE,
+            *deps,
+            "ls {}".format(
+                " ".join(dep for i, dep in enumerate(deps) if i % 2)
             ),
         ]
+    )
+    assert ret == 0
 
-        from dvc_data.hashfile.state import StateNoop
-
-        self.dvc.state = StateNoop()
-
-        with patch.object(
-            Stage, "reproduce", side_effect=stages
-        ) as mock_reproduce:
-            ret = main(["repro", "--all-pipelines"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(mock_reproduce.call_count, 4)
+    ret = main(["repro", "--dry", DVC_FILE])
+    assert ret == 0
 
 
-class TestReproNoCommit(TestRepro):
-    def test(self):
-        remove(self.dvc.odb.local.path)
-        ret = main(
-            ["repro", self._get_stage_target(self.stage), "--no-commit"]
-        )
-        self.assertEqual(ret, 0)
-        self.assertEqual(os.listdir(self.dvc.odb.local.path), ["runs"])
+def test_repro_changed_deep_data(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    file2_stage = run_stage(
+        outs=["file2"],
+        deps=["file1", "copy.py"],
+        cmd="python copy.py file1 file2",
+        name="copy-file-file2",
+    )
+    shutil.copyfile("bar", "foo")
+    stages = dvc.reproduce(file2_stage.addressing)
+    assert filecmp.cmp("file1", "bar", shallow=False)
+    assert filecmp.cmp("file2", "bar", shallow=False)
+    assert len(stages) == 3
 
 
-class TestReproAlreadyCached(TestRepro):
-    def test(self):
-        stage = self._run(
-            fname="datetime.dvc",
+def test_repro_force_downstream(tmp_dir, dvc, copy_script):
+    tmp_dir.gen("foo", "foo")
+    stages = dvc.add("foo")
+    assert len(stages) == 1
+    foo_stage = stages[0]
+    assert foo_stage is not None
+
+    shutil.copyfile("copy.py", "copy1.py")
+    file1 = "file1"
+    file1_stage = dvc.run(
+        outs=[file1],
+        deps=["foo", "copy1.py"],
+        cmd=f"python copy1.py foo {file1}",
+        single_stage=True,
+    )
+    assert file1_stage is not None
+
+    shutil.copyfile("copy.py", "copy2.py")
+    file2 = "file2"
+    file2_stage = dvc.run(
+        outs=[file2],
+        deps=[file1, "copy2.py"],
+        cmd=f"python copy2.py {file1} {file2}",
+        single_stage=True,
+    )
+    assert file2_stage is not None
+
+    shutil.copyfile("copy.py", "copy3.py")
+    file3 = "file3"
+    file3_stage = dvc.run(
+        outs=[file3],
+        deps=[file2, "copy3.py"],
+        cmd=f"python copy3.py {file2} {file3}",
+        single_stage=True,
+    )
+    assert file3_stage is not None
+
+    with open("copy2.py", "a", encoding="utf-8") as fobj:
+        fobj.write("\n\n")
+
+    stages = dvc.reproduce(file3_stage.path, force_downstream=True)
+    assert len(stages) == 2
+    assert stages[0].path == file2_stage.path
+    assert stages[1].path == file3_stage.path
+
+
+def test_repro_pipeline(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    stage = run_stage(
+        outs=["file2"],
+        deps=["file1", "copy.py"],
+        cmd="python copy.py file1 file2",
+        name="copy-file-file2",
+    )
+    stages = dvc.reproduce(stage.addressing, force=True, pipeline=True)
+    assert len(stages) == 3
+
+
+def test_repro_pipeline_cli(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    ret = main(["repro", "--pipeline", "-f", stage.addressing])
+    assert ret == 0
+
+
+def test_repro_pipelines(tmp_dir, dvc, copy_script, run_stage):
+    foo_stage, bar_stage = tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+    file1_stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="copy-FOO-file1",
+    )
+    file2_stage = run_stage(
+        outs=["file2"],
+        deps=["bar", "copy.py"],
+        cmd="python copy.py bar file2",
+        name="copy-BAR-file2",
+    )
+    assert set(dvc.reproduce(all_pipelines=True, force=True)) == {
+        foo_stage,
+        bar_stage,
+        file1_stage,
+        file2_stage,
+    }
+
+
+def test_repro_pipelines_cli(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
+    run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="copy-FOO-file1",
+    )
+    run_stage(
+        outs=["file2"],
+        deps=["bar", "copy.py"],
+        cmd="python copy.py bar file2",
+        name="copy-BAR-file2",
+    )
+    assert main(["repro", "-f", "-P"]) == 0
+
+
+def test_repro_frozen(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    file2_stage = run_stage(
+        outs=["file2"],
+        deps=["file1", "copy.py"],
+        cmd="python copy.py file1 file2",
+        name="copy-file1-file2",
+    )
+
+    shutil.copyfile("bar", "foo")
+
+    ret = main(["freeze", file2_stage.addressing])
+    assert ret == 0
+    stages = dvc.reproduce(file2_stage.addressing)
+    assert len(stages) == 0
+
+    ret = main(["unfreeze", file2_stage.addressing])
+    assert ret == 0
+    stages = dvc.reproduce(file2_stage.addressing)
+    assert filecmp.cmp("file1", "bar", shallow=False)
+    assert filecmp.cmp("file2", "bar", shallow=False)
+    assert len(stages) == 3
+
+
+def test_freeze_non_existing(dvc):
+    with pytest.raises(StageFileDoesNotExistError):
+        dvc.freeze("Dvcfile")
+        dvc.freeze("pipelines.yaml")
+        dvc.freeze("pipelines.yaml:name")
+        dvc.freeze("Dvcfile:name")
+        dvc.freeze("stage.dvc")
+        dvc.freeze("stage.dvc:name")
+        dvc.freeze("not-existing-stage.json")
+
+    ret = main(["freeze", "non-existing-stage"])
+    assert ret != 0
+
+
+def test_repro_frozen_callback(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("foo", "foo")
+    # NOTE: purposefully not specifying deps or outs
+    # to create a callback stage.
+    stage = run_stage(
+        cmd="python copy.py foo file1",
+        name="copy-FOO-file1",
+    )
+
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+    dvc.freeze(stage.addressing)
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 0
+
+    dvc.unfreeze(stage.addressing)
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+
+def test_repro_frozen_unchanged(tmp_dir, dvc, copy_script, run_stage):
+    """
+    Check that freezing/unfreezing doesn't affect stage state
+    """
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    target = stage.addressing
+    dvc.freeze(target)
+    stages = dvc.reproduce(target)
+    assert len(stages) == 0
+
+    dvc.unfreeze(target)
+    stages = dvc.reproduce(target)
+    assert len(stages) == 0
+
+
+def test_repro_metrics_add_unchanged(tmp_dir, dvc, copy_script):
+    """
+    Check that adding/removing metrics doesn't affect stage state
+    """
+    tmp_dir.gen("foo", "foo")
+    stages = dvc.add("foo")
+    assert len(stages) == 1
+    assert stages[0] is not None
+
+    file1 = "file1"
+    file1_stage = file1 + ".dvc"
+    dvc.run(
+        fname=file1_stage,
+        outs_no_cache=[file1],
+        deps=["foo", "copy.py"],
+        cmd=f"python copy.py foo {file1}",
+        single_stage=True,
+    )
+
+    stages = dvc.reproduce(file1_stage)
+    assert len(stages) == 0
+
+    d = load_yaml(file1_stage)
+    d["outs"][0]["metric"] = True
+    dump_yaml(file1_stage, d)
+
+    stages = dvc.reproduce(file1_stage)
+    assert len(stages) == 0
+
+    d = load_yaml(file1_stage)
+    d["outs"][0]["metric"] = False
+    dump_yaml(file1_stage, d)
+
+    stages = dvc.reproduce(file1_stage)
+    assert len(stages) == 0
+
+
+def test_repro_phony(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    stage = run_stage(cmd="cat file1", deps=["file1"], name="cat")
+    shutil.copyfile("bar", "foo")
+
+    dvc.reproduce(stage.addressing)
+
+    assert filecmp.cmp("file1", "bar", shallow=False)
+
+
+def test_non_existing_output(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    os.unlink("foo")
+
+    with pytest.raises(ReproductionError):
+        dvc.reproduce(stage.addressing)
+
+
+def test_repro_data_source(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    shutil.copyfile("bar", "foo")
+
+    stages = dvc.reproduce(stage.addressing)
+
+    assert filecmp.cmp("foo", "bar", shallow=False)
+    assert stages[0].outs[0].hash_info.value == file_md5("bar")
+
+
+def test_repro_changed_dir(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen({"foo": "foo", "bar": "bar"})
+    shutil.copyfile("foo", "file")
+
+    stage = run_stage(
+        outs=["dir"],
+        deps=["file", "copy.py"],
+        cmd="mkdir dir && python copy.py foo dir/foo",
+        name="copy-in-dir",
+    )
+
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 0
+
+    os.unlink("file")
+    shutil.copyfile("bar", "file")
+
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+
+def test_repro_changed_dir_data(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen({"data": {"foo": "foo"}, "bar": "bar"})
+    stage = run_stage(
+        outs=["dir"],
+        deps=["data", "copy.py"],
+        cmd="python copy.py data dir",
+        name="copy-dir",
+    )
+
+    assert not dvc.reproduce(stage.addressing)
+
+    with (tmp_dir / "data" / "foo").open("a", encoding="utf-8") as f:
+        f.write("add")
+
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+    # Check that dvc indeed registers changed output dir
+    shutil.move("bar", "dir")
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+    file = os.path.join("data", "foo")
+    # Check that dvc registers mtime change for the directory.
+    system.hardlink(file, file + ".lnk")
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+
+def test_repro_missing_md5_in_stage_file(tmp_dir, dvc, copy_script):
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = dvc.run(
+        fname="file1.dvc",
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        single_stage=True,
+    )
+    d = load_yaml(stage.relpath)
+    del d[Stage.PARAM_OUTS][0][LocalFileSystem.PARAM_CHECKSUM]
+    del d[Stage.PARAM_DEPS][0][LocalFileSystem.PARAM_CHECKSUM]
+    dump_yaml(stage.relpath, d)
+
+    stages = dvc.reproduce(stage.addressing)
+    assert len(stages) == 1
+
+
+def test_cmd_repro(tmp_dir, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    shutil.copyfile("bar", "foo")
+
+    ret = main(["status"])
+    assert ret == 0
+
+    ret = main(["repro", stage.addressing])
+    assert ret == 0
+
+    ret = main(["repro", "non-existing-file"])
+    assert ret != 0
+
+
+@pytest.mark.skipif(os.name == "nt", reason="not on nt")
+def test_repro_shell(tmp_dir, dvc):
+    dvc.run(
+        fname="shell.txt.dvc",
+        outs=["shell.txt"],
+        cmd="echo $SHELL > shell.txt",
+        single_stage=True,
+    )
+    shell = os.getenv("SHELL")
+
+    assert (tmp_dir / "shell.txt").read_text().rstrip() == shell
+    (tmp_dir / "shell.txt").unlink()
+
+    dvc.reproduce("shell.txt.dvc")
+    assert (tmp_dir / "shell.txt").read_text().rstrip() == shell
+
+
+def test_repro_all_pipelines(mocker, dvc, run_stage):
+    stages = [
+        run_stage(
+            outs=["start.txt"],
+            cmd="echo start > start.txt",
+            name="start",
+        ),
+        run_stage(
+            deps=["start.txt"],
+            outs=["middle.txt"],
+            cmd="echo middle > middle.txt",
+            name="middle",
+        ),
+        run_stage(
+            deps=["middle.txt"],
+            outs=["final.txt"],
+            cmd="echo final > final.txt",
+            name="final",
+        ),
+        run_stage(
+            outs=["disconnected.txt"],
+            cmd="echo other > disconnected.txt",
+            name="disconnected",
+        ),
+    ]
+
+    from dvc_data.hashfile.state import StateNoop
+
+    dvc.state = StateNoop()
+
+    mock_reproduce = mocker.patch.object(
+        Stage, "reproduce", side_effect=stages
+    )
+    ret = main(["repro", "--all-pipelines"])
+    assert ret == 0
+    assert mock_reproduce.call_count == 4
+
+
+def test_repro_no_commit(tmp_dir, dvc, copy_script, run_stage):
+    tmp_dir.gen("bar", "bar")
+    tmp_dir.dvc_gen("foo", "foo")
+    stage = run_stage(
+        outs=["file1"],
+        deps=["foo", "copy.py"],
+        cmd="python copy.py foo file1",
+        name="run1",
+    )
+    remove(dvc.odb.local.path)
+    ret = main(["repro", stage.addressing, "--no-commit"])
+    assert ret == 0
+    assert os.listdir(dvc.odb.local.path) == ["runs"]
+
+
+class TestReproAlreadyCached:
+    def test(self, dvc, run_stage):  # pylint: disable=redefined-outer-name
+        stage = run_stage(
             always_changed=True,
             deps=[],
             outs=["datetime.txt"],
@@ -850,84 +855,70 @@ class TestReproAlreadyCached(TestRepro):
             name="datetime",
         )
         run_out = stage.outs[0]
-        repro_out = self.dvc.reproduce(self._get_stage_target(stage))[0].outs[
-            0
-        ]
+        repro_out = dvc.reproduce(stage.addressing)[0].outs[0]
 
-        self.assertNotEqual(run_out.hash_info, repro_out.hash_info)
+        assert run_out.hash_info != repro_out.hash_info
 
-    def test_force_with_dependencies(self):
-        run_out = self.dvc.run(
-            fname="datetime.dvc",
-            deps=[self.FOO],
+    def test_force_with_dependencies(self, tmp_dir, dvc, run_stage):
+        tmp_dir.dvc_gen("foo", "foo")
+        stage = run_stage(
+            name="datetime",
+            deps=["foo"],
             outs=["datetime.txt"],
             cmd='python -c "import time; print(time.time())" > datetime.txt',
-            single_stage=True,
-        ).outs[0]
-
-        ret = main(["repro", "--force", "datetime.dvc"])
-        self.assertEqual(ret, 0)
-
-        repro_out = Dvcfile(self.dvc, "datetime.dvc").stage.outs[0]
-
-        self.assertNotEqual(run_out.hash_info, repro_out.hash_info)
-
-    def test_force_import(self):
-        remove(self.BAR)
-        ret = main(["import-url", self.FOO, self.BAR])
-        self.assertEqual(ret, 0)
-
-        patch_get = patch.object(
-            LocalFileSystem,
-            "get",
-            side_effect=LocalFileSystem.get,
-            autospec=True,
         )
 
-        patch_checkout = patch.object(
-            Output,
-            "checkout",
-            side_effect=Output.checkout,
-            autospec=True,
-        )
+        ret = main(["repro", "--force", stage.addressing])
+        assert ret == 0
 
-        with patch_get as mock_download:
-            with patch_checkout as mock_checkout:
-                assert main(["unfreeze", "bar.dvc"]) == 0
-                ret = main(["repro", "--force", "bar.dvc"])
-                self.assertEqual(ret, 0)
-                self.assertEqual(mock_download.call_count, 1)
-                self.assertEqual(mock_checkout.call_count, 0)
+        saved_stage = dvc.stage.get_target(stage.addressing)
+        assert stage.outs[0].hash_info != saved_stage.outs[0].hash_info
+
+    def test_force_import(self, mocker, tmp_dir, dvc):
+        tmp_dir.dvc_gen("foo", "foo")
+
+        ret = main(["import-url", "foo", "bar"])
+        assert ret == 0
+
+        spy_get = mocker.spy(LocalFileSystem, "get")
+        spy_checkout = mocker.spy(Output, "checkout")
+
+        assert main(["unfreeze", "bar.dvc"]) == 0
+        ret = main(["repro", "--force", "bar.dvc"])
+        assert ret == 0
+        assert spy_get.call_count == 1
+        assert spy_checkout.call_count == 0
 
 
-class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
-    def test(self):
-        metrics_file = "metrics_file"
-        metrics_value = 0.123489015
-        ret = main(
-            [
-                "run",
-                "--single-stage",
-                "-m",
-                metrics_file,
-                f"echo {metrics_value} >> {metrics_file}",
-            ]
-        )
-        self.assertEqual(0, ret)
+def test_should_display_metrics_on_repro_with_metrics_option(
+    caplog, capsys, dvc
+):
+    metrics_file = "metrics_file"
+    metrics_value = 0.123489015
+    ret = main(
+        [
+            "run",
+            "--single-stage",
+            "-m",
+            metrics_file,
+            f"echo {metrics_value} >> {metrics_file}",
+        ]
+    )
+    assert ret == 0
 
-        self._caplog.clear()
-        self._capsys.readouterr()  # clearing the buffer
+    caplog.clear()
+    capsys.readouterr()  # clearing the buffer
 
-        from dvc.dvcfile import DVC_FILE_SUFFIX
+    from dvc.dvcfile import DVC_FILE_SUFFIX
 
-        ret = main(
-            ["repro", "--force", "--metrics", metrics_file + DVC_FILE_SUFFIX]
-        )
-        self.assertEqual(0, ret)
+    ret = main(
+        ["repro", "--force", "--metrics", metrics_file + DVC_FILE_SUFFIX]
+    )
+    assert ret == 0
 
-        expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
-        actual, _ = self._capsys.readouterr()
-        self.assertIn(expected_metrics_display, actual)
+    expected_metrics_display = f"Path\n{metrics_file}  {metrics_value}\n"
+    actual, _ = capsys.readouterr()
+    assert expected_metrics_display in actual
 
 
 @pytest.fixture
