@@ -171,6 +171,7 @@ markers = [
 ]
 xfail_strict = true
 testpaths = ["tests"]
+filterwarnings = ["error::pytest_mock.PytestMockWarning"]
 
 [tool.coverage.run]
 branch = true
