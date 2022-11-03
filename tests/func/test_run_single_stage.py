@@ -708,7 +708,7 @@ def test_run_persist(tmp_dir, dvc, outs_command):
                 "--always-changed",
                 outs_command,
                 "file",
-                "echo content >> file",
+                "echo content>>file",
             ]
         )
         == 0
@@ -767,7 +767,7 @@ def test_rerun_with_same_outputs(
                 "--single-stage",
                 "--outs",
                 "foo",
-                "echo foo > foo",
+                "echo foo>foo",
             ]
         )
         == 0
@@ -781,7 +781,7 @@ def test_rerun_with_same_outputs(
                 "foo",
                 "--force",
                 "--single-stage",
-                "echo bar >> foo",
+                "echo bar>>foo",
             ]
         )
         == 0
@@ -879,7 +879,7 @@ def test_run_force_preserves_comments_and_meta(tmp_dir, dvc, run_copy):
     dvc.reproduce("bar.dvc")
 
     # CRLF on windows makes the generated file bigger in size
-    code_size = 143 if os.name == "nt" else 167
+    code_size = 176 if os.name == "nt" else 167
     assert (tmp_dir / "bar.dvc").read_text() == textwrap.dedent(
         f"""\
         desc: top desc
