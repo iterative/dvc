@@ -221,7 +221,7 @@ def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
     assert len(revs) + 1 == len(ids)
     possible_ids = {
         True: "dd9cf3a3dc2caac5835e64f258ac2d7b",
-        False: "8406970ad2fcafaa84d9310330a67576",
+        False: "b446f3cdc35539884dcc474d90ac6286",
     }
     assert set(ids) == {possible_ids[os.name == "posix"]}
 
