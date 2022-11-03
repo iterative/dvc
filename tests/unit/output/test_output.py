@@ -15,9 +15,9 @@ from dvc.utils.fs import remove
 def test_save_missing(dvc, mocker):
     stage = Stage(dvc)
     out = Output(stage, "path", cache=False)
-    with mocker.patch.object(out.fs, "exists", return_value=False):
-        with pytest.raises(out.DoesNotExistError):
-            out.save()
+    mocker.patch.object(out.fs, "exists", return_value=False)
+    with pytest.raises(out.DoesNotExistError):
+        out.save()
 
 
 @pytest.mark.parametrize(
@@ -115,9 +115,9 @@ def test_remote_missing_dependency_on_dir_pull(tmp_dir, scm, dvc, mocker):
     remove("dir")
     remove(dvc.odb.local.path)
 
-    with mocker.patch(
+    mocker.patch(
         "dvc.data_cloud.DataCloud.get_remote_odb",
         side_effect=RemoteMissingDepsError(dvc.fs, "azure", "azure://", []),
-    ):
-        with pytest.raises(RemoteMissingDepsError):
-            dvc.pull()
+    )
+    with pytest.raises(RemoteMissingDepsError):
+        dvc.pull()

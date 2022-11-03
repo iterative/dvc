@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -130,7 +129,7 @@ class TestReproWorkingDirectoryAsOutput:
         with pytest.raises(StagePathAsOutputError):
             dvc.reproduce(faulty_stage_path)
 
-    def test_nested(self, dvc):
+    def test_nested(self, mocker, dvc):
         #       .
         #       |-- a
         #       |  |__ nested
@@ -175,9 +174,9 @@ class TestReproWorkingDirectoryAsOutput:
             ]
         )
 
-        with patch.object(dvc, "_reset"):  # to prevent `stages` resetting
-            with pytest.raises(StagePathAsOutputError):
-                dvc.reproduce(error_stage_path)
+        mocker.patch.object(dvc, "_reset")  # to prevent `stages` resetting
+        with pytest.raises(StagePathAsOutputError):
+            dvc.reproduce(error_stage_path)
 
     def test_similar_paths(self, dvc):
         # File structure:

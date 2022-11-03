@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 from dvc_webdav import WebDAVFileSystem, WebDAVSFileSystem
 
@@ -66,9 +64,10 @@ def test_token():
     )
 
 
-@patch("dvc_webdav.ask_password")
-def test_ask_password(ask_password_mocked):
-    ask_password_mocked.return_value = "pass"
+def test_ask_password(mocker):
+    ask_password_mocked = mocker.patch(
+        "dvc_webdav.ask_password", return_value="pass"
+    )
     host = "host"
 
     # it should not ask for password as password is set
