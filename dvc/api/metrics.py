@@ -1,14 +1,16 @@
 from collections import Counter
 from typing import Dict, Optional
 
-from funcy import first
-
 from dvc.exceptions import DvcException
 from dvc.repo import Repo
 
 
 def metrics_show(
     *targets: str,
+    all_branches: Optional[bool] = False,
+    all_tags: Optional[bool] = False,
+    all_commits: Optional[bool] = False,
+    recursive: Optional[bool] = False,
     repo: Optional[str] = None,
     rev: Optional[str] = None,
 ) -> Dict:
@@ -25,6 +27,15 @@ def metrics_show(
         If no `targets` are provided, all metric files tracked in `dvc.yaml`
         will be used.
         Note that targets don't necessarily have to be defined in `dvc.yaml`.
+        all_branches (bool, optional): Whether to show for all repo branches
+            or not.
+            Defaults to `False`.
+        all_tags (bool, optional): Whether to show for all repo tags or not.
+            Defaults to `False`.
+        all_commits (bool, optional): Whether to show for all commits or not.
+            Defaults to `False`.
+        recursive (bool, optional): Whether to recurse directories or not.
+            Defaults to `False`.
         repo (str, optional): Location of the DVC repository.
             Defaults to the current project (found by walking up from the
             current working directory tree).
@@ -129,18 +140,19 @@ def metrics_show(
                 }
                 processed[rev] = {**processed[rev], **to_merge}
 
-        if "workspace" in processed:
-            del processed["workspace"]
-
         if not processed:
             raise DvcException("No metrics found")
 
-        return processed[first(processed)]
+        return processed
 
     with Repo.open(repo) as _repo:
         metrics = _repo.metrics.show(
             targets=targets,
+            all_branches=all_branches,
+            all_tags=all_tags,
+            recursive=recursive,
             revs=rev if rev is None else [rev],
+            all_commits=all_commits,
             onerror=_onerror_raise,
         )
 
