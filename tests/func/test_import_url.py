@@ -13,37 +13,32 @@ from dvc.exceptions import InvalidArgumentError
 from dvc.stage import Stage
 from dvc.testing.workspace_tests import TestImport as _TestImport
 from dvc.utils.fs import makedirs
-from tests.basic_env import TestDvc
 
 
-class TestCmdImport(TestDvc):
-    def test(self):
-        ret = main(["import-url", self.FOO, "import"])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists("import.dvc"))
+def test_cmd_import(tmp_dir, dvc):
+    tmp_dir.gen("foo", "foo")
+    ret = main(["import-url", "foo", "import"])
+    assert ret == 0
+    assert os.path.exists("import.dvc")
 
-        ret = main(["import-url", "non-existing-file", "import"])
-        self.assertNotEqual(ret, 0)
-
-    def test_unsupported(self):
-        ret = main(["import-url", "unsupported://path", "import_unsupported"])
-        self.assertNotEqual(ret, 0)
+    ret = main(["import-url", "non-existing-file", "import"])
+    assert ret != 0
 
 
-class TestDefaultOutput(TestDvc):
-    def test(self):
-        tmpdir = self.mkdtemp()
-        filename = str(uuid4())
-        tmpfile = os.path.join(tmpdir, filename)
+def test_cmd_unsupported_scheme(dvc):
+    ret = main(["import-url", "unsupported://path", "import_unsupported"])
+    assert ret != 0
 
-        with open(tmpfile, "w", encoding="utf-8") as fd:
-            fd.write("content")
 
-        ret = main(["import-url", tmpfile])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.exists(filename))
-        with open(filename, encoding="utf-8") as fd:
-            self.assertEqual(fd.read(), "content")
+def test_default_output(tmp_dir, dvc, cloud):
+    filename = str(uuid4())
+    tmpfile = cloud / filename
+    tmpfile.write_bytes(b"content")
+    cloud.gen(filename, "content")
+
+    ret = main(["import-url", tmpfile.fs_path])
+    assert ret == 0
+    assert (tmp_dir / filename).read_bytes() == b"content"
 
 
 def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
@@ -56,26 +51,22 @@ def test_should_remove_outs_before_import(tmp_dir, dvc, mocker, erepo_dir):
     assert remove_outs_call_counter.mock.call_count == 1
 
 
-class TestImportFilename(TestDvc):
-    def setUp(self):
-        super().setUp()
-        tmp_dir = self.mkdtemp()
-        self.external_source = os.path.join(tmp_dir, "file")
-        with open(self.external_source, "w", encoding="utf-8") as fobj:
-            fobj.write("content")
+def test_import_filename(tmp_dir, dvc, cloud):
+    external_source = cloud / "file"
+    (cloud / "file").write_text("content", encoding="utf-8")
+    ret = main(["import-url", "--file", "bar.dvc", external_source.fs_path])
+    assert ret == 0
+    assert (tmp_dir / "bar.dvc").exists()
 
-    def test(self):
-        ret = main(["import-url", "--file", "bar.dvc", self.external_source])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
+    (tmp_dir / "bar.dvc").unlink()
+    (tmp_dir / "sub").mkdir()
 
-        os.remove("bar.dvc")
-        os.mkdir("sub")
-
-        path = os.path.join("sub", "bar.dvc")
-        ret = main(["import-url", "--file", path, self.external_source, "out"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists(path))
+    path = tmp_dir / "sub" / "bar.dvc"
+    ret = main(
+        ["import-url", "--file", path.fs_path, external_source.fs_path, "out"]
+    )
+    assert ret == 0
+    assert path.exists()
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])

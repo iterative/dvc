@@ -13,7 +13,7 @@ from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.scm import resolve_rev
 from dvc.stage.exceptions import StageFileDoesNotExistError
 from dvc.utils.serialize import PythonFileCorruptedError
-from tests.func.test_repro_multistage import COPY_SCRIPT
+from tests.scripts import COPY_SCRIPT
 
 
 @pytest.mark.parametrize("name", [None, "foo"])
@@ -209,8 +209,7 @@ def test_get_baseline(tmp_dir, scm, dvc, exp_stage):
     assert dvc.experiments.get_baseline(f"{CELERY_STASH}@{{1}}") == init_rev
 
 
-def test_update_py_params(tmp_dir, scm, dvc, test_queue):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_update_py_params(tmp_dir, scm, dvc, test_queue, copy_script):
     tmp_dir.gen("params.py", "INT = 1\n")
     stage = dvc.run(
         cmd="python copy.py params.py metrics.py",
@@ -371,8 +370,7 @@ def test_no_scm(tmp_dir):
             getattr(dvc.experiments, cmd)()
 
 
-def test_untracked(tmp_dir, scm, dvc, caplog, workspace):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_untracked(tmp_dir, scm, dvc, caplog, workspace, copy_script):
     tmp_dir.scm_gen("params.yaml", "foo: 1", commit="track params")
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -600,9 +598,10 @@ def test_fix_exp_head(tmp_dir, scm, tail):
     "params, target",
     itertools.product(("foo: 1", "foo: 2"), (True, False)),
 )
-def test_modified_data_dep(tmp_dir, scm, dvc, workspace, params, target):
+def test_modified_data_dep(
+    tmp_dir, scm, dvc, workspace, params, target, copy_script
+):
     tmp_dir.dvc_gen("data", "data")
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     tmp_dir.gen("params.yaml", "foo: 1")
     exp_stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",

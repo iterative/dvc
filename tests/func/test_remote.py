@@ -10,58 +10,51 @@ from dvc.cli import main
 from dvc.config import Config
 from dvc.exceptions import DownloadError, RemoteCacheRequiredError, UploadError
 from dvc.utils.fs import remove
-from tests.basic_env import TestDvc
 
 
-class TestRemote(TestDvc):
-    def test(self):
-        remotes = ["a", "b", "c"]
+def test_remote(dvc):
+    remotes = ["a", "b", "c"]
 
-        self.assertEqual(main(["remote", "list"]), 0)
-        self.assertNotEqual(main(["remote", "remove", remotes[0]]), 0)
+    assert main(["remote", "list"]) == 0
+    assert main(["remote", "remove", remotes[0]]) != 0
 
-        for r in remotes:
-            self.assertEqual(
-                main(["remote", "add", "--default", r, "s3://bucket/name"]), 0
-            )
+    for r in remotes:
+        assert main(["remote", "add", "--default", r, "s3://bucket/name"]) == 0
 
-        self.assertEqual(main(["remote", "list"]), 0)
+    assert main(["remote", "list"]) == 0
 
-        self.assertEqual(
-            main(["remote", "modify", remotes[0], "checksum_jobs", "1"]), 0
-        )
-        self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
+    assert main(["remote", "modify", remotes[0], "checksum_jobs", "1"]) == 0
+    assert main(["remote", "remove", remotes[0]]) == 0
 
-        self.assertEqual(main(["remote", "list"]), 0)
+    assert main(["remote", "list"]) == 0
 
-    def test_relative_path(self):
-        dname = os.path.join("..", "path", "to", "dir")
-        ret = main(["remote", "add", "mylocal", dname])
-        self.assertEqual(ret, 0)
 
-        # NOTE: we are in the repo's root and config is in .dvc/, so
-        # dir path written to config should be just one level above.
-        rel = os.path.join("..", dname)
-        config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        self.assertEqual(
-            config['remote "mylocal"']["url"], rel.replace("\\", "/")
-        )
+def test_remote_add_relative_path(dvc):
+    dname = os.path.join("..", "path", "to", "dir")
+    ret = main(["remote", "add", "mylocal", dname])
+    assert ret == 0
 
-    def test_overwrite(self):
-        remote_name = "a"
-        remote_url = "s3://bucket/name"
-        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 0)
-        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 251)
-        self.assertEqual(
-            main(["remote", "add", "-f", remote_name, remote_url]), 0
-        )
+    # NOTE: we are in the repo's root and config is in .dvc/, so
+    # dir path written to config should be just one level above.
+    rel = os.path.join("..", dname)
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "mylocal"']["url"] == rel.replace("\\", "/")
 
-    def test_referencing_other_remotes(self):
-        assert main(["remote", "add", "foo", "ssh://localhost/"]) == 0
-        assert main(["remote", "add", "bar", "remote://foo/dvc-storage"]) == 0
 
-        config = configobj.ConfigObj(self.dvc.config.files["repo"])
-        assert config['remote "bar"']["url"] == "remote://foo/dvc-storage"
+def test_remote_overwrite(dvc):
+    remote_name = "a"
+    remote_url = "s3://bucket/name"
+    assert main(["remote", "add", remote_name, remote_url]) == 0
+    assert main(["remote", "add", remote_name, remote_url]) == 251
+    assert main(["remote", "add", "-f", remote_name, remote_url]) == 0
+
+
+def test_referencing_other_remotes(dvc):
+    assert main(["remote", "add", "foo", "ssh://localhost/"]) == 0
+    assert main(["remote", "add", "bar", "remote://foo/dvc-storage"]) == 0
+
+    config = configobj.ConfigObj(dvc.config.files["repo"])
+    assert config['remote "bar"']["url"] == "remote://foo/dvc-storage"
 
 
 def test_remove_default(tmp_dir, dvc):
@@ -85,37 +78,35 @@ def test_remove_default(tmp_dir, dvc):
     assert local_config.get("core", {}).get("remote") is None
 
 
-class TestRemoteRemove(TestDvc):
-    def test(self):
-        ret = main(["config", "core.checksum_jobs", "1"])
-        self.assertEqual(ret, 0)
+def test_remote_remove(dvc):
+    ret = main(["config", "core.checksum_jobs", "1"])
+    assert ret == 0
 
-        remote = "mys3"
-        ret = main(["remote", "add", remote, "s3://bucket/name"])
-        self.assertEqual(ret, 0)
+    remote = "mys3"
+    ret = main(["remote", "add", remote, "s3://bucket/name"])
+    assert ret == 0
 
-        ret = main(["remote", "remove", remote])
-        self.assertEqual(ret, 0)
+    ret = main(["remote", "remove", remote])
+    assert ret == 0
 
 
-class TestRemoteDefault(TestDvc):
-    def test(self):
-        remote = "mys3"
-        ret = main(["remote", "add", "mys3", "s3://bucket/path"])
-        self.assertEqual(ret, 0)
+def test_remote_default_cmd(dvc):
+    remote = "mys3"
+    ret = main(["remote", "add", "mys3", "s3://bucket/path"])
+    assert ret == 0
 
-        ret = main(["remote", "default", "mys3"])
-        self.assertEqual(ret, 0)
-        config_file = os.path.join(self.dvc.dvc_dir, Config.CONFIG)
-        config = configobj.ConfigObj(config_file)
-        default = config["core"]["remote"]
-        self.assertEqual(default, remote)
+    ret = main(["remote", "default", "mys3"])
+    assert ret == 0
+    config_file = os.path.join(dvc.dvc_dir, Config.CONFIG)
+    config = configobj.ConfigObj(config_file)
+    default = config["core"]["remote"]
+    assert default == remote
 
-        ret = main(["remote", "default", "--unset"])
-        self.assertEqual(ret, 0)
-        config = configobj.ConfigObj(config_file)
-        default = config.get("core", {}).get("remote")
-        self.assertEqual(default, None)
+    ret = main(["remote", "default", "--unset"])
+    assert ret == 0
+    config = configobj.ConfigObj(config_file)
+    default = config.get("core", {}).get("remote")
+    assert default is None
 
 
 def test_show_default(dvc, capsys):

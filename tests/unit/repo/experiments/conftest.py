@@ -4,7 +4,6 @@ from textwrap import dedent
 import pytest
 
 from dvc.repo.experiments.queue.celery import LocalCeleryQueue
-from tests.func.test_repro_multistage import COPY_SCRIPT
 
 DEFAULT_ITERATIONS = 2
 CHECKPOINT_SCRIPT_FORMAT = dedent(
@@ -44,8 +43,7 @@ CHECKPOINT_SCRIPT = CHECKPOINT_SCRIPT_FORMAT.format(
 
 
 @pytest.fixture
-def exp_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def exp_stage(tmp_dir, scm, dvc, copy_script):
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.run(
         cmd="python copy.py params.yaml metrics.yaml",
@@ -93,8 +91,7 @@ def checkpoint_stage(tmp_dir, scm, dvc, mocker):
 
 
 @pytest.fixture
-def failed_exp_stage(tmp_dir, scm, dvc):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def failed_exp_stage(tmp_dir, scm, dvc, copy_script):
     tmp_dir.gen("params.yaml", "foo: 1")
     stage = dvc.stage.add(
         cmd="python -c 'import sys; sys.exit(1)'",
