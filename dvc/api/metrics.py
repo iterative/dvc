@@ -126,6 +126,9 @@ def metrics_show(
     def _postprocess(metrics):
         processed = {}
         for rev, rev_data in metrics.items():
+            if not rev_data:
+                continue
+
             processed[rev] = {}
 
             counts = Counter()
