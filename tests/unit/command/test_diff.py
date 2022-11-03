@@ -39,7 +39,7 @@ def test_default(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     assert (
         "Added:\n"
         "    file\n"
@@ -77,7 +77,7 @@ def test_show_hash(mocker, capsys):
         "not in cache": [],
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
 
     out, _ = capsys.readouterr()
     assert (
@@ -115,7 +115,7 @@ def test_show_json(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert '"added": [{"path": "file1"}, {"path": "file2"}]' in out
     assert '"deleted": []' in out
@@ -145,7 +145,7 @@ def test_show_json_and_hash(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert (
         '"added": [{"path": "file1", "hash": "11111111"}, '
@@ -180,7 +180,7 @@ def test_show_json_hide_missing(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert '"added": [{"path": "file1"}, {"path": "file2"}]' in out
     assert '"deleted": []' in out
@@ -200,7 +200,7 @@ def test_diff_show_markdown_and_hash(mocker, show_hash):
     mock_show_markdown = mocker.patch("dvc.commands.diff._show_markdown")
     mocker.patch("dvc.repo.Repo.diff", return_value=diff.copy())
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     mock_show_markdown.assert_called_once_with(diff, show_hash, False)
 
 
@@ -226,7 +226,7 @@ def test_no_changes(mocker, capsys, opts, show, expected):
     cmd = args.func(args)
     mocker.patch("dvc.repo.Repo.diff", return_value={})
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert expected == out.strip()
 
@@ -349,7 +349,7 @@ def test_hide_missing(mocker, capsys):
     }
     mocker.patch("dvc.repo.Repo.diff", return_value=diff)
 
-    assert 0 == cmd.run()
+    assert cmd.run() == 0
     out, _ = capsys.readouterr()
     assert (
         "Added:\n"

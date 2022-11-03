@@ -20,7 +20,6 @@ from dvc.repo.experiments.utils import exp_refs_by_rev
 from dvc.utils import relpath
 from dvc.utils.fs import makedirs
 from dvc.utils.serialize import YAMLFileCorruptedError
-from tests.func.test_repro_multistage import COPY_SCRIPT
 
 LOCK_CONTENTS = {
     "read": {
@@ -313,10 +312,10 @@ def test_show_filter(
     scm,
     dvc,
     capsys,
+    copy_script,
 ):
     capsys.readouterr()
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
@@ -679,8 +678,7 @@ def test_show_csv(tmp_dir, scm, dvc, exp_stage, capsys):
     )
 
 
-def test_show_only_changed(tmp_dir, dvc, scm, capsys):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_show_only_changed(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
@@ -726,13 +724,14 @@ def test_show_only_changed(tmp_dir, dvc, scm, capsys):
     assert "metrics.yaml:bar" in cap.out
 
 
-def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys):
+def test_show_parallel_coordinates(
+    tmp_dir, dvc, scm, mocker, capsys, copy_script
+):
     from dvc.commands.experiments import show
 
     webbroser_open = mocker.patch("webbrowser.open")
     show_experiments = mocker.spy(show, "show_experiments")
 
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
@@ -807,8 +806,7 @@ def test_show_parallel_coordinates(tmp_dir, dvc, scm, mocker, capsys):
 
 
 @pytest.mark.vscode
-def test_show_outs(tmp_dir, dvc, scm, erepo_dir):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_show_outs(tmp_dir, dvc, scm, erepo_dir, copy_script):
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,
@@ -889,8 +887,7 @@ def test_show_outs(tmp_dir, dvc, scm, erepo_dir):
     }
 
 
-def test_metrics_renaming(tmp_dir, dvc, scm, capsys):
-    tmp_dir.gen("copy.py", COPY_SCRIPT)
+def test_metrics_renaming(tmp_dir, dvc, scm, capsys, copy_script):
     params_file = tmp_dir / "params.yaml"
     params_data = {
         "foo": 1,

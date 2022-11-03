@@ -220,7 +220,7 @@ def test_unique_identifier(tmp_dir, dvc, scm, run_copy):
     # we get "workspace" as well from the brancher by default
     assert len(revs) + 1 == len(ids)
     possible_ids = {
-        True: "2ba7c7c5b395d4211348d6274b869fc7",
+        True: "dd9cf3a3dc2caac5835e64f258ac2d7b",
         False: "8406970ad2fcafaa84d9310330a67576",
     }
     assert set(ids) == {possible_ids[os.name == "posix"]}
