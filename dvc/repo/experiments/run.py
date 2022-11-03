@@ -1,8 +1,9 @@
 import logging
+import sys
 from typing import Dict, Iterable, Optional
 
 from dvc.dependency.param import ParamsDependency
-from dvc.exceptions import InvalidArgumentError
+from dvc.exceptions import DvcException, InvalidArgumentError
 from dvc.repo import locked
 from dvc.ui import ui
 from dvc.utils.cli_parse import to_path_overrides
@@ -28,7 +29,12 @@ def run(
     Returns a dict mapping new experiment SHAs to the results
     of `repro` for that experiment.
     """
-    from dvc.utils.hydra import to_hydra_overrides
+    try:
+        from dvc.utils.hydra import to_hydra_overrides
+    except ValueError:
+        if sys.version_info >= (3, 11):
+            raise DvcException("exp run is not supported in Python >= 3.11")
+        raise
 
     if run_all:
         entries = list(repo.experiments.celery_queue.iter_queued())
