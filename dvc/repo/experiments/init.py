@@ -250,8 +250,8 @@ def init(
 
     models = context.get("models")
     live_path = context.pop("live", None)
-    live_metrics = f"{live_path}.json" if live_path else None
-    live_plots = os.path.join(live_path, "scalars") if live_path else None
+    live_metrics = f"{live_path}/metrics.json" if live_path else None
+    live_plots = os.path.join(live_path, "plots") if live_path else None
 
     if type == "checkpoint":
         outs_key = "checkpoints"
