@@ -527,7 +527,10 @@ class Output:
         except NoRemoteError:
             remote = None
 
-        return DataIndexEntry(
+        if self.files and not self.obj:
+            self.obj = self.get_obj()
+
+        entry = DataIndexEntry(
             meta=self.meta,
             obj=self.obj,
             hash_info=self.hash_info,
@@ -535,6 +538,16 @@ class Output:
             cache=self.odb,
             remote=remote,
         )
+        if self.stage.is_import and not self.stage.is_repo_import:
+            dep = self.stage.deps[0]
+            entry.fs = dep.fs
+            entry.path = dep.fs_path
+            entry.meta = dep.meta
+            if not entry.obj:
+                if not dep.obj:
+                    dep.obj = dep.get_obj()
+                entry.obj = dep.obj
+        return entry
 
     def changed_checksum(self):
         return self.hash_info != self.get_hash()
