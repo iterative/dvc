@@ -35,6 +35,27 @@ def _is_params(dep: "Output"):
     return isinstance(dep, ParamsDependency)
 
 
+def _collect_top_level_params(repo):
+    from dvc.dvcfile import Dvcfile
+
+    files = []
+    dvcfiles = {
+        stage.dvcfile
+        for stage in repo.index.stages
+        if isinstance(stage, PipelineStage)
+    }
+    dvcfiles.add(Dvcfile(repo, repo.dvcfs.from_os_path("dvc.yaml")))
+    for dvcfile in dvcfiles:
+        wdir = repo.dvcfs.path.parent(repo.dvcfs.from_os_path(dvcfile.path))
+        try:
+            params = dvcfile.load().get("params", [])
+        except Exception:  # pylint: disable=broad-except
+            logger.debug("", exc_info=True)
+            continue
+        files.extend(repo.dvcfs.path.join(wdir, file) for file in params)
+    return files
+
+
 def _collect_configs(
     repo: "Repo", rev, targets=None, deps=False, stages=None
 ) -> Tuple[List["Output"], List[str]]:
@@ -93,7 +114,17 @@ def _read_params(
     else:
         fs_paths += [param.fs_path for param in params]
 
+    relpath = ""
+    if repo.root_dir != repo.fs.path.getcwd():
+        relpath = repo.fs.path.relpath(repo.root_dir, repo.fs.path.getcwd())
+
     for fs_path in fs_paths:
+        rel_param_path = os.path.join(relpath, *repo.fs.path.parts(fs_path))
+        if not repo.fs.isfile(fs_path):
+            if repo.fs.isfile(rel_param_path):
+                fs_path = rel_param_path
+            else:
+                continue
         from_path = _read_fs_path(repo.fs, fs_path, onerror=onerror)
         if from_path:
             name = os.sep.join(repo.fs.path.relparts(fs_path))
@@ -176,6 +207,7 @@ def _gather_params(
     param_outs, params_fs_paths = _collect_configs(
         repo, rev, targets=targets, deps=deps, stages=stages
     )
+    params_fs_paths.extend(_collect_top_level_params(repo=repo))
     params = _read_params(
         repo,
         params=param_outs,

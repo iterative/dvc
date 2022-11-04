@@ -28,6 +28,28 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
     return result
 
 
+def _collect_top_level_metrics(repo):
+    from dvc.dvcfile import Dvcfile
+    from dvc.stage import PipelineStage
+
+    files = []
+    dvcfiles = {
+        stage.dvcfile
+        for stage in repo.index.stages
+        if isinstance(stage, PipelineStage)
+    }
+    dvcfiles.add(Dvcfile(repo, repo.dvcfs.from_os_path("dvc.yaml")))
+    for dvcfile in dvcfiles:
+        wdir = repo.dvcfs.path.parent(repo.dvcfs.from_os_path(dvcfile.path))
+        try:
+            metrics = dvcfile.load().get("metrics", [])
+        except Exception:  # pylint: disable=broad-except
+            logger.debug("", exc_info=True)
+            continue
+        files.extend(repo.dvcfs.path.join(wdir, file) for file in metrics)
+    return files
+
+
 def _collect_metrics(repo, targets, revision, recursive):
     metrics, fs_paths = collect(
         repo,
@@ -94,6 +116,7 @@ def _read_metrics(repo, metrics, rev, onerror=None):
 
 def _gather_metrics(repo, targets, rev, recursive, onerror=None):
     metrics = _collect_metrics(repo, targets, rev, recursive)
+    metrics.extend(_collect_top_level_metrics(repo))
     return _read_metrics(repo, metrics, rev, onerror=onerror)
 
 
