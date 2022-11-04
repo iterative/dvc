@@ -13,7 +13,7 @@
 
 |CI| |Python Version| |Coverage| |VS Code| |DOI|
 
-|PyPI| |Packages| |Brew| |Conda| |Choco| |Snap|
+|PyPI| |PyPI Downloads| |Packages| |Brew| |Conda| |Choco| |Snap|
 
 |
 
@@ -275,6 +275,10 @@ Barrak, A., Eghan, E.E. and Adams, B. `On the Co-evolution of ML Pipelines and S
 .. |PyPI| image:: https://img.shields.io/pypi/v/dvc.svg?label=pip&logo=PyPI&logoColor=white
    :target: https://pypi.org/project/dvc
    :alt: PyPI
+
+.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/dvc.svg?color=blue&label=Downloads&logo=pypi&logoColor=gold
+   :target: https://pypi.org/project/dvc
+   :alt: PyPI Downloads
 
 .. |Packages| image:: https://img.shields.io/github/v/release/iterative/dvc?label=deb|pkg|rpm|exe&logo=GitHub
    :target: https://github.com/iterative/dvc/releases/latest
