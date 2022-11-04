@@ -32,6 +32,7 @@ def run(
         entries = list(repo.experiments.celery_queue.iter_queued())
         return repo.experiments.reproduce_celery(entries, jobs=jobs)
 
+    hydra_sweep = None
     if params:
         from dvc.utils.hydra import to_hydra_overrides
 

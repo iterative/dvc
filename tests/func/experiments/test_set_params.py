@@ -110,6 +110,11 @@ def test_hydra_compose_and_dump(
             ["foo=bar,baz"],
             [{"params.yaml": ["foo=bar"]}, {"params.yaml": ["foo=baz"]}],
         ),
+        (
+            False,
+            [],
+            [{}],
+        ),
     ],
 )
 def test_hydra_sweep(
