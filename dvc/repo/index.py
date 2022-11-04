@@ -411,14 +411,18 @@ class IndexView:
 
         def key_filter(workspace: str, key: "DataIndexKey"):
             try:
-                return key in self._data_prefixes[workspace]
+                return key in self._data_prefixes[workspace] or any(
+                    key[: len(prefix)] == prefix
+                    for prefix in self._data_prefixes[workspace]
+                )
             except KeyError:
                 return False
 
-        return {
-            workspace: view(index, partial(key_filter, workspace))
-            for workspace, index in self._index.data.items()
-        }
+        data = {}
+        for workspace, data_index in self._index.data.items():
+            data_index.load()
+            data[workspace] = view(data_index, partial(key_filter, workspace))
+        return data
 
 
 if __name__ == "__main__":
