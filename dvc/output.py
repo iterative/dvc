@@ -377,8 +377,12 @@ class Output:
             name=self.hash_name,
             value=getattr(self.meta, self.hash_name, None),
         )
-        if self.hash_info and self.hash_info.isdir:
+        if self.meta.nfiles or self.hash_info and self.hash_info.isdir:
             self.meta.isdir = True
+            if not self.hash_info and self.hash_name != "md5":
+                md5 = getattr(self.meta, "md5", None)
+                if md5:
+                    self.hash_info = HashInfo("md5", md5)
 
     def _parse_path(self, fs, fs_path):
         parsed = urlparse(self.def_path)
