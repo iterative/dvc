@@ -8,7 +8,6 @@ from dvc.fs.dvc import DVCFileSystem
 from dvc.output import Output
 from dvc.repo import locked
 from dvc.repo.collect import StrPaths, collect
-from dvc.repo.live import summary_fs_path
 from dvc.scm import NoSCMError
 from dvc.utils import error_handler, errored_revisions, onerror_collect
 from dvc.utils.collections import ensure_list
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _is_metric(out: Output) -> bool:
-    return bool(out.metric) or bool(out.live)
+    return bool(out.metric)
 
 
 def _to_fs_paths(metrics: List[Output]) -> StrPaths:
@@ -26,10 +25,6 @@ def _to_fs_paths(metrics: List[Output]) -> StrPaths:
     for out in metrics:
         if out.metric:
             result.append(out.repo.dvcfs.from_os_path(out.fs_path))
-        elif out.live:
-            fs_path = summary_fs_path(out)
-            if fs_path:
-                result.append(out.repo.dvcfs.from_os_path(fs_path))
     return result
 
 

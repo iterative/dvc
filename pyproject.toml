@@ -101,7 +101,6 @@ tests = [
     # optional dependencies
     "dvclive>=1.0",
     "pywin32>=225; sys_platform == 'win32'",
-    "dvclive[image]>=0.7.3",
     "beautifulsoup4==4.11.1",
     # pylint requirements
     "pylint==2.15.5",

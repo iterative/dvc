@@ -87,7 +87,6 @@ def loadd_from(stage, d_list):
         plot = d.pop(Output.PARAM_PLOT, False)
         persist = d.pop(Output.PARAM_PERSIST, False)
         checkpoint = d.pop(Output.PARAM_CHECKPOINT, False)
-        live = d.pop(Output.PARAM_LIVE, False)
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
@@ -101,7 +100,6 @@ def loadd_from(stage, d_list):
                 plot=plot,
                 persist=persist,
                 checkpoint=checkpoint,
-                live=live,
                 remote=remote,
                 **annot,
                 files=files,
@@ -118,7 +116,6 @@ def loads_from(
     plot=False,
     persist=False,
     checkpoint=False,
-    live=False,
     remote=None,
 ):
     return [
@@ -131,7 +128,6 @@ def loads_from(
             plot=plot,
             persist=persist,
             checkpoint=checkpoint,
-            live=live,
             remote=remote,
         )
         for s in s_list
@@ -166,29 +162,21 @@ def load_from_pipeline(stage, data, typ="outs"):
         stage.PARAM_OUTS,
         stage.PARAM_METRICS,
         stage.PARAM_PLOTS,
-        stage.PARAM_LIVE,
     ):
         raise ValueError(f"'{typ}' key is not allowed for pipeline files.")
 
     metric = typ == stage.PARAM_METRICS
     plot = typ == stage.PARAM_PLOTS
-    live = typ == stage.PARAM_LIVE
-    if live:
-        # `live` is single object
-        data = [data]
 
     d = _merge_data(data)
 
     for path, flags in d.items():
-        plt_d, live_d = {}, {}
+        plt_d = {}
         if plot:
             from dvc.schema import PLOT_PROPS
 
             plt_d, flags = _split_dict(flags, keys=PLOT_PROPS.keys())
-        if live:
-            from dvc.schema import LIVE_PROPS
 
-            live_d, flags = _split_dict(flags, keys=LIVE_PROPS.keys())
         extra = project(
             flags,
             [
@@ -206,7 +194,6 @@ def load_from_pipeline(stage, data, typ="outs"):
             info={},
             plot=plt_d or plot,
             metric=metric,
-            live=live_d or live,
             **extra,
         )
 
@@ -263,9 +250,6 @@ class Output:
     PARAM_PLOT_TITLE = "title"
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
-    PARAM_LIVE = "live"
-    PARAM_LIVE_SUMMARY = "summary"
-    PARAM_LIVE_HTML = "html"
     PARAM_REMOTE = "remote"
 
     METRIC_SCHEMA = Any(
@@ -292,7 +276,6 @@ class Output:
         plot=False,
         persist=False,
         checkpoint=False,
-        live=False,
         desc=None,
         type=None,  # pylint: disable=redefined-builtin
         labels=None,
@@ -355,7 +338,6 @@ class Output:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
-        self.live = live
 
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj: Optional["HashFile"] = None
@@ -791,9 +773,6 @@ class Output:
             if self.checkpoint:
                 ret[self.PARAM_CHECKPOINT] = self.checkpoint
 
-            if self.live:
-                ret[self.PARAM_LIVE] = self.live
-
             if self.remote:
                 ret[self.PARAM_REMOTE] = self.remote
 
@@ -1195,11 +1174,11 @@ class Output:
 
     @property
     def is_metric(self) -> bool:
-        return bool(self.metric) or bool(self.live)
+        return bool(self.metric)
 
     @property
     def is_plot(self) -> bool:
-        return bool(self.plot) or bool(self.live)
+        return bool(self.plot)
 
 
 META_SCHEMA = {

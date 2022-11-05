@@ -266,7 +266,7 @@ class Plots:
 
 
 def _is_plot(out: "Output") -> bool:
-    return bool(out.plot) or bool(out.live)
+    return bool(out.plot)
 
 
 def _resolve_data_sources(plots_data: Dict):
@@ -562,7 +562,7 @@ def parse(fs, path, props=None, **kwargs):
 def _plot_props(out: "Output") -> Dict:
     from dvc.schema import PLOT_PROPS
 
-    if not (out.plot or out.live):
+    if not (out.plot):
         raise NotAPlotError(out)
     if isinstance(out.plot, list):
         raise DvcException("Multiple plots per data file not supported.")

@@ -72,12 +72,6 @@ def _get_stage_files(stage: "Stage") -> typing.Iterator[str]:
     for out in stage.outs:
         if not out.use_scm_ignore and out.is_in_repo:
             yield out.fs_path
-        if out.live:
-            from dvc.repo.live import summary_fs_path
-
-            summary = summary_fs_path(out)
-            if summary:
-                yield summary
 
 
 def _track_stage(stage: "Stage") -> None:
