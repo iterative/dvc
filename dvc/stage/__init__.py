@@ -280,22 +280,7 @@ class Stage(params.StageParams):
 
     def _read_env(self, out, checkpoint_func=None) -> Env:
         env: Env = {}
-        if out.live:
-            from dvc.env import DVCLIVE_HTML, DVCLIVE_PATH, DVCLIVE_SUMMARY
-            from dvc.output import Output
-            from dvc.schema import LIVE_PROPS
-
-            env[DVCLIVE_PATH] = relpath(out.fs_path, self.wdir)
-            if isinstance(out.live, dict):
-                config = project(out.live, LIVE_PROPS)
-
-                env[DVCLIVE_SUMMARY] = str(
-                    int(config.get(Output.PARAM_LIVE_SUMMARY, True))
-                )
-                env[DVCLIVE_HTML] = str(
-                    int(config.get(Output.PARAM_LIVE_HTML, True))
-                )
-        elif out.checkpoint and checkpoint_func:
+        if out.checkpoint and checkpoint_func:
             from dvc.env import DVC_CHECKPOINT
 
             env.update({DVC_CHECKPOINT: "1"})
@@ -379,7 +364,7 @@ class Stage(params.StageParams):
     def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if (out.persist or out.checkpoint or out.live) and not force:
+            if (out.persist or out.checkpoint) and not force:
                 out.unprotect()
                 continue
 

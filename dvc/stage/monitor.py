@@ -20,10 +20,6 @@ class CheckpointKilledError(StageCmdFailedError):
     pass
 
 
-class LiveKilledError(StageCmdFailedError):
-    pass
-
-
 @dataclass
 class MonitorTask:
     stage: "Stage"

@@ -269,7 +269,7 @@ class Repo:
         except SCMError:
             if self._uninitialized:
                 # might not be a git/dvc repo at all
-                # used in `params/metrics/plots/live` targets
+                # used in `params/metrics/plots` targets
                 return SCM(self.root_dir, no_scm=True)
             raise
 

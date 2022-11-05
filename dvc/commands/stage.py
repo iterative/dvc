@@ -239,26 +239,6 @@ def _add_common_args(parser):
         metavar="<path>",
     )
     parser.add_argument(
-        "--live", help="Declare output as dvclive.", metavar="<path>"
-    )
-    parser.add_argument(
-        "--live-no-cache",
-        help="Declare output as dvclive (do not put into DVC cache).",
-        metavar="<path>",
-    )
-    parser.add_argument(
-        "--live-no-summary",
-        action="store_true",
-        default=False,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--live-no-html",
-        action="store_true",
-        default=False,
-        help="Signal dvclive logger to not produce training report.",
-    )
-    parser.add_argument(
         "-w",
         "--wdir",
         help="Directory within your repo to run your command in.",
