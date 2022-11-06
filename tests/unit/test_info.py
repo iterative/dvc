@@ -54,7 +54,7 @@ def test_info_in_repo(scm_init, tmp_dir):
     assert re.search(rf"DVC version: {DVC_VERSION_REGEX}", dvc_info)
     assert re.search(f"Platform: {PYTHON_VERSION_REGEX} on .*", dvc_info)
     for subproject in SUBPROJECTS:
-        assert re.search(rf"{subproject} = {DVC_VERSION_REGEX}", dvc_info)
+        assert re.search(rf"{subproject} = .*", dvc_info)
 
     assert find_supported_remotes(dvc_info)
     assert re.search(r"Cache types: .*", dvc_info)
