@@ -1,10 +1,12 @@
 import logging
 import os
+import random
 from datetime import datetime
 from unittest.mock import ANY
 
 import pytest
 from funcy import first, get_in
+from scmrepo.exceptions import SCMError
 
 from dvc.cli import main
 from dvc.repo.experiments.executor.base import (
@@ -972,3 +974,122 @@ def test_show_sorted_deps(tmp_dir, dvc, scm, capsys):
     assert main(["exp", "show", "--csv"]) == 0
     cap = capsys.readouterr()
     assert "a,b,c,z" in cap.out
+
+
+@pytest.mark.vscode
+def test_show_queued_error(tmp_dir, scm, dvc, exp_stage, mocker):
+    baseline_rev = scm.get_rev()
+
+    dvc.experiments.run(
+        exp_stage.addressing, params=["foo=2"], queue=True, name="test_name"
+    )
+    exp_rev_2 = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
+    commit_2 = scm.resolve_commit(exp_rev_2)
+
+    dvc.experiments.run(exp_stage.addressing, params=["foo=3"], queue=True)
+    exp_rev_3 = dvc.experiments.scm.resolve_rev(f"{CELERY_STASH}@{{0}}")
+
+    def resolve_commit(rev):
+        if rev == exp_rev_3:
+            raise SCMError
+        else:
+            return commit_2
+
+    mocker.patch.object(
+        scm,
+        "resolve_commit",
+        side_effect=mocker.MagicMock(side_effect=resolve_commit),
+    )
+
+    results = dvc.experiments.show()[baseline_rev]
+    assert len(results) == 2
+    exp_2 = results[exp_rev_2]["data"]
+    assert exp_2["status"] == "Queued"
+    assert exp_2["params"]["params.yaml"] == {"data": {"foo": 2}}
+
+
+@pytest.mark.vscode
+def test_show_completed_error(tmp_dir, scm, dvc, exp_stage, mocker):
+    baseline_rev = scm.get_rev()
+
+    result_2 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp_rev_2 = first(result_2)
+    commit_2 = scm.resolve_commit(exp_rev_2)
+    result_3 = dvc.experiments.run(exp_stage.addressing, params=["foo=3"])
+    exp_rev_3 = first(result_3)
+
+    def resolve_commit(rev):
+        if rev == exp_rev_3:
+            raise SCMError
+        else:
+            return commit_2
+
+    mocker.patch.object(
+        scm,
+        "resolve_commit",
+        side_effect=mocker.MagicMock(side_effect=resolve_commit),
+    )
+    experiments = dvc.experiments.show()[baseline_rev]
+    assert len(experiments) == 2
+    assert exp_rev_2 in experiments
+
+
+@pytest.mark.vscode
+def test_show_checkpoint_error(tmp_dir, scm, dvc, checkpoint_stage, mocker):
+    baseline_rev = scm.get_rev()
+    results = dvc.experiments.run(
+        checkpoint_stage.addressing, params=["foo=2"]
+    )
+    exp_rev = first(results)
+    exp_ref = str(first(exp_refs_by_rev(scm, exp_rev)))
+
+    results = dvc.experiments.show()[baseline_rev]
+    assert len(results) == checkpoint_stage.iterations + 1
+
+    checkpoints = {}
+    for rev in results:
+        if rev != "baseline":
+            checkpoints[rev] = scm.resolve_commit(rev)
+    checkpoints[exp_ref] = scm.resolve_commit(exp_ref)
+    checkpoints[baseline_rev] = scm.resolve_commit(baseline_rev)
+
+    failed_rev = random.choice(list(checkpoints.keys()))
+
+    def resolve_commit(rev):
+        if rev == failed_rev:
+            raise SCMError
+        return checkpoints[rev]
+
+    mocker.patch.object(
+        scm,
+        "resolve_commit",
+        side_effect=mocker.MagicMock(side_effect=resolve_commit),
+    )
+    results = dvc.experiments.show()[baseline_rev]
+    assert len(results) == 1
+
+
+@pytest.mark.vscode
+def test_show_baseline_error(tmp_dir, scm, dvc, exp_stage, mocker):
+    baseline_rev = scm.get_rev()
+    branch = scm.active_branch()
+
+    result_2 = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
+    exp_rev_2 = first(result_2)
+    commit_2 = scm.resolve_commit(exp_rev_2)
+
+    def resolve_commit(rev):
+        if rev == baseline_rev:
+            raise SCMError
+        else:
+            return commit_2
+
+    mocker.patch.object(
+        scm,
+        "resolve_commit",
+        side_effect=mocker.MagicMock(side_effect=resolve_commit),
+    )
+    experiments = dvc.experiments.show()[baseline_rev]
+    assert len(experiments) == 1
+    assert experiments["baseline"]["data"] == {"name": branch}
+    assert isinstance(experiments["baseline"]["error"], SCMError)
