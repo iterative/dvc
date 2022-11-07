@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Dict
 
+from scmrepo.exceptions import SCMError
+
 from ..executor.base import ExecutorInfo, TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,7 @@ def fetch_running_exp_from_temp_dir(
                     result[rev]["last"] = last_rev
                     if last_rev:
                         result[last_rev] = info.asdict()
-            except InvalidRemoteSCMRepo:
+            except (InvalidRemoteSCMRepo, SCMError):
                 # ignore stale info files
                 del result[rev]
     return result
