@@ -104,7 +104,7 @@ jobs:
         password: ${{ secrets.PYPI_TOKEN }}
 
     - name: Publish to Test PyPI
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      if: ${{ github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.TEST_PYPI_TOKEN }}
