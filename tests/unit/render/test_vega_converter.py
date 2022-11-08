@@ -127,6 +127,7 @@ def test_finding_lists(dictionary, expected_result):
                         "field": "v",
                     },
                     "dvc_inferred_y_value": 1,
+                    "v": 1,
                     "v2": 0.1,
                     "step": 0,
                 },
@@ -137,6 +138,7 @@ def test_finding_lists(dictionary, expected_result):
                         "field": "v",
                     },
                     "dvc_inferred_y_value": 2,
+                    "v": 2,
                     "v2": 0.2,
                     "step": 1,
                 },
@@ -147,6 +149,7 @@ def test_finding_lists(dictionary, expected_result):
                         "field": "v2",
                     },
                     "dvc_inferred_y_value": 0.1,
+                    "v2": 0.1,
                     "v": 1,
                     "step": 0,
                 },
@@ -157,6 +160,7 @@ def test_finding_lists(dictionary, expected_result):
                         "field": "v2",
                     },
                     "v": 2,
+                    "v2": 0.2,
                     "dvc_inferred_y_value": 0.2,
                     "step": 1,
                 },
@@ -181,6 +185,7 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "dvc_inferred_y_value": 1,
                     "z": 3,
+                    "v": 1,
                     "step": 0,
                     VERSION_FIELD: {
                         "revision": "r",
@@ -192,6 +197,7 @@ def test_finding_lists(dictionary, expected_result):
                     "dvc_inferred_y_value": 2,
                     "z": 4,
                     "step": 1,
+                    "v": 2,
                     VERSION_FIELD: {
                         "revision": "r",
                         "filename": "f",
@@ -201,6 +207,7 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "dvc_inferred_y_value": 3,
                     "v": 1,
+                    "z": 3,
                     "step": 0,
                     VERSION_FIELD: {
                         "revision": "r",
@@ -211,6 +218,7 @@ def test_finding_lists(dictionary, expected_result):
                 {
                     "dvc_inferred_y_value": 4,
                     "v": 2,
+                    "z": 4,
                     "step": 1,
                     VERSION_FIELD: {
                         "revision": "r",

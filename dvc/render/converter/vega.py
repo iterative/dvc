@@ -1,6 +1,7 @@
+from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
-from funcy import first, group_values, last
+from funcy import first, last
 
 from dvc.exceptions import DvcException
 from dvc.render import FILENAME_FIELD, INDEX_FIELD, VERSION_FIELD
@@ -50,7 +51,7 @@ def _find(
     return None
 
 
-def _verify_field(file2datapoints: List, filename: str, field: str):
+def _verify_field(file2datapoints: Dict[str, List], filename: str, field: str):
     if filename in file2datapoints:
         datapoint = first(file2datapoints[filename])
         if field not in datapoint:
@@ -75,32 +76,25 @@ def _get_ys(properties, file2datapoints: Dict[str, List[Dict]]):
             yield filename, field
 
 
-def _is_datapoints(lst: List):
-    # check if dict keys match, datapoints with different keys mgiht lead
-    # to unexpected behavior
+def _is_datapoints(lst: List[Dict]):
+    """
+    check if dict keys match, datapoints with different keys mgiht lead
+    to unexpected behavior
+    """
+
     return all(isinstance(item, dict) for item in lst) and set(
         first(lst).keys()
     ) == {key for keys in lst for key in keys}
 
 
 def get_datapoints(file_content: Dict):
-    # TODO optimize
-    data_series = {}
+    result: List[Dict[str, Any]] = []
     for lst in _lists(file_content):
         if _is_datapoints(lst):
-            data_series.update(
-                group_values(
-                    (key, value)
-                    for datapoint in lst
-                    for key, value in datapoint.items()
-                )
-            )
-    result = []
-    for field, data in data_series.items():
-        for index, value in enumerate(data):
-            if len(result) <= index:
-                result.append({})
-            result[index][field] = value
+            for index, datapoint in enumerate(lst):
+                if len(result) <= index:
+                    result.append({})
+                result[index].update(datapoint)
     return result
 
 
@@ -213,62 +207,65 @@ class VegaConverter(Converter):
 
         ys = list(_get_ys(properties, file2datapoints))
 
-        dps = []
+        all_datapoints = []
         all_y_fields = {y_field for _, y_field in ys}
+
+        # override to unified y field name if there are different y fields
+        if len(all_y_fields) > 1:
+            props_update["y"] = "dvc_inferred_y_value"
+            if "y_label" not in properties:
+                props_update["y_label"] = "y"
+        else:
+            props_update["y"] = first(all_y_fields)
+
         for y_file, y_field in ys:
-            y_value_name = y_field
+            datapoints = deepcopy(file2datapoints.get(y_file, []))
 
-            # override to unified y field name if there are multiple y fields
-            y_value_name = None
-            if len(all_y_fields) > 1:
-                y_value_name = "dvc_inferred_y_value"
-                props_update["y"] = "dvc_inferred_y_value"
-                if "y_label" not in properties:
-                    props_update["y_label"] = "y"
-            else:
-                props_update["y"] = y_field
-
-            try:
-                for index, datapoint in enumerate(
-                    file2datapoints.get(y_file, [])
-                ):
-                    tmp = {**datapoint}
-                    if y_value_name:
-                        tmp[y_value_name] = datapoint[y_field]
-                        del tmp[y_field]
-                    # TODO
-                    if x_field == INDEX_FIELD and x_file is None:
-                        tmp[x_field] = index
-                    else:
-                        # TODO what if there is no x data?
-                        tmp[x_field] = file2datapoints.get(x_file, [])[index][
-                            x_field
-                        ]
-                    tmp.update(
-                        {
-                            VERSION_FIELD: {
-                                "revision": revision,
-                                FILENAME_FIELD: y_file,
-                                "field": y_field,
-                            }
-                        }
-                    )
-                    dps.append(tmp)
-            # TODO better handling
-            except IndexError:
-                raise DvcException(
-                    f"Number of values in '{x_field}' field from '{x_file}' "
-                    f"and '{y_field}' from '{y_file}' columns do not match."
+            if props_update.get("y", None) == "dvc_inferred_y_value":
+                _update_from_field(
+                    datapoints,
+                    field="dvc_inferred_y_value",
+                    source_field=y_field,
                 )
 
-        if not dps:
+            if x_field == INDEX_FIELD and x_file is None:
+                _update_from_index(datapoints, INDEX_FIELD)
+            else:
+                x_datapoints = file2datapoints.get(x_file, [])
+                try:
+                    _update_from_field(
+                        datapoints,
+                        field=x_field,
+                        source_datapoints=x_datapoints,
+                    )
+                except IndexError:
+                    raise DvcException(
+                        f"Cannot join '{x_field}' from '{x_file}' and "
+                        "'{y_field}' from '{y_file}'. "
+                        "They have to have same length."
+                    )
+
+            _update_all(
+                datapoints,
+                update_dict={
+                    VERSION_FIELD: {
+                        "revision": revision,
+                        FILENAME_FIELD: y_file,
+                        "field": y_field,
+                    }
+                },
+            )
+
+            all_datapoints.extend(datapoints)
+
+        if not all_datapoints:
             return [], {}
 
         properties = {**properties, **props_update}
         properties["y_label"] = self.infer_y_label(properties)
         properties["x_label"] = self.infer_x_label(properties)
 
-        return dps, properties
+        return all_datapoints, properties
 
     def convert(
         self,
@@ -283,3 +280,36 @@ class VegaConverter(Converter):
             **self.properties,
             **self.inferred_properties,
         }
+
+
+def _update_from_field(
+    target_datapoints: List[Dict],
+    field: str,
+    source_datapoints: List[Dict] = None,
+    source_field: str = None,
+):
+    if source_datapoints is None:
+        source_datapoints = target_datapoints
+    if source_field is None:
+        source_field = field
+
+    if len(source_datapoints) != len(target_datapoints):
+        raise IndexError(
+            "Source and target datapoints must have the same length"
+        )
+
+    for index, datapoint in enumerate(target_datapoints):
+        source_datapoint = source_datapoints[index]
+        if source_field in source_datapoint:
+            datapoint[field] = source_datapoint[source_field]
+
+
+def _update_from_index(datapoints: List[Dict], new_field: str):
+    for index, datapoint in enumerate(datapoints):
+        datapoint[new_field] = index
+
+
+def _update_all(datapoints: List[Dict], update_dict: Dict):
+
+    for datapoint in datapoints:
+        datapoint.update(update_dict)
