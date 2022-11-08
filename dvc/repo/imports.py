@@ -44,7 +44,7 @@ def unfetched_view(
 
         return True
 
-    unfetched = index.targets_view(targets, filter_fn=need_fetch, **kwargs)
+    unfetched = index.targets_view(targets, stage_filter=need_fetch, **kwargs)
     return unfetched, changed_deps
 
 
@@ -53,7 +53,7 @@ def partial_view(
 ) -> "IndexView":
     return index.targets_view(
         targets,
-        filter_fn=lambda s: s.is_partial_import,
+        stage_filter=lambda s: s.is_partial_import,
         **kwargs,
     )
 
