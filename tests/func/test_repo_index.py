@@ -305,6 +305,29 @@ def test_getitem(tmp_dir, dvc, run_copy):
         _ = index["no-valid-stage-name"]
 
 
+def test_view_granular_dir(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.dvc_gen(
+        {"dir": {"subdir": {"in-subdir": "in-subdir"}, "in-dir": "in-dir"}},
+        commit="init",
+    )
+    index = Index(dvc)
+
+    # view should include the specific target, parent dirs, and children
+    # view should exclude any siblings of the target
+    view = index.targets_view("dir/subdir")
+    data_index = view.data["repo"]
+    assert ("dir",) in data_index
+    assert (
+        "dir",
+        "subdir",
+    ) in data_index
+    assert ("dir", "subdir", "in-subdir") in data_index
+    assert (
+        "dir",
+        "in-dir",
+    ) not in data_index
+
+
 def test_view_stage_filter(tmp_dir, scm, dvc, run_copy):
     (stage1,) = tmp_dir.dvc_gen("foo", "foo")
     stage2 = run_copy("foo", "bar", name="copy-foo-bar")

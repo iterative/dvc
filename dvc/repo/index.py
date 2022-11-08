@@ -7,8 +7,10 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    NamedTuple,
     Optional,
     Set,
+    Tuple,
 )
 
 from funcy import cached_property, nullcontext
@@ -348,6 +350,11 @@ class Index:
         return dict_md5(self.dumpd())
 
 
+class _DataPrefixes(NamedTuple):
+    explicit: Set["DataIndexKey"]
+    recursive: Set["DataIndexKey"]
+
+
 class IndexView:
     """Read-only view of Index.data using filtered stages."""
 
@@ -391,33 +398,32 @@ class IndexView:
             yield from stage.deps
 
     @property
-    def outs(self) -> Iterator["Output"]:
-        outs = set()
+    def _filtered_outs(self) -> Iterator[Tuple["Output", Optional[str]]]:
         for stage, filter_info in self._stage_infos:
             for out in stage.filter_outs(filter_info):
                 if not self._outs_filter or self._outs_filter(out):
-                    outs.add(out)
-        yield from outs
+                    yield out, filter_info
+
+    @property
+    def outs(self) -> Iterator["Output"]:
+        yield from {out for (out, _) in self._filtered_outs}
 
     @cached_property
-    def _data_prefixes(self) -> Dict[str, Set["DataIndexKey"]]:
+    def _data_prefixes(self) -> Dict[str, "_DataPrefixes"]:
         from collections import defaultdict
 
-        prefixes: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
-        for stage, filter_info in self._stage_infos:
-            for out in stage.filter_outs(filter_info):
-                if self._outs_filter and not self._outs_filter(out):
-                    continue
-                workspace, key = out.index_key
-                if filter_info and out.fs.path.isin(filter_info, out.fs_path):
-                    key = (
-                        *key,
-                        out.fs.path.relparts(filter_info, out.fs_path),
-                    )
-                prefixes[workspace].add(key)
-                prefixes[workspace].update(
-                    key[:i] for i in range(len(key), 0, -1)
-                )
+        prefixes: Dict[str, "_DataPrefixes"] = defaultdict(
+            lambda: _DataPrefixes(set(), set())
+        )
+        for out, filter_info in self._filtered_outs:
+            workspace, key = out.index_key
+            if filter_info and out.fs.path.isin(filter_info, out.fs_path):
+                key = key + out.fs.path.relparts(filter_info, out.fs_path)
+            if out.meta.isdir:
+                prefixes[workspace].recursive.add(key)
+            prefixes[workspace].explicit.update(
+                key[:i] for i in range(len(key), 0, -1)
+            )
         return prefixes
 
     @cached_property
@@ -428,9 +434,10 @@ class IndexView:
 
         def key_filter(workspace: str, key: "DataIndexKey"):
             try:
-                return key in self._data_prefixes[workspace] or any(
+                prefixes = self._data_prefixes[workspace]
+                return key in prefixes.explicit or any(
                     key[: len(prefix)] == prefix
-                    for prefix in self._data_prefixes[workspace]
+                    for prefix in prefixes.recursive
                 )
             except KeyError:
                 return False
