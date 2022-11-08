@@ -151,24 +151,34 @@ class Index:
     def targets_view(
         self,
         targets: "TargetType",
-        filter_fn: Optional[Callable[["Stage"], bool]] = None,
+        stage_filter: Optional[Callable[["Stage"], bool]] = None,
+        outs_filter: Optional[Callable[["Output"], bool]] = None,
         **kwargs: Any,
     ) -> "IndexView":
         """Return read-only view of index for the specified targets.
 
         Args:
             targets: Targets to collect
-            filter_fn: Optional stage filter to be applied after collecting
+            stage_filter: Optional stage filter to be applied after collecting
+                targets.
+            outs_filter: Optional output filter to be applied after collecting
                 targets.
 
         Additional kwargs will be passed into the stage collector.
+
+        Note:
+            If both stage_filter and outs_filter are provided, stage_filter
+            will be applied first, and the resulting view will only contain
+            outputs from stages that matched stage_filter. Outputs from stages
+            that did not match will be excluded from the view (whether or not
+            the output would have matched outs_filter).
         """
         stage_infos = [
             stage_info
             for stage_info in self._collect_targets(targets, **kwargs)
-            if not filter_fn or filter_fn(stage_info.stage)
+            if not stage_filter or stage_filter(stage_info.stage)
         ]
-        return IndexView(self, stage_infos)
+        return IndexView(self, stage_infos, outs_filter=outs_filter)
 
     @property
     def outs(self) -> Iterator["Output"]:
@@ -342,13 +352,17 @@ class IndexView:
     """Read-only view of Index.data using filtered stages."""
 
     def __init__(  # pylint: disable=redefined-outer-name
-        self, index: Index, stage_infos: Iterable["StageInfo"]
+        self,
+        index: Index,
+        stage_infos: Iterable["StageInfo"],
+        outs_filter: Optional[Callable[["Output"], bool]],
     ):
         self._index = index
         self._stage_infos = stage_infos
         # NOTE: stage_infos might have the same stage multiple times but with
         # different filter_info
         self._stages = list({stage for stage, _ in stage_infos})
+        self._outs_filter = outs_filter
 
     def __len__(self) -> int:
         return len(self._stages)
@@ -381,7 +395,8 @@ class IndexView:
         outs = set()
         for stage, filter_info in self._stage_infos:
             for out in stage.filter_outs(filter_info):
-                outs.add(out)
+                if not self._outs_filter or self._outs_filter(out):
+                    outs.add(out)
         yield from outs
 
     @cached_property
@@ -391,6 +406,8 @@ class IndexView:
         prefixes: Dict[str, Set["DataIndexKey"]] = defaultdict(set)
         for stage, filter_info in self._stage_infos:
             for out in stage.filter_outs(filter_info):
+                if self._outs_filter and not self._outs_filter(out):
+                    continue
                 workspace, key = out.index_key
                 if filter_info and out.fs.path.isin(filter_info, out.fs_path):
                     key = (
