@@ -248,8 +248,7 @@ def get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
                 rev = baseline
                 if rev == "workspace":
                     continue
-                name = names.get(rev, None)
-            name = name or exact_name[rev]
+            name = names.get(rev, None) or exact_name[rev]
             if name:
                 rev_result["data"]["name"] = name
 
