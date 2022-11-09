@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest]
         pyv: ["3.8", "3.9", "3.10", "3.11"]
         pytest-filter:
         - "import or plot or live or experiment"
