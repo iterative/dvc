@@ -553,7 +553,7 @@ def parse(fs, path, props=None, **kwargs):
         return _load_sv(path=path, fs=fs, delimiter="\t", header=header)
     if extension in LOADERS or extension in (".yml", ".yaml"):
         return LOADERS[extension](path=path, fs=fs)
-    if extension in (".jpeg", ".jpg", ".gif", ".png"):
+    if extension in (".jpeg", ".jpg", ".gif", ".png", ".svg"):
         with fs.open(path, "rb") as fd:
             return fd.read()
     raise PlotMetricTypeError(path)
