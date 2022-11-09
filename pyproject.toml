@@ -52,7 +52,7 @@ dependencies = [
     "typing-extensions>=3.7.4",
     "scmrepo==0.1.3",
     "dvc-render==0.0.12",
-    "dvc-task==0.1.4",
+    "dvc-task==0.1.5",
     "dvclive>=1.0",
     "dvc-data==0.25.3",
     "dvc-http==2.27.2",
