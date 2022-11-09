@@ -257,16 +257,21 @@ def test_log_errors(
     )
 
 
-def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template):
-    with open("image.jpg", "wb") as fd:
+@pytest.mark.parametrize("ext", ["jpg", "svg"])
+def test_plots_binary(
+    tmp_dir, scm, dvc, run_copy_metrics, custom_template, ext
+):
+    file1 = f"image.{ext}"
+    file2 = f"plot.{ext}"
+    with open(file1, "wb") as fd:
         fd.write(b"content")
 
-    dvc.add(["image.jpg"])
+    dvc.add([file1])
     run_copy_metrics(
-        "image.jpg",
-        "plot.jpg",
+        file1,
+        file2,
         commit="run training",
-        plots=["plot.jpg"],
+        plots=[file2],
         name="s2",
         single_stage=False,
     )
@@ -276,12 +281,12 @@ def test_plots_binary(tmp_dir, scm, dvc, run_copy_metrics, custom_template):
 
     scm.tag("v1")
 
-    with open("plot.jpg", "wb") as fd:
+    with open(file2, "wb") as fd:
         fd.write(b"content2")
 
     result = dvc.plots.show(revs=["v1", "workspace"])
-    assert get_plot(result, "v1", file="plot.jpg") == b"content"
-    assert get_plot(result, "workspace", file="plot.jpg") == b"content2"
+    assert get_plot(result, "v1", file=file2) == b"content"
+    assert get_plot(result, "workspace", file=file2) == b"content2"
 
 
 def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
