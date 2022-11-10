@@ -113,6 +113,8 @@ class VegaConverter(Converter):
         self.plot_id = plot_id
         self.inferred_properties: Dict = {}
 
+        # TODO we should be handling that in `convert`,
+        #      to avoid stateful `self.inferred_properties`
         self._infer_x_y()
 
     def _infer_y_from_data(self):
@@ -179,12 +181,8 @@ class VegaConverter(Converter):
                 fields = {field for _, field in _file_field(x)}
                 if len(fields) == 1:
                     x_label = first(fields)
-                else:
-                    x_label = "x"
-            elif isinstance(x, list):
-                x_label = "x"
-            elif isinstance(x, str):
-                x_label = x
+            else:
+                x_label = INDEX_FIELD
         return x_label
 
     def flat_datapoints(self, revision):
@@ -213,8 +211,6 @@ class VegaConverter(Converter):
         # override to unified y field name if there are different y fields
         if len(all_y_fields) > 1:
             props_update["y"] = "dvc_inferred_y_value"
-            if "y_label" not in properties:
-                props_update["y_label"] = "y"
         else:
             props_update["y"] = first(all_y_fields)
 
@@ -262,8 +258,6 @@ class VegaConverter(Converter):
             return [], {}
 
         properties = {**properties, **props_update}
-        properties["y_label"] = self.infer_y_label(properties)
-        properties["x_label"] = self.infer_x_label(properties)
 
         return all_datapoints, properties
 
@@ -273,13 +267,18 @@ class VegaConverter(Converter):
         """
         Convert the data. Fill necessary fields ('x', 'y') and return both
         generated datapoints and updated properties.
+
+        NOTE: Studio uses this method.
+              The only thing studio FE handles is filling `x` and `y`.
+              `x/y_label` should be filled here.
         """
         datapoints = self._find_datapoints()
+        properties = {**self.properties, **self.inferred_properties}
 
-        return datapoints, {
-            **self.properties,
-            **self.inferred_properties,
-        }
+        properties["y_label"] = self.infer_y_label(properties)
+        properties["x_label"] = self.infer_x_label(properties)
+
+        return datapoints, properties
 
 
 def _update_from_field(
