@@ -8,8 +8,10 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -24,6 +26,7 @@ from dvc.utils import error_handler, onerror_collect, relpath
 from .refs import ExpRefInfo
 
 if TYPE_CHECKING:
+    from scmrepo.git import Git
     from scmrepo.git.objects import GitCommit
 
     from dvc.repo import Repo
@@ -134,6 +137,7 @@ def _collect_complete_experiment(
 
     checkpoint: bool = True if len(revs) > 1 else False
     prev = ""
+
     for rev in revs:
         status = ExpStatus.Running if rev in running else ExpStatus.Success
         collected_exp = collect_experiment_commit(
@@ -215,41 +219,55 @@ def _collect_branch(
     return results
 
 
-def get_names(repo: "Repo", result: Dict[str, Dict[str, Any]]):
+def get_branch_names(
+    scm: "Git", baseline_set: Iterable[str]
+) -> Dict[str, Optional[str]]:
+    names: Dict[str, Optional[str]] = {}
+    for base in [
+        f"refs/exps/{baseline[:2]}/{baseline[2:]}/"
+        for baseline in baseline_set
+    ] + ["refs/heads/", "refs/tags/"]:
+        for ref in scm.iter_refs(base=base):
+            if ref:
+                try:
+                    rev = scm.get_ref(ref)
+                    names[rev] = ref[len(base) :]
+                except KeyError:
+                    logger.debug("unreosolved ref %s", ref)
+    logger.debug("found refs for revs: %s", names)
+    return names
+
+
+def update_names(
+    repo: "Repo",
+    branch_names: Dict[str, Optional[str]],
+    result: Dict[str, Dict[str, Any]],
+):
 
     rev_set = set()
-    baseline_set = set()
     for baseline in result:
         for rev in result[baseline]:
             if rev == "baseline":
                 rev = baseline
-                baseline_set.add(rev)
             if rev != "workspace":
                 rev_set.add(rev)
 
-    names: Dict[str, Optional[str]] = {}
-    for base in ("refs/tags/", "refs/heads/"):
-        if rev_set:
-            names.update(
-                (rev, ref[len(base) :])
-                for rev, ref in repo.scm.describe(
-                    baseline_set, base=base
-                ).items()
-                if ref is not None
-            )
-            rev_set.difference_update(names.keys())
+    if rev_set:
+        rev_set.difference_update(branch_names.keys())
 
     exact_name = repo.experiments.get_exact_name(rev_set)
 
     for baseline, baseline_results in result.items():
+        name_set: Set[str] = set()
         for rev, rev_result in baseline_results.items():
             name: Optional[str] = None
             if rev == "baseline":
                 rev = baseline
                 if rev == "workspace":
                     continue
-            name = names.get(rev, None) or exact_name[rev]
-            if name:
+            name = branch_names.get(rev, None) or exact_name[rev]
+            if name and name not in name_set:
+                name_set.add(name)
                 rev_result["data"]["name"] = name
 
 
@@ -336,6 +354,40 @@ def update_new(
             to_dict[baseline][rev] = to_dict[baseline].get(rev, experiment)
 
 
+def move_properties_to_head(result: Dict[str, Dict[str, Dict[str, Any]]]):
+    for _, baseline_results in result.items():
+        checkpoint: bool = False
+        head: Dict[str, Any] = {}
+        for rev, rev_data in baseline_results.items():
+            if (
+                "data" not in rev_data
+                or rev_data["data"].get("checkpoint_tip", None) is None
+            ):
+                checkpoint = False
+                head = {}
+                continue
+
+            rev_result: Dict[str, Any] = rev_data["data"]
+            if (
+                checkpoint is True
+                and rev_result["checkpoint_tip"] == head["checkpoint_tip"]
+            ):
+                if "name" in rev_result and "name" not in head:
+                    head["name"] = rev_result["name"]
+                    del rev_result["name"]
+                if rev_result["executor"]:
+                    if not head["executor"]:
+                        head["executor"] = rev_result["executor"]
+                    rev_result["executor"] = None
+                if rev_result["status"] == ExpStatus.Running.name:
+                    head["status"] = ExpStatus.Running.name
+                    rev_result["status"] = ExpStatus.Success.name
+            else:
+                if rev_result["checkpoint_tip"] == rev:
+                    head = rev_result
+                    checkpoint = True
+
+
 def show(
     repo: "Repo",
     all_branches=False,
@@ -354,8 +406,7 @@ def show(
     if repo.scm.no_commits:
         return {}
 
-    if onerror is None:
-        onerror = _show_onerror_collect
+    onerror = onerror or _show_onerror_collect
 
     res: Dict[str, Dict] = defaultdict(OrderedDict)
 
@@ -368,6 +419,7 @@ def show(
     found_revs.update(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
+    branch_names = get_branch_names(repo.scm, found_revs)
 
     running: Dict[str, Dict] = repo.experiments.get_running_exps(
         fetch_refs=fetch_running
@@ -421,6 +473,8 @@ def show(
     update_new(res, queued_experiment)
 
     if not sha_only:
-        get_names(repo, res)
+        update_names(repo, branch_names, res)
+
+    move_properties_to_head(res)
 
     return res

@@ -41,7 +41,7 @@ def fetch_running_exp_from_temp_dir(
         if info.git_url and fetch_refs and info.status > TaskStatus.PREPARING:
 
             def on_diverged(_ref: str, _checkpoint: bool):
-                return False
+                return True
 
             executor = TempDirExecutor.from_info(info)
             try:
