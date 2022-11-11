@@ -77,9 +77,8 @@ class TempDirQueue(WorkspaceQueue):
         for stash_rev in self.proc:
             infofile = self.get_infofile_path(stash_rev)
             executor_info = ExecutorInfo.load_json(infofile)
-            if (
-                not executor_info.status <= TaskStatus.SUCCESS
-                and os.path.exists(executor_info.root_dir)
+            if executor_info.status <= TaskStatus.SUCCESS and os.path.exists(
+                executor_info.root_dir
             ):
                 yield QueueEntry(
                     self.repo.root_dir,
