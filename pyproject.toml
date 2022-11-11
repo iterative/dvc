@@ -201,6 +201,7 @@ show_traceback = true
 pretty = true
 # See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports.
 ignore_missing_imports = true
+implicit_optional = true
 check_untyped_defs = false
 # Warnings
 warn_no_return = true
