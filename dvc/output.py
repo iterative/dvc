@@ -526,7 +526,7 @@ class Output:
             entry.path = dep.fs_path
             entry.meta = dep.meta
             if not entry.obj:
-                if not dep.obj:
+                if not dep.obj and dep.files:
                     dep.obj = dep.get_obj()
                 entry.obj = dep.obj
         return entry
