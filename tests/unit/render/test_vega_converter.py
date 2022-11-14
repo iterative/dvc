@@ -25,6 +25,21 @@ def test_find_first_list_in_dict():
         _find_first_list(dmetric, fields={"foo"})
 
 
+def test_find_first_list_in_dict_transposed():
+    m1 = {"accuracy": [1, 3], "loss": [2, 4]}
+    m2 = {"x": [1, 2]}
+    dmetric = OrderedDict([("t1", m1), ("t2", m2)])
+
+    m1_transposed = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
+    m2_transposed = [{"x": 1}, {"x": 2}]
+
+    assert _find_first_list(dmetric, fields=set()) == m1_transposed
+    assert _find_first_list(dmetric, fields={"x"}) == m2_transposed
+
+    with pytest.raises(PlotDataStructureError):
+        _find_first_list(dmetric, fields={"foo"})
+
+
 def test_filter_fields():
     m = [{"accuracy": 1, "loss": 2}, {"accuracy": 3, "loss": 4}]
 

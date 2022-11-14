@@ -59,6 +59,15 @@ def _lists(dictionary: Dict):
             yield value
 
 
+def _dicts(dictionary: Dict):
+    """Walk through a dictionary and yield all dicts to be able to extract
+    nested dicts."""
+    yield dictionary
+    for _, value in dictionary.items():
+        if isinstance(value, dict):
+            yield from _dicts(value)
+
+
 def _find_first_list(
     data: Union[Dict, List], fields: Set, **kwargs
 ) -> List[Dict]:
@@ -66,6 +75,35 @@ def _find_first_list(
 
     if not isinstance(data, dict):
         return data
+
+    # Check whether to transpose the data. Otherwise, we assume that the
+    # data is stored as list of dicts. Transposed data is when we have a
+    # dict with fields as keys and the values are lists of numerals.
+    for dt in _dicts(data):
+        matched_fields = set(dt.keys())
+        if not fields <= matched_fields:
+            continue
+        # If fields is non-empty, we check only the fields we care for.
+        # In that case, we check that all fields are there.
+        if fields:
+            matched_fields = fields
+
+        if (
+            # Check that all fields are lists.
+            all(isinstance(dt.get(field), list) for field in matched_fields)
+            # Check that all list elements are numerals.
+            and all(
+                all(isinstance(x, (int, float)) for x in dt.get(field))
+                for field in matched_fields
+            )
+            # Check that all lists for the fields have the same length.
+            and len({len(dt.get(field)) for field in matched_fields}) == 1
+        ):
+            # Transpose the data for fields.
+            return [
+                {field: dt[field][i] for field in matched_fields}
+                for i in range(len(dt[first(matched_fields)]))
+            ]
 
     for lst in _lists(data):
         if (
