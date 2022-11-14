@@ -12,6 +12,7 @@ from typing import (
     Optional,
     Tuple,
     TypedDict,
+    Union,
     cast,
 )
 
@@ -19,10 +20,9 @@ from dvc.fs.git import GitFileSystem
 from dvc.ui import ui
 
 if TYPE_CHECKING:
-    from scmrepo.base import Base
-
     from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.scm import Git, NoSCM
     from dvc_data.hashfile.db import HashFileDB
     from dvc_data.hashfile.hash_info import HashInfo
     from dvc_data.hashfile.obj import HashFile
@@ -140,7 +140,9 @@ class GitInfo(TypedDict, total=False):
     is_dirty: bool
 
 
-def _git_info(scm: "Base", untracked_files: str = "all") -> GitInfo:
+def _git_info(
+    scm: Union["Git", "NoSCM"], untracked_files: str = "all"
+) -> GitInfo:
     from scmrepo.exceptions import SCMError
 
     from dvc.scm import NoSCM
