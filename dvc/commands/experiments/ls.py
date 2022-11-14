@@ -18,15 +18,13 @@ class CmdExperimentsList(CmdBase):
         )
         tags = self.repo.scm.describe(exps)
         remained = {baseline for baseline, tag in tags.items() if tag is None}
-        base = "refs/heads/"
+        base = "refs/heads"
         ref_heads = self.repo.scm.describe(remained, base=base)
 
         for baseline in exps:
-            name = (
-                tags[baseline]
-                or ref_heads[baseline][len(base) :]
-                or baseline[:7]
-            )
+            name = baseline[:7]
+            if tags[baseline] or ref_heads[baseline]:
+                name = tags[baseline] or ref_heads[baseline][len(base) + 1 :]
             if not name_only:
                 print(f"{name}:")
             for exp_name in exps[baseline]:
