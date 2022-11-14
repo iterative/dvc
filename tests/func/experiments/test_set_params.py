@@ -144,5 +144,18 @@ def test_hydra_sweep(
 
 
 def test_hydra_sweep_requires_queue(params_repo, dvc):
-    with pytest.raises(InvalidArgumentError):
+    with pytest.raises(
+        InvalidArgumentError,
+        match="Sweep overrides can't be used without `--queue`",
+    ):
         dvc.experiments.run(params=["db=mysql,postgresql"])
+
+
+def test_hydra_sweep_cant_use_name(tmp_dir, params_repo, dvc):
+    with pytest.raises(
+        InvalidArgumentError,
+        match="Sweep overrides can't be used alongside `--name`",
+    ):
+        dvc.experiments.run(
+            params=["db=mysql,postgresql"], queue=True, name="foo"
+        )
