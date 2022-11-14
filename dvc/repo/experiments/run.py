@@ -61,6 +61,10 @@ def run(
         )
 
     if hydra_sweep:
+        if kwargs.get("name"):
+            raise InvalidArgumentError(
+                "Sweep overrides can't be used alongside `--name`"
+            )
         from dvc.utils.hydra import get_hydra_sweeps
 
         sweeps = get_hydra_sweeps(path_overrides)
