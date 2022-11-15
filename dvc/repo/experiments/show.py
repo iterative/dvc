@@ -284,7 +284,6 @@ def _collect_active_experiment(
 def _collect_queued_experiment(
     repo: "Repo",
     found_revs: Dict[str, List[str]],
-    running: Dict[str, Any],
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict] = defaultdict(OrderedDict)
@@ -295,7 +294,7 @@ def _collect_queued_experiment(
                 repo,
                 stash_rev,
                 status=ExpStatus.Queued,
-                running=running,
+                running=None,
                 **kwargs,
             )
             if _is_scm_error(collected_exp):
@@ -307,7 +306,6 @@ def _collect_queued_experiment(
 def _collect_failed_experiment(
     repo: "Repo",
     found_revs: Dict[str, List[str]],
-    running: Dict[str, Any],
     **kwargs,
 ) -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict] = defaultdict(OrderedDict)
@@ -319,7 +317,7 @@ def _collect_failed_experiment(
                 repo,
                 stash_rev,
                 status=ExpStatus.Failed,
-                running=running,
+                running=None,
                 **kwargs,
             )
             if _is_scm_error(collected_exp):
@@ -369,20 +367,19 @@ def show(
         iter_revs(repo.scm, revs, num, all_branches, all_tags, all_commits)
     )
 
-    running: Dict[str, Dict] = repo.experiments.get_running_exps(
-        fetch_refs=fetch_running
-    )
-
     queued_experiment = (
         _collect_queued_experiment(
             repo,
             found_revs,
-            running,
             param_deps=param_deps,
             onerror=onerror,
         )
         if not hide_queued
         else {}
+    )
+
+    running: Dict[str, Dict] = repo.experiments.get_running_exps(
+        fetch_refs=fetch_running
     )
 
     active_experiment = _collect_active_experiment(
@@ -397,7 +394,6 @@ def show(
         _collect_failed_experiment(
             repo,
             found_revs,
-            running,
             param_deps=param_deps,
             onerror=onerror,
         )

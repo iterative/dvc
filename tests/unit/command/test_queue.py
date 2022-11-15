@@ -179,6 +179,7 @@ def test_worker_status(dvc, scm, worker_status, output, mocker, capsys):
     m = mocker.patch(
         "dvc.repo.experiments.queue.celery.LocalCeleryQueue.worker_status",
         return_value=worker_status,
+        new_callable=mocker.PropertyMock,
     )
 
     assert cmd.run() == 0

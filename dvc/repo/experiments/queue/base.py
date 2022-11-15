@@ -202,12 +202,12 @@ class BaseStashQueue(ABC):
             }
 
         result.extend(
-            _format_entry(queue_entry, status="Running")
-            for queue_entry in self.iter_active()
-        )
-        result.extend(
             _format_entry(queue_entry, status="Queued")
             for queue_entry in self.iter_queued()
+        )
+        result.extend(
+            _format_entry(queue_entry, status="Running")
+            for queue_entry in self.iter_active()
         )
         result.extend(
             _format_entry(queue_entry, status="Failed")

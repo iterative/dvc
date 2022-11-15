@@ -2,6 +2,7 @@ import time
 
 import pytest
 from celery import shared_task
+from celery.result import AsyncResult
 from flaky.flaky_decorator import flaky
 
 from dvc.exceptions import DvcException
@@ -185,16 +186,16 @@ def test_queue_status(test_queue, scm, mocker):
 
     assert test_queue.status() == [
         {
-            "name": "foo",
-            "rev": "active",
-            "status": "Running",
-            "timestamp": datetime(2022, 8, 7, 0, 0, 0),
-        },
-        {
             "name": None,
             "rev": "queued",
             "status": "Queued",
             "timestamp": datetime(2022, 8, 6, 0, 0, 0),
+        },
+        {
+            "name": "foo",
+            "rev": "active",
+            "status": "Running",
+            "timestamp": datetime(2022, 8, 7, 0, 0, 0),
         },
         {
             "name": "bar",
@@ -209,3 +210,46 @@ def test_queue_status(test_queue, scm, mocker):
             "timestamp": datetime(2022, 8, 4, 0, 0, 0),
         },
     ]
+
+
+def test_iter_active_tasks(test_queue, scm, mocker):
+    id_dict = {"task1": "2a1315c1", "task2": "f2c8040a", "task3": "97707c77"}
+    worker_status = {
+        "dvc-exp-41bb5d-3@localhost": [
+            {
+                "id": id_dict["task3"],
+            }
+        ],
+        "dvc-exp-41bb5d-1@localhost": [
+            {
+                "id": id_dict["task1"],
+            }
+        ],
+    }
+    mocker.patch(
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue.worker_status",
+        return_value=worker_status,
+        new_callable=mocker.PropertyMock,
+    )
+
+    entry_list = []
+    msg_list = []
+    for index in range(1, 4):
+        task_name = f"task{index}"
+        entry_list.append(mocker.Mock(stash_rev=task_name))
+        msg_list.append(mocker.Mock(headers={"id": id_dict[task_name]}))
+    processed_list = zip(msg_list, entry_list)
+
+    mocker.patch.object(
+        AsyncResult,
+        "ready",
+        return_value=False,
+    )
+
+    mocker.patch(
+        "dvc.repo.experiments.queue.celery.LocalCeleryQueue._iter_processed",
+        return_value=processed_list,
+    )
+    print(entry_list)
+
+    assert list(test_queue.iter_active()) == [entry_list[0], entry_list[2]]

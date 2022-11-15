@@ -15,7 +15,7 @@ from typing import (
 )
 
 from celery.result import AsyncResult
-from funcy import cached_property
+from funcy import cached_property, first
 from kombu.message import Message
 
 from dvc.daemon import daemonize
@@ -145,7 +145,6 @@ class LocalCeleryQueue(BaseStashQueue):
         """
 
         logger.debug(f"Spawning {count} exp queue workers")
-        active_worker: Dict = self.worker_status()
 
         started = 0
         for num in range(1, 1 + count):
@@ -153,7 +152,7 @@ class LocalCeleryQueue(BaseStashQueue):
                 :6
             ]
             node_name = f"dvc-exp-{wdir_hash}-{num}@localhost"
-            if node_name in active_worker:
+            if node_name in self.worker_status:
                 logger.debug(f"Exp queue worker {node_name} already exist")
                 continue
             self.spawn_worker(num)
@@ -193,17 +192,24 @@ class LocalCeleryQueue(BaseStashQueue):
             entry_dict = kwargs.get("entry_dict", args[0])
             yield _MessageEntry(msg, QueueEntry.from_dict(entry_dict))
 
-    def _iter_active_tasks(self) -> Generator[_TaskEntry, None, None]:
+    @cached_property
+    def _running_id(self) -> Set[str]:
+        running_id: Set[str] = set()
+        for _, status in self.worker_status.items():
+            task = first(status)
+            if task:
+                running_id.add(task["id"])
+        return running_id
 
+    def _iter_active_tasks(self) -> Generator[_TaskEntry, None, None]:
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
-            if not result.ready():
+            if not result.ready() and task_id in self._running_id:
                 logger.debug("Found active task %s", entry.stash_rev)
                 yield _TaskEntry(result, entry)
 
     def _iter_done_tasks(self) -> Generator[_TaskEntry, None, None]:
-
         for msg, entry in self._iter_processed():
             task_id = msg.headers["id"]
             result: AsyncResult = AsyncResult(task_id)
@@ -359,7 +365,8 @@ class LocalCeleryQueue(BaseStashQueue):
         ) as fobj:
             ui.write(fobj.read())
 
-    def worker_status(self) -> Dict:
+    @cached_property
+    def worker_status(self) -> Dict[str, List]:
         """Return the current active celery worker"""
         status = self.celery.control.inspect().active() or {}
         logger.debug(f"Worker status: {status}")

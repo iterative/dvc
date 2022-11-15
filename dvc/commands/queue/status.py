@@ -37,7 +37,7 @@ class CmdQueueStatus(CmdBase):
             ui.write("No experiment tasks in the queue.")
         ui.write()
 
-        worker_status = self.repo.experiments.celery_queue.worker_status()
+        worker_status = self.repo.experiments.celery_queue.worker_status
         active_count = len(
             [name for name, task in worker_status.items() if task]
         )
