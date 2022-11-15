@@ -71,7 +71,7 @@ classifiers = [
 
 [project.optional-dependencies]
 azure = ["dvc-azure==2.20.4"]
-gdrive = ["dvc-gdrive==2.19.0"]
+gdrive = ["dvc-gdrive==2.19.1"]
 gs = ["dvc-gs==2.20.0"]
 hdfs = ["dvc-hdfs==2.19.0; python_version < '3.11'"]
 oss = ["dvc-oss==2.19.0"]
