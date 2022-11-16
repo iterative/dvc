@@ -5,6 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+    paths: ["dvc", "scripts"]
   schedule:
     - cron: '32 19 * * 2'
   workflow_dispatch:
@@ -33,7 +34,9 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
+        config-file: ./.github/codeql/codeql-config.yml
         languages: ${{ matrix.language }}
+        queries: +security-and-quality
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
