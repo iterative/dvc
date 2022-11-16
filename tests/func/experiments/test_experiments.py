@@ -417,7 +417,7 @@ def test_packed_args_exists(tmp_dir, scm, dvc, exp_stage, caplog):
         assert "Temporary DVC file" in caplog.text
 
 
-def test_list(tmp_dir, scm, dvc, exp_stage):
+def _prepare_experiments(tmp_dir, scm, dvc, exp_stage):
     baseline_a = scm.get_rev()
     results = dvc.experiments.run(exp_stage.addressing, params=["foo=2"])
     exp_a = first(results)
@@ -433,6 +433,18 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
     exp_c = first(results)
     ref_info_c = first(exp_refs_by_rev(scm, exp_c))
 
+    return baseline_a, baseline_c, ref_info_a, ref_info_b, ref_info_c
+
+
+def test_list(tmp_dir, scm, dvc, exp_stage):
+    (
+        baseline_a,
+        baseline_c,
+        ref_info_a,
+        ref_info_b,
+        ref_info_c,
+    ) = _prepare_experiments(tmp_dir, scm, dvc, exp_stage)
+
     assert dvc.experiments.ls() == {baseline_c: [ref_info_c.name]}
 
     exp_list = dvc.experiments.ls(rev=ref_info_a.baseline_sha)
@@ -445,6 +457,25 @@ def test_list(tmp_dir, scm, dvc, exp_stage):
         baseline_a: {ref_info_a.name, ref_info_b.name},
         baseline_c: {ref_info_c.name},
     }
+
+
+def test_list_cli(tmp_dir, scm, dvc, capsys, exp_stage):
+    from dvc.cli import main
+
+    baseline_a, _, ref_info_a, ref_info_b, ref_info_c = _prepare_experiments(
+        tmp_dir, scm, dvc, exp_stage
+    )
+
+    # Make sure that we prioritize the current branch name
+    scm.checkout("branch", True)
+
+    capsys.readouterr()
+    assert main(["exp", "list", "-A"]) == 0
+    cap = capsys.readouterr()
+    assert set(cap.out.split()) == set(
+        ["branch:", baseline_a[:7] + ":"]
+        + [ref_info_a.name, ref_info_b.name, ref_info_c.name]
+    )
 
 
 def test_subdir(tmp_dir, scm, dvc, workspace):
