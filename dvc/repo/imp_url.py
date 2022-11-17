@@ -97,6 +97,9 @@ def imp_url(
     else:
         stage.run(jobs=jobs, no_download=no_download)
 
+    if not no_exec and stage.deps[0].fs.version_aware:
+        stage.outs[0].can_push = False
+
     stage.frozen = frozen
 
     dvcfile.dump(stage)
