@@ -90,6 +90,7 @@ def loadd_from(stage, d_list):
         remote = d.pop(Output.PARAM_REMOTE, None)
         annot = {field: d.pop(field, None) for field in ANNOTATION_FIELDS}
         files = d.pop(Output.PARAM_FILES, None)
+        push = d.pop(Output.PARAM_PUSH, True)
         ret.append(
             _get(
                 stage,
@@ -103,6 +104,7 @@ def loadd_from(stage, d_list):
                 remote=remote,
                 **annot,
                 files=files,
+                push=push,
             )
         )
     return ret
@@ -117,6 +119,7 @@ def loads_from(
     persist=False,
     checkpoint=False,
     remote=None,
+    push=True,
 ):
     return [
         _get(
@@ -129,6 +132,7 @@ def loads_from(
             persist=persist,
             checkpoint=checkpoint,
             remote=remote,
+            push=push,
         )
         for s in s_list
     ]
@@ -184,6 +188,7 @@ def load_from_pipeline(stage, data, typ="outs"):
                 Output.PARAM_PERSIST,
                 Output.PARAM_CHECKPOINT,
                 Output.PARAM_REMOTE,
+                Output.PARAM_PUSH,
                 *ANNOTATION_FIELDS,
             ],
         )
@@ -251,6 +256,7 @@ class Output:
     PARAM_PLOT_HEADER = "header"
     PARAM_PERSIST = "persist"
     PARAM_REMOTE = "remote"
+    PARAM_PUSH = "push"
 
     METRIC_SCHEMA = Any(
         None,
@@ -284,6 +290,7 @@ class Output:
         repo=None,
         fs_config=None,
         files: List[Dict[str, Any]] = None,
+        push: bool = True,
     ):
         self.annot = Annotation(
             desc=desc, type=type, labels=labels or [], meta=meta or {}
@@ -338,6 +345,7 @@ class Output:
         self.plot = False if self.IS_DEPENDENCY else plot
         self.persist = persist
         self.checkpoint = checkpoint
+        self.can_push = push
 
         self.fs_path = self._parse_path(self.fs, fs_path)
         self.obj: Optional["HashFile"] = None
@@ -776,6 +784,9 @@ class Output:
             if self.remote:
                 ret[self.PARAM_REMOTE] = self.remote
 
+            if not self.can_push:
+                ret[self.PARAM_PUSH] = self.can_push
+
         if (
             (not self.IS_DEPENDENCY or self.stage.is_import)
             and self.hash_info.isdir
@@ -1209,5 +1220,6 @@ SCHEMA = {
     Output.PARAM_CACHE: bool,
     Output.PARAM_METRIC: Output.METRIC_SCHEMA,
     Output.PARAM_REMOTE: str,
+    Output.PARAM_PUSH: bool,
     Output.PARAM_FILES: [DIR_FILES_SCHEMA],
 }

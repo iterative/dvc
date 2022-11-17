@@ -29,6 +29,7 @@ PARAM_PERSIST = Output.PARAM_PERSIST
 PARAM_CHECKPOINT = Output.PARAM_CHECKPOINT
 PARAM_DESC = Annotation.PARAM_DESC
 PARAM_REMOTE = Output.PARAM_REMOTE
+PARAM_PUSH = Output.PARAM_PUSH
 
 DEFAULT_PARAMS_FILE = ParamsDependency.DEFAULT_PARAMS_FILE
 
@@ -54,6 +55,8 @@ def _get_flags(out):
         yield from out.plot.items()
     if out.remote:
         yield PARAM_REMOTE, out.remote
+    if not out.can_push:
+        yield PARAM_PUSH, False
 
 
 def _serialize_out(out):
