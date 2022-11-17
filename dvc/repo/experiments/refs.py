@@ -23,9 +23,7 @@ class ExpRefInfo:
 
     namespace = EXPS_NAMESPACE
 
-    def __init__(
-        self, baseline_sha: Optional[str] = None, name: Optional[str] = None
-    ):
+    def __init__(self, baseline_sha: str, name: Optional[str] = None):
         self.baseline_sha = baseline_sha
         self.name: str = name if name else ""
 
@@ -33,7 +31,7 @@ class ExpRefInfo:
         return "/".join(self.parts)
 
     def __repr__(self):
-        baseline = f"'{self.baseline_sha}'" if self.baseline_sha else "None"
+        baseline = f"'{self.baseline_sha}'"
         name = f"'{self.name}'" if self.name else "None"
         return f"ExpRefInfo(baseline_sha={baseline}, name={name})"
 
@@ -41,11 +39,7 @@ class ExpRefInfo:
     def parts(self):
         return (
             (self.namespace,)
-            + (
-                (self.baseline_sha[:2], self.baseline_sha[2:])
-                if self.baseline_sha
-                else ()
-            )
+            + ((self.baseline_sha[:2], self.baseline_sha[2:]))
             + ((self.name,) if self.name else ())
         )
 
@@ -54,14 +48,13 @@ class ExpRefInfo:
         try:
             parts = ref.split("/")
             if (
-                len(parts) < 2
-                or len(parts) == 3
+                len(parts) < 4
                 or len(parts) > 5
                 or "/".join(parts[:2]) != EXPS_NAMESPACE
             ):
                 raise InvalidExpRefError(ref)
         except ValueError:
             raise InvalidExpRefError(ref)
-        baseline_sha = parts[2] + parts[3] if len(parts) >= 4 else None
+        baseline_sha = parts[2] + parts[3]
         name = parts[4] if len(parts) == 5 else None
         return cls(baseline_sha, name)
