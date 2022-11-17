@@ -304,7 +304,7 @@ def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir", "dir_imported")
 
     remove("dir_imported")
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     dvc.pull(["dir_imported.dvc"])
 
@@ -320,7 +320,7 @@ def test_pull_wildcard_imported_directory_stage(tmp_dir, dvc, erepo_dir):
     dvc.imp(os.fspath(erepo_dir), "dir123", "dir_imported123")
 
     remove("dir_imported123")
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
 
     dvc.pull(["dir_imported*.dvc"], glob=True)
 
@@ -546,9 +546,8 @@ def test_pull_imported_stage_from_subrepos(
     dvc.imp(os.fspath(erepo_dir), path, out="out")
 
     # clean everything
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
     remove("out")
-    makedirs(dvc.odb.local.path)
 
     stats = dvc.pull(["out.dvc"])
 
@@ -633,7 +632,7 @@ def test_chained_import(tmp_dir, dvc, make_tmp_dir, erepo_dir, local_cloud):
     assert (dst / "foo").read_text() == "foo"
     assert (dst / "bar").read_text() == "bar"
 
-    remove(dvc.odb.local.path)
+    dvc.odb.local.clear()
     remove("dir_imported")
 
     # pulled objects should come from the original upstream repo's remote,
