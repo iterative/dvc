@@ -51,3 +51,16 @@ def test_from_gitfs_when_pwd_not_in_root(
 
     with wdir.chdir():
         assert dvc.used_objs([target], revs=[scm.get_rev()])
+
+
+def test_used_objs_push(tmp_dir, scm, dvc):
+    stage = tmp_dir.dvc_gen("foo", "foo")[0]
+    hash_info = stage.outs[0].hash_info
+
+    stage.outs[0].can_push = True
+    assert stage.get_used_objs(push=False) == {None: {hash_info}}
+    assert stage.get_used_objs(push=True) == {None: {hash_info}}
+
+    stage.outs[0].can_push = False
+    assert stage.get_used_objs(push=False) == {None: {hash_info}}
+    assert stage.get_used_objs(push=True) == {}

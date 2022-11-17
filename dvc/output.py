@@ -1043,8 +1043,14 @@ class Output:
         if not self.use_cache:
             return {}
 
+        push: bool = kwargs.pop("push", False)
         if self.stage.is_repo_import:
+            if push:
+                return {}
             return self.get_used_external(**kwargs)
+
+        if push and not self.can_push:
+            return {}
 
         if not self.hash_info:
             msg = (
