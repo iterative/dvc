@@ -93,6 +93,7 @@ def push(
         recursive=recursive,
         used_run_cache=used_run_cache,
         revs=revs,
+        push=True,
     )
 
     pushed = len(used_run_cache)
