@@ -79,13 +79,13 @@ def exp_refs_by_rev(scm: "Git", rev: str) -> Generator[ExpRefInfo, None, None]:
 
 
 def exp_refs_by_baseline(
-    scm: "Git", revs: Set[str], url: Optional[str] = None
+    scm: "Git", revs: Optional[Set[str]] = None, url: Optional[str] = None
 ) -> Mapping[str, List[ExpRefInfo]]:
     """Iterate over all experiment refs with the specified baseline."""
     all_exp_refs = exp_refs(scm, url)
     result = defaultdict(list)
     for ref in all_exp_refs:
-        if ref.baseline_sha in revs:
+        if revs is None or ref.baseline_sha in revs:
             result[ref.baseline_sha].append(ref)
     return result
 
