@@ -162,7 +162,12 @@ class _DVCFileSystem(AbstractFileSystem):  # pylint:disable=abstract-method
 
     def _get_key_from_relative(self, path) -> Key:
         parts = self.path.relparts(path, self.root_marker)
-        if parts and parts[0] == os.curdir:
+        if parts and any(
+            [
+                parts[0] == os.curdir,
+                parts[0] == self.path.split(os.getcwd())[-1],
+            ]
+        ):
             parts = parts[1:]
         return parts
 
