@@ -113,10 +113,12 @@ def restore_fields(stage):
     stage.meta = old.meta
     stage.desc = old.desc
 
-    old_fields = {out.def_path: (out.annot, out.remote) for out in old.outs}
+    old_fields = {
+        out.def_path: (out.annot, out.remote, out.can_push) for out in old.outs
+    }
     for out in stage.outs:
         if out_fields := old_fields.get(out.def_path, None):
-            out.annot, out.remote = out_fields
+            out.annot, out.remote, out.can_push = out_fields
 
 
 class Stage(params.StageParams):
