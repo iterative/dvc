@@ -9,48 +9,6 @@ if TYPE_CHECKING:
     from dvc_objects.db.base import ObjectDB
 
 
-def _push_worktree(repo, remote):
-    from dvc_data.index import checkout
-    from dvc_data.index.save import build_tree
-
-    index = repo.index.data["repo"]
-    checkout(index, remote.path, remote.fs)
-
-    for stage in repo.index.stages:
-        for out in stage.outs:
-            if not out.use_cache:
-                continue
-
-            if not out.is_in_repo:
-                continue
-
-            workspace, key = out.index_key
-            index = repo.index.data[workspace]
-            entry = index[key]
-            if out.isdir():
-                old_tree = out.get_obj()
-                entry.hash_info = old_tree.hash_info
-                entry.meta = out.meta
-                for subkey, entry in index.iteritems(key):
-                    if entry.meta.isdir:
-                        continue
-                    fs_path = repo.fs.path.join(repo.root_dir, *subkey)
-                    _, hash_info = old_tree.get(
-                        repo.fs.path.relparts(fs_path, out.fs_path)
-                    )
-                    entry.hash_info = hash_info
-                tree_meta, new_tree = build_tree(index, key)
-                out.obj = new_tree
-                out.hash_info = new_tree.hash_info
-                out.meta = tree_meta
-            else:
-                out.hash_info = entry.hash_info
-                out.meta = entry.meta
-        stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
-
-    return len(index)
-
-
 @locked
 def push(
     self,
@@ -68,9 +26,11 @@ def push(
     odb: Optional["ObjectDB"] = None,
     include_imports=False,
 ):
+    from dvc.repo.worktree import push as push_worktree
+
     _remote = self.cloud.get_remote(name=remote)
     if _remote.worktree:
-        return _push_worktree(self, _remote)
+        return push_worktree(self, _remote)
 
     used_run_cache = (
         self.stage_cache.push(remote, odb=odb) if run_cache else []
