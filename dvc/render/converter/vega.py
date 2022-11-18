@@ -181,6 +181,8 @@ class VegaConverter(Converter):
                 fields = {field for _, field in _file_field(x)}
                 if len(fields) == 1:
                     x_label = first(fields)
+                else:
+                    x_label = "x"
             else:
                 x_label = INDEX_FIELD
         return x_label
