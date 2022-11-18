@@ -15,7 +15,7 @@ from typing import (
 )
 
 from celery.result import AsyncResult
-from funcy import cached_property
+from funcy import cached_property, first
 from kombu.message import Message
 
 from dvc.daemon import daemonize
@@ -25,6 +25,7 @@ from dvc.ui import ui
 from ..exceptions import UnresolvedQueueExpNamesError
 from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
+from .exceptions import CannotKillTasksError
 from .tasks import run_exp
 from .utils import fetch_running_exp_from_temp_dir
 
@@ -286,24 +287,70 @@ class LocalCeleryQueue(BaseStashQueue):
         # out of the active task list, and needs to be loaded here.
         return self._get_done_result(entry, timeout)
 
+    def _get_running_task_ids(self) -> Set[str]:
+        running_task_ids: Set[str] = set()
+        active_workers = self.worker_status()
+        for _, tasks in active_workers.items():
+            task = first(tasks)
+            if task:
+                running_task_ids.add(task["id"])
+        return running_task_ids
+
+    def _try_to_kill_tasks(
+        self, to_kill: Dict[QueueEntry, str]
+    ) -> Dict[QueueEntry, str]:
+        fail_to_kill_entries: Dict[QueueEntry, str] = {}
+        for queue_entry, rev in to_kill.items():
+            try:
+                self.proc.kill(queue_entry.stash_rev)
+                logger.debug(f"Task {rev} had been killed.")
+            except ProcessLookupError:
+                fail_to_kill_entries[queue_entry] = rev
+        return fail_to_kill_entries
+
+    def _mark_inactive_tasks_failure(self, remained_entries):
+        remained_revs: List[str] = []
+        running_ids = self._get_running_task_ids()
+        logger.debug(f"Current running tasks ids: {running_ids}.")
+        for msg, entry in self._iter_processed():
+            if entry not in remained_entries:
+                continue
+            task_id = msg.headers["id"]
+            if task_id in running_ids:
+                remained_revs.append(remained_entries[entry])
+            else:
+                result: AsyncResult = AsyncResult(task_id)
+                if not result.ready():
+                    logger.debug(
+                        f"Task id {task_id} rev {remained_entries[entry]} "
+                        "marked as failure."
+                    )
+                    self.celery.backend.mark_as_failure(task_id, None)
+
+        if remained_revs:
+            raise CannotKillTasksError(remained_revs)
+
     def kill(self, revs: Collection[str]) -> None:
-        to_kill: Set[QueueEntry] = set()
         name_dict: Dict[
             str, Optional[QueueEntry]
         ] = self.match_queue_entry_by_name(set(revs), self.iter_active())
 
-        missing_rev: List[str] = []
+        to_kill: Dict[QueueEntry, str] = {}
+        missing_revs: List[str] = []
         for rev, queue_entry in name_dict.items():
             if queue_entry is None:
-                missing_rev.append(rev)
+                missing_revs.append(rev)
             else:
-                to_kill.add(queue_entry)
+                to_kill[queue_entry] = rev
+        if missing_revs:
+            raise UnresolvedQueueExpNamesError(missing_revs)
 
-        if missing_rev:
-            raise UnresolvedQueueExpNamesError(missing_rev)
+        fail_to_kill_entries: Dict[QueueEntry, str] = self._try_to_kill_tasks(
+            to_kill
+        )
 
-        for queue_entry in to_kill:
-            self.proc.kill(queue_entry.stash_rev)
+        if fail_to_kill_entries:
+            self._mark_inactive_tasks_failure(fail_to_kill_entries)
 
     def shutdown(self, kill: bool = False):
         self.celery.control.shutdown()
@@ -359,10 +406,11 @@ class LocalCeleryQueue(BaseStashQueue):
         ) as fobj:
             ui.write(fobj.read())
 
-    def worker_status(self) -> Dict:
+    def worker_status(self) -> Dict[str, List[Dict]]:
         """Return the current active celery worker"""
         status = self.celery.control.inspect().active() or {}
         logger.debug(f"Worker status: {status}")
+
         return status
 
     def clear(self, *args, **kwargs):
