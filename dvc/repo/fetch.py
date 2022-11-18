@@ -17,20 +17,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _fetch_worktree(repo, remote):
-    from dvc_data.index import save
-
-    index = repo.index.data["repo"]
-    for key, entry in index.iteritems():
-        entry.fs = remote.fs
-        entry.path = remote.fs.path.join(
-            remote.path,
-            *key,
-        )
-    save(index)
-    return len(index)
-
-
 @locked
 def fetch(
     self,
@@ -59,6 +45,7 @@ def fetch(
             remote is configured
     """
     from dvc.repo.imports import save_imports
+    from dvc.repo.worktree import fetch as fetch_worktree
     from dvc_data.hashfile.transfer import TransferResult
 
     if isinstance(targets, str):
@@ -67,7 +54,7 @@ def fetch(
     with suppress(NoRemoteError):
         _remote = self.cloud.get_remote(name=remote)
         if _remote.worktree:
-            return _fetch_worktree(self, _remote)
+            return fetch_worktree(self, _remote)
 
     failed_count = 0
 
