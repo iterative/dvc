@@ -336,16 +336,15 @@ def test_collect_non_existing_dir(tmp_dir, dvc, run_copy_metrics):
 @pytest.mark.parametrize(
     "plot_config,expected_datafiles",
     [
-        # TODO - enable providing data files for x
-        # (
-        #     {
-        #         "comparison": {
-        #             "x": {"data1.json": "a"},
-        #             "y": {"sub/dir/data2.json": "b"},
-        #         }
-        #     },
-        #     ["data1.json", os.path.join("sub", "dir", "data2.json")],
-        # ),
+        (
+            {
+                "comparison": {
+                    "x": {"data1.json": "a"},
+                    "y": {"sub/dir/data2.json": "b"},
+                }
+            },
+            ["data1.json", os.path.join("sub", "dir", "data2.json")],
+        ),
         (
             {"data1.json": {"x": "c", "y": "a", "title": "File as key test"}},
             ["data1.json"],

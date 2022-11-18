@@ -456,9 +456,7 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
             "dvc.yaml::confusion_train_vs_test",
         ],
     )
-    assert html_result["dvc.yaml::linear_train_vs_test"]["data"][
-        "values"
-    ] == _update_datapoints(
+    ble = _update_datapoints(
         plots["data"]["linear_train.json"],
         {
             REVISION_FIELD: "linear_train.json",
@@ -470,4 +468,7 @@ def test_repo_with_config_plots(tmp_dir, capsys, repo_with_config_plots):
         },
     )
 
+    assert (
+        html_result["dvc.yaml::linear_train_vs_test"]["data"]["values"] == ble
+    )
     # TODO check json results once vscode is able to handle flexible plots

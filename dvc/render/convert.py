@@ -14,14 +14,14 @@ from dvc.render.converter.vega import VegaConverter
 
 
 def _get_converter(
-    renderer_class, props
+    renderer_class, renderer_id, props, data
 ) -> Union[VegaConverter, ImageConverter]:
     from dvc_render import ImageRenderer, VegaRenderer
 
     if renderer_class.TYPE == VegaRenderer.TYPE:
-        return VegaConverter(props)
+        return VegaConverter(renderer_id, data, props)
     if renderer_class.TYPE == ImageRenderer.TYPE:
-        return ImageConverter(props)
+        return ImageConverter(renderer_id, data, props)
 
     raise ValueError(f"Invalid renderer class {renderer_class}")
 

@@ -42,7 +42,7 @@ class PlotsData:
         return dict(groups)
 
     def get_definition_data(self, target_files, rev):
-        result = []
+        result = {}
         for file in target_files:
             file_content = (
                 self.data.get(rev, {})
@@ -52,7 +52,7 @@ class PlotsData:
                 .get("data", {})
             )
             if file_content:
-                result.append((file, file_content))
+                result[file] = file_content
 
         return result
 
@@ -91,15 +91,14 @@ def match_defs_renderers(
                 renderer_cls = VegaRenderer
                 renderer_id = plot_id
 
-            converter = _get_converter(renderer_cls, props)
+            converter = _get_converter(
+                renderer_cls, inner_id, props, definitions_data
+            )
 
-            for filename, plot_data in definitions_data:
-                dps, final_props = converter.convert(
-                    revision=rev,
-                    filename=filename,
-                    data=plot_data,
-                )
-                plot_datapoints.extend(dps)
+            dps, rev_props = converter.flat_datapoints(rev)
+            if not final_props and rev_props:
+                final_props = rev_props
+            plot_datapoints.extend(dps)
 
         if "title" not in final_props:
             final_props["title"] = renderer_id

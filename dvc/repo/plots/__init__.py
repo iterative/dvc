@@ -19,7 +19,7 @@ from typing import (
 
 import dpath.options
 import dpath.util
-from funcy import cached_property, first, project
+from funcy import cached_property, distinct, first, project
 
 from dvc.exceptions import DvcException
 from dvc.utils import error_handler, errored_revisions, onerror_collect
@@ -314,16 +314,18 @@ def _get_data_targets(definitions: Dict):
 
 
 def infer_data_sources(plot_id, config=None):
-    def _deduplicate(lst: List):
-        return list({elem: None for elem in lst}.keys())
-
     y = config.get("y", None)
+
     if isinstance(y, dict):
         sources = list(y.keys())
     else:
         sources = [plot_id]
 
-    return _deduplicate(source for source in sources)
+    x = config.get("x", None)
+    if isinstance(x, dict):
+        sources.append(first(x.keys()))
+
+    return distinct(source for source in sources)
 
 
 def _matches(targets, config_file, plot_id):
