@@ -254,7 +254,6 @@ class WorkspaceExecutor(BaseLocalExecutor):
     def save(
         cls,
         info: "ExecutorInfo",
-        is_checkpoint: bool = False,
         force: bool = False,
     ) -> ExecutorResult:
         from dvc.repo import Repo
@@ -276,22 +275,19 @@ class WorkspaceExecutor(BaseLocalExecutor):
                 dvc.scm,
                 exp_hash,
                 exp_name=info.name,
-                checkpoint=is_checkpoint,
                 force=force,
             )
             ref: Optional[str] = dvc.scm.get_ref(EXEC_BRANCH, follow=False)
             exp_ref = ExpRefInfo.from_ref(ref) if ref else None
-            # TODO: research into how untracked files should be handled
-            if cls.WARN_UNTRACKED:
-                untracked = dvc.scm.untracked_files()
-                if untracked:
-                    logger.warning(
-                        "The following untracked files were present in "
-                        "the experiment directory after reproduction but "
-                        "will not be included in experiment commits:\n"
-                        "\t%s",
-                        ", ".join(untracked),
-                    )
+            untracked = dvc.scm.untracked_files()
+            if untracked:
+                logger.warning(
+                    "The following untracked files were present in "
+                    "the workspace before saving but "
+                    "will not be included in the experiment commit:\n"
+                    "\t%s",
+                    ", ".join(untracked),
+                )
             info.result_hash = exp_hash
             info.result_ref = ref
             info.result_force = False

@@ -22,20 +22,13 @@ class CmdExperimentsSave(CmdBase):
 
         if self.args.json:
             ui.write_json({"ref": ref})
-            # fixme: add metrics
         else:
-            name = self.repo.experiments.get_exact_name(ref)
+            name = self.repo.experiments.get_exact_name([ref])[ref]
             ui.write(f"Experiment has been saved as: {name}")
             ui.write(
                 "\nTo promote an experiment to a Git branch run:\n\n"
                 "\tdvc exp branch <exp> <branch>\n"
             )
-            if self.args.metrics:
-                from dvc.compare import show_metrics
-
-                metrics = self.repo.metrics.show(revs=(ref,))
-                metrics.pop("workspace", None)
-                show_metrics(metrics)
 
         return 0
 
@@ -62,13 +55,6 @@ def add_parser(experiments_subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show output in JSON format.",
-    )
-    save_parser.add_argument(
-        "-m",
-        "--metrics",
-        action="store_true",
-        default=False,
-        help="Show metrics for the saved experiment.",
     )
     save_parser.add_argument(
         "-n",
