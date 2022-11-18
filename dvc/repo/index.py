@@ -152,7 +152,7 @@ class Index:
 
     def targets_view(
         self,
-        targets: "TargetType",
+        targets: Optional["TargetType"],
         stage_filter: Optional[Callable[["Stage"], bool]] = None,
         outs_filter: Optional[Callable[["Output"], bool]] = None,
         **kwargs: Any,
