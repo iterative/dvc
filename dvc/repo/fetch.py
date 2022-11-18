@@ -45,7 +45,7 @@ def fetch(
             remote is configured
     """
     from dvc.repo.imports import save_imports
-    from dvc.repo.worktree import fetch as fetch_worktree
+    from dvc.repo.worktree import fetch_worktree
     from dvc_data.hashfile.transfer import TransferResult
 
     if isinstance(targets, str):

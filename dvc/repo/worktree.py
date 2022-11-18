@@ -1,14 +1,52 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from dvc.cloud import Remote
+    from dvc.index import Index, IndexView
+    from dvc.output import Output
     from dvc.repo import Repo
+    from dvc.stage import Stage
+    from dvc.types import TargetType
 
 
-def fetch(repo: "Repo", remote: "Remote") -> int:
+def worktree_view(
+    index: "Index",
+    targets: Optional["TargetType"] = None,
+    push: bool = False,
+    **kwargs,
+) -> "IndexView":
+    """Return view of data that can be stored in worktree remotes.
+
+    Args:
+        targets: Optional targets.
+        push: Whether the view should be restricted to pushable data only.
+
+    Additional kwargs will be passed into target collection.
+    """
+
+    def stage_filter(stage: "Stage") -> bool:
+        if push and stage.is_repo_import:
+            return False
+        return True
+
+    def outs_filter(out: "Output") -> bool:
+        if not out.is_in_repo or (push and not out.can_push):
+            return False
+        return True
+
+    return index.targets_view(
+        targets,
+        stage_filter=stage_filter,
+        outs_filter=outs_filter,
+        **kwargs,
+    )
+
+
+def fetch_worktree(repo: "Repo", remote: "Remote") -> int:
     from dvc_data.index import save
 
-    index = repo.index.data["repo"]
+    view = worktree_view(repo.index)
+    index = view.data["repo"]
     for key, entry in index.iteritems():
         entry.fs = remote.fs
         entry.path = remote.fs.path.join(
@@ -19,14 +57,15 @@ def fetch(repo: "Repo", remote: "Remote") -> int:
     return len(index)
 
 
-def push(repo: "Repo", remote: "Remote") -> int:
+def push_worktree(repo: "Repo", remote: "Remote") -> int:
     from dvc_data.index import checkout
     from dvc_data.index.save import build_tree
 
-    index = repo.index.data["repo"]
+    view = worktree_view(repo.index, push=True)
+    index = view.data["repo"]
     checkout(index, remote.path, remote.fs)
 
-    for stage in repo.index.stages:
+    for stage in view.stages:
         for out in stage.outs:
             if not out.use_cache:
                 continue

@@ -26,7 +26,7 @@ def push(
     odb: Optional["ObjectDB"] = None,
     include_imports=False,
 ):
-    from dvc.repo.worktree import push as push_worktree
+    from dvc.repo.worktree import push_worktree
 
     _remote = self.cloud.get_remote(name=remote)
     if _remote.worktree:
