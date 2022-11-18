@@ -89,6 +89,7 @@ def _cloud_status(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
+        push=True,
     )
 
     ret = {}
