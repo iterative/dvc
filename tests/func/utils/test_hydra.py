@@ -174,10 +174,23 @@ def test_compose_and_dump(tmp_dir, suffix, overrides, expected):
     from dvc.utils.hydra import compose_and_dump
 
     config_name = "config"
-    config_dir = hydra_setup(tmp_dir, "conf", "config")
     output_file = tmp_dir / f"params.{suffix}"
+    config_dir = hydra_setup(tmp_dir, "conf", "config")
     compose_and_dump(output_file, config_dir, config_name, overrides)
     assert output_file.parse() == expected
+
+
+@pytest.mark.skipif(sys.version_info >= (3, 11), reason="unsupported on 3.11")
+def test_compose_and_dump_yaml_handles_string(tmp_dir):
+    """Regression test for 8583"""
+    from dvc.utils.hydra import compose_and_dump
+
+    config = tmp_dir / "conf" / "config.yaml"
+    config.parent.mkdir()
+    config.write_text("foo: 'no'\n")
+    output_file = tmp_dir / "params.yaml"
+    compose_and_dump(output_file, str(config.parent), "config", [])
+    assert output_file.read_text() == "foo: 'no'\n"
 
 
 @pytest.mark.parametrize(
