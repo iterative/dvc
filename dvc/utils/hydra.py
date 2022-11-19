@@ -54,8 +54,12 @@ def compose_and_dump(
     with initialize_config_dir(config_dir, version_base=None):
         cfg = compose(config_name=config_name, overrides=overrides)
 
-    dumper = DUMPERS[Path(output_file).suffix.lower()]
-    dumper(output_file, OmegaConf.to_object(cfg))
+    suffix = Path(output_file).suffix.lower()
+    if suffix not in [".yml", ".yaml"]:
+        dumper = DUMPERS[suffix]
+        dumper(output_file, OmegaConf.to_object(cfg))
+    else:
+        Path(output_file).write_text(OmegaConf.to_yaml(cfg), encoding="utf-8")
 
 
 def apply_overrides(path: "StrPath", overrides: List[str]) -> None:
