@@ -248,3 +248,17 @@ def test_convert(
 
     assert datapoints == expected_datapoints
     assert resolved_properties == expected_properties
+
+
+@pytest.mark.parametrize(
+    "properties,label",
+    [
+        ({"x": {"actual.csv": "actual"}}, "actual"),
+        (
+            {"x": {"train_actual.csv": "actual", "val_actual.csv": "actual"}},
+            "actual",
+        ),
+    ],
+)
+def test_infer_x_label(properties, label):
+    assert VegaConverter.infer_x_label(properties) == label
