@@ -258,6 +258,10 @@ def test_convert(
             {"x": {"train_actual.csv": "actual", "val_actual.csv": "actual"}},
             "actual",
         ),
+        (
+            {"x": {"actual.csv": "actual", "predicted.csv": "predicted"}},
+            "x",
+        ),
     ],
 )
 def test_infer_x_label(properties, label):
