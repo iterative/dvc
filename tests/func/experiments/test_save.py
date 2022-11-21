@@ -18,7 +18,7 @@ def test_exp_save(tmp_dir, dvc, scm, exp_stage, name):
     assert ref_info and ref_info.baseline_sha == baseline
 
     exp_name = name if name else ref_info.name
-    assert dvc.experiments.get_exact_name(exp) == exp_name
+    assert dvc.experiments.get_exact_name([exp])[exp] == exp_name
     assert resolve_rev(scm, exp_name) == exp
 
 
