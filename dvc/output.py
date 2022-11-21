@@ -1197,6 +1197,12 @@ class Output:
     def is_plot(self) -> bool:
         return bool(self.plot)
 
+    def restore_fields(self, other: "Output"):
+        """Restore attributes that need to be preserved when serialized."""
+        self.annot = other.annot
+        self.remote = other.remote
+        self.can_push = other.can_push
+
 
 META_SCHEMA = {
     Meta.PARAM_SIZE: int,
