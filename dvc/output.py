@@ -1203,6 +1203,28 @@ class Output:
         self.remote = other.remote
         self.can_push = other.can_push
 
+    def merge_version_meta(self, other: "Output"):
+        """Merge version meta for files which are unchanged from other."""
+        if not self.hash_info:
+            return
+        if self.hash_info.isdir:
+            return self._merge_dir_version_meta(other)
+        if self.hash_info != other.hash_info:
+            return
+        self.meta = other.meta
+
+    def _merge_dir_version_meta(self, other: "Output"):
+        from dvc_data.hashfile.tree import update_meta
+
+        if not self.obj or not other.hash_info.isdir:
+            return
+        other_obj = other.obj if other.obj is not None else other.get_obj()
+        assert isinstance(self.obj, Tree) and isinstance(other_obj, Tree)
+        updated = update_meta(self.obj, other_obj)
+        assert updated.hash_info == self.obj.hash_info
+        self.obj = updated
+        self.files = updated.as_list(with_meta=True)
+
 
 META_SCHEMA = {
     Meta.PARAM_SIZE: int,
