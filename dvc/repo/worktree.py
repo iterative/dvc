@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 
+from dvc.fs.callbacks import Callback
+
 if TYPE_CHECKING:
     from dvc.cloud import Remote
     from dvc.index import Index, IndexView
@@ -57,7 +59,12 @@ def fetch_worktree(repo: "Repo", remote: "Remote") -> int:
             remote.path,
             *key,
         )
-    return save(index)
+    total = len(index)
+    with Callback.as_tqdm_callback(
+        unit="file", desc="Fetch", disable=total == 0
+    ) as cb:
+        cb.set_size(total)
+        return save(index, callback=cb)
 
 
 def push_worktree(repo: "Repo", remote: "Remote") -> int:
@@ -66,7 +73,18 @@ def push_worktree(repo: "Repo", remote: "Remote") -> int:
 
     view = worktree_view(repo.index, push=True)
     index = view.data["repo"]
-    pushed = checkout(index, remote.path, remote.fs, latest_only=False)
+    total = len(index)
+    with Callback.as_tqdm_callback(
+        unit="file", desc="Push", disable=total == 0
+    ) as cb:
+        cb.set_size(total)
+        pushed = checkout(
+            index,
+            remote.path,
+            remote.fs,
+            latest_only=False,
+            callback=cb,
+        )
 
     for stage in view.stages:
         for out in stage.outs:
