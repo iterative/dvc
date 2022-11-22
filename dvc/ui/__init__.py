@@ -270,7 +270,7 @@ class Console:
 
         path = Path(file).resolve()
         url = (
-            relpath(path) if "microsoft" in uname().release else path.as_uri()
+            relpath(path) if "microsoft" in uname().release.lower() else path.as_uri()
         )
 
         opened = webbrowser.open(url)
