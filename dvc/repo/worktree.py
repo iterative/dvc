@@ -30,7 +30,11 @@ def worktree_view(
         return True
 
     def outs_filter(out: "Output") -> bool:
-        if not out.is_in_repo or (push and not out.can_push):
+        if (
+            not out.is_in_repo
+            or not out.use_cache
+            or (push and not out.can_push)
+        ):
             return False
         return True
 
@@ -53,8 +57,7 @@ def fetch_worktree(repo: "Repo", remote: "Remote") -> int:
             remote.path,
             *key,
         )
-    save(index)
-    return len(index)
+    return save(index)
 
 
 def push_worktree(repo: "Repo", remote: "Remote") -> int:
@@ -63,7 +66,7 @@ def push_worktree(repo: "Repo", remote: "Remote") -> int:
 
     view = worktree_view(repo.index, push=True)
     index = view.data["repo"]
-    checkout(index, remote.path, remote.fs)
+    pushed = checkout(index, remote.path, remote.fs, latest_only=False)
 
     for stage in view.stages:
         for out in stage.outs:
@@ -97,4 +100,4 @@ def push_worktree(repo: "Repo", remote: "Remote") -> int:
                 out.meta = entry.meta
         stage.dvcfile.dump(stage, with_files=True, update_pipeline=False)
 
-    return len(index)
+    return pushed
