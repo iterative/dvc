@@ -186,8 +186,8 @@ class Experiments:
         if not entries:
             return results
 
-        # TODO: re-enable --jobs concurrency
-        self.celery_queue.spawn_worker()
+        for job in range(kwargs.get("jobs", 1)):
+            self.celery_queue.spawn_worker(num=job)
         failed = []
         try:
             ui.write(
