@@ -4,9 +4,10 @@ from contextlib import ExitStack
 from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Optional
 
-from funcy import cached_property
+from funcy import cached_property, retry
 from scmrepo.exceptions import SCMError as _SCMError
 
+from dvc.lock import LockError
 from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import makedirs, remove
 
@@ -19,7 +20,7 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
-from ..utils import EXEC_TMP_DIR
+from ..utils import EXEC_TMP_DIR, get_exp_rwlock
 from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
@@ -68,8 +69,10 @@ class TempDirExecutor(BaseLocalExecutor):
     QUIET = True
     DEFAULT_LOCATION = "tempdir"
 
+    @retry(180, errors=LockError, timeout=1)
     def init_git(
         self,
+        repo: "Repo",
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
@@ -86,28 +89,29 @@ class TempDirExecutor(BaseLocalExecutor):
         if infofile:
             self.info.dump_json(infofile)
 
-        with self.set_exec_refs(scm, stash_rev, entry):
-            refspec = f"{EXEC_NAMESPACE}/"
-            push_refspec(scm, self.git_url, refspec, refspec)
+        with get_exp_rwlock(repo, writes=[EXEC_NAMESPACE]):
+            with self.set_exec_refs(scm, stash_rev, entry):
+                refspec = f"{EXEC_NAMESPACE}/"
+                push_refspec(scm, self.git_url, refspec, refspec)
 
-        if branch:
-            push_refspec(scm, self.git_url, branch, branch)
-            self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
-        elif self.scm.get_ref(EXEC_BRANCH):
-            self.scm.remove_ref(EXEC_BRANCH)
+            if branch:
+                push_refspec(scm, self.git_url, branch, branch)
+                self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+            elif self.scm.get_ref(EXEC_BRANCH):
+                self.scm.remove_ref(EXEC_BRANCH)
 
-        if self.scm.get_ref(EXEC_CHECKPOINT):
-            self.scm.remove_ref(EXEC_CHECKPOINT)
-        # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
-        # committing
-        head = EXEC_BRANCH if branch else EXEC_HEAD
-        self.scm.checkout(head, detach=True)
-        merge_rev = self.scm.get_ref(EXEC_MERGE)
+            if self.scm.get_ref(EXEC_CHECKPOINT):
+                self.scm.remove_ref(EXEC_CHECKPOINT)
+            # checkout EXEC_HEAD and apply EXEC_MERGE on top of it without
+            # committing
+            head = EXEC_BRANCH if branch else EXEC_HEAD
+            self.scm.checkout(head, detach=True)
+            merge_rev = self.scm.get_ref(EXEC_MERGE)
 
-        try:
-            self.scm.merge(merge_rev, squash=True, commit=False)
-        except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=self.scm)
+            try:
+                self.scm.merge(merge_rev, squash=True, commit=False)
+            except _SCMError as exc:
+                raise GitMergeError(str(exc), scm=self.scm)
 
     def _config(self, cache_dir):
         local_config = os.path.join(
@@ -168,8 +172,10 @@ class WorkspaceExecutor(BaseLocalExecutor):
         logger.debug("Init workspace executor in '%s'", root_dir)
         return executor
 
+    @retry(180, errors=LockError, timeout=1)
     def init_git(
         self,
+        repo: "Repo",
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
@@ -180,25 +186,26 @@ class WorkspaceExecutor(BaseLocalExecutor):
         if infofile:
             self.info.dump_json(infofile)
 
-        scm.set_ref(EXEC_HEAD, entry.head_rev)
-        scm.set_ref(EXEC_MERGE, stash_rev)
-        scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
-        self._detach_stack.enter_context(
-            self.scm.detach_head(
-                self.scm.get_ref(EXEC_HEAD),
-                force=True,
-                client="dvc",
+        with get_exp_rwlock(repo, writes=[EXEC_NAMESPACE]):
+            scm.set_ref(EXEC_HEAD, entry.head_rev)
+            scm.set_ref(EXEC_MERGE, stash_rev)
+            scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+            self._detach_stack.enter_context(
+                self.scm.detach_head(
+                    self.scm.get_ref(EXEC_HEAD),
+                    force=True,
+                    client="dvc",
+                )
             )
-        )
-        merge_rev = self.scm.get_ref(EXEC_MERGE)
-        try:
-            self.scm.merge(merge_rev, squash=True, commit=False)
-        except _SCMError as exc:
-            raise GitMergeError(str(exc), scm=self.scm)
-        if branch:
-            self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
-        elif scm.get_ref(EXEC_BRANCH):
-            self.scm.remove_ref(EXEC_BRANCH)
+            merge_rev = self.scm.get_ref(EXEC_MERGE)
+            try:
+                self.scm.merge(merge_rev, squash=True, commit=False)
+            except _SCMError as exc:
+                raise GitMergeError(str(exc), scm=self.scm)
+            if branch:
+                self.scm.set_ref(EXEC_BRANCH, branch, symbolic=True)
+            elif scm.get_ref(EXEC_BRANCH):
+                self.scm.remove_ref(EXEC_BRANCH)
 
     def init_cache(self, repo: "Repo", rev: str, run_cache: bool = True):
         pass

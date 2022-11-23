@@ -21,7 +21,8 @@ from ..executor.base import (
     TaskStatus,
 )
 from ..executor.local import WorkspaceExecutor
-from ..refs import EXEC_BRANCH
+from ..refs import EXEC_BRANCH, WORKSPACE_STASH
+from ..utils import get_exp_rwlock
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 
 if TYPE_CHECKING:
@@ -34,7 +35,8 @@ class WorkspaceQueue(BaseStashQueue):
     _EXEC_NAME: Optional[str] = "workspace"
 
     def put(self, *args, **kwargs) -> QueueEntry:
-        return self._stash_exp(*args, **kwargs)
+        with get_exp_rwlock(self.repo, writes=["workspace", WORKSPACE_STASH]):
+            return self._stash_exp(*args, **kwargs)
 
     def get(self) -> QueueGetResult:
         revs = self.stash.stash_revs

@@ -12,6 +12,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    List,
     NamedTuple,
     Optional,
     Tuple,
@@ -40,9 +41,6 @@ from ..refs import (
     EXEC_CHECKPOINT,
     EXEC_HEAD,
     EXEC_MERGE,
-    EXEC_NAMESPACE,
-    EXPS_NAMESPACE,
-    EXPS_STASH,
     ExpRefInfo,
 )
 
@@ -168,6 +166,7 @@ class BaseExecutor(ABC):
     @abstractmethod
     def init_git(
         self,
+        repo: "Repo",
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
@@ -315,6 +314,7 @@ class BaseExecutor(ABC):
     def fetch_exps(
         self,
         dest_scm: "Git",
+        refs: List[str],
         force: bool = False,
         on_diverged: Callable[[str, bool], None] = None,
         **kwargs,
@@ -323,26 +323,19 @@ class BaseExecutor(ABC):
 
         Args:
             dest_scm: Destination Git instance.
+            refs: reference names to be fetched from the remotes.
             force: If True, diverged refs will be overwritten
             on_diverged: Callback in the form on_diverged(ref, is_checkpoint)
                 to be called when an experiment ref has diverged.
 
         Extra kwargs will be passed into the remote git client.
         """
-        from ..utils import iter_remote_refs
 
-        refs = []
-        has_checkpoint = False
-        for ref in iter_remote_refs(
-            dest_scm,
-            self.git_url,
-            base=EXPS_NAMESPACE,
-            **kwargs,
-        ):
-            if ref == EXEC_CHECKPOINT:
-                has_checkpoint = True
-            elif not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH:
-                refs.append(ref)
+        if EXEC_CHECKPOINT in refs:
+            refs.remove(EXEC_CHECKPOINT)
+            has_checkpoint = True
+        else:
+            has_checkpoint = False
 
         def on_diverged_ref(orig_ref: str, new_rev: str):
             if force:
