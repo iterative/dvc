@@ -1,6 +1,9 @@
+import os
+import sys
 from collections import defaultdict
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Callable,
     Dict,
     Generator,
@@ -16,6 +19,7 @@ from scmrepo.git import Git
 
 from dvc.exceptions import InvalidArgumentError
 from dvc.repo.experiments.exceptions import AmbiguousExpRefInfo
+from dvc.rwlock import rwlock
 
 from .refs import (
     EXEC_APPLY,
@@ -28,21 +32,34 @@ from .refs import (
     ExpRefInfo,
 )
 
+if TYPE_CHECKING:
+    from dvc.repo import Repo
+
+
 EXEC_TMP_DIR = "exps"
 EXEC_PID_DIR = "run"
 
 
-def scm_locked(f):
-    # Lock the experiments workspace so that we don't try to perform two
-    # different sequences of git operations at once
-    @wraps(f)
-    def wrapper(exp, *args, **kwargs):
-        from dvc.scm import map_scm_exception
+def get_exp_rwlock(
+    repo: "Repo",
+    reads: Optional[List[str]] = None,
+    writes: Optional[List[str]] = None,
+):
+    reads = reads or []
+    writes = writes or []
 
-        with map_scm_exception(), exp.scm_lock:
-            return f(exp, *args, **kwargs)
+    cmd = " ".join(sys.argv)
+    path = os.path.join(repo.tmp_dir, EXEC_TMP_DIR)
+    repo.fs.makedirs(path, exist_ok=True)
 
-    return wrapper
+    return rwlock(
+        path,
+        repo.fs,
+        cmd,
+        reads,
+        writes,
+        repo.config["core"].get("hardlink_lock", False),
+    )
 
 
 def unlocked_repo(f):

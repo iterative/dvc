@@ -72,7 +72,7 @@ def _infos_to_str(infos):
     )
 
 
-def _check_blockers(lock, info, *, mode, waiters):
+def _check_blockers(tmp_dir, lock, info, *, mode, waiters):
     from .lock import LockError
 
     for waiter_path in waiters:
@@ -88,13 +88,11 @@ def _check_blockers(lock, info, *, mode, waiters):
             continue
 
         raise LockError(
-            "'{path}' is busy, it is being blocked by:\n"
-            "{blockers}\n"
+            f"'{waiter_path}' is busy, it is being blocked by:\n"
+            f"{_infos_to_str(blockers)}\n"
             "\n"
             "If there are no processes with such PIDs, you can manually "
-            "remove '.dvc/tmp/rwlock' and try again.".format(
-                path=waiter_path, blockers=_infos_to_str(blockers)
-            )
+            f"remove '{tmp_dir}/rwlock' and try again."
         )
 
 
@@ -171,8 +169,10 @@ def rwlock(tmp_dir, fs, cmd, read, write, hardlink):
 
     with _edit_rwlock(tmp_dir, fs, hardlink) as lock:
 
-        _check_blockers(lock, info, mode="write", waiters=read + write)
-        _check_blockers(lock, info, mode="read", waiters=write)
+        _check_blockers(
+            tmp_dir, lock, info, mode="write", waiters=read + write
+        )
+        _check_blockers(tmp_dir, lock, info, mode="read", waiters=write)
 
         rchanges = _acquire_read(lock, info, read)
         wchanges = _acquire_write(lock, info, write)
