@@ -13,14 +13,22 @@ class TestAPI:
         assert api.get_url("foo") == expected_url
 
     def test_open(self, tmp_dir, dvc, remote):
-        tmp_dir.dvc_gen("foo", "foo-text")
+        tmp_dir.dvc_gen(
+            {
+                "foo": "foo-text",
+                "dir": {"bar": "bar-text"},
+            }
+        )
         dvc.push()
 
         # Remove cache to force download
         remove(dvc.odb.local.path)
 
-        with api.open("foo") as fd:
-            assert fd.read() == "foo-text"
+        with api.open("foo") as fobj:
+            assert fobj.read() == "foo-text"
+
+        with api.open("dir/bar") as fobj:
+            assert fobj.read() == "bar-text"
 
     @pytest.mark.parametrize(
         "clear_cache", [True, False], ids=["cache", "no_cache"]
