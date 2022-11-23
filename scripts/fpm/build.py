@@ -46,7 +46,7 @@ if args.pkg == "osxpkg":
 else:
     if args.pkg == "rpm":
         # https://github.com/jordansissel/fpm/issues/1503
-        flags.extend(["--rpm-rpmbuild-define", '"_build_id_links none"'])
+        flags.extend(["--rpm-rpmbuild-define", "_build_id_links none"])
 
     bash_dir = build / "etc" / "bash_completion.d"
     dirs = ["usr", "etc"]
