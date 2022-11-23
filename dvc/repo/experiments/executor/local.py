@@ -19,7 +19,8 @@ from ..refs import (
     EXEC_MERGE,
     EXEC_NAMESPACE,
 )
-from .base import EXEC_TMP_DIR, BaseExecutor, TaskStatus
+from ..utils import EXEC_TMP_DIR
+from .base import BaseExecutor, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
