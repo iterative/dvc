@@ -23,7 +23,8 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
+from ..executor.base import ExecutorInfo, ExecutorResult
+from ..utils import EXEC_TMP_DIR
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .exceptions import CannotKillTasksError
 from .tasks import run_exp

@@ -58,10 +58,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-EXEC_TMP_DIR = "exps"
-EXEC_PID_DIR = "run"
-
-
 class ExecutorResult(NamedTuple):
     exp_hash: Optional[str]
     ref_info: Optional["ExpRefInfo"]

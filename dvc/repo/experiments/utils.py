@@ -28,6 +28,9 @@ from .refs import (
     ExpRefInfo,
 )
 
+EXEC_TMP_DIR = "exps"
+EXEC_PID_DIR = "run"
+
 
 def scm_locked(f):
     # Lock the experiments workspace so that we don't try to perform two

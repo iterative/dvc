@@ -26,16 +26,11 @@ from dvc.lock import LockError
 from dvc.ui import ui
 
 from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
-    BaseExecutor,
-    ExecutorResult,
-)
+from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
 from ..refs import ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
-from ..utils import exp_refs_by_rev, scm_locked
+from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev, scm_locked
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
