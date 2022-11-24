@@ -35,14 +35,7 @@ from ..exceptions import (
     ExperimentExistsError,
     UnchangedExperimentError,
 )
-from ..refs import (
-    EXEC_BASELINE,
-    EXEC_BRANCH,
-    EXEC_CHECKPOINT,
-    EXEC_HEAD,
-    EXEC_MERGE,
-    ExpRefInfo,
-)
+from ..refs import EXEC_BASELINE, EXEC_BRANCH, EXEC_CHECKPOINT, ExpRefInfo
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -744,21 +737,12 @@ class BaseExecutor(ABC):
             dvc_logger.setLevel(level)
 
     @contextmanager
-    def set_exec_refs(
-        self, scm: "Git", stash_rev: str, entry: "ExpStashEntry"
-    ):
+    def set_temp_refs(self, scm: "Git", temp_dict: Dict[str, str]):
         try:
-            # Executor will be initialized with an empty git repo that
-            # we populate by pushing:
-            #   EXEC_HEAD - the base commit for this experiment
-            #   EXEC_MERGE - the unmerged changes (from our stash)
-            #       to be reproduced
-            #   EXEC_BASELINE - the baseline commit for this experiment
-            scm.set_ref(EXEC_HEAD, entry.head_rev)
-            scm.set_ref(EXEC_MERGE, stash_rev)
-            scm.set_ref(EXEC_BASELINE, entry.baseline_rev)
+            for ref, rev in temp_dict.items():
+                scm.set_ref(ref, rev)
             yield
         finally:
-            for ref in (EXEC_HEAD, EXEC_MERGE, EXEC_BASELINE):
+            for ref in temp_dict:
                 if scm.get_ref(ref):
                     scm.remove_ref(ref)

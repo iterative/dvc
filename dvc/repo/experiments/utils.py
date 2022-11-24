@@ -12,6 +12,7 @@ from typing import (
     Mapping,
     Optional,
     Set,
+    Tuple,
     Union,
 )
 
@@ -128,8 +129,7 @@ def iter_remote_refs(
 def push_refspec(
     scm: "Git",
     url: str,
-    src: Optional[str],
-    dest: str,
+    push_list=List[Tuple[Optional[str], str]],
     force: bool = False,
     on_diverged: Optional[Callable[[str, str], bool]] = None,
     **kwargs,
@@ -139,20 +139,21 @@ def push_refspec(
 
     from ...scm import GitAuthError, SCMError
 
-    if not src:
-        refspecs = [f":{dest}"]
-    elif src.endswith("/"):
-        refspecs = []
-        dest = dest.rstrip("/") + "/"
-        for ref in scm.iter_refs(base=src):
-            refname = ref.split("/")[-1]
-            refspecs.append(f"{ref}:{dest}{refname}")
-    else:
-        if dest.endswith("/"):
-            refname = src.split("/")[-1]
-            refspecs = [f"{src}:{dest}/{refname}"]
+    refspecs = []
+    for src, dest in push_list:
+        if not src:
+            refspecs.append(f":{dest}")
+        elif src.endswith("/"):
+            dest = dest.rstrip("/") + "/"
+            for ref in scm.iter_refs(base=src):
+                refname = ref.split("/")[-1]
+                refspecs.append(f"{ref}:{dest}{refname}")
         else:
-            refspecs = [f"{src}:{dest}"]
+            if dest.endswith("/"):
+                refname = src.split("/")[-1]
+                refspecs.append(f"{src}:{dest}/{refname}")
+            else:
+                refspecs.append(f"{src}:{dest}")
 
     try:
         results = scm.push_refspecs(
