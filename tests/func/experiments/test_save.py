@@ -49,7 +49,7 @@ def test_exp_save_overwrite_experiment(tmp_dir, dvc, scm, exp_stage):
     dvc.experiments.save(name="dummy", force=True)
 
 
-def test_exp_save_multiple(tmp_dir, dvc, scm, exp_stage):
+def test_exp_save_multiple(tmp_dir, dvc, scm):
     baseline = scm.get_rev()
     for i in range(2):
         name = f"exp-{i}"
@@ -76,3 +76,13 @@ def test_exp_save_after_commit(tmp_dir, dvc, scm, exp_stage):
     all_exps = dvc.experiments.ls(all_commits=True)
     assert all_exps[baseline] == ["exp-1"]
     assert all_exps[new_baseline] == ["exp-2"]
+
+
+def test_exp_save_with_staged_changes(tmp_dir, dvc, scm):
+    tmp_dir.gen({"new_file": "new_file"})
+    scm.add("new_file")
+
+    dvc.experiments.save(name="exp")
+
+    _, _, unstaged = scm.status()
+    assert "new_file" in unstaged
