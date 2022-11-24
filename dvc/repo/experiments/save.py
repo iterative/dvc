@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from funcy import first
 
@@ -22,6 +22,14 @@ def save(
     """
     queue = repo.experiments.workspace_queue
     logger.debug("Saving workspace in %s", os.getcwd())
+
+    staged, _, _ = repo.scm.status(untracked_files="no")
+    if staged:
+        logger.warning(
+            "Your workspace contains staged Git changes which will be "
+            "unstaged before saving this experiment."
+        )
+        repo.scm.reset()
 
     entry = repo.experiments.new(queue=queue, name=name, force=force)
     executor = queue.init_executor(repo.experiments, entry)
