@@ -73,7 +73,7 @@ classifiers = [
 azure = ["dvc-azure==2.20.5"]
 gdrive = ["dvc-gdrive==2.19.1"]
 gs = ["dvc-gs==2.20.0"]
-hdfs = ["dvc-hdfs==2.19.0; python_version < '3.11'"]
+hdfs = ["dvc-hdfs==2.19.0"]
 oss = ["dvc-oss==2.19.0"]
 s3 = ["dvc-s3==2.21.0"]
 ssh = ["dvc-ssh==2.20.0"]
@@ -98,10 +98,8 @@ tests = [
     "flaky==3.7.0",
     "pytest-timeout==2.1.0",
     "filelock==3.8.0",
-    # optional dependencies
-    "dvclive>=1.0",
-    "pywin32>=225; sys_platform == 'win32'",
     "beautifulsoup4==4.11.1",
+    "pywin32>=225; sys_platform == 'win32'",  # optional dependency
     # pylint requirements
     "pylint==2.15.5",
     # we use this to suppress pytest-related false positives in our tests.
@@ -111,9 +109,9 @@ tests = [
     "pylint-plugin-utils==0.7",
     # type-checking
     "mypy==0.990",
-    "types-requests>=2.27.15",
-    "types-tabulate>=0.8.6",
-    "types-toml>=0.10.4",
+    "types-requests",
+    "types-tabulate",
+    "types-toml",
 ]
 all = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs]"]
 dev = ["dvc[azure,gdrive,gs,hdfs,oss,s3,ssh,webdav,webhdfs,tests]"]
