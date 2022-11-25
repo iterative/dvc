@@ -20,7 +20,7 @@ from typing import (
 from funcy import cached_property, retry
 
 from dvc.dependency import ParamsDependency
-from dvc.env import DVCLIVE_RESUME
+from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
 from dvc.ui import ui
@@ -396,7 +396,13 @@ class BaseStashQueue(ABC):
                             )
 
                     # save additional repro command line arguments
-                    run_env = {DVCLIVE_RESUME: "1"} if resume_rev else {}
+                    run_env = {
+                        DVC_EXP_BASELINE_REV: baseline_rev,
+                    }
+                    if name:
+                        run_env[DVC_EXP_NAME] = name
+                    if resume_rev:
+                        run_env[DVCLIVE_RESUME] = "1"
                     self._pack_args(*args, run_env=run_env, **kwargs)
 
                     # save experiment as a stash commit

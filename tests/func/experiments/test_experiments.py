@@ -2,6 +2,7 @@ import itertools
 import logging
 import os
 import stat
+from textwrap import dedent
 
 import pytest
 from funcy import first
@@ -682,3 +683,29 @@ def test_experiments_workspace_not_log_exception(caplog, dvc, scm):
             dvc.experiments.run()
 
     assert not caplog.text
+
+
+def test_run_env(tmp_dir, dvc, scm):
+    dump_run_env = dedent(
+        """\
+        import os
+        from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME
+        with open("DVC_EXP_BASELINE_REV", "w") as f:
+            f.write(os.environ.get(DVC_EXP_BASELINE_REV, ""))
+        with open("DVC_EXP_NAME", "w") as f:
+            f.write(os.environ.get(DVC_EXP_NAME, ""))
+        """
+    )
+    (tmp_dir / "dump_run_env.py").write_text(dump_run_env)
+    baseline = scm.get_rev()
+    dvc.stage.add(
+        cmd="python dump_run_env.py",
+        name="run_env",
+    )
+    dvc.experiments.run()
+    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == ""
+
+    dvc.experiments.run(name="foo")
+    assert (tmp_dir / "DVC_EXP_BASELINE_REV").read_text().strip() == baseline
+    assert (tmp_dir / "DVC_EXP_NAME").read_text().strip() == "foo"
