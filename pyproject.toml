@@ -108,7 +108,7 @@ tests = [
     # and, protected method calls in our tests
     "pylint-plugin-utils==0.7",
     # type-checking
-    "mypy==0.990",
+    "mypy==0.991",
     "types-requests",
     "types-tabulate",
     "types-toml",
