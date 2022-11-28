@@ -59,13 +59,12 @@ def _verify_field(file2datapoints: Dict[str, List], filename: str, field: str):
     return
 
 
-def _get_x(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
+def _get_xs(properties: Dict, file2datapoints: Dict[str, List[Dict]]):
     x = properties.get("x", None)
     if x is not None and isinstance(x, dict):
-        filename, field = first(_file_field(x))
-        _verify_field(file2datapoints, filename, field)
-        return filename, field
-    return None
+        for filename, field in _file_field(x):
+            _verify_field(file2datapoints, filename, field)
+            yield filename, field
 
 
 def _get_ys(properties, file2datapoints: Dict[str, List[Dict]]):
@@ -193,19 +192,27 @@ class VegaConverter(Converter):
 
         props_update = {}
 
-        x = _get_x(properties, file2datapoints)
+        xs = list(_get_xs(properties, file2datapoints))
 
         # assign "step" if no x provided
-        if not x:
+        if not xs:
             x_file, x_field = (
                 None,
                 INDEX_FIELD,
             )
         else:
-            x_file, x_field = x
+            x_file, x_field = xs[0]
         props_update["x"] = x_field
 
         ys = list(_get_ys(properties, file2datapoints))
+
+        num_xs = len(xs)
+        num_ys = len(ys)
+        if num_xs > 1 and num_xs != num_ys:
+            raise DvcException(
+                f"Cannot have different number of x and y data sources. Found "
+                f"{num_xs} x and {num_ys} y data sources."
+            )
 
         all_datapoints = []
         all_y_fields = {y_field for _, y_field in ys}
@@ -216,7 +223,9 @@ class VegaConverter(Converter):
         else:
             props_update["y"] = first(all_y_fields)
 
-        for y_file, y_field in ys:
+        for i, (y_file, y_field) in enumerate(ys):
+            if num_xs > 1:
+                x_file, x_field = xs[i]
             datapoints = deepcopy(file2datapoints.get(y_file, []))
 
             if props_update.get("y", None) == "dvc_inferred_y_value":
@@ -239,7 +248,7 @@ class VegaConverter(Converter):
                 except IndexError:
                     raise DvcException(
                         f"Cannot join '{x_field}' from '{x_file}' and "
-                        "'{y_field}' from '{y_file}'. "
+                        f"'{y_field}' from '{y_file}'. "
                         "They have to have same length."
                     )
 
