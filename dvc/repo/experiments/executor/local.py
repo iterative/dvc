@@ -2,14 +2,14 @@ import logging
 import os
 from contextlib import ExitStack
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from funcy import cached_property, retry
 from scmrepo.exceptions import SCMError as _SCMError
 from shortuuid import uuid
 
-from dvc.lock import LockError
 from dvc.exceptions import DvcException
+from dvc.lock import LockError
 from dvc.scm import SCM, GitMergeError
 from dvc.utils.fs import makedirs, remove
 
@@ -25,7 +25,7 @@ from ..refs import (
     ExpRefInfo,
 )
 from ..utils import EXEC_TMP_DIR, get_exp_rwlock
-from .base import BaseExecutor, TaskStatus, ExecutorResult
+from .base import BaseExecutor, ExecutorResult, TaskStatus
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
@@ -255,6 +255,7 @@ class WorkspaceExecutor(BaseLocalExecutor):
         cls,
         info: "ExecutorInfo",
         force: bool = False,
+        include_untracked: Optional[List[str]] = None,
     ) -> ExecutorResult:
         from dvc.repo import Repo
 
@@ -271,6 +272,8 @@ class WorkspaceExecutor(BaseLocalExecutor):
         try:
             stages = dvc.commit([], force=force)
             exp_hash = cls.hash_exp(stages)
+            if include_untracked:
+                dvc.scm.add(include_untracked)
             cls.commit(
                 dvc.scm,
                 exp_hash,
