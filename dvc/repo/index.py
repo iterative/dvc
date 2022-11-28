@@ -11,6 +11,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Union,
 )
 
 from funcy import cached_property, nullcontext
@@ -429,10 +430,10 @@ class IndexView:
         return prefixes
 
     @cached_property
-    def data(self) -> "Dict[str, DataIndexView]":
+    def data(self) -> Dict[str, Union["DataIndex", "DataIndexView"]]:
         from functools import partial
 
-        from dvc_data.index import view
+        from dvc_data.index import DataIndex, view
 
         def key_filter(workspace: str, key: "DataIndexKey"):
             try:
@@ -444,10 +445,15 @@ class IndexView:
             except KeyError:
                 return False
 
-        data = {}
+        data: Dict[str, Union["DataIndex", "DataIndexView"]] = {}
         for workspace, data_index in self._index.data.items():
-            data_index.load()
-            data[workspace] = view(data_index, partial(key_filter, workspace))
+            if self._stages:
+                data_index.load()
+                data[workspace] = view(
+                    data_index, partial(key_filter, workspace)
+                )
+            else:
+                data[workspace] = DataIndex()
         return data
 
 
