@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 import pytest
 
+from dvc.exceptions import DvcException
 from dvc.render import VERSION_FIELD
 from dvc.render.converter.vega import VegaConverter, _lists
 
@@ -286,6 +287,47 @@ def test_convert(
 
     assert datapoints == expected_datapoints
     assert resolved_properties == expected_properties
+
+
+@pytest.mark.parametrize(
+    "input_data,properties",
+    [
+        pytest.param(
+            {
+                "f": {
+                    "metric": [
+                        {"v": 1},
+                        {"v": 2},
+                    ]
+                },
+                "f2": {"metric": [{"v2": 0.1}]},
+            },
+            {"x": {"f": "v"}, "y": {"f2": "v2"}},
+            id="unequal_datapoints",
+        ),
+        pytest.param(
+            {
+                "f": {
+                    "metric": [
+                        {"v": 1, "v2": 0.1},
+                        {"v": 2, "v2": 0.2},
+                    ]
+                },
+                "f2": {
+                    "metric": [
+                        {"v": 3, "v2": 0.3},
+                    ]
+                },
+            },
+            {"x": {"f": "v", "f2": "v3"}, "y": {"f": "v2"}},
+            id="unequal_x_y",
+        ),
+    ],
+)
+def test_convert_fail(input_data, properties):
+    converter = VegaConverter("f", input_data, properties)
+    with pytest.raises(DvcException):
+        converter.flat_datapoints("r")
 
 
 @pytest.mark.parametrize(
