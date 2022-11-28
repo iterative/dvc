@@ -49,33 +49,16 @@ def test_exp_save_overwrite_experiment(tmp_dir, dvc, scm, exp_stage):
     dvc.experiments.save(name="dummy", force=True)
 
 
-def test_exp_save_multiple(tmp_dir, dvc, scm):
-    baseline = scm.get_rev()
-    for i in range(2):
-        name = f"exp-{i}"
-        tmp_dir.gen({name: f"{name} content"})
-        dvc.experiments.save(name=name)
-
-    assert dvc.experiments.ls()[baseline] == ["exp-0", "exp-1"]
-
-    for i in range(2):
-        scm.reset(hard=True)
-        name = f"exp-{i}"
-        dvc.experiments.apply(name)
-        assert (tmp_dir / name).read_text() == f"{name} content"
-
-
 def test_exp_save_after_commit(tmp_dir, dvc, scm, exp_stage):
     baseline = scm.get_rev()
     dvc.experiments.save(name="exp-1")
 
     tmp_dir.scm_gen({"new_file": "new_file"}, commit="new baseline")
-    new_baseline = scm.get_rev()
     dvc.experiments.save(name="exp-2")
 
     all_exps = dvc.experiments.ls(all_commits=True)
-    assert all_exps[baseline] == ["exp-1"]
-    assert all_exps[new_baseline] == ["exp-2"]
+    assert all_exps[baseline[:7]] == ["exp-1"]
+    assert all_exps["master"] == ["exp-2"]
 
 
 def test_exp_save_with_staged_changes(tmp_dir, dvc, scm):
@@ -86,3 +69,17 @@ def test_exp_save_with_staged_changes(tmp_dir, dvc, scm):
 
     _, _, unstaged = scm.status()
     assert "new_file" in unstaged
+
+
+def test_exp_save_include_untracked(tmp_dir, dvc, scm, exp_stage):
+    new_file = tmp_dir / "new_file"
+    for i in range(2):
+        new_file.write_text(f"exp-{i}")
+        dvc.experiments.save(name=f"exp-{i}", include_untracked=["new_file"])
+
+    _, _, unstaged = scm.status()
+    assert "new_file" in unstaged
+    assert new_file.read_text() == f"exp-{i}"
+
+    dvc.experiments.apply("exp-0")
+    assert new_file.read_text() == "exp-0"

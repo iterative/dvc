@@ -14,7 +14,9 @@ class CmdExperimentsSave(CmdBase):
 
         try:
             ref = self.repo.experiments.save(
-                name=self.args.name, force=self.args.force
+                name=self.args.name,
+                force=self.args.force,
+                include_untracked=self.args.include_untracked,
             )
         except DvcException:
             logger.exception("failed to save experiment")
@@ -65,5 +67,13 @@ def add_parser(experiments_subparsers, parent_parser):
             "be auto-generated."
         ),
         metavar="<name>",
+    )
+    save_parser.add_argument(
+        "-I",
+        "--include-untracked",
+        action="append",
+        default=[],
+        help="List of untracked paths to include in the experiment.",
+        metavar="<path>",
     )
     save_parser.set_defaults(func=CmdExperimentsSave)
