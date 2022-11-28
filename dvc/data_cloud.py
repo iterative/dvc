@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from funcy import cached_property
 
+from dvc.config import RemoteConfigError
 from dvc_data.hashfile.db import get_index
 
 if TYPE_CHECKING:
@@ -23,6 +24,14 @@ class Remote:
 
         self.worktree = config.pop("worktree", False)
         self.config = config
+        if self.worktree:
+            version_aware = self.config.get("version_aware")
+            if version_aware is False:
+                raise RemoteConfigError(
+                    "worktree remotes require version_aware cloud"
+                )
+            if version_aware is None:
+                self.fs.version_aware = True
 
     @cached_property
     def odb(self):
