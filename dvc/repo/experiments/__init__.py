@@ -186,8 +186,7 @@ class Experiments:
         if not entries:
             return results
 
-        for job in range(kwargs.get("jobs", 1)):
-            self.celery_queue.spawn_worker(num=job)
+        self.celery_queue.start_workers(count=kwargs.get("jobs", 1))
         failed = []
         try:
             ui.write(
