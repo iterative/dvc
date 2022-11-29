@@ -23,7 +23,9 @@ from dvc.exceptions import DvcException
 from dvc.ui import ui
 
 from ..exceptions import UnresolvedQueueExpNamesError
-from ..executor.base import EXEC_TMP_DIR, ExecutorInfo, ExecutorResult
+from ..executor.base import ExecutorInfo, ExecutorResult
+from ..refs import CELERY_STASH
+from ..utils import EXEC_TMP_DIR, get_exp_rwlock
 from .base import BaseStashQueue, QueueDoneResult, QueueEntry, QueueGetResult
 from .exceptions import CannotKillTasksError
 from .tasks import run_exp
@@ -164,7 +166,8 @@ class LocalCeleryQueue(BaseStashQueue):
 
     def put(self, *args, **kwargs) -> QueueEntry:
         """Stash an experiment and add it to the queue."""
-        entry = self._stash_exp(*args, **kwargs)
+        with get_exp_rwlock(self.repo, writes=["workspace", CELERY_STASH]):
+            entry = self._stash_exp(*args, **kwargs)
         self.celery.signature(run_exp.s(entry.asdict())).delay()
         return entry
 

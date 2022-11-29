@@ -29,7 +29,7 @@ def push(
     from dvc.repo.worktree import push_worktree
 
     _remote = self.cloud.get_remote(name=remote)
-    if _remote.worktree:
+    if _remote.worktree or _remote.fs.version_aware:
         return push_worktree(self, _remote)
 
     used_run_cache = (

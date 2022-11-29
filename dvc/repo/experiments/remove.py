@@ -152,8 +152,7 @@ def _remove_commited_exps(
                 push_refspec(
                     scm,
                     remote,
-                    None,
-                    str(ref_info),
+                    [(None, str(ref_info))],
                     progress=pbar.update_git,
                 )
     else:

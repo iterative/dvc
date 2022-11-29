@@ -9,6 +9,7 @@ from dvc_ssh import SSHFileSystem
 from funcy import first
 
 from ..refs import (
+    EXEC_BASELINE,
     EXEC_BRANCH,
     EXEC_CHECKPOINT,
     EXEC_HEAD,
@@ -119,6 +120,7 @@ class SSHExecutor(BaseExecutor):
 
     def init_git(
         self,
+        repo: "Repo",
         scm: "Git",
         stash_rev: str,
         entry: "ExpStashEntry",
@@ -147,12 +149,18 @@ class SSHExecutor(BaseExecutor):
             # (see https://github.com/iterative/dvc/issues/6508)
             kwargs = self._git_client_args(fs)
 
-            with self.set_exec_refs(scm, stash_rev, entry):
-                refspec = f"{EXEC_NAMESPACE}/"
-                push_refspec(scm, self.git_url, refspec, refspec, **kwargs)
+            ref_dict = {
+                EXEC_HEAD: entry.head_rev,
+                EXEC_MERGE: stash_rev,
+                EXEC_BASELINE: entry.baseline_rev,
+            }
+            with self.set_temp_refs(scm, ref_dict):
+                exec_namespace = f"{EXEC_NAMESPACE}/"
+                refspec = [(exec_namespace, exec_namespace)]
+                push_refspec(scm, self.git_url, refspec, **kwargs)
 
             if branch:
-                push_refspec(scm, self.git_url, branch, branch, **kwargs)
+                push_refspec(scm, self.git_url, [(branch, branch)], **kwargs)
                 self._ssh_cmd(fs, f"git symbolic-ref {EXEC_BRANCH} {branch}")
             else:
                 self._ssh_cmd(

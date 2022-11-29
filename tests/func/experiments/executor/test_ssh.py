@@ -38,7 +38,7 @@ def test_init_from_stash(tmp_dir, scm, dvc, machine_instance, mocker):
 
 @pytest.mark.needs_internet
 @pytest.mark.parametrize("cloud", [pytest.lazy_fixture("git_ssh")])
-def test_init_git(tmp_dir, scm, cloud, mocker):
+def test_init_git(tmp_dir, dvc, scm, cloud, mocker):
     tmp_dir.scm_gen({"foo": "foo", "dir": {"bar": "bar"}}, commit="init")
     baseline_rev = scm.get_rev()
     tmp_dir.gen("foo", "stashed")
@@ -59,7 +59,7 @@ def test_init_git(tmp_dir, scm, cloud, mocker):
         fs_factory=partial(_ssh_factory, cloud),
     )
     infofile = str((root_url / "foo.run").path)
-    executor.init_git(scm, rev, mock, infofile=infofile)
+    executor.init_git(dvc, scm, rev, mock, infofile=infofile)
     assert root_url.path == executor._repo_abspath
 
     fs = cloud._ssh

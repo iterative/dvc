@@ -1,15 +1,38 @@
 import logging
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, List
 
 from scmrepo.exceptions import SCMError
 
 from ..executor.base import ExecutorInfo, TaskStatus
+from ..refs import EXEC_CHECKPOINT, EXEC_NAMESPACE, EXPS_NAMESPACE, EXPS_STASH
+from ..utils import get_exp_rwlock, iter_remote_refs
 
 logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
+    from scmrepo.git import Git
+
     from .base import BaseStashQueue
+
+
+def get_remote_executor_refs(scm: "Git", remote_url: str) -> List[str]:
+    """Get result list refs from a remote repository
+
+    Args:
+        remote_url : remote executor's url
+    """
+    refs = []
+    for ref in iter_remote_refs(
+        scm,
+        remote_url,
+        base=EXPS_NAMESPACE,
+    ):
+        if ref == EXEC_CHECKPOINT or (
+            not ref.startswith(EXEC_NAMESPACE) and ref != EXPS_STASH
+        ):
+            refs.append(ref)
+    return refs
 
 
 def fetch_running_exp_from_temp_dir(
@@ -36,7 +59,7 @@ def fetch_running_exp_from_temp_dir(
         info = ExecutorInfo.from_dict(load_json(infofile))
     except OSError:
         return result
-    if info.status < TaskStatus.FAILED:
+    if info.status <= TaskStatus.RUNNING:
         result[rev] = info.asdict()
         if info.git_url and fetch_refs and info.status > TaskStatus.PREPARING:
 
@@ -45,15 +68,18 @@ def fetch_running_exp_from_temp_dir(
 
             executor = TempDirExecutor.from_info(info)
             try:
-                for ref in executor.fetch_exps(
-                    queue.scm,
-                    on_diverged=on_diverged,
-                ):
-                    logger.debug("Updated running experiment '%s'.", ref)
-                    last_rev = queue.scm.get_ref(ref)
-                    result[rev]["last"] = last_rev
-                    if last_rev:
-                        result[last_rev] = info.asdict()
+                refs = get_remote_executor_refs(queue.scm, executor.git_url)
+                with get_exp_rwlock(queue.repo, writes=refs):
+                    for ref in executor.fetch_exps(
+                        queue.scm,
+                        refs,
+                        on_diverged=on_diverged,
+                    ):
+                        logger.debug("Updated running experiment '%s'.", ref)
+                        last_rev = queue.scm.get_ref(ref)
+                        result[rev]["last"] = last_rev
+                        if last_rev:
+                            result[last_rev] = info.asdict()
             except (InvalidRemoteSCMRepo, SCMError):
                 # ignore stale info files
                 del result[rev]

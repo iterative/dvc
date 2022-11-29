@@ -20,22 +20,18 @@ from typing import (
 from funcy import cached_property, retry
 
 from dvc.dependency import ParamsDependency
-from dvc.env import DVCLIVE_RESUME
+from dvc.env import DVC_EXP_BASELINE_REV, DVC_EXP_NAME, DVCLIVE_RESUME
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
 from dvc.ui import ui
 
 from ..exceptions import CheckpointExistsError, ExperimentExistsError
-from ..executor.base import (
-    EXEC_PID_DIR,
-    EXEC_TMP_DIR,
-    BaseExecutor,
-    ExecutorResult,
-)
+from ..executor.base import BaseExecutor, ExecutorResult
 from ..executor.local import WorkspaceExecutor
 from ..refs import ExpRefInfo
 from ..stash import ExpStash, ExpStashEntry
-from ..utils import exp_refs_by_rev, scm_locked
+from ..utils import EXEC_PID_DIR, EXEC_TMP_DIR, exp_refs_by_rev, get_exp_rwlock
+from .utils import get_remote_executor_refs
 
 if TYPE_CHECKING:
     from scmrepo.git import Git
@@ -400,7 +396,13 @@ class BaseStashQueue(ABC):
                             )
 
                     # save additional repro command line arguments
-                    run_env = {DVCLIVE_RESUME: "1"} if resume_rev else {}
+                    run_env = {
+                        DVC_EXP_BASELINE_REV: baseline_rev,
+                    }
+                    if name:
+                        run_env[DVC_EXP_NAME] = name
+                    if resume_rev:
+                        run_env[DVCLIVE_RESUME] = "1"
                     self._pack_args(*args, run_env=run_env, **kwargs)
 
                     # save experiment as a stash commit
@@ -555,28 +557,39 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    @scm_locked
+    def get_stash_entry(
+        exp: "Experiments",
+        queue_entry: QueueEntry,
+    ) -> "ExpStashEntry":
+        stash = ExpStash(exp.scm, queue_entry.stash_ref)
+        stash_rev = queue_entry.stash_rev
+        with get_exp_rwlock(exp.repo, writes=[queue_entry.stash_ref]):
+            stash_entry = stash.stash_revs.get(
+                stash_rev,
+                ExpStashEntry(None, stash_rev, stash_rev, None, None),
+            )
+            if stash_entry.stash_index is not None:
+                stash.drop(stash_entry.stash_index)
+        return stash_entry
+
+    @classmethod
     def init_executor(
+        cls,
         exp: "Experiments",
         queue_entry: QueueEntry,
         executor_cls: Type[BaseExecutor] = WorkspaceExecutor,
         **kwargs,
     ) -> BaseExecutor:
-        scm = exp.scm
-        stash = ExpStash(scm, queue_entry.stash_ref)
-        stash_rev = queue_entry.stash_rev
-        stash_entry = stash.stash_revs.get(
-            stash_rev,
-            ExpStashEntry(None, stash_rev, stash_rev, None, None),
-        )
-        if stash_entry.stash_index is not None:
-            stash.drop(stash_entry.stash_index)
+        stash_entry = cls.get_stash_entry(exp, queue_entry)
+
         executor = executor_cls.from_stash_entry(
             exp.repo, stash_entry, **kwargs
         )
 
+        stash_rev = queue_entry.stash_rev
         infofile = exp.celery_queue.get_infofile_path(stash_rev)
         executor.init_git(
+            exp.repo,
             exp.repo.scm,
             stash_rev,
             stash_entry,
@@ -597,7 +610,6 @@ class BaseStashQueue(ABC):
 
     @staticmethod
     @retry(180, errors=LockError, timeout=1)
-    @scm_locked
     def collect_git(
         exp: "Experiments",
         executor: BaseExecutor,
@@ -611,16 +623,20 @@ class BaseStashQueue(ABC):
                 raise CheckpointExistsError(ref_info.name)
             raise ExperimentExistsError(ref_info.name)
 
-        for ref in executor.fetch_exps(
-            exp.scm,
-            force=exec_result.force,
-            on_diverged=on_diverged,
-        ):
-            exp_rev = exp.scm.get_ref(ref)
-            if exp_rev:
-                assert exec_result.exp_hash
-                logger.debug("Collected experiment '%s'.", exp_rev[:7])
-                results[exp_rev] = exec_result.exp_hash
+        refs = get_remote_executor_refs(exp.scm, executor.git_url)
+
+        with get_exp_rwlock(exp.repo, writes=refs):
+            for ref in executor.fetch_exps(
+                exp.scm,
+                refs,
+                force=exec_result.force,
+                on_diverged=on_diverged,
+            ):
+                exp_rev = exp.scm.get_ref(ref)
+                if exp_rev:
+                    assert exec_result.exp_hash
+                    logger.debug("Collected experiment '%s'.", exp_rev[:7])
+                    results[exp_rev] = exec_result.exp_hash
 
         return results
 
