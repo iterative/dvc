@@ -59,7 +59,7 @@ def fetch_running_exp_from_temp_dir(
         info = ExecutorInfo.from_dict(load_json(infofile))
     except OSError:
         return result
-    if info.status < TaskStatus.FAILED:
+    if info.status <= TaskStatus.RUNNING:
         result[rev] = info.asdict()
         if info.git_url and fetch_refs and info.status > TaskStatus.PREPARING:
 
