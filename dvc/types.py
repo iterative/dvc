@@ -20,7 +20,10 @@ TargetType = Union[List[str], str]
 DictStrAny = Dict[str, Any]
 DictAny = Dict[Any, Any]
 
-ResultDict = TypedDict(
-    "ResultDict", {"data": Any, "error": Exception}, total=False
-)
+
+class ResultDict(TypedDict, total=False):
+    data: Any
+    error: Exception
+
+
 ErrorHandler = Callable[[Exception], ResultDict]
