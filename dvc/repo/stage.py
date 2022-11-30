@@ -23,6 +23,7 @@ from dvc.exceptions import (
     OutputNotFoundError,
 )
 from dvc.repo import lock_repo
+from dvc.ui import ui
 from dvc.utils import as_posix, parse_target, relpath
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,14 @@ class StageLoad:
         )
         with self.repo.scm_context:
             stage.dump(update_lock=update_lock)
-            stage.ignore_outs()
+            try:
+                stage.ignore_outs()
+            except FileNotFoundError as exc:
+                ui.warn(
+                    f"Could not create .gitignore entry in {exc.filename}."
+                    " DVC will attempt to create .gitignore entry again when"
+                    " the stage is run."
+                )
 
         return stage
 
