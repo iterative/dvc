@@ -21,7 +21,7 @@ from scmrepo.exceptions import SCMError as InnerScmError
 from dvc.repo.metrics.show import _gather_metrics
 from dvc.repo.params.show import _gather_params
 from dvc.scm import SCMError, iter_revs, resolve_rev
-from dvc.utils import error_handler, onerror_collect, relpath
+from dvc.utils import error_handler, onerror_store, relpath
 
 from .refs import ExpRefInfo
 
