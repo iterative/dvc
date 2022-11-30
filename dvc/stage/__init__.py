@@ -520,6 +520,7 @@ class Stage(params.StageParams):
 
     def ignore_outs(self):
         for out in self.outs:
+            out.fs.makedirs(out.fs.path.parent(out.fspath), exist_ok=True)
             out.ignore()
 
     @staticmethod
